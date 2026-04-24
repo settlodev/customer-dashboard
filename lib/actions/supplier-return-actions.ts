@@ -5,8 +5,8 @@ import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { inventoryUrl } from "./inventory-client";
+import { getCurrentDestination } from "./context";
 import type {
   SupplierReturn,
   SupplierReturnStatus,
@@ -45,7 +45,7 @@ export async function getSupplierReturn(id: string): Promise<SupplierReturn | nu
 
 export async function createSupplierReturn(
   input: z.infer<typeof CreateSupplierReturnSchema>,
-): Promise<FormResponse | void> {
+): Promise<FormResponse<{ id: string | null }>> {
   const validated = CreateSupplierReturnSchema.safeParse(input);
   if (!validated.success) {
     return parseStringify({
@@ -56,7 +56,7 @@ export async function createSupplierReturn(
   }
   const payload: CreateSupplierReturnPayload = {
     ...validated.data,
-    locationType: "LOCATION",
+    locationType: (await getCurrentDestination())?.type ?? "LOCATION",
     grnId: validated.data.grnId || undefined,
     items: validated.data.items.map((item) => ({
       ...item,
@@ -64,24 +64,25 @@ export async function createSupplierReturn(
     })),
   };
 
-  let createdId: string | null = null;
   try {
     const apiClient = new ApiClient();
     const created = (await apiClient.post(
       inventoryUrl(BASE),
       payload,
     )) as SupplierReturn;
-    createdId = created?.id ?? null;
     revalidatePath("/supplier-returns");
+    return parseStringify({
+      responseType: "success",
+      message: "Supplier return saved as Draft",
+      data: { id: created?.id ?? null },
+    });
   } catch (error: any) {
-    if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     return parseStringify({
       responseType: "error",
       message: error?.message ?? "Failed to create supplier return",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
-  redirect(createdId ? `/supplier-returns/${createdId}` : "/supplier-returns");
 }
 
 export async function confirmSupplierReturn(id: string): Promise<FormResponse> {
@@ -107,12 +108,15 @@ async function runTransition(
     await apiClient.post(inventoryUrl(`${BASE}/${id}/${verb}`), {});
     revalidatePath(`/supplier-returns/${id}`);
     revalidatePath("/supplier-returns");
-    return { responseType: "success", message: `Return ${label.toLowerCase()}` };
+    return parseStringify({
+      responseType: "success",
+      message: `Supplier return ${label.toLowerCase()}`,
+    });
   } catch (error: any) {
-    return {
+    return parseStringify({
       responseType: "error",
       message: error?.message ?? `Failed to ${label.toLowerCase()}`,
       error: error instanceof Error ? error : new Error(String(error)),
-    };
+    });
   }
 }

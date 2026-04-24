@@ -21,6 +21,7 @@ import { ProductSchema } from "@/types/product/schema";
 import { GoogleGenAI } from "@google/genai";
 import { LocationDetails } from "@/types/menu/type";
 import { inventoryUrl } from "./inventory-client";
+import { getCurrentDestination } from "./context";
 
 // ── Products CRUD (Inventory Service) ───────────────────────────────
 
@@ -75,7 +76,7 @@ export async function createProduct(
   try {
     const apiClient = new ApiClient();
     await apiClient.post(inventoryUrl("/api/v1/products"), {
-      locationType: "LOCATION",
+      locationType: (await getCurrentDestination())?.type ?? "LOCATION",
       name: validData.data.name,
       description: validData.data.description,
       categoryIds: validData.data.categoryIds,

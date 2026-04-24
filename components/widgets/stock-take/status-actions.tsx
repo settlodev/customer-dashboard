@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Play, CheckCircle2, ThumbsUp, XCircle, Loader2 } from "lucide-react";
+import { Play, CheckCircle2, ThumbsUp, XCircle, Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,6 +38,13 @@ export function StockTakeStatusActions({ stockTake }: Props) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {stockTake.status === "DRAFT" && (
+        <Button variant="outline" asChild>
+          <Link href={`/stock-takes/${stockTake.id}/edit`}>
+            <Pencil className="h-4 w-4 mr-1.5" /> Edit
+          </Link>
+        </Button>
+      )}
       {canStartStockTake(stockTake.status) && (
         <Action
           id={stockTake.id}

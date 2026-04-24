@@ -11,7 +11,7 @@
 export const Features = {
   // Inventory & stock
   INVENTORY: "inventory",
-  STOCK_CONSUMPTION_RULES: "stock_consumption_rules",
+  BOM_RULES: "bom_rules",
   MODIFIER_GROUPS: "modifier_groups",
   ADDON_GROUPS: "addon_groups",
   PURCHASE_REQUISITIONS: "purchase_requisitions",
@@ -45,8 +45,9 @@ export type LimitKey = (typeof Limits)[keyof typeof Limits];
 // If a route is not listed, it's always accessible (no gate).
 export const ROUTE_FEATURE_MAP: Record<string, FeatureKey> = {
   // Stock management
-  "/consumption-rules": Features.STOCK_CONSUMPTION_RULES,
-  "/stock-purchases": Features.PURCHASE_REQUISITIONS,
+  "/bom-rules": Features.BOM_RULES,
+  "/bom-analytics": Features.BOM_RULES,
+  "/purchase-orders": Features.PURCHASE_REQUISITIONS,
   "/goods-received": Features.PURCHASE_REQUISITIONS,
 
   // Business operations
@@ -75,13 +76,14 @@ export interface FeatureMeta {
 }
 
 export const FEATURE_META: Record<string, FeatureMeta> = {
-  [Features.STOCK_CONSUMPTION_RULES]: {
+  [Features.BOM_RULES]: {
     title: "Consumption Rules",
-    description: "Define recipes, bundles, and manufacturing rules to automatically track and deduct stock.",
+    description:
+      "Location-scoped recipes, production routings, and substitutes that drive automatic stock deduction on every sale.",
     benefits: [
-      "Create consumption rules with ingredient breakdowns",
-      "Auto-deduct raw materials on sale",
-      "Track cost percentages in real time",
+      "Build recipes with nested substitutes and scrap",
+      "Labor / overhead / machine rates via routing operations",
+      "Consumption analytics, cost trends, and yield variance dashboards",
     ],
   },
   [Features.MODIFIER_GROUPS]: {

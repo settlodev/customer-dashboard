@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useTransition } from "react";
+import React, { useMemo, useState, useTransition } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,12 +14,12 @@ import { Loader2Icon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 import {
-  getBusinessSettings,
   updateBusinessSettings,
   type UpdateBusinessSettingsRequest,
 } from "@/lib/actions/business-settings-actions";
 import type { Business } from "@/types/business/type";
 import type { BusinessSettings, EfdStatus } from "@/types/business/type";
+import CurrencySelector from "@/components/widgets/currency-selector";
 
 // ──────────────────────────────────────────────────────────────────────
 // Small primitives
@@ -155,13 +155,13 @@ const EfdStatusPill = ({ status }: { status: EfdStatus | null }) => {
       label: "Requested",
       className: "bg-yellow-100 text-yellow-800 border-yellow-200",
     },
-    APPROVED: {
-      label: "Approved",
-      className: "bg-green-100 text-green-800 border-green-200",
+    AWAITING_CONFIRMATION: {
+      label: "Awaiting confirmation",
+      className: "bg-blue-100 text-blue-800 border-blue-200",
     },
-    REJECTED: {
-      label: "Rejected",
-      className: "bg-red-100 text-red-800 border-red-200",
+    ACTIVE: {
+      label: "Active",
+      className: "bg-green-100 text-green-800 border-green-200",
     },
   };
   const { label, className } = map[status];
@@ -178,47 +178,28 @@ const EfdStatusPill = ({ status }: { status: EfdStatus | null }) => {
 
 const BusinessSettingsPanel = ({
   business,
+  settings,
+  isLoading,
+  onSaved,
 }: {
   business: Business | null;
+  settings: BusinessSettings | null;
+  isLoading: boolean;
+  onSaved: (next: BusinessSettings) => void;
 }) => {
-  const [settings, setSettings] = useState<BusinessSettings | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [dirty, setDirty] = useState<UpdateBusinessSettingsRequest>({});
 
-  useEffect(() => {
-    if (!business?.id) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        setIsLoading(true);
-        const data = await getBusinessSettings(business.id);
-        if (!cancelled) setSettings(data);
-      } catch (err) {
-        console.error("Failed to load business settings:", err);
-        if (!cancelled) {
-          toast({
-            variant: "destructive",
-            title: "Couldn't load business settings",
-            description:
-              err instanceof Error ? err.message : "Please try again later.",
-          });
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [business?.id]);
+  // Displayed values = persisted settings merged with uncommitted edits.
+  const displayed = useMemo<BusinessSettings | null>(
+    () => (settings ? ({ ...settings, ...dirty } as BusinessSettings) : null),
+    [settings, dirty],
+  );
 
-  // Generic setter that updates both the in-memory copy + the dirty patch.
   function setField<K extends keyof UpdateBusinessSettingsRequest>(
     key: K,
     value: UpdateBusinessSettingsRequest[K],
   ) {
-    setSettings((prev) => (prev ? ({ ...prev, [key]: value } as BusinessSettings) : prev));
     setDirty((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -230,6 +211,7 @@ const BusinessSettingsPanel = ({
       const result = await updateBusinessSettings(business.id, dirty);
       if (result.responseType === "success") {
         toast({ title: "Settings updated", description: result.message });
+        onSaved(result.data);
         setDirty({});
       } else {
         toast({
@@ -261,7 +243,7 @@ const BusinessSettingsPanel = ({
     );
   }
 
-  if (!settings) {
+  if (!displayed) {
     return (
       <div className="space-y-6">
         <div>
@@ -276,7 +258,7 @@ const BusinessSettingsPanel = ({
     );
   }
 
-  const s = settings;
+  const s = displayed;
   const d = isPending;
   const enableVirtualEfd = Boolean(s.enableVirtualEfd);
 
@@ -583,19 +565,17 @@ const BusinessSettingsPanel = ({
             description="Seed values applied when creating a new location"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <TextField
-                label="Default currency"
-                value={s.defaultCurrency ?? ""}
-                onChange={(v) =>
-                  setField(
-                    "defaultCurrency",
-                    v ? v.trim().toUpperCase().slice(0, 3) : null,
-                  )
-                }
-                placeholder="TZS"
-                description="3-letter ISO 4217 currency code"
-                disabled={d}
-              />
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Default currency</label>
+                <CurrencySelector
+                  value={s.defaultCurrency ?? undefined}
+                  onChange={(val) => setField("defaultCurrency", val)}
+                  isDisabled={d}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Seeded into every new location as its base currency.
+                </p>
+              </div>
             </div>
           </SettingsSection>
         </CardContent>

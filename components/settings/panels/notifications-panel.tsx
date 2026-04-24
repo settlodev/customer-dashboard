@@ -3,6 +3,7 @@
 import { Input } from "@/components/ui/input";
 import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
+import { PanelHeader } from "../shared/panel-header";
 import type { LocationSettings } from "@/types/location-settings/type";
 
 const KEYS = [
@@ -28,6 +29,11 @@ export function NotificationsPanel({
 
   return (
     <div className="space-y-6">
+      <PanelHeader
+        title="Notifications"
+        description="Channels, alert recipients, and recurring summaries for this location."
+      />
+
       <SettingsSection
         title="Channels"
         description="Turn off an entire channel here to silence every outbound message at this location."
@@ -47,7 +53,7 @@ export function NotificationsPanel({
         isPending={p.isPending}
         isDirty={p.isDirty}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Field label="Low-stock alert email">
             <Input
               type="email"

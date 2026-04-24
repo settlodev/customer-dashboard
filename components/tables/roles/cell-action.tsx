@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import React from "react";
 import {
+  Eye,
   MoreVertical,
   Pencil as EditIcon,
   Trash2 as DeleteIcon,
@@ -12,7 +13,7 @@ import { useDisclosure } from "@/hooks/use-disclosure";
 import DeleteModal from "@/components/tables/delete-modal";
 import { toast } from "@/hooks/use-toast";
 import { deleteRole } from "@/lib/actions/role-actions";
-import { Role } from "@/types/roles/type";
+import { isProtectedRole, Role } from "@/types/roles/type";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -29,6 +30,7 @@ interface CellActionProps {
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const protectedRole = isProtectedRole(data);
 
   const onDelete = async () => {
     try {
@@ -50,10 +52,17 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => router.push(`/roles/${data.id}/edit`)}>
-            <EditIcon className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
+          {protectedRole ? (
+            <DropdownMenuItem onClick={() => router.push(`/roles/${data.id}`)}>
+              <Eye className="mr-2 h-4 w-4" />
+              View
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onClick={() => router.push(`/roles/${data.id}/edit`)}>
+              <EditIcon className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+          )}
           {!data.system && (
             <>
               <DropdownMenuSeparator />

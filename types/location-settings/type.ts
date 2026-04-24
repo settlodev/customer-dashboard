@@ -110,15 +110,12 @@ export interface LocationSettings {
   enablePointExpiration: boolean;
   pointExpirationDays: number;
 
-  // Day sessions
-  enableDaySessions: boolean;
+  // Day sessions + hours (all backed by UpdateLocationSettingsRequest)
   autoOpenDay: boolean;
   autoCloseDay: boolean;
-
-  // 24/7 operation
+  closeGraceMinutes: number;
   continuousOperation: boolean;
   dailyCutoffTime: string | null; // HH:mm
-  closeGraceMinutes: number;
 
   // Inventory feature flags (mirrored onto Inventory Service LocationConfig)
   batchTrackingEnabled: boolean;
@@ -181,7 +178,6 @@ export interface LocationSettings {
 
   // Settlement
   minimumSettlementAmount: number | null;
-  autoCloseBusinessDays: boolean;
 
   // Operating hours
   operatingHours: OperatingHours[];

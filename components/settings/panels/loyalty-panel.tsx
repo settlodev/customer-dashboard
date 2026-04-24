@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
+import { PanelHeader } from "../shared/panel-header";
 import type { LocationSettings } from "@/types/location-settings/type";
 import {
   LOYALTY_AWARD_TYPE_OPTIONS,
@@ -17,6 +18,8 @@ import {
 } from "@/types/location-settings/type";
 
 const KEYS = [
+  "enableCustomerAccounts",
+  "enableCustomerReviews",
   "enableLoyaltyProgram",
   "customerLoyaltyAwardType",
   "customerLoyaltyPointsPerOrder",
@@ -46,6 +49,34 @@ export function LoyaltyRewardsPanel({
 
   return (
     <div className="space-y-6">
+      <PanelHeader
+        title="Customers & loyalty"
+        description="Customer accounts, reviews, and how points are awarded and redeemed."
+      />
+
+      <SettingsSection
+        title="Customer accounts & reviews"
+        description="Self-service sign-in, order tracking, and post-order reviews."
+        onSave={p.save}
+        isPending={p.isPending}
+        isDirty={p.isDirty}
+      >
+        <SettingsSwitchRow
+          label="Enable customer accounts"
+          description="Allow customers to register, save addresses, and track orders."
+          checked={!!v.enableCustomerAccounts}
+          onChange={(x) => p.setField("enableCustomerAccounts", x)}
+          disabled={p.isPending}
+        />
+        <SettingsSwitchRow
+          label="Enable customer reviews"
+          description="Collect ratings and comments after each order."
+          checked={!!v.enableCustomerReviews}
+          onChange={(x) => p.setField("enableCustomerReviews", x)}
+          disabled={p.isPending}
+        />
+      </SettingsSection>
+
       <SettingsSection
         title="Customer loyalty"
         description="Reward returning customers. Points are per-location."
@@ -84,7 +115,7 @@ export function LoyaltyRewardsPanel({
                 </SelectContent>
               </Select>
             </Field>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {v.customerLoyaltyAwardType === "PER_ORDER" ? (
                 <Field label="Points per order">
                   <Input
@@ -166,7 +197,7 @@ export function LoyaltyRewardsPanel({
         />
         {v.enableStaffPoints && (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Field label="Award type">
                 <Select
                   value={v.staffPointsAwardType ?? "PER_ORDER"}

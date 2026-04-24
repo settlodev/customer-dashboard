@@ -1,6 +1,6 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import { Role } from "@/types/roles/type";
+import { isProtectedRole, Role } from "@/types/roles/type";
 import { getRole } from "@/lib/actions/role-actions";
 import RoleForm from "@/components/forms/role_form";
 
@@ -17,6 +17,10 @@ export default async function RoleEditPage({ params }: { params: Params }) {
       if (!role) notFound();
     } catch {
       throw new Error("Failed to load role data");
+    }
+
+    if (role && isProtectedRole(role)) {
+      redirect(`/roles/${role.id}`);
     }
   }
 

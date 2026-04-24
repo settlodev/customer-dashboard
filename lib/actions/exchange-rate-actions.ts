@@ -8,6 +8,8 @@ import {
   SetManualRateSchema,
   type ManualExchangeRate,
   type SetManualRatePayload,
+  type SupportedCurrency,
+  type SystemExchangeRate,
 } from "@/types/exchange-rate/type";
 
 /**
@@ -56,6 +58,56 @@ export async function setManualExchangeRate(
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// System / current rates — public endpoints on the accounts service
+// ──────────────────────────────────────────────────────────────────────
+
+export async function fetchSupportedCurrencies(): Promise<SupportedCurrency[]> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get("/api/v1/public/currencies");
+    return (parseStringify(data) ?? []) as SupportedCurrency[];
+  } catch {
+    return [];
+  }
+}
+
+async function fetchRate(
+  source: string,
+  target: string,
+): Promise<SystemExchangeRate | null> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(
+      `/api/v1/public/currencies/rate?source=${source}&target=${target}`,
+    );
+    return parseStringify(data) as SystemExchangeRate;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve a rate for every supported currency against `base`, in parallel.
+ * Falls through to `null` for any pair the backend couldn't resolve; the UI
+ * simply drops those rows.
+ */
+export async function fetchCurrentExchangeRates(
+  base: string,
+): Promise<SystemExchangeRate[]> {
+  const baseCode = (base || "TZS").toUpperCase();
+  const currencies = await fetchSupportedCurrencies();
+  const pairs = currencies
+    .map((c) => c.code)
+    .filter((code) => code && code !== baseCode);
+
+  const results = await Promise.all(
+    pairs.map((code) => fetchRate(code, baseCode)),
+  );
+
+  return results.filter((r): r is SystemExchangeRate => r !== null);
 }
 
 export async function deleteManualExchangeRate(

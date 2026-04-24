@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
+import { PanelHeader } from "../shared/panel-header";
 import type { LocationSettings } from "@/types/location-settings/type";
 import { ORDERING_MODE_OPTIONS } from "@/types/location-settings/type";
 
@@ -48,6 +49,11 @@ export function OrdersPosPanel({
 
   return (
     <div className="space-y-6">
+      <PanelHeader
+        title="Orders & POS"
+        description="Order flow, POS display, and order-numbering rules."
+      />
+
       <SettingsSection
         title="Order behaviour"
         description="How orders are created and handled on the POS."
@@ -55,7 +61,7 @@ export function OrdersPosPanel({
         isPending={panel.isPending}
         isDirty={panel.isDirty}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Labelled label="Ordering mode">
             <Select
               value={v.orderingMode ?? "STANDARD"}
@@ -190,7 +196,7 @@ export function OrdersPosPanel({
         isPending={panel.isPending}
         isDirty={panel.isDirty}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <Labelled label="Order name prefix">
             <Input
               maxLength={50}

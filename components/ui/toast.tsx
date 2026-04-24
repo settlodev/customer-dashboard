@@ -1,13 +1,20 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import * as ToastPrimitives from "@radix-ui/react-toast"
-import { cva, type VariantProps } from "class-variance-authority"
-import { X, CheckCircle2, AlertCircle, AlertTriangle, Info } from "lucide-react"
+import * as React from "react";
+import * as ToastPrimitives from "@radix-ui/react-toast";
+import { cva, type VariantProps } from "class-variance-authority";
+import { motion, type HTMLMotionProps } from "framer-motion";
+import {
+  X,
+  CheckCircle2,
+  AlertCircle,
+  AlertTriangle,
+  Info,
+} from "lucide-react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
-const ToastProvider = ToastPrimitives.Provider
+const ToastProvider = ToastPrimitives.Provider;
 
 const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Viewport>,
@@ -16,35 +23,42 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed bottom-0 right-0 z-[100] flex max-h-screen w-full flex-col gap-2 p-4 md:max-w-[420px]",
-      className
+      "fixed top-0 right-0 z-[100] flex max-h-screen w-full flex-col gap-2 p-4 sm:top-auto sm:bottom-20 md:max-w-[440px]",
+      className,
     )}
     {...props}
   />
-))
-ToastViewport.displayName = ToastPrimitives.Viewport.displayName
+));
+ToastViewport.displayName = ToastPrimitives.Viewport.displayName;
 
+// Base styles: we disable Radix's built-in CSS animations because framer-motion
+// handles mount/unmount instead. Variants set both a tinted background and a
+// saturated text color so status toasts read at a glance.
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden rounded-xl border p-4 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  [
+    "group pointer-events-auto relative flex w-full items-start gap-3",
+    "overflow-hidden rounded-lg border p-4 pr-10",
+    "shadow-[0_4px_24px_-8px_rgba(0,0,0,0.12),0_2px_6px_-2px_rgba(0,0,0,0.06)]",
+    "backdrop-blur-sm",
+  ].join(" "),
   {
     variants: {
       variant: {
-        default: "border bg-background text-foreground",
+        default: "border-border bg-background text-foreground",
         success:
-          "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-100",
+          "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-50",
         destructive:
-          "border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100",
+          "border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/60 dark:text-red-50",
         warning:
-          "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100",
-        info:
-          "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100",
+          "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-50",
+        info: "border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-50",
       },
     },
     defaultVariants: {
       variant: "default",
     },
-  }
-)
+  },
+);
 
 const toastIconMap = {
   default: null,
@@ -52,7 +66,7 @@ const toastIconMap = {
   destructive: AlertCircle,
   warning: AlertTriangle,
   info: Info,
-} as const
+} as const;
 
 const toastIconColorMap = {
   default: "",
@@ -60,35 +74,94 @@ const toastIconColorMap = {
   destructive: "text-red-600 dark:text-red-400",
   warning: "text-amber-600 dark:text-amber-400",
   info: "text-blue-600 dark:text-blue-400",
-} as const
+} as const;
 
-type ToastVariant = "default" | "success" | "destructive" | "warning" | "info"
+type ToastVariant = "default" | "success" | "destructive" | "warning" | "info";
+
+// Motion config: a quick, slightly-damped spring. Tuned to feel responsive
+// without bouncing — business apps should feel confident, not playful.
+const toastMotionProps: HTMLMotionProps<"li"> = {
+  layout: true,
+  initial: { opacity: 0, y: -12, scale: 0.98 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: {
+    opacity: 0,
+    scale: 0.96,
+    transition: { duration: 0.15, ease: "easeIn" },
+  },
+  transition: { type: "spring", stiffness: 420, damping: 32, mass: 0.8 },
+};
 
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
     VariantProps<typeof toastVariants>
->(({ className, variant, ...props }, ref) => {
+>(({ className, variant, children, ...props }, ref) => {
+  // `children` must be pulled out of `...props` — otherwise the JSX child
+  // (motion.li) overrides `props.children` on Root, and the actual toast
+  // content (icon, title, description, close, progress bar) is dropped.
   return (
-    <ToastPrimitives.Root
-      ref={ref}
-      className={cn(toastVariants({ variant }), className)}
-      {...props}
-    />
-  )
-})
-Toast.displayName = ToastPrimitives.Root.displayName
+    <ToastPrimitives.Root ref={ref} asChild {...props}>
+      <motion.li
+        {...toastMotionProps}
+        className={cn(toastVariants({ variant }), className)}
+      >
+        {children}
+      </motion.li>
+    </ToastPrimitives.Root>
+  );
+});
+Toast.displayName = ToastPrimitives.Root.displayName;
 
 const ToastIcon = ({ variant }: { variant?: ToastVariant | null }) => {
-  const key = variant || "default"
-  const Icon = toastIconMap[key]
-  if (!Icon) return null
+  const key = variant || "default";
+  const Icon = toastIconMap[key];
+  if (!Icon) return null;
   return (
     <div className="flex-shrink-0 mt-0.5">
-      <Icon className={cn("h-5 w-5", toastIconColorMap[key])} />
+      <Icon className={cn("h-5 w-5", toastIconColorMap[key])} aria-hidden />
     </div>
-  )
-}
+  );
+};
+
+/**
+ * Thin progress bar showing auto-dismiss countdown. Uses a CSS transform
+ * animation (not framer-motion) because it's a long linear tween — no need
+ * to keep it on the JS thread.
+ */
+const ToastProgress = ({
+  duration,
+  variant,
+}: {
+  duration: number;
+  variant?: ToastVariant | null;
+}) => {
+  const key = variant || "default";
+  const colorMap: Record<ToastVariant, string> = {
+    default: "bg-foreground/30",
+    success: "bg-emerald-500",
+    destructive: "bg-red-500",
+    warning: "bg-amber-500",
+    info: "bg-blue-500",
+  };
+  return (
+    <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-current/[0.08]">
+      <div
+        className={cn("h-full origin-left", colorMap[key])}
+        style={{
+          animation: `toast-progress ${duration}ms linear forwards`,
+        }}
+      />
+      {/* Keyframes are scoped inline so consumers don't need to touch tailwind config */}
+      <style>{`
+        @keyframes toast-progress {
+          from { transform: scaleX(1); }
+          to { transform: scaleX(0); }
+        }
+      `}</style>
+    </div>
+  );
+};
 
 const ToastAction = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Action>,
@@ -97,13 +170,13 @@ const ToastAction = React.forwardRef<
   <ToastPrimitives.Action
     ref={ref}
     className={cn(
-      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
-      className
+      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-border/60 bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+      className,
     )}
     {...props}
   />
-))
-ToastAction.displayName = ToastPrimitives.Action.displayName
+));
+ToastAction.displayName = ToastPrimitives.Action.displayName;
 
 const ToastClose = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Close>,
@@ -112,16 +185,17 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      "absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-red-400 group-[.destructive]:hover:text-red-600 group-[.destructive]:focus:ring-red-400",
-      className
+      "absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-current opacity-60 transition-all hover:bg-current/10 hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring group-hover:opacity-100",
+      className,
     )}
     toast-close=""
     {...props}
   >
-    <X className="h-4 w-4" />
+    <X className="h-3.5 w-3.5" />
+    <span className="sr-only">Close</span>
   </ToastPrimitives.Close>
-))
-ToastClose.displayName = ToastPrimitives.Close.displayName
+));
+ToastClose.displayName = ToastPrimitives.Close.displayName;
 
 const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
@@ -129,11 +203,14 @@ const ToastTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Title
     ref={ref}
-    className={cn("text-sm font-semibold leading-none", className)}
+    className={cn(
+      "text-sm font-semibold leading-tight tracking-tight",
+      className,
+    )}
     {...props}
   />
-))
-ToastTitle.displayName = ToastPrimitives.Title.displayName
+));
+ToastTitle.displayName = ToastPrimitives.Title.displayName;
 
 const ToastDescription = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Description>,
@@ -141,15 +218,18 @@ const ToastDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
-    className={cn("text-sm opacity-80 mt-1", className)}
+    className={cn(
+      "text-sm opacity-80 leading-relaxed mt-1",
+      className,
+    )}
     {...props}
   />
-))
-ToastDescription.displayName = ToastPrimitives.Description.displayName
+));
+ToastDescription.displayName = ToastPrimitives.Description.displayName;
 
-type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
+type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>;
 
-type ToastActionElement = React.ReactElement<typeof ToastAction>
+type ToastActionElement = React.ReactElement<typeof ToastAction>;
 
 export {
   type ToastProps,
@@ -159,8 +239,9 @@ export {
   ToastViewport,
   Toast,
   ToastIcon,
+  ToastProgress,
   ToastTitle,
   ToastDescription,
   ToastClose,
   ToastAction,
-}
+};

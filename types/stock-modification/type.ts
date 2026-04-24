@@ -53,8 +53,8 @@ export const MODIFICATION_CATEGORY_OPTIONS: { value: ModificationCategory; label
   { value: "RECOUNT", label: "Recount" },
   { value: "THEFT", label: "Theft" },
   { value: "EXPIRY", label: "Expiry" },
-  { value: "WRITE_OFF", label: "Write Off" },
-  { value: "PRODUCTION_LOSS", label: "Production Loss" },
+  { value: "WRITE_OFF", label: "Write off" },
+  { value: "PRODUCTION_LOSS", label: "Production loss" },
   { value: "CORRECTION", label: "Correction" },
   { value: "OTHER", label: "Other" },
 ];

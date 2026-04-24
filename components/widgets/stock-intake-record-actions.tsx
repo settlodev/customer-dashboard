@@ -3,7 +3,10 @@
 import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Check, X } from "lucide-react";
-import { confirmStockIntakeRecord, cancelStockIntakeRecord } from "@/lib/actions/stock-intake-record-actions";
+import {
+  confirmStockIntakeRecord,
+  cancelStockIntakeRecord,
+} from "@/lib/actions/stock-intake-record-actions";
 import { useToast } from "@/hooks/use-toast";
 
 export default function StockIntakeRecordActions({ id }: { id: string }) {
@@ -12,22 +15,38 @@ export default function StockIntakeRecordActions({ id }: { id: string }) {
 
   const handleConfirm = () => {
     startTransition(async () => {
-      try {
-        await confirmStockIntakeRecord(id);
-        toast({ variant: "success", title: "Confirmed", description: "Stock intake has been confirmed and inventory updated." });
-      } catch {
-        toast({ variant: "destructive", title: "Error", description: "Failed to confirm stock intake." });
+      const res = await confirmStockIntakeRecord(id);
+      if (res?.responseType === "error") {
+        toast({
+          variant: "destructive",
+          title: "Could not confirm",
+          description: res.message,
+        });
+      } else if (res?.responseType === "success") {
+        toast({
+          variant: "success",
+          title: "Confirmed",
+          description: res.message,
+        });
       }
     });
   };
 
   const handleCancel = () => {
     startTransition(async () => {
-      try {
-        await cancelStockIntakeRecord(id);
-        toast({ variant: "success", title: "Cancelled", description: "Stock intake has been cancelled." });
-      } catch {
-        toast({ variant: "destructive", title: "Error", description: "Failed to cancel stock intake." });
+      const res = await cancelStockIntakeRecord(id);
+      if (res?.responseType === "error") {
+        toast({
+          variant: "destructive",
+          title: "Could not cancel",
+          description: res.message,
+        });
+      } else if (res?.responseType === "success") {
+        toast({
+          variant: "success",
+          title: "Cancelled",
+          description: res.message,
+        });
       }
     });
   };

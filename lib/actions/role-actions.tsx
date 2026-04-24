@@ -4,13 +4,47 @@ import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { Role, RoleScope } from "@/types/roles/type";
 import { RoleSchema } from "@/types/roles/schema";
-import { ApiResponse, FormResponse } from "@/types/types";
+import { FormResponse } from "@/types/types";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
+import {
+  getCurrentBusiness,
+  getCurrentLocation,
+} from "@/lib/actions/business/get-current-business";
 
 // ---------------------------------------------------------------------------
-// List / Search
+// Scope resolution
+// ---------------------------------------------------------------------------
+
+// Resolve the scopeId the backend expects for a given scope from the current
+// business/location context cookies. ACCOUNT scope must have null scopeId;
+// STORE/WAREHOUSE require the caller to pass one explicitly since there is
+// no current-store/current-warehouse cookie.
+async function resolveScopeId(
+  scope: RoleScope,
+  explicitScopeId?: string,
+): Promise<string | null> {
+  if (scope === RoleScope.ACCOUNT) return null;
+  if (explicitScopeId) return explicitScopeId;
+
+  if (scope === RoleScope.LOCATION) {
+    const location = await getCurrentLocation();
+    if (!location?.id) throw new Error("No current location selected for LOCATION-scoped role");
+    return location.id;
+  }
+
+  if (scope === RoleScope.BUSINESS) {
+    const business = await getCurrentBusiness();
+    if (!business?.id) throw new Error("No current business selected for BUSINESS-scoped role");
+    return business.id;
+  }
+
+  throw new Error(`scopeId is required for ${scope}-scoped role`);
+}
+
+// ---------------------------------------------------------------------------
+// List
 // ---------------------------------------------------------------------------
 
 export const fetchAllRoles = async (
@@ -18,37 +52,13 @@ export const fetchAllRoles = async (
   scopeId?: string,
 ): Promise<Role[]> => {
   await getAuthenticatedUser();
-  try {
-    const apiClient = new ApiClient();
-    const params = new URLSearchParams();
-    if (scope) params.append("scope", scope);
-    if (scopeId) params.append("scopeId", scopeId);
-    const query = params.toString() ? `?${params.toString()}` : "";
-    const data = await apiClient.get(`/api/v1/roles${query}`);
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const searchRoles = async (
-  q: string,
-  page: number,
-  pageLimit: number,
-): Promise<ApiResponse<Role>> => {
-  await getAuthenticatedUser();
-  try {
-    const apiClient = new ApiClient();
-    const params = new URLSearchParams({
-      search: q,
-      page: String(page ? page - 1 : 0),
-      size: String(pageLimit || 10),
-    });
-    const data = await apiClient.get(`/api/v1/roles?${params.toString()}`);
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
+  const apiClient = new ApiClient();
+  const params = new URLSearchParams();
+  if (scope) params.append("scope", scope);
+  if (scopeId) params.append("scopeId", scopeId);
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const data = await apiClient.get(`/api/v1/roles${query}`);
+  return parseStringify(data);
 };
 
 export const getRolesByScope = async (
@@ -56,14 +66,10 @@ export const getRolesByScope = async (
   scopeId?: string,
 ): Promise<Role[]> => {
   await getAuthenticatedUser();
-  try {
-    const apiClient = new ApiClient();
-    const query = scopeId ? `?scopeId=${scopeId}` : "";
-    const data = await apiClient.get(`/api/v1/roles/by-scope/${scope}${query}`);
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
+  const apiClient = new ApiClient();
+  const query = scopeId ? `?scopeId=${scopeId}` : "";
+  const data = await apiClient.get(`/api/v1/roles/by-scope/${scope}${query}`);
+  return parseStringify(data);
 };
 
 // ---------------------------------------------------------------------------
@@ -93,8 +99,21 @@ export const createRole = async (
   }
 
   try {
+    const scopeId = await resolveScopeId(
+      validatedData.data.scope,
+      validatedData.data.scopeId,
+    );
+
+    const payload = {
+      name: validatedData.data.name,
+      description: validatedData.data.description,
+      scope: validatedData.data.scope,
+      scopeId,
+      permissionKeys: validatedData.data.permissionKeys ?? [],
+    };
+
     const apiClient = new ApiClient();
-    await apiClient.post(`/api/v1/roles`, validatedData.data);
+    await apiClient.post(`/api/v1/roles`, payload);
     revalidatePath("/roles");
     return parseStringify({ responseType: "success", message: "Role created successfully" });
   } catch (error: any) {
@@ -125,9 +144,14 @@ export const updateRole = async (
 
   try {
     const apiClient = new ApiClient();
-    const { scope, scopeId, ...updateFields } = validatedData.data;
-    await apiClient.put(`/api/v1/roles/${id}`, updateFields);
+    const payload = {
+      name: validatedData.data.name,
+      description: validatedData.data.description,
+      permissionKeys: validatedData.data.permissionKeys ?? [],
+    };
+    await apiClient.put(`/api/v1/roles/${id}`, payload);
     revalidatePath("/roles");
+    revalidatePath(`/roles/${id}`);
     return parseStringify({ responseType: "success", message: "Role updated successfully" });
   } catch (error: any) {
     return parseStringify({
@@ -144,28 +168,25 @@ export const updateRole = async (
 
 export const deleteRole = async (id: string): Promise<void> => {
   await getAuthenticatedUser();
-  try {
-    const apiClient = new ApiClient();
-    await apiClient.delete(`/api/v1/roles/${id}`);
-    revalidatePath("/roles");
-  } catch (error) {
-    throw error;
-  }
+  const apiClient = new ApiClient();
+  await apiClient.delete(`/api/v1/roles/${id}`);
+  revalidatePath("/roles");
 };
 
 // ---------------------------------------------------------------------------
 // Permission management on roles
 // ---------------------------------------------------------------------------
 
-export const addPermissionsToRole = async (
+export const assignPermissionsToRole = async (
   roleId: string,
   permissionKeys: string[],
-  additive: boolean = true,
+  additive: boolean = false,
 ): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient();
     await apiClient.post(`/api/v1/roles/${roleId}/permissions`, { permissionKeys, additive });
     revalidatePath("/roles");
+    revalidatePath(`/roles/${roleId}`);
     return { responseType: "success", message: "Permissions updated" };
   } catch (error) {
     return {
@@ -184,6 +205,7 @@ export const removePermissionsFromRole = async (
     const apiClient = new ApiClient();
     await apiClient.delete(`/api/v1/roles/${roleId}/permissions`, { data: permissionKeys });
     revalidatePath("/roles");
+    revalidatePath(`/roles/${roleId}`);
     return { responseType: "success", message: "Permissions removed" };
   } catch (error) {
     return {

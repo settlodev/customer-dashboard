@@ -24,7 +24,7 @@ type BreadcrumbPropsType = {
 
 export default function BreadcrumbsNav({ items }: BreadcrumbPropsType) {
     const [location, setLocation] = useState<Location | null | undefined >(null);
-    const [warehouse, setWarehouse] = useState<Warehouses | null>(null);
+    const [warehouse, setWarehouse] = useState<Warehouses | null | undefined>(null);
 
     useEffect(() => {
         const fetchData = async () => {

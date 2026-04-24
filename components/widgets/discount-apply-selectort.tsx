@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Adjust to match your UI library
 import { FormControl, FormField, FormItem, FormMessage } from "../ui/form";
-import ConsumptionRuleSelector from "./consumption-rule-selector";
+import StockVariantSelector from "./stock-variant-selector";
 import CustomerSelector from "./customer-selector";
 import DepartmentSelector from "./department-selector";
 import CategorySelector from "./category-selector";
@@ -68,13 +68,13 @@ const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange,
             render={({ field }) => (
               <FormItem>
                 <FormControl>
-                  <ConsumptionRuleSelector
-                    value={field.value || selectedItemId}
+                  <StockVariantSelector
+                    value={field.value || selectedItemId || ""}
                     onChange={(id) => {
                       field.onChange(id);
                       handleItemChange(id);
                     }}
-                    placeholder="Select rule"
+                    placeholder="Select product item"
                   />
                 </FormControl>
                 <FormMessage />

@@ -8,7 +8,8 @@ import { Business } from "@/types/business/type";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
-import { refreshBusiness, switchLocation } from "@/lib/actions/business/refresh";
+import { refreshBusiness } from "@/lib/actions/business/refresh";
+import { switchToLocation } from "@/lib/actions/destination";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 
 const BusinessList = ({ businesses }: { businesses: Business[] }) => {
@@ -43,15 +44,15 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
 
         if (locations && locations.length === 1) {
           // Single location — go straight to dashboard
-          await switchLocation(locations[0]);
-          // switchLocation redirects internally
+          await switchToLocation(locations[0]);
+          window.location.href = "/dashboard";
           return;
         }
 
         // Multiple locations or none — go to select-location
         router.push("/select-location");
       } catch (error) {
-        // Re-throw redirects (from switchLocation)
+        // Re-throw redirects (Next.js routing throws)
         if (
           error instanceof Error &&
           "digest" in error &&

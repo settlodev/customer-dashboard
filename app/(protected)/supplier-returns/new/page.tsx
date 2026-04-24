@@ -8,20 +8,17 @@ const breadcrumbItems = [
 
 export default function NewSupplierReturnPage() {
   return (
-    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 mt-12">
-      <div className="space-y-6">
-        <div>
-          <div className="hidden sm:block mb-2">
-            <BreadcrumbsNav items={breadcrumbItems} />
-          </div>
-          <h1 className="text-2xl font-bold">New Supplier Return</h1>
-          <p className="text-sm text-muted-foreground">
-            Return damaged, expired, or wrongly-shipped goods to a supplier.
-            Draft → Confirm → Dispatch → Complete.
-          </p>
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
+      <div>
+        <div className="hidden sm:block mb-2">
+          <BreadcrumbsNav items={breadcrumbItems} />
         </div>
-        <SupplierReturnForm />
+        <h1 className="text-2xl font-bold">New Supplier Return</h1>
+        <p className="text-sm text-muted-foreground">
+          Return damaged, expired, or wrongly-shipped goods to a supplier.
+        </p>
       </div>
+      <SupplierReturnForm />
     </div>
   );
 }

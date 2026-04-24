@@ -9,6 +9,7 @@ import { ApiResponse, FormResponse } from "@/types/types";
 import { Category } from "@/types/category/type";
 import { CategorySchema } from "@/types/category/schema";
 import { inventoryUrl } from "./inventory-client";
+import { getCurrentDestination } from "./context";
 
 export async function fetchAllCategories(): Promise<Category[] | null> {
   try {
@@ -71,7 +72,7 @@ export async function createCategory(
   try {
     const apiClient = new ApiClient();
     const response = await apiClient.post(inventoryUrl("/api/v1/categories"), {
-      locationType: "LOCATION",
+      locationType: (await getCurrentDestination())?.type ?? "LOCATION",
       name: validated.data.name,
       description: validated.data.description,
       imageUrl: validated.data.imageUrl,

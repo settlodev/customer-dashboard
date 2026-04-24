@@ -27,3 +27,13 @@ export interface Role {
   createdAt: string;
   updatedAt: string;
 }
+
+// Names of system roles the backend refuses to modify or delete. Owner is the
+// top-level grant; Location Manager is looked up by name when provisioning
+// owner assignments on new locations, so renaming or deleting it breaks
+// onboarding.
+export const PROTECTED_ROLE_NAMES = ["Owner", "Location Manager"] as const;
+
+export function isProtectedRole(role: Pick<Role, "name" | "system">): boolean {
+  return role.system && (PROTECTED_ROLE_NAMES as readonly string[]).includes(role.name);
+}

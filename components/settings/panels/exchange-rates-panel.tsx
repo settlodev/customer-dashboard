@@ -38,6 +38,7 @@ import { useToast } from "@/hooks/use-toast";
 import { NumericFormat } from "react-number-format";
 import {
   deleteManualExchangeRate,
+  fetchCurrentExchangeRates,
   fetchManualExchangeRates,
   setManualExchangeRate,
 } from "@/lib/actions/exchange-rate-actions";
@@ -45,7 +46,10 @@ import {
   SetManualRateSchema,
   type ManualExchangeRate,
   type SetManualRatePayload,
+  type SystemExchangeRate,
 } from "@/types/exchange-rate/type";
+import { PanelHeader } from "../shared/panel-header";
+import CurrencySelector from "@/components/widgets/currency-selector";
 
 /**
  * Panel for the location settings page. Lets operators set manual
@@ -53,9 +57,11 @@ import {
  * Location-scoped toggle anchors the new rate to the current location;
  * otherwise it applies business-wide.
  */
-export function ExchangeRatesPanel() {
+export function ExchangeRatesPanel({ base = "TZS" }: { base?: string }) {
   const [rates, setRates] = useState<ManualExchangeRate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [systemRates, setSystemRates] = useState<SystemExchangeRate[]>([]);
+  const [isLoadingSystem, setIsLoadingSystem] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<ManualExchangeRate | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -69,9 +75,18 @@ export function ExchangeRatesPanel() {
       .finally(() => setIsLoading(false));
   };
 
+  const reloadSystem = () => {
+    setIsLoadingSystem(true);
+    fetchCurrentExchangeRates(base)
+      .then(setSystemRates)
+      .finally(() => setIsLoadingSystem(false));
+  };
+
   useEffect(() => {
     reload();
-  }, []);
+    reloadSystem();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [base]);
 
   const onDelete = () => {
     if (!confirmDelete) return;
@@ -89,21 +104,34 @@ export function ExchangeRatesPanel() {
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-3">
-        <div>
-          <CardTitle className="text-base">Exchange rates</CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
-            Manual overrides on top of the daily system rates. Location-scoped
-            rates take priority; business-scoped rates apply when no location
-            override exists. System rates are read-only and not shown here.
-          </p>
-        </div>
-        <Button size="sm" onClick={() => setDialogOpen(true)} disabled={isPending}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          Add rate
-        </Button>
-      </CardHeader>
+    <div className="space-y-6">
+      <PanelHeader
+        title="Exchange rates"
+        description={`Current system rates against ${base.toUpperCase()}, plus any manual overrides you've set.`}
+      />
+
+      <CurrentRatesCard
+        base={base}
+        rates={systemRates}
+        isLoading={isLoadingSystem}
+        onRefresh={reloadSystem}
+      />
+
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-base">Manual overrides</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Location-scoped rates take priority; business-scoped rates apply
+              when no location override exists. An override replaces the daily
+              system rate for its pair.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => setDialogOpen(true)} disabled={isPending}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            Add rate
+          </Button>
+        </CardHeader>
       <CardContent>
         {isLoading ? (
           <div className="py-8 text-center">
@@ -220,6 +248,7 @@ export function ExchangeRatesPanel() {
         </DialogContent>
       </Dialog>
     </Card>
+    </div>
   );
 }
 
@@ -291,12 +320,10 @@ function ManualRateDialog({
                   <FormItem>
                     <FormLabel>From</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="USD"
-                        maxLength={3}
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                        disabled={isPending}
+                      <CurrencySelector
+                        value={field.value}
+                        onChange={field.onChange}
+                        isDisabled={isPending}
                       />
                     </FormControl>
                     <FormMessage />
@@ -310,12 +337,10 @@ function ManualRateDialog({
                   <FormItem>
                     <FormLabel>To</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="TZS"
-                        maxLength={3}
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                        disabled={isPending}
+                      <CurrencySelector
+                        value={field.value}
+                        onChange={field.onChange}
+                        isDisabled={isPending}
                       />
                     </FormControl>
                     <FormMessage />
@@ -407,5 +432,128 @@ function ManualRateDialog({
         </Form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Current rates card — resolved rates (system + your overrides) against
+// the location's base currency.
+// ──────────────────────────────────────────────────────────────────────
+
+function CurrentRatesCard({
+  base,
+  rates,
+  isLoading,
+  onRefresh,
+}: {
+  base: string;
+  rates: SystemExchangeRate[];
+  isLoading: boolean;
+  onRefresh: () => void;
+}) {
+  const baseCode = base.toUpperCase();
+  const sorted = [...rates].sort((a, b) =>
+    a.sourceCurrency.localeCompare(b.sourceCurrency),
+  );
+  const freshestFetch = rates.reduce<string | null>(
+    (acc, r) => (r.fetchedAt && (!acc || r.fetchedAt > acc) ? r.fetchedAt : acc),
+    null,
+  );
+  const freshestLabel = freshestFetch
+    ? new Date(freshestFetch).toLocaleString()
+    : null;
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between gap-3">
+        <div>
+          <CardTitle className="text-base">
+            Current rates · base {baseCode}
+          </CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            {freshestLabel
+              ? `Latest system fetch: ${freshestLabel}.`
+              : "Daily rates fetched automatically by the platform."}{" "}
+            A row marked <strong>Override</strong> is a manual rate you or your
+            business has set; otherwise it's the daily system rate.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onRefresh}
+          disabled={isLoading}
+        >
+          {isLoading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+          Refresh
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {isLoading && rates.length === 0 ? (
+          <div className="py-8 text-center">
+            <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+          </div>
+        ) : sorted.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-8 text-center">
+            No rates available yet — the daily fetch hasn&apos;t completed.
+          </p>
+        ) : (
+          <div className="rounded-md border overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Pair</TableHead>
+                  <TableHead className="text-right">Rate</TableHead>
+                  <TableHead className="text-right">Inverse</TableHead>
+                  <TableHead>Source</TableHead>
+                  <TableHead>Effective</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sorted.map((r) => (
+                  <TableRow key={`${r.sourceCurrency}-${r.targetCurrency}`}>
+                    <TableCell className="text-sm font-mono whitespace-nowrap">
+                      {r.sourceCurrency}
+                      <ArrowRight className="h-3 w-3 inline mx-1 text-muted-foreground" />
+                      {r.targetCurrency}
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-medium">
+                      {Number(r.rate).toLocaleString(undefined, {
+                        maximumFractionDigits: 6,
+                      })}
+                    </TableCell>
+                    <TableCell className="text-right text-xs text-muted-foreground">
+                      {Number(r.inverseRate).toLocaleString(undefined, {
+                        maximumFractionDigits: 8,
+                      })}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                          r.source === "MANUAL"
+                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                            : r.stale
+                              ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+                              : "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400"
+                        }`}
+                      >
+                        {r.source === "MANUAL"
+                          ? "Override"
+                          : r.stale
+                            ? "System · stale"
+                            : "System"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                      {r.effectiveDate ?? "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

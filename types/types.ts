@@ -58,6 +58,8 @@ export interface FormResponse<T = unknown> {
     message: string;
     error?: Error | null;
     data?: T;
+    errorCode?: string;
+    metadata?: Record<string, unknown>;
 }
 
 export type SubscriptionStatus = "TRIAL" | "ACTIVE" | "PAST_DUE" | "EXPIRED" | "SUSPENDED" | "CANCELLED" | null;
@@ -171,6 +173,7 @@ export declare interface ErrorResponseType {
     code: string;
     message: string;
     details?: unknown;
+    metadata?: Record<string, unknown>;
     timestamp: string;
     path?: string;
     correlationId?: string;

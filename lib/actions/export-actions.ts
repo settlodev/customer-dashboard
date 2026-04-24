@@ -19,8 +19,7 @@ export interface CsvExportPayload {
 async function fetchCsv(url: string): Promise<CsvExportPayload> {
   const apiClient = new ApiClient();
   const { data, filename } = await apiClient.downloadFile(url);
-  const csv = typeof data === "string" ? data : await (data as Blob).text();
-  return { csv, filename };
+  return { csv: data.toString("utf-8"), filename };
 }
 
 export async function exportInventoryCsv(): Promise<CsvExportPayload> {

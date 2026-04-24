@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
+import { PanelHeader } from "../shared/panel-header";
 import type { LocationSettings } from "@/types/location-settings/type";
 
 const KEYS = [
@@ -25,49 +26,54 @@ export function DigitalMenuConfigPanel({
   const v = p.values;
 
   return (
-    <SettingsSection
-      title="Digital menu config"
-      description="Behaviour of the public-facing digital menu for this location. The menu itself is managed under Digital menu."
-      onSave={p.save}
-      isPending={p.isPending}
-      isDirty={p.isDirty}
-    >
-      <Field label="Custom domain">
-        <Input
-          maxLength={255}
-          placeholder="menu.example.com"
-          value={v.digitalMenuDomain ?? ""}
-          onChange={(e) => p.setField("digitalMenuDomain", e.target.value)}
+    <div className="space-y-6">
+      <PanelHeader
+        title="Digital menu"
+        description="Behaviour of the public-facing digital menu for this location. The menu itself is managed under Digital menu."
+      />
+
+      <SettingsSection
+        onSave={p.save}
+        isPending={p.isPending}
+        isDirty={p.isDirty}
+      >
+        <Field label="Custom domain">
+          <Input
+            maxLength={255}
+            placeholder="menu.example.com"
+            value={v.digitalMenuDomain ?? ""}
+            onChange={(e) => p.setField("digitalMenuDomain", e.target.value)}
+            disabled={p.isPending}
+          />
+        </Field>
+        <SettingsSwitchRow
+          label="Allow ordering from the digital menu"
+          checked={!!v.enableDigitalMenuOrdering}
+          onChange={(x) => p.setField("enableDigitalMenuOrdering", x)}
           disabled={p.isPending}
         />
-      </Field>
-      <SettingsSwitchRow
-        label="Allow ordering from the digital menu"
-        checked={!!v.enableDigitalMenuOrdering}
-        onChange={(x) => p.setField("enableDigitalMenuOrdering", x)}
-        disabled={p.isPending}
-      />
-      <SettingsSwitchRow
-        label="Show prices on the digital menu"
-        checked={!!v.showPricesOnDigitalMenu}
-        onChange={(x) => p.setField("showPricesOnDigitalMenu", x)}
-        disabled={p.isPending}
-      />
-      <SettingsSwitchRow
-        label="Show stock availability on the digital menu"
-        checked={!!v.showStockOnDigitalMenu}
-        onChange={(x) => p.setField("showStockOnDigitalMenu", x)}
-        disabled={p.isPending}
-      />
-      <Field label="Welcome message">
-        <Textarea
-          rows={3}
-          value={v.digitalMenuWelcomeMessage ?? ""}
-          onChange={(e) => p.setField("digitalMenuWelcomeMessage", e.target.value)}
+        <SettingsSwitchRow
+          label="Show prices on the digital menu"
+          checked={!!v.showPricesOnDigitalMenu}
+          onChange={(x) => p.setField("showPricesOnDigitalMenu", x)}
           disabled={p.isPending}
         />
-      </Field>
-    </SettingsSection>
+        <SettingsSwitchRow
+          label="Show stock availability on the digital menu"
+          checked={!!v.showStockOnDigitalMenu}
+          onChange={(x) => p.setField("showStockOnDigitalMenu", x)}
+          disabled={p.isPending}
+        />
+        <Field label="Welcome message">
+          <Textarea
+            rows={3}
+            value={v.digitalMenuWelcomeMessage ?? ""}
+            onChange={(e) => p.setField("digitalMenuWelcomeMessage", e.target.value)}
+            disabled={p.isPending}
+          />
+        </Field>
+      </SettingsSection>
+    </div>
   );
 }
 

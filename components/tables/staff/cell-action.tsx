@@ -3,15 +3,14 @@
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import {
-  MoreVertical,
-  Pencil as EditIcon,
   Archive as ArchiveIcon,
   ArchiveRestore,
-  KeyRound,
+  MoreVertical,
+  Pencil as EditIcon,
 } from "lucide-react";
 
 import DeleteModal from "@/components/tables/delete-modal";
-import { deactivateStaff, reactivateStaff, resetStaffPasscode } from "@/lib/actions/staff-actions";
+import { deactivateStaff, reactivateStaff } from "@/lib/actions/staff-actions";
 import { Staff } from "@/types/staff";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -22,14 +21,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 interface CellActionProps {
   data: Staff;
@@ -38,15 +29,18 @@ interface CellActionProps {
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
   const [isArchiveModalOpen, setArchiveModalOpen] = useState(false);
-  const [isResetModalOpen, setResetModalOpen] = useState(false);
   const [isUnarchiving, setIsUnarchiving] = useState(false);
 
   const fullName = `${data.firstName} ${data.lastName}`;
 
   const handleDeactivate = async () => {
     try {
-      await deactivateStaff(data.id);
-      toast({ title: "Deactivated", description: `${fullName} has been deactivated.` });
+      const result = await deactivateStaff(data.id);
+      if (result.responseType === "success") {
+        toast({ title: "Deactivated", description: `${fullName} has been deactivated.` });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: result.message });
+      }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: (error as Error).message });
     } finally {
@@ -57,23 +51,16 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const handleReactivate = async () => {
     setIsUnarchiving(true);
     try {
-      await reactivateStaff(data.id);
-      toast({ title: "Reactivated", description: `${fullName} has been reactivated.` });
+      const result = await reactivateStaff(data.id);
+      if (result.responseType === "success") {
+        toast({ title: "Reactivated", description: `${fullName} has been reactivated.` });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: result.message });
+      }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: (error as Error).message });
     } finally {
       setIsUnarchiving(false);
-    }
-  };
-
-  const handleResetPasscode = async () => {
-    try {
-      await resetStaffPasscode(data.id);
-      toast({ variant: "success", title: "Success", description: "Staff PIN has been reset." });
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error?.message || "Failed to reset PIN" });
-    } finally {
-      setResetModalOpen(false);
     }
   };
 
@@ -90,30 +77,28 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             <EditIcon className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
-          {data.posAccess && (
-            <DropdownMenuItem onClick={() => setResetModalOpen(true)}>
-              <KeyRound className="mr-2 h-4 w-4" />
-              Reset PIN
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuSeparator />
-          {!data.active ? (
-            <DropdownMenuItem
-              onClick={handleReactivate}
-              disabled={isUnarchiving}
-              className="text-green-600 focus:text-green-600"
-            >
-              <ArchiveRestore className="mr-2 h-4 w-4" />
-              {isUnarchiving ? "Reactivating..." : "Reactivate"}
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem
-              onClick={() => setArchiveModalOpen(true)}
-              className="text-red-600 focus:text-red-600"
-            >
-              <ArchiveIcon className="mr-2 h-4 w-4" />
-              Deactivate
-            </DropdownMenuItem>
+          {!data.owner && (
+            <>
+              <DropdownMenuSeparator />
+              {!data.active ? (
+                <DropdownMenuItem
+                  onClick={handleReactivate}
+                  disabled={isUnarchiving}
+                  className="text-green-600 focus:text-green-600"
+                >
+                  <ArchiveRestore className="mr-2 h-4 w-4" />
+                  {isUnarchiving ? "Reactivating..." : "Reactivate"}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onClick={() => setArchiveModalOpen(true)}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <ArchiveIcon className="mr-2 h-4 w-4" />
+                  Deactivate
+                </DropdownMenuItem>
+              )}
+            </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
@@ -124,22 +109,6 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         onDelete={handleDeactivate}
         onOpenChange={() => setArchiveModalOpen(false)}
       />
-
-      <Dialog open={isResetModalOpen} onOpenChange={setResetModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Reset PIN</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to reset the PIN for{" "}
-              <span className="font-medium text-gray-900 dark:text-gray-100">{fullName}</span>?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setResetModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleResetPasscode}>Confirm</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };

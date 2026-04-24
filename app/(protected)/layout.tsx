@@ -11,13 +11,14 @@ import {
 } from "@/lib/actions/business/get-current-business";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
+import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { getAuthToken } from "@/lib/auth-utils";
 import { EntitlementProvider } from "@/context/entitlementContext";
 import { getEntitlements } from "@/lib/actions/entitlement-actions";
 import { SubscriptionBanner } from "@/components/subscription/SubscriptionBanner";
 import { ExpiredTopBar } from "@/components/subscription/ExpiredTopBar";
-import { getStoreCount } from "@/lib/actions/store-actions";
+import { fetchAllStores, getCurrentStore } from "@/lib/actions/store-actions";
 
 export default async function RootLayout({
   children,
@@ -39,7 +40,9 @@ export default async function RootLayout({
     fetchAllLocations(),
     getCurrentWarehouse(),
     getEntitlements(),
-    getStoreCount(),
+    fetchAllStores(),
+    searchWarehouses(),
+    getCurrentStore(),
   ]);
 
   const currentBusiness = results[0].status === "fulfilled" ? results[0].value ?? undefined : undefined;
@@ -48,17 +51,24 @@ export default async function RootLayout({
   const locationList = results[3].status === "fulfilled" ? results[3].value : undefined;
   const currentWarehouse = results[4].status === "fulfilled" ? results[4].value : undefined;
   const entitlements = results[5].status === "fulfilled" ? results[5].value : null;
-  const storeCountData = results[6].status === "fulfilled" ? results[6].value : null;
+  const storeList = results[6].status === "fulfilled" ? results[6].value : [];
+  const warehouseList = results[7].status === "fulfilled" ? results[7].value : [];
+  const currentStore = results[8].status === "fulfilled" ? results[8].value : undefined;
 
-  const locationCount = locationList?.length ?? 1;
-  const storeCount = storeCountData?.total ?? 0;
-  const hasMultipleDestinations = locationCount > 1 || storeCount > 0;
+  const locationCount = locationList?.length ?? 0;
+  const storeCount = storeList?.length ?? 0;
+  const warehouseCount = warehouseList?.length ?? 0;
+  const hasMultipleDestinations =
+    locationCount + storeCount + warehouseCount > 1;
 
   const businessData: BusinessPropsType = {
     business: currentBusiness,
     businessList: businessList || [],
     locationList: locationList || [],
     currentLocation: currentLocation,
+    storeList: storeList || [],
+    currentStore: currentStore,
+    warehouseList: warehouseList || [],
     warehouse: currentWarehouse,
     hasMultipleDestinations,
   };
@@ -112,7 +122,7 @@ export default async function RootLayout({
               </Suspense>
             </div>
 
-            <div className="sticky bottom-0 z-10">
+            <div className="sticky bottom-0 z-[110]">
               <Toaster />
             </div>
           </main>

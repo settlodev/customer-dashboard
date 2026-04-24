@@ -224,15 +224,13 @@ export const LocationSettingsSchema = z.object({
   seoTitle: z.string().max(200).optional(),
   seoDescription: z.string().max(500).optional(),
 
-  // Day sessions (incl. 24/7)
-  enableDaySessions: z.boolean().optional(),
+  // Day sessions + hours
   autoOpenDay: z.boolean().optional(),
   autoCloseDay: z.boolean().optional(),
-  autoCloseBusinessDays: z.boolean().optional(),
-  minimumSettlementAmount: z.preprocess(toNumber, z.number().min(0).optional()),
+  closeGraceMinutes: z.preprocess(toInt, z.number().int().min(0).max(720).optional()),
   continuousOperation: z.boolean().optional(),
   dailyCutoffTime: hhmm.optional().nullable(),
-  closeGraceMinutes: z.preprocess(toInt, z.number().int().min(0).max(1440).optional()),
+  minimumSettlementAmount: z.preprocess(toNumber, z.number().min(0).optional()),
 });
 
 /** Writable payload shape — equivalent to UpdateLocationSettingsRequest. */

@@ -12,7 +12,10 @@ const currencyCode = z
   .transform((v) => v.toUpperCase());
 
 export const CreateSupplierReturnItemSchema = z.object({
-  stockVariantId: z.string({ required_error: "Stock item is required" }).uuid(),
+  stockVariantId: z
+    .string({ required_error: "Stock item is required" })
+    .min(1, "Stock item is required")
+    .uuid("Stock item is required"),
   quantity: z.preprocess(
     toNumber,
     z
@@ -28,9 +31,19 @@ export const CreateSupplierReturnItemSchema = z.object({
 });
 
 export const CreateSupplierReturnSchema = z.object({
-  supplierId: z.string({ required_error: "Supplier is required" }).uuid(),
-  grnId: z.string().uuid().optional().or(z.literal("")),
-  reason: z.string().optional(),
+  supplierId: z
+    .string({ required_error: "Supplier is required" })
+    .min(1, "Supplier is required")
+    .uuid("Supplier is required"),
+  grnId: z
+    .string()
+    .uuid("Invalid GRN reference")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  reason: z
+    .string({ required_error: "Reason is required" })
+    .trim()
+    .min(1, "Reason is required"),
   notes: z.string().optional(),
   items: z.array(CreateSupplierReturnItemSchema).min(1, "Add at least one item"),
 });

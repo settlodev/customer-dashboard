@@ -3,6 +3,7 @@
 import { Textarea } from "@/components/ui/textarea";
 import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
+import { PanelHeader } from "../shared/panel-header";
 import type { LocationSettings } from "@/types/location-settings/type";
 
 const KEYS = [
@@ -25,9 +26,14 @@ export function PaymentOpsPanel({
 
   return (
     <div className="space-y-6">
-      <SettingsSection
+      <PanelHeader
         title="Payment operations"
-        description="How payments behave at the till."
+        description="Till behaviour, instructions, and approval gates for sensitive actions."
+      />
+
+      <SettingsSection
+        title="Till behaviour"
+        description="How payments flow at the point of sale."
         onSave={p.save}
         isPending={p.isPending}
         isDirty={p.isDirty}

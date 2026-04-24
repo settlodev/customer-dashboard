@@ -1,11 +1,11 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import { Role } from "@/types/roles/type";
+import { isProtectedRole, Role } from "@/types/roles/type";
 import { getRole } from "@/lib/actions/role-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Edit, Shield, CheckCircle2, Info } from "lucide-react";
+import { Edit, Shield, CheckCircle2, Info, Lock } from "lucide-react";
 
 type Params = Promise<{ id: string }>;
 
@@ -58,17 +58,25 @@ export default async function RolesPage({ params }: { params: Params }) {
                 System
               </span>
             )}
+            {isProtectedRole(role) && (
+              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                <Lock className="h-3 w-3" />
+                Protected
+              </span>
+            )}
           </div>
           {role.description && (
             <p className="text-muted-foreground mt-1 text-sm">{role.description}</p>
           )}
         </div>
-        <Link href={`/roles/${role.id}/edit`}>
-          <Button size="sm">
-            <Edit className="h-4 w-4 mr-2" />
-            Edit Role
-          </Button>
-        </Link>
+        {!isProtectedRole(role) && (
+          <Link href={`/roles/${role.id}/edit`}>
+            <Button size="sm">
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Role
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Role Details */}

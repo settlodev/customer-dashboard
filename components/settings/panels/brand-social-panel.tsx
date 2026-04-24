@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SettingsSection } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
+import { PanelHeader } from "../shared/panel-header";
 import type { LocationSettings } from "@/types/location-settings/type";
 
 const KEYS = [
@@ -41,6 +42,11 @@ export function BrandSocialPanel({
 
   return (
     <div className="space-y-6">
+      <PanelHeader
+        title="Brand & social"
+        description="Colours, type, imagery, social links, and SEO shown on branded surfaces."
+      />
+
       <SettingsSection
         title="Brand identity"
         description="Colours, type, and imagery used on receipts, the digital menu, and other branded surfaces."
@@ -48,7 +54,7 @@ export function BrandSocialPanel({
         isPending={p.isPending}
         isDirty={p.isDirty}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Field label="Primary color" hint="Hex value e.g. #1e90ff">
             <div className="flex items-center gap-2">
               <Input
@@ -142,7 +148,7 @@ export function BrandSocialPanel({
         isPending={p.isPending}
         isDirty={p.isDirty}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Field label="Facebook URL">
             <Input
               maxLength={500}

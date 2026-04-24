@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { archiveEntity } from "@/lib/actions/archive-service";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 
@@ -41,7 +41,7 @@ export function BulkArchive({
 
   const handleBulkArchive = async () => {
     if (selectedIds.length === 0) {
-      toast.error("No items selected for archiving");
+      toast({ variant: "destructive", title: "No items selected for archiving" });
       return;
     }
 
@@ -59,7 +59,7 @@ export function BulkArchive({
       });
       
       if (result.success) {
-        toast.success(result.message);
+        toast({ title: result.message });
         
         // Call onSuccess callback if provided
         if (onSuccess) onSuccess();
@@ -67,10 +67,10 @@ export function BulkArchive({
         // Close dialog
         setOpenArchiveDialog(false);
       } else {
-        toast.error(result.message);
+        toast({ variant: "destructive", title: result.message });
       }
     } catch (error) {
-      toast.error(`Failed to archive ${displayName.plural.toLowerCase()}`);
+      toast({ variant: "destructive", title: `Failed to archive ${displayName.plural.toLowerCase()}` });
       console.error(error);
     } finally {
       setArchiveInProgress(false);

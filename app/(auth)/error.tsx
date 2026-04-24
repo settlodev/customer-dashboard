@@ -3,6 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { ServerCrash, RotateCcw, LogOut } from "lucide-react";
 import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { startTransition } from "react";
 
 export default function AuthError({
   error,
@@ -11,11 +13,19 @@ export default function AuthError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
   const isNetworkError =
     error.message?.includes("NETWORK_ERROR") ||
     error.message?.includes("ECONNREFUSED") ||
     error.message?.includes("Failed to connect") ||
     error.message?.includes("fetch failed");
+
+  const handleReset = () => {
+    startTransition(() => {
+      router.refresh();
+      reset();
+    });
+  };
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
@@ -39,7 +49,7 @@ export default function AuthError({
 
         <div className="flex flex-col gap-3">
           <Button
-            onClick={reset}
+            onClick={handleReset}
             className="w-full h-11 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white"
           >
             <RotateCcw className="mr-2 h-4 w-4" />

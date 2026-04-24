@@ -23,7 +23,6 @@ import { parseStringify } from "@/lib/utils";
 import {
   createAuthTokenFromLogin,
   deleteActiveBusinessCookie,
-  deleteActiveLocationCookie,
   deleteAuthCookie,
   getAuthToken,
   storePendingVerification,
@@ -35,7 +34,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import { parseApiError, getUIErrorMessage } from "@/lib/settlo-api-error-handler";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { deleteActiveWarehouseCookie } from "./warehouse/current-warehouse-action";
+import { clearDestination } from "./destination";
 
 const AUTH_SERVICE_URL =
   process.env.AUTH_SERVICE_URL || process.env.SERVICE_URL || "";
@@ -113,8 +112,7 @@ export const login = async (
 
   await deleteAuthCookie();
   await deleteActiveBusinessCookie();
-  await deleteActiveLocationCookie();
-  await deleteActiveWarehouseCookie();
+  await clearDestination();
 
   try {
     console.log("[LOGIN] Attempting login to:", `${AUTH_SERVICE_URL}/auth/login`);
@@ -372,8 +370,7 @@ export const oauthLogin = async (
 ): Promise<FormResponse> => {
   await deleteAuthCookie();
   await deleteActiveBusinessCookie();
-  await deleteActiveLocationCookie();
-  await deleteActiveWarehouseCookie();
+  await clearDestination();
 
   try {
     console.log(`[OAUTH] Attempting ${provider} login`);
@@ -1189,108 +1186,11 @@ export const updateUser = async (
   }
 };
 
-// ---------------------------------------------------------------------------
-// Staff-specific auth actions
-// ---------------------------------------------------------------------------
-
-export const staffResetPassword = async (
-  email: string,
-): Promise<FormResponse> => {
-  if (!email || !email.includes("@")) {
-    return parseStringify({ responseType: "error", message: "Please enter a valid email address.", error: new Error("Invalid email") });
-  }
-  try {
-    const response = await fetch(`${AUTH_SERVICE_URL}/auth/staff/password/reset/request`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}) },
-      body: JSON.stringify({ email }),
-    });
-    if (!response.ok) {
-      const apiError = await parseApiError(response);
-      return parseStringify({ responseType: "error", message: getUIErrorMessage(apiError.code, apiError.message, "Failed to send reset code."), error: new Error(apiError.code || `HTTP ${response.status}`) });
-    }
-    const data = await response.json();
-    return parseStringify({ responseType: "success", message: "A password reset code has been sent to your email.", data: { userId: data.userId } });
-  } catch (error: any) {
-    return parseStringify({ responseType: "error", message: getUIErrorMessage(null, error?.message), error: error instanceof Error ? error : new Error(String(error)) });
-  }
-};
-
-export const staffVerifyResetCode = async (
-  userId: string,
-  code: string,
-): Promise<FormResponse> => {
-  try {
-    const response = await fetch(`${AUTH_SERVICE_URL}/auth/staff/password/reset/verify/code`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}) },
-      body: JSON.stringify({ userId, code }),
-    });
-    if (!response.ok) {
-      const apiError = await parseApiError(response);
-      return parseStringify({ responseType: "error", message: getUIErrorMessage(apiError.code, apiError.message, "Invalid or expired code."), error: new Error(apiError.code || "Code verification failed") });
-    }
-    const data = await response.json();
-    return parseStringify({ responseType: "success", message: "Code verified successfully.", data: { resetToken: data.resetToken } });
-  } catch (error: any) {
-    return parseStringify({ responseType: "error", message: getUIErrorMessage(null, error?.message), error: error instanceof Error ? error : new Error(String(error)) });
-  }
-};
-
-export const staffConfirmNewPassword = async (
-  staffId: string,
-  resetToken: string,
-  newPassword: string,
-): Promise<FormResponse> => {
-  const validatedPassword = NewPasswordSchema.safeParse({ password: newPassword });
-  if (!validatedPassword.success) {
-    return parseStringify({ responseType: "error", message: "Password must be at least 8 characters.", error: new Error(validatedPassword.error.message) });
-  }
-  try {
-    const response = await fetch(`${AUTH_SERVICE_URL}/auth/staff/password/reset/confirm`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}) },
-      body: JSON.stringify({ staffId, resetToken, newPassword: validatedPassword.data.password }),
-    });
-    if (!response.ok) {
-      const apiError = await parseApiError(response);
-      return parseStringify({ responseType: "error", message: getUIErrorMessage(apiError.code, apiError.message, "Failed to reset password."), error: new Error(apiError.code || "Password reset failed") });
-    }
-    return parseStringify({ responseType: "success", message: "Password reset successfully! Please log in with your new password." });
-  } catch (error: any) {
-    return parseStringify({ responseType: "error", message: getUIErrorMessage(null, error?.message), error: error instanceof Error ? error : new Error(String(error)) });
-  }
-};
-
-export const staffSelectBusiness = async (
-  businessId: string,
-): Promise<FormResponse> => {
-  try {
-    const authToken = await getAuthToken();
-    if (!authToken?.accessToken) {
-      return parseStringify({ responseType: "error", message: "Session expired, please log in again.", error: new Error("No access token") });
-    }
-    const response = await fetch(`${AUTH_SERVICE_URL}/auth/staff/select-business`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authToken.accessToken}`,
-        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
-      },
-      body: JSON.stringify({ businessId }),
-    });
-    if (!response.ok) {
-      const apiError = await parseApiError(response);
-      return parseStringify({ responseType: "error", message: getUIErrorMessage(apiError.code, apiError.message, "Failed to switch business."), error: new Error(apiError.code || `HTTP ${response.status}`) });
-    }
-    const data: LoginResponse = await response.json();
-    await updateAuthToken({ ...authToken, accessToken: data.accessToken, refreshToken: data.refreshToken });
-    await deleteActiveBusinessCookie();
-    await deleteActiveLocationCookie();
-    await deleteActiveWarehouseCookie();
-    return parseStringify({ responseType: "success", message: "Business switched successfully.", data: { businessId } });
-  } catch (error: any) {
-    return parseStringify({ responseType: "error", message: getUIErrorMessage(null, error?.message), error: error instanceof Error ? error : new Error(String(error)) });
-  }
-};
+// Staff-specific auth endpoints used to live here
+// (staffResetPassword / staffVerifyResetCode / staffConfirmNewPassword /
+// staffSelectBusiness) but the Auth Service retired `SubjectType.STAFF`:
+// business staff with dashboard access are now regular Users and go through
+// the same password-reset and login flows as account owners. POS-only staff
+// don't have Auth-Service credentials at all — their PIN is verified
+// locally on the paired device.
 

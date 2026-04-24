@@ -241,7 +241,7 @@ export default async function StockDetailPage({
   ];
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-4">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">

@@ -43,7 +43,7 @@ export const columns: ColumnDef<LpoRow>[] = [
     ),
     cell: ({ row }) => (
       <Link
-        href={`/stock-purchases/${row.original.id}`}
+        href={`/purchase-orders/${row.original.id}`}
         className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded hover:underline"
       >
         {row.original.lpoNumber}

@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/staff/columns";
-import { searchStaff } from "@/lib/actions/staff-actions";
+import { fetchStaffPage, searchStaffByName } from "@/lib/actions/staff-actions";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { Staff } from "@/types/staff";
 import NoItems from "@/components/layouts/no-items";
@@ -20,21 +20,30 @@ type Params = {
 };
 
 export default async function Page({ searchParams }: Params) {
-  const resolvedSearchParams = await searchParams;
+  const resolved = await searchParams;
+  const q = resolved.search?.trim() ?? "";
+  const page = Number(resolved.page) || 0;
+  const pageLimit = Number(resolved.limit) || 20;
 
-  const q = resolvedSearchParams.search || "";
-  const page = Number(resolvedSearchParams.page) || 0;
-  const pageLimit = Number(resolvedSearchParams.limit);
+  let data: Staff[];
+  let total: number;
+  let pageCount: number;
 
-  const responseData = await searchStaff(q, page, pageLimit);
-
-  const data: Staff[] = responseData.content;
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  if (q) {
+    // Backend /search returns a flat list — paginate client-side.
+    const results = await searchStaffByName(q);
+    data = results;
+    total = results.length;
+    pageCount = 1;
+  } else {
+    const response = await fetchStaffPage(page, pageLimit);
+    data = response.content ?? [];
+    total = response.totalElements ?? data.length;
+    pageCount = response.totalPages ?? 1;
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      {/* Header row */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <BreadcrumbsNav items={breadcrumbItems} />
 
@@ -48,7 +57,6 @@ export default async function Page({ searchParams }: Params) {
         </div>
       </div>
 
-      {/* Content */}
       {total > 0 || q !== "" ? (
         <Card>
           <CardContent className="px-2 sm:px-6 pt-6">

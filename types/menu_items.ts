@@ -190,7 +190,13 @@ const getNormalMenuItems = (
         ] : []),
         {
           title: "Consumption Rules",
-          link: "/consumption-rules",
+          link: "/bom-rules",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Consumption Analytics",
+          link: "/bom-analytics",
           current: args?.isCurrentItem,
           icon: "cart",
         },
@@ -216,7 +222,7 @@ const getNormalMenuItems = (
         },
         {
           title: "Purchase orders",
-          link: "/stock-purchases",
+          link: "/purchase-orders",
           current: args?.isCurrentItem,
           icon: "cart",
         },

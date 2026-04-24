@@ -24,7 +24,7 @@ import {
 import { BusinessType, BusinessInfo } from "@/types/site/type";
 import Image from "next/image";
 import { useCart } from "@/context/cartContext";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { submitOrderRequest } from "@/lib/actions/order-actions";
 import { useRouter } from "next/navigation";
 import { getProductStockStatus } from "./productStockStatus";
@@ -197,7 +197,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
       (item) => item.cartItemId === cartItemId,
     );
     if (!cartItem) {
-      toast.error("Item not found in cart");
+      toast({ variant: "destructive", title: "Item not found in cart" });
       return;
     }
 
@@ -207,7 +207,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
 
       // Check if the new quantity exceeds available stock
       if (newQuantity > availableQuantity) {
-        toast.error(`Only ${availableQuantity} item(s) available in stock`);
+        toast({ variant: "destructive", title: `Only ${availableQuantity} item(s) available in stock` });
         return;
       }
     }
@@ -315,7 +315,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
   const handleSubmitOrder = async () => {
     console.log("Current locationId:", locationId);
     if (!isFormValid()) {
-      toast.error("Please fill in all customer details");
+      toast({ variant: "destructive", title: "Please fill in all customer details" });
       return;
     }
 
@@ -335,7 +335,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
 
       if (result && result.responseType === "success") {
         // Success - show success animation first
-        toast.success(result.message || "Order created successfully!");
+        toast({ title: result.message || "Order created successfully!" });
 
         // Close cart and clear it immediately
         toggleCart();
@@ -354,14 +354,14 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
         }, 5000);
       } else if (result && result.responseType === "error") {
         // Handle error response
-        toast.error(result.message || "Failed to submit order request");
+        toast({ variant: "destructive", title: result.message || "Failed to submit order request" });
       } else {
         // Handle unexpected response format
-        toast.error("Unexpected response from server");
+        toast({ variant: "destructive", title: "Unexpected response from server" });
       }
     } catch (error) {
       console.error("Order submission error:", error);
-      toast.error("An unexpected error occurred");
+      toast({ variant: "destructive", title: "An unexpected error occurred" });
     } finally {
       setIsSubmitting(false);
     }

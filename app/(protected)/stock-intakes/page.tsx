@@ -1,115 +1,43 @@
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
+import { DataTable } from "@/components/tables/data-table";
+import { columns } from "@/components/tables/stock-intake-record/columns";
 import { searchStockIntakeRecords } from "@/lib/actions/stock-intake-record-actions";
-import { getGrns } from "@/lib/actions/grn-actions";
-import { Plus } from "lucide-react";
-import type { StockIntakeRecord } from "@/types/stock-intake-record/type";
-import { STOCK_INTAKE_RECORD_STATUS_LABELS } from "@/types/stock-intake-record/type";
-import type { Grn } from "@/types/grn/type";
-import { GRN_STATUS_LABELS } from "@/types/grn/type";
-import { DEFAULT_CURRENCY } from "@/lib/helpers";
-import { Money } from "@/components/widgets/money";
+import {
+  STOCK_INTAKE_RECORD_STATUS_LABELS,
+  StockIntakeRecordStatus,
+} from "@/types/stock-intake-record/type";
 
-const breadcrumbItems = [{ title: "Stock Received", link: "/stock-intakes" }];
+const breadcrumbItems = [{ title: "Stock Intakes", link: "/stock-intakes" }];
 
-// Unified row shape for the combined list
-type StockReceivedRow = {
-  id: string;
-  source: "STOCK_INTAKE" | "GRN";
-  reference: string;
-  itemNames: string[];
-  itemCount: number;
-  totalQty: number;
-  totalValue: number;
-  currency: string;
-  supplier: string | null;
-  status: string;
-  statusColor: string;
-  date: string;
-  detailHref: string;
-};
-
-function fromStockIntakeRecord(si: StockIntakeRecord): StockReceivedRow {
-  const names = si.items?.map((i) => i.stockVariantName) ?? [];
-  const statusDone = si.status === "CONFIRMED";
-  const statusBad = si.status === "CANCELLED";
-  return {
-    id: si.id,
-    source: "STOCK_INTAKE",
-    reference: si.referenceNumber,
-    itemNames: names,
-    itemCount: si.totalItems,
-    totalQty: si.totalQuantity,
-    totalValue: si.totalValue,
-    currency: si.currency || DEFAULT_CURRENCY,
-    supplier: null,
-    status: STOCK_INTAKE_RECORD_STATUS_LABELS[si.status],
-    statusColor: statusDone ? "bg-green-50 text-green-700" : statusBad ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700",
-    date: si.createdAt,
-    detailHref: `/stock-intakes/${si.id}`,
-  };
-}
-
-function fromGrn(grn: Grn): StockReceivedRow {
-  const names = grn.items?.map((i) => i.variantName) ?? [];
-  const totalQty = grn.items?.reduce((sum, i) => sum + Number(i.receivedQuantity || 0), 0) ?? 0;
-  const totalValue =
-    grn.items?.reduce((sum, i) => sum + Number(i.receivedQuantity || 0) * Number(i.unitCost || 0), 0) ?? 0;
-  const statusDone = grn.status === "RECEIVED";
-  const statusBad = grn.status === "CANCELLED";
-  return {
-    id: grn.id,
-    source: "GRN",
-    reference: grn.grnNumber,
-    itemNames: names,
-    itemCount: grn.items?.length ?? 0,
-    totalQty,
-    totalValue,
-    currency: grn.currency || grn.items?.[0]?.currency || DEFAULT_CURRENCY,
-    supplier: grn.supplierName ?? null,
-    status: GRN_STATUS_LABELS[grn.status],
-    statusColor: statusDone ? "bg-green-50 text-green-700" : statusBad ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700",
-    date: grn.receivedDate ?? grn.createdAt,
-    detailHref: `/goods-received/${grn.id}`,
-  };
-}
+const STATUS_VALUES: StockIntakeRecordStatus[] = ["DRAFT", "CONFIRMED", "CANCELLED"];
 
 type Params = {
   searchParams: Promise<{
     page?: string;
     limit?: string;
+    status?: string;
   }>;
 };
 
 export default async function Page({ searchParams }: Params) {
   const resolvedParams = await searchParams;
   const page = Number(resolvedParams.page) || 0;
-  const pageLimit = Number(resolvedParams.limit) || 50;
+  const pageLimit = Number(resolvedParams.limit) || 20;
+  const status = STATUS_VALUES.find((s) => s === resolvedParams.status);
 
-  // Fetch both sources in parallel
-  const [intakeData, grnData] = await Promise.all([
-    searchStockIntakeRecords(page ? page - 1 : 0, pageLimit),
-    getGrns(page ? page - 1 : 0, pageLimit),
-  ]);
-
-  // Normalize and merge
-  const intakeRows = (intakeData.content as StockIntakeRecord[]).map(fromStockIntakeRecord);
-  const grnRows = (grnData.content as Grn[]).map(fromGrn);
-  const rows = [...intakeRows, ...grnRows].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  const responseData = await searchStockIntakeRecords(
+    page ? page - 1 : 0,
+    pageLimit,
+    status,
   );
-  const total = rows.length;
-
-  const sourceBadge = (source: "STOCK_INTAKE" | "GRN") =>
-    source === "GRN"
-      ? "bg-blue-50 text-blue-700"
-      : "bg-purple-50 text-purple-700";
-
-  const sourceLabel = (source: "STOCK_INTAKE" | "GRN") =>
-    source === "GRN" ? "Purchase" : "Stock Intake";
+  const data = responseData.content ?? [];
+  const total = responseData.totalElements ?? 0;
+  const pageCount = responseData.totalPages ?? 0;
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
@@ -118,73 +46,32 @@ export default async function Page({ searchParams }: Params) {
         <Button asChild>
           <Link href="/stock-intakes/new">
             <Plus className="mr-1.5 h-4 w-4" />
-            Record Stock
+            Record intake
           </Link>
         </Button>
       </div>
 
-      {total > 0 ? (
+      {total > 0 || status ? (
         <Card>
           <CardContent className="px-2 sm:px-6 pt-6">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-gray-50/60">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Reference</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Source</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Stock Items</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Supplier</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Total Qty</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Total Value</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {rows.map((row) => (
-                    <tr key={`${row.source}-${row.id}`} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3">
-                        <Link href={row.detailHref} className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded hover:underline">
-                          {row.reference}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${sourceBadge(row.source)}`}>
-                          {sourceLabel(row.source)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 max-w-[250px]">
-                        {row.itemNames.length > 0 ? (
-                          <span className="line-clamp-2">
-                            {row.itemNames.slice(0, 3).join(", ")}
-                            {row.itemNames.length > 3 && <span className="text-gray-400"> +{row.itemNames.length - 3} more</span>}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">{row.itemCount} item{row.itemCount !== 1 ? "s" : ""}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{row.supplier || "\u2014"}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600 text-right">{row.totalQty?.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
-                        <Money amount={row.totalValue ?? 0} currency={row.currency} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${row.statusColor}`}>
-                          {row.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
-                        {new Date(row.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={columns}
+              data={data}
+              searchKey="referenceNumber"
+              pageNo={page}
+              total={total}
+              pageCount={pageCount}
+              disableArchive
+              filterKey="status"
+              filterOptions={STATUS_VALUES.map((s) => ({
+                value: s,
+                label: STOCK_INTAKE_RECORD_STATUS_LABELS[s],
+              }))}
+            />
           </CardContent>
         </Card>
       ) : (
-        <NoItems newItemUrl="/stock-intakes/new" itemName="stock received" />
+        <NoItems newItemUrl="/stock-intakes/new" itemName="stock intakes" />
       )}
     </div>
   );

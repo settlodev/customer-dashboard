@@ -68,6 +68,8 @@ import type { FormResponse } from "@/types/types";
 import UnitSelector from "@/components/widgets/unit-selector";
 import SupplierSelector from "@/components/widgets/supplier-selector";
 import { MATERIAL_TYPE_OPTIONS } from "@/types/catalogue/enums";
+import { BusinessDayClosedDialog } from "@/components/widgets/business-day-closed-dialog";
+import { useBusinessDayGuard } from "@/hooks/use-business-day-guard";
 
 interface StockFormProps {
   item: Stock | null | undefined;
@@ -109,6 +111,7 @@ function formatConversion(
 export default function StockForm({ item, balances }: StockFormProps) {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
+  const businessDayGuard = useBusinessDayGuard();
   const [archivingIndex, setArchivingIndex] = useState<number | null>(null);
   const [generatingBarcode, setGeneratingBarcode] = useState<number | null>(null);
   const [reorderOpen, setReorderOpen] = useState<Record<number, boolean>>({});
@@ -253,13 +256,23 @@ export default function StockForm({ item, balances }: StockFormProps) {
 
   const submitData = (values: z.infer<typeof StockSchema>) => {
     setResponse(undefined);
+    runSubmit(values);
+  };
+
+  const runSubmit = (values: z.infer<typeof StockSchema>) => {
     startTransition(() => {
       if (item) {
         const currentIds = new Set(values.variants.map((v) => v.id).filter(Boolean));
         const removed = (item.variants || []).map((v) => v.id).filter((vid) => !currentIds.has(vid));
-        updateStock(item.id, values, removed).then((d) => { if (d) setResponse(d); });
+        updateStock(item.id, values, removed).then((d) => {
+          if (businessDayGuard.catch(d, () => runSubmit(values))) return;
+          if (d) setResponse(d);
+        });
       } else {
-        createStock(values).then((d) => { if (d) setResponse(d); });
+        createStock(values).then((d) => {
+          if (businessDayGuard.catch(d, () => runSubmit(values))) return;
+          if (d) setResponse(d);
+        });
       }
     });
   };
@@ -283,6 +296,14 @@ export default function StockForm({ item, balances }: StockFormProps) {
   };
 
   return (
+    <>
+      <BusinessDayClosedDialog
+        open={businessDayGuard.dialogOpen}
+        locationId={businessDayGuard.locationId}
+        reason={businessDayGuard.reason}
+        onDismiss={businessDayGuard.close}
+        onDayOpened={businessDayGuard.onDayOpened}
+      />
     <Form {...form}>
       <FormError message={response?.message} />
       <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-6">
@@ -732,5 +753,6 @@ export default function StockForm({ item, balances }: StockFormProps) {
         </div>
       </form>
     </Form>
+    </>
   );
 }

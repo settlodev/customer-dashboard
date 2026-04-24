@@ -26,6 +26,7 @@ import { SubmitButton } from "../widgets/submit-button";
 import SupplierSelector from "../widgets/supplier-selector";
 import StockVariantSelector from "../widgets/stock-variant-selector";
 import type { VariantMeta } from "../widgets/stock-variant-selector";
+import CurrencySelector from "../widgets/currency-selector";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
 import { createLpo } from "@/lib/actions/lpo-actions";
 import { CreateLpoSchema } from "@/types/lpo/schema";
@@ -128,25 +129,6 @@ export default function LpoForm() {
         (item) =>
           Number(item.orderedQuantity || 0) * Number(item.unitCost || 0),
       ),
-    [watchedItems],
-  );
-
-  // Group totals by line currency so mixed-currency LPOs read honestly.
-  const totalsByCurrency = useMemo(() => {
-    const map = new Map<string, number>();
-    watchedItems.forEach((item, index) => {
-      const cur = (item.currency || locationCurrency).toUpperCase();
-      map.set(cur, (map.get(cur) ?? 0) + (lineTotals[index] ?? 0));
-    });
-    return map;
-  }, [watchedItems, lineTotals, locationCurrency]);
-
-  const filledItemCount = useMemo(
-    () =>
-      watchedItems.filter(
-        (item) =>
-          item.stockVariantId && Number(item.orderedQuantity) > 0,
-      ).length,
     [watchedItems],
   );
 
@@ -368,13 +350,11 @@ export default function LpoForm() {
                         <FormItem className="w-full md:flex-[2] min-w-0">
                           <FormLabel className="text-xs">Currency</FormLabel>
                           <FormControl>
-                            <Input
+                            <CurrencySelector
+                              value={f.value || ""}
+                              onChange={(v) => f.onChange(v.toUpperCase())}
+                              isDisabled={isPending}
                               placeholder={locationCurrency}
-                              maxLength={3}
-                              {...f}
-                              value={f.value ?? ""}
-                              onChange={(e) => f.onChange(e.target.value.toUpperCase())}
-                              disabled={isPending}
                             />
                           </FormControl>
                           <p className="text-[10px] text-muted-foreground">
@@ -401,40 +381,10 @@ export default function LpoForm() {
           </CardContent>
         </Card>
 
-        {/* ── Summary ────────────────────────────────────────── */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="py-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-            <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                Summary
-              </span>
-              <span className="font-medium">
-                {filledItemCount} item{filledItemCount === 1 ? "" : "s"} ready to order
-              </span>
-            </div>
-            <div className="flex flex-col items-end gap-0.5">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                Totals
-              </span>
-              {Array.from(totalsByCurrency.entries()).map(([cur, amount]) => (
-                <span key={cur} className="font-mono font-semibold">
-                  {amount.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}{" "}
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {cur}
-                  </span>
-                </span>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
         <div className="flex items-center gap-4 pt-2 pb-4">
           <CancelButton />
           <Separator orientation="vertical" className="h-5" />
-          <SubmitButton isPending={isPending} label="Create LPO" />
+          <SubmitButton isPending={isPending} label="Create Purchase Order" />
         </div>
       </form>
     </Form>

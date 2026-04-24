@@ -1,23 +1,27 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Check, Copy, Loader2 } from "lucide-react";
 import {
   SettingsSection,
   SettingsSwitchRow,
 } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
-import type {
-  LocationSettings,
-  OperatingHours,
-  DayOfWeek,
-} from "@/types/location-settings/type";
-import { DAYS_OF_WEEK, DAY_LABELS } from "@/types/location-settings/type";
-import { updateLocationSettings } from "@/lib/actions/location-settings-actions";
+import { PanelHeader } from "../shared/panel-header";
+import { DangerZonePanel } from "./danger-zone-panel";
+import type { LocationSettings } from "@/types/location-settings/type";
+import type { Location } from "@/types/location/type";
+import {
+  updateLocationBasics,
+  type UpdateLocationBasicsRequest,
+} from "@/lib/actions/location-actions";
+import BusinessTypeSelector from "@/components/widgets/business-type-selector";
+import CountrySelector from "@/components/widgets/country-selector";
+import CurrencySelector from "@/components/widgets/currency-selector";
 
 const PROFILE_KEYS = [
   "currency",
@@ -28,18 +32,35 @@ const PROFILE_KEYS = [
   "defaultTimezone",
 ] as const;
 
-const DEFAULT_CUTOFF = "04:00";
-
 interface Props {
   settings: LocationSettings;
   onSaved: (next: LocationSettings) => void;
+  location: Location | null;
+  onLocationSaved: (next: Location) => void;
 }
 
-export function LocationProfilePanel({ settings, onSaved }: Props) {
+export function LocationProfilePanel({
+  settings,
+  onSaved,
+  location,
+  onLocationSaved,
+}: Props) {
   const panel = useSettingsPanel(PROFILE_KEYS, settings, onSaved);
 
   return (
     <div className="space-y-6">
+      {location ? (
+        <LocationDetailsCard
+          location={location}
+          onLocationSaved={onLocationSaved}
+        />
+      ) : (
+        <PanelHeader
+          title="Location"
+          description="Name, contact info and address for this location."
+        />
+      )}
+
       <SettingsSection
         title="Currency, locale & guard-rails"
         description="Base currency and limits that apply across POS, receipts, and reports."
@@ -47,15 +68,12 @@ export function LocationProfilePanel({ settings, onSaved }: Props) {
         isPending={panel.isPending}
         isDirty={panel.isDirty}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <LabeledField label="Currency" hint="3-letter ISO code (e.g. TZS, USD).">
-            <Input
-              maxLength={3}
-              value={panel.values.currency ?? ""}
-              onChange={(e) =>
-                panel.setField("currency", e.target.value.toUpperCase())
-              }
-              disabled={panel.isPending}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <LabeledField label="Currency">
+            <CurrencySelector
+              value={panel.values.currency ?? undefined}
+              onChange={(val) => panel.setField("currency", val)}
+              isDisabled={panel.isPending}
             />
           </LabeledField>
           <LabeledField label="Default language" hint="ISO code (e.g. en, sw).">
@@ -127,176 +145,305 @@ export function LocationProfilePanel({ settings, onSaved }: Props) {
         </div>
       </SettingsSection>
 
-      <OperatingHoursCard settings={settings} onSaved={onSaved} />
+      <DangerZonePanel onReset={onSaved} />
     </div>
   );
 }
 
-/**
- * Operating hours editor — has a "this location is open 24 hours" toggle
- * above the weekly hours table. When 24h is on, the table is hidden and a
- * cutoff time picker takes its place. On save, the request payload depends
- * on which mode is active so we don't accidentally clobber operating hours
- * the backend should keep around for re-use later.
- */
-function OperatingHoursCard({
-  settings,
-  onSaved,
+// ──────────────────────────────────────────────────────────────────────
+// Location details (Location entity — PUT /api/v1/locations/{id})
+// ──────────────────────────────────────────────────────────────────────
+
+type LocationFormState = {
+  name: string;
+  description: string;
+  phoneNumber: string;
+  email: string;
+  countryId: string;
+  businessTypeId: string;
+  region: string;
+  district: string;
+  ward: string;
+  address: string;
+  postalCode: string;
+  latitude: string;
+  longitude: string;
+  timezone: string;
+};
+
+function toForm(l: Location): LocationFormState {
+  return {
+    name: l.name ?? "",
+    description: l.description ?? "",
+    phoneNumber: l.phoneNumber ?? "",
+    email: l.email ?? "",
+    countryId: l.countryId ?? "",
+    businessTypeId: l.businessTypeId ?? "",
+    region: l.region ?? "",
+    district: l.district ?? "",
+    ward: l.ward ?? "",
+    address: l.address ?? "",
+    postalCode: l.postalCode ?? "",
+    latitude: l.latitude != null ? String(l.latitude) : "",
+    longitude: l.longitude != null ? String(l.longitude) : "",
+    timezone: l.timezone ?? "",
+  };
+}
+
+function diffToPatch(
+  baseline: LocationFormState,
+  current: LocationFormState,
+): UpdateLocationBasicsRequest {
+  const patch: UpdateLocationBasicsRequest = {};
+  const stringKeys: (keyof Omit<LocationFormState, "latitude" | "longitude">)[] =
+    [
+      "name",
+      "description",
+      "phoneNumber",
+      "email",
+      "countryId",
+      "businessTypeId",
+      "region",
+      "district",
+      "ward",
+      "address",
+      "postalCode",
+      "timezone",
+    ];
+  for (const k of stringKeys) {
+    if (current[k] !== baseline[k]) {
+      const trimmed = current[k].trim();
+      (patch as Record<string, unknown>)[k] = trimmed === "" ? null : trimmed;
+    }
+  }
+  if (current.latitude !== baseline.latitude) {
+    const parsed = current.latitude.trim() === "" ? null : Number(current.latitude);
+    patch.latitude = parsed === null || Number.isFinite(parsed) ? parsed : null;
+  }
+  if (current.longitude !== baseline.longitude) {
+    const parsed = current.longitude.trim() === "" ? null : Number(current.longitude);
+    patch.longitude = parsed === null || Number.isFinite(parsed) ? parsed : null;
+  }
+  return patch;
+}
+
+function LocationDetailsCard({
+  location,
+  onLocationSaved,
 }: {
-  settings: LocationSettings;
-  onSaved: (next: LocationSettings) => void;
+  location: Location;
+  onLocationSaved: (next: Location) => void;
 }) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [copied, setCopied] = useState(false);
 
-  const seedHours = useMemo<OperatingHours[]>(() => {
-    const byDay = new Map<DayOfWeek, OperatingHours>();
-    for (const h of settings.operatingHours ?? []) byDay.set(h.dayOfWeek, h);
-    return DAYS_OF_WEEK.map(
-      (d) =>
-        byDay.get(d) ?? {
-          dayOfWeek: d,
-          openTime: "08:00",
-          closeTime: "22:00",
-          closed: false,
-        },
-    );
-  }, [settings.operatingHours]);
+  const initial = useMemo(() => toForm(location), [location]);
+  const [form, setForm] = useState<LocationFormState>(initial);
+  const [baseline, setBaseline] = useState<LocationFormState>(initial);
 
-  const [hours, setHours] = useState<OperatingHours[]>(seedHours);
-  const [hoursBaseline, setHoursBaseline] = useState<OperatingHours[]>(seedHours);
-  const [continuous, setContinuous] = useState<boolean>(!!settings.continuousOperation);
-  const [continuousBaseline, setContinuousBaseline] = useState<boolean>(
-    !!settings.continuousOperation,
-  );
-  const [cutoff, setCutoff] = useState<string>(
-    settings.dailyCutoffTime ?? DEFAULT_CUTOFF,
-  );
-  const [cutoffBaseline, setCutoffBaseline] = useState<string>(
-    settings.dailyCutoffTime ?? DEFAULT_CUTOFF,
-  );
+  // If the parent swaps in a fresh location (e.g. after a switch), reseed.
+  useEffect(() => {
+    setForm(initial);
+    setBaseline(initial);
+  }, [initial]);
 
-  const isDirty =
-    continuous !== continuousBaseline ||
-    (continuous
-      ? cutoff !== cutoffBaseline
-      : JSON.stringify(hours) !== JSON.stringify(hoursBaseline));
+  const patch = useMemo(() => diffToPatch(baseline, form), [baseline, form]);
+  const isDirty = Object.keys(patch).length > 0;
 
-  const update = (day: DayOfWeek, patch: Partial<OperatingHours>) =>
-    setHours((prev) =>
-      prev.map((h) => (h.dayOfWeek === day ? { ...h, ...patch } : h)),
-    );
+  const setField = <K extends keyof LocationFormState>(
+    key: K,
+    value: LocationFormState[K],
+  ) => setForm((prev) => ({ ...prev, [key]: value }));
 
-  const save = () =>
+  const handleCopy = () => {
+    if (!location.identifier) return;
+    navigator.clipboard.writeText(location.identifier);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const save = () => {
+    if (!isDirty) return;
     startTransition(async () => {
-      // 24h on → send cutoff + flag, do NOT send operatingHours.
-      // 24h off → send operatingHours + flag=false.
-      const payload = continuous
-        ? { continuousOperation: true, dailyCutoffTime: cutoff }
-        : { continuousOperation: false, operatingHours: hours };
-
-      const res = await updateLocationSettings(payload);
+      const res = await updateLocationBasics(location.id, patch);
       if (res.responseType === "error") {
         toast({
           variant: "destructive",
-          title: "Couldn't save operating hours",
+          title: "Couldn't save location",
           description: res.message,
         });
         return;
       }
       toast({ title: "Saved", description: res.message });
-      if (res.data) {
-        setHoursBaseline(hours);
-        setContinuousBaseline(continuous);
-        setCutoffBaseline(cutoff);
-        onSaved(res.data);
-      }
+      onLocationSaved(res.data);
+      setBaseline(toForm(res.data));
+      setForm(toForm(res.data));
     });
+  };
 
   return (
-    <SettingsSection
-      title="Operating hours"
-      description="Used for day-session auto roll-over and reservations availability."
-      onSave={save}
-      isDirty={isDirty}
-      isPending={isPending}
-    >
-      <div className="rounded-lg border bg-gray-50/60 p-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium">This location is open 24 hours</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Hide the weekly hours table and run continuously. Day sessions roll
-              over at the daily cutoff time.
-            </p>
-          </div>
-          <Switch
-            checked={continuous}
-            onCheckedChange={setContinuous}
+    <div className="space-y-6">
+      <PanelHeader
+        title="Location"
+        description="Name, contact info and address for this location."
+        meta={
+          location.identifier && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Location code:</span>
+              <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-mono">
+                {location.identifier}
+              </code>
+              <button
+                onClick={handleCopy}
+                className="text-muted-foreground hover:text-primary transition-colors"
+                aria-label="Copy location code"
+              >
+                {copied ? (
+                  <Check className="h-3.5 w-3.5 text-green-500" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+              </button>
+            </div>
+          )
+        }
+      />
+
+      <SettingsSection onSave={save} isDirty={isDirty} isPending={isPending}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <LabeledField label="Location name" hint="Max 255 characters.">
+          <Input
+            maxLength={255}
+            value={form.name}
+            onChange={(e) => setField("name", e.target.value)}
             disabled={isPending}
+            placeholder="e.g. Pizza Inn Masaki"
           />
-        </div>
+        </LabeledField>
+        <LabeledField label="Phone number" hint="Max 20 characters.">
+          <Input
+            maxLength={20}
+            value={form.phoneNumber}
+            onChange={(e) => setField("phoneNumber", e.target.value)}
+            disabled={isPending}
+            placeholder="+255712345678"
+          />
+        </LabeledField>
+        <LabeledField label="Email">
+          <Input
+            type="email"
+            value={form.email}
+            onChange={(e) => setField("email", e.target.value)}
+            disabled={isPending}
+            placeholder="branch@business.com"
+          />
+        </LabeledField>
+        <LabeledField label="Timezone" hint="IANA TZ (e.g. Africa/Dar_es_Salaam).">
+          <Input
+            value={form.timezone}
+            onChange={(e) => setField("timezone", e.target.value)}
+            disabled={isPending}
+            placeholder="Africa/Dar_es_Salaam"
+          />
+        </LabeledField>
       </div>
 
-      {continuous ? (
-        <div className="pt-2">
-          <label className="text-xs font-medium text-gray-700">
-            Daily rollover time
-          </label>
-          <p className="text-[11px] text-muted-foreground mb-1.5">
-            Quiet hour when we close and reopen the business day. Required while
-            24-hour operation is on.
-          </p>
-          <Input
-            type="time"
-            value={cutoff}
-            onChange={(e) => setCutoff(e.target.value)}
-            disabled={isPending}
-            className="max-w-[200px]"
-            required
+      <div className="space-y-2 pt-2">
+        <label className="text-xs font-medium text-gray-700">Description</label>
+        <Textarea
+          value={form.description}
+          onChange={(e) => setField("description", e.target.value)}
+          disabled={isPending}
+          placeholder="A short description of this location"
+          className="min-h-[80px]"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+        <LabeledField label="Country">
+          <CountrySelector
+            value={form.countryId}
+            onChange={(v: string) => setField("countryId", v)}
+            isDisabled={isPending}
+            label="Select country"
+            placeholder="Select country"
           />
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {hours.map((h) => (
-            <div
-              key={h.dayOfWeek}
-              className="grid grid-cols-12 items-center gap-3 py-1.5 border-b last:border-b-0"
-            >
-              <span className="col-span-3 text-sm font-medium">
-                {DAY_LABELS[h.dayOfWeek]}
-              </span>
-              <div className="col-span-3 flex items-center gap-2">
-                <Switch
-                  checked={!h.closed}
-                  onCheckedChange={(v) => update(h.dayOfWeek, { closed: !v })}
-                  disabled={isPending}
-                />
-                <span className="text-xs text-muted-foreground">
-                  {h.closed ? "Closed" : "Open"}
-                </span>
-              </div>
-              <div className="col-span-3">
-                <Input
-                  type="time"
-                  value={h.openTime ?? ""}
-                  onChange={(e) => update(h.dayOfWeek, { openTime: e.target.value })}
-                  disabled={isPending || h.closed}
-                />
-              </div>
-              <div className="col-span-3">
-                <Input
-                  type="time"
-                  value={h.closeTime ?? ""}
-                  onChange={(e) => update(h.dayOfWeek, { closeTime: e.target.value })}
-                  disabled={isPending || h.closed}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </SettingsSection>
+        </LabeledField>
+        <LabeledField label="Business type">
+          <BusinessTypeSelector
+            value={form.businessTypeId}
+            onChange={(v: string) => setField("businessTypeId", v)}
+            onBlur={() => {}}
+            isDisabled={isPending}
+            label="Select business type"
+            placeholder="Select business type"
+          />
+        </LabeledField>
+        <LabeledField label="Region">
+          <Input
+            value={form.region}
+            onChange={(e) => setField("region", e.target.value)}
+            disabled={isPending}
+            placeholder="e.g. Dar es Salaam"
+          />
+        </LabeledField>
+        <LabeledField label="District">
+          <Input
+            value={form.district}
+            onChange={(e) => setField("district", e.target.value)}
+            disabled={isPending}
+            placeholder="District"
+          />
+        </LabeledField>
+        <LabeledField label="Ward">
+          <Input
+            value={form.ward}
+            onChange={(e) => setField("ward", e.target.value)}
+            disabled={isPending}
+            placeholder="Ward"
+          />
+        </LabeledField>
+        <LabeledField label="Street address">
+          <Input
+            value={form.address}
+            onChange={(e) => setField("address", e.target.value)}
+            disabled={isPending}
+            placeholder="Street address"
+          />
+        </LabeledField>
+        <LabeledField label="Postal code" hint="Max 10 characters.">
+          <Input
+            maxLength={10}
+            value={form.postalCode}
+            onChange={(e) => setField("postalCode", e.target.value)}
+            disabled={isPending}
+            placeholder="Postal code"
+          />
+        </LabeledField>
+        <LabeledField label="Latitude">
+          <Input
+            type="number"
+            inputMode="decimal"
+            value={form.latitude}
+            onChange={(e) => setField("latitude", e.target.value)}
+            disabled={isPending}
+            placeholder="-6.776"
+          />
+        </LabeledField>
+        <LabeledField label="Longitude">
+          <Input
+            type="number"
+            inputMode="decimal"
+            value={form.longitude}
+            onChange={(e) => setField("longitude", e.target.value)}
+            disabled={isPending}
+            placeholder="39.278"
+          />
+        </LabeledField>
+      </div>
+      </SettingsSection>
+    </div>
   );
 }
 

@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StockVariantSelector from "./stock-variant-selector";
 import { FormControl, FormField, FormItem, FormMessage } from "../ui/form";
-import ConsumptionRuleSelector from "./consumption-rule-selector";
 
 interface TrackingOptionsProps {
   onSelectionChange: (selection: {
@@ -14,100 +12,56 @@ interface TrackingOptionsProps {
   initialItemId?: string | null;
 }
 
+/**
+ * Stock-variant tracker for product variants. The legacy "consumption rule"
+ * option was removed when BOM rules shifted to auto-resolution at deduction
+ * time — you no longer attach a rule to a variant; the Inventory Service
+ * looks it up from (business, location, product_variant).
+ */
 const TrackingOptions: React.FC<TrackingOptionsProps> = ({
   onSelectionChange,
   initialItemType,
   initialItemId,
 }) => {
-  const [trackingType, setTrackingType] = useState<string | null>(initialItemType || null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(initialItemId || null);
   const [quantity] = useState<number>(1);
 
   useEffect(() => {
     if (initialItemType && initialItemId) {
-      setTrackingType(initialItemType);
       setSelectedItemId(initialItemId);
       onSelectionChange({
-        itemType: initialItemType,
+        itemType: initialItemType || "stock",
         itemId: initialItemId,
         quantity,
       });
     }
   }, [initialItemType, initialItemId, onSelectionChange, quantity]);
 
-  const handleTrackingTypeChange = (type: string | null) => {
-    setTrackingType(type);
-    setSelectedItemId(null);
-    onSelectionChange({ itemType: type!, quantity, itemId: null });
-  };
-
   const handleItemChange = (itemId: string) => {
     setSelectedItemId(itemId);
-    onSelectionChange({ itemType: trackingType!, quantity, itemId });
+    onSelectionChange({ itemType: "stock", quantity, itemId });
   };
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mt-2 mb-2">
-          Select Tracking Type
-        </label>
-        <Select onValueChange={handleTrackingTypeChange} value={trackingType || ""}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Choose tracking type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="consumption-rule">Consumption Rule</SelectItem>
-            <SelectItem value="stock">Stock</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {trackingType === "consumption-rule" && (
-        <div>
-          <FormField
-            name="consumptionRule"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <ConsumptionRuleSelector
-                    value={field.value || selectedItemId || ""}
-                    onChange={(id) => {
-                      field.onChange(id);
-                      handleItemChange(id);
-                    }}
-                    placeholder="Select consumption rule"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-      )}
-
-      {trackingType === "stock" && (
-        <div>
-          <FormField
-            name="stock"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <StockVariantSelector
-                    value={field.value || selectedItemId || ""}
-                    onChange={(id) => {
-                      field.onChange(id);
-                      handleItemChange(id);
-                    }}
-                    placeholder="Select stock variant"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-      )}
+      <FormField
+        name="stock"
+        render={({ field }) => (
+          <FormItem>
+            <FormControl>
+              <StockVariantSelector
+                value={field.value || selectedItemId || ""}
+                onChange={(id) => {
+                  field.onChange(id);
+                  handleItemChange(id);
+                }}
+                placeholder="Select stock variant"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     </div>
   );
 };

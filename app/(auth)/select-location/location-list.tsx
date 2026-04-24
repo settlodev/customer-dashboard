@@ -9,11 +9,11 @@ import {
   Warehouse,
 } from "lucide-react";
 import { Location } from "@/types/location/type";
-import { refreshLocation, clearBusiness } from "@/lib/actions/business/refresh";
+import { clearBusiness } from "@/lib/actions/business/refresh";
+import { switchToLocation, switchToWarehouse } from "@/lib/actions/destination";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { refreshWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
 import { UUID } from "crypto";
 import PaymentStatusModal from "@/components/widgets/paymentStatusModal";
 import { prepaySubscription } from "@/lib/actions/billing-actions";
@@ -181,7 +181,7 @@ const LocationList = ({
       setTimeout(async () => {
         setIsModalOpen(false);
         setIsRedirecting(true);
-        await refreshWarehouse(selectedWarehouse);
+        await switchToWarehouse(selectedWarehouse);
         window.location.href = "/warehouse";
       }, 2000);
     },
@@ -203,7 +203,7 @@ const LocationList = ({
         return;
       }
       setIsRedirecting(true);
-      await refreshWarehouse(item);
+      await switchToWarehouse(item);
       window.location.href = "/warehouse";
     } else {
       if (isInactive) {
@@ -213,11 +213,11 @@ const LocationList = ({
           description: "Please renew your subscription to continue.",
         });
         setIsRedirecting(true);
-        await refreshLocation(item);
+        await switchToLocation(item);
         window.location.href = `/renew-subscription?location=${item.id}`;
       } else {
         setIsRedirecting(true);
-        await refreshLocation(item);
+        await switchToLocation(item);
         window.location.href = "/dashboard";
       }
     }

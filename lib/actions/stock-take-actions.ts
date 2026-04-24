@@ -10,6 +10,7 @@ import { inventoryUrl } from "./inventory-client";
 import type {
   StockTake,
   StockTakeStatus,
+  CycleCountType,
   CreateStockTakePayload,
   RecordCountPayload,
 } from "@/types/stock-take/type";
@@ -17,15 +18,24 @@ import { CreateStockTakeSchema, RecordCountSchema } from "@/types/stock-take/sch
 
 const BASE = "/api/v1/stock-takes";
 
+export interface StockTakePreview {
+  cycleCountType: CycleCountType;
+  matchCount: number;
+  variantCount: number;
+  totalExpectedQuantity: number | null;
+}
+
 export async function getStockTakes(
   page: number = 0,
   size: number = 20,
   status?: StockTakeStatus,
+  cycleCountType?: CycleCountType,
 ): Promise<ApiResponse<StockTake>> {
   const params = new URLSearchParams();
   params.set("page", String(page));
   params.set("size", String(size));
   if (status) params.set("status", status);
+  if (cycleCountType) params.set("cycleCountType", cycleCountType);
 
   const apiClient = new ApiClient();
   const data = await apiClient.get(inventoryUrl(`${BASE}?${params.toString()}`));
@@ -54,9 +64,31 @@ export async function createStockTake(
     });
   }
 
+  const {
+    locationType,
+    cycleCountType,
+    blindCount,
+    notes,
+    abcClass,
+    zoneId,
+    sampleMode,
+    sampleSize,
+    samplePercentage,
+  } = validated.data;
+
   const payload: CreateStockTakePayload = {
-    locationType: "LOCATION",
-    ...validated.data,
+    locationType,
+    cycleCountType,
+    blindCount,
+    notes: notes?.trim() ? notes.trim() : undefined,
+    filterCriteria: buildFilterCriteria({
+      cycleCountType,
+      abcClass,
+      zoneId,
+      sampleMode,
+      sampleSize,
+      samplePercentage,
+    }),
   };
 
   let createdId: string | null = null;
@@ -74,6 +106,33 @@ export async function createStockTake(
     });
   }
   redirect(createdId ? `/stock-takes/${createdId}` : "/stock-takes");
+}
+
+function buildFilterCriteria(args: {
+  cycleCountType: z.infer<typeof CreateStockTakeSchema>["cycleCountType"];
+  abcClass?: "A" | "B" | "C";
+  zoneId?: string;
+  sampleMode?: "size" | "percentage";
+  sampleSize?: number;
+  samplePercentage?: number;
+}): string | undefined {
+  switch (args.cycleCountType) {
+    case "ABC_CLASS":
+      return args.abcClass ? JSON.stringify({ classification: args.abcClass }) : undefined;
+    case "ZONE":
+      return args.zoneId ? JSON.stringify({ zoneId: args.zoneId }) : undefined;
+    case "RANDOM":
+      if (args.sampleMode === "size" && args.sampleSize != null) {
+        return JSON.stringify({ sampleSize: args.sampleSize });
+      }
+      if (args.sampleMode === "percentage" && args.samplePercentage != null) {
+        return JSON.stringify({ samplePercentage: args.samplePercentage });
+      }
+      return undefined;
+    case "FULL":
+    default:
+      return undefined;
+  }
 }
 
 export async function startStockTake(id: string): Promise<FormResponse> {
@@ -106,6 +165,103 @@ async function runTransition(
       message: error?.message ?? `Failed to ${label.toLowerCase()}`,
       error: error instanceof Error ? error : new Error(String(error)),
     };
+  }
+}
+
+export async function updateStockTakeDraft(
+  id: string,
+  input: z.infer<typeof CreateStockTakeSchema>,
+): Promise<FormResponse | void> {
+  const validated = CreateStockTakeSchema.safeParse(input);
+  if (!validated.success) {
+    return parseStringify({
+      responseType: "error",
+      message: "Please fix the highlighted fields",
+      error: new Error(validated.error.message),
+    });
+  }
+
+  const {
+    locationType,
+    cycleCountType,
+    blindCount,
+    notes,
+    abcClass,
+    zoneId,
+    sampleMode,
+    sampleSize,
+    samplePercentage,
+  } = validated.data;
+
+  const payload = {
+    locationType,
+    cycleCountType,
+    blindCount,
+    notes: notes?.trim() ? notes.trim() : null,
+    filterCriteria: buildFilterCriteria({
+      cycleCountType,
+      abcClass,
+      zoneId,
+      sampleMode,
+      sampleSize,
+      samplePercentage,
+    }) ?? null,
+  };
+
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.patch(inventoryUrl(`${BASE}/${id}`), payload);
+    revalidatePath(`/stock-takes/${id}`);
+    revalidatePath("/stock-takes");
+  } catch (error: any) {
+    if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to update stock take",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+  redirect(`/stock-takes/${id}`);
+}
+
+export async function getStockTakePreview(
+  input: z.infer<typeof CreateStockTakeSchema>,
+): Promise<StockTakePreview | null> {
+  const validated = CreateStockTakeSchema.safeParse(input);
+  if (!validated.success) return null;
+
+  const {
+    locationType,
+    cycleCountType,
+    abcClass,
+    zoneId,
+    sampleMode,
+    sampleSize,
+    samplePercentage,
+  } = validated.data;
+
+  const payload = {
+    locationType,
+    cycleCountType,
+    filterCriteria: buildFilterCriteria({
+      cycleCountType,
+      abcClass,
+      zoneId,
+      sampleMode,
+      sampleSize,
+      samplePercentage,
+    }),
+  };
+
+  try {
+    const apiClient = new ApiClient();
+    const data = (await apiClient.post(
+      inventoryUrl(`${BASE}/preview`),
+      payload,
+    )) as StockTakePreview;
+    return parseStringify(data);
+  } catch {
+    return null;
   }
 }
 

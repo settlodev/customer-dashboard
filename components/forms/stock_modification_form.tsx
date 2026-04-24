@@ -4,9 +4,13 @@ import React, { useCallback, useMemo, useState, useTransition } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowRight, Loader2, Plus, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2, Plus, Trash2 } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Form,
   FormControl,
@@ -48,12 +52,6 @@ interface BalanceSnapshot {
   averageCost: number | null;
 }
 
-const today = () => {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 10);
-};
-
 export default function StockModificationForm() {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
@@ -70,10 +68,16 @@ export default function StockModificationForm() {
       category: "CORRECTION",
       reason: "",
       notes: "",
-      modificationDate: today(),
+      modificationDate: new Date().toISOString(),
       items: [{ stockVariantId: "", quantityChange: 0 }],
     },
   });
+
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -81,14 +85,6 @@ export default function StockModificationForm() {
   });
 
   const watchedItems = form.watch("items");
-
-  const onInvalid = useCallback(() => {
-    toast({
-      variant: "destructive",
-      title: "Validation failed",
-      description: "Please review the highlighted fields.",
-    });
-  }, [toast]);
 
   const loadBalance = useCallback(
     async (fieldId: string, variantId: string, fallbackName?: string) => {
@@ -174,20 +170,6 @@ export default function StockModificationForm() {
     [remove],
   );
 
-  // Aggregate net quantity change across non-zero rows for the summary footer.
-  const netChange = useMemo(
-    () => watchedItems.reduce((sum, item) => sum + (Number(item.quantityChange) || 0), 0),
-    [watchedItems],
-  );
-
-  const filledItemCount = useMemo(
-    () =>
-      watchedItems.filter(
-        (item) => item.stockVariantId && Number(item.quantityChange) !== 0,
-      ).length,
-    [watchedItems],
-  );
-
   const submitData = (values: FormValues) => {
     setResponse(undefined);
 
@@ -222,7 +204,7 @@ export default function StockModificationForm() {
   return (
     <Form {...form}>
       <FormError message={response?.message} />
-      <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(submitData)} className="space-y-6">
         <Card className="rounded-xl shadow-sm">
           <CardContent className="pt-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -248,30 +230,54 @@ export default function StockModificationForm() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
               <FormField
                 control={form.control}
                 name="modificationDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Modification Date</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
-                        value={field.value ?? ""}
-                        max={today()}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <p className="text-[11px] text-muted-foreground">
-                      Defaults to today; back-date for late entry.
-                    </p>
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const selected = field.value ? new Date(field.value) : undefined;
+                  return (
+                    <FormItem>
+                      <FormLabel>
+                        Modification date <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={isPending}
+                              className={cn(
+                                "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
+                                !selected && "text-muted-foreground",
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                              {selected ? format(selected, "PPP") : "Pick a date"}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={selected}
+                            onSelect={(d) => field.onChange(d ? d.toISOString() : "")}
+                            disabled={(date) => date > today}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <p className="text-[11px] text-muted-foreground">
+                        Defaults to today; back-date for late entry.
+                      </p>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
             <FormField
@@ -290,7 +296,7 @@ export default function StockModificationForm() {
                       disabled={isPending}
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-xs" />
                 </FormItem>
               )}
             />
@@ -326,7 +332,7 @@ export default function StockModificationForm() {
                 onClick={() => append({ stockVariantId: "", quantityChange: 0 })}
                 disabled={isPending}
               >
-                <Plus className="w-4 h-4 mr-1" /> Add Item
+                <Plus className="w-4 h-4 mr-1" /> Add item
               </Button>
             </div>
 
@@ -335,7 +341,7 @@ export default function StockModificationForm() {
               const change = Number(watchedItems[index]?.quantityChange) || 0;
               const projected = (balance?.quantityOnHand ?? 0) + change;
               const projectedNegative = projected < 0;
-              const showPreview = !!watchedItems[index]?.stockVariantId;
+              const showPreview = !!watchedItems[index]?.stockVariantId && change !== 0;
 
               return (
                 <div
@@ -365,7 +371,7 @@ export default function StockModificationForm() {
                       render={({ field: f }) => (
                         <FormItem className="w-full md:flex-[5] min-w-0">
                           <FormLabel className="text-xs">
-                            Stock Item <span className="text-red-500">*</span>
+                            Stock item <span className="text-red-500">*</span>
                           </FormLabel>
                           <FormControl>
                             <StockVariantSelector
@@ -375,7 +381,7 @@ export default function StockModificationForm() {
                               isDisabled={isPending}
                             />
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="text-xs" />
                         </FormItem>
                       )}
                     />
@@ -385,7 +391,7 @@ export default function StockModificationForm() {
                       render={({ field: f }) => (
                         <FormItem className="w-full md:flex-[3] min-w-0">
                           <FormLabel className="text-xs">
-                            Qty Change <span className="text-red-500">*</span>
+                            Qty change <span className="text-red-500">*</span>
                           </FormLabel>
                           <FormControl>
                             <NumericFormat
@@ -403,7 +409,7 @@ export default function StockModificationForm() {
                           <p className="text-[11px] text-muted-foreground">
                             Positive to add stock, negative to reduce.
                           </p>
-                          <FormMessage />
+                          <FormMessage className="text-xs" />
                         </FormItem>
                       )}
                     />
@@ -413,7 +419,7 @@ export default function StockModificationForm() {
                       render={({ field: f }) => (
                         <FormItem className="w-full md:flex-[4] min-w-0">
                           <FormLabel className="text-xs">
-                            Unit Cost
+                            Unit cost
                             <span className="text-muted-foreground ml-1 font-normal">
                               ({locationCurrency}, optional)
                             </span>
@@ -433,59 +439,105 @@ export default function StockModificationForm() {
                           <p className="text-[11px] text-muted-foreground">
                             Leave blank to use the variant&apos;s average cost. Override for claim or write-off valuations.
                           </p>
-                          <FormMessage />
+                          <FormMessage className="text-xs" />
                         </FormItem>
                       )}
                     />
                   </div>
 
-                  {showPreview && (
-                    <div className="flex items-center gap-3 text-xs rounded-md bg-white border px-3 py-2">
-                      {balance?.loading ? (
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <Loader2 className="w-3 h-3 animate-spin" /> Reading current balance…
-                        </span>
-                      ) : (
-                        <>
-                          <span className="text-muted-foreground">On hand</span>
-                          <span className="font-mono font-semibold">
-                            {(balance?.quantityOnHand ?? 0).toLocaleString()}
-                          </span>
-                          <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                          <span
-                            className={`font-mono font-semibold ${
-                              projectedNegative
-                                ? "text-red-600"
-                                : change > 0
-                                  ? "text-green-600"
-                                  : change < 0
-                                    ? "text-amber-700"
-                                    : "text-gray-700"
+                  {showPreview &&
+                    (balance?.loading ? (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground rounded-md bg-white border px-3 py-2">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Reading current balance…
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="rounded-md bg-white border px-3 py-2 flex flex-col">
+                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              Before
+                            </span>
+                            <span className="font-mono text-lg font-semibold text-gray-700">
+                              {(balance?.quantityOnHand ?? 0).toLocaleString()}
+                            </span>
+                          </div>
+                          <div
+                            className={`rounded-md border px-3 py-2 flex flex-col ${
+                              change > 0
+                                ? "bg-green-50 border-green-200"
+                                : change < 0
+                                  ? "bg-amber-50 border-amber-200"
+                                  : "bg-white"
                             }`}
                           >
-                            {projected.toLocaleString()}
-                          </span>
-                          {projectedNegative && (
-                            <span className="ml-auto text-red-600">
-                              Would result in negative stock
+                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              Change
                             </span>
-                          )}
-                          {!projectedNegative && balance?.averageCost != null && (
-                            <span className="ml-auto text-muted-foreground">
-                              Avg cost {balance.averageCost.toLocaleString()} {locationCurrency}
+                            <span
+                              className={`font-mono text-lg font-semibold ${
+                                change > 0
+                                  ? "text-green-700"
+                                  : change < 0
+                                    ? "text-amber-700"
+                                    : "text-gray-500"
+                              }`}
+                            >
+                              {change > 0
+                                ? `+${change.toLocaleString()}`
+                                : change.toLocaleString()}
                             </span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
+                          </div>
+                          <div
+                            className={`rounded-md border px-3 py-2 flex flex-col ${
+                              projectedNegative
+                                ? "bg-red-50 border-red-200"
+                                : "bg-white"
+                            }`}
+                          >
+                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              After
+                            </span>
+                            <span
+                              className={`font-mono text-lg font-semibold ${
+                                projectedNegative
+                                  ? "text-red-600"
+                                  : change > 0
+                                    ? "text-green-700"
+                                    : change < 0
+                                      ? "text-amber-700"
+                                      : "text-gray-700"
+                              }`}
+                            >
+                              {projected.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                        {(projectedNegative || balance?.averageCost != null) && (
+                          <div className="flex items-center justify-between text-[11px]">
+                            {projectedNegative ? (
+                              <span className="text-red-600 font-medium">
+                                Would result in negative stock
+                              </span>
+                            ) : (
+                              <span />
+                            )}
+                            {balance?.averageCost != null && (
+                              <span className="text-muted-foreground">
+                                Avg cost {balance.averageCost.toLocaleString()}{" "}
+                                {locationCurrency}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
 
                   <FormField
                     control={form.control}
                     name={`items.${index}.notes`}
                     render={({ field: f }) => (
                       <FormItem>
-                        <FormLabel className="text-xs">Item Notes</FormLabel>
+                        <FormLabel className="text-xs">Item notes</FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Optional — applies to this line only"
@@ -504,39 +556,10 @@ export default function StockModificationForm() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="py-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-            <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                Summary
-              </span>
-              <span className="font-medium">
-                {filledItemCount} item{filledItemCount === 1 ? "" : "s"} ready to record
-              </span>
-            </div>
-            <div className="flex flex-col items-end">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                Net change
-              </span>
-              <span
-                className={`font-mono font-semibold ${
-                  netChange > 0
-                    ? "text-green-600"
-                    : netChange < 0
-                      ? "text-red-600"
-                      : "text-gray-700"
-                }`}
-              >
-                {netChange > 0 ? `+${netChange.toLocaleString()}` : netChange.toLocaleString()}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
         <div className="flex items-center gap-4 pt-2 pb-4">
           <CancelButton />
           <Separator orientation="vertical" className="h-5" />
-          <SubmitButton isPending={isPending} label="Create Modification" />
+          <SubmitButton isPending={isPending} label="Create modification" />
         </div>
       </form>
     </Form>

@@ -10,8 +10,8 @@
  * Usage in a server action:
  *   import { assertFeature, assertLimit } from "@/lib/feature-guard";
  *
- *   export async function createConsumptionRule(data: RuleInput) {
- *     await assertFeature("stock_consumption_rules");
+ *   export async function createBomRule(data: RuleInput) {
+ *     await assertFeature("bom_rules");
  *     // ... proceed with creation
  *   }
  *

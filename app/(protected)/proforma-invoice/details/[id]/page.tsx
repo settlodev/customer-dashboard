@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import type { UUID } from "crypto";
 import { Proforma } from "@/types/proforma/type";
 import {
@@ -64,7 +64,7 @@ function ConvertToInvoiceModal({
         setLoading(false);
         return;
       }
-      toast.success("Proforma converted to invoice successfully");
+      toast({ title: "Proforma converted to invoice successfully" });
       setOpen(false);
       onSuccess();
     } catch {
@@ -200,7 +200,7 @@ const ProformaInvoiceDetails = ({ params }: { params: Params }) => {
       const res = await getProforma(id as UUID);
       setData(res as unknown as Proforma);
     } catch {
-      toast.error("Failed to load proforma invoice");
+      toast({ variant: "destructive", title: "Failed to load proforma invoice" });
     } finally {
       setLoading(false);
     }
@@ -214,7 +214,7 @@ const ProformaInvoiceDetails = ({ params }: { params: Params }) => {
     const shareLink = `${window.location.origin}/proforma/shared/${id}`;
     navigator.clipboard.writeText(shareLink);
     setCopied(true);
-    toast.success("Link copied to clipboard");
+    toast({ title: "Link copied to clipboard" });
     setTimeout(() => setCopied(false), 2500);
   };
 

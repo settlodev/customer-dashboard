@@ -94,6 +94,8 @@ export async function createStock(
       responseType: "error",
       message: error?.message ?? "Failed to create stock item",
       error: error instanceof Error ? error : new Error(String(error)),
+      errorCode: error?.code,
+      metadata: error?.metadata,
     });
   }
 }
@@ -148,6 +150,8 @@ export async function updateStock(
             sku: variant.sku || undefined,
             unitId: variant.unitId,
             conversionToBase: variant.conversionToBase,
+            barcode: variant.barcode ?? "",
+            serialTracked: variant.serialTracked,
           },
         );
       }

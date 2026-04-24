@@ -23,6 +23,7 @@ export default function StaffDetailDashboard({
   isArchived,
   posAccess,
   dashboardAccess,
+  owner,
   editUrl,
   loyaltyPoints,
   departmentName,
@@ -35,6 +36,7 @@ export default function StaffDetailDashboard({
   isArchived: boolean;
   posAccess: boolean;
   dashboardAccess: boolean;
+  owner?: boolean;
   editUrl: string;
   loyaltyPoints?: number | null;
   departmentName?: string | null;
@@ -95,6 +97,14 @@ export default function StaffDetailDashboard({
               className="text-orange-600 border-orange-300"
             >
               Archived
+            </Badge>
+          )}
+          {owner && (
+            <Badge
+              variant="outline"
+              className="text-amber-700 border-amber-300 bg-amber-50 dark:text-amber-400 dark:bg-amber-950/30"
+            >
+              Owner
             </Badge>
           )}
         </div>

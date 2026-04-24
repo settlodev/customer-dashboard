@@ -7,6 +7,7 @@ import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { inventoryUrl } from "./inventory-client";
+import { getCurrentDestination } from "./context";
 import type {
   PurchaseRequisition,
   RequisitionStatus,
@@ -61,7 +62,7 @@ export async function createRequisition(
   }
 
   const payload: CreateRequisitionPayload = {
-    locationType: "LOCATION",
+    locationType: (await getCurrentDestination())?.type ?? "LOCATION",
     ...validated.data,
     items: validated.data.items.map((item) => ({
       ...item,

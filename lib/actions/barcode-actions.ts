@@ -65,12 +65,26 @@ export async function getBarcodeImageDataUrl(
       inventoryUrl(
         `/api/v1/barcodes/image/${encodeURIComponent(barcode)}?width=${width}&height=${height}`,
       ),
+      "image/png",
     );
-    const buffer = Buffer.isBuffer(data)
-      ? (data as unknown as Buffer)
-      : Buffer.from(await (data as Blob).arrayBuffer());
+    const buffer = await toBuffer(data);
     return `data:image/png;base64,${buffer.toString("base64")}`;
-  } catch {
+  } catch (error) {
+    console.error("getBarcodeImageDataUrl failed:", error);
     return null;
   }
+}
+
+async function toBuffer(data: unknown): Promise<Buffer> {
+  if (Buffer.isBuffer(data)) return data;
+  if (data instanceof ArrayBuffer) return Buffer.from(data);
+  if (ArrayBuffer.isView(data)) {
+    const view = data as ArrayBufferView;
+    return Buffer.from(view.buffer, view.byteOffset, view.byteLength);
+  }
+  if (data && typeof (data as Blob).arrayBuffer === "function") {
+    return Buffer.from(await (data as Blob).arrayBuffer());
+  }
+  if (typeof data === "string") return Buffer.from(data, "binary");
+  throw new Error(`Unsupported binary payload: ${Object.prototype.toString.call(data)}`);
 }

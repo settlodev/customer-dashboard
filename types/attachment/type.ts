@@ -9,7 +9,8 @@ export type AttachmentEntityType =
   | "SUPPLIER_RETURN"
   | "OPENING_STOCK"
   | "STOCK_TAKE"
-  | "PRODUCT";
+  | "PRODUCT"
+  | "BATCH_RECALL";
 
 export interface Attachment {
   id: string;
@@ -34,6 +35,7 @@ export const ATTACHMENT_ENTITY_LABELS: Record<AttachmentEntityType, string> = {
   OPENING_STOCK: "Opening Stock",
   STOCK_TAKE: "Stock Take",
   PRODUCT: "Product",
+  BATCH_RECALL: "Batch Recall",
 };
 
 /** 10 MB — must stay in sync with AttachmentService.MAX_FILE_SIZE. */

@@ -201,18 +201,26 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
         return responseData?.details || responseData?.error || responseData?.errors || responseData;
     };
 
+    const getErrorMetadata = (axiosError: AxiosError): Record<string, unknown> | undefined => {
+        const responseData = axiosError.response?.data as Record<string, unknown> | undefined;
+        const metadata = responseData?.metadata;
+        return metadata && typeof metadata === "object" ? (metadata as Record<string, unknown>) : undefined;
+    };
+
     const createErrorResponse = (
         status: number,
         code: string,
         message: string,
         details?: unknown,
-        serverError?: ErrorResponseType['serverError']
+        serverError?: ErrorResponseType['serverError'],
+        metadata?: Record<string, unknown>,
     ): ErrorResponseType => {
         const baseResponse: ErrorResponseType = {
             status,
             code,
             message,
             details,
+            metadata,
             timestamp: new Date().toISOString(),
             path: (error as AxiosError)?.config?.url,
             correlationId: crypto.randomUUID(),
@@ -227,6 +235,7 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
 
     if (error instanceof AxiosError) {
         const errorDetails = getErrorDetails(error);
+        const errorMetadata = getErrorMetadata(error);
 
         if (error.code === 'ECONNABORTED' || error.code === 'NETWORK_ERROR') {
             return createErrorResponse(
@@ -240,7 +249,10 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
         if (error.response) {
             const { status } = error.response;
             let serverMessage = (error.response.data as { message?: string })?.message;
-            let serverCode = (error.response.data as { code?: string })?.code;
+            // Inventory Service returns `errorCode`; Accounts/Auth return `code`.
+            // Accept both so UI branches on service-specific codes work uniformly.
+            let serverCode = (error.response.data as { code?: string; errorCode?: string })?.code
+                ?? (error.response.data as { errorCode?: string })?.errorCode;
 
             // Unwrap nested service-to-service error messages
             if (serverMessage) {
@@ -319,9 +331,11 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
                 case 409:
                     return createErrorResponse(
                         status,
-                        ErrorCodes.CONFLICT,
+                        serverCode || ErrorCodes.CONFLICT,
                         serverMessage || 'Resource conflict occurred.',
-                        errorDetails
+                        errorDetails,
+                        undefined,
+                        errorMetadata,
                     );
 
                 case 412:

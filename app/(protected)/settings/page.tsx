@@ -13,17 +13,17 @@ import SessionExpired, { isSessionExpiredError } from "@/components/auth/session
 import { getLocationSettings } from "@/lib/actions/location-settings-actions";
 import { getCurrentBusiness, getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getSingleBusiness } from "@/lib/actions/business-actions";
+import { getBusinessSettings } from "@/lib/actions/business-settings-actions";
 import { getLocationById } from "@/lib/actions/location-actions";
 
 import type { LocationSettings } from "@/types/location-settings/type";
-import type { Business } from "@/types/business/type";
+import type { Business, BusinessSettings } from "@/types/business/type";
 import type { Location } from "@/types/location/type";
 import type { UUID } from "node:crypto";
 
 // Non-rebuilt (kept as-is)
 import BusinessDetailsSettings from "@/components/settings/business-details";
 import BusinessSettingsPanel from "@/components/settings/business-settings-panel";
-import EFDSettings from "@/components/settings/efd";
 import DigitalMenuSettings from "@/components/settings/digital-menu-settings";
 import AcceptedPaymentMethodsPage from "@/components/settings/acceptedPaymentMethods";
 import IntegrationsSettings from "@/components/settings/integrations";
@@ -44,9 +44,7 @@ import { DaySessionsPanel } from "@/components/settings/panels/day-sessions-pane
 import { ClosureDatesPanel } from "@/components/settings/panels/closure-dates-panel";
 import { AccountingMappingsPanel } from "@/components/settings/panels/accounting-mappings-panel";
 import { ExchangeRatesPanel } from "@/components/settings/panels/exchange-rates-panel";
-import { DangerZonePanel } from "@/components/settings/panels/danger-zone-panel";
 import { BrandSocialPanel } from "@/components/settings/panels/brand-social-panel";
-import { CustomerPanel } from "@/components/settings/panels/customer-panel";
 import { StaffHrPanel } from "@/components/settings/panels/staff-hr-panel";
 import { DigitalMenuConfigPanel } from "@/components/settings/panels/digital-menu-config-panel";
 
@@ -61,7 +59,6 @@ type TabId =
   | "dockets"
   | "receipts"
   | "notifications"
-  | "customer"
   | "loyalty-points"
   | "staff-hr"
   | "stock-inventory"
@@ -70,8 +67,6 @@ type TabId =
   | "closure-dates"
   | "accounting"
   | "exchange-rates"
-  | "danger-zone"
-  | "efd"
   | "reservations"
   | "digital-menu"
   | "payments"
@@ -81,9 +76,13 @@ type TabId =
 export default function SettingsPage() {
   const [settings, setSettings] = useState<LocationSettings | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
+  const [businessSettings, setBusinessSettings] =
+    useState<BusinessSettings | null>(null);
   const [location, setLocation] = useState<Location | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isBusinessLoading, setIsBusinessLoading] = useState(true);
+  const [isBusinessSettingsLoading, setIsBusinessSettingsLoading] =
+    useState(true);
   const [isLocationLoading, setIsLocationLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSessionDead, setIsSessionDead] = useState(false);
@@ -107,15 +106,25 @@ export default function SettingsPage() {
     (async () => {
       try {
         setIsBusinessLoading(true);
+        setIsBusinessSettingsLoading(true);
         const current = await getCurrentBusiness();
         if (current?.id) {
-          const full = await getSingleBusiness(current.id as UUID);
+          const businessId = current.id as UUID;
+          const [full, settingsData] = await Promise.all([
+            getSingleBusiness(businessId),
+            getBusinessSettings(businessId).catch((err) => {
+              console.error("Failed to load business settings:", err);
+              return null;
+            }),
+          ]);
           setBusiness(full);
+          setBusinessSettings(settingsData);
         }
       } catch (err) {
         if (isSessionExpiredError(err)) setIsSessionDead(true);
       } finally {
         setIsBusinessLoading(false);
+        setIsBusinessSettingsLoading(false);
       }
     })();
     (async () => {
@@ -172,7 +181,11 @@ export default function SettingsPage() {
         setSettings={setSettings}
         business={business}
         isBusinessLoading={isBusinessLoading}
+        businessSettings={businessSettings}
+        setBusinessSettings={setBusinessSettings}
+        isBusinessSettingsLoading={isBusinessSettingsLoading}
         location={location}
+        setLocation={setLocation}
         isLocationLoading={isLocationLoading}
       />
     </div>
@@ -191,14 +204,22 @@ function SettingsLayout({
   setSettings,
   business,
   isBusinessLoading,
+  businessSettings,
+  setBusinessSettings,
+  isBusinessSettingsLoading,
   location,
+  setLocation,
   isLocationLoading,
 }: {
   settings: LocationSettings | null;
   setSettings: React.Dispatch<React.SetStateAction<LocationSettings | null>>;
   business: Business | null;
   isBusinessLoading: boolean;
+  businessSettings: BusinessSettings | null;
+  setBusinessSettings: React.Dispatch<React.SetStateAction<BusinessSettings | null>>;
+  isBusinessSettingsLoading: boolean;
   location: Location | null;
+  setLocation: React.Dispatch<React.SetStateAction<Location | null>>;
   isLocationLoading: boolean;
 }) {
   const { tab: initialTab, subtab } = useSettingsParams();
@@ -207,16 +228,33 @@ function SettingsLayout({
 
   const breadcrumbItems = [{ title: "Settings", link: "/settings" }];
   const onSettingsSaved = (next: LocationSettings) => setSettings(next);
+  const onBusinessSettingsSaved = (next: BusinessSettings) =>
+    setBusinessSettings(next);
+  const onLocationSaved = (next: Location) => setLocation(next);
 
   const content = () => {
     switch (activeTab) {
       case "business":
         return <BusinessDetailsSettings business={business} isLoading={isBusinessLoading} />;
       case "business-settings":
-        return <BusinessSettingsPanel business={business} />;
+        return (
+          <BusinessSettingsPanel
+            business={business}
+            settings={businessSettings}
+            isLoading={isBusinessSettingsLoading}
+            onSaved={onBusinessSettingsSaved}
+          />
+        );
       case "location":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
-        return <LocationProfilePanel settings={settings} onSaved={onSettingsSaved} />;
+        return (
+          <LocationProfilePanel
+            settings={settings}
+            onSaved={onSettingsSaved}
+            location={location}
+            onLocationSaved={onLocationSaved}
+          />
+        );
       case "brand-social":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
         return <BrandSocialPanel settings={settings} onSaved={onSettingsSaved} />;
@@ -238,9 +276,6 @@ function SettingsLayout({
       case "notifications":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
         return <NotificationsPanel settings={settings} onSaved={onSettingsSaved} />;
-      case "customer":
-        if (!settings) return <EmptyState label="Location settings unavailable" />;
-        return <CustomerPanel settings={settings} onSaved={onSettingsSaved} />;
       case "loyalty-points":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
         return <LoyaltyRewardsPanel settings={settings} onSaved={onSettingsSaved} />;
@@ -262,11 +297,7 @@ function SettingsLayout({
         if (!location?.id) return <EmptyState label="No active location" />;
         return <AccountingMappingsPanel locationId={location.id} />;
       case "exchange-rates":
-        return <ExchangeRatesPanel />;
-      case "danger-zone":
-        return <DangerZonePanel onReset={onSettingsSaved} />;
-      case "efd":
-        return <EFDSettings />;
+        return <ExchangeRatesPanel base={settings?.currency ?? "TZS"} />;
       case "reservations":
         return <ReservationSettings defaultTab={subtab} />;
       case "digital-menu":

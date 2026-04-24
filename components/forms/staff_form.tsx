@@ -20,7 +20,8 @@ import {
   revokeDashboardAccess,
   grantPosAccess,
   revokePosAccess,
-  resetStaffPasscode,
+  setStaffPin,
+  clearStaffPin,
 } from "@/lib/actions/staff-actions";
 import { Staff, StaffSchema } from "@/types/staff";
 import { FormResponse } from "@/types/types";
@@ -64,6 +65,9 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
   const [showDashboardModal, setShowDashboardModal] = useState(false);
   const [dashboardEmail, setDashboardEmail] = useState("");
   const [dashboardPassword, setDashboardPassword] = useState("");
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
   const router = useRouter();
 
   const form = useForm<z.infer<typeof StaffSchema>>({
@@ -356,6 +360,14 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
 
                 {item && (
                   <div className="col-span-2 space-y-4">
+                    {item.owner && (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-900/40 dark:bg-amber-950/20">
+                        <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Account Owner</p>
+                        <p className="text-xs text-amber-600 dark:text-amber-500">
+                          POS and Dashboard access cannot be revoked for the account owner.
+                        </p>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="flex items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
@@ -368,7 +380,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
                           type="button"
                           size="sm"
                           variant={item.dashboardAccess ? "destructive" : "default"}
-                          disabled={accessLoading !== null}
+                          disabled={accessLoading !== null || (item.owner && item.dashboardAccess)}
                           onClick={async () => {
                             setAccessLoading("dashboard");
                             try {
@@ -396,7 +408,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
                           type="button"
                           size="sm"
                           variant={item.posAccess ? "destructive" : "default"}
-                          disabled={accessLoading !== null}
+                          disabled={accessLoading !== null || (item.owner && item.posAccess)}
                           onClick={async () => {
                             setAccessLoading("pos");
                             try {
@@ -412,24 +424,56 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
                       </div>
                     </div>
 
+                    {/*
+                      POS PIN management — only meaningful when POS access is on.
+                      The hash lives in Accounts Service; the paired device pulls
+                      it via staff-sync and verifies PINs locally. "Set PIN" and
+                      "Reset PIN" are the same action from the admin's point of
+                      view; we relabel based on hasPin so the status is obvious.
+                    */}
                     {item.posAccess && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={accessLoading !== null}
-                        onClick={async () => {
-                          setAccessLoading("pin");
-                          try {
-                            await resetStaffPasscode(item.id);
-                            toast({ variant: "success", title: "PIN reset successfully" });
-                          } catch (e: any) {
-                            toast({ variant: "destructive", title: e?.message || "Failed to reset PIN" });
-                          } finally { setAccessLoading(null); }
-                        }}
-                      >
-                        {accessLoading === "pin" ? "Resetting..." : "Reset POS PIN"}
-                      </Button>
+                      <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <span className="text-sm font-medium">POS PIN</span>
+                          <p className="text-xs text-muted-foreground">
+                            {item.hasPin
+                              ? `PIN is set${item.pinUpdatedAt ? ` — last updated ${new Date(item.pinUpdatedAt).toLocaleDateString()}` : ""}`
+                              : "No PIN set — staff cannot log in at the terminal until one is set"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="default"
+                            disabled={accessLoading !== null}
+                            onClick={() => {
+                              setNewPin("");
+                              setConfirmPin("");
+                              setShowPinModal(true);
+                            }}
+                          >
+                            {item.hasPin ? "Reset PIN" : "Set PIN"}
+                          </Button>
+                          {item.hasPin && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={accessLoading !== null}
+                              onClick={async () => {
+                                setAccessLoading("pin-clear");
+                                try {
+                                  const r = await clearStaffPin(item.id);
+                                  toast({ variant: r.responseType === "success" ? "success" : "destructive", title: r.message });
+                                } finally { setAccessLoading(null); }
+                              }}
+                            >
+                              {accessLoading === "pin-clear" ? "..." : "Clear"}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
@@ -469,7 +513,9 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
                 </div>
               )}
 
-              {/* POS PIN (create only) */}
+              {/* POS PIN (create only) — optional; if left blank, an admin
+                  or the staff themselves can set it from the staff detail
+                  view after creation. */}
               {!item && isPosEnabled && (
                 <div className="mt-4 max-w-xs">
                   <FormField
@@ -481,7 +527,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
                         <FormControl>
                           <Input type="password" placeholder="4-6 digit PIN" maxLength={6} {...field} disabled={isSubmitting} value={field.value ?? ""} />
                         </FormControl>
-                        <p className="text-xs text-muted-foreground mt-1">Optional — staff can set PIN on first device login</p>
+                        <p className="text-xs text-muted-foreground mt-1">Optional — can be set later from the staff detail page</p>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -617,6 +663,73 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
                 }}
               >
                 {accessLoading === "dashboard" ? "Granting..." : "Grant Access"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Set / Reset POS PIN modal — visible only when editing an existing staff */}
+      {item && (
+        <Dialog open={showPinModal} onOpenChange={setShowPinModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{item.hasPin ? "Reset POS PIN" : "Set POS PIN"}</DialogTitle>
+              <DialogDescription>
+                Choose a 4-6 digit PIN for {item.firstName} {item.lastName}. They will use it to log
+                into POS devices. Paired devices pick up the new PIN on their next sync.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">New PIN</label>
+                <Input
+                  type="password"
+                  inputMode="numeric"
+                  placeholder="4-6 digits"
+                  maxLength={6}
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Confirm PIN</label>
+                <Input
+                  type="password"
+                  inputMode="numeric"
+                  placeholder="Re-enter the PIN"
+                  maxLength={6}
+                  value={confirmPin}
+                  onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
+                />
+                {confirmPin && newPin !== confirmPin && (
+                  <p className="text-xs text-destructive">PINs don&apos;t match</p>
+                )}
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setShowPinModal(false)}>Cancel</Button>
+              <Button
+                disabled={
+                  newPin.length < 4 ||
+                  newPin.length > 6 ||
+                  newPin !== confirmPin ||
+                  accessLoading === "pin"
+                }
+                onClick={async () => {
+                  setAccessLoading("pin");
+                  try {
+                    const r = await setStaffPin(item.id, newPin);
+                    toast({ variant: r.responseType === "success" ? "success" : "destructive", title: r.message });
+                    if (r.responseType === "success") {
+                      setShowPinModal(false);
+                      setNewPin("");
+                      setConfirmPin("");
+                    }
+                  } finally { setAccessLoading(null); }
+                }}
+              >
+                {accessLoading === "pin" ? "Saving..." : item.hasPin ? "Reset PIN" : "Set PIN"}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -79,16 +79,20 @@ function ReceiveButton({
   const onConfirm = () => {
     startTransition(() => {
       receiveGrn(grnId).then((res) => {
-        if (res.responseType === "error") {
+        if (!res || res.responseType === "error") {
           toast({
             variant: "destructive",
             title: "Couldn't receive GRN",
-            description: res.message,
+            description: res?.message ?? "Something went wrong.",
           });
           return;
         }
-        toast({ title: "GRN received", description: res.message });
         setOpen(false);
+        toast({
+          variant: "success",
+          title: "GRN received",
+          description: res.message,
+        });
         router.refresh();
       });
     });
@@ -133,16 +137,20 @@ function InspectionHoldButton({ grnId }: { grnId: string }) {
   const onConfirm = () => {
     startTransition(() => {
       submitGrnForInspection(grnId).then((res) => {
-        if (res.responseType === "error") {
+        if (!res || res.responseType === "error") {
           toast({
             variant: "destructive",
             title: "Couldn't place on inspection hold",
-            description: res.message,
+            description: res?.message ?? "Something went wrong.",
           });
           return;
         }
-        toast({ title: "Placed on inspection hold", description: res.message });
         setOpen(false);
+        toast({
+          variant: "success",
+          title: "Placed on inspection hold",
+          description: res.message,
+        });
         router.refresh();
       });
     });
@@ -193,16 +201,20 @@ function CancelButton({
   const onConfirm = () => {
     startTransition(() => {
       cancelGrn(grnId).then((res) => {
-        if (res.responseType === "error") {
+        if (!res || res.responseType === "error") {
           toast({
             variant: "destructive",
             title: "Couldn't cancel GRN",
-            description: res.message,
+            description: res?.message ?? "Something went wrong.",
           });
           return;
         }
-        toast({ title: "GRN cancelled", description: res.message });
         setOpen(false);
+        toast({
+          variant: "destructive",
+          title: "GRN cancelled",
+          description: res.message,
+        });
         router.refresh();
       });
     });

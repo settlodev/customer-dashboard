@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { Brand } from "@/types/brand/type";
 import { BrandSchema } from "@/types/brand/schema";
 import { inventoryUrl } from "./inventory-client";
+import { getCurrentDestination } from "./context";
 
 export async function fetchAllBrands(): Promise<Brand[]> {
   try {
@@ -59,7 +60,7 @@ export async function createBrand(
   try {
     const apiClient = new ApiClient();
     await apiClient.post(inventoryUrl("/api/v1/brands"), {
-      locationType: "LOCATION",
+      locationType: (await getCurrentDestination())?.type ?? "LOCATION",
       name: validated.data.name,
       description: validated.data.description,
       imageUrl: validated.data.imageUrl,

@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import type { StockModification } from "@/types/stock-modification/type";
 import { StockModificationSchema } from "@/types/stock-modification/schema";
 import { inventoryUrl } from "./inventory-client";
+import { getCurrentDestination } from "./context";
 
 export async function searchStockModifications(
   page: number = 0,
@@ -72,7 +73,7 @@ export async function createStockModification(
     const created = (await apiClient.post(
       inventoryUrl("/api/v1/stock-modifications"),
       {
-        locationType: "LOCATION",
+        locationType: (await getCurrentDestination())?.type ?? "LOCATION",
         performedBy: token.userId,
         modificationDate: validated.data.modificationDate || new Date().toISOString(),
         category: validated.data.category,

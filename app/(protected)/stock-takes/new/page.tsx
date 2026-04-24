@@ -13,20 +13,16 @@ export default async function NewStockTakePage() {
   if (!config?.cycleCountingEnabled) notFound();
 
   return (
-    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 mt-12">
-      <div className="space-y-6">
-        <div>
-          <div className="hidden sm:block mb-2">
-            <BreadcrumbsNav items={breadcrumbItems} />
-          </div>
-          <h1 className="text-2xl font-bold">New Stock Take</h1>
-          <p className="text-sm text-muted-foreground">
-            Draft → Start (snapshots on-hand) → record counts → Complete →
-            Approve (auto-generates variance adjustments).
-          </p>
-        </div>
-        <StockTakeForm />
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
+      <BreadcrumbsNav items={breadcrumbItems} />
+      <div>
+        <h1 className="text-2xl font-bold">New Stock Take</h1>
+        <p className="text-sm text-muted-foreground">
+          Draft → Start (snapshots on-hand) → record counts → Complete →
+          Approve (auto-generates variance adjustments).
+        </p>
       </div>
+      <StockTakeForm />
     </div>
   );
 }

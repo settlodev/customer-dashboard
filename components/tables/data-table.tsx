@@ -79,14 +79,6 @@ const pageSpecificComponents = {
     allowArchive: true,
     isWarehouse: false,
   },
-  "/stock-intakes": {
-    entityType: "stock-intake" as const,
-    importComponent: "",
-    exportComponent: <StockIntakeExport filename="Stock Intake" />,
-    entityNames: { singular: "Stock Intake", plural: "Stock Intakes" },
-    allowArchive: true,
-    isWarehouse: false,
-  },
   "/staff": {
     entityType: "staff" as const,
     importComponent: null,
@@ -94,11 +86,11 @@ const pageSpecificComponents = {
     entityNames: { singular: "Staff Member", plural: "Staff Members" },
     isWarehouse: false,
   },
-  "/consumption-rules": {
-    entityType: "consumption-rule" as const,
+  "/bom-rules": {
+    entityType: "bom-rule" as const,
     importComponent: null,
     exportComponent: null,
-    entityNames: { singular: "Consumption Rule", plural: "Consumption Rules" },
+    entityNames: { singular: "Consumption rule", plural: "Consumption rules" },
     allowArchive: false,
     isWarehouse: false,
   },

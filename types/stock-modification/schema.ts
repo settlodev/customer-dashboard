@@ -7,7 +7,9 @@ const toNumber = (val: unknown) => {
 };
 
 export const StockModificationItemSchema = object({
-  stockVariantId: string({ required_error: "Stock item is required" }).uuid(),
+  stockVariantId: string({ required_error: "Select stock item" }).uuid({
+    message: "Select stock item",
+  }),
   quantityChange: preprocess(
     toNumber,
     number({ required_error: "Quantity is required" }).refine(

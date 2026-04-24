@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import ApiClient from "@/lib/settlo-api-client";
@@ -7,6 +8,18 @@ import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { Store } from "@/types/store/type";
 import { StoreSchema } from "@/types/store/schema";
+
+/** Reads the active store from the `currentStore` cookie, if any. */
+export const getCurrentStore = async (): Promise<Store | undefined> => {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get("currentStore")?.value;
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw) as Store;
+  } catch {
+    return undefined;
+  }
+};
 
 export const fetchAllStores = async (
   businessId?: string,

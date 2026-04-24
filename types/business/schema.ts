@@ -23,14 +23,12 @@ export const BusinessSchema = object({
   website: string().max(500).nullable().optional(),
   active: boolean().optional(),
   countryId: string({ required_error: "Country is required" }).uuid(),
-  businessTypeId: string({ required_error: "Business type is required" }).uuid(),
   region: string().max(100).nullable().optional(),
   district: string().max(100).nullable().optional(),
   ward: string().max(100).nullable().optional(),
   address: string().max(500).nullable().optional(),
   postalCode: string().max(20).nullable().optional(),
   logoUrl: string().max(500).nullable().optional(),
-  baseCurrency: currencyCode.optional(),
 });
 
 export type BusinessUpdate = z.infer<typeof BusinessSchema>;
@@ -52,7 +50,7 @@ export const BusinessSettingsSchema = object({
   vatRegistrationNumber: string().max(100).optional(),
   uniqueIdentificationNumber: string().max(100).optional(),
   enableVirtualEfd: boolean().optional(),
-  efdStatus: z.enum(["REQUESTED", "APPROVED", "REJECTED"]).optional(),
+  efdStatus: z.enum(["REQUESTED", "AWAITING_CONFIRMATION", "ACTIVE"]).optional(),
 
   // Social media (parent company)
   facebookUrl: optionalUrl,

@@ -6,7 +6,7 @@ export const publicRoutes = [
   "/contact-us",
   "/careers",
   "/menu/[id]",
-  "/stock-purchases/share/[id]",
+  "/purchase-orders/share/[id]",
   "/proforma/shared/[id]",
   "/delivery-note/shared/[id]",
   "/email-verification",

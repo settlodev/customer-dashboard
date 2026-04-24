@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { startTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Home, RotateCcw, Mail } from "lucide-react";
 import SessionExpired, { isSessionExpiredError } from "@/components/auth/session-expired";
@@ -12,9 +14,18 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+
   if (isSessionExpiredError(error)) {
     return <SessionExpired />;
   }
+
+  const handleReset = () => {
+    startTransition(() => {
+      router.refresh();
+      reset();
+    });
+  };
 
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4">
@@ -49,7 +60,7 @@ export default function Error({
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Button onClick={reset} variant="default" className="w-full sm:w-auto">
+          <Button onClick={handleReset} variant="default" className="w-full sm:w-auto">
             <RotateCcw className="mr-2 h-4 w-4" />
             Try again
           </Button>

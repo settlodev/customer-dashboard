@@ -391,7 +391,6 @@ function OverviewTab({
                 <TableHead className="text-right">Available</TableHead>
                 <TableHead className="text-right">Reserved</TableHead>
                 <TableHead className="text-right">In Transit</TableHead>
-                <TableHead className="text-right">Avg Cost</TableHead>
                 <TableHead className="text-right">Value</TableHead>
                 <TableHead>Reorder</TableHead>
                 <TableHead>Status</TableHead>
@@ -499,9 +498,6 @@ function OverviewTab({
                       ) : (
                         "\u2014"
                       )}
-                    </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
-                      {cost > 0 ? <Money amount={cost} currency={currency} /> : "\u2014"}
                     </TableCell>
                     <TableCell className="text-right text-sm">
                       {value > 0 ? <Money amount={value} currency={currency} /> : "\u2014"}

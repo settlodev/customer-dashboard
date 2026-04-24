@@ -46,12 +46,19 @@ export const columns: ColumnDef<Staff>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      const { firstName, lastName, jobTitle } = row.original;
+      const { firstName, lastName, jobTitle, owner } = row.original;
       return (
         <div className="min-w-0">
-          <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">
-            {firstName} {lastName}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+              {firstName} {lastName}
+            </span>
+            {owner && (
+              <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                Owner
+              </span>
+            )}
+          </div>
           {jobTitle && (
             <span className="text-xs text-muted-foreground block truncate">{jobTitle}</span>
           )}

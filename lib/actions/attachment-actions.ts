@@ -20,7 +20,7 @@ function pathFor(entityType: AttachmentEntityType): string {
     case "GRN":
       return "/goods-received";
     case "LPO":
-      return "/stock-purchases";
+      return "/purchase-orders";
     case "STOCK_MODIFICATION":
       return "/stock-modifications";
     case "STOCK_TRANSFER":
@@ -33,6 +33,8 @@ function pathFor(entityType: AttachmentEntityType): string {
       return "/stock-takes";
     case "PRODUCT":
       return "/products";
+    case "BATCH_RECALL":
+      return "/stock-batches";
   }
 }
 
@@ -115,10 +117,23 @@ export async function deleteAttachment(
   }
 }
 
-/** Compose the download URL. Prefers the server-supplied CDN URL when present. */
+/**
+ * Compose the URL used by <img>, <iframe>, and window.open for inline
+ * preview. Prefers the server-supplied CDN URL (R2) when present,
+ * otherwise routes through our same-origin Next.js proxy so the browser
+ * doesn't need to send auth headers it doesn't have.
+ */
 export async function getAttachmentDownloadHref(
   attachment: Attachment,
 ): Promise<string> {
   if (attachment.url) return attachment.url;
-  return inventoryUrl(`${BASE}/download/${attachment.id}`);
+  return `/api/attachments/${attachment.id}`;
+}
+
+/** Same as getAttachmentDownloadHref but forces a file-save disposition. */
+export async function getAttachmentSaveHref(
+  attachment: Attachment,
+): Promise<string> {
+  if (attachment.url) return attachment.url;
+  return `/api/attachments/${attachment.id}?disposition=attachment`;
 }

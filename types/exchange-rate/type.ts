@@ -37,3 +37,33 @@ export const SetManualRateSchema = object({
 });
 
 export type SetManualRatePayload = z.infer<typeof SetManualRateSchema>;
+
+// ── System / resolved rate types ─────────────────────────────────────
+
+export interface SupportedCurrency {
+  code: string;
+  displayName: string | null;
+  symbol: string | null;
+  decimalPlaces: number;
+}
+
+export type ExchangeRateSource = "SYSTEM" | "MANUAL";
+
+/**
+ * Mirrors ExchangeRateDto on the accounts service — the resolved rate from
+ * the 4-level lookup (location manual → business manual → latest system →
+ * inverse system). `stale` is true once past `expiresAt`.
+ */
+export interface SystemExchangeRate {
+  sourceCurrency: string;
+  targetCurrency: string;
+  rate: number;
+  inverseRate: number;
+  source: ExchangeRateSource;
+  fetchedAt: string | null;
+  expiresAt: string | null;
+  effectiveDate: string | null;
+  locationId?: string | null;
+  businessId?: string | null;
+  stale: boolean;
+}

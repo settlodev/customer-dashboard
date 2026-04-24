@@ -117,16 +117,20 @@ function Action({
   const onConfirm = () => {
     startTransition(() => {
       fn(id).then((res) => {
-        if (res.responseType === "error") {
+        if (!res || res.responseType === "error") {
           toast({
             variant: "destructive",
             title: `Couldn't ${verb}`,
-            description: res.message,
+            description: res?.message ?? "Something went wrong.",
           });
           return;
         }
-        toast({ title: label, description: res.message });
         setOpen(false);
+        toast({
+          variant: "success",
+          title: `${label} successful`,
+          description: res.message,
+        });
         router.refresh();
       });
     });

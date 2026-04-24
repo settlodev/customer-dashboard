@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Bell, Boxes, Building2, CalendarClock, CalendarOff, Calculator, CreditCard, Link2, MapPin, Monitor, Palette, Printer, Receipt, RotateCcw, ShoppingBag, Smartphone, Star, Sun, UtensilsCrossed, Truck, Wallet, UserCheck, Users, Search } from "lucide-react";
+import { ArrowLeftRight, Bell, Boxes, Building2, CalendarClock, CalendarOff, Calculator, CreditCard, Link2, MapPin, Monitor, Palette, Printer, ShoppingBag, Smartphone, Star, Sun, UtensilsCrossed, Truck, Wallet, UserCheck, Search } from "lucide-react";
 
 export const taxClasses=
     [
@@ -81,7 +81,7 @@ export const settingsNavItems = [
     { id: 'business-settings', label: 'Business Settings', icon: Palette, description: 'Branding & business-wide defaults' },
 
     // Location-level — rebuilt against new Accounts Service location settings API
-    { id: 'location', label: 'Location profile', icon: MapPin, description: 'Location details, currency, operating hours' },
+    { id: 'location', label: 'Location', icon: MapPin, description: 'Location details, currency, operating hours' },
     { id: 'brand-social', label: 'Brand & social', icon: Palette, description: 'Colours, logos, social links, SEO' },
     { id: 'orders-pos', label: 'Orders & POS', icon: ShoppingBag, description: 'How orders behave on the POS' },
     { id: 'order-channels', label: 'Order channels', icon: Truck, description: 'Online, delivery, pickup, dine-in' },
@@ -89,19 +89,16 @@ export const settingsNavItems = [
     { id: 'dockets', label: 'Dockets', icon: Monitor, description: 'Kitchen / bar docket formatting' },
     { id: 'receipts', label: 'Receipts & invoicing', icon: Printer, description: 'Receipts, invoices, tax' },
     { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Email, SMS & push alerts' },
-    { id: 'customer', label: 'Customer accounts', icon: Users, description: 'Customer accounts & reviews' },
-    { id: 'loyalty-points', label: 'Loyalty & rewards', icon: Star, description: 'Customer and staff points' },
+    { id: 'loyalty-points', label: 'Customers & loyalty', icon: Star, description: 'Accounts, reviews, and points' },
     { id: 'staff-hr', label: 'Staff & HR', icon: UserCheck, description: 'Shifts, time, performance' },
     { id: 'stock-inventory', label: 'Stock & inventory', icon: Boxes, description: 'Deduction timing & inventory flags' },
-    { id: 'day-sessions', label: 'Day sessions', icon: Sun, description: 'Open, close, settlement, 24-hour' },
+    { id: 'day-sessions', label: 'Day sessions & hours', icon: Sun, description: 'Operating hours, 24-hour, settlement' },
     { id: 'digital-menu-config', label: 'Digital menu config', icon: Search, description: 'Domain, ordering, pricing display' },
     { id: 'closure-dates', label: 'Closure dates', icon: CalendarOff, description: 'Scheduled closures & holidays' },
     { id: 'accounting', label: 'Accounting mappings', icon: Calculator, description: 'Payment methods → GL & product revenue routing' },
     { id: 'exchange-rates', label: 'Exchange rates', icon: ArrowLeftRight, description: 'Manual rate overrides for multi-currency' },
-    { id: 'danger-zone', label: 'Danger zone', icon: RotateCcw, description: 'Reset all location settings' },
 
     // Not in scope of this rebuild but still accessible
-    { id: 'efd', label: 'EFD', icon: Receipt, description: 'Tax & fiscal compliance' },
     { id: 'reservations', label: 'Reservations', icon: CalendarClock, description: 'Booking rules & questions' },
     { id: 'digital-menu', label: 'Digital menu', icon: UtensilsCrossed, description: 'Online ordering menus' },
     { id: 'payments', label: 'Payment methods', icon: CreditCard, description: 'Accepted payment methods' },

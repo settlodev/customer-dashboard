@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { ProductCollection } from "@/types/product-collection/type";
 import { ProductCollectionSchema } from "@/types/product-collection/schema";
 import { inventoryUrl } from "./inventory-client";
+import { getCurrentDestination } from "./context";
 
 export async function searchProductCollections(
   q: string,
@@ -54,7 +55,7 @@ export async function createProductCollection(
   try {
     const apiClient = new ApiClient();
     await apiClient.post(inventoryUrl("/api/v1/product-collections"), {
-      locationType: "LOCATION",
+      locationType: (await getCurrentDestination())?.type ?? "LOCATION",
       name: validated.data.name,
       description: validated.data.description,
       imageUrl: validated.data.imageUrl,

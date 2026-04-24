@@ -7,6 +7,7 @@ import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { inventoryUrl } from "./inventory-client";
+import { getCurrentDestination } from "./context";
 import type {
   Lpo,
   LpoStatus,
@@ -78,7 +79,7 @@ export async function createLpo(
 
   const payload: CreateLpoPayload = {
     ...validated.data,
-    locationType: "LOCATION",
+    locationType: (await getCurrentDestination())?.type ?? "LOCATION",
     items: validated.data.items.map((item) => ({
       ...item,
       currency: item.currency || undefined,
@@ -90,7 +91,7 @@ export async function createLpo(
     const apiClient = new ApiClient();
     const created = (await apiClient.post(inventoryUrl(BASE), payload)) as Lpo;
     createdId = created?.id ?? null;
-    revalidatePath("/stock-purchases");
+    revalidatePath("/purchase-orders");
   } catch (error: any) {
     if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     return parseStringify({
@@ -100,7 +101,7 @@ export async function createLpo(
     });
   }
 
-  redirect(createdId ? `/stock-purchases/${createdId}` : "/stock-purchases");
+  redirect(createdId ? `/purchase-orders/${createdId}` : "/purchase-orders");
 }
 
 export async function updateLpoStatus(
@@ -121,8 +122,8 @@ export async function updateLpoStatus(
   try {
     const apiClient = new ApiClient();
     await apiClient.put(inventoryUrl(`${BASE}/${id}/status`), payload);
-    revalidatePath("/stock-purchases");
-    revalidatePath(`/stock-purchases/${id}`);
+    revalidatePath("/purchase-orders");
+    revalidatePath(`/purchase-orders/${id}`);
     return { responseType: "success", message: `LPO marked ${payload.status}` };
   } catch (error: any) {
     return {
@@ -137,7 +138,7 @@ export async function deleteLpo(id: string): Promise<FormResponse> {
   try {
     const apiClient = new ApiClient();
     await apiClient.delete(inventoryUrl(`${BASE}/${id}`));
-    revalidatePath("/stock-purchases");
+    revalidatePath("/purchase-orders");
     return { responseType: "success", message: "LPO deleted" };
   } catch (error: any) {
     return {

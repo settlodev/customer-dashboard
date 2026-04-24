@@ -29,13 +29,22 @@ export const openDaySession = async (
 ): Promise<FormResponse<DaySession>> => {
   try {
     const apiClient = new ApiClient();
-    const data = await apiClient.post(`/api/v1/locations/${locationId}/day-sessions/open`, { notes });
+    const body: Record<string, unknown> = {};
+    if (notes) body.notes = notes;
+    const data = await apiClient.post(`/api/v1/locations/${locationId}/day-sessions/open`, body);
     return { responseType: "success", message: "Day session opened", data: parseStringify(data) };
   } catch (error) {
+    const err = error as { code?: string; message?: string };
+    // Already-open is functionally a success for callers that just need a
+    // session — they can retry their original action immediately.
+    if (err?.code === "DAY_SESSION_ALREADY_OPEN") {
+      return { responseType: "success", message: "A business day is already open." };
+    }
     return {
       responseType: "error",
-      message: "Failed to open day session",
+      message: err?.message ?? "Failed to open day session",
       error: error instanceof Error ? error : new Error(String(error)),
+      errorCode: err?.code,
     };
   }
 };

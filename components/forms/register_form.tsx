@@ -79,6 +79,7 @@ import {
 } from "@/components/ui/input-otp";
 import SocialAuthButtons from "@/components/widgets/social-auth-buttons";
 import Link from "next/link";
+import { safeRandomUUID } from "@/lib/utils";
 
 // Fallback country ISO code when no DEFAULT_COUNTRY env UUID is configured.
 // CountrySelector resolves this ISO to the matching country's UUID once the
@@ -146,7 +147,7 @@ interface LocationFormEntry {
 
 function createEmptyLocation(): LocationFormEntry {
   return {
-    id: crypto.randomUUID(),
+    id: safeRandomUUID(),
     name: "",
     city: "",
     address: "",

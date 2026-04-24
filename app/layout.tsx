@@ -9,6 +9,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { Viewport } from "next";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import WhatsAppButton from "@/components/whatsapp-button";
+import { DaySessionWidget } from "@/components/widgets/day-session-widget";
 import { cookies } from "next/headers";
 
 export const metadata: Metadata = {
@@ -322,6 +323,7 @@ export default async function RootLayout({
 
   let businessName: string | undefined;
   let locationName: string | undefined;
+  let locationId: string | undefined;
 
   try {
     const bizCookie = cookieStore.get("currentBusiness");
@@ -330,7 +332,11 @@ export default async function RootLayout({
 
   try {
     const locCookie = cookieStore.get("currentLocation");
-    if (locCookie) locationName = JSON.parse(locCookie.value)?.name;
+    if (locCookie) {
+      const parsed = JSON.parse(locCookie.value);
+      locationName = parsed?.name;
+      locationId = parsed?.id;
+    }
   } catch {}
 
   return (
@@ -353,6 +359,9 @@ export default async function RootLayout({
           locationName={locationName}
           hideOnReserve
         />
+        {session?.user && locationId && (
+          <DaySessionWidget locationId={locationId} />
+        )}
         <Analytics />
         <GoogleAnalytics gaId="G-7FEFKJQ300" />
       </body>

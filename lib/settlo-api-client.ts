@@ -13,6 +13,7 @@ import { getAuthToken, updateAuthToken } from "@/lib/auth-utils";
 import { extractSubscriptionStatus } from "@/lib/jwt-utils";
 import { ErrorResponseType } from "@/types/types";
 import { cookies } from "next/headers";
+import { getCurrentDestination } from "@/lib/actions/context";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -25,6 +26,7 @@ function requireEnv(name: string): string {
 const AUTH_SERVICE_URL = requireEnv("AUTH_SERVICE_URL");
 const ACCOUNTS_SERVICE_URL = requireEnv("ACCOUNTS_SERVICE_URL");
 const REPORTS_SERVICE_URL = requireEnv("REPORTS_SERVICE_URL");
+const PAYMENT_SERVICE_URL = requireEnv("PAYMENT_SERVICE_URL");
 const IS_DEV = process.env.NODE_ENV !== "production";
 
 const sharedHttpsAgent = new https.Agent({
@@ -215,16 +217,15 @@ async function getBusinessId(): Promise<string | null> {
   }
 }
 
-async function getLocationId(): Promise<string | null> {
-  try {
-    const cookieStore = await cookies();
-    const raw = cookieStore.get("currentLocation")?.value;
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.id || null;
-  } catch {
-    return null;
-  }
+/**
+ * The ID to send as `X-Location-Id` depends on the user's active workspace.
+ * Priority: currentWarehouse → currentStore → currentLocation. This is the
+ * same resolver that mutation actions use to set `locationType` in bodies,
+ * so the header and body always agree.
+ */
+async function getScopedLocationId(): Promise<string | null> {
+  const dest = await getCurrentDestination();
+  return dest?.id ?? null;
 }
 
 // ── ApiClient ───────────────────────────────────────────────────────
@@ -233,7 +234,9 @@ class ApiClient {
   private readonly baseURL: string;
   public isPlain: boolean;
 
-  constructor(service: "accounts" | "auth" | "reports" | boolean = "accounts") {
+  constructor(
+    service: "accounts" | "auth" | "reports" | "payments" | boolean = "accounts",
+  ) {
     if (typeof service === "boolean") {
       this.baseURL = service ? AUTH_SERVICE_URL : ACCOUNTS_SERVICE_URL;
     } else {
@@ -242,7 +245,9 @@ class ApiClient {
           ? AUTH_SERVICE_URL
           : service === "reports"
             ? REPORTS_SERVICE_URL
-            : ACCOUNTS_SERVICE_URL;
+            : service === "payments"
+              ? PAYMENT_SERVICE_URL
+              : ACCOUNTS_SERVICE_URL;
     }
     this.isPlain = false;
 
@@ -305,24 +310,41 @@ class ApiClient {
           config.headers["Authorization"] = `Bearer ${token.accessToken}`;
         }
 
-        // Business & location context headers
+        // Identity headers — always sent when authenticated so the backend
+        // can populate audit fields (createdBy/approvedBy/etc.) and apply
+        // account-level rate limits.
         if (token?.accountId) {
           config.headers["X-Account-Id"] = token.accountId;
+        }
+        if (token?.userId) {
+          config.headers["X-User-Id"] = token.userId;
         }
       }
 
       // Business / location headers from cookies (regardless of plain mode,
-      // these provide request scoping for downstream services)
+      // these provide request scoping for downstream services). The
+      // location ID resolves to the active warehouse/store/location the
+      // user currently has selected — see getCurrentDestination.
       const [businessId, locationId] = await Promise.all([
         getBusinessId(),
-        getLocationId(),
+        getScopedLocationId(),
       ]);
       if (businessId) config.headers["X-Business-Id"] = businessId;
       if (locationId) config.headers["X-Location-Id"] = locationId;
 
-      // Content-Type
-      if (!config.responseType || config.responseType !== "blob") {
+      // Content-Type — JSON by default, but skip when the body is FormData
+      // so axios can set multipart/form-data with the correct boundary.
+      const isFormData =
+        typeof FormData !== "undefined" && config.data instanceof FormData;
+      if (
+        (!config.responseType || config.responseType !== "blob") &&
+        !isFormData
+      ) {
         config.headers["Content-Type"] = "application/json";
+      }
+      if (isFormData) {
+        // Delete any inherited content-type so axios auto-detects the boundary.
+        delete config.headers["Content-Type"];
       }
 
       // Whitelabel
@@ -443,14 +465,18 @@ class ApiClient {
     }
   }
 
-  public async downloadFile(url: string): Promise<{
-    data: Blob;
+  public async downloadFile(
+    url: string,
+    accept = "application/octet-stream, text/csv",
+  ): Promise<{
+    data: Buffer;
     filename: string;
+    contentType: string;
   }> {
     try {
-      const response = await this.instance.get(url, {
-        responseType: "blob",
-        headers: { Accept: "application/octet-stream, text/csv" },
+      const response = await this.instance.get<Buffer>(url, {
+        responseType: "arraybuffer",
+        headers: { Accept: accept },
       });
 
       let filename = "download.csv";
@@ -462,7 +488,11 @@ class ApiClient {
         if (match?.[1]) filename = match[1].replace(/['"]/g, "");
       }
 
-      return { data: response.data, filename };
+      const contentType =
+        (response.headers["content-type"] as string | undefined) ??
+        "application/octet-stream";
+
+      return { data: response.data, filename, contentType };
     } catch (error) {
       throw await handleSettloApiError(error);
     }

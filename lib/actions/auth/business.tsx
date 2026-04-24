@@ -343,7 +343,7 @@ export const createBusinessWithLocations = async (data: {
         sameSite: isProduction ? "strict" : "lax",
       });
 
-      // Set active location cookie (without calling switchLocation which redirects)
+      // Seed the currentLocation cookie directly so the first dashboard render has context.
       if (locations.length > 0) {
         cookieStore.set({
           name: "currentLocation",

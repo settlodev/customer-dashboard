@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Loader2Icon, MapPin, Building2, CheckCircle2 } from "lucide-react";
-import { refreshLocation } from "@/lib/actions/business/refresh";
+import { switchToLocation } from "@/lib/actions/destination";
 import { toast } from "@/hooks/use-toast";
 import { Location } from "@/types/location/type";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,7 @@ export function SelectLocation({ locations }: { locations: Location[] }) {
                 document.location.href = `/subscription?location=${location.id}`;
             }, 3000);
         } else {
-            await refreshLocation(location);
+            await switchToLocation(location);
             document.location.href = "/dashboard";
         }
         setPendingIndex(null);

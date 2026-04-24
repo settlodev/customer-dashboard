@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
+import { PanelHeader } from "../shared/panel-header";
 import type { LocationSettings } from "@/types/location-settings/type";
 
 const KEYS = [
@@ -47,6 +48,11 @@ export function ReceiptsInvoicingPanel({
 
   return (
     <div className="space-y-6">
+      <PanelHeader
+        title="Receipts & invoicing"
+        description="Receipt layout, delivery, payment-details block, invoice numbering, and default tax."
+      />
+
       <SettingsSection
         title="Receipt header & footer"
         description="Header logo and the closing message. Business name and primary header now come from your business profile."
@@ -54,7 +60,7 @@ export function ReceiptsInvoicingPanel({
         isPending={p.isPending}
         isDirty={p.isDirty}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Field label="Header logo URL">
             <Input
               maxLength={500}
@@ -121,7 +127,7 @@ export function ReceiptsInvoicingPanel({
           onChange={(x) => p.setField("includePaymentDetailsOnReceipt", x)}
           disabled={p.isPending}
         />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Field label="Physical receipt payment details" hint="Bank / MNO details printed on physical receipts.">
             <Textarea
               rows={3}
@@ -160,7 +166,7 @@ export function ReceiptsInvoicingPanel({
         isPending={p.isPending}
         isDirty={p.isDirty}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Field label="Invoice number prefix">
             <Input maxLength={50} value={v.invoiceNumberPrefix ?? ""} onChange={(e) => p.setField("invoiceNumberPrefix", e.target.value)} disabled={p.isPending} />
           </Field>
@@ -192,7 +198,7 @@ export function ReceiptsInvoicingPanel({
         isPending={p.isPending}
         isDirty={p.isDirty}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Field label="Default tax rate (%)">
             <Input
               type="number"

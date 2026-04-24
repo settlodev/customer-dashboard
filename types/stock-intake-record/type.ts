@@ -18,6 +18,10 @@ export interface StockIntakeRecord {
   orderedDate: string | null;
   receivedDate: string | null;
   supplierId: string | null;
+  /** Supplier name snapshotted at create time (stays faithful if supplier is later renamed). */
+  supplierName: string | null;
+  /** Supplier's own reference (delivery note, invoice number, etc). */
+  supplierReference: string | null;
   /** Location's base currency (settlement currency for this intake). */
   currency: string | null;
   items: StockIntakeRecordItem[];
@@ -45,6 +49,8 @@ export interface StockIntakeRecordItem {
   originalUnitCost: number | null;
   /** Exchange rate captured at confirm time (originalCurrency → currency). */
   rateUsed: number | null;
+  /** Per-unit serial numbers for serial-tracked variants. */
+  serialNumbers: string[] | null;
 }
 
 export const STOCK_INTAKE_RECORD_STATUS_LABELS: Record<StockIntakeRecordStatus, string> = {

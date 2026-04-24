@@ -40,9 +40,7 @@ import {
 import { Business } from "@/types/business/type";
 import { BusinessSchema } from "@/types/business/schema";
 import { updateBusiness } from "@/lib/actions/business-actions";
-import BusinessTypeSelector from "../widgets/business-type-selector";
 import CountrySelector from "../widgets/country-selector";
-import CurrencySelector from "../widgets/currency-selector";
 
 type BusinessFormValues = z.infer<typeof BusinessSchema>;
 
@@ -69,7 +67,6 @@ const BusinessForm = ({
       email: item?.email ?? "",
       website: item?.website ?? "",
       active: item ? item.active : true,
-      businessTypeId: item?.businessTypeId ?? "",
       countryId: item?.countryId ?? "",
       region: item?.region ?? "",
       district: item?.district ?? "",
@@ -77,7 +74,6 @@ const BusinessForm = ({
       address: item?.address ?? "",
       postalCode: item?.postalCode ?? "",
       logoUrl: item?.logoUrl ?? "",
-      baseCurrency: item?.baseCurrency ? item.baseCurrency.toUpperCase() : undefined,
     },
   });
 
@@ -141,28 +137,6 @@ const BusinessForm = ({
                             placeholder="Enter business name"
                           />
                         </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="businessTypeId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Business type</FormLabel>
-                      <FormControl>
-                        <BusinessTypeSelector
-                          value={field.value}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          isRequired
-                          isDisabled={isPending}
-                          label="Business Type"
-                          placeholder="Select business type"
-                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -238,25 +212,6 @@ const BusinessForm = ({
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="baseCurrency"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Base currency</FormLabel>
-                      <FormControl>
-                        <CurrencySelector
-                          value={field.value ?? undefined}
-                          onChange={(v) => field.onChange(v)}
-                          isDisabled={isPending}
-                          placeholder="Select base currency"
-                        />
-                      </FormControl>
-                      <FormDescription>3-letter ISO code (e.g. TZS, USD).</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
 
               <FormField

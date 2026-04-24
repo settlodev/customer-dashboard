@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, FileText, Loader2, AlertTriangle } from "lucide-react";
 import { sharedProforma } from "@/lib/actions/proforma-actions";
 import { updateProformaStatusAsConfirmed } from "@/lib/actions/proforma-actions";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import type { UUID } from "crypto";
 import { Proforma } from "@/types/proforma/type";
 import {
@@ -104,7 +104,7 @@ export default function ShareProforma({ proformaId }: { proformaId: string }) {
         const res = await sharedProforma(proformaId as UUID);
         setData(res as unknown as Proforma);
       } catch {
-        toast.error("Failed to load proforma invoice");
+        toast({ variant: "destructive", title: "Failed to load proforma invoice" });
       } finally {
         setLoading(false);
       }
@@ -117,16 +117,16 @@ export default function ShareProforma({ proformaId }: { proformaId: string }) {
     try {
       const res = await updateProformaStatusAsConfirmed(proformaId);
       if (res?.responseType === "error") {
-        toast.error(res.message);
+        toast({ variant: "destructive", title: res.message });
         return;
       }
-      toast.success("Proforma confirmed successfully");
+      toast({ title: "Proforma confirmed successfully" });
       setData((prev) =>
         prev ? { ...prev, proformaStatus: "CONFIRMED" } : prev,
       );
       setModalOpen(false);
     } catch {
-      toast.error("Something went wrong, please try again");
+      toast({ variant: "destructive", title: "Something went wrong, please try again" });
     } finally {
       setAccepting(false);
     }

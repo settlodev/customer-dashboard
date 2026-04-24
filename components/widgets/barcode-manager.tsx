@@ -145,7 +145,8 @@ function BarcodeManageDialog({
     }
     let cancelled = false;
     setImageLoading(true);
-    getBarcodeImageDataUrl(barcode)
+    // Request high-res so full-width scaling stays crisp on retina.
+    getBarcodeImageDataUrl(barcode, 800, 240)
       .then((url) => {
         if (!cancelled) setImageUrl(url);
       })
@@ -191,23 +192,25 @@ function BarcodeManageDialog({
         </DialogHeader>
 
         {barcode && (
-          <div className="rounded-md border p-3 text-center space-y-2 bg-white">
+          <div className="rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-5 shadow-sm">
             {imageLoading ? (
-              <div className="flex items-center justify-center h-[100px]">
+              <div className="flex h-32 items-center justify-center">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : imageUrl ? (
               <img
                 src={imageUrl}
                 alt={barcode}
-                className="mx-auto max-h-[100px]"
+                className="block w-full h-auto"
               />
             ) : (
-              <div className="h-[100px] flex items-center justify-center text-xs text-muted-foreground">
+              <div className="flex h-32 items-center justify-center text-xs text-muted-foreground">
                 Preview unavailable
               </div>
             )}
-            <p className="font-mono text-xs">{barcode}</p>
+            <p className="mt-3 text-center font-mono text-sm tracking-widest text-slate-700">
+              {barcode}
+            </p>
           </div>
         )}
 
@@ -285,7 +288,7 @@ function BarcodePrintDialog({
     let cancelled = false;
     setLoading(true);
     // Larger render for printing — label printers resample anyway.
-    getBarcodeImageDataUrl(barcode, 600, 180)
+    getBarcodeImageDataUrl(barcode, 1200, 360)
       .then((url) => {
         if (!cancelled) setImageUrl(url);
       })
@@ -326,23 +329,28 @@ function BarcodePrintDialog({
         <head>
           <title>Label · ${escapeHtml(variantName)}</title>
           <style>
-            @page { margin: 4mm; }
+            @page { margin: 6mm; }
+            *, *::before, *::after { box-sizing: border-box; }
             body { font-family: system-ui, sans-serif; margin: 0; padding: 0; }
-            .label {
-              width: 50mm;
-              padding: 3mm;
-              page-break-after: always;
-              text-align: center;
+            .sheet {
+              display: grid;
+              grid-template-columns: repeat(auto-fill, minmax(48mm, 1fr));
+              gap: 3mm;
             }
-            .label:last-child { page-break-after: auto; }
-            .name { font-size: 11px; font-weight: 600; margin-bottom: 2px; }
-            .sku { font-size: 9px; color: #666; margin-bottom: 4px; }
-            .label img { width: 100%; height: auto; }
-            .code { font-family: monospace; font-size: 10px; margin-top: 2px; }
+            .label {
+              padding: 2mm;
+              text-align: center;
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
+            .name { font-size: 10px; font-weight: 600; line-height: 1.2; margin-bottom: 1px; }
+            .sku { font-size: 8px; color: #666; margin-bottom: 2px; }
+            .label img { width: 100%; height: auto; display: block; }
+            .code { font-family: monospace; font-size: 9px; letter-spacing: 0.08em; margin-top: 1px; }
           </style>
         </head>
         <body>
-          ${labels}
+          <div class="sheet">${labels}</div>
           <script>
             window.addEventListener('load', function () {
               window.focus();
@@ -367,19 +375,21 @@ function BarcodePrintDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-md border p-4 text-center bg-white">
+        <div className="rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-6 shadow-sm">
           {loading ? (
-            <div className="h-[180px] flex items-center justify-center">
+            <div className="flex h-48 items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : imageUrl ? (
-            <img src={imageUrl} alt={barcode} className="mx-auto max-h-[180px]" />
+            <img src={imageUrl} alt={barcode} className="block w-full h-auto" />
           ) : (
-            <div className="h-[180px] flex items-center justify-center text-xs text-muted-foreground">
+            <div className="flex h-48 items-center justify-center text-xs text-muted-foreground">
               Preview unavailable
             </div>
           )}
-          <p className="font-mono text-xs mt-2">{barcode}</p>
+          <p className="mt-3 text-center font-mono text-sm tracking-widest text-slate-700">
+            {barcode}
+          </p>
         </div>
 
         <div className="flex items-center gap-2">

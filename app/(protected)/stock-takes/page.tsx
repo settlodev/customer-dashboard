@@ -8,7 +8,8 @@ import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-take/columns";
 import { getStockTakes } from "@/lib/actions/stock-take-actions";
 import { getLocationConfig } from "@/lib/actions/location-config-actions";
-import type { StockTakeStatus } from "@/types/stock-take/type";
+import type { CycleCountType, StockTakeStatus } from "@/types/stock-take/type";
+import CycleCountTypeFilter from "@/components/widgets/stock-take/cycle-count-filter";
 
 const breadcrumbItems = [{ title: "Stock Takes", link: "/stock-takes" }];
 
@@ -20,11 +21,14 @@ const STATUS_VALUES: StockTakeStatus[] = [
   "CANCELLED",
 ];
 
+const CYCLE_COUNT_VALUES: CycleCountType[] = ["FULL", "ABC_CLASS", "RANDOM", "ZONE"];
+
 type Params = {
   searchParams: Promise<{
     page?: string;
     limit?: string;
     status?: string;
+    cycleCountType?: string;
   }>;
 };
 
@@ -33,9 +37,10 @@ export default async function Page({ searchParams }: Params) {
   const page = Number(resolvedParams.page) || 0;
   const pageLimit = Number(resolvedParams.limit) || 20;
   const status = STATUS_VALUES.find((s) => s === resolvedParams.status);
+  const cycleCountType = CYCLE_COUNT_VALUES.find((c) => c === resolvedParams.cycleCountType);
 
   const [responseData, config] = await Promise.all([
-    getStockTakes(page ? page - 1 : 0, pageLimit, status),
+    getStockTakes(page ? page - 1 : 0, pageLimit, status, cycleCountType),
     getLocationConfig(),
   ]);
 
@@ -48,14 +53,17 @@ export default async function Page({ searchParams }: Params) {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <BreadcrumbsNav items={breadcrumbItems} />
-        {cycleCountingEnabled && (
-          <Button asChild>
-            <Link href="/stock-takes/new">
-              <Plus className="mr-1.5 h-4 w-4" />
-              New Stock Take
-            </Link>
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {cycleCountingEnabled && <CycleCountTypeFilter />}
+          {cycleCountingEnabled && (
+            <Button asChild>
+              <Link href="/stock-takes/new">
+                <Plus className="mr-1.5 h-4 w-4" />
+                New Stock Take
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       {!cycleCountingEnabled && (
@@ -68,7 +76,7 @@ export default async function Page({ searchParams }: Params) {
         </div>
       )}
 
-      {total > 0 || status ? (
+      {total > 0 || status || cycleCountType ? (
         <Card>
           <CardContent className="px-2 sm:px-6 pt-6">
             <DataTable

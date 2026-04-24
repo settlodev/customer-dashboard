@@ -7,6 +7,7 @@ import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { inventoryUrl } from "./inventory-client";
+import { getCurrentDestination } from "./context";
 import type {
   Grn,
   LandedCost,
@@ -79,7 +80,7 @@ export async function createGrn(
   const { lpoId, ...rest } = validated.data;
   const payload: CreateGrnPayload = {
     ...rest,
-    locationType: "LOCATION",
+    locationType: (await getCurrentDestination())?.type ?? "LOCATION",
     lpoId: lpoId && lpoId.length > 0 ? lpoId : undefined,
     receivedDate: new Date(rest.receivedDate).toISOString(),
     items: rest.items.map((item) => ({

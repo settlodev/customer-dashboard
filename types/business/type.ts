@@ -1,5 +1,12 @@
 import { Location } from "@/types/location/type";
 
+// Mirrors BusinessResponse from the Settlo Accounts Service
+// (`/api/v1/businesses/{id}`). Server-managed `identifier`, auto-assigned
+// `accountId`, and server timestamps are included. `businessTypeId`/
+// `businessTypeName`/`baseCurrency` are not returned by the accounts service
+// (business type is modelled on Location; baseCurrency is an internal entity
+// default). They remain optional here because other dashboard surfaces
+// (sidebar, switcher, auth session) still reference them.
 export declare interface Business {
   id: string;
   accountId: string;
@@ -11,15 +18,15 @@ export declare interface Business {
   website: string;
   active: boolean;
   countryId: string;
-  businessTypeId: string;
-  businessTypeName: string;
+  businessTypeId?: string;
+  businessTypeName?: string;
   region: string;
   district: string;
   ward: string;
   address: string;
   postalCode: string;
   logoUrl: string;
-  baseCurrency: string;
+  baseCurrency?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -28,8 +35,8 @@ export declare interface MinimalBusiness {
   id: string;
   identifier: string;
   name: string;
-  businessTypeId: string;
-  businessTypeName: string;
+  businessTypeId?: string;
+  businessTypeName?: string;
   logoUrl: string | null;
   active: boolean;
   accountId: string;
@@ -45,12 +52,13 @@ export declare interface BusinessWithLocationType {
 // Mirrors the backend BusinessSettingsResponse + UpdateBusinessSettingsRequest
 // from Settlo Accounts Service (`/api/v1/businesses/{businessId}/settings`).
 
-export type EfdStatus = "REQUESTED" | "APPROVED" | "REJECTED";
+export type EfdStatus = "REQUESTED" | "AWAITING_CONFIRMATION" | "ACTIVE";
 
 export interface BusinessSettings {
   id: string;
   accountId: string;
   businessId: string;
+  businessName?: string | null;
 
   // Legal entity
   businessLicenseNumber: string | null;
@@ -101,6 +109,6 @@ export interface BusinessSettings {
 
 export const EFD_STATUS_OPTIONS: { value: EfdStatus; label: string }[] = [
   { value: "REQUESTED", label: "Requested" },
-  { value: "APPROVED", label: "Approved" },
-  { value: "REJECTED", label: "Rejected" },
+  { value: "AWAITING_CONFIRMATION", label: "Awaiting confirmation" },
+  { value: "ACTIVE", label: "Active" },
 ];

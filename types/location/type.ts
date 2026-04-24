@@ -1,3 +1,8 @@
+// Mirrors LocationResponse from the Settlo Accounts Service
+// (`/api/v1/locations/{id}`). `identifier` and `slug` are server-managed;
+// `accountId` / `businessId` are immutable once assigned. `website` is not
+// returned by the accounts service (retained optional for legacy consumers
+// reading older cached payloads).
 export interface Location {
   id: string;
   accountId: string;
@@ -10,6 +15,8 @@ export interface Location {
   email: string;
   active: boolean;
   countryId: string;
+  businessTypeId?: string;
+  businessTypeName?: string;
   region: string;
   district: string;
   ward: string;
@@ -18,7 +25,7 @@ export interface Location {
   latitude: number | null;
   longitude: number | null;
   timezone: string;
-  website: string;
+  website?: string;
   createdAt: string;
   updatedAt: string;
 }

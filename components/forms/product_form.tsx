@@ -61,7 +61,6 @@ import DepartmentSelector from "@/components/widgets/department-selector";
 import CategorySelector from "../widgets/category-selector";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
-import ConsumptionRuleSelector from "@/components/widgets/consumption-rule-selector";
 import TaxClassSelector from "@/components/widgets/tax-class-selector";
 
 type ProductFormProps = {
@@ -567,28 +566,8 @@ export default function ProductForm({ item }: ProductFormProps) {
               </>
             )}
 
-            {/* Consumption Rule (for FIXED/SCALED/FORMULA) */}
-            {(stockLinkType === "FIXED" ||
-              stockLinkType === "SCALED" ||
-              stockLinkType === "FORMULA") && (
-              <FormField
-                control={form.control}
-                name={`variants.${index}.consumptionRuleId`}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">Consumption Rule</FormLabel>
-                    <FormControl>
-                      <ConsumptionRuleSelector
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        isDisabled={isPending}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            )}
+            {/* BOM rules auto-resolve at deduction time by (business, location,
+                product_variant) — no rule pointer stored on the variant. */}
           </div>
         </div>
       );

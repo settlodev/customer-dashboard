@@ -35,6 +35,8 @@ interface Props {
   onChange: (value: string) => void;
   onVariantMeta?: (meta: VariantMeta | null) => void;
   disabledValues?: string[];
+  /** When provided, the dropdown only surfaces variants whose id is in this list. */
+  allowedValues?: string[];
 }
 
 const StockVariantSelector: React.FC<Props> = ({
@@ -45,6 +47,7 @@ const StockVariantSelector: React.FC<Props> = ({
   onChange,
   onVariantMeta,
   disabledValues = [],
+  allowedValues,
 }) => {
   const [open, setOpen] = useState(false);
   const [stocks, setStocks] = useState<Stock[]>([]);
@@ -52,6 +55,7 @@ const StockVariantSelector: React.FC<Props> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [triggerWidth, setTriggerWidth] = useState(0);
+  const hasFetchedRef = useRef(false);
 
   useEffect(() => {
     const measure = () => {
@@ -64,34 +68,42 @@ const StockVariantSelector: React.FC<Props> = ({
   }, []);
 
   useEffect(() => {
-    if (open && stocks.length === 0) {
-      setIsLoading(true);
-      getStocks()
-        .then(setStocks)
-        .catch(() => setStocks([]))
-        .finally(() => setIsLoading(false));
-    }
-  }, [open, stocks.length]);
+    if (hasFetchedRef.current) return;
+    if (!open && !value) return;
+    hasFetchedRef.current = true;
+    setIsLoading(true);
+    getStocks()
+      .then(setStocks)
+      .catch(() => setStocks([]))
+      .finally(() => setIsLoading(false));
+  }, [open, value]);
 
-  const allVariantOptions = useMemo(() => {
-    const options = stocks
-      .filter((s) => !s.archived)
-      .flatMap((stock) =>
-        stock.variants
-          .filter((v) => !v.archived)
-          .map((variant) => ({
-            id: variant.id,
-            displayName: variant.displayName || `${stock.name} - ${variant.name}`,
-            serialTracked: variant.serialTracked ?? false,
-            disabled: disabledValues.includes(variant.id),
-            searchString: `${stock.name} ${variant.name} ${variant.sku || ""}`.toLowerCase(),
-          })),
-      );
+  const allVariantOptions = useMemo(
+    () =>
+      stocks
+        .filter((s) => !s.archived)
+        .flatMap((stock) =>
+          stock.variants
+            .filter((v) => !v.archived)
+            .map((variant) => ({
+              id: variant.id,
+              displayName: variant.displayName || `${stock.name} - ${variant.name}`,
+              serialTracked: variant.serialTracked ?? false,
+              disabled: disabledValues.includes(variant.id),
+              searchString: `${stock.name} ${variant.name} ${variant.sku || ""}`.toLowerCase(),
+            })),
+        ),
+    [stocks, disabledValues],
+  );
 
-    if (!searchTerm) return options;
+  const displayedOptions = useMemo(() => {
+    const restricted = allowedValues
+      ? allVariantOptions.filter((o) => allowedValues.includes(o.id))
+      : allVariantOptions;
+    if (!searchTerm) return restricted;
     const term = searchTerm.toLowerCase();
-    return options.filter((o) => o.searchString.includes(term));
-  }, [stocks, disabledValues, searchTerm]);
+    return restricted.filter((o) => o.searchString.includes(term));
+  }, [allVariantOptions, allowedValues, searchTerm]);
 
   const selectedOption = useMemo(() => {
     if (!value) return null;
@@ -140,13 +152,13 @@ const StockVariantSelector: React.FC<Props> = ({
                 {isLoading ? "Loading..." : "No stock items found."}
               </CommandEmpty>
               <CommandGroup>
-                {isLoading && allVariantOptions.length === 0 ? (
+                {isLoading && displayedOptions.length === 0 ? (
                   <div className="py-6 text-center">
                     <Loader2 className="mx-auto h-5 w-5 animate-spin opacity-50" />
                     <p className="mt-2 text-sm text-muted-foreground">Loading stock items...</p>
                   </div>
                 ) : (
-                  allVariantOptions.map((option) => (
+                  displayedOptions.map((option) => (
                     <CommandItem
                       key={option.id}
                       value={option.searchString}

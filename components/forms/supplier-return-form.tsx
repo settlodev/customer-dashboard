@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useCallback, useMemo, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -25,6 +26,7 @@ import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
 import SupplierSelector from "../widgets/supplier-selector";
 import StockVariantSelector from "../widgets/stock-variant-selector";
+import GrnSelector from "../widgets/grn/grn-selector";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
 import { createSupplierReturn } from "@/lib/actions/supplier-return-actions";
 import { CreateSupplierReturnSchema } from "@/types/supplier-return/schema";
@@ -33,6 +35,7 @@ import type { FormResponse } from "@/types/types";
 type FormValues = z.infer<typeof CreateSupplierReturnSchema>;
 
 export default function SupplierReturnForm() {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
@@ -57,12 +60,32 @@ export default function SupplierReturnForm() {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "items",
   });
 
   const watchedItems = form.watch("items");
+  const watchedSupplierId = form.watch("supplierId");
+  const watchedGrnId = form.watch("grnId");
+  const previousSupplierRef = useRef<string | undefined>(watchedSupplierId);
+  const skipGrnClearRef = useRef(false);
+  const [allowedStockVariantIds, setAllowedStockVariantIds] = useState<
+    string[] | undefined
+  >(undefined);
+  const [maxQuantityByVariant, setMaxQuantityByVariant] = useState<
+    Record<string, number>
+  >({});
+
+  useEffect(() => {
+    const prev = previousSupplierRef.current;
+    if (skipGrnClearRef.current) {
+      skipGrnClearRef.current = false;
+    } else if (prev && prev !== watchedSupplierId && form.getValues("grnId")) {
+      form.setValue("grnId", "", { shouldDirty: true, shouldValidate: false });
+    }
+    previousSupplierRef.current = watchedSupplierId;
+  }, [watchedSupplierId, form]);
 
   const onInvalid = useCallback(() => {
     toast({
@@ -72,36 +95,28 @@ export default function SupplierReturnForm() {
     });
   }, [toast]);
 
-  const totalRefund = useMemo(
-    () =>
-      watchedItems.reduce(
-        (sum, item) =>
-          sum + Number(item.quantity || 0) * Number(item.unitCost || 0),
-        0,
-      ),
-    [watchedItems],
-  );
-
-  const filledItemCount = useMemo(
-    () =>
-      watchedItems.filter(
-        (item) => item.stockVariantId && Number(item.quantity) > 0,
-      ).length,
-    [watchedItems],
-  );
-
   const submitData = (values: FormValues) => {
     setResponse(undefined);
     startTransition(() => {
       createSupplierReturn(values).then((data) => {
-        if (data) setResponse(data);
-        if (data?.responseType === "error") {
+        if (!data) return;
+        if (data.responseType === "error") {
+          setResponse(data);
           toast({
             variant: "destructive",
             title: "Couldn't save return",
             description: data.message,
           });
+          return;
         }
+        toast({
+          title: "Return created",
+          description: data.message,
+        });
+        const createdId = data.data?.id;
+        router.push(
+          createdId ? `/supplier-returns/${createdId}` : "/supplier-returns",
+        );
       });
     });
   };
@@ -135,9 +150,15 @@ export default function SupplierReturnForm() {
                         value={field.value}
                         onChange={field.onChange}
                         onBlur={field.onBlur}
-                        isDisabled={isPending}
+                        isDisabled={isPending || !!watchedGrnId}
                       />
                     </FormControl>
+                    {watchedGrnId && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Locked to the supplier on the linked GRN. Clear the GRN
+                        to change.
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -149,15 +170,82 @@ export default function SupplierReturnForm() {
                   <FormItem>
                     <FormLabel>Related GRN (optional)</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="GRN-XXXXX id"
-                        {...field}
+                      <GrnSelector
                         value={field.value ?? ""}
-                        disabled={isPending}
+                        onChange={(v, grn) => {
+                          if (grn) {
+                            field.onChange(v);
+                            if (
+                              grn.supplierId !== form.getValues("supplierId")
+                            ) {
+                              skipGrnClearRef.current = true;
+                              form.setValue("supplierId", grn.supplierId, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
+                            }
+                            const mapped = (grn.items ?? []).map((item) => ({
+                              stockVariantId: item.stockVariantId,
+                              quantity: 0,
+                              unitCost:
+                                item.originalUnitCost ?? item.unitCost ?? undefined,
+                              currency: (
+                                item.originalCurrency ??
+                                item.currency ??
+                                ""
+                              ).toUpperCase(),
+                              reason: "",
+                            }));
+                            replace(
+                              mapped.length > 0
+                                ? mapped
+                                : [
+                                    {
+                                      stockVariantId: "",
+                                      quantity: 0,
+                                      unitCost: undefined,
+                                      currency: "",
+                                      reason: "",
+                                    },
+                                  ],
+                            );
+                            setAllowedStockVariantIds(
+                              Array.from(
+                                new Set(
+                                  (grn.items ?? []).map(
+                                    (item) => item.stockVariantId,
+                                  ),
+                                ),
+                              ),
+                            );
+                            const maxByVariant: Record<string, number> = {};
+                            (grn.items ?? []).forEach((item) => {
+                              maxByVariant[item.stockVariantId] =
+                                (maxByVariant[item.stockVariantId] ?? 0) +
+                                Number(item.receivedQuantity || 0);
+                            });
+                            setMaxQuantityByVariant(maxByVariant);
+                          } else {
+                            skipGrnClearRef.current = false;
+                            form.reset();
+                            setResponse(undefined);
+                            setAllowedStockVariantIds(undefined);
+                            setMaxQuantityByVariant({});
+                          }
+                        }}
+                        onBlur={field.onBlur}
+                        isDisabled={isPending}
+                        supplierId={watchedSupplierId || undefined}
+                        placeholder={
+                          watchedSupplierId
+                            ? "Select a GRN for this supplier"
+                            : "Select a GRN"
+                        }
                       />
                     </FormControl>
                     <p className="text-[11px] text-muted-foreground">
-                      Paste the GRN UUID. Drives supplier-performance tracking.
+                      Link the receipt this return relates to. Drives
+                      supplier-performance tracking.
                     </p>
                     <FormMessage />
                   </FormItem>
@@ -169,15 +257,19 @@ export default function SupplierReturnForm() {
               name="reason"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reason</FormLabel>
+                  <FormLabel>
+                    Reason <span className="text-red-500">*</span>
+                  </FormLabel>
                   <FormControl>
-                    <Input
+                    <Textarea
                       placeholder="e.g. Damaged on arrival, wrong product, expired"
+                      rows={3}
                       {...field}
                       value={field.value ?? ""}
                       disabled={isPending}
                     />
                   </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -205,13 +297,7 @@ export default function SupplierReturnForm() {
         <Card className="rounded-xl shadow-sm">
           <CardContent className="pt-6 space-y-4">
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium">Items</h3>
-                <p className="text-xs text-muted-foreground">
-                  Use the supplier&apos;s invoice currency on each line when the
-                  original purchase was foreign so refunds reconcile cleanly.
-                </p>
-              </div>
+              <h3 className="text-lg font-medium">Items</h3>
               <Button
                 type="button"
                 variant="outline"
@@ -237,6 +323,11 @@ export default function SupplierReturnForm() {
                 .filter((id, i) => id && i !== index) as string[];
               const lineCurrency =
                 (watchedItems[index]?.currency || locationCurrency).toUpperCase();
+              const rowVariantId = watchedItems[index]?.stockVariantId;
+              const rowMax = rowVariantId
+                ? maxQuantityByVariant[rowVariantId]
+                : undefined;
+              const unitCostLocked = !!watchedGrnId;
               return (
                 <div
                   key={field.id}
@@ -273,6 +364,7 @@ export default function SupplierReturnForm() {
                               onChange={f.onChange}
                               isDisabled={isPending}
                               disabledValues={disabledVariantIds}
+                              allowedValues={allowedStockVariantIds}
                             />
                           </FormControl>
                           <FormMessage />
@@ -286,6 +378,11 @@ export default function SupplierReturnForm() {
                         <FormItem className="w-full md:flex-[2] min-w-0">
                           <FormLabel className="text-xs">
                             Qty <span className="text-red-500">*</span>
+                            {rowMax !== undefined && (
+                              <span className="text-muted-foreground ml-1 font-normal">
+                                (max {rowMax})
+                              </span>
+                            )}
                           </FormLabel>
                           <FormControl>
                             <NumericFormat
@@ -299,6 +396,14 @@ export default function SupplierReturnForm() {
                               allowNegative={false}
                               placeholder="0"
                               disabled={isPending}
+                              isAllowed={(values) => {
+                                if (rowMax === undefined) return true;
+                                const { floatValue } = values;
+                                return (
+                                  floatValue === undefined ||
+                                  floatValue <= rowMax
+                                );
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -327,29 +432,9 @@ export default function SupplierReturnForm() {
                               decimalScale={4}
                               allowNegative={false}
                               placeholder="Defaults to batch cost"
-                              disabled={isPending}
+                              disabled={isPending || unitCostLocked}
                             />
                           </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.currency`}
-                      render={({ field: f }) => (
-                        <FormItem className="w-full md:flex-[2] min-w-0">
-                          <FormLabel className="text-xs">Currency</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder={locationCurrency}
-                              maxLength={3}
-                              {...f}
-                              value={f.value ?? ""}
-                              onChange={(e) => f.onChange(e.target.value.toUpperCase())}
-                              disabled={isPending}
-                            />
-                          </FormControl>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -375,30 +460,6 @@ export default function SupplierReturnForm() {
                 </div>
               );
             })}
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="py-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-            <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                Summary
-              </span>
-              <span className="font-medium">
-                {filledItemCount} item{filledItemCount === 1 ? "" : "s"} to return
-              </span>
-            </div>
-            <div className="flex flex-col items-end">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                Refund total
-              </span>
-              <span className="font-mono font-semibold">
-                {totalRefund.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </span>
-            </div>
           </CardContent>
         </Card>
 

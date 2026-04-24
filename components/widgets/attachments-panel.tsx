@@ -32,6 +32,7 @@ import {
   uploadAttachment,
   deleteAttachment,
   getAttachmentDownloadHref,
+  getAttachmentSaveHref,
 } from "@/lib/actions/attachment-actions";
 
 interface Props {
@@ -129,7 +130,7 @@ export function AttachmentsPanel({
   };
 
   const openDownload = async (attachment: Attachment) => {
-    const href = await getAttachmentDownloadHref(attachment);
+    const href = await getAttachmentSaveHref(attachment);
     window.open(href, "_blank", "noopener,noreferrer");
   };
 

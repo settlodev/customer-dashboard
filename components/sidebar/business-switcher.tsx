@@ -5,7 +5,8 @@ import { ChevronDown, Building2, Loader2, Check } from "lucide-react";
 import Image from "next/image";
 import { useState, useCallback } from "react";
 import { Business } from "@/types/business/type";
-import { refreshBusiness, refreshLocation } from "@/lib/actions/business/refresh";
+import { refreshBusiness } from "@/lib/actions/business/refresh";
+import { switchToLocation } from "@/lib/actions/destination";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import {
   DropdownMenu,
@@ -54,7 +55,7 @@ export const BusinessSwitcher = ({
       // Auto-select location if the business has exactly one
       const locations = await fetchAllLocations();
       if (locations && locations.length === 1) {
-        await refreshLocation(locations[0]);
+        await switchToLocation(locations[0]);
         window.location.href = "/dashboard";
       } else {
         window.location.href = "/select-location";

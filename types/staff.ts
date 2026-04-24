@@ -34,6 +34,14 @@ export interface Staff {
   active: boolean;
   dashboardAccess: boolean;
   posAccess: boolean;
+  /** True when this staff record is the account owner. Backend blocks
+   * deactivation and access revocation for the owner-staff. */
+  owner: boolean;
+  /** Whether the staff has a POS PIN set. Hash itself is never returned —
+   * the paired device gets it via the internal staff-sync endpoint. */
+  hasPin: boolean;
+  /** Timestamp of the last PIN change, or null if no PIN has been set. */
+  pinUpdatedAt: string | null;
   color: string | null;
   employeeNumber: string | null;
   gender: Gender;

@@ -6,47 +6,52 @@ import {NavbarWrapper} from "@/components/navigation/navbar-wrapper";
 import {SidebarWrapper} from "@/components/sidebar/sidebar";
 import {getBusinessDropDown, getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
+import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
-import { Business } from "@/types/business/type";
-import { Location as BusinessLocation } from "@/types/location/type";
+import { fetchAllStores, getCurrentStore } from "@/lib/actions/store-actions";
+import type { BusinessPropsType } from "@/types/business/business-props-type";
 
 export default async function RootLayout({children}: {
     children: React.ReactNode;
 }) {
     const session = await auth();
 
-    let currentBusiness: Business | undefined;
-    let currentLocation: BusinessLocation | undefined;
-    let businessList: Business[] | undefined;
-    let locationList: BusinessLocation[] | null | undefined;
-    let currentWarehouse: any;
+    const results = await Promise.allSettled([
+        getCurrentBusiness(),
+        getCurrentLocation(),
+        getBusinessDropDown(),
+        fetchAllLocations(),
+        getCurrentWarehouse(),
+        fetchAllStores(),
+        searchWarehouses(),
+        getCurrentStore(),
+    ]);
 
-    try {
-        const results = await Promise.all([
-            getCurrentBusiness(),
-            getCurrentLocation(),
-            getBusinessDropDown(),
-            fetchAllLocations(),
-            getCurrentWarehouse(),
-        ]);
-        currentBusiness = results[0] ?? undefined;
-        currentLocation = results[1] ?? undefined;
-        businessList = results[2] ?? undefined;
-        locationList = results[3];
-        currentWarehouse = results[4];
-    } catch (error: unknown) {
-        const message = (error && typeof error === "object" && "message" in error)
-            ? (error as { message: string }).message
-            : "Unknown error";
-        console.error("Error loading layout data:", message);
-    }
+    const currentBusiness = results[0].status === "fulfilled" ? results[0].value ?? undefined : undefined;
+    const currentLocation = results[1].status === "fulfilled" ? results[1].value ?? undefined : undefined;
+    const businessList = results[2].status === "fulfilled" ? results[2].value ?? undefined : undefined;
+    const locationList = results[3].status === "fulfilled" ? results[3].value : undefined;
+    const currentWarehouse = results[4].status === "fulfilled" ? results[4].value : undefined;
+    const storeList = results[5].status === "fulfilled" ? results[5].value : [];
+    const warehouseList = results[6].status === "fulfilled" ? results[6].value : [];
+    const currentStore = results[7].status === "fulfilled" ? results[7].value : undefined;
 
-    const businessData = {
+    const hasMultipleDestinations =
+        (locationList?.length ?? 0) +
+            (storeList?.length ?? 0) +
+            (warehouseList?.length ?? 0) >
+        1;
+
+    const businessData: BusinessPropsType = {
         business: currentBusiness,
         businessList: businessList || [],
         locationList: locationList || [],
         currentLocation: currentLocation,
+        storeList: storeList || [],
+        currentStore: currentStore,
+        warehouseList: warehouseList || [],
         warehouse: currentWarehouse,
+        hasMultipleDestinations,
     }
 
     return (
@@ -63,7 +68,7 @@ export default async function RootLayout({children}: {
                         </Suspense>
                     </div>
 
-                    <div className="sticky bottom-0 z-10">
+                    <div className="sticky bottom-0 z-[110]">
                         <Toaster/>
                     </div>
                 </main>

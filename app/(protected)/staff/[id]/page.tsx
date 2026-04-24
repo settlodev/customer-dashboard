@@ -72,6 +72,7 @@ export default async function StaffPage({ params }: { params: Params }) {
         isArchived={!staff.active}
         posAccess={staff.posAccess}
         dashboardAccess={staff.dashboardAccess}
+        owner={staff.owner}
         editUrl={`/staff/${staff.id}/edit`}
         loyaltyPoints={staff.loyaltyPoints}
         departmentName={departmentNames}

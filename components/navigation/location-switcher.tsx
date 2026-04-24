@@ -4,16 +4,20 @@ import * as Sentry from "@sentry/nextjs";
 import {
   ChevronDown,
   MapPin,
+  Store as StoreIcon,
   Warehouse,
   Loader2,
   Check,
 } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
-import { Location } from "@/types/location/type";
-import { Warehouses } from "@/types/warehouse/warehouse/type";
-import { refreshLocation } from "@/lib/actions/business/refresh";
-import { deleteActiveWarehouseCookie } from "@/lib/actions/warehouse/current-warehouse-action";
-import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
+import { useMemo, useState, useCallback } from "react";
+import type { Location } from "@/types/location/type";
+import type { Store } from "@/types/store/type";
+import type { Warehouses } from "@/types/warehouse/warehouse/type";
+import {
+  switchToLocation,
+  switchToStore,
+  switchToWarehouse,
+} from "@/lib/actions/destination";
 
 import {
   DropdownMenu,
@@ -34,106 +38,130 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+type DestinationKind = "location" | "store" | "warehouse";
+
+type Destination =
+  | { kind: "location"; data: Location }
+  | { kind: "store"; data: Store }
+  | { kind: "warehouse"; data: Warehouses };
+
 interface LocationSwitcherProps {
-  locationList: Location[] | null | undefined;
-  currentLocation: Location | undefined;
-  warehouse: any | undefined;
+  locationList?: Location[] | null;
+  currentLocation?: Location;
+  storeList?: Store[];
+  currentStore?: Store;
+  warehouseList?: Warehouses[];
+  warehouse?: Warehouses;
 }
+
+const KIND_META: Record<
+  DestinationKind,
+  { label: string; icon: typeof MapPin }
+> = {
+  location: { label: "Location", icon: MapPin },
+  store: { label: "Store", icon: StoreIcon },
+  warehouse: { label: "Warehouse", icon: Warehouse },
+};
 
 export const LocationSwitcher = ({
   locationList,
   currentLocation,
+  storeList,
+  currentStore,
+  warehouseList,
   warehouse,
 }: LocationSwitcherProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [confirmItem, setConfirmItem] = useState<{
-    data: Location | Warehouses;
-    type: "location" | "warehouse";
-  } | null>(null);
-  const [warehouseList, setWarehouseList] = useState<Warehouses[]>([]);
-  const [loadingWarehouses, setLoadingWarehouses] = useState(true);
+  const [confirm, setConfirm] = useState<Destination | null>(null);
 
-  const isWarehouseMode = warehouse && warehouse.id;
+  // Active destination: warehouse → store → location (matches the server
+  // resolver in lib/actions/context.ts which reads cookies in the same order).
+  const active: Destination | null = useMemo(() => {
+    if (warehouse?.id) return { kind: "warehouse", data: warehouse };
+    if (currentStore?.id) return { kind: "store", data: currentStore };
+    if (currentLocation?.id)
+      return { kind: "location", data: currentLocation };
+    return null;
+  }, [warehouse, currentStore, currentLocation]);
 
-  // Fetch warehouses
-  useEffect(() => {
-    const fetchWarehouses = async () => {
-      setLoadingWarehouses(true);
-      try {
-        const result = await searchWarehouses();
-        setWarehouseList(result || []);
-      } catch (error) {
-        console.error("Failed to fetch warehouses:", error);
-        setWarehouseList([]);
-      } finally {
-        setLoadingWarehouses(false);
-      }
-    };
-    fetchWarehouses();
-  }, []);
+  const totalDestinations =
+    (locationList?.length ?? 0) +
+    (storeList?.length ?? 0) +
+    (warehouseList?.length ?? 0);
 
-  const handleLocationSelect = (location: Location) => {
-    if (currentLocation?.id === location.id && !isWarehouseMode) return;
-    setConfirmItem({ data: location, type: "location" });
-    setIsOpen(false);
-  };
+  // Group stores by their parent location for readability when a business
+  // has multiple locations-with-stores.
+  const storesByLocation = useMemo(() => {
+    const map = new Map<string, Store[]>();
+    (storeList ?? []).forEach((s) => {
+      const key = s.locationId ?? "__orphan__";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(s);
+    });
+    return map;
+  }, [storeList]);
 
-  const handleWarehouseSelect = (wh: Warehouses) => {
-    if (warehouse?.id === wh.id && isWarehouseMode) return;
-    setConfirmItem({ data: wh, type: "warehouse" });
-    setIsOpen(false);
-  };
+  const locationNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    (locationList ?? []).forEach((l) => map.set(l.id, l.name));
+    return map;
+  }, [locationList]);
+
+  const handlePick = useCallback(
+    (dest: Destination) => {
+      if (active?.kind === dest.kind && active.data.id === dest.data.id) return;
+      setConfirm(dest);
+      setIsOpen(false);
+    },
+    [active],
+  );
 
   const handleConfirm = useCallback(async () => {
-    if (!confirmItem) return;
-
-    setLoadingId(confirmItem.data.id);
+    if (!confirm) return;
+    setLoadingId(confirm.data.id);
     try {
-      if (confirmItem.type === "location") {
-        await deleteActiveWarehouseCookie();
+      switch (confirm.kind) {
+        case "location":
+          await switchToLocation(confirm.data);
+          break;
+        case "store":
+          await switchToStore(confirm.data);
+          break;
+        case "warehouse":
+          await switchToWarehouse(confirm.data);
+          break;
       }
-      await refreshLocation(confirmItem.data as Location);
 
-      setConfirmItem(null);
-      setLoadingId(null);
-
-      if (confirmItem.type === "warehouse") {
-        const wh = confirmItem.data as Warehouses;
-        if (!wh.active) {
-          window.location.href = "/select-location";
-        } else {
-          window.location.href = "/warehouse";
-        }
+      // Redirect based on destination + subscription state. Inactive
+      // destinations bounce the user to the right recovery flow.
+      if (confirm.kind === "warehouse") {
+        const wh = confirm.data;
+        window.location.href = wh.active
+          ? "/warehouse"
+          : "/select-location";
+      } else if (confirm.kind === "store") {
+        const st = confirm.data;
+        window.location.href = st.active
+          ? "/dashboard"
+          : "/select-location";
       } else {
-        const loc = confirmItem.data as Location;
-        if (!loc.active) {
-          window.location.href = `/subscription?location=${loc.id}`;
-        } else {
-          window.location.href = "/dashboard";
-        }
+        const loc = confirm.data;
+        window.location.href = loc.active
+          ? "/dashboard"
+          : `/subscription?location=${loc.id}`;
       }
     } catch (error) {
       Sentry.captureException(error);
       setLoadingId(null);
-      setConfirmItem(null);
+      setConfirm(null);
     }
-  }, [confirmItem]);
+  }, [confirm]);
 
-  const locationCount = locationList?.length ?? 0;
-  const hasNothing = !loadingWarehouses && locationCount <= 1 && warehouseList.length === 0;
+  if (totalDestinations <= 1 && !active) return null;
 
-  if (hasNothing) return null;
-
-  const activeName = isWarehouseMode
-    ? warehouse?.name
-    : currentLocation?.name;
-
-  const activeIcon = isWarehouseMode ? (
-    <Warehouse className="h-4 w-4 text-primary" />
-  ) : (
-    <MapPin className="h-4 w-4 text-primary" />
-  );
+  const ActiveIcon = active ? KIND_META[active.kind].icon : MapPin;
+  const activeName = active?.data.name ?? "Select workspace";
 
   return (
     <>
@@ -142,13 +170,16 @@ export const LocationSwitcher = ({
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 max-w-[220px] border-gray-200"
+            className="gap-2 max-w-[260px] border-gray-200"
             disabled={loadingId !== null}
           >
-            {activeIcon}
-            <span className="truncate text-sm font-medium">
-              {activeName || "Select location"}
-            </span>
+            <ActiveIcon className="h-4 w-4 text-primary" />
+            <span className="truncate text-sm font-medium">{activeName}</span>
+            {active && (
+              <span className="text-[10px] uppercase tracking-wide text-gray-400">
+                {KIND_META[active.kind].label}
+              </span>
+            )}
             {loadingId ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
             ) : (
@@ -158,10 +189,10 @@ export const LocationSwitcher = ({
         </DropdownMenuTrigger>
 
         <DropdownMenuContent
-          className="w-[280px] bg-white/95 backdrop-blur-sm z-[60]"
+          className="w-[300px] bg-white/95 backdrop-blur-sm z-[60] max-h-[70vh] overflow-y-auto"
           align="end"
         >
-          {/* Locations section */}
+          {/* Locations */}
           {locationList && locationList.length > 0 && (
             <>
               <DropdownMenuLabel className="text-xs font-normal text-gray-500 flex items-center gap-1.5">
@@ -169,13 +200,13 @@ export const LocationSwitcher = ({
                 Locations
               </DropdownMenuLabel>
               <DropdownMenuGroup>
-                {locationList.map((location) => {
+                {locationList.map((loc) => {
                   const isActive =
-                    !isWarehouseMode && currentLocation?.id === location.id;
+                    active?.kind === "location" && active.data.id === loc.id;
                   return (
                     <DropdownMenuItem
-                      key={location.id}
-                      onClick={() => handleLocationSelect(location)}
+                      key={loc.id}
+                      onClick={() => handlePick({ kind: "location", data: loc })}
                       className={cn(
                         "flex items-center gap-3 py-2.5 cursor-pointer",
                         isActive && "bg-orange-50",
@@ -184,24 +215,15 @@ export const LocationSwitcher = ({
                     >
                       <div className="flex flex-col flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          {location.name}
+                          {loc.name}
                         </p>
                         <div className="flex items-center gap-2">
-                          {location.region && (
+                          {loc.region && (
                             <p className="text-xs text-gray-500 truncate">
-                              {location.region}
+                              {loc.region}
                             </p>
                           )}
-                          <span
-                            className={cn(
-                              "text-xs px-1.5 py-0.5 rounded",
-                              !location.active
-                                ? "bg-red-50 text-red-600"
-                                : "bg-green-50 text-green-600",
-                            )}
-                          >
-                            {location.active ? "Active" : "Inactive"}
-                          </span>
+                          <StatusPill active={loc.active} />
                         </div>
                       </div>
                       {isActive && (
@@ -214,8 +236,67 @@ export const LocationSwitcher = ({
             </>
           )}
 
-          {/* Warehouses section */}
-          {(warehouseList.length > 0 || loadingWarehouses) && (
+          {/* Stores, grouped by parent location */}
+          {storeList && storeList.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs font-normal text-gray-500 flex items-center gap-1.5">
+                <StoreIcon className="h-3 w-3" />
+                Stores
+              </DropdownMenuLabel>
+              <DropdownMenuGroup>
+                {Array.from(storesByLocation.entries()).map(
+                  ([locationId, stores]) => (
+                    <div key={locationId}>
+                      {storesByLocation.size > 1 && (
+                        <p className="px-2 py-1 text-[10px] uppercase tracking-wide text-gray-400">
+                          {locationNameById.get(locationId) ?? "Unassigned"}
+                        </p>
+                      )}
+                      {stores.map((store) => {
+                        const isActive =
+                          active?.kind === "store" &&
+                          active.data.id === store.id;
+                        return (
+                          <DropdownMenuItem
+                            key={store.id}
+                            onClick={() =>
+                              handlePick({ kind: "store", data: store })
+                            }
+                            className={cn(
+                              "flex items-center gap-3 py-2.5 cursor-pointer",
+                              isActive && "bg-orange-50",
+                            )}
+                            disabled={isActive}
+                          >
+                            <div className="flex flex-col flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {store.name}
+                              </p>
+                              <div className="flex items-center gap-2">
+                                {store.code && (
+                                  <p className="text-xs text-gray-500 truncate">
+                                    {store.code}
+                                  </p>
+                                )}
+                                <StatusPill active={store.active} />
+                              </div>
+                            </div>
+                            {isActive && (
+                              <Check className="h-4 w-4 text-primary shrink-0" />
+                            )}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </div>
+                  ),
+                )}
+              </DropdownMenuGroup>
+            </>
+          )}
+
+          {/* Warehouses */}
+          {warehouseList && warehouseList.length > 0 && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs font-normal text-gray-500 flex items-center gap-1.5">
@@ -223,69 +304,71 @@ export const LocationSwitcher = ({
                 Warehouses
               </DropdownMenuLabel>
               <DropdownMenuGroup>
-                {loadingWarehouses ? (
-                  <DropdownMenuItem
-                    disabled
-                    className="flex items-center justify-center py-3"
-                  >
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Loading...
-                  </DropdownMenuItem>
-                ) : (
-                  warehouseList.map((wh) => {
-                    const isActive =
-                      isWarehouseMode && warehouse?.id === wh.id;
-                    return (
-                      <DropdownMenuItem
-                        key={wh.id}
-                        onClick={() => handleWarehouseSelect(wh)}
-                        className={cn(
-                          "flex items-center gap-3 py-2.5 cursor-pointer",
-                          isActive && "bg-orange-50",
-                        )}
-                        disabled={isActive}
-                      >
-                        <div className="flex flex-col flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {wh.name || "Unnamed Warehouse"}
-                          </p>
+                {warehouseList.map((wh) => {
+                  const isActive =
+                    active?.kind === "warehouse" && active.data.id === wh.id;
+                  return (
+                    <DropdownMenuItem
+                      key={wh.id}
+                      onClick={() =>
+                        handlePick({ kind: "warehouse", data: wh })
+                      }
+                      className={cn(
+                        "flex items-center gap-3 py-2.5 cursor-pointer",
+                        isActive && "bg-orange-50",
+                      )}
+                      disabled={isActive}
+                    >
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {wh.name || "Unnamed warehouse"}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          {wh.code && (
+                            <p className="text-xs text-gray-500 truncate">
+                              {wh.code}
+                            </p>
+                          )}
+                          {wh.primary && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700">
+                              Primary
+                            </span>
+                          )}
+                          <StatusPill active={wh.active} />
                         </div>
-                        {isActive && (
-                          <Check className="h-4 w-4 text-primary shrink-0" />
-                        )}
-                      </DropdownMenuItem>
-                    );
-                  })
-                )}
+                      </div>
+                      {isActive && (
+                        <Check className="h-4 w-4 text-primary shrink-0" />
+                      )}
+                    </DropdownMenuItem>
+                  );
+                })}
               </DropdownMenuGroup>
             </>
           )}
-
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Confirmation Dialog */}
       <Dialog
-        open={!!confirmItem}
+        open={!!confirm}
         onOpenChange={(open) => {
-          if (!open && !loadingId) setConfirmItem(null);
+          if (!open && !loadingId) setConfirm(null);
         }}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              Switch{" "}
-              {confirmItem?.type === "warehouse" ? "Warehouse" : "Location"}
+              Switch {confirm ? KIND_META[confirm.kind].label : "Workspace"}
             </DialogTitle>
             <DialogDescription>
-              Switch to <strong>{confirmItem?.data.name}</strong>? This will
-              reload the page.
+              Switch to <strong>{confirm?.data.name}</strong>? This will reload
+              the page.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-3 pt-4">
             <Button
               variant="outline"
-              onClick={() => setConfirmItem(null)}
+              onClick={() => setConfirm(null)}
               disabled={loadingId !== null}
             >
               Cancel
@@ -310,3 +393,16 @@ export const LocationSwitcher = ({
     </>
   );
 };
+
+function StatusPill({ active }: { active: boolean }) {
+  return (
+    <span
+      className={cn(
+        "text-xs px-1.5 py-0.5 rounded",
+        active ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600",
+      )}
+    >
+      {active ? "Active" : "Inactive"}
+    </span>
+  );
+}

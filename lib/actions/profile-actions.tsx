@@ -6,9 +6,8 @@ import { FormResponse, LoginResponse } from "@/types/types";
 import {
   createAuthTokenFromLogin,
   deleteActiveBusinessCookie,
-  deleteActiveLocationCookie,
 } from "@/lib/auth-utils";
-import { deleteActiveWarehouseCookie } from "./warehouse/current-warehouse-action";
+import { clearDestination } from "./destination";
 import { revalidatePath } from "next/cache";
 
 // Profile management actions use the Auth Service (ApiClient with useAuthService=true)
@@ -152,10 +151,9 @@ export const switchAccount = async (accountId: string): Promise<FormResponse> =>
     const apiClient = new ApiClient(true);
     const loginData: LoginResponse = await apiClient.post(`/switch-account`, { accountId });
 
-    // Clear current business/location context — the new account has different ones
+    // Clear current business/destination context — the new account has its own
     await deleteActiveBusinessCookie();
-    await deleteActiveLocationCookie();
-    await deleteActiveWarehouseCookie();
+    await clearDestination();
 
     // Fetch the new account's profile to populate auth token
     const ACCOUNTS_SERVICE_URL =

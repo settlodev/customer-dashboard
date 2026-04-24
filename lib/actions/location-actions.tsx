@@ -16,7 +16,7 @@ import {
 } from "@/lib/actions/business/get-current-business";
 import { Location } from "@/types/location/type";
 import { LocationSchema } from "@/types/location/schema";
-import { refreshLocation } from "./business/refresh";
+import { switchToLocation } from "./destination";
 
 export const fetchAllLocations = async (): Promise<Location[] | null> => {
   try {
@@ -228,7 +228,7 @@ export const updateLocation = async (
         ...currentLocation,
       };
 
-      await refreshLocation(updatedLocation);
+      await switchToLocation(updatedLocation);
     }
   } catch (error: unknown) {
     formResponse = {
@@ -254,6 +254,64 @@ export const getLocation = async (id: UUID): Promise<Location> => {
   const data = await apiClient.get(`/api/v1/locations/${id}`);
 
   return parseStringify(data);
+};
+
+/**
+ * Partial payload for `PUT /api/v1/locations/{id}` — mirrors the
+ * `UpdateLocationRequest` DTO on the accounts service exactly. The service
+ * applies a partial-update pattern: only non-null fields are written.
+ * Immutable fields (id, accountId, businessId, identifier, slug) are not
+ * accepted by the endpoint and must not be sent.
+ */
+export type UpdateLocationBasicsRequest = {
+  name?: string;
+  description?: string | null;
+  phoneNumber?: string | null;
+  email?: string | null;
+  countryId?: string | null;
+  businessTypeId?: string | null;
+  region?: string | null;
+  district?: string | null;
+  ward?: string | null;
+  address?: string | null;
+  postalCode?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  timezone?: string | null;
+  active?: boolean;
+};
+
+export type UpdateLocationBasicsResponse =
+  | { responseType: "success"; message: string; data: Location }
+  | { responseType: "error"; message: string; error: Error };
+
+export const updateLocationBasics = async (
+  id: UUID,
+  patch: UpdateLocationBasicsRequest,
+): Promise<UpdateLocationBasicsResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    const updated = await apiClient.put<Location, UpdateLocationBasicsRequest>(
+      `/api/v1/locations/${id}`,
+      patch,
+    );
+    revalidatePath("/select-location");
+    revalidatePath("/settings");
+    return {
+      responseType: "success",
+      message: "Location updated successfully",
+      data: parseStringify(updated),
+    };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to update location",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
 };
 
 export const getLocationById = async (): Promise<Location> => {

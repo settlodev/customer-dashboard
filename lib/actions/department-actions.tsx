@@ -131,7 +131,6 @@ export const createDepartment = async (
       validatedData.data,
     );
     revalidatePath("/departments");
-    console.log("The departments created is", response);
     return parseStringify({
       responseType: "success",
       message: "Department created successfully",

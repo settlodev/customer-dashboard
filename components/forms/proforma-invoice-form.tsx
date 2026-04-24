@@ -44,7 +44,7 @@ import {
   UserCircle2,
   Pencil,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -2102,7 +2102,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       });
       if (result?.responseType === "error") {
         setError(result.message);
-        toast.error(result.message);
+        toast({ variant: "destructive", title: result.message });
         return;
       }
       const data = result?.data as any;
@@ -2121,7 +2121,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         taxAmount: data?.taxAmount ?? prev.taxAmount,
         netAmount: data?.netAmount ?? prev.netAmount,
       }));
-      toast.success("Item added");
+      toast({ title: "Item added" });
     },
     [state.id],
   );
@@ -2137,7 +2137,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       setRemovingIndex(null);
       if (result?.responseType === "error") {
         setError(result.message);
-        toast.error(result.message);
+        toast({ variant: "destructive", title: result.message });
         return;
       }
       const data = result?.data as any;
@@ -2150,7 +2150,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         taxAmount: data?.taxAmount ?? prev.taxAmount,
         netAmount: data?.netAmount ?? prev.netAmount,
       }));
-      toast.success("Item removed");
+      toast({ title: "Item removed" });
     },
     [state.id, state.items, editingIndex],
   );
@@ -2167,7 +2167,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       );
       if (result?.responseType === "error") {
         setError(result.message);
-        toast.error(result.message);
+        toast({ variant: "destructive", title: result.message });
         return;
       }
       const data = result?.data as any;
@@ -2191,7 +2191,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         netAmount: data?.netAmount ?? prev.netAmount,
       }));
       setEditingIndex(null);
-      toast.success("Item updated");
+      toast({ title: "Item updated" });
     },
     [state.id],
   );
@@ -2249,7 +2249,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         netAmount:
           typeof data?.netAmount === "number" ? data.netAmount : prev.netAmount,
       }));
-      toast.success("Proforma updated successfully");
+      toast({ title: "Proforma updated successfully" });
       router.push(`/proforma-invoice/details/${state.id}`);
     },
     [state.id, state.showTaxBreakdown, router], // ✅ depend on showTaxBreakdown

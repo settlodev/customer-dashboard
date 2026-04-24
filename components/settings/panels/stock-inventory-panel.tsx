@@ -3,6 +3,7 @@
 import { Input } from "@/components/ui/input";
 import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
+import { PanelHeader } from "../shared/panel-header";
 import type { LocationSettings } from "@/types/location-settings/type";
 
 const KEYS = [
@@ -35,6 +36,11 @@ export function StockInventoryPanel({
 
   return (
     <div className="space-y-6">
+      <PanelHeader
+        title="Stock & inventory"
+        description="When stock is cut, which inventory workflows are enabled, and how alerts are set."
+      />
+
       <SettingsSection
         title="Stock deduction timing"
         description="When the POS actually cuts inventory. Pick any combination — more triggers = more accurate on-hand counts."
@@ -168,7 +174,7 @@ export function StockInventoryPanel({
         isPending={p.isPending}
         isDirty={p.isDirty}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Field label="Expiry alert (days ahead)">
             <Input
               type="number"

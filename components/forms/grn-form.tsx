@@ -1,12 +1,16 @@
 "use client";
 
-import React, { useCallback, useMemo, useState, useTransition } from "react";
+import React, { useCallback, useState, useTransition } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2, Link2, Unlink } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Trash2, Link2, Unlink } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Form,
   FormControl,
@@ -37,10 +41,10 @@ import type { FormResponse } from "@/types/types";
 
 type FormValues = z.infer<typeof CreateGrnSchema>;
 
-const now = () => {
+const startOfToday = () => {
   const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
+  d.setHours(0, 0, 0, 0);
+  return d;
 };
 
 interface ItemMeta {
@@ -63,7 +67,7 @@ export default function GrnForm() {
     defaultValues: {
       supplierId: "",
       receivedBy: "",
-      receivedDate: now(),
+      receivedDate: new Date().toISOString(),
       notes: "",
       deliveryPersonName: "",
       deliveryPersonPhone: "",
@@ -79,14 +83,6 @@ export default function GrnForm() {
   });
 
   const watchedItems = form.watch("items");
-
-  const onInvalid = useCallback(() => {
-    toast({
-      variant: "destructive",
-      title: "Validation failed",
-      description: "Please review the highlighted fields.",
-    });
-  }, [toast]);
 
   const handleVariantChange = useCallback(
     (fieldId: string, index: number, variantId: string) => {
@@ -173,24 +169,6 @@ export default function GrnForm() {
     form.setValue("lpoId", "", { shouldDirty: true });
   }, [form]);
 
-  const totalValue = useMemo(
-    () =>
-      watchedItems.reduce(
-        (sum, item) =>
-          sum + Number(item.receivedQuantity || 0) * Number(item.unitCost || 0),
-        0,
-      ),
-    [watchedItems],
-  );
-
-  const filledItemCount = useMemo(
-    () =>
-      watchedItems.filter(
-        (item) => item.stockVariantId && Number(item.receivedQuantity) > 0,
-      ).length,
-    [watchedItems],
-  );
-
   const submitData = (values: FormValues) => {
     // Hard-stop: serial-tracked rows need a matching serial count.
     // We can't bake this into the Zod schema because `serialTracked` is
@@ -234,13 +212,13 @@ export default function GrnForm() {
   return (
     <Form {...form}>
       <FormError message={response?.message} />
-      <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(submitData)} className="space-y-6">
         {/* ── Header ─────────────────────────────────────────────── */}
         <Card className="rounded-xl shadow-sm">
           <CardContent className="pt-6 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="text-lg font-medium">GRN Details</h3>
+                <h3 className="text-lg font-medium">GRN details</h3>
                 <p className="text-xs text-muted-foreground">
                   Tie the receipt to a supplier, and optionally to an open LPO so
                   we can update that order and track performance.
@@ -267,7 +245,7 @@ export default function GrnForm() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name="supplierId"
@@ -301,7 +279,7 @@ export default function GrnForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Received By <span className="text-red-500">*</span>
+                      Received by <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <StaffSelectorWidget
@@ -320,23 +298,45 @@ export default function GrnForm() {
               <FormField
                 control={form.control}
                 name="receivedDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Received Date <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="datetime-local"
-                        {...field}
-                        value={field.value ?? ""}
-                        max={now()}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const selected = field.value ? new Date(field.value) : undefined;
+                  const today = startOfToday();
+                  return (
+                    <FormItem>
+                      <FormLabel>
+                        Received date <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={isPending}
+                              className={cn(
+                                "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
+                                !selected && "text-muted-foreground",
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                              {selected ? format(selected, "PPP") : "Pick a date"}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={selected}
+                            onSelect={(d) => field.onChange(d ? d.toISOString() : "")}
+                            disabled={(date) => date > today}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
 
@@ -365,7 +365,7 @@ export default function GrnForm() {
         <Card className="rounded-xl shadow-sm">
           <CardContent className="pt-6 space-y-4">
             <div>
-              <h3 className="text-lg font-medium">Delivery Person</h3>
+              <h3 className="text-lg font-medium">Delivery person</h3>
               <p className="text-xs text-muted-foreground">
                 Optional — useful for contact-tracing short deliveries or returns.
               </p>
@@ -448,7 +448,7 @@ export default function GrnForm() {
                 }
                 disabled={isPending}
               >
-                <Plus className="w-4 h-4 mr-1" /> Add Item
+                <Plus className="w-4 h-4 mr-1" /> Add item
               </Button>
             </div>
 
@@ -488,7 +488,7 @@ export default function GrnForm() {
                       render={({ field: f }) => (
                         <FormItem className="w-full md:flex-[5] min-w-0">
                           <FormLabel className="text-xs">
-                            Stock Item <span className="text-red-500">*</span>
+                            Stock item <span className="text-red-500">*</span>
                           </FormLabel>
                           <FormControl>
                             <StockVariantSelector
@@ -509,7 +509,7 @@ export default function GrnForm() {
                       render={({ field: f }) => (
                         <FormItem className="w-full md:flex-[2] min-w-0">
                           <FormLabel className="text-xs">
-                            Qty <span className="text-red-500">*</span>
+                            Quantity <span className="text-red-500">*</span>
                           </FormLabel>
                           <FormControl>
                             <NumericFormat
@@ -535,7 +535,7 @@ export default function GrnForm() {
                       render={({ field: f }) => (
                         <FormItem className="w-full md:flex-[3] min-w-0">
                           <FormLabel className="text-xs">
-                            Unit Cost
+                            Unit cost
                             <span className="text-muted-foreground ml-1 font-normal">
                               ({locationCurrency})
                             </span>
@@ -566,7 +566,7 @@ export default function GrnForm() {
                       name={`items.${index}.batchNumber`}
                       render={({ field: f }) => (
                         <FormItem>
-                          <FormLabel className="text-xs">Batch Number</FormLabel>
+                          <FormLabel className="text-xs">Batch number</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Auto-generated if blank"
@@ -583,7 +583,7 @@ export default function GrnForm() {
                       name={`items.${index}.supplierBatchReference`}
                       render={({ field: f }) => (
                         <FormItem>
-                          <FormLabel className="text-xs">Supplier Ref</FormLabel>
+                          <FormLabel className="text-xs">Supplier ref</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Supplier batch reference"
@@ -598,19 +598,40 @@ export default function GrnForm() {
                     <FormField
                       control={form.control}
                       name={`items.${index}.expiryDate`}
-                      render={({ field: f }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Expiry Date</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="date"
-                              {...f}
-                              value={f.value ?? ""}
-                              disabled={isPending}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
+                      render={({ field: f }) => {
+                        const selected = f.value ? new Date(f.value) : undefined;
+                        return (
+                          <FormItem>
+                            <FormLabel className="text-xs">Expiry date</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={isPending}
+                                    className={cn(
+                                      "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
+                                      !selected && "text-muted-foreground",
+                                    )}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                    {selected ? format(selected, "PPP") : "Pick a date"}
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[300px] p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={selected}
+                                  onSelect={(d) => f.onChange(d ? d.toISOString().split("T")[0] : "")}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </FormItem>
+                        );
+                      }}
                     />
                   </div>
 
@@ -627,7 +648,7 @@ export default function GrnForm() {
                         return (
                           <FormItem>
                             <FormLabel className="text-xs flex items-center gap-2">
-                              Serial Numbers <span className="text-red-500">*</span>
+                              Serial numbers <span className="text-red-500">*</span>
                               <Badge variant="outline" className="font-mono text-[10px]">
                                 {count} / {Math.trunc(qty) || 0}
                               </Badge>
@@ -664,31 +685,6 @@ export default function GrnForm() {
                 </div>
               );
             })}
-          </CardContent>
-        </Card>
-
-        {/* ── Summary ────────────────────────────────────────────── */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="py-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-            <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                Summary
-              </span>
-              <span className="font-medium">
-                {filledItemCount} item{filledItemCount === 1 ? "" : "s"} ready to receive
-              </span>
-            </div>
-            <div className="flex flex-col items-end">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                Total value
-              </span>
-              <span className="font-mono font-semibold">
-                {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
-                <span className="text-xs font-medium text-muted-foreground">
-                  {locationCurrency}
-                </span>
-              </span>
-            </div>
           </CardContent>
         </Card>
 

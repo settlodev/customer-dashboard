@@ -240,7 +240,7 @@ function DeleteButton({ lpoId, lpoNumber }: { lpoId: string; lpoNumber: string }
         }
         toast({ title: "LPO deleted", description: res.message });
         setOpen(false);
-        router.push("/stock-purchases");
+        router.push("/purchase-orders");
       });
     });
   };

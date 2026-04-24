@@ -60,11 +60,13 @@ const Header = ({ session, authToken, onMenuClick, businessData }: HeaderProps) 
             />
           </Link>
 
-          {user && businessData &&
-            ((businessData.locationList?.length ?? 0) > 1 || !!businessData.warehouse?.id) && (
+          {user && businessData && businessData.hasMultipleDestinations && (
             <LocationSwitcher
               locationList={businessData.locationList}
               currentLocation={businessData.currentLocation}
+              storeList={businessData.storeList}
+              currentStore={businessData.currentStore}
+              warehouseList={businessData.warehouseList}
               warehouse={businessData.warehouse}
             />
           )}

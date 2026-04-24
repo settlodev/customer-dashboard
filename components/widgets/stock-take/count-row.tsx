@@ -15,13 +15,14 @@ interface Props {
   item: StockTakeItem;
   blindCount: boolean;
   readOnly?: boolean;
+  showBin?: boolean;
 }
 
 /**
  * One editable row inside the stock-take detail page. Persists counted qty
  * with an inline save button — the backend recalculates variance per request.
  */
-export function StockTakeCountRow({ takeId, item, blindCount, readOnly }: Props) {
+export function StockTakeCountRow({ takeId, item, blindCount, readOnly, showBin }: Props) {
   const [counted, setCounted] = useState<number | undefined>(
     item.countedQuantity ?? undefined,
   );
@@ -67,6 +68,11 @@ export function StockTakeCountRow({ takeId, item, blindCount, readOnly }: Props)
   return (
     <tr className="hover:bg-gray-50/40 align-top">
       <td className="px-3 py-3 font-medium text-gray-900">{item.displayName || "—"}</td>
+      {showBin && (
+        <td className="px-3 py-3 text-xs text-muted-foreground font-mono">
+          {item.binCode || "—"}
+        </td>
+      )}
       <td className="px-3 py-3 text-right text-muted-foreground">
         {blindCount && item.expectedQuantity == null
           ? <span className="italic">hidden</span>
