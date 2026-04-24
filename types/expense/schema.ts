@@ -45,7 +45,7 @@ export const ExpenseSchema = object({
       }),
   ).optional(),
   date: string({ required_error: "Date is required" }),
-  receiptUrl: string({ required_error: "Receipt URL is required" }).optional(),
+  receiptUrl: string().optional().nullish(),
 });
 
 export const ExpenseCategorySchema = object({
