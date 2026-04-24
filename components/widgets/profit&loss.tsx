@@ -641,7 +641,7 @@ const ProfitLossStatement = ({
               },
               {
                 label: isProfit ? "Net profit" : "Net loss",
-                value: fmt(salesData.closingBalance),
+                value: fmt(salesData.netProfit),
                 sub: `${netMargin}% margin`,
               },
             ].map((c, i) => (
@@ -733,7 +733,7 @@ const ProfitLossStatement = ({
 
             <SummaryRow
               label={`${isProfit ? "NET PROFIT" : "NET LOSS"} — Net margin: ${netMargin}%`}
-              value={fmt(salesData.closingBalance)}
+              value={fmt(salesData.netProfit)}
               color="#111827"
               bg="#f3f4f6"
               large

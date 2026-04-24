@@ -365,10 +365,6 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
                 name="receiptUrl"
                 render={({ field }) => (
                   <FormItem className="space-y-4">
-                    {/*
-                      Mobile  → stacked: upload area full-width, info panel below
-                      Desktop → side-by-side: fixed-width upload on left, info on right
-                    */}
                     <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
                       {/* Upload widget */}
                       <FormControl>
@@ -466,10 +462,6 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
           {/* ── Action Buttons ───────────────────────────────────────── */}
           <Card className="shadow-sm border-0 ring-1 ring-gray-200">
             <CardContent className="pt-5 sm:pt-6">
-              {/*
-                Mobile  → stack vertically, buttons full-width on top, hint text below
-                Desktop → hint text left, buttons right in a row
-              */}
               <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
                 <p className="text-sm text-gray-500 text-center sm:text-left">
                   {item
