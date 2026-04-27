@@ -1,13 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
-import { Package, CheckCircle, Clock, XCircle,  RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Package, CheckCircle, Clock, XCircle, RefreshCw } from 'lucide-react';
 import { stockRequestReportForWarehouse } from '@/lib/actions/warehouse/request-actions';
-
-
 
 const StockRequestReport = () => {
   const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const router = useRouter();
 
   const fetchReport = async () => {
     try {
@@ -15,8 +16,8 @@ const StockRequestReport = () => {
       setError(null);
       const data = await stockRequestReportForWarehouse();
       setReportData(data);
-    } catch (err) {
-      
+    } catch (err:any) {
+      setError(err.message || 'An error occurred');
       console.error('Error fetching report:', err);
     } finally {
       setLoading(false);
@@ -31,7 +32,14 @@ const StockRequestReport = () => {
     fetchReport();
   };
 
-  
+  const handleCardClick = (status = '') => {
+    // Navigate to warehouse-requests with optional status filter
+    if (status) {
+      router.push(`/warehouse-requests?status=${status}`);
+    } else {
+      router.push('/warehouse-requests');
+    }
+  };
 
   if (loading) {
     return (
@@ -68,21 +76,24 @@ const StockRequestReport = () => {
     );
   }
 
-  
-
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
+            <h1 className="text-2xl font-bold text-gray-900">Stock Request Report</h1>
             <p className="text-gray-600 mt-2">Overview of stock request activities</p>
           </div>
         </div>
 
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          {/* Total Requests Card */}
+          <div 
+            className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => handleCardClick()}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Requests</p>
@@ -94,7 +105,11 @@ const StockRequestReport = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          {/* Approved Card */}
+          <div 
+            className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => handleCardClick('APPROVED')}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Approved</p>
@@ -105,8 +120,27 @@ const StockRequestReport = () => {
               </div>
             </div>
           </div>
+          {/* Received Card */}
+          <div 
+            className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => handleCardClick('RECEIVED')}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Received</p>
+                <p className="text-3xl font-bold text-green-600">{reportData?.receivedStockRequests || 0}</p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          {/* Pending Card */}
+          <div 
+            className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => handleCardClick('PENDING')}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Pending</p>
@@ -118,7 +152,11 @@ const StockRequestReport = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          {/* Cancelled Card */}
+          <div 
+            className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => handleCardClick('CANCELLED')}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Cancelled</p>
@@ -130,7 +168,6 @@ const StockRequestReport = () => {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

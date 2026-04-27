@@ -8,7 +8,7 @@ import {columns} from '@/components/tables/stock/column'
 import { searchStock } from "@/lib/actions/stock-actions";
 import { Stock } from "@/types/stock/type";
 import { CSVStockDialog } from "@/components/csv/stockCsvImport";
-import { ProductWithStockCSVDialog } from "@/components/csv/ProductWithStockCsvImport";
+
 
 const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
 type Params = { 
@@ -28,7 +28,7 @@ type Params = {
 
      const responseData = await searchStock(q,page,pageLimit);
 
-    //  console.log("The stock present is: ", responseData );
+   
 
      const data:Stock[]=responseData.content;
      const total =responseData.totalElements;
@@ -45,8 +45,8 @@ type Params = {
                         <Link href={`/stocks/new`}>Add Stock</Link>
                     </Button>
                     <div>
-                    {total === 0 ?  <CSVStockDialog /> : null}
-                    {total === 0 ?  <ProductWithStockCSVDialog /> : null}
+                    {total === 0 ?  <CSVStockDialog uploadType="warehouse" /> : null}
+                    
                     </div>
                 </div>
             </div>
@@ -55,7 +55,7 @@ type Params = {
                     <Card x-chunk="data-table">
                         <CardHeader>
                             <CardTitle>Stock</CardTitle>
-                            <CardDescription>Manage Stock in your business location</CardDescription>
+                            <CardDescription>Manage Stock in your warehouse</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <DataTable columns={columns}

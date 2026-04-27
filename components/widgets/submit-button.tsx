@@ -23,7 +23,7 @@ export const SubmitButton = ({
           type="submit"
           disabled={isPending || isDisabled}
           onClick={onClick}
-          className={`${margin ? `mt-${margin}` : ''} ${className || ''}`}
+          className={`${margin ? `mt-${margin}` : ''} hover:opacity-90 ${className || ''}`}
       >
         {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
         {isPending ? "Processing..." : label}

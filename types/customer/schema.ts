@@ -1,30 +1,134 @@
-import {boolean, nativeEnum, object, string} from "zod";
-import {isValidPhoneNumber} from "libphonenumber-js";
-import {Gender} from "@/types/enums";
+import {
+  boolean,
+  nativeEnum,
+  number,
+  object,
+  string,
+  enum as zenum,
+  preprocess,
+  array,
+} from "zod";
+import { isValidPhoneNumber } from "libphonenumber-js";
+import { Gender } from "@/types/enums";
+
+const optionalNumber = preprocess((val) => {
+  if (val === null || val === undefined || val === "") return undefined;
+  if (typeof val === "string") {
+    const parsed = Number(val);
+    return isNaN(parsed) ? undefined : parsed;
+  }
+  return val;
+}, number().nonnegative().optional());
 
 export const CustomerSchema = object({
-    firstName: string({ required_error: "Customer first name is required" }).min(
-        3,
-        "Please enter a valid name",
-    ),
-    lastName: string({ required_error: "Customer last name is required" }).min(
-        3,
-        "Please enter a valid name",
-    ),
-    email: string()
-        .min(1, "Please enter a valid email address")
-        .email("Please enter a valid email address")
-        .optional()
-        .nullish(),
-    phoneNumber: string({ message: "Customer Phone number is required" })
-        .refine(isValidPhoneNumber, {
-            message: "Invalid phone number",
-        })
-    ,
-    gender: nativeEnum(Gender),
-    allowNotifications: boolean().optional(),
-    status:boolean().optional(),
+  // ── Personal ────────────────────────────────────────────────
+  firstName: string({ required_error: "Customer first name is required" }).min(
+    1,
+    "Please enter a valid name",
+  ),
+  lastName: string({ required_error: "Customer last name is required" }).min(
+    1,
+    "Please enter a valid name",
+  ),
+  gender: nativeEnum(Gender, { required_error: "Gender is required" }),
+  phoneNumber: string({ message: "Customer phone number is required" }).refine(
+    isValidPhoneNumber,
+    { message: "Invalid phone number" },
+  ),
+  email: string()
+    .email("Please enter a valid email address")
+    .optional()
+    .or(string().length(0))
+    .transform((val) => (val === "" ? undefined : val)),
+  dateOfBirth: string().optional(),
+
+  // ── Identification ───────────────────────────────────────────
+  idType: string().optional(),
+  idNumber: string().optional(),
+  tinNumber: string().optional(),
+  vrn: string().optional(),
+
+  // ── Financial & Loyalty ──────────────────────────────────────
+  creditLimit: optionalNumber,
+  loyaltyPoints: optionalNumber,
+  noShowCount: optionalNumber,
+
+  // ── Preferences & Group ──────────────────────────────────────
+  seatingPreference: string().optional(),
+  source: zenum([
+    "POS",
+    "ONLINE",
+    "GOOGLE",
+    "INSTAGRAM",
+    "REFERRAL",
+    "WALK_IN",
+  ]).optional(),
+  createdFrom: zenum([
+    "POS",
+    "MOBILE_APP",
+    "WEBSITE",
+    "RESERVATION",
+  ]).optional(),
+  customerGroup: string()
+    .uuid("Please select a valid customer group")
+    .optional(),
+
+  // ── Misc ─────────────────────────────────────────────────────
+  notes: string().optional(),
+  allowNotifications: boolean().optional(),
+  status: boolean().optional(),
+
+  // ── Company Association (optional) ───────────────────────────
+  isCompanyAssociated: boolean().default(false),
+  companyName: string().optional(),
+  companyRegistrationNumber: string().optional(),
+  contactPersonRole: string().optional(),
+  companyEmailAddress: string().optional(),
+  companyPhoneNumber: string().optional(),
+  companyPhysicalAddress: string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.isCompanyAssociated) {
+    if (!data.companyName?.trim()) {
+      ctx.addIssue({
+        path: ["companyName"],
+        code: "custom",
+        message: "Company name is required",
+      });
+    }
+  }
 });
 
+export const CustomerAddressSchema = object({
+  addressType: zenum(["HOME", "WORK", "OTHER"], {
+    required_error: "Address type is required",
+  }),
+  addressLine: string({ required_error: "Address is required" }).min(
+    1,
+    "Address cannot be empty",
+  ),
+});
 
+export const CustomerPreferenceSchema = object({
+  preferenceKey: string({ required_error: "Preference key is required" }).min(
+    1,
+    "Key cannot be empty",
+  ),
+  preferenceValue: string({
+    required_error: "Preference value is required",
+  }).min(1, "Value cannot be empty"),
+});
 
+export const CustomerGroupSchema = object({
+  name: string({ required_error: "Group name is required" }).min(
+    1,
+    "Group name is required",
+  ),
+});
+
+export const CustomersGroupChangeSchema = object({
+  customerGroupId: string().uuid("Please select a valid group"),
+  customerIds: array(string().uuid()).min(
+    1,
+    "At least one customer is required",
+  ),
+});

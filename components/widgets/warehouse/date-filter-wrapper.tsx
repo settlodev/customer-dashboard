@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DateFilter } from "./date-filter";
 
 interface DateFilterWrapperProps {
