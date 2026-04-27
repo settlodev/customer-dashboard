@@ -28,6 +28,7 @@ export const searchOrder = async (
   q: string,
   page: number,
   pageLimit: number,
+  efdPrinted?: boolean,
 ): Promise<ApiResponse<Orders>> => {
   await getAuthenticatedUser();
 
@@ -53,8 +54,14 @@ export const searchOrder = async (
     };
     const location = await getCurrentLocation();
 
+    // Build query string conditionally so we don't always send efdPrinted
+    const params = new URLSearchParams({ dashboard: "true" });
+    if (efdPrinted !== undefined) {
+      params.set("efdPrinted", String(efdPrinted));
+    }
+
     const orderData = await apiClient.post(
-      `/api/orders/${location?.id}?dashboard=true`,
+      `/api/orders/${location?.id}?${params.toString()}`,
       query,
     );
 
@@ -115,7 +122,6 @@ export const isEfdPrinted = async (
     const order = await apiClient.get(
       `/api/vfd/${location}/receipt/${orderId}`,
     );
-
     return parseStringify(order);
   } catch (error) {
     throw error;
