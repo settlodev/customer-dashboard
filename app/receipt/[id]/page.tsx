@@ -36,6 +36,9 @@ const OrderReceipt = async ({
   const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/receipt/${orderData.id}`;
   const isDownloadable = download;
 
+  // Single source of truth — used for layout choice, button label, and download type
+  const isEfd = Boolean(orderData.efdPrinted && efdData);
+
   const formatDate = (dateStr: string | number | Date) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString("en-US", {
@@ -65,6 +68,27 @@ const OrderReceipt = async ({
     }).format(Number(amount));
   };
 
+  const formatEfdDate = (dateStr: string | number | Date) => {
+    const date = new Date(dateStr);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatEfdTime = (dateStr: string | number | Date) => {
+    const date = new Date(dateStr);
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
+    return `${hours}:${minutes}:${seconds}`;
+  };
+
+  const formatEfdDateTime = (dateStr: string | number | Date) => {
+    if (!dateStr) return "—";
+    return `${formatEfdDate(dateStr)} ${formatEfdTime(dateStr)}`;
+  };
+
   const uniqueMethods = Array.from(
     new Set(
       orderData.transactions
@@ -84,6 +108,368 @@ const OrderReceipt = async ({
   const isPaid = orderData.paidAmount === orderData.amount;
   const docType = isPaid ? "RECEIPT" : "INVOICE";
 
+  // Build QR code URL from TRA verification URL (only meaningful when EFD)
+  const verificationUrl = efdData?.data?.traReceiptVerificationUrl
+    ? efdData.data.traReceiptVerificationUrl.startsWith("http")
+      ? efdData.data.traReceiptVerificationUrl
+      : `https://${efdData.data.traReceiptVerificationUrl}`
+    : "";
+  const qrCodeUrl = verificationUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+        verificationUrl,
+      )}`
+    : "";
+
+  // ============================================================
+  // EFD RECEIPT LAYOUT (TRA-compliant style)
+  // ============================================================
+  if (isEfd && efdData) {
+    const dottedBorder = { borderTop: "1px dashed #999" };
+
+    return (
+      <div
+        className="min-h-screen py-4 px-2 sm:py-8 sm:px-6"
+        style={{ backgroundColor: "#EAEAE5" }}
+      >
+        <div className="max-w-2xl mx-auto">
+          <div
+            id="receipt-content"
+            className="bg-white shadow-sm mx-auto overflow-hidden"
+            style={{ maxWidth: "420px", pageBreakInside: "avoid" }}
+          >
+            {/* HEADER: Business info (centered) */}
+            <div className="px-6 pt-6 pb-3 text-center">
+              {locationLogo && (
+                <img
+                  src={locationLogo}
+                  alt={`${orderData.businessName} logo`}
+                  className="h-16 w-auto object-contain mx-auto mb-3"
+                />
+              )}
+              <h1 className="text-base font-bold tracking-wide text-gray-900 uppercase">
+                {efdData.clientInformation?.businessName ||
+                  orderData.businessName}
+              </h1>
+              <div className="text-[11px] text-gray-800 mt-2 space-y-0.5">
+                {efdData.vfdInformation?.mobile && (
+                  <p>
+                    <span className="font-bold">MOBILE:</span>{" "}
+                    {efdData.vfdInformation.mobile}
+                  </p>
+                )}
+                {efdData.vfdInformation?.tin && (
+                  <p>
+                    <span className="font-bold">TIN:</span>{" "}
+                    {efdData.vfdInformation.tin}
+                  </p>
+                )}
+                {efdData.vfdInformation?.vrn && (
+                  <p>
+                    <span className="font-bold">VRN:</span>{" "}
+                    {efdData.vfdInformation.vrn}
+                  </p>
+                )}
+                {efdData.vfdInformation?.uin && (
+                  <p>
+                    <span className="font-bold">UIN:</span>{" "}
+                    {efdData.vfdInformation.uin}
+                  </p>
+                )}
+                {efdData.vfdInformation?.taxOffice && (
+                  <p>
+                    <span className="font-bold">TAX OFFICE:</span>{" "}
+                    {efdData.vfdInformation.taxOffice}
+                  </p>
+                )}
+                {efdData.vfdInformation?.physicalAddress && (
+                  <p>
+                    <span className="font-bold">ADDRESS:</span>{" "}
+                    {efdData.vfdInformation.physicalAddress}
+                  </p>
+                )}
+                {efdData.vfdInformation?.street && (
+                  <p>{efdData.vfdInformation.street}</p>
+                )}
+              </div>
+            </div>
+
+            {/* CUSTOMER INFO (only if present) */}
+            {hasCustomerInfo && (
+              <div className="px-6 py-3" style={dottedBorder}>
+                <div className="text-[11px] text-gray-800 space-y-0.5">
+                  {orderData.customerName && (
+                    <p>
+                      <span className="font-bold">CUSTOMER NAME:</span>{" "}
+                      {orderData.customerName}
+                    </p>
+                  )}
+                  {orderData.customerTinNumber && (
+                    <>
+                      <p>
+                        <span className="font-bold">CUSTOMER ID TYPE:</span>{" "}
+                        TAXPAYER IDENTIFICATION NUMBER
+                      </p>
+                      <p>
+                        <span className="font-bold">CUSTOMER ID:</span>{" "}
+                        {orderData.customerTinNumber}
+                      </p>
+                    </>
+                  )}
+                  {orderData.customerPhoneNumber && (
+                    <p>
+                      <span className="font-bold">CUSTOMER MOBILE:</span>{" "}
+                      {orderData.customerPhoneNumber}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* RECEIPT META */}
+            <div className="px-6 py-3" style={dottedBorder}>
+              <div className="text-[11px] text-gray-800 space-y-0.5">
+                <p>
+                  <span className="font-bold">RECEIPT NO:</span>{" "}
+                  {orderData.orderNumber}
+                </p>
+                {efdData.data?.zNum && (
+                  <p>
+                    <span className="font-bold">Z NUMBER:</span>{" "}
+                    {efdData.data.zNum}/{efdData.data.rctNum || ""}
+                  </p>
+                )}
+                <p>
+                  <span className="font-bold">RECEIPT DATE:</span>{" "}
+                  {formatEfdDate(
+                    efdData.data?.dateTime || orderData.closedDate,
+                  )}
+                </p>
+                <p>
+                  <span className="font-bold">RECEIPT TIME:</span>{" "}
+                  {formatEfdTime(
+                    efdData.data?.dateTime || orderData.closedDate,
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* ORDER DETAILS */}
+            <div className="px-6 py-3" style={dottedBorder}>
+              <p className="text-[11px] font-bold text-gray-900 mb-1.5 tracking-wide">
+                ORDER DETAILS
+              </p>
+              <div className="text-[11px] text-gray-800 space-y-0.5">
+                <p>
+                  <span className="font-bold">ORDER NO:</span>{" "}
+                  {orderData.orderNumber}
+                </p>
+                {orderData.startedByName && (
+                  <p>
+                    <span className="font-bold">SERVED BY:</span>{" "}
+                    {orderData.startedByName}
+                  </p>
+                )}
+                {orderData.finishedByName &&
+                  orderData.finishedByName !== orderData.startedByName && (
+                    <p>
+                      <span className="font-bold">CLOSED BY:</span>{" "}
+                      {orderData.finishedByName}
+                    </p>
+                  )}
+                {orderData.openedDate && (
+                  <p>
+                    <span className="font-bold">OPENED:</span>{" "}
+                    {formatEfdDateTime(orderData.openedDate)}
+                  </p>
+                )}
+                {orderData.closedDate && (
+                  <p>
+                    <span className="font-bold">CLOSED:</span>{" "}
+                    {formatEfdDateTime(orderData.closedDate)}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* ITEMS HEADING */}
+            <div className="px-6 pt-4 pb-2" style={dottedBorder}>
+              <h2 className="text-lg font-bold text-gray-900">Items</h2>
+            </div>
+
+            {/* ITEMS TABLE */}
+            <div className="px-6 pb-3">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="text-gray-800 border-b border-gray-300">
+                    <th className="py-2 text-left font-bold">Description</th>
+                    <th className="py-2 text-center font-bold">Qty</th>
+                    <th className="py-2 text-right font-bold">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orderData.items.map((item: OrderItems, index: number) => (
+                    <tr key={index} className="text-gray-900">
+                      <td className="py-2 pr-2 uppercase">{item.name}</td>
+                      <td className="py-2 text-center">{item.quantity}</td>
+                      <td className="py-2 text-right whitespace-nowrap">
+                        {Number(item.totalPrice).toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* TOTALS */}
+            <div className="px-6 py-3" style={dottedBorder}>
+              <div className="text-[11px] text-gray-900 space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="font-bold">TOTAL EXCL OF TAX:</span>
+                  <span>
+                    {Number(efdData.totals?.totalTaxExcl || 0).toLocaleString(
+                      "en-US",
+                      {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      },
+                    )}
+                  </span>
+                </div>
+                {efdData.totals?.discount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="font-bold">DISCOUNT:</span>
+                    <span>
+                      -
+                      {Number(efdData.totals.discount).toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                )}
+                {efdData.vatTotals?.map((vat: any, index: number) => (
+                  <div key={index} className="flex justify-between">
+                    <span className="font-bold">
+                      VAT{" "}
+                      {vat.vatRate === "A"
+                        ? "18%"
+                        : vat.vatRate === "B"
+                          ? "0%"
+                          : vat.vatRate}
+                      :
+                    </span>
+                    <span>
+                      {Number(vat.taxAmount).toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex justify-between">
+                  <span className="font-bold">TOTAL TAX:</span>
+                  <span>
+                    {Number(efdData.totals?.totalTax || 0).toLocaleString(
+                      "en-US",
+                      {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      },
+                    )}
+                  </span>
+                </div>
+                <div className="flex justify-between font-bold border-t border-gray-400 pt-1.5">
+                  <span>TOTAL INCL OF TAX:</span>
+                  <span>
+                    {Number(
+                      efdData.totals?.totalTaxIncl || orderData.netAmount,
+                    ).toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+                {efdData.payments && (
+                  <div className="flex justify-between pt-1">
+                    <span className="font-bold">
+                      PAID BY {efdData.payments.pmtType || "CASH"}:
+                    </span>
+                    <span>
+                      {Number(
+                        efdData.payments.pmtAmount || orderData.paidAmount,
+                      ).toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="font-bold">ITEMS NUMBER:</span>
+                  <span>{orderData.items.length}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* VERIFICATION CODE + QR */}
+            <div className="px-6 py-4 text-center" style={dottedBorder}>
+              <p className="text-[11px] font-bold text-gray-900 mb-1">
+                RECEIPT VERIFICATION CODE
+              </p>
+              {efdData.data?.traReceiptVerificationCode && (
+                <p className="text-base font-bold text-gray-900 mb-3 tracking-wider">
+                  {efdData.data.traReceiptVerificationCode}
+                </p>
+              )}
+
+              {qrCodeUrl && (
+                <div className="flex justify-center my-3">
+                  <img
+                    src={qrCodeUrl}
+                    alt="TRA Receipt Verification QR Code"
+                    width={160}
+                    height={160}
+                    className="border border-gray-200"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* FOOTER */}
+            <div className="px-6 pb-6 pt-3 text-center" style={dottedBorder}>
+              <p className="text-[12px] font-bold text-gray-900 tracking-wide">
+                *** END OF LEGAL RECEIPT ***
+              </p>
+              <p className="text-[9px] font-semibold text-black mt-3">
+                Powered by Settlo Technologies
+              </p>
+            </div>
+          </div>
+
+          {/* Action buttons (EFD) */}
+          {!isDownloadable && (
+            <div className="flex justify-center items-center mt-6 mb-4 gap-3">
+              <DownloadButton
+                title="Download EFD Receipt"
+                orderNumber={orderData.orderNumber}
+                isDownloadable={isDownloadable === "1"}
+                isEfd={true}
+                fontSize={{ header: "14px", body: "10px", footer: "8px" }}
+              />
+              <ShareButton url={orderUrl} />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // NON-EFD RECEIPT (modern card design)
+  // ============================================================
   return (
     <div
       className="min-h-screen py-4 px-2 sm:py-8 sm:px-6"
@@ -97,16 +483,14 @@ const OrderReceipt = async ({
           )}
         </div>
 
-        {/* ── RECEIPT CARD ── */}
+        {/* RECEIPT CARD */}
         <div
           id="receipt-content"
           className="bg-white rounded-lg shadow-sm mx-auto overflow-hidden"
           style={{ maxWidth: "794px", pageBreakInside: "avoid" }}
         >
-          {/* ── TOP HEADER: Logo left · Doc title right ── */}
-          {/* Mobile: tighter padding, smaller logo */}
+          {/* TOP HEADER: Logo left · Doc title right */}
           <div className="px-4 pt-4 pb-3 lg:px-10 lg:pt-10 lg:pb-6 flex flex-row justify-between items-start gap-3">
-            {/* Left: Logo */}
             <div className="flex items-center gap-3">
               {locationLogo ? (
                 <img
@@ -119,7 +503,6 @@ const OrderReceipt = async ({
               )}
             </div>
 
-            {/* Right: Document type + company details */}
             <div className="text-right">
               <h2
                 className="text-xl lg:text-4xl font-light tracking-wide mb-0.5"
@@ -128,71 +511,35 @@ const OrderReceipt = async ({
                 {docType}
               </h2>
 
-              {orderData.efdPrinted && efdData ? (
-                <div className="text-[10px] lg:text-sm text-gray-600 space-y-0 mt-1">
-                  {efdData.vfdInformation?.tin && (
-                    <p className="font-semibold text-gray-800">
-                      TIN: {efdData.vfdInformation.tin}
-                    </p>
-                  )}
-                  <p className="font-semibold text-gray-800">
-                    {efdData.clientInformation?.businessName ||
-                      orderData.businessName}
-                  </p>
-                  <p>
-                    {efdData.vfdInformation?.physicalAddress ||
-                      orderData.locationAddress}
-                  </p>
-                  {efdData.vfdInformation?.street && (
-                    <p>{efdData.vfdInformation.street}</p>
-                  )}
-                  <p>{orderData.locationCity}</p>
-                  {efdData.vfdInformation?.mobile && (
-                    <p>Mobile: {efdData.vfdInformation.mobile}</p>
-                  )}
-                  {efdData.vfdInformation?.uin && (
-                    <p>UIN: {efdData.vfdInformation.uin}</p>
-                  )}
-                  {efdData.vfdInformation?.vrn && (
-                    <p>VRN: {efdData.vfdInformation.vrn}</p>
-                  )}
-                  {efdData.vfdInformation?.taxOffice && (
-                    <p>Tax Office: {efdData.vfdInformation.taxOffice}</p>
-                  )}
-                </div>
-              ) : (
-                <div className="text-[10px] lg:text-sm text-gray-600 space-y-0 mt-1">
-                  <p className="font-semibold text-gray-800">
-                    {orderData.businessName}
-                  </p>
-                  {orderData.locationAddress && (
-                    <p>{orderData.locationAddress}</p>
-                  )}
-                  {orderData.locationDetails?.street && (
-                    <p>{orderData.locationDetails.street}</p>
-                  )}
-                  {orderData.locationCity && <p>{orderData.locationCity}</p>}
-                  {orderData.locationPhone && (
-                    <p>Mobile: {orderData.locationPhone}</p>
-                  )}
-                  {orderData.locationDetails?.email && (
-                    <p>{orderData.locationDetails.email}</p>
-                  )}
-                </div>
-              )}
+              <div className="text-[10px] lg:text-sm text-gray-600 space-y-0 mt-1">
+                <p className="font-semibold text-gray-800">
+                  {orderData.businessName}
+                </p>
+                {orderData.locationAddress && (
+                  <p>{orderData.locationAddress}</p>
+                )}
+                {orderData.locationDetails?.street && (
+                  <p>{orderData.locationDetails.street}</p>
+                )}
+                {orderData.locationCity && <p>{orderData.locationCity}</p>}
+                {orderData.locationPhone && (
+                  <p>Mobile: {orderData.locationPhone}</p>
+                )}
+                {orderData.locationDetails?.email && (
+                  <p>{orderData.locationDetails.email}</p>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* ── DIVIDER ── */}
+          {/* DIVIDER */}
           <div
             className="mx-4 lg:mx-10"
             style={{ height: "1px", backgroundColor: "#EAEAE5" }}
           />
 
-          {/* ── BILL TO + INVOICE META ── */}
-          {/* Mobile: stacked in a compact 2-col grid instead of two block rows */}
+          {/* BILL TO + INVOICE META */}
           <div className="px-4 py-3 lg:px-10 lg:py-6 flex flex-col lg:flex-row justify-between gap-3 lg:gap-6">
-            {/* Left column */}
             <div className="flex-1">
               {hasCustomerInfo ? (
                 <>
@@ -221,7 +568,6 @@ const OrderReceipt = async ({
               )}
             </div>
 
-            {/* Right column — meta table */}
             <div className="w-full lg:w-72">
               <table className="w-full text-[10px] lg:text-sm">
                 <tbody>
@@ -276,7 +622,6 @@ const OrderReceipt = async ({
                 </tbody>
               </table>
 
-              {/* Status badges */}
               <div className="mt-2 flex flex-wrap gap-1.5 lg:gap-2 lg:justify-end">
                 <span
                   className="px-2 py-0.5 rounded-full text-[9px] lg:text-xs font-semibold"
@@ -290,19 +635,11 @@ const OrderReceipt = async ({
                     ? "NOT PAID"
                     : "PAID"}
                 </span>
-                {orderData.efdPrinted && efdData && (
-                  <span
-                    className="px-2 py-0.5 rounded-full text-[9px] lg:text-xs font-semibold"
-                    style={{ backgroundColor: "#F2942233", color: "#EB7F44" }}
-                  >
-                    EFD RECEIPT
-                  </span>
-                )}
               </div>
             </div>
           </div>
 
-          {/* ── ITEMS TABLE — desktop ── */}
+          {/* ITEMS TABLE — desktop */}
           <div className="hidden lg:block px-10 mb-6">
             <table className="w-full text-sm">
               <thead>
@@ -350,7 +687,7 @@ const OrderReceipt = async ({
             </table>
           </div>
 
-          {/* ── ITEMS — mobile compact table (replaces cards) ── */}
+          {/* ITEMS — mobile compact table */}
           <div className="lg:hidden px-3 mb-4">
             <table className="w-full text-[10px]">
               <thead>
@@ -398,202 +735,96 @@ const OrderReceipt = async ({
             </table>
           </div>
 
-          {/* ── TOTALS ── */}
+          {/* TOTALS */}
           <div className="px-4 lg:px-10 mb-4 lg:mb-6">
             <div className="flex justify-end">
               <div className="w-full lg:max-w-xs">
-                {orderData.efdPrinted && efdData ? (
-                  /* EFD Totals */
-                  <div className="text-[10px] lg:text-sm">
-                    {efdData.vatTotals?.map((vat: any, index: number) => (
-                      <div key={index}>
-                        <div
-                          className="flex justify-between text-gray-600 py-1 lg:py-2"
-                          style={{ borderBottom: "1px solid #EAEAE5" }}
-                        >
-                          <span>
-                            VAT{" "}
-                            {vat.vatRate === "A"
-                              ? "18%"
-                              : vat.vatRate === "B"
-                                ? "0%"
-                                : vat.vatRate}
-                            :
-                          </span>
-                          <span>{formatCurrency(vat.taxAmount)}</span>
-                        </div>
-                        <div
-                          className="flex justify-between text-gray-600 py-1 lg:py-2"
-                          style={{ borderBottom: "1px solid #EAEAE5" }}
-                        >
-                          <span>Net Amount:</span>
-                          <span>{formatCurrency(vat.nettAmount)}</span>
-                        </div>
-                      </div>
-                    ))}
-                    {efdData.totals && (
-                      <>
-                        <div
-                          className="flex justify-between text-gray-600 py-1 lg:py-2"
-                          style={{ borderBottom: "1px solid #EAEAE5" }}
-                        >
-                          <span>Total (Excl. Tax):</span>
-                          <span>
-                            {formatCurrency(efdData.totals.totalTaxExcl)}
-                          </span>
-                        </div>
-                        <div
-                          className="flex justify-between text-gray-600 py-1 lg:py-2"
-                          style={{ borderBottom: "1px solid #EAEAE5" }}
-                        >
-                          <span>Total Tax:</span>
-                          <span>{formatCurrency(efdData.totals.totalTax)}</span>
-                        </div>
-                        {efdData.totals.discount > 0 && (
-                          <div
-                            className="flex justify-between text-gray-600 py-1 lg:py-2"
-                            style={{ borderBottom: "1px solid #EAEAE5" }}
-                          >
-                            <span>Discount:</span>
-                            <span>
-                              -{formatCurrency(efdData.totals.discount)}
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    )}
-                    <div
-                      className="flex justify-between font-bold py-1 lg:py-2"
-                      style={{ borderBottom: "1px solid #EAEAE5" }}
-                    >
-                      <span className="text-gray-900">Total:</span>
-                      <span style={{ color: "#EB7F44" }}>
-                        {formatCurrency(
-                          efdData.totals?.totalTaxIncl || orderData.netAmount,
-                        )}
-                      </span>
-                    </div>
-                    {efdData.payments && (
-                      <div
-                        className="flex justify-between text-gray-600 py-1 lg:py-2"
-                        style={{ borderBottom: "1px solid #EAEAE5" }}
-                      >
-                        <span>
-                          Payment via {efdData.payments.pmtType || "CASH"}:
-                        </span>
-                        <span className="font-medium">
-                          {formatCurrency(
-                            efdData.payments.pmtAmount || orderData.paidAmount,
-                          )}
-                        </span>
-                      </div>
-                    )}
-                    <div
-                      className="flex justify-between font-bold py-2 mt-1 rounded px-2 lg:px-3"
-                      style={{ backgroundColor: "#F2942233" }}
-                    >
-                      <span style={{ color: "#EB7F44" }}>
-                        Amount Due (TZS):
-                      </span>
-                      <span style={{ color: "#EB7F44" }}>
-                        {formatCurrency(
-                          orderData.unpaidAmount ??
-                            orderData.netAmount - orderData.paidAmount,
-                        )}
-                      </span>
-                    </div>
+                <div className="text-[10px] lg:text-sm">
+                  <div
+                    className="flex justify-between text-gray-600 py-1 lg:py-2"
+                    style={{ borderBottom: "1px solid #EAEAE5" }}
+                  >
+                    <span>Subtotal:</span>
+                    <span>{formatCurrency(orderData.grossAmount)}</span>
                   </div>
-                ) : (
-                  /* Regular Totals */
-                  <div className="text-[10px] lg:text-sm">
+                  {orderData.totalDiscount > 0 && (
                     <div
                       className="flex justify-between text-gray-600 py-1 lg:py-2"
                       style={{ borderBottom: "1px solid #EAEAE5" }}
                     >
-                      <span>Subtotal:</span>
-                      <span>{formatCurrency(orderData.grossAmount)}</span>
+                      <span>Discount:</span>
+                      <span>-{formatCurrency(orderData.totalDiscount)}</span>
                     </div>
-                    {orderData.totalDiscount > 0 && (
+                  )}
+                  <div
+                    className="flex justify-between font-bold py-1 lg:py-2"
+                    style={{ borderBottom: "1px solid #EAEAE5" }}
+                  >
+                    <span className="text-gray-900">Total:</span>
+                    <span style={{ color: "#EB7F44" }}>
+                      {formatCurrency(orderData.netAmount)}
+                    </span>
+                  </div>
+
+                  {uniqueMethods.length > 1 ? (
+                    uniqueMethods.map((method) => (
                       <div
+                        key={String(method)}
                         className="flex justify-between text-gray-600 py-1 lg:py-2"
                         style={{ borderBottom: "1px solid #EAEAE5" }}
                       >
-                        <span>Discount:</span>
-                        <span>-{formatCurrency(orderData.totalDiscount)}</span>
+                        <span>Via {method}:</span>
+                        <span className="font-medium">
+                          {formatCurrency(
+                            orderData.transactions
+                              .filter(
+                                (t: { paymentMethodName: string }) =>
+                                  t.paymentMethodName === method,
+                              )
+                              .reduce(
+                                (sum: number, t: { amount: any }) =>
+                                  sum + Number(t.amount),
+                                0,
+                              ),
+                          )}
+                        </span>
                       </div>
-                    )}
+                    ))
+                  ) : (
                     <div
-                      className="flex justify-between font-bold py-1 lg:py-2"
+                      className="flex justify-between text-gray-600 py-1 lg:py-2"
                       style={{ borderBottom: "1px solid #EAEAE5" }}
                     >
-                      <span className="text-gray-900">Total:</span>
-                      <span style={{ color: "#EB7F44" }}>
-                        {formatCurrency(orderData.netAmount)}
+                      <span>
+                        Via{" "}
+                        {orderData.transactions?.[0]?.paymentMethodName ||
+                          "N/A"}
+                        :
+                      </span>
+                      <span className="font-medium">
+                        {formatCurrency(orderData.paidAmount)}
                       </span>
                     </div>
+                  )}
 
-                    {uniqueMethods.length > 1 ? (
-                      uniqueMethods.map((method) => (
-                        <div
-                          key={String(method)}
-                          className="flex justify-between text-gray-600 py-1 lg:py-2"
-                          style={{ borderBottom: "1px solid #EAEAE5" }}
-                        >
-                          <span>Via {method}:</span>
-                          <span className="font-medium">
-                            {formatCurrency(
-                              orderData.transactions
-                                .filter(
-                                  (t: { paymentMethodName: string }) =>
-                                    t.paymentMethodName === method,
-                                )
-                                .reduce(
-                                  (sum: number, t: { amount: any }) =>
-                                    sum + Number(t.amount),
-                                  0,
-                                ),
-                            )}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <div
-                        className="flex justify-between text-gray-600 py-1 lg:py-2"
-                        style={{ borderBottom: "1px solid #EAEAE5" }}
-                      >
-                        <span>
-                          Via{" "}
-                          {orderData.transactions?.[0]?.paymentMethodName ||
-                            "N/A"}
-                          :
-                        </span>
-                        <span className="font-medium">
-                          {formatCurrency(orderData.paidAmount)}
-                        </span>
-                      </div>
-                    )}
-
-                    <div
-                      className="flex justify-between font-bold py-2 mt-1 rounded px-2 lg:px-3"
-                      style={{ backgroundColor: "#F2942233" }}
-                    >
-                      <span style={{ color: "#EB7F44" }}>
-                        Amount Due (TZS):
-                      </span>
-                      <span style={{ color: "#EB7F44" }}>
-                        {formatCurrency(
-                          orderData.unpaidAmount ??
-                            orderData.netAmount - orderData.paidAmount,
-                        )}
-                      </span>
-                    </div>
+                  <div
+                    className="flex justify-between font-bold py-2 mt-1 rounded px-2 lg:px-3"
+                    style={{ backgroundColor: "#F2942233" }}
+                  >
+                    <span style={{ color: "#EB7F44" }}>Amount Due (TZS):</span>
+                    <span style={{ color: "#EB7F44" }}>
+                      {formatCurrency(
+                        orderData.unpaidAmount ??
+                          orderData.netAmount - orderData.paidAmount,
+                      )}
+                    </span>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* ── NOTES / TERMS ── */}
+          {/* NOTES / TERMS */}
           <div
             className="px-4 lg:px-10 pt-3 lg:pt-6 pb-3 lg:pb-4 flex flex-col lg:flex-row justify-between items-start gap-3 lg:gap-6"
             style={{ borderTop: "1px solid #EAEAE5" }}
@@ -645,7 +876,7 @@ const OrderReceipt = async ({
             </div>
           </div>
 
-          {/* ── FOOTER ── */}
+          {/* FOOTER */}
           <div className="px-4 lg:px-10 pb-5 lg:pb-8 pt-2 lg:pt-4 text-center">
             <p className="text-[10px] lg:text-sm font-semibold">
               Thank you for your business and continued support
@@ -656,16 +887,15 @@ const OrderReceipt = async ({
           </div>
         </div>
 
-        {/* Desktop action buttons */}
+        {/* Desktop action buttons (non-EFD) */}
         <div className="hidden lg:block">
           {!isDownloadable && (
             <div className="flex justify-center items-center mt-6 mb-4 gap-3">
               <DownloadButton
-                title={
-                  orderData.efdPrinted ? "Download EFD Receipt" : "Download PDF"
-                }
+                title="Download PDF"
                 orderNumber={orderData.orderNumber}
                 isDownloadable={isDownloadable === "1"}
+                isEfd={false}
                 fontSize={{ header: "16px", body: "11px", footer: "9px" }}
               />
               <ShareButton url={orderUrl} />
