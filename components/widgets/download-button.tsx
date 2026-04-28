@@ -9,6 +9,7 @@ interface DownloadButtonProps {
   orderNumber: string;
   isDownloadable?: boolean;
   title: string;
+  isEfd?: boolean;
   fontSize?: {
     header?: string;
     body?: string;
@@ -25,11 +26,15 @@ const DownloadButton = ({
   orderNumber,
   isDownloadable,
   title,
+  isEfd = false,
   fontSize = { header: "14px", body: "10px", footer: "8px" },
 }: DownloadButtonProps) => {
   const handleDownload = useCallback(async () => {
     const receipt = document.getElementById("receipt-content");
     if (!receipt) return;
+
+    // Single source of truth — driven by the parent component, not the DOM.
+    const isEfdReceipt = isEfd;
 
     const btn = document.querySelector(
       "[data-download-button]",
@@ -53,9 +58,14 @@ const DownloadButton = ({
         borderRadius: receipt.style.borderRadius,
         boxShadow: receipt.style.boxShadow,
       };
+
+      // EFD captures at its natural ~420px width to preserve the design.
+      // Modern card stretches to 794px (A4 portrait inner width).
+      const captureWidth = isEfdReceipt ? 420 : 794;
+
       Object.assign(receipt.style, {
-        width: "794px",
-        maxWidth: "794px",
+        width: `${captureWidth}px`,
+        maxWidth: `${captureWidth}px`,
         margin: "0",
         padding: "0",
         transform: "none",
@@ -65,11 +75,11 @@ const DownloadButton = ({
         boxShadow: "none",
       });
 
-      // Wait for layout reflow + images
-      await new Promise((r) => setTimeout(r, 150));
+      // Wait for layout reflow + images (logo, QR)
+      await new Promise((r) => setTimeout(r, 200));
       await Promise.all(
         Array.from(receipt.querySelectorAll("img")).map((img) => {
-          if (img.complete) return Promise.resolve();
+          if (img.complete && img.naturalWidth > 0) return Promise.resolve();
           return new Promise((r) => {
             img.onload = r;
             img.onerror = r;
@@ -85,7 +95,7 @@ const DownloadButton = ({
         allowTaint: false,
         logging: false,
         backgroundColor: "#ffffff",
-        width: 794,
+        width: captureWidth,
         height: receipt.scrollHeight,
         windowWidth: 1200,
         windowHeight: receipt.scrollHeight + 100,
@@ -95,10 +105,56 @@ const DownloadButton = ({
         removeContainer: true,
         foreignObjectRendering: false,
         onclone: (_doc, el) => {
-          // ── Base reset ──────────────────────────────────────────────
+          // ===========================================================
+          // EFD RECEIPT — render AS-IS, only fix html2canvas quirks
+          // ===========================================================
+          if (isEfdReceipt) {
+            Object.assign(el.style, {
+              width: `${captureWidth}px`,
+              maxWidth: `${captureWidth}px`,
+              margin: "0",
+              padding: "0",
+              transform: "none",
+              position: "relative",
+              backgroundColor: "#ffffff",
+            });
+
+            // Ensure print color fidelity + image rendering
+            el.querySelectorAll<HTMLElement>("*").forEach((node) => {
+              (node.style as any).printColorAdjust = "exact";
+              (node.style as any).webkitPrintColorAdjust = "exact";
+              node.style.visibility = "visible";
+              node.style.opacity = "1";
+            });
+
+            // QR code: ensure it has explicit dimensions
+            // (html2canvas sometimes drops responsive img sizing)
+            el.querySelectorAll<HTMLElement>("img").forEach((img) => {
+              const alt = img.getAttribute("alt") ?? "";
+              if (alt.toLowerCase().includes("qr")) {
+                img.style.setProperty("width", "160px", "important");
+                img.style.setProperty("height", "160px", "important");
+                img.style.setProperty("display", "block", "important");
+                img.style.setProperty("margin", "0 auto", "important");
+              }
+            });
+
+            // Hide any action buttons that may be inside the capture region
+            el.querySelectorAll<HTMLElement>(
+              "[data-download-button], button",
+            ).forEach((n) =>
+              n.style.setProperty("display", "none", "important"),
+            );
+
+            return; // skip the modern-card transformation pipeline
+          }
+
+          // ===========================================================
+          // MODERN CARD BRANCH (your original logic, unchanged)
+          // ===========================================================
           Object.assign(el.style, {
-            width: "794px",
-            maxWidth: "794px",
+            width: `${captureWidth}px`,
+            maxWidth: `${captureWidth}px`,
             margin: "0",
             padding: "0",
             transform: "none",
@@ -109,25 +165,17 @@ const DownloadButton = ({
             color: "#000000",
           });
 
-          // ── STEP 1: Nuclear black override ──────────────────────────
-          // Force ALL text to #000000 and ALL borders to black first.
-          // Selective brand colors are re-applied in subsequent steps.
           el.querySelectorAll<HTMLElement>("*").forEach((node) => {
             node.style.visibility = "visible";
             node.style.opacity = "1";
             (node.style as any).printColorAdjust = "exact";
             (node.style as any).webkitPrintColorAdjust = "exact";
             node.style.fontFamily = "inherit";
-
-            // All text → black
             node.style.color = "#000000";
 
-            // All borders → black (inline style overrides)
             if (node.style.borderColor || node.style.border) {
               node.style.borderColor = "#000000";
             }
-
-            // Borders from computed styles (catches Tailwind utility classes)
             const computed = window.getComputedStyle(node);
             if (computed.borderBottomWidth !== "0px") {
               node.style.borderBottom = `${computed.borderBottomWidth} solid #000000`;
@@ -143,7 +191,6 @@ const DownloadButton = ({
             }
           });
 
-          // ── STEP 2: Hide mobile-only elements, show desktop ones ────
           el.querySelectorAll<HTMLElement>(".lg\\:hidden").forEach((node) => {
             if (node.querySelector('[class*="rounded-lg"]')) {
               node.style.setProperty("display", "none", "important");
@@ -155,7 +202,6 @@ const DownloadButton = ({
             node.style.setProperty("display", "block", "important");
           });
 
-          // ── STEP 3: Hide status badges (PAID / NOT PAID / EFD RECEIPT) ─
           el.querySelectorAll<HTMLElement>("span").forEach((span) => {
             const txt = span.textContent?.trim() ?? "";
             if (txt === "PAID" || txt === "NOT PAID" || txt === "EFD RECEIPT") {
@@ -166,7 +212,6 @@ const DownloadButton = ({
             }
           });
 
-          // ── STEP 4: INVOICE / RECEIPT heading — brand orange ────────
           el.querySelectorAll<HTMLElement>("h2").forEach((h) => {
             const txt = h.textContent?.trim().toUpperCase() ?? "";
             if (txt === "INVOICE" || txt === "RECEIPT") {
@@ -177,14 +222,12 @@ const DownloadButton = ({
             }
           });
 
-          // ── STEP 5: Business name h1 — black bold ───────────────────
           el.querySelectorAll<HTMLElement>("h1").forEach((h) => {
             h.style.setProperty("color", "#000000", "important");
             h.style.setProperty("font-size", "16px", "important");
             h.style.setProperty("font-weight", "700", "important");
           });
 
-          // ── STEP 6: Items table header — orange bg, white text ──────
           el.querySelectorAll<HTMLElement>("thead tr").forEach((tr) => {
             tr.style.setProperty("background-color", PRIMARY_DARK, "important");
             (tr.style as any).printColorAdjust = "exact";
@@ -203,7 +246,6 @@ const DownloadButton = ({
             (th.style as any).webkitPrintColorAdjust = "exact";
           });
 
-          // ── STEP 7: Items table — zebra rows, black cell text ───────
           el.querySelectorAll<HTMLElement>("table").forEach((table) => {
             if (!table.querySelector("thead")) return;
 
@@ -241,8 +283,6 @@ const DownloadButton = ({
             });
           });
 
-          // ── STEP 8: Meta table (Invoice No / Date / Staff) ──────────
-          // No background, no borders, all text black
           el.querySelectorAll<HTMLElement>("table").forEach((table) => {
             if (table.querySelector("thead")) return;
 
@@ -266,7 +306,6 @@ const DownloadButton = ({
               td.style.setProperty("color", "#000000", "important");
             });
 
-            // Amount Due value cell — keep it orange-dark
             table.querySelectorAll<HTMLElement>("td").forEach((td) => {
               const cs = window.getComputedStyle(td);
               if (
@@ -279,7 +318,6 @@ const DownloadButton = ({
             });
           });
 
-          // ── STEP 9: Totals block — all black, grand total orange ─────
           el.querySelectorAll<HTMLElement>(".flex.justify-between").forEach(
             (row) => {
               row.querySelectorAll<HTMLElement>("span").forEach((s) => {
@@ -309,7 +347,6 @@ const DownloadButton = ({
             });
           });
 
-          // ── STEP 10: Amount Due highlighted row — orange tint bg ─────
           el.querySelectorAll<HTMLElement>("div").forEach((div) => {
             const style = div.getAttribute("style") ?? "";
             if (
@@ -335,7 +372,6 @@ const DownloadButton = ({
             }
           });
 
-          // ── STEP 11: Separator / divider lines — solid black ─────────
           el.querySelectorAll<HTMLElement>("div").forEach((div) => {
             if (div.style.height === "1px" || div.classList.contains("h-px")) {
               div.style.setProperty("background-color", "#000000", "important");
@@ -354,7 +390,6 @@ const DownloadButton = ({
             (sep.style as any).webkitPrintColorAdjust = "exact";
           });
 
-          // ── STEP 12: Footer / notes text — black ─────────────────────
           el.querySelectorAll<HTMLElement>("p, span").forEach((node) => {
             const txt = node.textContent ?? "";
             if (
@@ -371,7 +406,6 @@ const DownloadButton = ({
             }
           });
 
-          // ── STEP 13: "BILL TO" label ──────────────────────────────────
           el.querySelectorAll<HTMLElement>("p").forEach((p) => {
             const txt = p.textContent?.trim().toUpperCase() ?? "";
             if (txt === "BILL TO") {
@@ -383,7 +417,6 @@ const DownloadButton = ({
             }
           });
 
-          // ── STEP 14: Hide "Generated on" and "Confirmed" lines ───────
           el.querySelectorAll<HTMLElement>("p, span, div, li").forEach(
             (node) => {
               const ownText = (node.textContent ?? "").trim();
@@ -407,7 +440,11 @@ const DownloadButton = ({
       const A4_W = 210;
       const A4_H = 297;
       const MARGIN = 10;
-      const printW = A4_W - MARGIN * 2;
+
+      // EFD: keep narrower + centered to mimic a thermal receipt
+      // Modern card: full A4 inner width
+      const printW = isEfdReceipt ? 90 : A4_W - MARGIN * 2;
+      const xOffset = isEfdReceipt ? (A4_W - printW) / 2 : MARGIN;
       const contentH = (canvas.height * printW) / canvas.width;
       const pageH = A4_H - MARGIN * 2;
 
@@ -422,7 +459,7 @@ const DownloadButton = ({
         pdf.addImage(
           canvas.toDataURL("image/jpeg", 1.0),
           "JPEG",
-          MARGIN,
+          xOffset,
           MARGIN,
           printW,
           contentH,
@@ -461,7 +498,7 @@ const DownloadButton = ({
           pdf.addImage(
             slice.toDataURL("image/jpeg", 1.0),
             "JPEG",
-            MARGIN,
+            xOffset,
             MARGIN,
             printW,
             sliceH,
@@ -471,7 +508,8 @@ const DownloadButton = ({
         }
       }
 
-      pdf.save(`receipt-${orderNumber}.pdf`);
+      const filePrefix = isEfdReceipt ? "efd-receipt" : "receipt";
+      pdf.save(`${filePrefix}-${orderNumber}.pdf`);
     } catch (err) {
       console.error("PDF generation failed:", err);
       alert("There was an error generating the PDF. Please try again.");
@@ -481,7 +519,7 @@ const DownloadButton = ({
         btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ${title}`;
       }
     }
-  }, [orderNumber, fontSize, title]);
+  }, [orderNumber, fontSize, title, isEfd]);
 
   useEffect(() => {
     if (isDownloadable) handleDownload();
