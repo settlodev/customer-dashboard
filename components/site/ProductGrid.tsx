@@ -68,8 +68,8 @@ const ProductGrid: React.FC<ProductGridProps> = ({
     if (stockInfo.hasVariants) {
    
       const totalVariantQuantity = product.variants?.reduce((sum, variant) => {
-        if (variant.availableStock !== null && variant.availableStock !== undefined) {
-          return sum + (parseInt(variant.availableStock as unknown as string) || 0);
+        if (variant.availableQuantity !== null && variant.availableQuantity !== undefined) {
+          return sum + (parseInt(variant.availableQuantity as unknown as string) || 0);
         }
         return sum;
       }, 0) || 0;
@@ -260,9 +260,9 @@ const ProductGrid: React.FC<ProductGridProps> = ({
               onMouseLeave={() => setHoveredProduct(null)}
             >
               <div className="relative overflow-hidden">
-                {product.image ? (
+                {product.imageUrl ? (
                   <Image 
-                    src={product.image} 
+                    src={product.imageUrl} 
                     alt={product.name}
                     width={400}
                     height={300} 

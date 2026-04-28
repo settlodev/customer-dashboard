@@ -82,9 +82,9 @@ const StockExport: React.FC<TableExportProps> = ({
   const handleEndpointDownload = async () => {
     try {
       setIsLoading(true);
-      const response = await downloadStockCSV();
+      const response = (await downloadStockCSV()) as unknown as string | Blob;
       let csvData;
-      
+
       if (response) {
         if (typeof response === 'string') {
           csvData = response;

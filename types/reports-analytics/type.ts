@@ -39,6 +39,10 @@ export interface RsMovementTypeBreakdown {
   count: number;
   totalQuantity: number;
   totalCost: number;
+  /** Backend-computed direction (sign of totalQuantity). V025+. */
+  direction?: "IN" | "OUT";
+  /** Absolute |totalQuantity| ready to render. V025+. */
+  totalQuantityAbs?: number;
 }
 
 export interface RsMovementSummary {

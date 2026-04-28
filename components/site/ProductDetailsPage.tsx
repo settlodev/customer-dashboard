@@ -54,14 +54,14 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
   useEffect(() => {
     // Set the locationId when component mounts (only if it's different)
-    if (product.location && cartState.locationId !== product.location) {
+    if (product.locationId && cartState.locationId !== product.locationId) {
       console.log(
         "Setting locationId in ProductDetailsPage:",
-        product.location,
+        product.locationId,
       );
-      setLocationId(product.location);
+      setLocationId(product.locationId);
     }
-  }, [product.location, cartState.locationId, setLocationId]);
+  }, [product.locationId, cartState.locationId, setLocationId]);
 
   useEffect(() => {
     if (product.variants && product.variants.length > 0) {
@@ -224,9 +224,9 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
           <div className="space-y-6">
             <Card className="overflow-hidden shadow-2xl ring-1 ring-gray-200/50 bg-white/50 backdrop-blur-sm">
               <div className="relative group">
-                {product.image ? (
+                {product.imageUrl ? (
                   <Image
-                    src={product.image}
+                    src={product.imageUrl}
                     alt={product.name}
                     width={700}
                     height={700}
@@ -560,9 +560,9 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                     }
                   >
                     <div className="relative overflow-hidden">
-                      {relatedProduct.image ? (
+                      {relatedProduct.imageUrl ? (
                         <Image
-                          src={relatedProduct.image}
+                          src={relatedProduct.imageUrl}
                           alt={relatedProduct.name}
                           width={300}
                           height={200}

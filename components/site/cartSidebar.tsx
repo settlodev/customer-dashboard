@@ -467,9 +467,9 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                       <div className="flex gap-3">
                         {/* Product Image */}
                         <div className="w-16 h-16 flex-shrink-0">
-                          {item.image ? (
+                          {item.imageUrl ? (
                             <Image
-                              src={item.image}
+                              src={item.imageUrl}
                               alt={item.name}
                               width={64}
                               height={64}

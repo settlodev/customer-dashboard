@@ -838,6 +838,8 @@ function MovementsTab({
           count: t.count,
           totalQuantity: t.totalQuantity,
           totalCost: t.totalCost,
+          direction: t.direction,
+          totalQuantityAbs: t.totalQuantityAbs,
         })),
       }
     : movementSummary;
@@ -969,7 +971,7 @@ function MovementsTab({
       {/* Movement history — one card per variant so Coca-Cola 300ml and
           Coca-Cola 500ml movements stay visually separate. */}
       {stock.variants
-        .filter((v) => !v.archivedAt)
+        .filter((v) => !v.archived)
         .map((variant) => {
           const variantMovements = variantMovementsMap[variant.id] ?? [];
           const variantSummary = variantSummaryMap[variant.id];

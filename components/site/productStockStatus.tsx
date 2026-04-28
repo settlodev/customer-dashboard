@@ -19,32 +19,32 @@ export const getProductStockStatus = (product: ExtendedProduct): {
       product.variants.forEach(variant => {
         let variantStatus: 'in-stock' | 'out-of-stock' = 'out-of-stock';
         let variantQuantity = 0;
-  
-        // If trackingType is null, consider it always in stock
-        if (variant.trackingType === null) {
+
+        // Untracked (unlimited) variants are always in stock.
+        if (variant.unlimited) {
           variantStatus = 'in-stock';
-          variantQuantity = 0; // Unlimited stock
-          hasInStockVariant = true;
-        }
-        // If availableStock is provided, check it
-        else if (variant.availableStock !== null && variant.availableStock !== undefined) {
-          variantQuantity = parseInt(variant.availableStock as unknown as string) || 0;
-          variantStatus = variantQuantity > 0 ? 'in-stock' : 'out-of-stock';
-          if (variantStatus === 'in-stock') hasInStockVariant = true;
-        }
-        // If no availableStock but trackingType is STOCK, check if variant is active
-        else if (variant.trackingType === 'STOCK' && variant.status) {
-          variantStatus = 'in-stock'; // Assume in stock if active but no stock data
           variantQuantity = 0;
           hasInStockVariant = true;
         }
-  
+        // Tracked variants with a known available quantity.
+        else if (variant.availableQuantity !== null && variant.availableQuantity !== undefined) {
+          variantQuantity = parseInt(variant.availableQuantity as unknown as string) || 0;
+          variantStatus = variantQuantity > 0 ? 'in-stock' : 'out-of-stock';
+          if (variantStatus === 'in-stock') hasInStockVariant = true;
+        }
+        // Active variant with no quantity data — fall back to the inStock flag.
+        else if (variant.active && variant.inStock) {
+          variantStatus = 'in-stock';
+          variantQuantity = 0;
+          hasInStockVariant = true;
+        }
+
         variantStockInfo[variant.id] = {
           status: variantStatus,
           quantity: variantQuantity
         };
       });
-  
+
       return {
         status: hasInStockVariant ? 'in-stock' : 'out-of-stock',
         quantity: 0, // We don't have a total quantity for variants
@@ -52,19 +52,9 @@ export const getProductStockStatus = (product: ExtendedProduct): {
         variantStockInfo
       };
     }
-  
-    // If product has explicit quantity (no variants)
-    if (product.quantity !== null && product.quantity !== undefined) {
-      const qty = parseInt(product.quantity as unknown as string) || 0;
-      return {
-        status: qty > 0 ? 'in-stock' : 'out-of-stock',
-        quantity: qty,
-        hasVariants: false
-      };
-    }
-  
-    // If no quantity info and no variants, check trackingType
-    if (product.trackingType === null) {
+
+    // No variants — when the product isn't tracking stock at all, treat as in-stock.
+    if (!product.trackStock) {
       return {
         status: 'in-stock',
         quantity: 0,
