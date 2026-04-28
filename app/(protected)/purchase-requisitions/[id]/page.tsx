@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Money } from "@/components/widgets/money";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
@@ -13,6 +14,7 @@ import {
   PRIORITY_TONES,
 } from "@/types/requisition/type";
 import { RequisitionStatusActions } from "@/components/widgets/requisition/status-actions";
+import { RequisitionShareButton } from "@/components/widgets/requisition/share-dialog";
 import { FileText, UserCheck, UserX } from "lucide-react";
 
 type Params = Promise<{ id: string }>;
@@ -107,7 +109,10 @@ export default async function RequisitionDetailPage({ params }: { params: Params
             )}
           </p>
         </div>
-        <RequisitionStatusActions requisition={requisition} />
+        <div className="flex items-center gap-2">
+          <RequisitionShareButton requisition={requisition} />
+          <RequisitionStatusActions requisition={requisition} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -221,11 +226,7 @@ export default async function RequisitionDetailPage({ params }: { params: Params
                       <td className="px-3 py-2 text-xs">
                         {item.preferredSupplierId
                           ? supplierMap[item.preferredSupplierId] || "Unknown"
-                          : (
-                              <span className="text-amber-700">
-                                Unassigned (won&apos;t convert)
-                              </span>
-                            )}
+                          : <span className="text-muted-foreground">—</span>}
                       </td>
                     </tr>
                   );

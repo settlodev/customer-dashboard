@@ -13,6 +13,7 @@ import {
   INSPECTION_STATUS_TONES,
 } from "@/types/grn/type";
 import { GrnStatusActions } from "@/components/widgets/grn/status-actions";
+import { GrnShareButton } from "@/components/widgets/grn/share-dialog";
 import { InspectionPanel } from "@/components/widgets/grn/inspection-panel";
 import { LandedCostsPanel } from "@/components/widgets/grn/landed-costs-panel";
 import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
@@ -126,6 +127,7 @@ export default async function GrnDetailPage({ params }: { params: Params }) {
               {currency}
             </span>
           </div>
+          <GrnShareButton grn={grn} />
           <GrnStatusActions grn={grn} />
         </div>
       </div>

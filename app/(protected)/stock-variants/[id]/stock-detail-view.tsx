@@ -33,7 +33,10 @@ import {
 import type { Stock } from "@/types/stock/type";
 import type { InventoryBalance } from "@/types/inventory-balance/type";
 import type { StockMovement, StockMovementSummary } from "@/types/stock-movement/type";
-import { MOVEMENT_TYPE_LABELS } from "@/types/stock-movement/type";
+import {
+  MOVEMENT_TYPE_LABELS,
+  REFERENCE_TYPE_LABELS,
+} from "@/types/stock-movement/type";
 import type {
   StockoutForecastItem,
   StockTurnoverItem,
@@ -66,6 +69,9 @@ interface Props {
   balanceMap: Record<string, InventoryBalance>;
   batchMap: Record<string, StockBatch[]>;
   variantSummaryMap: Record<string, StockMovementSummary>;
+  /** Movements per variant — visualised in their own tables on the Movements tab. */
+  variantMovementsMap: Record<string, StockMovement[]>;
+  /** Merged movement list — used by the per-stock summary cards and breakdown chart. */
   movements: StockMovement[];
   forecasts: StockoutForecastItem[];
   turnover: StockTurnoverItem[];
@@ -108,18 +114,12 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"];
 
-const INBOUND_TYPES = new Set([
-  "PURCHASE",
-  "TRANSFER_IN",
-  "RETURN",
-  "OPENING_BALANCE",
-]);
-
 export function StockDetailView({
   stock,
   balanceMap,
   batchMap,
   variantSummaryMap,
+  variantMovementsMap,
   movements,
   forecasts,
   turnover,
@@ -297,7 +297,9 @@ export function StockDetailView({
       )}
       {tab === "movements" && (
         <MovementsTab
-          movements={movements}
+          stock={stock}
+          variantMovementsMap={variantMovementsMap}
+          variantSummaryMap={variantSummaryMap}
           movementSummary={movementSummary}
           currency={currency}
           rsSummary={rsSummary}
@@ -806,12 +808,16 @@ function BatchesTab({
 // ── Movements tab ───────────────────────────────────────────────────
 
 function MovementsTab({
-  movements,
+  stock,
+  variantMovementsMap,
+  variantSummaryMap,
   movementSummary,
   currency,
   rsSummary,
 }: {
-  movements: StockMovement[];
+  stock: Stock;
+  variantMovementsMap: Record<string, StockMovement[]>;
+  variantSummaryMap: Record<string, StockMovementSummary>;
   movementSummary: StockMovementSummary;
   currency: string;
   rsSummary: RsMovementSummary | null;
@@ -914,7 +920,12 @@ function MovementsTab({
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {summary.byType.map((s) => {
-                const isIn = INBOUND_TYPES.has(s.movementType);
+                // Backend computes direction + |totalQuantity| (V025+).
+                // Falls back to local computation only for older payloads.
+                const isIn = s.direction
+                  ? s.direction === "IN"
+                  : s.totalQuantity >= 0;
+                const qtyDisplay = s.totalQuantityAbs ?? Math.abs(s.totalQuantity);
                 return (
                   <div
                     key={s.movementType}
@@ -933,7 +944,7 @@ function MovementsTab({
                       }`}
                     >
                       {isIn ? "+" : "-"}
-                      {Math.abs(s.totalQuantity).toLocaleString()}
+                      {qtyDisplay.toLocaleString()}
                     </p>
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-muted-foreground">
@@ -955,29 +966,62 @@ function MovementsTab({
         </Card>
       )}
 
-      {/* Movement history */}
-      <Card>
+      {/* Movement history — one card per variant so Coca-Cola 300ml and
+          Coca-Cola 500ml movements stay visually separate. */}
+      {stock.variants
+        .filter((v) => !v.archivedAt)
+        .map((variant) => {
+          const variantMovements = variantMovementsMap[variant.id] ?? [];
+          const variantSummary = variantSummaryMap[variant.id];
+          return (
+      <Card key={variant.id}>
         <CardContent className="pt-6">
-          <h3 className="text-sm font-semibold mb-3">
-            Movement History (
-            {movements.length > 100 ? "latest 100" : movements.length})
-          </h3>
-          {movements.length > 0 ? (
+          <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+            <h3 className="text-sm font-semibold">
+              {variant.displayName ?? variant.name}
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                ({variantMovements.length > 100
+                  ? `latest 100 of ${variantSummary?.totalMovements ?? variantMovements.length}`
+                  : variantMovements.length}{" "}
+                movement{variantMovements.length === 1 ? "" : "s"})
+              </span>
+            </h3>
+            {variantSummary && (
+              <span className="text-xs text-muted-foreground">
+                {"+"}{variantSummary.totalQuantityIn.toLocaleString()}
+                {" / -"}{variantSummary.totalQuantityOut.toLocaleString()}
+                {" net "}
+                <span className={variantSummary.netQuantityChange >= 0
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-red-600 dark:text-red-400"}>
+                  {variantSummary.netQuantityChange >= 0 ? "+" : ""}
+                  {variantSummary.netQuantityChange.toLocaleString()}
+                </span>
+              </span>
+            )}
+          </div>
+          {variantMovements.length > 0 ? (
             <div className="rounded-md border overflow-auto max-h-[500px]">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Item</TableHead>
+                    <TableHead>Source</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
                     <TableHead className="text-right">Unit Cost</TableHead>
                     <TableHead className="text-right">Total Cost</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {movements.slice(0, 100).map((m) => {
-                    const isIn = INBOUND_TYPES.has(m.movementType);
+                  {variantMovements.slice(0, 100).map((m) => {
+                    // Direction is computed server-side (`direction` + `quantityAbs`
+                    // + `totalCostAbs` on the row). UI does no math — just renders.
+                    const isIn = m.direction
+                      ? m.direction === "IN"
+                      : m.quantity > 0;
+                    const qtyDisplay = m.quantityAbs ?? Math.abs(m.quantity);
+                    const totalCostDisplay = m.totalCostAbs
+                      ?? (m.totalCost != null ? Math.abs(m.totalCost) : null);
                     return (
                       <TableRow key={m.movementId}>
                         <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
@@ -995,20 +1039,29 @@ function MovementsTab({
                           )}
                         </TableCell>
                         <TableCell>
-                          <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                              isIn
-                                ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
-                                : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"
-                            }`}
-                          >
-                            {MOVEMENT_TYPE_LABELS[
-                              m.movementType as keyof typeof MOVEMENT_TYPE_LABELS
-                            ] ?? m.movementType}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {m.variantName}
+                          <div className="flex flex-col gap-0.5 min-w-0">
+                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                              {m.referenceType
+                                ? REFERENCE_TYPE_LABELS[m.referenceType] ?? m.referenceType
+                                : MOVEMENT_TYPE_LABELS[
+                                    m.movementType as keyof typeof MOVEMENT_TYPE_LABELS
+                                  ] ?? m.movementType}
+                              {m.referenceNumber ? (
+                                <span className="text-muted-foreground"> — {m.referenceNumber}</span>
+                              ) : null}
+                            </span>
+                            <span
+                              className={`inline-flex items-center rounded-full self-start px-2 py-0.5 text-[10px] font-medium ${
+                                isIn
+                                  ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
+                                  : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"
+                              }`}
+                            >
+                              {MOVEMENT_TYPE_LABELS[
+                                m.movementType as keyof typeof MOVEMENT_TYPE_LABELS
+                              ] ?? m.movementType}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell
                           className={`text-right text-sm font-medium ${
@@ -1017,8 +1070,8 @@ function MovementsTab({
                               : "text-red-600 dark:text-red-400"
                           }`}
                         >
-                          {isIn ? "+" : ""}
-                          {m.quantity.toLocaleString()}
+                          {isIn ? "+" : "-"}
+                          {qtyDisplay.toLocaleString()}
                         </TableCell>
                         <TableCell className="text-right text-sm text-muted-foreground">
                           {m.unitCost != null
@@ -1026,8 +1079,8 @@ function MovementsTab({
                             : "\u2014"}
                         </TableCell>
                         <TableCell className="text-right text-sm text-muted-foreground">
-                          {m.totalCost != null && m.totalCost > 0
-                            ? <Money amount={m.totalCost} currency={m.currency || currency} />
+                          {totalCostDisplay != null && totalCostDisplay !== 0
+                            ? <Money amount={totalCostDisplay} currency={m.currency || currency} />
                             : "\u2014"}
                         </TableCell>
                       </TableRow>
@@ -1037,12 +1090,14 @@ function MovementsTab({
               </Table>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              No movements recorded yet.
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              No movements recorded for this variant yet.
             </p>
           )}
         </CardContent>
       </Card>
+          );
+        })}
     </div>
   );
 }

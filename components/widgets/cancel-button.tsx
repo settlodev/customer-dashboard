@@ -4,16 +4,25 @@ import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 
-export default function CancelButton() {
+interface CancelButtonProps {
+  disabled?: boolean;
+}
+
+export default function CancelButton({ disabled }: CancelButtonProps = {}) {
   const router = useRouter();
 
   return (
     <motion.div
       transition={{ type: "spring", stiffness: 400, damping: 10 }}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={disabled ? undefined : { scale: 1.02 }}
+      whileTap={disabled ? undefined : { scale: 0.98 }}
     >
-      <Button type="button" variant="secondary" onClick={() => router.back()}>
+      <Button
+        type="button"
+        variant="secondary"
+        disabled={disabled}
+        onClick={() => router.back()}
+      >
         Cancel
       </Button>
     </motion.div>

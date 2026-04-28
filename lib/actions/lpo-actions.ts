@@ -11,12 +11,19 @@ import { getCurrentDestination } from "./context";
 import type {
   Lpo,
   LpoStatus,
+  PublicLpo,
   CreateLpoPayload,
   UpdateLpoStatusPayload,
+  AcknowledgeLpoPayload,
 } from "@/types/lpo/type";
-import { CreateLpoSchema, UpdateLpoStatusSchema } from "@/types/lpo/schema";
+import {
+  AcknowledgeLpoSchema,
+  CreateLpoSchema,
+  UpdateLpoStatusSchema,
+} from "@/types/lpo/schema";
 
 const BASE = "/api/v1/lpos";
+const PUBLIC_BASE = "/api/v1/public/lpos";
 
 // ── List / read ─────────────────────────────────────────────────────
 
@@ -44,8 +51,9 @@ export async function getLpo(id: string): Promise<Lpo | null> {
     const apiClient = new ApiClient();
     const data = await apiClient.get(inventoryUrl(`${BASE}/${id}`));
     return parseStringify(data);
-  } catch {
-    return null;
+  } catch (error: any) {
+    if (error?.status === 404) return null;
+    throw error;
   }
 }
 
@@ -147,4 +155,149 @@ export async function deleteLpo(id: string): Promise<FormResponse> {
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
+}
+
+// ── Acknowledgement (admin / offline path) ──────────────────────────
+//
+// Used when the supplier confirms or declines outside the share link
+// (phone/email/in person) and a staff member records that decision on
+// their behalf. The backend captures X-User-Id for audit.
+
+export async function acknowledgeLpo(
+  id: string,
+  input: z.infer<typeof AcknowledgeLpoSchema>,
+): Promise<FormResponse> {
+  const validated = AcknowledgeLpoSchema.safeParse(input);
+  if (!validated.success) {
+    return {
+      responseType: "error",
+      message: "Invalid acknowledgement",
+      error: new Error(validated.error.message),
+    };
+  }
+
+  const payload: AcknowledgeLpoPayload = validated.data;
+
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(inventoryUrl(`${BASE}/${id}/acknowledge`), payload);
+    revalidatePath("/purchase-orders");
+    revalidatePath(`/purchase-orders/${id}`);
+    return {
+      responseType: "success",
+      message:
+        payload.decision === "ACCEPTED"
+          ? "Supplier acceptance recorded"
+          : "Supplier rejection recorded",
+    };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message ?? "Failed to record acknowledgement",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
+// ── Public (supplier-facing) — token-scoped ─────────────────────────
+//
+// These hit `/api/v1/public/lpos/...` which the inventory service whitelists
+// in SecurityConfig. No auth headers required, so we use a plain client to
+// skip the proactive refresh path.
+
+export async function getPublicLpo(token: string): Promise<PublicLpo | null> {
+  try {
+    const apiClient = new ApiClient();
+    apiClient.isPlain = true;
+    const data = await apiClient.get<PublicLpo>(
+      inventoryUrl(`${PUBLIC_BASE}/${encodeURIComponent(token)}`),
+    );
+    return parseStringify(data);
+  } catch (error: any) {
+    if (error?.status === 404) return null;
+    throw error;
+  }
+}
+
+export async function acknowledgePublicLpo(
+  token: string,
+  input: z.infer<typeof AcknowledgeLpoSchema>,
+): Promise<FormResponse> {
+  const validated = AcknowledgeLpoSchema.safeParse(input);
+  if (!validated.success) {
+    return {
+      responseType: "error",
+      message: "Invalid acknowledgement",
+      error: new Error(validated.error.message),
+    };
+  }
+
+  const payload: AcknowledgeLpoPayload = validated.data;
+
+  try {
+    const apiClient = new ApiClient();
+    apiClient.isPlain = true;
+    const data = await apiClient.post<PublicLpo, AcknowledgeLpoPayload>(
+      inventoryUrl(`${PUBLIC_BASE}/${encodeURIComponent(token)}/acknowledge`),
+      payload,
+    );
+    return {
+      responseType: "success",
+      message:
+        payload.decision === "ACCEPTED"
+          ? "Order accepted — thank you"
+          : "Order rejected",
+      data: parseStringify(data),
+    };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message ?? "Could not record your decision",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
+// ── Sharing (manual mint + revoke from the operator side) ───────────
+
+export async function shareLpo(
+  id: string,
+): Promise<{ shareToken: string; shareUrl: string } | { error: string }> {
+  try {
+    const apiClient = new ApiClient();
+    const updated = (await apiClient.post(
+      inventoryUrl(`${BASE}/${id}/share`),
+      {},
+    )) as Lpo;
+    revalidatePath(`/purchase-orders/${id}`);
+    if (!updated?.shareToken) {
+      return { error: "Share token missing from server response" };
+    }
+    return {
+      shareToken: updated.shareToken,
+      shareUrl: buildLpoShareUrl(updated.shareToken),
+    };
+  } catch (error: any) {
+    return { error: error?.message ?? "Failed to share LPO" };
+  }
+}
+
+export async function revokeLpoShare(id: string): Promise<FormResponse> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.delete(inventoryUrl(`${BASE}/${id}/share`));
+    revalidatePath(`/purchase-orders/${id}`);
+    return { responseType: "success", message: "Share link revoked" };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message ?? "Failed to revoke share link",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
+function buildLpoShareUrl(token: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "";
+  return `${base}/po/${token}`;
 }

@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Send,
   CheckCircle2,
   PackageCheck,
-  Package,
   XCircle,
   Trash2,
   Loader2,
@@ -28,11 +28,9 @@ import {
   canDeleteLpo,
   LPO_NEXT_STATUSES,
   LPO_STATUS_LABELS,
+  OPEN_LPO_STATUSES,
 } from "@/types/lpo/type";
-import {
-  deleteLpo,
-  updateLpoStatus,
-} from "@/lib/actions/lpo-actions";
+import { deleteLpo, updateLpoStatus } from "@/lib/actions/lpo-actions";
 
 interface Props {
   lpo: Lpo;
@@ -47,6 +45,11 @@ interface TransitionDef {
   confirmBody: string;
 }
 
+// Manual receive transitions (Mark Partial / Mark Received) are intentionally
+// absent — receiving goods must go through a GRN so stock movements, batches,
+// serial numbers, currency conversion and supplier-performance metrics are
+// produced. The "Receive stock" button below opens the GRN form pre-linked
+// to this LPO instead.
 const TRANSITIONS: Partial<Record<LpoStatus, TransitionDef>> = {
   SUBMITTED: {
     status: "SUBMITTED",
@@ -66,38 +69,28 @@ const TRANSITIONS: Partial<Record<LpoStatus, TransitionDef>> = {
     confirmBody:
       "Approval unlocks GRN receiving against this LPO. It can still be cancelled before anything is received.",
   },
-  PARTIALLY_RECEIVED: {
-    status: "PARTIALLY_RECEIVED",
-    label: "Mark Partial",
-    Icon: Package,
-    variant: "outline",
-    confirmTitle: "Mark as Partially Received?",
-    confirmBody:
-      "Use this only if you need to manually flag a partial receipt — GRNs normally auto-advance this status.",
-  },
-  RECEIVED: {
-    status: "RECEIVED",
-    label: "Mark Received",
-    Icon: PackageCheck,
-    variant: "default",
-    confirmTitle: "Mark as Received?",
-    confirmBody:
-      "Flags the order fully received. GRNs usually auto-advance this. Cannot be reversed or cancelled.",
-  },
 };
 
 export function LpoStatusActions({ lpo }: Props) {
   const nextStatuses = LPO_NEXT_STATUSES[lpo.status];
+  const canReceive =
+    OPEN_LPO_STATUSES.includes(lpo.status) &&
+    lpo.supplierAcknowledgement === "ACCEPTED";
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       {nextStatuses.map((next) => {
         const def = TRANSITIONS[next];
         if (!def) return null;
-        return (
-          <TransitionButton key={next} lpoId={lpo.id} def={def} />
-        );
+        return <TransitionButton key={next} lpoId={lpo.id} def={def} />;
       })}
+      {canReceive && (
+        <Button asChild variant="default">
+          <Link href={`/goods-received/new?lpoId=${lpo.id}`}>
+            <PackageCheck className="h-4 w-4 mr-1.5" /> Receive stock
+          </Link>
+        </Button>
+      )}
       {canCancelLpo(lpo.status) && (
         <CancelButton lpoId={lpo.id} lpoNumber={lpo.lpoNumber} />
       )}
@@ -155,7 +148,11 @@ function TransitionButton({
           <DialogDescription>{def.confirmBody}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="secondary" onClick={() => setOpen(false)} disabled={isPending}>
+          <Button
+            variant="secondary"
+            onClick={() => setOpen(false)}
+            disabled={isPending}
+          >
             Cancel
           </Button>
           <Button onClick={onConfirm} disabled={isPending}>
@@ -168,7 +165,13 @@ function TransitionButton({
   );
 }
 
-function CancelButton({ lpoId, lpoNumber }: { lpoId: string; lpoNumber: string }) {
+function CancelButton({
+  lpoId,
+  lpoNumber,
+}: {
+  lpoId: string;
+  lpoNumber: string;
+}) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -208,10 +211,18 @@ function CancelButton({ lpoId, lpoNumber }: { lpoId: string; lpoNumber: string }
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="secondary" onClick={() => setOpen(false)} disabled={isPending}>
+          <Button
+            variant="secondary"
+            onClick={() => setOpen(false)}
+            disabled={isPending}
+          >
             Keep
           </Button>
-          <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
+          <Button
+            variant="destructive"
+            onClick={onConfirm}
+            disabled={isPending}
+          >
             {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Cancel LPO
           </Button>
@@ -221,7 +232,13 @@ function CancelButton({ lpoId, lpoNumber }: { lpoId: string; lpoNumber: string }
   );
 }
 
-function DeleteButton({ lpoId, lpoNumber }: { lpoId: string; lpoNumber: string }) {
+function DeleteButton({
+  lpoId,
+  lpoNumber,
+}: {
+  lpoId: string;
+  lpoNumber: string;
+}) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -256,15 +273,23 @@ function DeleteButton({ lpoId, lpoNumber }: { lpoId: string; lpoNumber: string }
         <DialogHeader>
           <DialogTitle>Delete {lpoNumber}?</DialogTitle>
           <DialogDescription>
-            Only DRAFT LPOs can be deleted. The record is soft-deleted and won&apos;t
-            appear in listings. Cannot be undone from the dashboard.
+            Only DRAFT LPOs can be deleted. The record is soft-deleted and
+            won&apos;t appear in listings. Cannot be undone from the dashboard.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="secondary" onClick={() => setOpen(false)} disabled={isPending}>
+          <Button
+            variant="secondary"
+            onClick={() => setOpen(false)}
+            disabled={isPending}
+          >
             Keep
           </Button>
-          <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
+          <Button
+            variant="destructive"
+            onClick={onConfirm}
+            disabled={isPending}
+          >
             {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Delete
           </Button>

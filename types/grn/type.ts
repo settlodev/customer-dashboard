@@ -30,9 +30,44 @@ export interface Grn {
   deliveryPersonName: string | null;
   deliveryPersonPhone: string | null;
   deliveryPersonEmail: string | null;
+  shareToken: string | null;
+  shareTokenIssuedAt: string | null;
   items: GrnItem[];
   createdAt: string;
   updatedAt: string;
+}
+
+// Public payload returned by GET /api/v1/public/grns/{token}.
+// Letterhead embedded so the share page renders branded headers without
+// a second round-trip.
+export interface PublicGrn {
+  id: string;
+  grnNumber: string;
+  status: GrnStatus;
+  currency: string | null;
+  notes: string | null;
+  receivedDate: string;
+  createdAt: string;
+  shareTokenIssuedAt: string | null;
+  supplierId: string;
+  supplierName: string | null;
+  deliveryPersonName: string | null;
+  deliveryPersonPhone: string | null;
+  deliveryPersonEmail: string | null;
+  items: PublicGrnItem[];
+  letterhead: import("@/types/letterhead/type").LocationLetterhead | null;
+}
+
+export interface PublicGrnItem {
+  id: string;
+  stockVariantId: string;
+  variantName: string;
+  receivedQuantity: number;
+  unitCost: number;
+  currency: string | null;
+  batchNumber: string | null;
+  expiryDate: string | null;
+  inspectionStatus: InspectionStatus | null;
 }
 
 export interface GrnItem {

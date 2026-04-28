@@ -36,9 +36,42 @@ export interface PurchaseRequisition {
   convertedLpoId: string | null;
   convertedAt: string | null;
   notes: string | null;
+  shareToken: string | null;
+  shareTokenIssuedAt: string | null;
   items: RequisitionItem[];
   createdAt: string;
   updatedAt: string;
+}
+
+// Public payload returned by GET /api/v1/public/purchase-requisitions/{token}.
+// Letterhead is embedded so the share page renders branded headers without a
+// second round-trip.
+export interface PublicRequisition {
+  id: string;
+  requisitionNumber: string;
+  status: RequisitionStatus;
+  priority: RequisitionPriority;
+  requiredByDate: string | null;
+  currency: string | null;
+  notes: string | null;
+  createdAt: string;
+  approvedAt: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+  shareTokenIssuedAt: string | null;
+  items: PublicRequisitionItem[];
+  letterhead: import("@/types/letterhead/type").LocationLetterhead | null;
+}
+
+export interface PublicRequisitionItem {
+  id: string;
+  stockVariantId: string;
+  stockVariantDisplayName: string | null;
+  requestedQuantity: number;
+  estimatedUnitCost: number | null;
+  currency: string | null;
+  preferredSupplierId: string | null;
+  notes: string | null;
 }
 
 export interface RequisitionItem {

@@ -19,6 +19,8 @@ import { getEntitlements } from "@/lib/actions/entitlement-actions";
 import { SubscriptionBanner } from "@/components/subscription/SubscriptionBanner";
 import { ExpiredTopBar } from "@/components/subscription/ExpiredTopBar";
 import { fetchAllStores, getCurrentStore } from "@/lib/actions/store-actions";
+import WhatsAppButton from "@/components/whatsapp-button";
+import { DaySessionWidget } from "@/components/widgets/day-session-widget";
 
 export default async function RootLayout({
   children,
@@ -130,6 +132,14 @@ export default async function RootLayout({
         </div>
       </LoadingBarProvider>
       </EntitlementProvider>
+      <WhatsAppButton
+        businessName={currentBusiness?.name}
+        locationName={currentLocation?.name}
+        hideOnReserve
+      />
+      {currentLocation?.id && (
+        <DaySessionWidget locationId={currentLocation.id} />
+      )}
     </SessionProvider>
   );
 }

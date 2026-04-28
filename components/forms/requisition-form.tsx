@@ -4,9 +4,13 @@ import React, { useCallback, useMemo, useState, useTransition } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Trash2 } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Form,
   FormControl,
@@ -40,8 +44,6 @@ import type { FormResponse } from "@/types/types";
 
 type FormValues = z.infer<typeof CreateRequisitionSchema>;
 
-const today = () => new Date().toISOString().slice(0, 10);
-
 export default function RequisitionForm() {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
@@ -73,6 +75,12 @@ export default function RequisitionForm() {
 
   const watchedItems = form.watch("items");
 
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
   const onInvalid = useCallback(() => {
     toast({
       variant: "destructive",
@@ -80,24 +88,6 @@ export default function RequisitionForm() {
       description: "Please review the highlighted fields.",
     });
   }, [toast]);
-
-  const totalEstimated = useMemo(
-    () =>
-      watchedItems.reduce(
-        (sum, item) =>
-          sum + Number(item.requestedQuantity || 0) * Number(item.estimatedUnitCost || 0),
-        0,
-      ),
-    [watchedItems],
-  );
-
-  const itemCount = useMemo(
-    () =>
-      watchedItems.filter(
-        (item) => item.stockVariantId && Number(item.requestedQuantity) > 0,
-      ).length,
-    [watchedItems],
-  );
 
   const submitData = (values: FormValues) => {
     setResponse(undefined);
@@ -159,20 +149,44 @@ export default function RequisitionForm() {
               <FormField
                 control={form.control}
                 name="requiredByDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Needed by</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        min={today()}
-                        {...field}
-                        value={field.value ?? ""}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const selected = field.value ? new Date(field.value) : undefined;
+                  return (
+                    <FormItem>
+                      <FormLabel>Needed by</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={isPending}
+                              className={cn(
+                                "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
+                                !selected && "text-muted-foreground",
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                              {selected ? format(selected, "PPP") : "Pick a date"}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={selected}
+                            onSelect={(d) =>
+                              field.onChange(d ? d.toISOString().split("T")[0] : "")
+                            }
+                            disabled={(date) => date < today}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
             <FormField
@@ -255,7 +269,7 @@ export default function RequisitionForm() {
                       control={form.control}
                       name={`items.${index}.stockVariantId`}
                       render={({ field: f }) => (
-                        <FormItem className="w-full md:flex-[5] min-w-0">
+                        <FormItem className="w-full md:flex-[4] min-w-0">
                           <FormLabel className="text-xs">
                             Stock Item <span className="text-red-500">*</span>
                           </FormLabel>
@@ -301,7 +315,7 @@ export default function RequisitionForm() {
                       control={form.control}
                       name={`items.${index}.estimatedUnitCost`}
                       render={({ field: f }) => (
-                        <FormItem className="w-full md:flex-[3] min-w-0">
+                        <FormItem className="w-full md:flex-[2] min-w-0">
                           <FormLabel className="text-xs">
                             Est. Cost
                             <span className="text-muted-foreground ml-1 font-normal">
@@ -325,14 +339,11 @@ export default function RequisitionForm() {
                         </FormItem>
                       )}
                     />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <FormField
                       control={form.control}
                       name={`items.${index}.preferredSupplierId`}
                       render={({ field: f }) => (
-                        <FormItem>
+                        <FormItem className="w-full md:flex-[3] min-w-0">
                           <FormLabel className="text-xs">Preferred supplier</FormLabel>
                           <FormControl>
                             <SupplierSelector
@@ -347,55 +358,29 @@ export default function RequisitionForm() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.notes`}
-                      render={({ field: f }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Item notes</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Optional"
-                              rows={2}
-                              {...f}
-                              value={f.value ?? ""}
-                              disabled={isPending}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name={`items.${index}.notes`}
+                    render={({ field: f }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Item notes</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Optional"
+                            rows={2}
+                            {...f}
+                            value={f.value ?? ""}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
                 </div>
               );
             })}
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="py-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-            <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                Summary
-              </span>
-              <span className="font-medium">
-                {itemCount} item{itemCount === 1 ? "" : "s"} ready to request
-              </span>
-            </div>
-            <div className="flex flex-col items-end">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                Est. total
-              </span>
-              <span className="font-mono font-semibold">
-                {totalEstimated.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}{" "}
-                <span className="text-xs font-medium text-muted-foreground">
-                  {locationCurrency}
-                </span>
-              </span>
-            </div>
           </CardContent>
         </Card>
 

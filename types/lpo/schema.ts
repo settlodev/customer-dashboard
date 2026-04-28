@@ -44,3 +44,14 @@ export const UpdateLpoStatusSchema = z.object({
     "CANCELLED",
   ]),
 });
+
+export const AcknowledgeLpoSchema = z.object({
+  decision: z.enum(["ACCEPTED", "REJECTED"], {
+    required_error: "Choose Accept or Reject",
+  }),
+  note: z
+    .string()
+    .max(2000, "Note cannot exceed 2000 characters")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+});

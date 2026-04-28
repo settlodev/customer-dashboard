@@ -108,7 +108,7 @@ function SimpleAction({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant={variant}>
+        <Button variant={variant} size="sm">
           <Icon className="h-4 w-4 mr-1.5" /> {label}
         </Button>
       </DialogTrigger>
@@ -157,7 +157,7 @@ function ApproveAction({ id }: { id: string }) {
       label="Approve"
       Icon={CheckCircle2}
       title="Approve this requisition?"
-      body="Approval unlocks the convert-to-LPO step. Items without a preferred supplier won't make it into the generated LPO(s)."
+      body="Approval unlocks the convert-to-PO step."
       fn={approveRequisition}
     />
   );
@@ -199,7 +199,7 @@ function RejectAction({ id }: { id: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" className="text-red-600 hover:bg-red-50">
+        <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50">
           <ThumbsDown className="h-4 w-4 mr-1.5" /> Reject
         </Button>
       </DialogTrigger>
@@ -238,19 +238,67 @@ function ConvertAction({
   id: string;
   items: PurchaseRequisition["items"];
 }) {
-  const withSupplier = items.filter((i) => i.preferredSupplierId);
-  const withoutSupplier = items.length - withSupplier.length;
+  const allAssigned =
+    items.length > 0 && items.every((i) => !!i.preferredSupplierId);
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const onConfirm = () => {
+    if (allAssigned) {
+      startTransition(() => {
+        convertRequisitionToLpo(id).then((res) => {
+          if (res.responseType === "error") {
+            toast({
+              variant: "destructive",
+              title: "Couldn't convert",
+              description: res.message,
+            });
+            return;
+          }
+          toast({ title: "Converted to PO", description: res.message });
+          setOpen(false);
+          router.refresh();
+        });
+      });
+      return;
+    }
+    setOpen(false);
+    router.push(`/purchase-orders/new?fromRequisition=${id}`);
+  };
+
+  const body = allAssigned
+    ? "One Purchase Order per preferred supplier will be drafted."
+    : "Some items don't have a preferred supplier yet. We'll open the Purchase Order form pre-populated with this requisition so you can finish manually.";
 
   return (
-    <SimpleAction
-      id={id}
-      verb="convert"
-      label="Convert to LPO"
-      Icon={FileOutput}
-      title="Generate LPOs from this requisition?"
-      body={`One LPO per preferred supplier will be drafted. ${withoutSupplier > 0 ? `${withoutSupplier} item${withoutSupplier === 1 ? "" : "s"} without a supplier will be skipped.` : "All items have a supplier."}`}
-      fn={convertRequisitionToLpo}
-    />
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <FileOutput className="h-4 w-4 mr-1.5" /> Convert to PO
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Convert this requisition?</DialogTitle>
+          <DialogDescription>{body}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button
+            variant="secondary"
+            onClick={() => setOpen(false)}
+            disabled={isPending}
+          >
+            Cancel
+          </Button>
+          <Button onClick={onConfirm} disabled={isPending}>
+            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {allAssigned ? "Confirm" : "Continue to PO form"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

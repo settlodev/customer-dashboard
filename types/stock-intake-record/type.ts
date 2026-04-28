@@ -12,6 +12,12 @@ export interface StockIntakeRecord {
   notes: string | null;
   confirmedAt: string | null;
   confirmedBy: string | null;
+  /** Display name for `confirmedBy`, resolved from the staff reference cache. */
+  confirmedByName: string | null;
+  /** Staff member who created the intake (captured at create-time from the auth context). */
+  createdBy: string | null;
+  /** Display name for `createdBy`. */
+  createdByName: string | null;
   totalItems: number;
   totalQuantity: number;
   totalValue: number;

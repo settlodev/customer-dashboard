@@ -5,11 +5,10 @@ import { Money } from "@/components/widgets/money";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
 import { getLpo } from "@/lib/actions/lpo-actions";
 import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
-import {
-  LPO_STATUS_LABELS,
-  LPO_STATUS_TONES,
-} from "@/types/lpo/type";
+import { effectiveLpoStatus } from "@/types/lpo/type";
 import { LpoStatusActions } from "@/components/widgets/lpo/status-actions";
+import { LpoShareButton } from "@/components/widgets/lpo/share-dialog";
+import { LpoShareAcknowledgement } from "@/components/widgets/lpo/share-acknowledgement";
 import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
 import { FileText } from "lucide-react";
 
@@ -66,14 +65,22 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">{lpo.lpoNumber}</h1>
-            <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${LPO_STATUS_TONES[lpo.status]}`}
-            >
-              {LPO_STATUS_LABELS[lpo.status]}
-            </span>
-          </div>
+          {(() => {
+            const { label, tone } = effectiveLpoStatus(
+              lpo.status,
+              lpo.supplierAcknowledgement,
+            );
+            return (
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold">{lpo.lpoNumber}</h1>
+                <span
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${tone}`}
+                >
+                  {label}
+                </span>
+              </div>
+            );
+          })()}
           <p className="text-sm text-muted-foreground">
             {supplier?.name || "Unknown supplier"} · Created{" "}
             {formatDateTime(lpo.createdAt)}
@@ -86,6 +93,7 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
               {lpoCurrency}
             </span>
           </div>
+          <LpoShareButton lpo={lpo} />
           <LpoStatusActions lpo={lpo} />
         </div>
       </div>
@@ -215,6 +223,8 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
           </div>
         </CardContent>
       </Card>
+
+      <LpoShareAcknowledgement lpo={lpo} supplier={supplier} />
 
       <AttachmentsPanel
         entityType="LPO"

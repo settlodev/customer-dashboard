@@ -148,7 +148,19 @@ export default async function StockDetailPage({
     if (ms) variantSummaryMap[v.id] = ms;
   });
 
-  // Merged movements sorted by date
+  // Per-variant movement lists. Each variant's events are visualised in
+  // their own table on the Movements tab — Coca-Cola 300ml movements stay
+  // separate from Coca-Cola 500ml movements.
+  const variantMovementsMap: Record<string, StockMovement[]> = {};
+  stock.variants.forEach((v, i) => {
+    variantMovementsMap[v.id] = (movementPages[i]?.content ?? []).slice().sort(
+      (a, b) =>
+        new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+    );
+  });
+
+  // Merged movements sorted by date — used by the per-stock summary cards
+  // and breakdown chart that intentionally aggregate across variants.
   const movements = movementPages
     .flatMap((p) => p.content)
     .sort(
@@ -284,6 +296,7 @@ export default async function StockDetailPage({
         balanceMap={balanceMap}
         batchMap={batchMap}
         variantSummaryMap={variantSummaryMap}
+        variantMovementsMap={variantMovementsMap}
         movements={movements}
         forecasts={forecasts}
         turnover={turnover}

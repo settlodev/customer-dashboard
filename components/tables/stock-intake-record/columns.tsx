@@ -69,13 +69,6 @@ export const columns: ColumnDef<StockIntakeRecord>[] = [
     ),
   },
   {
-    id: "totalItems",
-    header: "Items",
-    cell: ({ row }) => (
-      <span className="text-sm text-gray-600">{row.original.totalItems}</span>
-    ),
-  },
-  {
     id: "totalQuantity",
     header: () => <div className="text-right">Total qty</div>,
     cell: ({ row }) => (
@@ -94,6 +87,15 @@ export const columns: ColumnDef<StockIntakeRecord>[] = [
           currency={row.original.currency || DEFAULT_CURRENCY}
         />
       </div>
+    ),
+  },
+  {
+    accessorKey: "confirmedByName",
+    header: "Confirmed by",
+    cell: ({ row }) => (
+      <span className="text-sm text-gray-600">
+        {row.original.confirmedByName || "—"}
+      </span>
     ),
   },
   {

@@ -54,13 +54,6 @@ export const columns: ColumnDef<Grn>[] = [
     ),
   },
   {
-    id: "items",
-    header: "Items",
-    cell: ({ row }) => (
-      <span className="text-sm text-gray-600">{row.original.items?.length ?? 0}</span>
-    ),
-  },
-  {
     id: "totalQuantity",
     header: () => <div className="text-right">Qty</div>,
     cell: ({ row }) => {
@@ -90,6 +83,15 @@ export const columns: ColumnDef<Grn>[] = [
         </div>
       );
     },
+  },
+  {
+    accessorKey: "receivedByName",
+    header: "Received by",
+    cell: ({ row }) => (
+      <span className="text-sm text-gray-600">
+        {row.original.receivedByName || "—"}
+      </span>
+    ),
   },
   {
     accessorKey: "status",

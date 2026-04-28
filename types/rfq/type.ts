@@ -41,10 +41,37 @@ export interface Rfq {
   convertedLpoId: string | null;
   convertedAt: string | null;
   notes: string | null;
+  shareToken: string | null;
+  shareTokenIssuedAt: string | null;
   items: RfqItem[];
   quotes: SupplierQuote[];
   createdAt: string;
   updatedAt: string;
+}
+
+// Public payload returned by GET /api/v1/public/rfqs/{token}.
+export interface PublicRfq {
+  id: string;
+  rfqNumber: string;
+  title: string;
+  status: RfqStatus;
+  targetCurrency: string | null;
+  submissionDeadline: string | null;
+  requiredByDate: string | null;
+  notes: string | null;
+  createdAt: string;
+  shareTokenIssuedAt: string | null;
+  items: PublicRfqItem[];
+  letterhead: import("@/types/letterhead/type").LocationLetterhead | null;
+}
+
+export interface PublicRfqItem {
+  id: string;
+  stockVariantId: string;
+  stockVariantDisplayName: string | null;
+  requestedQuantity: number;
+  estimatedUnitCost: number | null;
+  notes: string | null;
 }
 
 export interface RfqItem {

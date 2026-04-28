@@ -1,10 +1,14 @@
-import ShareProforma from "@/components/proforma/shared-proforma";
+import { redirect } from "next/navigation";
 
-export default async function SharePerforma({
+/**
+ * Backward-compat redirect for LPO share links issued before the canonical
+ * URL moved to {@code /po/[token]}. Existing tokens still resolve.
+ */
+export default async function SharedPurchaseOrderPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <ShareProforma proformaId={id} />;
+  redirect(`/po/${id}`);
 }

@@ -14,6 +14,7 @@ import {
   canSubmitQuote,
 } from "@/types/rfq/type";
 import { RfqStatusActions } from "@/components/widgets/rfq/status-actions";
+import { RfqShareButton } from "@/components/widgets/rfq/share-dialog";
 import { SubmitQuoteDialog } from "@/components/widgets/rfq/submit-quote-dialog";
 import { QuoteComparisonTable } from "@/components/widgets/rfq/comparison-table";
 import { FileText, Trophy } from "lucide-react";
@@ -109,6 +110,7 @@ export default async function RfqDetailPage({ params }: { params: Params }) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {canSubmitQuote(rfq.status) && <SubmitQuoteDialog rfq={rfq} />}
+          <RfqShareButton rfq={rfq} />
           <RfqStatusActions rfq={rfq} />
         </div>
       </div>

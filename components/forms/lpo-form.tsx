@@ -38,7 +38,22 @@ interface ItemMeta {
   displayName?: string;
 }
 
-export default function LpoForm() {
+export interface LpoFormInitialValues {
+  supplierId?: string;
+  notes?: string;
+  items: Array<{
+    stockVariantId: string;
+    orderedQuantity: number;
+    unitCost: number;
+    currency?: string;
+  }>;
+}
+
+interface LpoFormProps {
+  initialValues?: LpoFormInitialValues;
+}
+
+export default function LpoForm({ initialValues }: LpoFormProps = {}) {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
@@ -49,16 +64,24 @@ export default function LpoForm() {
   const form = useForm<FormValues>({
     resolver: zodResolver(CreateLpoSchema),
     defaultValues: {
-      supplierId: "",
-      notes: "",
-      items: [
-        {
-          stockVariantId: "",
-          orderedQuantity: 0,
-          unitCost: 0,
-          currency: "",
-        },
-      ],
+      supplierId: initialValues?.supplierId ?? "",
+      notes: initialValues?.notes ?? "",
+      items:
+        initialValues?.items && initialValues.items.length > 0
+          ? initialValues.items.map((it) => ({
+              stockVariantId: it.stockVariantId,
+              orderedQuantity: it.orderedQuantity,
+              unitCost: it.unitCost,
+              currency: it.currency ?? "",
+            }))
+          : [
+              {
+                stockVariantId: "",
+                orderedQuantity: 0,
+                unitCost: 0,
+                currency: "",
+              },
+            ],
     },
   });
 

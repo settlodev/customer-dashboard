@@ -320,13 +320,28 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
                     );
                 }
 
-                case 404:
+                case 404: {
+                    // Drop messages that leak internal endpoint paths
+                    // (e.g. "No endpoint found for POST /api/v1/...") so
+                    // the user sees a generic message instead.
+                    const isLeakyMessage =
+                        !!serverMessage &&
+                        (/\/api\/v\d+\//i.test(serverMessage) ||
+                            /no endpoint found for/i.test(serverMessage));
+                    const safeServerMessage = isLeakyMessage
+                        ? undefined
+                        : serverMessage;
                     return createErrorResponse(
                         status,
-                        ErrorCodes.NOT_FOUND,
-                        serverMessage || 'Resource not found.',
-                        errorDetails
+                        serverCode || ErrorCodes.NOT_FOUND,
+                        getUIErrorMessage(
+                            serverCode,
+                            safeServerMessage,
+                            'The requested item could not be found.',
+                        ),
+                        errorDetails,
                     );
+                }
 
                 case 409:
                     return createErrorResponse(

@@ -37,6 +37,12 @@ interface Props {
   disabledValues?: string[];
   /** When provided, the dropdown only surfaces variants whose id is in this list. */
   allowedValues?: string[];
+  /**
+   * Fired when this selector's internal catalogue fetch starts and finishes.
+   * Lets parent forms aggregate loading state across rows so they can disable
+   * Submit / Cancel until every selector has resolved its initial value.
+   */
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 const StockVariantSelector: React.FC<Props> = ({
@@ -48,10 +54,15 @@ const StockVariantSelector: React.FC<Props> = ({
   onVariantMeta,
   disabledValues = [],
   allowedValues,
+  onLoadingChange,
 }) => {
   const [open, setOpen] = useState(false);
   const [stocks, setStocks] = useState<Stock[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  // Start in loading state when an initial value is present so the trigger
+  // shows a spinner immediately instead of flashing the "Select stock item"
+  // placeholder before the catalogue arrives and the matching variant is
+  // resolved.
+  const [isLoading, setIsLoading] = useState(!!value);
   const [searchTerm, setSearchTerm] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [triggerWidth, setTriggerWidth] = useState(0);
@@ -77,6 +88,13 @@ const StockVariantSelector: React.FC<Props> = ({
       .catch(() => setStocks([]))
       .finally(() => setIsLoading(false));
   }, [open, value]);
+
+  // Bubble loading state up so parent forms can disable Submit/Cancel until
+  // the catalogue arrives — important when the form was pre-filled with
+  // existing variant ids (e.g. GRN form pre-linked to an LPO).
+  useEffect(() => {
+    onLoadingChange?.(isLoading);
+  }, [isLoading, onLoadingChange]);
 
   const allVariantOptions = useMemo(
     () =>
@@ -120,7 +138,11 @@ const StockVariantSelector: React.FC<Props> = ({
     [value, onChange, onVariantMeta],
   );
 
-  const displayText = selectedOption?.displayName || placeholder;
+  // While we have a value but haven't resolved it yet, show a loading
+  // indicator instead of the placeholder. Once the fetch settles, fall
+  // back to the placeholder if the variant truly doesn't exist (e.g.
+  // archived or filtered out by the parent) so the user can re-pick.
+  const isResolvingValue = !!value && !selectedOption && isLoading;
   const popoverWidth = Math.max(triggerWidth, 300);
 
   return (
@@ -132,10 +154,21 @@ const StockVariantSelector: React.FC<Props> = ({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between overflow-hidden"
+            className="w-full justify-between overflow-hidden font-normal"
             disabled={isDisabled}
           >
-            <span className="truncate text-left flex-1">{displayText}</span>
+            <span className="truncate text-left flex-1 flex items-center gap-2">
+              {isResolvingValue ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin opacity-60" />
+                  <span className="text-muted-foreground">Loading...</span>
+                </>
+              ) : selectedOption ? (
+                <span className="truncate">{selectedOption.displayName}</span>
+              ) : (
+                <span className="text-muted-foreground">{placeholder}</span>
+              )}
+            </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>

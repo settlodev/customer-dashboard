@@ -4,9 +4,13 @@ import React, { useCallback, useEffect, useMemo, useState, useTransition } from 
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Trash2 } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Form,
   FormControl,
@@ -25,6 +29,7 @@ import { FormError } from "../widgets/form-error";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
 import StockVariantSelector from "../widgets/stock-variant-selector";
+import CurrencySelector from "@/components/widgets/currency-selector";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
 import { createRfq } from "@/lib/actions/rfq-actions";
 import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
@@ -86,9 +91,21 @@ export default function RfqForm() {
   });
 
   const watchedItems = form.watch("items");
-  const invitedIds = form.watch("invitedSupplierIds") ?? [];
   const quoteCurrency =
     (form.watch("targetCurrency") || locationCurrency).toUpperCase();
+
+  const submissionDeadlineValue = form.watch("submissionDeadline");
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+  const submissionDeadlineAsDate = useMemo(() => {
+    if (!submissionDeadlineValue) return undefined;
+    const d = new Date(submissionDeadlineValue);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [submissionDeadlineValue]);
 
   const onInvalid = useCallback(() => {
     toast({
@@ -97,16 +114,6 @@ export default function RfqForm() {
       description: "Please review the highlighted fields.",
     });
   }, [toast]);
-
-  const estimatedBudget = useMemo(
-    () =>
-      watchedItems.reduce(
-        (sum, item) =>
-          sum + Number(item.requestedQuantity || 0) * Number(item.targetUnitPrice || 0),
-        0,
-      ),
-    [watchedItems],
-  );
 
   const submitData = (values: FormValues) => {
     setResponse(undefined);
@@ -161,63 +168,128 @@ export default function RfqForm() {
               <FormField
                 control={form.control}
                 name="targetCurrency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quote currency</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder={locationCurrency}
-                        maxLength={3}
-                        {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <p className="text-[11px] text-muted-foreground">
-                      Defaults to {locationCurrency}. Use the currency you want
-                      suppliers to respond in.
-                    </p>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const active = (field.value || locationCurrency).toUpperCase();
+                  return (
+                    <FormItem>
+                      <FormLabel>Quote currency</FormLabel>
+                      <FormControl>
+                        <CurrencySelector
+                          value={active}
+                          onChange={field.onChange}
+                          isDisabled={isPending}
+                        />
+                      </FormControl>
+                      <p className="text-[11px] text-muted-foreground">
+                        Defaults to {locationCurrency}. Use the currency you want
+                        suppliers to respond in.
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
               <FormField
                 control={form.control}
                 name="submissionDeadline"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Submission deadline</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="datetime-local"
-                        {...field}
-                        value={field.value ?? ""}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <p className="text-[11px] text-muted-foreground">
-                      After this, quotes are considered EXPIRED.
-                    </p>
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const selected = field.value ? new Date(field.value) : undefined;
+                  return (
+                    <FormItem>
+                      <FormLabel>Submission deadline</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={isPending}
+                              className={cn(
+                                "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
+                                !selected && "text-muted-foreground",
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                              {selected ? format(selected, "PPP") : "Pick a date"}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={selected}
+                            onSelect={(d) => {
+                              if (!d) {
+                                field.onChange("");
+                                return;
+                              }
+                              const endOfDay = new Date(d);
+                              endOfDay.setHours(23, 59, 59, 999);
+                              field.onChange(endOfDay.toISOString());
+                              const required = form.getValues("requiredByDate");
+                              if (required) {
+                                const reqDate = new Date(required);
+                                if (reqDate < endOfDay) {
+                                  form.setValue("requiredByDate", "", { shouldDirty: true });
+                                }
+                              }
+                            }}
+                            disabled={(date) => date < today}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <p className="text-[11px] text-muted-foreground">
+                        After this, quotes are considered EXPIRED.
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
               <FormField
                 control={form.control}
                 name="requiredByDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Needed by</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
-                        value={field.value ?? ""}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const selected = field.value ? new Date(field.value) : undefined;
+                  return (
+                    <FormItem>
+                      <FormLabel>Needed by</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={isPending}
+                              className={cn(
+                                "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
+                                !selected && "text-muted-foreground",
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                              {selected ? format(selected, "PPP") : "Pick a date"}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={selected}
+                            onSelect={(d) => field.onChange(d ? d.toISOString() : "")}
+                            disabled={(date) => {
+                              if (date < today) return true;
+                              if (submissionDeadlineAsDate && date < submissionDeadlineAsDate) return true;
+                              return false;
+                            }}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
 
@@ -422,34 +494,6 @@ export default function RfqForm() {
                 </div>
               );
             })}
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="py-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-            <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                Summary
-              </span>
-              <span className="font-medium">
-                {watchedItems.length} line{watchedItems.length === 1 ? "" : "s"} ·{" "}
-                {invitedIds.length} invited supplier{invitedIds.length === 1 ? "" : "s"}
-              </span>
-            </div>
-            <div className="flex flex-col items-end">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                Target budget
-              </span>
-              <span className="font-mono font-semibold">
-                {estimatedBudget.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}{" "}
-                <span className="text-xs font-medium text-muted-foreground">
-                  {quoteCurrency}
-                </span>
-              </span>
-            </div>
           </CardContent>
         </Card>
 

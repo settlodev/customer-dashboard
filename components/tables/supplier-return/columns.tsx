@@ -97,11 +97,11 @@ export const columns: ColumnDef<SupplierReturnRow>[] = [
     },
   },
   {
-    accessorKey: "reason",
-    header: "Reason",
+    accessorKey: "returnedByName",
+    header: "Returned by",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 truncate max-w-[180px] block">
-        {row.original.reason || "—"}
+      <span className="text-sm text-gray-600">
+        {row.original.returnedByName || "—"}
       </span>
     ),
   },

@@ -10,6 +10,8 @@ export type LpoStatus =
   | "RECEIVED"
   | "CANCELLED";
 
+export type SupplierAcknowledgement = "PENDING" | "ACCEPTED" | "REJECTED";
+
 // ── Entities ───────────────────────────────────────────────────────
 
 export interface Lpo {
@@ -23,9 +25,58 @@ export interface Lpo {
    *  `items[].currency` is authoritative when items span multiple currencies. */
   currency: string | null;
   notes: string | null;
+  /** Opaque token issued when the LPO first enters APPROVED. Used by the
+   *  supplier-facing public share URL — null until then. */
+  shareToken: string | null;
+  shareTokenIssuedAt: string | null;
+  supplierAcknowledgement: SupplierAcknowledgement;
+  acknowledgedAt: string | null;
+  acknowledgementNote: string | null;
+  /** Null when the supplier acknowledged via the share link themselves;
+   *  populated with the staff UUID when an internal user recorded acceptance
+   *  on the supplier's behalf. */
+  acknowledgedByStaffId: string | null;
+  /** Display name resolved from the staff reference cache. */
+  acknowledgedByStaffName: string | null;
+  /** Staff member who created the LPO (captured at create-time from the auth context). */
+  createdBy: string | null;
+  /** Display name for `createdBy`. */
+  createdByName: string | null;
   items: LpoItem[];
   createdAt: string;
   updatedAt: string;
+}
+
+// ── Public (supplier-facing) view served by the share link ─────────
+
+export interface PublicLpoItem {
+  variantName: string | null;
+  orderedQuantity: number;
+  unitCost: number;
+  currency: string | null;
+  lineTotal: number | null;
+}
+
+export interface PublicLpo {
+  lpoNumber: string;
+  supplierAcknowledgement: SupplierAcknowledgement;
+  acknowledgedAt: string | null;
+  acknowledgementNote: string | null;
+  supplierName: string | null;
+  supplierContactPersonName: string | null;
+  supplierContactPersonPhone: string | null;
+  supplierPhone: string | null;
+  supplierEmail: string | null;
+  supplierAddress: string | null;
+  supplierRegistrationNumber: string | null;
+  supplierTinNumber: string | null;
+  deliveryLocationName: string | null;
+  notes: string | null;
+  currency: string | null;
+  totalAmount: number | null;
+  items: PublicLpoItem[];
+  issuedAt: string;
+  letterhead: import("@/types/letterhead/type").LocationLetterhead | null;
 }
 
 export interface LpoItem {
@@ -60,6 +111,11 @@ export interface UpdateLpoStatusPayload {
   status: LpoStatus;
 }
 
+export interface AcknowledgeLpoPayload {
+  decision: Exclude<SupplierAcknowledgement, "PENDING">;
+  note?: string;
+}
+
 // ── Display helpers ────────────────────────────────────────────────
 
 export const LPO_STATUS_LABELS: Record<LpoStatus, string> = {
@@ -78,6 +134,18 @@ export const LPO_STATUS_TONES: Record<LpoStatus, string> = {
   PARTIALLY_RECEIVED: "bg-amber-50 text-amber-700",
   RECEIVED: "bg-green-50 text-green-700",
   CANCELLED: "bg-red-50 text-red-700",
+};
+
+export const SUPPLIER_ACK_LABELS: Record<SupplierAcknowledgement, string> = {
+  PENDING: "Awaiting supplier",
+  ACCEPTED: "Accepted",
+  REJECTED: "Rejected",
+};
+
+export const SUPPLIER_ACK_TONES: Record<SupplierAcknowledgement, string> = {
+  PENDING: "bg-amber-50 text-amber-700 border-amber-200",
+  ACCEPTED: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  REJECTED: "bg-red-50 text-red-700 border-red-200",
 };
 
 /** LPOs whose goods can still be received — used by GRN LPO picker. */
@@ -105,4 +173,36 @@ export function canCancelLpo(status: LpoStatus): boolean {
 /** True when the LPO can be soft-deleted. Only DRAFT, per backend. */
 export function canDeleteLpo(status: LpoStatus): boolean {
   return status === "DRAFT";
+}
+
+/**
+ * Combine the LPO's internal status with the supplier-side acknowledgement
+ * into a single label + tone for the status pill.
+ *
+ * - APPROVED + PENDING → "Awaiting supplier" (amber)
+ * - CANCELLED + REJECTED → "Rejected by supplier" (red) — the backend
+ *   auto-cancels rejected orders, so this preserves the diagnostic signal
+ *   that would otherwise be flattened to a generic "Cancelled" label.
+ * - Everything else falls through to the regular status labels.
+ */
+export function effectiveLpoStatus(
+  status: LpoStatus,
+  ack: SupplierAcknowledgement,
+): { label: string; tone: string } {
+  if (status === "APPROVED" && ack === "PENDING") {
+    return {
+      label: "Awaiting supplier",
+      tone: "bg-amber-50 text-amber-700",
+    };
+  }
+  if (status === "CANCELLED" && ack === "REJECTED") {
+    return {
+      label: "Rejected by supplier",
+      tone: "bg-red-50 text-red-700",
+    };
+  }
+  return {
+    label: LPO_STATUS_LABELS[status],
+    tone: LPO_STATUS_TONES[status],
+  };
 }

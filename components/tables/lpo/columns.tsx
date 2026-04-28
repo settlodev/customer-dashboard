@@ -4,11 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import {
-  Lpo,
-  LPO_STATUS_LABELS,
-  LPO_STATUS_TONES,
-} from "@/types/lpo/type";
+import { Lpo, effectiveLpoStatus } from "@/types/lpo/type";
 import { Money } from "@/components/widgets/money";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
 
@@ -58,13 +54,6 @@ export const columns: ColumnDef<LpoRow>[] = [
     ),
   },
   {
-    id: "items",
-    header: "Items",
-    cell: ({ row }) => (
-      <span className="text-sm text-gray-600">{row.original.items?.length ?? 0}</span>
-    ),
-  },
-  {
     id: "progress",
     header: "Received",
     cell: ({ row }) => {
@@ -111,15 +100,30 @@ export const columns: ColumnDef<LpoRow>[] = [
     },
   },
   {
-    accessorKey: "status",
-    header: "Status",
+    accessorKey: "createdByName",
+    header: "Created by",
     cell: ({ row }) => (
-      <span
-        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${LPO_STATUS_TONES[row.original.status]}`}
-      >
-        {LPO_STATUS_LABELS[row.original.status]}
+      <span className="text-sm text-gray-600">
+        {row.original.createdByName || "—"}
       </span>
     ),
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => {
+      const { label, tone } = effectiveLpoStatus(
+        row.original.status,
+        row.original.supplierAcknowledgement,
+      );
+      return (
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${tone}`}
+        >
+          {label}
+        </span>
+      );
+    },
   },
   {
     accessorKey: "createdAt",

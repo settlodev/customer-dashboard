@@ -9,6 +9,7 @@ import { inventoryUrl } from "./inventory-client";
 import { getCurrentDestination } from "./context";
 import type {
   SupplierReturn,
+  PublicSupplierReturn,
   SupplierReturnStatus,
   CreateSupplierReturnPayload,
 } from "@/types/supplier-return/type";
@@ -38,8 +39,9 @@ export async function getSupplierReturn(id: string): Promise<SupplierReturn | nu
     const apiClient = new ApiClient();
     const data = await apiClient.get(inventoryUrl(`${BASE}/${id}`));
     return parseStringify(data);
-  } catch {
-    return null;
+  } catch (error: any) {
+    if (error?.status === 404) return null;
+    throw error;
   }
 }
 
@@ -119,4 +121,68 @@ async function runTransition(
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
+}
+
+// ── Sharing ─────────────────────────────────────────────────────────
+
+const PUBLIC_BASE = "/api/v1/public/supplier-returns";
+
+export async function shareSupplierReturn(
+  id: string,
+): Promise<{ shareToken: string; shareUrl: string } | { error: string }> {
+  try {
+    const apiClient = new ApiClient();
+    const updated = (await apiClient.post(
+      inventoryUrl(`${BASE}/${id}/share`),
+      {},
+    )) as SupplierReturn;
+    revalidatePath(`/supplier-returns/${id}`);
+    if (!updated?.shareToken) {
+      return { error: "Share token missing from server response" };
+    }
+    return {
+      shareToken: updated.shareToken,
+      shareUrl: buildSrShareUrl(updated.shareToken),
+    };
+  } catch (error: any) {
+    return { error: error?.message ?? "Failed to share supplier return" };
+  }
+}
+
+export async function revokeSupplierReturnShare(
+  id: string,
+): Promise<FormResponse> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.delete(inventoryUrl(`${BASE}/${id}/share`));
+    revalidatePath(`/supplier-returns/${id}`);
+    return { responseType: "success", message: "Share link revoked" };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message ?? "Failed to revoke share link",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
+export async function getPublicSupplierReturn(
+  token: string,
+): Promise<PublicSupplierReturn | null> {
+  try {
+    const apiClient = new ApiClient();
+    apiClient.isPlain = true;
+    const data = await apiClient.get<PublicSupplierReturn>(
+      inventoryUrl(`${PUBLIC_BASE}/${encodeURIComponent(token)}`),
+    );
+    return parseStringify(data);
+  } catch (error: any) {
+    if (error?.status === 404) return null;
+    throw error;
+  }
+}
+
+function buildSrShareUrl(token: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "";
+  return `${base}/sr/${token}`;
 }

@@ -152,7 +152,6 @@ export function InvoiceDocument({
         id="receipt-content"
         ref={printRef as React.RefObject<HTMLDivElement>}
         className="bg-white rounded-lg shadow-sm mx-auto overflow-hidden"
-        style={{ maxWidth: 794, border: `1px solid ${SECONDARY}` }}
       >
         {/* ── HEADER ── */}
         <div className="px-8 pt-8 pb-6 flex flex-col lg:flex-row justify-between items-start gap-6">

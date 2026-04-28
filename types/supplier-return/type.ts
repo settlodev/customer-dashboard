@@ -21,9 +21,38 @@ export interface SupplierReturn {
   returnedByName: string | null;
   returnDate: string | null;
   notes: string | null;
+  shareToken: string | null;
+  shareTokenIssuedAt: string | null;
   items: SupplierReturnItem[];
   createdAt: string;
   updatedAt: string;
+}
+
+// Public payload returned by GET /api/v1/public/supplier-returns/{token}.
+export interface PublicSupplierReturn {
+  id: string;
+  returnNumber: string;
+  status: SupplierReturnStatus;
+  currency: string | null;
+  reason: string | null;
+  notes: string | null;
+  returnDate: string | null;
+  createdAt: string;
+  shareTokenIssuedAt: string | null;
+  supplierId: string;
+  supplierName: string | null;
+  items: PublicSupplierReturnItem[];
+  letterhead: import("@/types/letterhead/type").LocationLetterhead | null;
+}
+
+export interface PublicSupplierReturnItem {
+  id: string;
+  stockVariantId: string;
+  stockVariantDisplayName: string | null;
+  quantity: number;
+  unitCost: number | null;
+  currency: string | null;
+  reason: string | null;
 }
 
 export interface SupplierReturnItem {

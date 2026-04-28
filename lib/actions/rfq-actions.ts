@@ -10,6 +10,7 @@ import { inventoryUrl } from "./inventory-client";
 import { getCurrentDestination } from "./context";
 import type {
   Rfq,
+  PublicRfq,
   RfqStatus,
   QuoteComparison,
   SupplierQuote,
@@ -49,8 +50,9 @@ export async function getRfq(id: string): Promise<Rfq | null> {
     const apiClient = new ApiClient();
     const data = await apiClient.get(inventoryUrl(`${BASE}/${id}`));
     return parseStringify(data);
-  } catch {
-    return null;
+  } catch (error: any) {
+    if (error?.status === 404) return null;
+    throw error;
   }
 }
 
@@ -223,4 +225,64 @@ export async function awardRfq(
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
+}
+
+// ── Sharing ─────────────────────────────────────────────────────────
+
+const PUBLIC_BASE = "/api/v1/public/rfqs";
+
+export async function shareRfq(
+  id: string,
+): Promise<{ shareToken: string; shareUrl: string } | { error: string }> {
+  try {
+    const apiClient = new ApiClient();
+    const updated = (await apiClient.post(
+      inventoryUrl(`${BASE}/${id}/share`),
+      {},
+    )) as Rfq;
+    revalidatePath(`/rfqs/${id}`);
+    if (!updated?.shareToken) {
+      return { error: "Share token missing from server response" };
+    }
+    return {
+      shareToken: updated.shareToken,
+      shareUrl: buildRfqShareUrl(updated.shareToken),
+    };
+  } catch (error: any) {
+    return { error: error?.message ?? "Failed to share RFQ" };
+  }
+}
+
+export async function revokeRfqShare(id: string): Promise<FormResponse> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.delete(inventoryUrl(`${BASE}/${id}/share`));
+    revalidatePath(`/rfqs/${id}`);
+    return { responseType: "success", message: "Share link revoked" };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message ?? "Failed to revoke share link",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
+export async function getPublicRfq(token: string): Promise<PublicRfq | null> {
+  try {
+    const apiClient = new ApiClient();
+    apiClient.isPlain = true;
+    const data = await apiClient.get<PublicRfq>(
+      inventoryUrl(`${PUBLIC_BASE}/${encodeURIComponent(token)}`),
+    );
+    return parseStringify(data);
+  } catch (error: any) {
+    if (error?.status === 404) return null;
+    throw error;
+  }
+}
+
+function buildRfqShareUrl(token: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "";
+  return `${base}/rfq/${token}`;
 }

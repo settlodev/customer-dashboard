@@ -3,6 +3,7 @@ import {auth} from "@/auth";
 import {SessionProvider} from "next-auth/react";
 import {LoggedOutNavbar} from "@/components/navigation/logged-out-user-nav";
 import {Footer} from "@/components/landing-page/Footer";
+import WhatsAppButton from "@/components/whatsapp-button";
 
 export default async function RootLayout({children}: {
     children: React.ReactNode;
@@ -26,6 +27,10 @@ export default async function RootLayout({children}: {
                     <Footer />
                 </div>
             </div>
+            <WhatsAppButton
+                userName={session?.user?.name ?? undefined}
+                hideOnReserve
+            />
         </SessionProvider>
     )
 }

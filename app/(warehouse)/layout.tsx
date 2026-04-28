@@ -4,6 +4,7 @@ import {SessionProvider} from "next-auth/react";
 import {auth} from "@/auth";
 import {NavbarWrapper} from "@/components/navigation/navbar-wrapper";
 import {SidebarWrapper} from "@/components/sidebar/sidebar";
+import WhatsAppButton from "@/components/whatsapp-button";
 import {getBusinessDropDown, getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
 import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
@@ -73,6 +74,12 @@ export default async function RootLayout({children}: {
                     </div>
                 </main>
             </div>
+            <WhatsAppButton
+                userName={session?.user?.name ?? undefined}
+                businessName={currentBusiness?.name}
+                locationName={currentLocation?.name}
+                hideOnReserve
+            />
         </SessionProvider>
     );
 }

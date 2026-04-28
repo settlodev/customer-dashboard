@@ -475,7 +475,7 @@ function CurrentRatesCard({
               ? `Latest system fetch: ${freshestLabel}.`
               : "Daily rates fetched automatically by the platform."}{" "}
             A row marked <strong>Override</strong> is a manual rate you or your
-            business has set; otherwise it's the daily system rate.
+            business has set; otherwise it&apos;s the daily system rate.
           </p>
         </div>
         <Button

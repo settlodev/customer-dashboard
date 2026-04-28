@@ -10,6 +10,7 @@ import { inventoryUrl } from "./inventory-client";
 import { getCurrentDestination } from "./context";
 import type {
   Grn,
+  PublicGrn,
   LandedCost,
   CreateGrnPayload,
   AddLandedCostPayload,
@@ -47,8 +48,9 @@ export async function getGrn(id: string): Promise<Grn | null> {
     const apiClient = new ApiClient();
     const data = await apiClient.get(inventoryUrl(`${BASE}/${id}`));
     return parseStringify(data);
-  } catch {
-    return null;
+  } catch (error: any) {
+    if (error?.status === 404) return null;
+    throw error;
   }
 }
 
@@ -230,4 +232,74 @@ export async function addLandedCost(
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
+}
+
+// ── Sharing ─────────────────────────────────────────────────────────
+
+const PUBLIC_BASE = "/api/v1/public/grns";
+
+/**
+ * Mint (or return the existing) share token for a GRN. Idempotent — repeated
+ * calls return the same token until {@link revokeGrnShare} is invoked.
+ */
+export async function shareGrn(
+  id: string,
+): Promise<{ shareToken: string; shareUrl: string } | { error: string }> {
+  try {
+    const apiClient = new ApiClient();
+    const updated = (await apiClient.post(
+      inventoryUrl(`${BASE}/${id}/share`),
+      {},
+    )) as Grn;
+    revalidatePath(`/goods-received/${id}`);
+    if (!updated?.shareToken) {
+      return { error: "Share token missing from server response" };
+    }
+    return {
+      shareToken: updated.shareToken,
+      shareUrl: buildGrnShareUrl(updated.shareToken),
+    };
+  } catch (error: any) {
+    return { error: error?.message ?? "Failed to share GRN" };
+  }
+}
+
+/**
+ * Revoke an active GRN share link. The link 404s on the next public lookup.
+ */
+export async function revokeGrnShare(id: string): Promise<FormResponse> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.delete(inventoryUrl(`${BASE}/${id}/share`));
+    revalidatePath(`/goods-received/${id}`);
+    return { responseType: "success", message: "Share link revoked" };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message ?? "Failed to revoke share link",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
+/**
+ * Public lookup by share token. No tenant scoping. Returns null on 404.
+ */
+export async function getPublicGrn(token: string): Promise<PublicGrn | null> {
+  try {
+    const apiClient = new ApiClient();
+    apiClient.isPlain = true;
+    const data = await apiClient.get<PublicGrn>(
+      inventoryUrl(`${PUBLIC_BASE}/${encodeURIComponent(token)}`),
+    );
+    return parseStringify(data);
+  } catch (error: any) {
+    if (error?.status === 404) return null;
+    throw error;
+  }
+}
+
+function buildGrnShareUrl(token: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "";
+  return `${base}/grn/${token}`;
 }

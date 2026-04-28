@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -52,15 +52,36 @@ interface ItemMeta {
   serialTracked: boolean;
 }
 
-export default function GrnForm() {
+interface GrnFormProps {
+  initialLpo?: LpoWithSupplierName | null;
+}
+
+export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
   const locationCurrency = useLocationCurrency();
 
-  // Per-row metadata keyed by react-hook-form field id so reorders don't leak.
   const [itemMeta, setItemMeta] = useState<Record<string, ItemMeta>>({});
   const [linkedLpo, setLinkedLpo] = useState<LpoWithSupplierName | null>(null);
+  const [loadingItemRows, setLoadingItemRows] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const itemsLoading = loadingItemRows.size > 0;
+
+  const handleItemLoadingChange = useCallback(
+    (fieldId: string, loading: boolean) => {
+      setLoadingItemRows((prev) => {
+        const has = prev.has(fieldId);
+        if (loading === has) return prev;
+        const next = new Set(prev);
+        if (loading) next.add(fieldId);
+        else next.delete(fieldId);
+        return next;
+      });
+    },
+    [],
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(CreateGrnSchema),
@@ -129,6 +150,12 @@ export default function GrnForm() {
         delete next[fieldId];
         return next;
       });
+      setLoadingItemRows((prev) => {
+        if (!prev.has(fieldId)) return prev;
+        const next = new Set(prev);
+        next.delete(fieldId);
+        return next;
+      });
     },
     [remove],
   );
@@ -141,8 +168,6 @@ export default function GrnForm() {
         shouldDirty: true,
         shouldValidate: true,
       });
-      // Default to the outstanding (unreceived) quantity per line so partial
-      // receipts one-shot correctly. User can adjust either direction.
       const items = lpo.items.map((line) => {
         const outstanding = Math.max(
           0,
@@ -169,10 +194,15 @@ export default function GrnForm() {
     form.setValue("lpoId", "", { shouldDirty: true });
   }, [form]);
 
+  const initialLpoApplied = useRef(false);
+  useEffect(() => {
+    if (initialLpoApplied.current) return;
+    if (!initialLpo) return;
+    initialLpoApplied.current = true;
+    applyLpo(initialLpo);
+  }, [initialLpo, applyLpo]);
+
   const submitData = (values: FormValues) => {
-    // Hard-stop: serial-tracked rows need a matching serial count.
-    // We can't bake this into the Zod schema because `serialTracked` is
-    // variant metadata fetched async, not part of the form payload.
     for (let i = 0; i < values.items.length; i++) {
       const item = values.items[i];
       const fieldId = fields[i]?.id;
@@ -213,7 +243,6 @@ export default function GrnForm() {
     <Form {...form}>
       <FormError message={response?.message} />
       <form onSubmit={form.handleSubmit(submitData)} className="space-y-6">
-        {/* ── Header ─────────────────────────────────────────────── */}
         <Card className="rounded-xl shadow-sm">
           <CardContent className="pt-6 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -495,6 +524,9 @@ export default function GrnForm() {
                               value={f.value}
                               onChange={(v) => handleVariantChange(field.id, index, v)}
                               onVariantMeta={(m) => handleVariantMeta(field.id, m)}
+                              onLoadingChange={(loading) =>
+                                handleItemLoadingChange(field.id, loading)
+                              }
                               isDisabled={isPending}
                               disabledValues={disabledVariantIds}
                             />
@@ -689,9 +721,13 @@ export default function GrnForm() {
         </Card>
 
         <div className="flex items-center gap-4 pt-2 pb-4">
-          <CancelButton />
+          <CancelButton disabled={itemsLoading} />
           <Separator orientation="vertical" className="h-5" />
-          <SubmitButton isPending={isPending} label="Create GRN" />
+          <SubmitButton
+            isPending={isPending}
+            isDisabled={itemsLoading}
+            label={itemsLoading ? "Loading items…" : "Create GRN"}
+          />
         </div>
       </form>
     </Form>

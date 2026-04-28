@@ -10,6 +10,7 @@ import { inventoryUrl } from "./inventory-client";
 import { getCurrentDestination } from "./context";
 import type {
   PurchaseRequisition,
+  PublicRequisition,
   RequisitionStatus,
   CreateRequisitionPayload,
 } from "@/types/requisition/type";
@@ -44,8 +45,9 @@ export async function getRequisition(id: string): Promise<PurchaseRequisition | 
     const apiClient = new ApiClient();
     const data = await apiClient.get(inventoryUrl(`${BASE}/${id}`));
     return parseStringify(data);
-  } catch {
-    return null;
+  } catch (error: any) {
+    if (error?.status === 404) return null;
+    throw error;
   }
 }
 
@@ -151,4 +153,78 @@ async function runTransition(
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
+}
+
+// ── Sharing ─────────────────────────────────────────────────────────
+
+const PUBLIC_BASE = "/api/v1/public/purchase-requisitions";
+
+/**
+ * Mint (or return the existing) share token for a requisition. The backend
+ * is idempotent — calling this multiple times returns the same token until
+ * {@link revokeRequisitionShare} is invoked.
+ */
+export async function shareRequisition(
+  id: string,
+): Promise<{ shareToken: string; shareUrl: string } | { error: string }> {
+  try {
+    const apiClient = new ApiClient();
+    const updated = (await apiClient.post(
+      inventoryUrl(`${BASE}/${id}/share`),
+      {},
+    )) as PurchaseRequisition;
+    revalidatePath(`/purchase-requisitions/${id}`);
+    if (!updated?.shareToken) {
+      return { error: "Share token missing from server response" };
+    }
+    return {
+      shareToken: updated.shareToken,
+      shareUrl: buildShareUrl(updated.shareToken),
+    };
+  } catch (error: any) {
+    return { error: error?.message ?? "Failed to share requisition" };
+  }
+}
+
+/**
+ * Revoke an active share link. The link 404s on the next public lookup.
+ */
+export async function revokeRequisitionShare(id: string): Promise<FormResponse> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.delete(inventoryUrl(`${BASE}/${id}/share`));
+    revalidatePath(`/purchase-requisitions/${id}`);
+    return { responseType: "success", message: "Share link revoked" };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message ?? "Failed to revoke share link",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
+/**
+ * Public lookup by share token. No tenant scoping — the token itself is
+ * the capability. Returns null on 404 (revoked or never minted).
+ */
+export async function getPublicRequisition(
+  token: string,
+): Promise<PublicRequisition | null> {
+  try {
+    const apiClient = new ApiClient();
+    apiClient.isPlain = true;
+    const data = await apiClient.get<PublicRequisition>(
+      inventoryUrl(`${PUBLIC_BASE}/${encodeURIComponent(token)}`),
+    );
+    return parseStringify(data);
+  } catch (error: any) {
+    if (error?.status === 404) return null;
+    throw error;
+  }
+}
+
+function buildShareUrl(token: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "";
+  return `${base}/pr/${token}`;
 }

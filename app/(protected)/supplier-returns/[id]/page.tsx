@@ -11,6 +11,7 @@ import {
   SUPPLIER_RETURN_STATUS_TONES,
 } from "@/types/supplier-return/type";
 import { SupplierReturnStatusActions } from "@/components/widgets/supplier-return/status-actions";
+import { SupplierReturnShareButton } from "@/components/widgets/supplier-return/share-dialog";
 import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
 import { FileText } from "lucide-react";
 
@@ -94,6 +95,7 @@ export default async function SupplierReturnDetailPage({
             )}
           </p>
         </div>
+        <SupplierReturnShareButton supplierReturn={supplierReturn} />
         <SupplierReturnStatusActions supplierReturn={supplierReturn} />
       </div>
 
