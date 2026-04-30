@@ -1,4 +1,9 @@
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import BomAnalyticsDashboard from "@/components/widgets/bom/bom-analytics-dashboard";
 import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
@@ -10,8 +15,6 @@ import {
   getRecipeCostTrend,
   getSubstituteUsage,
 } from "@/lib/actions/bom-analytics-actions";
-
-const breadcrumbItems = [{ title: "Consumption analytics", link: "/bom-analytics" }];
 
 export default async function BomAnalyticsPage() {
   const business = await getCurrentBusiness();
@@ -57,37 +60,34 @@ export default async function BomAnalyticsPage() {
       ];
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <BreadcrumbsNav items={breadcrumbItems} />
-          <p className="text-sm text-muted-foreground mt-1">
-            Recipe cost trends, substitute usage, missing-rule alerts, production yield,
-            and the raw-material cost cascade blast radius — all backed by the Reports
-            Service.
-          </p>
-        </div>
-      </div>
-
-      {!businessId ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            No business selected. Pick a business to view consumption analytics.
-          </CardContent>
-        </Card>
-      ) : (
-        <BomAnalyticsDashboard
-          businessId={businessId}
-          initialStartDate={startDate}
-          initialEndDate={endDate}
-          costTrend={costTrend}
-          substituteUsage={substituteUsage}
-          missingRules={missingRules}
-          deductionFailures={deductionFailures}
-          productionYield={productionYield}
-          costCascades={costCascades}
-        />
-      )}
-    </div>
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Consumption analytics" }]} />
+      <PageHeader
+        title="Consumption analytics"
+        subtitle="Recipe cost trends, substitute usage, missing-rule alerts, production yield, and the raw-material cost cascade blast radius."
+      />
+      <PageBody>
+        {!businessId ? (
+          <Card>
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+              No business selected. Pick a business to view consumption
+              analytics.
+            </CardContent>
+          </Card>
+        ) : (
+          <BomAnalyticsDashboard
+            businessId={businessId}
+            initialStartDate={startDate}
+            initialEndDate={endDate}
+            costTrend={costTrend}
+            substituteUsage={substituteUsage}
+            missingRules={missingRules}
+            deductionFailures={deductionFailures}
+            productionYield={productionYield}
+            costCascades={costCascades}
+          />
+        )}
+      </PageBody>
+    </PageShell>
   );
 }

@@ -1,17 +1,18 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import { Plus, FileText, ShieldCheck, Clock, AlertTriangle } from "lucide-react";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/requisition/columns";
 import { getRequisitions } from "@/lib/actions/requisition-actions";
 import type { RequisitionStatus } from "@/types/requisition/type";
-
-const breadcrumbItems = [
-  { title: "Purchase Requisitions", link: "/purchase-requisitions" },
-];
 
 const STATUS_VALUES: RequisitionStatus[] = [
   "DRAFT",
@@ -47,42 +48,78 @@ export default async function Page({ searchParams }: Params) {
   const pageCount = responseData.totalPages ?? 0;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <BreadcrumbsNav items={breadcrumbItems} />
-        <Button asChild>
-          <Link href="/purchase-requisitions/new">
-            <Plus className="mr-1.5 h-4 w-4" />
-            New Requisition
-          </Link>
-        </Button>
-      </div>
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Purchase Requisitions" }]} />
+      <PageHeader
+        title="Purchase Requisitions"
+        subtitle="Internal requests for stock — submit, approve, then convert to LPOs."
+        actions={
+          <Button asChild size="sm">
+            <Link href="/purchase-requisitions/new">
+              <Plus className="mr-1.5 h-4 w-4" />
+              New Requisition
+            </Link>
+          </Button>
+        }
+      />
+      <PageBody>
+        {/* Placeholder KPIs — wire to real aggregates later. */}
+        <KpiStrip cols={4}>
+          <KpiCard
+            icon={<FileText className="h-3 w-3" />}
+            label="Open requisitions"
+            value="9"
+            unit="active"
+            delta="3 awaiting approval"
+            deltaTone="neutral"
+          />
+          <KpiCard
+            icon={<ShieldCheck className="h-3 w-3" />}
+            label="Approved (30d)"
+            value="42"
+            delta="+6 wk"
+            deltaTone="pos"
+            spark={[18, 22, 24, 28, 30, 34, 38, 40]}
+          />
+          <KpiCard
+            icon={<Clock className="h-3 w-3" />}
+            label="Avg approval time"
+            value="11"
+            unit="hrs"
+            delta="−1.5 hr"
+            deltaTone="pos"
+          />
+          <KpiCard
+            icon={<AlertTriangle className="h-3 w-3" />}
+            label="Rejected (30d)"
+            value="3"
+            delta="needs review"
+            deltaTone="neg"
+          />
+        </KpiStrip>
 
-      {total > 0 || status ? (
-        <Card>
-          <CardContent className="px-2 sm:px-6 pt-6">
-            <DataTable
-              columns={columns}
-              data={data}
-              searchKey="requisitionNumber"
-              pageNo={page}
-              total={total}
-              pageCount={pageCount}
-              disableArchive
-              filterKey="status"
-              filterOptions={STATUS_VALUES.map((s) => ({
-                value: s,
-                label: s.replace(/_/g, " "),
-              }))}
-            />
-          </CardContent>
-        </Card>
-      ) : (
-        <NoItems
-          newItemUrl="/purchase-requisitions/new"
-          itemName="purchase requisitions"
-        />
-      )}
-    </div>
+        {total > 0 || status ? (
+          <DataTable
+            columns={columns}
+            data={data}
+            searchKey="requisitionNumber"
+            pageNo={page}
+            total={total}
+            pageCount={pageCount}
+            disableArchive
+            filterKey="status"
+            filterOptions={STATUS_VALUES.map((s) => ({
+              value: s,
+              label: s.replace(/_/g, " "),
+            }))}
+          />
+        ) : (
+          <NoItems
+            newItemUrl="/purchase-requisitions/new"
+            itemName="purchase requisitions"
+          />
+        )}
+      </PageBody>
+    </PageShell>
   );
 }

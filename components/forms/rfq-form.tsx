@@ -3,8 +3,17 @@
 import React, { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { Calendar as CalendarIcon, Plus, Trash2 } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  FileBadge,
+  PackagePlus,
+  Plus,
+  Trash2,
+  AlertTriangle,
+} from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,15 +28,29 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogIcon,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { NumericFormat } from "react-number-format";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { useToast } from "@/hooks/use-toast";
-import { FormError } from "../widgets/form-error";
-import CancelButton from "../widgets/cancel-button";
-import { SubmitButton } from "../widgets/submit-button";
+import {
+  Alert,
+  AlertIcon,
+  AlertBody,
+  AlertTitle,
+  AlertDescription,
+} from "@/components/ui/alert";
 import StockVariantSelector from "../widgets/stock-variant-selector";
 import CurrencySelector from "@/components/widgets/currency-selector";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
@@ -36,9 +59,12 @@ import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
 import { CreateRfqSchema } from "@/types/rfq/schema";
 import type { FormResponse } from "@/types/types";
 
+import styles from "./styles/form-shell.module.css";
+
 type FormValues = z.infer<typeof CreateRfqSchema>;
 
 export default function RfqForm() {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
@@ -91,8 +117,7 @@ export default function RfqForm() {
   });
 
   const watchedItems = form.watch("items");
-  const quoteCurrency =
-    (form.watch("targetCurrency") || locationCurrency).toUpperCase();
+  const quoteCurrency = (form.watch("targetCurrency") || locationCurrency).toUpperCase();
 
   const submissionDeadlineValue = form.watch("submissionDeadline");
   const today = useMemo(() => {
@@ -133,374 +158,463 @@ export default function RfqForm() {
 
   return (
     <Form {...form}>
-      <FormError message={response?.message} />
-      <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-6">
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-4">
-            <div>
-              <h3 className="text-lg font-medium">Request for Quotation</h3>
-              <p className="text-xs text-muted-foreground">
-                Draft → Send → suppliers submit quotes → compare → evaluate →
-                award. The awarded quote is converted into an LPO for
-                receiving.
-              </p>
-            </div>
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Title <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. Q2 raw materials, December alcohol resupply"
-                      {...field}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="targetCurrency"
-                render={({ field }) => {
-                  const active = (field.value || locationCurrency).toUpperCase();
-                  return (
-                    <FormItem>
-                      <FormLabel>Quote currency</FormLabel>
+      {response?.responseType === "error" && response?.message ? (
+        <Alert tone="danger" className="mb-3">
+          <AlertIcon>
+            <AlertTriangle className="h-3.5 w-3.5" />
+          </AlertIcon>
+          <AlertBody>
+            <AlertTitle>We couldn&apos;t save this RFQ</AlertTitle>
+            <AlertDescription>{response.message}</AlertDescription>
+          </AlertBody>
+        </Alert>
+      ) : null}
+      <form
+        onSubmit={form.handleSubmit(submitData, onInvalid)}
+        className={styles.formRoot}
+      >
+        <div className={styles.formStack}>
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <FileBadge className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Request for quotation</h3>
+                <p className={styles.formCardHeadDesc}>
+                  Draft → Send → suppliers submit quotes → compare → award. The
+                  awarded quote becomes an LPO.
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 01</span>
+              </div>
+            </header>
+
+            <div className={styles.formBody}>
+              <div className={styles.fieldRow}>
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2 min-w-0">
+                      <FormLabel className={styles.fieldLabel}>
+                        Title <span className="req">*</span>
+                      </FormLabel>
                       <FormControl>
-                        <CurrencySelector
-                          value={active}
-                          onChange={field.onChange}
-                          isDisabled={isPending}
+                        <Input
+                          placeholder="e.g. Q2 raw materials, December alcohol resupply"
+                          {...field}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div
+                className={styles.fieldRow}
+                style={
+                  {
+                    ["--cols" as never]: 3,
+                    marginTop: 14,
+                  } as React.CSSProperties
+                }
+              >
+                <FormField
+                  control={form.control}
+                  name="targetCurrency"
+                  render={({ field }) => {
+                    const active = (field.value || locationCurrency).toUpperCase();
+                    return (
+                      <FormItem>
+                        <FormLabel className={styles.fieldLabel}>
+                          Quote currency
+                        </FormLabel>
+                        <FormControl>
+                          <CurrencySelector
+                            value={active}
+                            onChange={field.onChange}
+                            isDisabled={isPending}
+                          />
+                        </FormControl>
+                        <p className="text-[11px] text-muted-foreground">
+                          Defaults to {locationCurrency}.
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+                <FormField
+                  control={form.control}
+                  name="submissionDeadline"
+                  render={({ field }) => {
+                    const selected = field.value ? new Date(field.value) : undefined;
+                    return (
+                      <FormItem>
+                        <FormLabel className={styles.fieldLabel}>
+                          Submission deadline
+                        </FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                disabled={isPending}
+                                className={cn(
+                                  "h-10 w-full justify-start text-left font-normal",
+                                  !selected && "text-muted-foreground",
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                {selected ? format(selected, "PPP") : "Pick a date"}
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[300px] p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={selected}
+                              onSelect={(d) => {
+                                if (!d) {
+                                  field.onChange("");
+                                  return;
+                                }
+                                const endOfDay = new Date(d);
+                                endOfDay.setHours(23, 59, 59, 999);
+                                field.onChange(endOfDay.toISOString());
+                                const required = form.getValues("requiredByDate");
+                                if (required) {
+                                  const reqDate = new Date(required);
+                                  if (reqDate < endOfDay) {
+                                    form.setValue("requiredByDate", "", {
+                                      shouldDirty: true,
+                                    });
+                                  }
+                                }
+                              }}
+                              disabled={(date) => date < today}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <p className="text-[11px] text-muted-foreground">
+                          After this, quotes are EXPIRED.
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+                <FormField
+                  control={form.control}
+                  name="requiredByDate"
+                  render={({ field }) => {
+                    const selected = field.value ? new Date(field.value) : undefined;
+                    return (
+                      <FormItem>
+                        <FormLabel className={styles.fieldLabel}>Needed by</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                disabled={isPending}
+                                className={cn(
+                                  "h-10 w-full justify-start text-left font-normal",
+                                  !selected && "text-muted-foreground",
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                {selected ? format(selected, "PPP") : "Pick a date"}
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[300px] p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={selected}
+                              onSelect={(d) => field.onChange(d ? d.toISOString() : "")}
+                              disabled={(date) => {
+                                if (date < today) return true;
+                                if (
+                                  submissionDeadlineAsDate &&
+                                  date < submissionDeadlineAsDate
+                                )
+                                  return true;
+                                return false;
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+              </div>
+
+              <div className={styles.fieldRow} style={{ marginTop: 14 }}>
+                <FormField
+                  control={form.control}
+                  name="invitedSupplierIds"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2 min-w-0">
+                      <FormLabel className={styles.fieldLabel}>
+                        Invite suppliers
+                        <span className="opt">OPTIONAL</span>
+                      </FormLabel>
+                      <FormControl>
+                        <MultiSelect
+                          options={supplierOptions}
+                          defaultValue={field.value ?? []}
+                          onValueChange={field.onChange}
+                          placeholder={
+                            supplierOptions.length > 0
+                              ? "Select suppliers to invite"
+                              : "Loading suppliers…"
+                          }
+                          maxCount={4}
+                          disabled={isPending || supplierOptions.length === 0}
                         />
                       </FormControl>
                       <p className="text-[11px] text-muted-foreground">
-                        Defaults to {locationCurrency}. Use the currency you want
-                        suppliers to respond in.
+                        Pre-seeds quote slots for each invited supplier.
                       </p>
-                      <FormMessage />
                     </FormItem>
-                  );
-                }}
-              />
-              <FormField
-                control={form.control}
-                name="submissionDeadline"
-                render={({ field }) => {
-                  const selected = field.value ? new Date(field.value) : undefined;
-                  return (
-                    <FormItem>
-                      <FormLabel>Submission deadline</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              disabled={isPending}
-                              className={cn(
-                                "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
-                                !selected && "text-muted-foreground",
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
-                              {selected ? format(selected, "PPP") : "Pick a date"}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={selected}
-                            onSelect={(d) => {
-                              if (!d) {
-                                field.onChange("");
-                                return;
-                              }
-                              const endOfDay = new Date(d);
-                              endOfDay.setHours(23, 59, 59, 999);
-                              field.onChange(endOfDay.toISOString());
-                              const required = form.getValues("requiredByDate");
-                              if (required) {
-                                const reqDate = new Date(required);
-                                if (reqDate < endOfDay) {
-                                  form.setValue("requiredByDate", "", { shouldDirty: true });
-                                }
-                              }
-                            }}
-                            disabled={(date) => date < today}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <p className="text-[11px] text-muted-foreground">
-                        After this, quotes are considered EXPIRED.
-                      </p>
-                      <FormMessage />
+                  )}
+                />
+              </div>
+
+              <div className={styles.fieldRow} style={{ marginTop: 14 }}>
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2 min-w-0">
+                      <FormLabel className={styles.fieldLabel}>
+                        Notes
+                        <span className="opt">OPTIONAL</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Delivery terms, payment conditions, certifications required."
+                          rows={2}
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
+                        />
+                      </FormControl>
                     </FormItem>
-                  );
-                }}
-              />
-              <FormField
-                control={form.control}
-                name="requiredByDate"
-                render={({ field }) => {
-                  const selected = field.value ? new Date(field.value) : undefined;
-                  return (
-                    <FormItem>
-                      <FormLabel>Needed by</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              disabled={isPending}
-                              className={cn(
-                                "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
-                                !selected && "text-muted-foreground",
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
-                              {selected ? format(selected, "PPP") : "Pick a date"}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={selected}
-                            onSelect={(d) => field.onChange(d ? d.toISOString() : "")}
-                            disabled={(date) => {
-                              if (date < today) return true;
-                              if (submissionDeadlineAsDate && date < submissionDeadlineAsDate) return true;
-                              return false;
-                            }}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
+                  )}
+                />
+              </div>
             </div>
+          </section>
 
-            <FormField
-              control={form.control}
-              name="invitedSupplierIds"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Invite suppliers</FormLabel>
-                  <FormControl>
-                    <MultiSelect
-                      options={supplierOptions}
-                      defaultValue={field.value ?? []}
-                      onValueChange={field.onChange}
-                      placeholder={
-                        supplierOptions.length > 0
-                          ? "Select suppliers to invite"
-                          : "Loading suppliers…"
-                      }
-                      maxCount={4}
-                      disabled={isPending || supplierOptions.length === 0}
-                    />
-                  </FormControl>
-                  <p className="text-[11px] text-muted-foreground">
-                    Pre-seeds quote slots for each invited supplier. Others can
-                    still submit quotes once the RFQ is sent.
-                  </p>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Optional — delivery terms, payment conditions, certifications required…"
-                      rows={3}
-                      {...field}
-                      value={field.value ?? ""}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium">Items</h3>
-                <p className="text-xs text-muted-foreground">
-                  Target prices are optional anchors — suppliers still quote
-                  their own rates. Specifications describe quality, size, or
-                  grade.
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <PackagePlus className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Items</h3>
+                <p className={styles.formCardHeadDesc}>
+                  Target prices are anchors; suppliers still quote their own.
                 </p>
               </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 02</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    append({
+                      stockVariantId: "",
+                      requestedQuantity: 0,
+                      targetUnitPrice: undefined,
+                      specifications: "",
+                    })
+                  }
+                  disabled={isPending}
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add item
+                </Button>
+              </div>
+            </header>
+
+            <div className={styles.formBody}>
+              <div className="space-y-3">
+                {fields.map((field, index) => {
+                  const disabledVariantIds = watchedItems
+                    .map((i) => i.stockVariantId)
+                    .filter((id, i) => id && i !== index) as string[];
+                  return (
+                    <div
+                      key={field.id}
+                      className="border rounded-lg p-4 space-y-3 bg-gray-50/40 dark:bg-gray-900/30"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                          Item {index + 1}
+                        </span>
+                        {fields.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => remove(index)}
+                            className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"
+                            aria-label={`Remove item ${index + 1}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col md:flex-row gap-3">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.stockVariantId`}
+                          render={({ field: f }) => (
+                            <FormItem className="w-full md:flex-[5] min-w-0">
+                              <FormLabel className="text-xs">
+                                Stock item <span className="text-red-500">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <StockVariantSelector
+                                  value={f.value}
+                                  onChange={f.onChange}
+                                  isDisabled={isPending}
+                                  disabledValues={disabledVariantIds}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.requestedQuantity`}
+                          render={({ field: f }) => (
+                            <FormItem className="w-full md:flex-[2] min-w-0">
+                              <FormLabel className="text-xs">
+                                Qty <span className="text-red-500">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <NumericFormat
+                                  customInput={Input}
+                                  value={f.value}
+                                  onValueChange={(v) =>
+                                    f.onChange(v.value ? Number(v.value) : 0)
+                                  }
+                                  thousandSeparator
+                                  decimalScale={6}
+                                  allowNegative={false}
+                                  placeholder="0"
+                                  disabled={isPending}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.targetUnitPrice`}
+                          render={({ field: f }) => (
+                            <FormItem className="w-full md:flex-[3] min-w-0">
+                              <FormLabel className="text-xs">
+                                Target price
+                                <span className="text-muted-foreground ml-1 font-normal">
+                                  ({quoteCurrency}, optional)
+                                </span>
+                              </FormLabel>
+                              <FormControl>
+                                <NumericFormat
+                                  customInput={Input}
+                                  value={f.value ?? ""}
+                                  onValueChange={(v) =>
+                                    f.onChange(v.value === "" ? undefined : Number(v.value))
+                                  }
+                                  thousandSeparator
+                                  decimalScale={4}
+                                  allowNegative={false}
+                                  placeholder="0.00"
+                                  disabled={isPending}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.specifications`}
+                        render={({ field: f }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Specifications</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Grade, dimensions, certifications, brand restrictions."
+                                rows={2}
+                                {...f}
+                                value={f.value ?? ""}
+                                disabled={isPending}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div className={styles.formFoot}>
+          <div className={styles.formFootSpacer} />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  append({
-                    stockVariantId: "",
-                    requestedQuantity: 0,
-                    targetUnitPrice: undefined,
-                    specifications: "",
-                  })
-                }
+                variant="ghost"
                 disabled={isPending}
+                title="Discard changes and go back"
               >
-                <Plus className="w-4 h-4 mr-1" /> Add Item
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Discard
               </Button>
-            </div>
-
-            {fields.map((field, index) => {
-              const disabledVariantIds = watchedItems
-                .map((i) => i.stockVariantId)
-                .filter((id, i) => id && i !== index) as string[];
-              return (
-                <div
-                  key={field.id}
-                  className="border rounded-lg p-4 space-y-3 bg-gray-50/50"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600">
-                      Item {index + 1}
-                    </span>
-                    {fields.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => remove(index)}
-                        className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"
-                        aria-label={`Remove item ${index + 1}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col md:flex-row gap-3">
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.stockVariantId`}
-                      render={({ field: f }) => (
-                        <FormItem className="w-full md:flex-[5] min-w-0">
-                          <FormLabel className="text-xs">
-                            Stock Item <span className="text-red-500">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <StockVariantSelector
-                              value={f.value}
-                              onChange={f.onChange}
-                              isDisabled={isPending}
-                              disabledValues={disabledVariantIds}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.requestedQuantity`}
-                      render={({ field: f }) => (
-                        <FormItem className="w-full md:flex-[2] min-w-0">
-                          <FormLabel className="text-xs">
-                            Qty <span className="text-red-500">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <NumericFormat
-                              customInput={Input}
-                              value={f.value}
-                              onValueChange={(v) =>
-                                f.onChange(v.value ? Number(v.value) : 0)
-                              }
-                              thousandSeparator
-                              decimalScale={6}
-                              allowNegative={false}
-                              placeholder="0"
-                              disabled={isPending}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.targetUnitPrice`}
-                      render={({ field: f }) => (
-                        <FormItem className="w-full md:flex-[3] min-w-0">
-                          <FormLabel className="text-xs">
-                            Target Price
-                            <span className="text-muted-foreground ml-1 font-normal">
-                              ({quoteCurrency}, optional)
-                            </span>
-                          </FormLabel>
-                          <FormControl>
-                            <NumericFormat
-                              customInput={Input}
-                              value={f.value ?? ""}
-                              onValueChange={(v) =>
-                                f.onChange(v.value === "" ? undefined : Number(v.value))
-                              }
-                              thousandSeparator
-                              decimalScale={4}
-                              allowNegative={false}
-                              placeholder="0.00"
-                              disabled={isPending}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name={`items.${index}.specifications`}
-                    render={({ field: f }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Specifications</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Optional — grade, dimensions, certifications, brand restrictions…"
-                            rows={2}
-                            {...f}
-                            value={f.value ?? ""}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-
-        <div className="flex items-center gap-4 pt-2 pb-4">
-          <CancelButton />
-          <Separator orientation="vertical" className="h-5" />
-          <SubmitButton isPending={isPending} label="Create RFQ" />
+            </AlertDialogTrigger>
+            <AlertDialogContent tone="danger">
+              <AlertDialogIcon>
+                <Trash2 className="h-5 w-5" />
+              </AlertDialogIcon>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard this RFQ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Unsaved changes will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction onClick={() => router.back()}>
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button type="submit" disabled={isPending}>
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+            Create RFQ
+          </Button>
         </div>
       </form>
     </Form>

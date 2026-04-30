@@ -1,5 +1,10 @@
 import { notFound } from "next/navigation";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import { getStock } from "@/lib/actions/stock-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
@@ -35,26 +40,22 @@ export default async function EditStockPage({
     }
   }
 
-  const breadcrumbItems = [
-    { title: "Stock Items", link: "/stock-variants" },
-    { title: stock.name, link: `/stock-variants/${id}` },
-    { title: "Edit", link: "" },
-  ];
-
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <div>
-        <div className="hidden sm:block mb-2">
-          <BreadcrumbsNav items={breadcrumbItems} />
-        </div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-          Edit Stock Item
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Update stock details and variants
-        </p>
-      </div>
-      <StockForm item={stock} balances={balances} />
-    </div>
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Stock Items", href: "/stock-variants" },
+          { title: stock.name, href: `/stock-variants/${id}` },
+          { title: "Edit" },
+        ]}
+      />
+      <PageHeader
+        title="Edit Stock Item"
+        subtitle="Update stock details and variants."
+      />
+      <PageBody>
+        <StockForm item={stock} balances={balances} />
+      </PageBody>
+    </PageShell>
   );
 }

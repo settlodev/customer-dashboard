@@ -89,7 +89,7 @@ export function StockVariantsHeaderActions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Button asChild>
+      <Button asChild size="sm">
         <Link href="/stock-variants/new">
           <Plus className="mr-1.5 h-4 w-4" />
           Add Stock

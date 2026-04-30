@@ -3,8 +3,16 @@
 import React, { useCallback, useMemo, useState, useTransition } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { Plus, Trash2 } from "lucide-react";
+import {
+  CheckCircle2,
+  FileText,
+  PackagePlus,
+  Plus,
+  Trash2,
+  AlertTriangle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,14 +23,28 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogIcon,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { NumericFormat } from "react-number-format";
 import { useToast } from "@/hooks/use-toast";
-import { FormError } from "../widgets/form-error";
-import CancelButton from "../widgets/cancel-button";
-import { SubmitButton } from "../widgets/submit-button";
+import {
+  Alert,
+  AlertIcon,
+  AlertBody,
+  AlertTitle,
+  AlertDescription,
+} from "@/components/ui/alert";
 import SupplierSelector from "../widgets/supplier-selector";
 import StockVariantSelector from "../widgets/stock-variant-selector";
 import type { VariantMeta } from "../widgets/stock-variant-selector";
@@ -31,6 +53,8 @@ import { useLocationCurrency } from "@/hooks/use-location-currency";
 import { createLpo } from "@/lib/actions/lpo-actions";
 import { CreateLpoSchema } from "@/types/lpo/schema";
 import type { FormResponse } from "@/types/types";
+
+import styles from "./styles/form-shell.module.css";
 
 type FormValues = z.infer<typeof CreateLpoSchema>;
 
@@ -54,12 +78,13 @@ interface LpoFormProps {
 }
 
 export default function LpoForm({ initialValues }: LpoFormProps = {}) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
   const locationCurrency = useLocationCurrency();
 
-  const [itemMeta, setItemMeta] = useState<Record<string, ItemMeta>>({});
+  const [, setItemMeta] = useState<Record<string, ItemMeta>>({});
 
   const form = useForm<FormValues>({
     resolver: zodResolver(CreateLpoSchema),
@@ -173,241 +198,310 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
 
   return (
     <Form {...form}>
-      <FormError message={response?.message} />
-      <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-6">
-        {/* ── Header ─────────────────────────────────────────── */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-4">
-            <div>
-              <h3 className="text-lg font-medium">Purchase Order</h3>
-              <p className="text-xs text-muted-foreground">
-                The LPO is created as a Draft. Submit → Approve → receive via a
-                GRN. Line currency falls back to the location base currency when
-                blank.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="supplierId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Supplier <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <SupplierSelector
-                        label="Supplier"
-                        placeholder="Select supplier"
-                        value={field.value}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        isDisabled={isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Optional — reference numbers, delivery requirements, payment terms…"
-                      rows={3}
-                      {...field}
-                      value={field.value ?? ""}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        {/* ── Items ──────────────────────────────────────────── */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium">Items</h3>
-                <p className="text-xs text-muted-foreground">
-                  Per-line currency lets you record a foreign-currency quote
-                  accurately; conversion happens at GRN receive time.
+      {response?.responseType === "error" && response?.message ? (
+        <Alert tone="danger" className="mb-3">
+          <AlertIcon>
+            <AlertTriangle className="h-3.5 w-3.5" />
+          </AlertIcon>
+          <AlertBody>
+            <AlertTitle>We couldn&apos;t save this purchase order</AlertTitle>
+            <AlertDescription>{response.message}</AlertDescription>
+          </AlertBody>
+        </Alert>
+      ) : null}
+      <form
+        onSubmit={form.handleSubmit(submitData, onInvalid)}
+        className={styles.formRoot}
+      >
+        <div className={styles.formStack}>
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <FileText className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Purchase order</h3>
+                <p className={styles.formCardHeadDesc}>
+                  Created as Draft. Submit → Approve → receive via a GRN. Line
+                  currency falls back to the location base when blank.
                 </p>
               </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 01</span>
+              </div>
+            </header>
+
+            <div className={styles.formBody}>
+              <div className={styles.fieldRow}>
+                <FormField
+                  control={form.control}
+                  name="supplierId"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2 min-w-0">
+                      <FormLabel className={styles.fieldLabel}>
+                        Supplier <span className="req">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <SupplierSelector
+                          label="Supplier"
+                          placeholder="Select supplier"
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          isDisabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className={styles.fieldRow} style={{ marginTop: 14 }}>
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2 min-w-0">
+                      <FormLabel className={styles.fieldLabel}>
+                        Notes
+                        <span className="opt">OPTIONAL</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Reference numbers, delivery requirements, payment terms."
+                          rows={2}
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <PackagePlus className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Items</h3>
+                <p className={styles.formCardHeadDesc}>
+                  Per-line currency lets you record a foreign-currency quote
+                  accurately. Conversion happens at GRN receive.
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 02</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    append({
+                      stockVariantId: "",
+                      orderedQuantity: 0,
+                      unitCost: 0,
+                      currency: "",
+                    })
+                  }
+                  disabled={isPending}
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add item
+                </Button>
+              </div>
+            </header>
+
+            <div className={styles.formBody}>
+              <div className="space-y-3">
+                {fields.map((field, index) => {
+                  const disabledVariantIds = watchedItems
+                    .map((i) => i.stockVariantId)
+                    .filter((id, i) => id && i !== index) as string[];
+                  const lineCurrency = (
+                    watchedItems[index]?.currency || locationCurrency
+                  ).toUpperCase();
+                  return (
+                    <div
+                      key={field.id}
+                      className="border rounded-lg p-4 space-y-3 bg-gray-50/40 dark:bg-gray-900/30"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                          Item {index + 1}
+                        </span>
+                        {fields.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeItem(index, field.id)}
+                            className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"
+                            aria-label={`Remove item ${index + 1}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col md:flex-row gap-3">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.stockVariantId`}
+                          render={({ field: f }) => (
+                            <FormItem className="w-full md:flex-[5] min-w-0">
+                              <FormLabel className="text-xs">
+                                Stock item <span className="text-red-500">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <StockVariantSelector
+                                  value={f.value}
+                                  onChange={(v) =>
+                                    handleVariantChange(field.id, index, v)
+                                  }
+                                  onVariantMeta={(m) =>
+                                    handleVariantMeta(field.id, m)
+                                  }
+                                  isDisabled={isPending}
+                                  disabledValues={disabledVariantIds}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.orderedQuantity`}
+                          render={({ field: f }) => (
+                            <FormItem className="w-full md:flex-[2] min-w-0">
+                              <FormLabel className="text-xs">
+                                Qty <span className="text-red-500">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <NumericFormat
+                                  customInput={Input}
+                                  value={f.value}
+                                  onValueChange={(v) =>
+                                    f.onChange(v.value ? Number(v.value) : 0)
+                                  }
+                                  thousandSeparator
+                                  decimalScale={6}
+                                  allowNegative={false}
+                                  placeholder="0"
+                                  disabled={isPending}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.unitCost`}
+                          render={({ field: f }) => (
+                            <FormItem className="w-full md:flex-[3] min-w-0">
+                              <FormLabel className="text-xs">
+                                Unit cost
+                                <span className="text-muted-foreground ml-1 font-normal">
+                                  ({lineCurrency})
+                                </span>
+                              </FormLabel>
+                              <FormControl>
+                                <NumericFormat
+                                  customInput={Input}
+                                  value={f.value}
+                                  onValueChange={(v) =>
+                                    f.onChange(v.value ? Number(v.value) : 0)
+                                  }
+                                  thousandSeparator
+                                  decimalScale={4}
+                                  allowNegative={false}
+                                  placeholder="0.00"
+                                  disabled={isPending}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.currency`}
+                          render={({ field: f }) => (
+                            <FormItem className="w-full md:flex-[2] min-w-0">
+                              <FormLabel className="text-xs">Currency</FormLabel>
+                              <FormControl>
+                                <CurrencySelector
+                                  value={f.value || ""}
+                                  onChange={(v) => f.onChange(v.toUpperCase())}
+                                  isDisabled={isPending}
+                                  placeholder={locationCurrency}
+                                />
+                              </FormControl>
+                              <p className="text-[10px] text-muted-foreground">
+                                Defaults to {locationCurrency}
+                              </p>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="flex items-center justify-end text-xs text-muted-foreground">
+                        Line total:{" "}
+                        <span className="ml-1 font-mono font-semibold text-gray-800 dark:text-gray-200">
+                          {(lineTotals[index] ?? 0).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}{" "}
+                          {lineCurrency}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div className={styles.formFoot}>
+          <div className={styles.formFootSpacer} />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  append({
-                    stockVariantId: "",
-                    orderedQuantity: 0,
-                    unitCost: 0,
-                    currency: "",
-                  })
-                }
+                variant="ghost"
                 disabled={isPending}
+                title="Discard changes and go back"
               >
-                <Plus className="w-4 h-4 mr-1" /> Add Item
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Discard
               </Button>
-            </div>
-
-            {fields.map((field, index) => {
-              const disabledVariantIds = watchedItems
-                .map((i) => i.stockVariantId)
-                .filter((id, i) => id && i !== index) as string[];
-              const lineCurrency =
-                (watchedItems[index]?.currency || locationCurrency).toUpperCase();
-              return (
-                <div
-                  key={field.id}
-                  className="border rounded-lg p-4 space-y-3 bg-gray-50/50"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600">
-                      Item {index + 1}
-                    </span>
-                    {fields.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index, field.id)}
-                        className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"
-                        aria-label={`Remove item ${index + 1}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col md:flex-row gap-3">
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.stockVariantId`}
-                      render={({ field: f }) => (
-                        <FormItem className="w-full md:flex-[5] min-w-0">
-                          <FormLabel className="text-xs">
-                            Stock Item <span className="text-red-500">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <StockVariantSelector
-                              value={f.value}
-                              onChange={(v) => handleVariantChange(field.id, index, v)}
-                              onVariantMeta={(m) => handleVariantMeta(field.id, m)}
-                              isDisabled={isPending}
-                              disabledValues={disabledVariantIds}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.orderedQuantity`}
-                      render={({ field: f }) => (
-                        <FormItem className="w-full md:flex-[2] min-w-0">
-                          <FormLabel className="text-xs">
-                            Qty <span className="text-red-500">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <NumericFormat
-                              customInput={Input}
-                              value={f.value}
-                              onValueChange={(v) =>
-                                f.onChange(v.value ? Number(v.value) : 0)
-                              }
-                              thousandSeparator
-                              decimalScale={6}
-                              allowNegative={false}
-                              placeholder="0"
-                              disabled={isPending}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.unitCost`}
-                      render={({ field: f }) => (
-                        <FormItem className="w-full md:flex-[3] min-w-0">
-                          <FormLabel className="text-xs">
-                            Unit Cost
-                            <span className="text-muted-foreground ml-1 font-normal">
-                              ({lineCurrency})
-                            </span>
-                          </FormLabel>
-                          <FormControl>
-                            <NumericFormat
-                              customInput={Input}
-                              value={f.value}
-                              onValueChange={(v) =>
-                                f.onChange(v.value ? Number(v.value) : 0)
-                              }
-                              thousandSeparator
-                              decimalScale={4}
-                              allowNegative={false}
-                              placeholder="0.00"
-                              disabled={isPending}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.currency`}
-                      render={({ field: f }) => (
-                        <FormItem className="w-full md:flex-[2] min-w-0">
-                          <FormLabel className="text-xs">Currency</FormLabel>
-                          <FormControl>
-                            <CurrencySelector
-                              value={f.value || ""}
-                              onChange={(v) => f.onChange(v.toUpperCase())}
-                              isDisabled={isPending}
-                              placeholder={locationCurrency}
-                            />
-                          </FormControl>
-                          <p className="text-[10px] text-muted-foreground">
-                            Defaults to {locationCurrency}
-                          </p>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div className="flex items-center justify-end text-xs text-muted-foreground">
-                    Line total:{" "}
-                    <span className="ml-1 font-mono font-semibold text-gray-800">
-                      {(lineTotals[index] ?? 0).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}{" "}
-                      {lineCurrency}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-
-        <div className="flex items-center gap-4 pt-2 pb-4">
-          <CancelButton />
-          <Separator orientation="vertical" className="h-5" />
-          <SubmitButton isPending={isPending} label="Create Purchase Order" />
+            </AlertDialogTrigger>
+            <AlertDialogContent tone="danger">
+              <AlertDialogIcon>
+                <Trash2 className="h-5 w-5" />
+              </AlertDialogIcon>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard this purchase order?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Unsaved changes will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction onClick={() => router.back()}>
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button type="submit" disabled={isPending}>
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+            Create purchase order
+          </Button>
         </div>
       </form>
     </Form>

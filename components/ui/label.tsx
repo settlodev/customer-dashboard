@@ -6,8 +6,11 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+// Slightly smaller + ink-2 colour matches the rest of the form
+// vocabulary (12px medium-weight). Pair with the `<Input>`'s 13px
+// for a clear hierarchy: label muted, value sharper.
 const labelVariants = cva(
-  "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+  "text-[12px] font-medium leading-tight text-ink-2 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
 )
 
 const Label = React.forwardRef<

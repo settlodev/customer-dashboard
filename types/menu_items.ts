@@ -134,6 +134,18 @@ const getNormalMenuItems = (
           icon: "folder",
         },
         {
+          title: "Modifier groups",
+          link: "/modifier-groups",
+          current: args?.isCurrentItem,
+          icon: "tag",
+        },
+        {
+          title: "Addon groups",
+          link: "/addon-groups",
+          current: args?.isCurrentItem,
+          icon: "tag",
+        },
+        {
           title: "Suppliers",
           link: "/suppliers",
           current: args?.isCurrentItem,

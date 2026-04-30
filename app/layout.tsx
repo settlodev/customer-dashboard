@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Open_Sans } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { Providers } from "./providers";
@@ -300,9 +300,20 @@ export const metadata: Metadata = {
   },
 };
 
-const openSans = Open_Sans({
+// App-wide fonts. Single source of truth — every other reference should
+// route through `var(--font-sans)` / `var(--font-mono)` (or the Tailwind
+// `font-sans` / `font-mono` utilities). Email templates and PDF widgets
+// stay on inline font-family strings because their renderers don't share
+// runtime fonts.
+const fontSans = Inter({
   subsets: ["latin"],
   display: "swap",
+  variable: "--font-sans",
+});
+const fontMono = JetBrains_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-mono",
 });
 
 export const viewport: Viewport = {
@@ -326,7 +337,7 @@ export default async function RootLayout({
     >
       <head />
       <body
-        className={`${openSans.className} antialiased bg-primary-light dark:bg-boxdark-2 dark:text-bodydark`}
+        className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased bg-primary-light dark:bg-boxdark-2 dark:text-bodydark`}
       >
         <SessionProvider session={session}>
           <Providers>{children}</Providers>

@@ -27,6 +27,10 @@ export const StockVariantSchema = object({
   initialUnitCost: preprocess(toNumber, number().nonnegative().default(0)),
   serialNumbers: array(string()).optional(),
 
+  // Selling price for the matching product variant when autoCreateProduct
+  // is set on the stock form. Ignored on the regular createStock path.
+  sellingPrice: preprocess(toNumber, number().positive().optional()),
+
   // Optional reorder / alert config, applied to the InventoryBalance row the
   // stock creation flow creates. Left undefined → backend doesn't touch them.
   reorderPoint: preprocess(toNumber, number().nonnegative().optional()),
@@ -69,6 +73,7 @@ export const StockSchema = object({
     "Select a valid unit",
   ),
   materialType: string().default("FINISHED_GOOD"),
+  imageUrl: string().optional().nullish(),
   variants: array(StockVariantSchema).min(
     1,
     "At least one variant is required",

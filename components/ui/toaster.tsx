@@ -4,6 +4,7 @@ import { AnimatePresence } from "framer-motion";
 
 import { useToast } from "@/hooks/use-toast";
 import {
+  TOAST_TAG_LABEL,
   Toast,
   ToastClose,
   ToastDescription,
@@ -31,13 +32,16 @@ export function Toaster() {
           open,
           ...props
         }) {
-          // Only show the progress bar for auto-dismissing toasts that are
-          // currently open — otherwise it would restart on dismiss.
+          // Only show the progress bar for auto-dismissing toasts that
+          // are currently open — otherwise it would restart on dismiss.
           const showProgress =
             open &&
             typeof duration === "number" &&
             duration > 0 &&
             duration !== Infinity;
+
+          const toastVariant = (variant ?? "default") as ToastVariant;
+          const tag = TOAST_TAG_LABEL[toastVariant];
 
           return (
             <Toast
@@ -47,24 +51,17 @@ export function Toaster() {
               duration={duration}
               {...props}
             >
-              <ToastIcon variant={variant as ToastVariant} />
-              <div className="grid gap-0.5 flex-1 min-w-0">
-                {title && <ToastTitle>{title}</ToastTitle>}
+              <ToastIcon variant={toastVariant} />
+              <div className="flex min-w-0 flex-col gap-0.5">
+                {title && <ToastTitle tag={tag}>{title}</ToastTitle>}
                 {description && (
-                  <ToastDescription>
-                    {typeof description === "string"
-                      ? description
-                      : description}
-                  </ToastDescription>
+                  <ToastDescription>{description}</ToastDescription>
                 )}
+                {action}
               </div>
-              {action}
               <ToastClose />
               {showProgress && (
-                <ToastProgress
-                  duration={duration!}
-                  variant={variant as ToastVariant}
-                />
+                <ToastProgress duration={duration!} variant={toastVariant} />
               )}
             </Toast>
           );

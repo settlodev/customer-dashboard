@@ -1,8 +1,7 @@
 import React, { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { SessionProvider } from "next-auth/react";
-import { NavbarWrapper } from "@/components/navigation/navbar-wrapper";
-import { SidebarWrapper } from "@/components/sidebar/sidebar";
+import { DashboardSidebarShell } from "@/components/sidebar/dashboard-sidebar";
 import { LoadingBarProvider } from "@/components/navigation/loading-bar-provider";
 import {
   getBusinessDropDown,
@@ -21,6 +20,8 @@ import { ExpiredTopBar } from "@/components/subscription/ExpiredTopBar";
 import { fetchAllStores, getCurrentStore } from "@/lib/actions/store-actions";
 import WhatsAppButton from "@/components/whatsapp-button";
 import { DaySessionWidget } from "@/components/widgets/day-session-widget";
+import { BuildPill } from "@/components/widgets/build-pill";
+import type { ExtendedUser } from "@/types/types";
 
 export default async function RootLayout({
   children,
@@ -95,42 +96,69 @@ export default async function RootLayout({
     );
   }
 
+  // Build the user object once at the layout level so the sidebar
+  // (and anything else that needs it) doesn't have to do the auth-token
+  // → user reshape on every render. Mirrors what the old Header did.
+  const user: ExtendedUser | null = authToken
+    ? ({
+        id: authToken.userId,
+        name: `${authToken.firstName} ${authToken.lastName}`.trim(),
+        email: authToken.email,
+        firstName: authToken.firstName,
+        lastName: authToken.lastName,
+        avatar: authToken.pictureUrl,
+        phoneNumber: authToken.phoneNumber,
+        emailVerified: authToken.emailVerified ? new Date() : null,
+        isBusinessRegistrationComplete:
+          authToken.isBusinessRegistrationComplete,
+        isLocationRegistrationComplete:
+          authToken.isLocationRegistrationComplete,
+        accountId: authToken.accountId,
+        countryId: authToken.countryId,
+        countryCode: authToken.countryCode,
+        theme: authToken.theme,
+      } as ExtendedUser)
+    : null;
+
   // ── Active subscription: full dashboard layout ────────────────────
+  // The redesigned shell drops the topbar entirely. The floating
+  // sidebar (logo + search + bell + biz/location switchers + nav +
+  // user card) is the only chrome on the canvas. Page chrome
+  // (breadcrumbs, title, actions) lives inside each page via
+  // `<PageShell>` — see components/layouts/page-shell.tsx.
   return (
     <SessionProvider refetchInterval={0} refetchOnWindowFocus={false}>
       <EntitlementProvider initialEntitlements={entitlements}>
-      <LoadingBarProvider>
-        <div className="flex h-screen flex-col overflow-hidden bg-primary-light dark:bg-gray-950">
-          <SubscriptionBanner />
-          <div className="flex flex-1 min-h-0 overflow-hidden">
-          <SidebarWrapper data={businessData} />
+        <LoadingBarProvider>
+          <div className="flex h-screen flex-col overflow-hidden bg-canvas dark:bg-gray-950">
+            <SubscriptionBanner />
+            <div className="flex flex-1 min-h-0 overflow-hidden">
+              <DashboardSidebarShell data={businessData} user={user} />
 
-          <main className="flex flex-1 min-w-0 flex-col overflow-hidden">
-            <div className="relative flex-1 overflow-y-auto">
-              <Suspense
-                fallback={
-                  <div className="flex justify-center items-center h-full">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.2s]" />
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.4s]" />
-                    </div>
-                  </div>
-                }
-              >
-                <NavbarWrapper session={null} authToken={authToken} businessData={businessData}>
-                  <div className="flex-1">{children}</div>
-                </NavbarWrapper>
-              </Suspense>
-            </div>
+              <main className="flex flex-1 min-w-0 flex-col overflow-hidden">
+                <div className="relative flex-1 overflow-y-auto">
+                  <Suspense
+                    fallback={
+                      <div className="flex h-full items-center justify-center">
+                        <div className="flex items-center space-x-2">
+                          <div className="h-2 w-2 animate-bounce rounded-full bg-primary" />
+                          <div className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:0.2s]" />
+                          <div className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:0.4s]" />
+                        </div>
+                      </div>
+                    }
+                  >
+                    {children}
+                  </Suspense>
+                </div>
 
-            <div className="sticky bottom-0 z-[110]">
-              <Toaster />
+                <div className="sticky bottom-0 z-[110]">
+                  <Toaster />
+                </div>
+              </main>
             </div>
-          </main>
           </div>
-        </div>
-      </LoadingBarProvider>
+        </LoadingBarProvider>
       </EntitlementProvider>
       <WhatsAppButton
         businessName={currentBusiness?.name}
@@ -140,6 +168,7 @@ export default async function RootLayout({
       {currentLocation?.id && (
         <DaySessionWidget locationId={currentLocation.id} />
       )}
+      <BuildPill />
     </SessionProvider>
   );
 }

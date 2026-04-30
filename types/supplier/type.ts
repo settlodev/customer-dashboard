@@ -9,9 +9,11 @@ export interface Supplier {
   name: string;
   contactPersonName: string;
   contactPersonPhone: string;
+  contactPersonEmail: string | null;
   phone: string | null;
   email: string | null;
   address: string | null;
+  notes: string | null;
   registrationNumber: string | null;
   tinNumber: string | null;
   settloSupplierId: string | null;

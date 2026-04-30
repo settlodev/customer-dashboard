@@ -15,6 +15,8 @@ export interface Product {
   locationId: string;
   name: string;
   slug: string;
+  // ISO-4217 currency code shared by every variant of this product.
+  nativeCurrency: string;
   description: string | null;
   imageUrl: string | null;
   sellOnline: boolean;
@@ -22,6 +24,7 @@ export interface Product {
   taxInclusive: boolean;
   taxClass: TaxClass | null;
   active: boolean;
+  archivedAt: string | null;
   lifecycleStatus: LifecycleStatus;
   replacementProductId: string | null;
   tags: string[];
@@ -31,8 +34,8 @@ export interface Product {
   brandId: string | null;
   brandName: string | null;
   variants: ProductVariant[];
-  modifierGroups: ModifierGroupResponse[];
-  addonGroups: AddonGroupResponse[];
+  modifierGroups: ModifierGroup[];
+  addonGroups: AddonGroup[];
   createdAt: string;
   updatedAt: string;
 }
@@ -59,6 +62,7 @@ export interface ProductVariant {
   markupPercentage: number | null;
   markupAmount: number | null;
   active: boolean;
+  archivedAt: string | null;
   unlimited: boolean;
   costPrice: number | null;
   availableQuantity: number | null;
@@ -67,30 +71,38 @@ export interface ProductVariant {
   stockVariantId: string | null;
   stockVariantName: string | null;
   directQuantity: number | null;
-  consumptionRuleId: string | null;
-  consumptionRuleName: string | null;
   currencyPriceOverrides: Record<string, number>;
   createdAt: string;
   updatedAt: string;
 }
 
-// ── Modifier Group ──────────────────────────────────────────────────
+// Sellability mode — derived UI concept, not a backend field.
+// Maps to a (trackStock, unlimited, stockLinkType) triple:
+//   UNLIMITED → trackStock=false, unlimited=true, stockLinkType=null
+//   DIRECT    → trackStock=true,  unlimited=false, stockLinkType="DIRECT", stockVariantId+directQuantity set
+//   RECIPE    → trackStock=true,  unlimited=false, stockLinkType=null  (BOM rule resolves at sale time)
+export type SellabilityMode = "UNLIMITED" | "DIRECT" | "RECIPE";
 
-export interface ModifierGroupResponse {
+// ── Modifier Groups ─────────────────────────────────────────────────
+
+// Modifier groups are business-scoped library entities. They get attached
+// to one or more products via /products/{id}/modifier-groups/{groupId}.
+export interface ModifierGroup {
   id: string;
-  productId: string;
+  businessId: string;
   name: string;
   selectionType: SelectionType;
   minSelections: number;
   maxSelections: number;
   sortOrder: number;
   active: boolean;
-  options: ModifierOptionResponse[];
+  options: ModifierOption[];
+  archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface ModifierOptionResponse {
+export interface ModifierOption {
   id: string;
   modifierGroupId: string;
   name: string;
@@ -99,30 +111,32 @@ export interface ModifierOptionResponse {
   stockVariantId: string | null;
   stockVariantName: string | null;
   stockQuantity: number | null;
-  consumptionRuleId: string | null;
-  consumptionRuleName: string | null;
   sortOrder: number;
   active: boolean;
+  archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-// ── Addon Group ─────────────────────────────────────────────────────
+// ── Addon Groups ────────────────────────────────────────────────────
 
-export interface AddonGroupResponse {
+// Addon groups are business-scoped library entities. They get attached to
+// one or more products via /products/{id}/addon-groups/{groupId}.
+export interface AddonGroup {
   id: string;
-  productId: string;
+  businessId: string;
   name: string;
   minSelections: number;
   maxSelections: number;
   sortOrder: number;
   active: boolean;
-  items: AddonGroupItemResponse[];
+  items: AddonGroupItem[];
+  archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface AddonGroupItemResponse {
+export interface AddonGroupItem {
   id: string;
   addonGroupId: string;
   productVariantId: string;
@@ -136,7 +150,63 @@ export interface AddonGroupItemResponse {
   updatedAt: string;
 }
 
-// ── Price Override ───────────────────────────────────────────────────
+// ── Product list row (one row per variant) ───────────────────────────
+
+/**
+ * The products list flattens each product into one row per active variant
+ * — mirroring the stock-variant convention. Each row carries a readable
+ * {@code displayName} (e.g. "Coca-Cola 300ml") plus the inventory-derived
+ * cost and sellable quantity for that specific variant.
+ *
+ * <p>Display name rules (handled in the page's {@code variantDisplayName}
+ * helper):
+ * <ul>
+ *   <li>If the variant name equals the product name (case-insensitive) →
+ *       just the product name, no repetition.</li>
+ *   <li>If the product has a single variant whose name is the conventional
+ *       {@code Default} placeholder → just the product name.</li>
+ *   <li>If the variant name already contains the product name → use the
+ *       variant name as-is.</li>
+ *   <li>Otherwise → "{product name} {variant name}".</li>
+ * </ul>
+ *
+ * <p>{@code id} is set to the parent {@code productId} so the existing
+ * row-click navigation lands on {@code /products/{productId}} and the
+ * action menu (which acts on the product, not the individual variant)
+ * keeps working unchanged.
+ */
+export interface ProductVariantRow {
+  // Navigation
+  id: string;
+  productId: string;
+  variantId: string;
+
+  // Display
+  name: string;
+  imageUrl: string | null;
+
+  // Full product reference — used by the row-action menu (archive, delete)
+  // which still operates at the product level.
+  product: Product;
+
+  // Hoisted variant fields for clean cell renderers.
+  sku: string | null;
+  price: number;
+  nativeCurrency: string;
+  unlimited: boolean;
+  stockLinkType: StockLinkType | null;
+  stockVariantId: string | null;
+  directQuantity: number | null;
+  costPrice: number | null;
+  variantActive: boolean;
+  variantArchivedAt: string | null;
+
+  // Computed
+  _currentCost: number | null;
+  _sellableQty: number | "Unlimited" | null;
+}
+
+// ── Currency Price Override (per variant) ───────────────────────────
 
 export interface PriceOverrideResponse {
   id: string;
@@ -149,7 +219,10 @@ export interface PriceOverrideResponse {
   updatedAt: string;
 }
 
-// ── Reports (kept from legacy — these come from a different service) ─
+// ── Reports — kept untouched. These DTOs come from the reports/orders
+// service, not the inventory service, and are consumed by analytics
+// widgets, sold-items reports, and dashboard summaries elsewhere in
+// the app. Do not modify without a coordinated change there.
 
 export interface TopSellingProduct {
   startDate: Date;

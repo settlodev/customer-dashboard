@@ -1,5 +1,10 @@
 import { notFound } from "next/navigation";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import StockTakeForm from "@/components/forms/stock-take-form";
 import { getStockTake } from "@/lib/actions/stock-take-actions";
 import type { CreateStockTakeInput } from "@/types/stock-take/schema";
@@ -18,17 +23,23 @@ export default async function EditStockTakePage({ params }: { params: Params }) 
 
   const initial = toFormValues(stockTake);
 
-  const breadcrumbItems = [
-    { title: "Stock Takes", link: "/stock-takes" },
-    { title: stockTake.takeNumber, link: `/stock-takes/${stockTake.id}` },
-    { title: "Edit", link: "" },
-  ];
-
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <BreadcrumbsNav items={breadcrumbItems} />
-      <StockTakeForm stockTakeId={stockTake.id} initialValues={initial} />
-    </div>
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Stock Takes", href: "/stock-takes" },
+          { title: stockTake.takeNumber, href: `/stock-takes/${stockTake.id}` },
+          { title: "Edit" },
+        ]}
+      />
+      <PageHeader
+        title={`Edit ${stockTake.takeNumber}`}
+        subtitle="Update count scope and notes before starting."
+      />
+      <PageBody>
+        <StockTakeForm stockTakeId={stockTake.id} initialValues={initial} />
+      </PageBody>
+    </PageShell>
   );
 }
 

@@ -4,18 +4,30 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Clock, ShieldAlert, Sparkles, X } from "lucide-react";
 import { useEntitlements } from "@/context/entitlementContext";
+import { cn } from "@/lib/utils";
 
 /**
+ * Notice bar at the very top of the protected layout.
  *
- * States (in priority order):
- *   1. SUSPENDED  — hard block, contact support
- *   2. EXPIRED    — renew now
- *   3. PAST_DUE   — grace period, payment overdue with countdown
- *   4. ACTIVE, expiring within 5 days — renewal reminder with countdown
- *   5. TRIAL, expiring within 3 days — trial ending soon with countdown
- *   6. TRIAL      — always shown, days remaining
+ * Visual: 36 px tall fixed strip with three tones, lifted from the
+ * design's `.notice-bar` rules:
+ *   - `trial`  — dark ink + cream text + orange tag/CTA (most common
+ *                 state; a friendly, persistent reminder)
+ *   - `warn`   — cream/amber wash for non-blocking concerns (active
+ *                expiring, past-due grace)
+ *   - `danger` — rosy/red wash for hard-block states (expired,
+ *                suspended)
+ *
+ * Layout: [icon] [uppercase mono tag] [bold message] | [mono meta] · spacer · [CTA] [×]
+ *
+ * States (priority order — unchanged):
+ *   1. SUSPENDED  — hard block, contact support               → danger
+ *   2. EXPIRED    — renew now                                  → danger
+ *   3. PAST_DUE   — grace period, payment overdue countdown   → warn
+ *   4. ACTIVE, expiring ≤ 5 days — renewal reminder           → warn
+ *   5. TRIAL, expiring ≤ 3 days  — trial ending soon          → warn
+ *   6. TRIAL      — always shown, days remaining              → trial
  *   7. ACTIVE (healthy) — no banner
- *
  */
 
 // How many days before expiry to start warning
@@ -46,15 +58,53 @@ function formatTimeRemaining(dateStr: string): string {
   return `${minutes} min`;
 }
 
+type BannerTone = "trial" | "warn" | "danger";
+
 type BannerVariant = {
-  bg: string;
-  border: string;
+  tone: BannerTone;
   icon: React.ReactNode;
-  title: string;
+  /** Mono uppercase tag rendered next to the message. */
+  tag: string;
+  /** Plain-language message (max ~80 chars to avoid truncation). */
   message: string;
+  /** Mono countdown / context line ("Expires in 2 days"). */
+  meta?: string;
   actionLabel?: string;
   actionHref?: string;
   dismissible: boolean;
+};
+
+const TONE_STYLES: Record<
+  BannerTone,
+  {
+    bar: string;
+    tag: string;
+    icon: string;
+    cta: string;
+    close: string;
+  }
+> = {
+  trial: {
+    bar: "bg-[#1A1815] text-[#F7F3E8] border-line",
+    tag: "bg-white/10 text-[#F7F3E8]",
+    icon: "text-primary",
+    cta: "bg-primary text-white hover:bg-[hsl(var(--primary-dark))]",
+    close: "hover:bg-white/10",
+  },
+  warn: {
+    bar: "bg-[#FBF1DC] text-[#5A4218] border-[hsl(var(--warn)/0.25)]",
+    tag: "bg-[hsl(var(--warn)/0.20)] text-[#6B4F1F]",
+    icon: "text-warn",
+    cta: "bg-warn text-white hover:bg-[#A6741F]",
+    close: "hover:bg-black/10",
+  },
+  danger: {
+    bar: "bg-[#FBE7E2] text-[#6B2516] border-[hsl(var(--neg)/0.30)]",
+    tag: "bg-[hsl(var(--neg)/0.18)] text-[#8C2D1B]",
+    icon: "text-neg",
+    cta: "bg-neg text-white hover:bg-[#A53520]",
+    close: "hover:bg-black/10",
+  },
 };
 
 export function SubscriptionBanner() {
@@ -91,37 +141,31 @@ export function SubscriptionBanner() {
 
   if (isSuspended) {
     variant = {
-      bg: "bg-red-600",
-      border: "border-red-700",
-      icon: <ShieldAlert className="h-4 w-4" />,
-      title: "Account Suspended",
+      tone: "danger",
+      icon: <ShieldAlert className="h-3.5 w-3.5" />,
+      tag: "Account suspended",
       message:
-        "Your subscription has been suspended. Please contact support to reactivate your account.",
+        "Your subscription has been suspended. Contact support to reactivate.",
       dismissible: false,
     };
   } else if (isExpired) {
     variant = {
-      bg: "bg-red-500",
-      border: "border-red-600",
-      icon: <AlertTriangle className="h-4 w-4" />,
-      title: "Subscription Expired",
-      message:
-        "Your subscription has expired. Renew now to continue making changes.",
-      actionLabel: "Renew Now",
+      tone: "danger",
+      icon: <AlertTriangle className="h-3.5 w-3.5" />,
+      tag: "Expired",
+      message: "Your subscription has expired — renew to keep making changes.",
+      actionLabel: "Renew now",
       actionHref: "/renew-subscription",
       dismissible: false,
     };
   } else if (isPastDue) {
     variant = {
-      bg: "bg-amber-500",
-      border: "border-amber-600",
-      icon: <Clock className="h-4 w-4" />,
-      title: "Payment Overdue",
-      message:
-        daysLeft !== null
-          ? `Your payment is overdue. Service will be interrupted in ${timeLeft}. Please update your billing.`
-          : "Your payment is overdue. Please update your billing to avoid interruption.",
-      actionLabel: "Update Billing",
+      tone: "warn",
+      icon: <Clock className="h-3.5 w-3.5" />,
+      tag: "Payment overdue",
+      message: "Update your billing to avoid interruption.",
+      meta: timeLeft ? `Service stops in ${timeLeft}` : undefined,
+      actionLabel: "Update billing",
       actionHref: "/renew-subscription",
       dismissible: false,
     };
@@ -131,37 +175,34 @@ export function SubscriptionBanner() {
     daysLeft <= ACTIVE_WARNING_DAYS
   ) {
     variant = {
-      bg: "bg-amber-500",
-      border: "border-amber-600",
-      icon: <Clock className="h-4 w-4" />,
-      title: "Subscription Expiring Soon",
-      message: `Your subscription expires in ${timeLeft}. Renew now to avoid interruption.`,
+      tone: "warn",
+      icon: <Clock className="h-3.5 w-3.5" />,
+      tag: "Expiring soon",
+      message: "Renew to avoid interruption.",
+      meta: timeLeft ? `Expires in ${timeLeft}` : undefined,
       actionLabel: "Renew",
       actionHref: "/renew-subscription",
       dismissible: true,
     };
   } else if (isTrial && daysLeft !== null && daysLeft <= TRIAL_URGENT_DAYS) {
     variant = {
-      bg: "bg-orange-500",
-      border: "border-orange-600",
-      icon: <AlertTriangle className="h-4 w-4" />,
-      title: "Trial Ending Soon",
-      message: `Your free trial ends in ${timeLeft}. Subscribe now to keep access to all features.`,
-      actionLabel: "Subscribe Now",
+      tone: "warn",
+      icon: <AlertTriangle className="h-3.5 w-3.5" />,
+      tag: "Trial ending",
+      message: "Subscribe now to keep access to all features.",
+      meta: timeLeft ? `Ends in ${timeLeft}` : undefined,
+      actionLabel: "Subscribe now",
       actionHref: "/renew-subscription",
       dismissible: false,
     };
   } else if (isTrial) {
     variant = {
-      bg: "bg-blue-500",
-      border: "border-blue-600",
-      icon: <Sparkles className="h-4 w-4" />,
-      title: "Free Trial",
-      message:
-        daysLeft !== null
-          ? `You have ${timeLeft} left on your free trial. Explore all features and subscribe when ready.`
-          : "You are on a free trial. Subscribe to keep access after it ends.",
-      actionLabel: "View Plans",
+      tone: "trial",
+      icon: <Sparkles className="h-3.5 w-3.5" />,
+      tag: "Free trial",
+      message: "Explore every feature — subscribe when ready.",
+      meta: timeLeft ? `${timeLeft} remaining` : undefined,
+      actionLabel: "View plans",
       actionHref: "/renew-subscription",
       dismissible: true,
     };
@@ -169,42 +210,59 @@ export function SubscriptionBanner() {
 
   if (!variant) return null;
 
+  const styles = TONE_STYLES[variant.tone];
+
   return (
     <div
-      className={`${variant.bg} ${variant.border} border-b text-white text-sm`}
-      role="alert"
+      role={variant.tone === "danger" ? "alert" : "status"}
+      className={cn(
+        "relative z-[60] flex h-9 items-stretch border-b text-[12.5px]",
+        styles.bar,
+      )}
     >
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 max-w-screen-2xl mx-auto">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <span className="flex-shrink-0">{variant.icon}</span>
-          <span className="font-medium flex-shrink-0">{variant.title}</span>
-          <span className="hidden sm:inline text-white/90 truncate">
-            &mdash; {variant.message}
+      <div className="flex flex-1 items-center gap-2.5 px-4 min-w-0">
+        <span className={cn("inline-grid place-items-center flex-shrink-0", styles.icon)}>
+          {variant.icon}
+        </span>
+        <span
+          className={cn(
+            "inline-flex flex-shrink-0 items-center rounded-[3px] px-1.5 py-0.5 font-mono text-[9.5px] font-medium uppercase tracking-[0.1em]",
+            styles.tag,
+          )}
+        >
+          {variant.tag}
+        </span>
+        <span className="truncate font-medium">{variant.message}</span>
+        {variant.meta && (
+          <span className="hidden truncate font-mono text-[11px] opacity-70 sm:inline border-l border-current/25 pl-2.5">
+            {variant.meta}
           </span>
-          <span className="sm:hidden text-white/90 truncate">
-            {variant.message}
-          </span>
-        </div>
+        )}
+        <span className="flex-1" />
 
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {variant.actionLabel && variant.actionHref && (
-            <Link
-              href={variant.actionHref}
-              className="inline-flex items-center gap-1 px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-xs font-medium transition-colors whitespace-nowrap"
-            >
-              {variant.actionLabel}
-            </Link>
-          )}
-          {variant.dismissible && (
-            <button
-              onClick={() => setDismissed(true)}
-              className="p-0.5 rounded hover:bg-white/20 transition-colors"
-              aria-label="Dismiss"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
+        {variant.actionLabel && variant.actionHref && (
+          <Link
+            href={variant.actionHref}
+            className={cn(
+              "flex-shrink-0 rounded-md px-3 py-1 text-[12px] font-medium tracking-[-0.005em] transition-colors",
+              styles.cta,
+            )}
+          >
+            {variant.actionLabel}
+          </Link>
+        )}
+        {variant.dismissible && (
+          <button
+            onClick={() => setDismissed(true)}
+            className={cn(
+              "ml-0.5 grid h-5.5 w-5.5 flex-shrink-0 place-items-center rounded-md opacity-55 transition-[opacity,background-color] hover:opacity-100",
+              styles.close,
+            )}
+            aria-label="Dismiss"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
       </div>
     </div>
   );

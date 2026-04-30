@@ -14,16 +14,91 @@ import { redirect } from "next/navigation";
 import { getCurrentLocation } from "./business/get-current-business";
 import {
   Product,
+  PriceOverrideResponse,
   SoldItemsReport,
   TopSellingProduct,
 } from "@/types/product/type";
-import { ProductSchema } from "@/types/product/schema";
+import {
+  ProductSchema,
+  type ProductVariantInput,
+  PriceOverrideSchema,
+} from "@/types/product/schema";
 import { GoogleGenAI } from "@google/genai";
 import { LocationDetails } from "@/types/menu/type";
 import { inventoryUrl } from "./inventory-client";
 import { getCurrentDestination } from "./context";
 
-// ── Products CRUD (Inventory Service) ───────────────────────────────
+// ── Sellability mode mapping ────────────────────────────────────────
+//
+// The form models each variant's intent as a single `sellabilityMode` enum
+// (UNLIMITED / DIRECT / RECIPE). The Inventory Service stores this as three
+// related fields on the variant + one on the product, with non-trivial
+// validation between them. Encapsulate the mapping here so callers don't
+// have to think about the triple every time.
+
+type VariantPayload = {
+  name: string;
+  sku?: string | null;
+  imageUrl?: string | null;
+  active?: boolean;
+  pricingStrategy: "MANUAL" | "PERCENTAGE_MARKUP" | "FIXED_MARKUP";
+  price: number;
+  costPrice?: number | null;
+  markupPercentage?: number | null;
+  markupAmount?: number | null;
+  unlimited: boolean;
+  availableQuantity?: number | null;
+  stockLinkType?: "DIRECT" | null;
+  stockVariantId?: string | null;
+  directQuantity?: number | null;
+};
+
+function mapVariant(v: ProductVariantInput): VariantPayload {
+  const base: VariantPayload = {
+    name: v.name,
+    sku: v.sku || undefined,
+    imageUrl: v.imageUrl || undefined,
+    active: v.active,
+    pricingStrategy: v.pricingStrategy,
+    price: v.price,
+    costPrice: v.costPrice ?? undefined,
+    markupPercentage:
+      v.pricingStrategy === "PERCENTAGE_MARKUP" ? v.markupPercentage ?? undefined : undefined,
+    markupAmount:
+      v.pricingStrategy === "FIXED_MARKUP" ? v.markupAmount ?? undefined : undefined,
+    unlimited: false,
+  };
+
+  switch (v.sellabilityMode) {
+    case "UNLIMITED":
+      return {
+        ...base,
+        unlimited: true,
+        availableQuantity: v.availableQuantity ?? undefined,
+      };
+    case "DIRECT":
+      return {
+        ...base,
+        unlimited: false,
+        stockLinkType: "DIRECT",
+        stockVariantId: v.stockVariantId ?? undefined,
+        directQuantity: v.directQuantity ?? undefined,
+      };
+    case "RECIPE":
+      return {
+        ...base,
+        unlimited: false,
+        // stockLinkType intentionally null — the BOM rule is the link
+      };
+  }
+}
+
+// trackStock is derived: false only when every variant is UNLIMITED.
+function deriveTrackStock(variants: ProductVariantInput[]): boolean {
+  return variants.some((v) => v.sellabilityMode !== "UNLIMITED");
+}
+
+// ── Products: list + read ───────────────────────────────────────────
 
 export async function fetchAllProducts(): Promise<Product[]> {
   try {
@@ -45,11 +120,11 @@ export async function searchProducts(
     const apiClient = new ApiClient();
     const params = new URLSearchParams();
     if (q) params.set("name", q);
+    // Server is 0-indexed; the dashboard pager is 1-indexed.
     params.set("page", String(page ? page - 1 : 0));
     params.set("size", String(pageLimit || 10));
     params.set("sortBy", "createdAt");
     params.set("sortDirection", "DESC");
-    params.set("active", "true");
 
     const data = await apiClient.get(
       inventoryUrl(`/api/v1/products?${params.toString()}`),
@@ -59,6 +134,14 @@ export async function searchProducts(
     throw error;
   }
 }
+
+export async function getProduct(id: string): Promise<Product> {
+  const apiClient = new ApiClient();
+  const data = await apiClient.get(inventoryUrl(`/api/v1/products/${id}`));
+  return parseStringify(data);
+}
+
+// ── Products: create / update / delete ──────────────────────────────
 
 export async function createProduct(
   product: z.infer<typeof ProductSchema>,
@@ -75,58 +158,156 @@ export async function createProduct(
 
   try {
     const apiClient = new ApiClient();
-    await apiClient.post(inventoryUrl("/api/v1/products"), {
-      locationType: (await getCurrentDestination())?.type ?? "LOCATION",
+    const destination = await getCurrentDestination();
+
+    const created = (await apiClient.post(inventoryUrl("/api/v1/products"), {
+      locationType: destination?.type ?? "LOCATION",
       name: validData.data.name,
-      description: validData.data.description,
+      nativeCurrency: validData.data.nativeCurrency,
+      description: validData.data.description || undefined,
       categoryIds: validData.data.categoryIds,
-      departmentId: validData.data.departmentId,
-      brandId: validData.data.brandId,
-      imageUrl: validData.data.imageUrl,
+      brandId: validData.data.brandId || undefined,
+      imageUrl: validData.data.imageUrl || undefined,
       sellOnline: validData.data.sellOnline,
-      trackStock: validData.data.trackStock,
+      trackStock: deriveTrackStock(validData.data.variants),
       taxInclusive: validData.data.taxInclusive,
-      taxClass: validData.data.taxClass,
+      taxClass: validData.data.taxClass || undefined,
       tags: validData.data.tags,
-      variants: validData.data.variants.map((v) => ({
-        name: v.name,
-        sku: v.sku,
-        imageUrl: v.imageUrl,
-        pricingStrategy: v.pricingStrategy || "MANUAL",
-        price: v.price,
-        costPrice: v.costPrice,
-        markupPercentage: v.markupPercentage,
-        markupAmount: v.markupAmount,
-        unlimited: v.unlimited,
-        stockLinkType: v.stockLinkType,
-        stockVariantId: v.stockVariantId,
-        directQuantity: v.directQuantity,
-        consumptionRuleId: v.consumptionRuleId,
-      })),
-    });
+      variants: validData.data.variants.map(mapVariant),
+      modifierGroupIds: validData.data.modifierGroupIds?.length
+        ? validData.data.modifierGroupIds
+        : undefined,
+      addonGroupIds: validData.data.addonGroupIds?.length
+        ? validData.data.addonGroupIds
+        : undefined,
+    })) as Product;
 
     revalidatePath("/products");
-    redirect("/products");
+    // Redirect to edit so merchant can immediately add modifiers/addons/overrides.
+    redirect(`/products/${created.id}/edit`);
   } catch (error: any) {
     if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     return parseStringify({
       responseType: "error",
       message: error?.message ?? "Failed to create product",
       error: error instanceof Error ? error : new Error(String(error)),
+      errorCode: error?.code,
+      metadata: error?.metadata,
     });
   }
 }
 
-export async function getProduct(id: string): Promise<Product> {
-  const apiClient = new ApiClient();
-  const data = await apiClient.get(inventoryUrl(`/api/v1/products/${id}`));
-  return parseStringify(data);
+/**
+ * Create a product AND a 1:1 stock item in one atomic backend call.
+ *
+ * The merchant's mental model is "I sell X, I track X" — they shouldn't
+ * have to round-trip through the stock catalog before creating a
+ * sellable product. When `autoCreateStock` is on the product form, this
+ * calls the combined endpoint instead of `/products`. The backend is
+ * expected to:
+ *   1. Create the stock item (one stock variant per product variant).
+ *   2. Create the product with each variant linked to its matching
+ *      stock variant via stockLinkType=DIRECT.
+ *   3. Roll both back if either side fails.
+ *
+ * Recipe-mode and existing-stock links remain available with the toggle
+ * off; this path is the fast 1:1 default.
+ *
+ * Endpoint: POST /api/v1/products/with-stock (backend wiring pending).
+ */
+export async function createProductWithStock(
+  product: z.infer<typeof ProductSchema>,
+  stockOptions?: {
+    baseUnitId?: string;
+    materialType?: string;
+    initialQuantity?: number;
+    initialUnitCost?: number;
+  },
+): Promise<FormResponse | void> {
+  const validData = ProductSchema.safeParse(product);
+
+  if (!validData.success) {
+    return parseStringify({
+      responseType: "error",
+      message: "Please fill all the required fields",
+      error: new Error(validData.error.message),
+    });
+  }
+
+  try {
+    const apiClient = new ApiClient();
+    const destination = await getCurrentDestination();
+
+    const payload = {
+      locationType: destination?.type ?? "LOCATION",
+      name: validData.data.name,
+      nativeCurrency: validData.data.nativeCurrency,
+      description: validData.data.description || undefined,
+      categoryIds: validData.data.categoryIds,
+      brandId: validData.data.brandId || undefined,
+      imageUrl: validData.data.imageUrl || undefined,
+      sellOnline: validData.data.sellOnline,
+      // Auto-tracking always tracks stock — every variant gets a 1:1 link.
+      trackStock: true,
+      taxInclusive: validData.data.taxInclusive,
+      taxClass: validData.data.taxClass || undefined,
+      tags: validData.data.tags,
+      // Force every variant into DIRECT mode without a stockVariantId — the
+      // backend creates the matching stock variant on the fly and links
+      // them by index. directQuantity defaults to 1 if not set.
+      variants: validData.data.variants.map((v) => ({
+        ...mapVariant(v),
+        unlimited: false,
+        stockLinkType: "DIRECT" as const,
+        stockVariantId: undefined,
+        directQuantity: v.directQuantity ?? 1,
+      })),
+      modifierGroupIds: validData.data.modifierGroupIds?.length
+        ? validData.data.modifierGroupIds
+        : undefined,
+      addonGroupIds: validData.data.addonGroupIds?.length
+        ? validData.data.addonGroupIds
+        : undefined,
+      autoCreateStock: true,
+      stock: {
+        baseUnitId: stockOptions?.baseUnitId,
+        materialType: stockOptions?.materialType ?? "FINISHED_GOOD",
+        initialQuantity: stockOptions?.initialQuantity,
+        initialUnitCost: stockOptions?.initialUnitCost,
+      },
+    };
+
+    const created = (await apiClient.post(
+      inventoryUrl("/api/v1/products/with-stock"),
+      payload,
+    )) as Product;
+
+    revalidatePath("/products");
+    revalidatePath("/stock-variants");
+    redirect(`/products/${created.id}/edit`);
+  } catch (error: any) {
+    if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to create product with stock",
+      error: error instanceof Error ? error : new Error(String(error)),
+      errorCode: error?.code,
+      metadata: error?.metadata,
+    });
+  }
 }
 
+/**
+ * Update product-level fields. Variants are managed via the dedicated
+ * variant CRUD calls (createVariant / updateVariant / deleteVariant) —
+ * this endpoint intentionally does not accept a variants array.
+ *
+ * trackStock is derived from the supplied variants when provided so the
+ * product flag stays in sync with the variant set the form is showing.
+ */
 export async function updateProduct(
   productId: string,
   product: z.infer<typeof ProductSchema>,
-  paginationState?: { pageIndex: number; pageSize: number } | null,
 ): Promise<FormResponse | void> {
   const validData = ProductSchema.safeParse(product);
 
@@ -143,35 +324,32 @@ export async function updateProduct(
 
     await apiClient.put(inventoryUrl(`/api/v1/products/${productId}`), {
       name: validData.data.name,
-      description: validData.data.description,
+      nativeCurrency: validData.data.nativeCurrency,
+      description: validData.data.description || undefined,
       categoryIds: validData.data.categoryIds,
-      departmentId: validData.data.departmentId,
-      brandId: validData.data.brandId,
-      imageUrl: validData.data.imageUrl,
+      brandId: validData.data.brandId || undefined,
+      imageUrl: validData.data.imageUrl || undefined,
       sellOnline: validData.data.sellOnline,
-      trackStock: validData.data.trackStock,
+      trackStock: deriveTrackStock(validData.data.variants),
       taxInclusive: validData.data.taxInclusive,
-      taxClass: validData.data.taxClass,
+      taxClass: validData.data.taxClass || undefined,
       tags: validData.data.tags,
       active: validData.data.active,
       lifecycleStatus: validData.data.lifecycleStatus,
+      replacementProductId: validData.data.replacementProductId || undefined,
     });
 
     revalidatePath("/products");
-
-    if (paginationState) {
-      const page = paginationState.pageIndex + 1;
-      const limit = paginationState.pageSize;
-      redirect(`/products?page=${page}&limit=${limit}`);
-    } else {
-      redirect("/products");
-    }
+    revalidatePath(`/products/${productId}/edit`);
+    redirect(`/products/${productId}/edit`);
   } catch (error: any) {
     if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     return parseStringify({
       responseType: "error",
       message: error?.message ?? "Failed to update product",
       error: error instanceof Error ? error : new Error(String(error)),
+      errorCode: error?.code,
+      metadata: error?.metadata,
     });
   }
 }
@@ -183,213 +361,170 @@ export async function deleteProduct(id: string): Promise<void> {
   revalidatePath("/products");
 }
 
-// ── Variants CRUD (nested under product) ────────────────────────────
+// archiveProduct preserves the legacy signature (ids: string | string[])
+// so cell-action and other callers don't need a coordinated change. Hits
+// the dedicated /archive endpoint per id.
+export async function archiveProduct(ids: string | string[]): Promise<void> {
+  const apiClient = new ApiClient();
+  const productIds = Array.isArray(ids) ? ids : [ids];
+  for (const id of productIds) {
+    await apiClient.post(inventoryUrl(`/api/v1/products/${id}/archive`), {});
+  }
+  revalidatePath("/products");
+}
+
+export async function unarchiveProduct(id: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl(`/api/v1/products/${id}/unarchive`), {});
+  revalidatePath("/products");
+}
+
+// ── Variants ────────────────────────────────────────────────────────
 
 export async function createVariant(
   productId: string,
-  variant: Record<string, unknown>,
+  variant: ProductVariantInput,
 ): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post(
     inventoryUrl(`/api/v1/products/${productId}/variants`),
-    variant,
+    mapVariant(variant),
   );
   revalidatePath("/products");
+  revalidatePath(`/products/${productId}/edit`);
 }
 
 export async function updateVariant(
   productId: string,
   variantId: string,
-  variant: Record<string, unknown>,
+  variant: ProductVariantInput,
 ): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.put(
     inventoryUrl(`/api/v1/products/${productId}/variants/${variantId}`),
-    variant,
+    mapVariant(variant),
   );
   revalidatePath("/products");
+  revalidatePath(`/products/${productId}/edit`);
 }
 
 export async function deleteVariant(
   productId: string,
   variantId: string,
 ): Promise<void> {
-  if (!productId || !variantId) throw new Error("Product and variant IDs are required");
+  if (!productId || !variantId)
+    throw new Error("Product and variant IDs are required");
   const apiClient = new ApiClient();
   await apiClient.delete(
     inventoryUrl(`/api/v1/products/${productId}/variants/${variantId}`),
   );
   revalidatePath("/products");
+  revalidatePath(`/products/${productId}/edit`);
 }
 
-// ── Modifier Groups CRUD (nested under product) ─────────────────────
-
-export async function getModifierGroups(productId: string) {
-  const apiClient = new ApiClient();
-  return apiClient.get(inventoryUrl(`/api/v1/products/${productId}/modifier-groups`));
-}
-
-export async function createModifierGroup(
+export async function archiveVariant(
   productId: string,
-  data: Record<string, unknown>,
-) {
-  const apiClient = new ApiClient();
-  const result = await apiClient.post(
-    inventoryUrl(`/api/v1/products/${productId}/modifier-groups`),
-    data,
-  );
-  revalidatePath("/products");
-  return result;
-}
-
-export async function updateModifierGroup(
-  productId: string,
-  groupId: string,
-  data: Record<string, unknown>,
-) {
-  const apiClient = new ApiClient();
-  await apiClient.put(
-    inventoryUrl(`/api/v1/products/${productId}/modifier-groups/${groupId}`),
-    data,
-  );
-  revalidatePath("/products");
-}
-
-export async function deleteModifierGroup(productId: string, groupId: string) {
-  const apiClient = new ApiClient();
-  await apiClient.delete(
-    inventoryUrl(`/api/v1/products/${productId}/modifier-groups/${groupId}`),
-  );
-  revalidatePath("/products");
-}
-
-export async function createModifierOption(
-  productId: string,
-  groupId: string,
-  data: Record<string, unknown>,
-) {
+  variantId: string,
+): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post(
-    inventoryUrl(`/api/v1/products/${productId}/modifier-groups/${groupId}/options`),
-    data,
+    inventoryUrl(`/api/v1/products/${productId}/variants/${variantId}/archive`),
+    {},
   );
   revalidatePath("/products");
+  revalidatePath(`/products/${productId}/edit`);
 }
 
-export async function updateModifierOption(
+export async function unarchiveVariant(
   productId: string,
-  groupId: string,
-  optionId: string,
-  data: Record<string, unknown>,
-) {
-  const apiClient = new ApiClient();
-  await apiClient.put(
-    inventoryUrl(`/api/v1/products/${productId}/modifier-groups/${groupId}/options/${optionId}`),
-    data,
-  );
-  revalidatePath("/products");
-}
-
-export async function deleteModifierOption(
-  productId: string,
-  groupId: string,
-  optionId: string,
-) {
-  const apiClient = new ApiClient();
-  await apiClient.delete(
-    inventoryUrl(`/api/v1/products/${productId}/modifier-groups/${groupId}/options/${optionId}`),
-  );
-  revalidatePath("/products");
-}
-
-// ── Addon Groups CRUD (nested under product) ────────────────────────
-
-export async function getAddonGroups(productId: string) {
-  const apiClient = new ApiClient();
-  return apiClient.get(inventoryUrl(`/api/v1/products/${productId}/addon-groups`));
-}
-
-export async function createAddonGroup(
-  productId: string,
-  data: Record<string, unknown>,
-) {
-  const apiClient = new ApiClient();
-  const result = await apiClient.post(
-    inventoryUrl(`/api/v1/products/${productId}/addon-groups`),
-    data,
-  );
-  revalidatePath("/products");
-  return result;
-}
-
-export async function updateAddonGroup(
-  productId: string,
-  groupId: string,
-  data: Record<string, unknown>,
-) {
-  const apiClient = new ApiClient();
-  await apiClient.put(
-    inventoryUrl(`/api/v1/products/${productId}/addon-groups/${groupId}`),
-    data,
-  );
-  revalidatePath("/products");
-}
-
-export async function deleteAddonGroup(productId: string, groupId: string) {
-  const apiClient = new ApiClient();
-  await apiClient.delete(
-    inventoryUrl(`/api/v1/products/${productId}/addon-groups/${groupId}`),
-  );
-  revalidatePath("/products");
-}
-
-export async function createAddonGroupItem(
-  productId: string,
-  groupId: string,
-  data: Record<string, unknown>,
-) {
+  variantId: string,
+): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post(
-    inventoryUrl(`/api/v1/products/${productId}/addon-groups/${groupId}/items`),
-    data,
+    inventoryUrl(`/api/v1/products/${productId}/variants/${variantId}/unarchive`),
+    {},
   );
   revalidatePath("/products");
+  revalidatePath(`/products/${productId}/edit`);
 }
 
-export async function updateAddonGroupItem(
+// ── Currency price overrides (per variant) ──────────────────────────
+
+export async function listPriceOverrides(
   productId: string,
-  groupId: string,
-  itemId: string,
-  data: Record<string, unknown>,
-) {
-  const apiClient = new ApiClient();
-  await apiClient.put(
-    inventoryUrl(`/api/v1/products/${productId}/addon-groups/${groupId}/items/${itemId}`),
-    data,
-  );
-  revalidatePath("/products");
+  variantId: string,
+): Promise<PriceOverrideResponse[]> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(
+      inventoryUrl(`/api/v1/products/${productId}/variants/${variantId}/price-overrides`),
+    );
+    return parseStringify(data);
+  } catch {
+    return [];
+  }
 }
 
-export async function deleteAddonGroupItem(
+export async function upsertPriceOverride(
   productId: string,
-  groupId: string,
-  itemId: string,
-) {
+  variantId: string,
+  input: z.infer<typeof PriceOverrideSchema>,
+): Promise<FormResponse | void> {
+  const valid = PriceOverrideSchema.safeParse(input);
+  if (!valid.success) {
+    return parseStringify({
+      responseType: "error",
+      message: "Please fill all the required fields",
+      error: new Error(valid.error.message),
+    });
+  }
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.put(
+      inventoryUrl(
+        `/api/v1/products/${productId}/variants/${variantId}/price-overrides/${valid.data.currency}`,
+      ),
+      { price: valid.data.price, notes: valid.data.notes || undefined },
+    );
+    revalidatePath(`/products/${productId}/edit`);
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to save price override",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function removePriceOverride(
+  productId: string,
+  variantId: string,
+  currency: string,
+): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.delete(
-    inventoryUrl(`/api/v1/products/${productId}/addon-groups/${groupId}/items/${itemId}`),
+    inventoryUrl(
+      `/api/v1/products/${productId}/variants/${variantId}/price-overrides/${currency.toUpperCase()}`,
+    ),
   );
-  revalidatePath("/products");
+  revalidatePath(`/products/${productId}/edit`);
 }
 
 // ── Bulk Price Update ───────────────────────────────────────────────
 
 export async function bulkPriceUpdate(
   updates: { productVariantId: string; price: number }[],
-) {
+): Promise<unknown> {
   const apiClient = new ApiClient();
   return apiClient.put(inventoryUrl("/api/v1/products/bulk-price"), { updates });
 }
+
+// Modifier and addon helpers moved to dedicated server-action modules:
+//   @/lib/actions/modifier-actions  (library + per-product attach)
+//   @/lib/actions/addon-actions     (library + per-product attach)
+// Both reflect the post-V31 backend where groups are business-scoped
+// and attached to products via a join — the previous nested helpers
+// pointed at endpoints that no longer exist.
 
 // ── Reports (kept — these hit a different service) ──────────────────
 
@@ -398,7 +533,9 @@ export const productSummary = async (): Promise<any> => {
   try {
     const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();
-    const data = await apiClient.get(`/api/reports/${location?.id}/products/summary`);
+    const data = await apiClient.get(
+      `/api/reports/${location?.id}/products/summary`,
+    );
     return parseStringify(data);
   } catch (error) {
     throw error;
@@ -442,7 +579,7 @@ export const SoldItemsReports = async (
   }
 };
 
-// ── AI Description ──────────────────────────────────────────────────
+// ── AI Description (Gemini) ─────────────────────────────────────────
 
 export const generateAIDescription = async (
   name: string,
@@ -496,14 +633,19 @@ export const uploadProductCSV = async ({
       },
     );
   } catch (error: any) {
-    if (error.code === "FORBIDDEN" && error.message?.includes("beyond the limit")) {
+    if (
+      error.code === "FORBIDDEN" &&
+      error.message?.includes("beyond the limit")
+    ) {
       const limitMatch = error.message.match(/limit is (\d+)/);
       const wantedMatch = error.message.match(/total of (\d+)/);
       throw new Error(
         `Subscription limit exceeded. Your plan allows up to ${limitMatch?.[1] ?? "?"} products, but you attempted ${wantedMatch?.[1] ?? "too many"}.`,
       );
     }
-    throw new Error(`Failed to upload CSV: ${error?.message || "Please try again."}`);
+    throw new Error(
+      `Failed to upload CSV: ${error?.message || "Please try again."}`,
+    );
   }
   revalidatePath("/products");
 };
@@ -522,20 +664,6 @@ export const downloadProductsCSV = async (locationId?: string) => {
   }
 };
 
-// ── Archive ─────────────────────────────────────────────────────────
-
-export const archiveProduct = async (ids: string | string[]) => {
-  const apiClient = new ApiClient();
-  const productIds = Array.isArray(ids) ? ids : [ids];
-
-  // Archive = set active to false for each product
-  for (const id of productIds) {
-    await apiClient.put(inventoryUrl(`/api/v1/products/${id}`), { active: false });
-  }
-
-  revalidatePath("/products");
-};
-
 // ── Menu (kept — different service) ─────────────────────────────────
 
 export const menuProducts = async (
@@ -549,7 +677,12 @@ export const menuProducts = async (
     const query = {
       filters: [
         { key: "name", operator: "LIKE", field_type: "STRING", value: q },
-        { key: "isArchived", operator: "EQUAL", field_type: "BOOLEAN", value: false },
+        {
+          key: "isArchived",
+          operator: "EQUAL",
+          field_type: "BOOLEAN",
+          value: false,
+        },
       ],
       sorts: [{ key: "name", direction: "ASC" }],
       page: Math.max(page ? page - 1 : 0, 0),
@@ -561,7 +694,8 @@ export const menuProducts = async (
 
     const data = await apiClient.post(`/api/menu/${locationId}`, query, {
       headers: {
-        "SETTLO-API-KEY": "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a",
+        "SETTLO-API-KEY":
+          "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a",
       },
     });
     return parseStringify(data);
@@ -570,16 +704,65 @@ export const menuProducts = async (
   }
 };
 
-export const locationMenuDetails = async (locationId?: string): Promise<LocationDetails> => {
+export const locationMenuDetails = async (
+  locationId?: string,
+): Promise<LocationDetails> => {
   try {
     const apiClient = new ApiClient();
-    const data = await apiClient.get<LocationDetails>(`/api/menu/${locationId}`, {
-      headers: {
-        "SETTLO-API-KEY": "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a",
+    const data = await apiClient.get<LocationDetails>(
+      `/api/menu/${locationId}`,
+      {
+        headers: {
+          "SETTLO-API-KEY":
+            "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a",
+        },
       },
-    });
+    );
     return parseStringify(data);
   } catch (error) {
     throw error;
   }
 };
+
+// ── Multi-image upload (STUB) ───────────────────────────────────────
+// TODO(images): wire up to the real asset/CDN service. The product form
+// collects up to 5 images with a primary index; the UI feeds files in as
+// data URLs for preview. This stub echoes those data URLs back so the
+// flow works end-to-end pre-backend. Replace the body with a real upload
+// (e.g. multipart POST → S3/GCS) and return the public URLs.
+export async function uploadProductImages(
+  dataUrls: string[],
+): Promise<string[]> {
+  // eslint-disable-next-line no-console
+  console.warn(
+    "[uploadProductImages] STUB — returning input data URLs. Wire this up to the asset service.",
+  );
+  return dataUrls;
+}
+
+// ── Save as draft (STUB) ────────────────────────────────────────────
+// TODO(drafts): wire up real draft persistence. The product form's
+// "Save as draft" button calls this with the in-progress form values
+// (validation deliberately bypassed) so merchants can park work without
+// satisfying every required field. Replace the body with a backend call
+// that stores a draft record (separate table or product flag) without
+// going through ProductSchema's strict validation.
+export async function saveProductDraft(
+  values: unknown,
+  productId?: string,
+): Promise<FormResponse> {
+  // Mark the parameters as "intentionally unused for now" so the stub keeps
+  // the right shape for the real implementation. Drop the void casts when
+  // wiring this up.
+  void values;
+  void productId;
+  // eslint-disable-next-line no-console
+  console.warn(
+    "[saveProductDraft] STUB — drafts are not yet wired up on the backend.",
+  );
+  return parseStringify({
+    responseType: "error",
+    message: "Drafts are not yet wired up on the backend.",
+    error: new Error("saveProductDraft not implemented"),
+  });
+}

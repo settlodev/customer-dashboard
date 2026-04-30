@@ -8,12 +8,14 @@ import { useRouter } from "next/navigation";
 import {
   Beaker,
   Calendar as CalendarIcon,
+  CheckCircle2,
   FlaskConical,
   GitBranch,
   Percent,
   Plus,
   Trash2,
   Wrench,
+  AlertTriangle,
 } from "lucide-react";
 import { NumericFormat } from "react-number-format";
 import { format } from "date-fns";
@@ -38,17 +40,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogIcon,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 
 import { useToast } from "@/hooks/use-toast";
-import { FormError } from "../widgets/form-error";
-import CancelButton from "../widgets/cancel-button";
-import { SubmitButton } from "../widgets/submit-button";
+import {
+  Alert,
+  AlertIcon,
+  AlertBody,
+  AlertTitle,
+  AlertDescription,
+} from "@/components/ui/alert";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 import UnitSelector from "@/components/widgets/unit-selector";
+
+import styles from "./styles/form-shell.module.css";
 
 import {
   createBomRule,
@@ -179,14 +197,38 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
 
   return (
     <Form {...form}>
-      <FormError message={response?.message} />
-      <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-6">
-        {/* ── Header ──────────────────────────────────────────────── */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-4">
-            <h3 className="text-lg font-medium flex items-center gap-2">
-              <Beaker className="h-4 w-4 text-gray-400" /> Rule details
-            </h3>
+      {response?.responseType === "error" && response?.message ? (
+        <Alert tone="danger" className="mb-3">
+          <AlertIcon>
+            <AlertTriangle className="h-3.5 w-3.5" />
+          </AlertIcon>
+          <AlertBody>
+            <AlertTitle>We couldn&apos;t save this consumption rule</AlertTitle>
+            <AlertDescription>{response.message}</AlertDescription>
+          </AlertBody>
+        </Alert>
+      ) : null}
+      <form
+        onSubmit={form.handleSubmit(submitData, onInvalid)}
+        className={styles.formRoot}
+      >
+        <div className={styles.formStack}>
+        <section className={styles.formCard}>
+          <header className={styles.formCardHead}>
+            <div className={styles.icoBox}>
+              <Beaker className="h-3.5 w-3.5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3>Rule details</h3>
+              <p className={styles.formCardHeadDesc}>
+                Identifies the consumption rule and its lifecycle.
+              </p>
+            </div>
+            <div className={styles.formCardActions}>
+              <span className={styles.stepBadge}>STEP 01</span>
+            </div>
+          </header>
+          <div className={styles.formBody}>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               <FormField
@@ -379,22 +421,23 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                 )}
               />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        {/* ── Items ───────────────────────────────────────────────── */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium flex items-center gap-2">
-                  <FlaskConical className="h-4 w-4 text-gray-400" /> Items
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Stock components consumed by this rule. Add substitutes per item for
-                  resilient deduction.
-                </p>
-              </div>
+        <section className={styles.formCard}>
+          <header className={styles.formCardHead}>
+            <div className={styles.icoBox}>
+              <FlaskConical className="h-3.5 w-3.5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3>Items</h3>
+              <p className={styles.formCardHeadDesc}>
+                Stock components consumed by this rule. Add substitutes per
+                item for resilient deduction.
+              </p>
+            </div>
+            <div className={styles.formCardActions}>
+              <span className={styles.stepBadge}>STEP 02</span>
               <Button
                 type="button"
                 variant="outline"
@@ -402,37 +445,41 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                 onClick={() => itemsField.append(defaultItem(itemsField.fields.length))}
                 disabled={isPending}
               >
-                <Plus className="w-4 h-4 mr-1" /> Add item
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add item
               </Button>
             </div>
+          </header>
+          <div className={styles.formBody}>
+            <div className="space-y-3">
+              {itemsField.fields.map((field, index) => (
+                <ItemRow
+                  key={field.id}
+                  form={form}
+                  index={index}
+                  isPending={isPending}
+                  canRemove={itemsField.fields.length > 1}
+                  onRemove={() => itemsField.remove(index)}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
 
-            {itemsField.fields.map((field, index) => (
-              <ItemRow
-                key={field.id}
-                form={form}
-                index={index}
-                isPending={isPending}
-                canRemove={itemsField.fields.length > 1}
-                onRemove={() => itemsField.remove(index)}
-              />
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* ── Outputs (warehouse only) ────────────────────────────── */}
         {isWarehouse && (
-          <Card className="rounded-xl shadow-sm">
-            <CardContent className="pt-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-medium flex items-center gap-2">
-                    <GitBranch className="h-4 w-4 text-gray-400" /> Outputs
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Stock materialised when a production run completes. Exactly one
-                    PRIMARY; co-products and by-products as needed.
-                  </p>
-                </div>
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <GitBranch className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Outputs</h3>
+                <p className={styles.formCardHeadDesc}>
+                  Stock materialised when a production run completes.
+                  Exactly one PRIMARY; co-products and by-products as needed.
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 03</span>
                 <Button
                   type="button"
                   variant="outline"
@@ -440,7 +487,8 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                   onClick={() =>
                     outputsField.append({
                       stockVariantId: "",
-                      outputType: outputsField.fields.length === 0 ? "PRIMARY" : "CO_PRODUCT",
+                      outputType:
+                        outputsField.fields.length === 0 ? "PRIMARY" : "CO_PRODUCT",
                       yieldQuantity: 1,
                       yieldUnitId: "",
                       sortOrder: outputsField.fields.length,
@@ -448,10 +496,11 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                   }
                   disabled={isPending}
                 >
-                  <Plus className="w-4 h-4 mr-1" /> Add output
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add output
                 </Button>
               </div>
-
+            </header>
+            <div className={styles.formBody}>
               <div className="space-y-3">
                 {outputsField.fields.map((field, index) => (
                   <div
@@ -562,23 +611,29 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                   </p>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         )}
 
-        {/* ── Operations (routing) ────────────────────────────────── */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium flex items-center gap-2">
-                  <Wrench className="h-4 w-4 text-gray-400" /> Operations / routing
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Optional. Labor, overhead, and machine costs. Total operation cost =
-                  (setup + baseQty × runPerUnit) / 60 × (labor + overhead + machine).
-                </p>
-              </div>
+        <section className={styles.formCard}>
+          <header className={styles.formCardHead}>
+            <div className={styles.icoBox}>
+              <Wrench className="h-3.5 w-3.5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3>
+                Operations / routing
+                <span className={styles.optionalTag}>OPTIONAL</span>
+              </h3>
+              <p className={styles.formCardHeadDesc}>
+                Labor, overhead, and machine costs. Total = (setup + baseQty ×
+                runPerUnit) / 60 × (labor + overhead + machine).
+              </p>
+            </div>
+            <div className={styles.formCardActions}>
+              <span className={styles.stepBadge}>
+                {isWarehouse ? "STEP 04" : "STEP 03"}
+              </span>
               <Button
                 type="button"
                 variant="outline"
@@ -591,10 +646,11 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                 }
                 disabled={isPending}
               >
-                <Plus className="w-4 h-4 mr-1" /> Add operation
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add operation
               </Button>
             </div>
-
+          </header>
+          <div className={styles.formBody}>
             <div className="space-y-3">
               {operationsField.fields.map((field, index) => (
                 <div
@@ -763,17 +819,45 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                 </p>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
+        </div>
 
-        {/* ── Actions ─────────────────────────────────────────────── */}
-        <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
-          <CancelButton />
-          <Separator orientation="vertical" className="h-5" />
-          <SubmitButton
-            isPending={isPending}
-            label={isEditing ? "Save as new revision" : "Create consumption rule"}
-          />
+        <div className={styles.formFoot}>
+          <div className={styles.formFootSpacer} />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isPending}
+                title="Discard changes and go back"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Discard
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent tone="danger">
+              <AlertDialogIcon>
+                <Trash2 className="h-5 w-5" />
+              </AlertDialogIcon>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Unsaved changes will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction onClick={() => router.back()}>
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button type="submit" disabled={isPending}>
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+            {isEditing ? "Save as new revision" : "Create consumption rule"}
+          </Button>
         </div>
       </form>
     </Form>

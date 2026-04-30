@@ -7,6 +7,9 @@ export const CategorySchema = object({
   description: string().optional(),
   imageUrl: string().optional(),
   parentId: string().nullable().optional(),
+  // Department is a paid-tier feature; optional and nullable so a tenant
+  // without departments enabled simply leaves it blank.
+  departmentId: string().uuid().nullable().optional(),
   sortOrder: number().optional(),
   active: boolean().optional(),
 });

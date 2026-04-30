@@ -58,6 +58,7 @@ export async function createStock(
       description: validated.data.description,
       baseUnitId: validated.data.baseUnitId,
       materialType: validated.data.materialType,
+      imageUrl: validated.data.imageUrl || undefined,
       variants: validated.data.variants.map((v) => ({
         name: v.name,
         sku: v.sku || undefined,
@@ -123,6 +124,7 @@ export async function updateStock(
       description: validated.data.description,
       baseUnitId: validated.data.baseUnitId,
       materialType: validated.data.materialType,
+      imageUrl: validated.data.imageUrl || undefined,
     });
 
     for (const variant of validated.data.variants) {
@@ -370,4 +372,151 @@ export async function downloadStockCSV(): Promise<string> {
   );
 }
 
+/**
+ * Create a stock item AND a 1:1 sellable product in one atomic backend
+ * call. Mirrors createProductWithStock from the product side. Use when
+ * the merchant is starting from the stock catalog but the item IS the
+ * sellable thing (drink bottles, packaged goods).
+ *
+ * Selling price is per stock variant (carried as `sellingPrice` on each
+ * variant in the schema), so a Coca-Cola stock item with 330ml/500ml
+ * variants generates two product variants priced independently.
+ *
+ * The backend is expected to:
+ *   1. Create the stock item with the supplied variants.
+ *   2. Create a product whose variants link 1:1 (DIRECT mode) to each
+ *      stock variant by index, using each variant's `sellingPrice`.
+ *   3. Roll both back if either side fails.
+ *
+ * Endpoint: POST /api/v1/stocks/with-product (backend wiring pending).
+ */
+export async function createStockWithProduct(
+  stock: z.infer<typeof StockSchema>,
+  productOptions: {
+    categoryIds?: string[];
+    brandId?: string;
+    nativeCurrency?: string;
+    taxClass?: string;
+    sellOnline?: boolean;
+  },
+): Promise<FormResponse | void> {
+  const validated = StockSchema.safeParse(stock);
+
+  if (!validated.success) {
+    return parseStringify({
+      responseType: "error",
+      message: "Please fill all required fields",
+      error: new Error(validated.error.message),
+    });
+  }
+
+  const missingPrice = validated.data.variants.some(
+    (v) => !v.sellingPrice || v.sellingPrice <= 0,
+  );
+  if (missingPrice) {
+    return parseStringify({
+      responseType: "error",
+      message:
+        "Each variant needs a selling price when also creating a product",
+      error: new Error("variant.sellingPrice required"),
+    });
+  }
+
+  try {
+    const apiClient = new ApiClient();
+
+    const payload = {
+      name: validated.data.name,
+      description: validated.data.description,
+      baseUnitId: validated.data.baseUnitId,
+      materialType: validated.data.materialType,
+      imageUrl: validated.data.imageUrl || undefined,
+      variants: validated.data.variants.map((v) => ({
+        name: v.name,
+        sku: v.sku || undefined,
+        unitId: v.unitId,
+        conversionToBase: v.conversionToBase,
+        barcode: v.barcode || undefined,
+        serialTracked: v.serialTracked,
+        startingQuantity:
+          v.initialQuantity && v.initialQuantity > 0
+            ? v.initialQuantity
+            : undefined,
+        startingUnitCost:
+          v.initialQuantity && v.initialQuantity > 0
+            ? v.initialUnitCost ?? 0
+            : undefined,
+        reorderPoint: v.reorderPoint,
+        reorderQuantity: v.reorderQuantity,
+        preferredSupplierId:
+          v.preferredSupplierId && v.preferredSupplierId.length > 0
+            ? v.preferredSupplierId
+            : undefined,
+        lowStockThreshold: v.lowStockThreshold,
+        overstockThreshold: v.overstockThreshold,
+        // Per-variant selling price for the auto-created product variant.
+        sellingPrice: v.sellingPrice,
+      })),
+      autoCreateProduct: true,
+      product: {
+        categoryIds: productOptions.categoryIds ?? [],
+        brandId: productOptions.brandId || undefined,
+        nativeCurrency: productOptions.nativeCurrency || "TZS",
+        taxClass: productOptions.taxClass || undefined,
+        sellOnline: productOptions.sellOnline ?? false,
+      },
+    };
+
+    const created = (await apiClient.post(
+      inventoryUrl("/api/v1/stocks/with-product"),
+      payload,
+    )) as Stock;
+
+    revalidatePath("/stock-variants");
+    revalidatePath("/products");
+    redirect(`/stock-variants/${created.id}`);
+  } catch (error: any) {
+    if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to create stock with product",
+      error: error instanceof Error ? error : new Error(String(error)),
+      errorCode: error?.code,
+      metadata: error?.metadata,
+    });
+  }
+}
+
 export { getStocks as fetchStock };
+
+// ── Multi-image upload (STUB) ───────────────────────────────────────
+// Mirrors uploadProductImages: accepts an array of data URLs and echoes
+// them back so the form can render previews end-to-end pre-backend.
+// Replace with a real multipart POST → asset/CDN service when wired up.
+export async function uploadStockImages(
+  dataUrls: string[],
+): Promise<string[]> {
+  // eslint-disable-next-line no-console
+  console.warn(
+    "[uploadStockImages] STUB — returning input data URLs. Wire this up to the asset service.",
+  );
+  return dataUrls;
+}
+
+// ── Save as draft (STUB) ────────────────────────────────────────────
+export async function saveStockDraft(
+  values: unknown,
+  stockId?: string,
+): Promise<FormResponse> {
+  void values;
+  void stockId;
+  // eslint-disable-next-line no-console
+  console.warn(
+    "[saveStockDraft] STUB — drafts are not yet wired up on the backend.",
+  );
+  return parseStringify({
+    responseType: "error",
+    message: "Drafts are not yet wired up on the backend.",
+    error: new Error("saveStockDraft not implemented"),
+  });
+}

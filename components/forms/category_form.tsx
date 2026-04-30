@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
-import { Separator } from "../ui/separator";
 
 import {
   Form,
@@ -15,12 +14,24 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogIcon,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
   createCategory,
   fetchAllCategories,
   updateCategory,
 } from "@/lib/actions/category-actions";
-import CancelButton from "@/components/widgets/cancel-button";
-import { SubmitButton } from "@/components/widgets/submit-button";
+import { fetchAllDepartments } from "@/lib/actions/department-actions";
 import { Category } from "@/types/category/type";
 import { FormResponse } from "@/types/types";
 import { CategorySchema } from "@/types/category/schema";
@@ -29,9 +40,19 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import CategorySelector from "@/components/widgets/category-selector";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent } from "../ui/card";
 import { useRouter } from "next/navigation";
+import { CheckCircle2, FolderOpen, Trash2 } from "lucide-react";
+
+import styles from "./styles/form-shell.module.css";
+
 const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
@@ -40,11 +61,18 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
 
   const { toast } = useToast();
   const router = useRouter();
+  const isEditing = !!item;
+
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     const getData = async () => {
-      const cats = await fetchAllCategories();
+      const [cats, depts] = await Promise.all([
+        fetchAllCategories(),
+        fetchAllDepartments().catch(() => []),
+      ]);
       setCategories(cats);
+      setDepartments((depts ?? []).map((d: any) => ({ id: d.id, name: d.name })));
     };
     getData();
   }, []);
@@ -56,6 +84,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
       description: item?.description ?? "",
       imageUrl: imageUrl || item?.imageUrl || "",
       parentId: item?.parentId || "",
+      departmentId: item?.departmentId ?? undefined,
       sortOrder: item?.sortOrder ?? 0,
       active: item?.active ?? true,
     },
@@ -84,22 +113,14 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
         updateCategory(item.id, values, "category").then((data) => {
           if (data) setResponse(data);
           if (data?.responseType === "success") {
-            toast({
-              variant: "success",
-              title: "Success",
-              description: data.message,
-            });
+            toast({ variant: "success", title: "Success", description: data.message });
           }
         });
       } else {
         createCategory(values, "category").then((data) => {
           if (data) setResponse(data);
           if (data?.responseType === "success") {
-            toast({
-              variant: "success",
-              title: "Success",
-              description: data.message,
-            });
+            toast({ variant: "success", title: "Success", description: data.message });
             router.push("/categories");
           }
         });
@@ -109,93 +130,172 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
 
   return (
     <Form {...form}>
-      {/*<FormError message={response?.message} />*/}
+      <FormError message={response?.message} />
       <form
         onSubmit={form.handleSubmit(submitData, onInvalid)}
-        className="space-y-6"
+        className={styles.formRoot}
       >
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-6">
-            <div className="flex flex-col sm:flex-row gap-6">
-              {/* Image */}
-              <div className="flex-shrink-0 self-start">
-                <div className="w-[200px] h-[200px]">
-                  <UploadImageWidget
-                    imagePath="categories"
-                    displayStyle="default"
-                    displayImage={true}
-                    showLabel={true}
-                    label="Category image"
-                    setImage={setImageUrl}
-                    image={imageUrl}
-                  />
-                </div>
+        <div className={styles.formStack}>
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <FolderOpen className="h-3.5 w-3.5" />
               </div>
+              <div className="flex-1 min-w-0">
+                <h3>Category details</h3>
+                <p className={styles.formCardHeadDesc}>
+                  Groups products in the catalog. Optionally nest under a
+                  parent or assign to a department.
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 01</span>
+              </div>
+            </header>
 
-              <div className="flex-1 min-w-0 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className={styles.formBody}>
+              <div className="flex flex-col sm:flex-row gap-6">
+                <div className="flex-shrink-0 self-start">
+                  <div className="w-[200px] h-[200px]">
+                    <UploadImageWidget
+                      imagePath="categories"
+                      displayStyle="default"
+                      displayImage={true}
+                      showLabel={true}
+                      label="Category image"
+                      setImage={setImageUrl}
+                      image={imageUrl}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex-1 min-w-0 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className={styles.fieldLabel}>
+                            Category name <span className="req">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter category name"
+                              {...field}
+                              disabled={isPending}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="parentId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className={styles.fieldLabel}>
+                            Parent category
+                            <span className="opt">OPTIONAL</span>
+                          </FormLabel>
+                          <FormControl>
+                            <CategorySelector
+                              simple
+                              categories={categories}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              isDisabled={isPending}
+                              placeholder="Select parent"
+                              value={field.value || ""}
+                              showChildren={false}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="departmentId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className={styles.fieldLabel}>
+                            Department
+                            <span className="opt">OPTIONAL</span>
+                          </FormLabel>
+                          <Select
+                            onValueChange={(v) =>
+                              field.onChange(v === "__none__" ? null : v)
+                            }
+                            value={field.value ?? "__none__"}
+                            disabled={isPending}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="No department" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="__none__">No department</SelectItem>
+                              {departments.map((d) => (
+                                <SelectItem key={d.id} value={d.id}>
+                                  {d.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="sortOrder"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className={styles.fieldLabel}>
+                            Display order
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="e.g. 1"
+                              {...field}
+                              value={field.value ?? ""}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value === ""
+                                    ? undefined
+                                    : Number(e.target.value),
+                                )
+                              }
+                              disabled={isPending}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
                     control={form.control}
-                    name="name"
+                    name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>
-                          Category name <span className="text-red-500">*</span>
+                        <FormLabel className={styles.fieldLabel}>
+                          Description
+                          <span className="opt">OPTIONAL</span>
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Enter category name"
+                          <Textarea
+                            placeholder="Brief description"
+                            rows={4}
                             {...field}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="parentId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Parent category</FormLabel>
-                        <FormControl>
-                          <CategorySelector
-                            simple
-                            categories={categories}
-                            onChange={field.onChange}
-                            onBlur={field.onBlur}
-                            isDisabled={isPending}
-                            placeholder="Select parent"
-                            value={field.value || ""}
-                            showChildren={false}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="sortOrder"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Display order</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="e.g. 1"
-                            {...field}
-                            value={field.value ?? ""}
-                            onChange={(e) =>
-                              field.onChange(
-                                e.target.value === ""
-                                  ? undefined
-                                  : Number(e.target.value),
-                              )
-                            }
                             disabled={isPending}
                           />
                         </FormControl>
@@ -204,37 +304,46 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                     )}
                   />
                 </div>
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Brief description"
-                          rows={5}
-                          {...field}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </section>
+        </div>
 
-        <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
-          <CancelButton />
-          <Separator orientation="vertical" className="h-5" />
-          <SubmitButton
-            isPending={isPending}
-            label={item ? "Update category" : "Create category"}
-          />
+        <div className={styles.formFoot}>
+          <div className={styles.formFootSpacer} />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isPending}
+                title="Discard changes and go back"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Discard
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent tone="danger">
+              <AlertDialogIcon>
+                <Trash2 className="h-5 w-5" />
+              </AlertDialogIcon>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Unsaved changes will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction onClick={() => router.back()}>
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button type="submit" disabled={isPending}>
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+            {isEditing ? "Update category" : "Create category"}
+          </Button>
         </div>
       </form>
     </Form>

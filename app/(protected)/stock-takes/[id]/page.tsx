@@ -1,5 +1,10 @@
 import { notFound } from "next/navigation";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { getStockTake } from "@/lib/actions/stock-take-actions";
 import {
@@ -44,41 +49,39 @@ export default async function StockTakeDetailPage({ params }: { params: Params }
   );
   const hasBins = stockTake.items.some((item) => item.binCode);
 
-  const breadcrumbItems = [
-    { title: "Stock Takes", link: "/stock-takes" },
-    { title: stockTake.takeNumber, link: "" },
-  ];
-
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <BreadcrumbsNav items={breadcrumbItems} />
-
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-bold">{stockTake.takeNumber}</h1>
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Stock Takes", href: "/stock-takes" },
+          { title: stockTake.takeNumber },
+        ]}
+      />
+      <PageHeader
+        title={stockTake.takeNumber}
+        subtitle={`${
+          scopeDescription ??
+          (stockTake.cycleCountType
+            ? CYCLE_COUNT_TYPE_LABELS[stockTake.cycleCountType]
+            : "Full count")
+        } · Created ${formatDateTime(stockTake.createdAt)}`}
+        titleAccessory={
+          <span className="flex items-center gap-2">
             <span
               className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STOCK_TAKE_STATUS_TONES[stockTake.status]}`}
             >
               {STOCK_TAKE_STATUS_LABELS[stockTake.status]}
             </span>
             {blindCount && (
-              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-700">
+              <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
                 Blind count
               </span>
             )}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {scopeDescription
-              ?? (stockTake.cycleCountType
-                ? CYCLE_COUNT_TYPE_LABELS[stockTake.cycleCountType]
-                : "Full count")}
-            {" · "}
-            Created {formatDateTime(stockTake.createdAt)}
-          </p>
-        </div>
-        <StockTakeStatusActions stockTake={stockTake} />
-      </div>
+          </span>
+        }
+        actions={<StockTakeStatusActions stockTake={stockTake} />}
+      />
+      <PageBody>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Meta label="Items" value={String(stockTake.totalItems)} />
@@ -173,7 +176,8 @@ export default async function StockTakeDetailPage({ params }: { params: Params }
           </CardContent>
         </Card>
       )}
-    </div>
+      </PageBody>
+    </PageShell>
   );
 }
 

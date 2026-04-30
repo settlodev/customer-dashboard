@@ -139,7 +139,6 @@ export function CSVStockDialog({
     >
       <DialogTrigger asChild>
         <Button
-          className="h-10 gap-1"
           size="sm"
           variant="outline"
           onClick={() => setIsOpen(true)}

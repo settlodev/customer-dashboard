@@ -1,5 +1,12 @@
 import { notFound } from "next/navigation";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
+import { Boxes, Layers, DollarSign } from "lucide-react";
 import { getStockTransfer } from "@/lib/actions/stock-transfer-actions";
 import StockTransferForm from "@/components/forms/stock_transfer_form";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,52 +32,55 @@ export default async function StockTransferPage({ params }: { params: Params }) 
       0,
     );
 
-    return (
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-        <BreadcrumbsNav items={[
-          { title: "Stock Transfers", link: "/stock-transfers" },
-          { title: item.transferNumber, link: "" },
-        ]} />
-        <div className="flex items-start justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold">{item.transferNumber}</h1>
-            <p className="text-sm text-muted-foreground">
-              {item.sourceLocationName} &rarr; {item.destinationLocationName} — {TRANSFER_STATUS_LABELS[item.status] ?? item.status}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground">Source currency:</span>
-              <span className="font-mono font-semibold bg-gray-100 px-2 py-0.5 rounded">{currency}</span>
-            </div>
-            <StockTransferStatusActions transfer={item} />
-          </div>
-        </div>
+    const totalQty = (item.items ?? []).reduce(
+      (sum, line) => sum + line.quantity,
+      0,
+    );
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="pt-4 pb-3">
-              <p className="text-xs font-medium text-gray-400 uppercase">Items</p>
-              <p className="text-2xl font-bold mt-1">{item.items?.length ?? 0}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 pb-3">
-              <p className="text-xs font-medium text-gray-400 uppercase">Total Qty</p>
-              <p className="text-2xl font-bold mt-1">
-                {(item.items ?? []).reduce((sum, line) => sum + line.quantity, 0).toLocaleString()}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 pb-3">
-              <p className="text-xs font-medium text-gray-400 uppercase">Total Value</p>
-              <p className="text-2xl font-bold mt-1">
-                <Money amount={totalValue} currency={currency} />
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+    return (
+      <PageShell>
+        <PageBreadcrumbs
+          items={[
+            { title: "Stock Transfers", href: "/stock-transfers" },
+            { title: item.transferNumber },
+          ]}
+        />
+        <PageHeader
+          title={item.transferNumber}
+          subtitle={`${item.sourceLocationName} → ${item.destinationLocationName} — ${TRANSFER_STATUS_LABELS[item.status] ?? item.status}`}
+          actions={
+            <span className="flex items-center gap-3">
+              <span className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.02em] text-muted-foreground">
+                Source currency:{" "}
+                <span className="rounded bg-canvas px-2 py-0.5 font-semibold text-ink">
+                  {currency}
+                </span>
+              </span>
+              <StockTransferStatusActions transfer={item} />
+            </span>
+          }
+        />
+        <PageBody>
+          <KpiStrip cols={3}>
+            <KpiCard
+              icon={<Layers className="h-3 w-3" />}
+              label="Items"
+              value={(item.items?.length ?? 0).toLocaleString()}
+            />
+            <KpiCard
+              icon={<Boxes className="h-3 w-3" />}
+              label="Total qty"
+              value={totalQty.toLocaleString()}
+            />
+            <KpiCard
+              icon={<DollarSign className="h-3 w-3" />}
+              label="Total value"
+              value={totalValue.toLocaleString(undefined, {
+                maximumFractionDigits: 0,
+              })}
+              unit={currency}
+            />
+          </KpiStrip>
 
         {item.items && item.items.length > 0 && (
           <Card>
@@ -136,23 +146,26 @@ export default async function StockTransferPage({ params }: { params: Params }) 
             </CardContent>
           </Card>
         )}
-      </div>
+        </PageBody>
+      </PageShell>
     );
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <div>
-        <div className="hidden sm:block mb-2">
-          <BreadcrumbsNav items={[
-            { title: "Stock Transfers", link: "/stock-transfers" },
-            { title: "New", link: "" },
-          ]} />
-        </div>
-        <h1 className="text-2xl font-bold">New Stock Transfer</h1>
-        <p className="text-sm text-muted-foreground">Transfer stock between locations</p>
-      </div>
-      <StockTransferForm />
-    </div>
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Stock Transfers", href: "/stock-transfers" },
+          { title: "New" },
+        ]}
+      />
+      <PageHeader
+        title="New Stock Transfer"
+        subtitle="Transfer stock between locations."
+      />
+      <PageBody>
+        <StockTransferForm />
+      </PageBody>
+    </PageShell>
   );
 }

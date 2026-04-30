@@ -1,18 +1,21 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-modification/column";
 import { searchStockModifications } from "@/lib/actions/stock-modification-actions";
-import { Plus } from "lucide-react";
+import { Plus, Activity, ArrowDownRight, ArrowUpRight, AlertTriangle } from "lucide-react";
 import {
   MODIFICATION_CATEGORY_OPTIONS,
   ModificationCategory,
 } from "@/types/stock-modification/type";
-
-const breadcrumbItems = [{ title: "Stock Modifications", link: "/stock-modifications" }];
 
 type Params = {
   searchParams: Promise<{
@@ -43,38 +46,74 @@ export default async function Page({ searchParams }: Params) {
   const pageCount = responseData.totalPages;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <BreadcrumbsNav items={breadcrumbItems} />
-        <Button asChild>
-          <Link href="/stock-modifications/new">
-            <Plus className="mr-1.5 h-4 w-4" />
-            Modify Stock
-          </Link>
-        </Button>
-      </div>
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Stock Modifications" }]} />
+      <PageHeader
+        title="Stock Modifications"
+        subtitle="Adjust stock for damages, losses, write-offs, and reclassifications."
+        actions={
+          <Button asChild size="sm">
+            <Link href="/stock-modifications/new">
+              <Plus className="mr-1.5 h-4 w-4" />
+              Modify Stock
+            </Link>
+          </Button>
+        }
+      />
+      <PageBody>
+        {/* Placeholder KPIs — wire to real aggregates later. */}
+        <KpiStrip cols={4}>
+          <KpiCard
+            icon={<Activity className="h-3 w-3" />}
+            label="Modifications (30d)"
+            value="58"
+            delta="+12 wk"
+            deltaTone="pos"
+            spark={[20, 22, 26, 28, 30, 36, 42, 50]}
+          />
+          <KpiCard
+            icon={<ArrowUpRight className="h-3 w-3" />}
+            label="Net adjustment up"
+            value="+1,420"
+            unit="units"
+            deltaTone="pos"
+          />
+          <KpiCard
+            icon={<ArrowDownRight className="h-3 w-3" />}
+            label="Net adjustment down"
+            value="−980"
+            unit="units"
+            deltaTone="neg"
+          />
+          <KpiCard
+            icon={<AlertTriangle className="h-3 w-3" />}
+            label="High-cost write-offs"
+            value="4"
+            delta="approval pending"
+            deltaTone="neg"
+          />
+        </KpiStrip>
 
-      {total > 0 || category ? (
-        <Card>
-          <CardContent className="px-2 sm:px-6 pt-6">
-            <DataTable
-              columns={columns}
-              data={data}
-              searchKey="modificationNumber"
-              pageNo={page}
-              total={total}
-              pageCount={pageCount}
-              filterKey="category"
-              filterOptions={MODIFICATION_CATEGORY_OPTIONS.map((o) => ({
-                label: o.label,
-                value: o.value,
-              }))}
-            />
-          </CardContent>
-        </Card>
-      ) : (
-        <NoItems newItemUrl="/stock-modifications/new" itemName="stock modifications" />
-      )}
-    </div>
+        {total > 0 || category ? (
+          <DataTable
+            columns={columns}
+            data={data}
+            searchKey="modificationNumber"
+            pageNo={page}
+            total={total}
+            pageCount={pageCount}
+            disableArchive
+            rowClickBasePath="/stock-modifications"
+            filterKey="category"
+            filterOptions={MODIFICATION_CATEGORY_OPTIONS.map((o) => ({
+              label: o.label,
+              value: o.value,
+            }))}
+          />
+        ) : (
+          <NoItems newItemUrl="/stock-modifications/new" itemName="stock modifications" />
+        )}
+      </PageBody>
+    </PageShell>
   );
 }

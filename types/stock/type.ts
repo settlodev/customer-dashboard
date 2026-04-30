@@ -9,6 +9,7 @@ export interface Stock {
   baseUnitAbbreviation: string;
   archived: boolean;
   materialType: MaterialType;
+  imageUrl: string | null;
   variants: StockVariant[];
   createdAt: string;
   updatedAt: string;

@@ -1,6 +1,14 @@
 import { notFound } from "next/navigation";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Building2, Boxes, DollarSign, MapPin } from "lucide-react";
 import { getStockIntakeRecord } from "@/lib/actions/stock-intake-record-actions";
 import {
   STOCK_INTAKE_RECORD_STATUS_LABELS,
@@ -13,10 +21,10 @@ import SerialNumbersViewer from "@/components/stock-intakes/serial-numbers-viewe
 
 type Params = Promise<{ id: string }>;
 
-const STATUS_TONES: Record<StockIntakeRecordStatus, string> = {
-  DRAFT: "bg-amber-50 text-amber-700",
-  CONFIRMED: "bg-green-50 text-green-700",
-  CANCELLED: "bg-red-50 text-red-700",
+const STATUS_BADGE: Record<StockIntakeRecordStatus, "warn" | "pos" | "neg"> = {
+  DRAFT: "warn",
+  CONFIRMED: "pos",
+  CANCELLED: "neg",
 };
 
 const formatDate = (iso: string | null | undefined) => {
@@ -59,74 +67,59 @@ export default async function StockIntakePage({ params }: { params: Params }) {
   );
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <BreadcrumbsNav
+    <PageShell>
+      <PageBreadcrumbs
         items={[
-          { title: "Stock Intakes", link: "/stock-intakes" },
-          { title: item.referenceNumber, link: "" },
+          { title: "Stock Intakes", href: "/stock-intakes" },
+          { title: item.referenceNumber },
         ]}
       />
+      <PageHeader
+        title={item.referenceNumber}
+        subtitle={item.notes ?? undefined}
+        titleAccessory={
+          <Badge variant={STATUS_BADGE[item.status]}>
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            {STOCK_INTAKE_RECORD_STATUS_LABELS[item.status]}
+          </Badge>
+        }
+        actions={
+          item.status === "DRAFT" ? <StockIntakeRecordActions id={item.id} /> : undefined
+        }
+      />
 
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold">{item.referenceNumber}</h1>
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_TONES[item.status]}`}
-            >
-              {STOCK_INTAKE_RECORD_STATUS_LABELS[item.status]}
-            </span>
-          </div>
-          {item.notes && (
-            <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>
-          )}
-        </div>
-        {item.status === "DRAFT" && <StockIntakeRecordActions id={item.id} />}
-      </div>
-
-      {/* Meta cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs font-medium text-gray-400 uppercase">Supplier</p>
-            <p className="text-sm font-medium mt-1 truncate">
-              {item.supplierName || <span className="text-gray-400">—</span>}
-            </p>
-            {item.supplierReference && (
-              <p className="text-[11px] text-gray-400 font-mono mt-0.5 truncate">
-                Ref: {item.supplierReference}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs font-medium text-gray-400 uppercase">Items</p>
-            <p className="text-2xl font-bold mt-1">{item.totalItems}</p>
-            <p className="text-xs text-muted-foreground">
-              {Number(item.totalQuantity ?? 0).toLocaleString()} total qty
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs font-medium text-gray-400 uppercase">Total value</p>
-            <p className="text-2xl font-bold mt-1">
-              <Money amount={Number(item.totalValue ?? 0)} currency={currency} />
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs font-medium text-gray-400 uppercase">Location</p>
-            <p className="text-sm font-medium mt-1 truncate">
-              {item.locationName || <span className="text-gray-400">—</span>}
-            </p>
-            <p className="text-[11px] text-gray-400 mt-0.5">{item.locationType}</p>
-          </CardContent>
-        </Card>
-      </div>
+      <PageBody>
+        <KpiStrip cols={4}>
+          <KpiCard
+            icon={<Building2 className="h-3 w-3" />}
+            label="Supplier"
+            value={item.supplierName ?? "—"}
+            delta={item.supplierReference ? `Ref ${item.supplierReference}` : undefined}
+            deltaTone="neutral"
+          />
+          <KpiCard
+            icon={<Boxes className="h-3 w-3" />}
+            label="Items"
+            value={item.totalItems.toLocaleString()}
+            delta={`${Number(item.totalQuantity ?? 0).toLocaleString()} total qty`}
+            deltaTone="neutral"
+          />
+          <KpiCard
+            icon={<DollarSign className="h-3 w-3" />}
+            label="Total value"
+            value={Number(item.totalValue ?? 0).toLocaleString(undefined, {
+              maximumFractionDigits: 0,
+            })}
+            unit={currency}
+          />
+          <KpiCard
+            icon={<MapPin className="h-3 w-3" />}
+            label="Location"
+            value={item.locationName ?? "—"}
+            delta={item.locationType}
+            deltaTone="neutral"
+          />
+        </KpiStrip>
 
       {/* Dates panel */}
       <Card>
@@ -281,6 +274,7 @@ export default async function StockIntakePage({ params }: { params: Params }) {
           </CardContent>
         </Card>
       )}
-    </div>
+      </PageBody>
+    </PageShell>
   );
 }

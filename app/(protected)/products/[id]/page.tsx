@@ -1,5 +1,9 @@
 import { notFound, redirect } from "next/navigation";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import { getProduct } from "@/lib/actions/product-actions";
 import { Product } from "@/types/product/type";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,8 +23,10 @@ type Params = Promise<{ id: string }>;
 export default async function ProductPage({ params }: { params: Params }) {
   const resolvedParams = await params;
 
+  // /products/new is now a sibling route — bounce there if someone
+  // links to /products/new through the dynamic segment.
   if (resolvedParams.id === "new") {
-    redirect("/products/new/edit");
+    redirect("/products/new");
   }
 
   let product: Product | null = null;
@@ -32,11 +38,6 @@ export default async function ProductPage({ params }: { params: Params }) {
     throw new Error("Failed to load product details");
   }
 
-  const breadcrumbItems = [
-    { title: "Products", link: "/products" },
-    { title: product.name, link: "" },
-  ];
-
   const isValidImageUrl =
     product.imageUrl &&
     (product.imageUrl.startsWith("http://") ||
@@ -46,9 +47,14 @@ export default async function ProductPage({ params }: { params: Params }) {
   const categoryName = product.categories?.[0]?.name || null;
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-      <BreadcrumbsNav items={breadcrumbItems} />
-
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Products", href: "/products" },
+          { title: product.name },
+        ]}
+      />
+      <PageBody>
       <ProductDetailDashboard
         productId={resolvedParams.id}
         productName={product.name}
@@ -60,21 +66,19 @@ export default async function ProductPage({ params }: { params: Params }) {
         editUrl={`/products/${product.id}/edit`}
       >
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <SummaryCard
-            label="Category"
-            value={categoryName || "\u2014"}
-            icon={Tag}
-          />
+          <SummaryCard label="Category" value={categoryName || "—"} icon={Tag} />
           <SummaryCard
             label="Department"
-            value={product.departmentName || "\u2014"}
+            value={product.departmentName || "—"}
             icon={Building2}
           />
           <SummaryCard
             label="Available Stock"
             value={
               product.trackStock
-                ? (product.variants?.reduce((sum, v) => sum + (v.availableQuantity ?? 0), 0).toLocaleString() ?? "0")
+                ? (product.variants
+                    ?.reduce((sum, v) => sum + (v.availableQuantity ?? 0), 0)
+                    .toLocaleString() ?? "0")
                 : "Unlimited"
             }
             icon={Box}
@@ -87,7 +91,6 @@ export default async function ProductPage({ params }: { params: Params }) {
         </div>
       </ProductDetailDashboard>
 
-      {/* Product Details */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="rounded-xl shadow-sm">
           <CardHeader className="pb-3">
@@ -127,7 +130,6 @@ export default async function ProductPage({ params }: { params: Params }) {
           </CardContent>
         </Card>
 
-        {/* Variants */}
         <Card className="rounded-xl shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -162,17 +164,23 @@ export default async function ProductPage({ params }: { params: Params }) {
                     {variant.unlimited && (
                       <p className="text-xs text-muted-foreground">Unlimited</p>
                     )}
+                    {variant.stockLinkType === "DIRECT" && (
+                      <p className="text-xs text-muted-foreground">
+                        Linked: {variant.stockVariantName ?? "stock item"}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground">No variants configured</p>
+              <p className="text-sm text-muted-foreground">
+                No variants configured
+              </p>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Description */}
       {product.description && (
         <Card className="rounded-xl shadow-sm">
           <CardHeader className="pb-3">
@@ -185,7 +193,8 @@ export default async function ProductPage({ params }: { params: Params }) {
           </CardContent>
         </Card>
       )}
-    </div>
+      </PageBody>
+    </PageShell>
   );
 }
 
@@ -201,23 +210,35 @@ function SummaryCard({
   return (
     <Card className="rounded-xl shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {label}
+        </CardTitle>
         <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
           <Icon className="h-4 w-4 text-gray-500" />
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-1">
-        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
+        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          {value}
+        </p>
       </CardContent>
     </Card>
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
+function DetailRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null | undefined;
+}) {
   return (
     <div className="flex items-center justify-between py-1">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{value || "\u2014"}</span>
+      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+        {value || "—"}
+      </span>
     </div>
   );
 }

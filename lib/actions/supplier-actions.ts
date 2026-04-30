@@ -39,9 +39,11 @@ type SupplierPayload = z.infer<typeof SupplierSchema>;
 function normalise(values: SupplierPayload) {
   return {
     ...values,
+    contactPersonEmail: values.contactPersonEmail || null,
     phone: values.phone || null,
     email: values.email || null,
     address: values.address || null,
+    notes: values.notes || null,
     registrationNumber: values.registrationNumber || null,
     tinNumber: values.tinNumber || null,
     settloSupplierId: values.settloSupplierId || null,

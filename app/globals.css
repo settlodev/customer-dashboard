@@ -1,11 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+/* Fonts come from `next/font` in app/layout.tsx — exposed as the
+ * --font-sans (Inter) and --font-mono (JetBrains Mono) CSS variables.
+ * Don't @import Google Fonts here; the runtime download blocks the
+ * critical path and duplicates what next/font already self-hosts. */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-body {
-  font-family: "Inter", sans-serif;
-}
 
 @layer utilities {
   .text-balance {
@@ -15,6 +15,7 @@ body {
 
 @layer base {
   :root {
+    /* shadcn / shared base tokens (HSL triplets — used via hsl(var(--x))) */
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
@@ -23,7 +24,9 @@ body {
     --popover-foreground: 240 10% 3.9%;
     --primary: 21 81% 59%;
     --primary-light: 21 78% 96%;
-    --primary-dark: 258 100% 35%;
+    /* Deep brand orange (#C25E26) — used by Button hover states and the
+       product form's primary CTA. Was a stray purple before. */
+    --primary-dark: 19 67% 45%;
     --primary-foreground: 0 0% 100%;
     --secondary: 60 11% 91%;
     --secondary-foreground: 240 5.9% 10%;
@@ -42,6 +45,36 @@ body {
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+
+    /* ── Dashboard design-system tokens (HSL triplets) ──────────────
+     * Promoted from the product-form prototype so utilities like
+     * bg-canvas, border-line, text-ink, text-muted-2, text-pos work
+     * across the whole protected dashboard.
+     *
+     *   canvas   #F4F2ED   warm sand — the floor under the cards
+     *   surface  #FAFAF7   subtle off-white for embedded blocks
+     *   ink      #0A0A0A   near-black primary text
+     *   ink-2    #1F1F1F   slightly softer body text
+     *   ink-3    #525252   secondary text
+     *   muted-2  #B5B5B0   placeholder/icon (paired with --muted)
+     *   line     #EAE8E0   1px hairline borders
+     *   line-2   #D9D6CC   slightly darker hairline / dashed
+     *   pos / neg / warn   status colors (green / red / amber)
+     */
+    --canvas: 41 22% 94%;
+    --surface: 60 18% 97%;
+    --ink: 0 0% 4%;
+    --ink-2: 0 0% 12%;
+    --ink-3: 0 0% 32%;
+    --muted-2: 60 5% 70%;
+    --line: 47 22% 89%;
+    --line-2: 45 17% 82%;
+    --pos: 156 82% 30%;
+    --pos-tint: 156 82% 30% / 0.10;
+    --neg: 11 65% 47%;
+    --neg-tint: 11 65% 47% / 0.10;
+    --warn: 36 64% 47%;
+    --warn-tint: 36 64% 47% / 0.12;
   }
   .dark {
     --background: 240 10% 3.9%;
@@ -68,6 +101,22 @@ body {
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+
+    /* Dashboard tokens (dark) */
+    --canvas: 240 6% 7%;
+    --surface: 240 5% 10%;
+    --ink: 0 0% 96%;
+    --ink-2: 0 0% 88%;
+    --ink-3: 0 0% 70%;
+    --muted-2: 240 4% 40%;
+    --line: 240 4% 16%;
+    --line-2: 240 4% 22%;
+    --pos: 156 60% 50%;
+    --pos-tint: 156 60% 50% / 0.18;
+    --neg: 11 65% 60%;
+    --neg-tint: 11 65% 60% / 0.18;
+    --warn: 36 70% 60%;
+    --warn-tint: 36 70% 60% / 0.20;
   }
 
   html {
@@ -81,5 +130,9 @@ body {
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans), system-ui, sans-serif;
+    /* Tabular numerics + Inter stylistic sets so prices, stock counts,
+       and SKUs align nicely across the whole dashboard. */
+    font-feature-settings: "ss01", "ss03", "cv11";
   }
 }

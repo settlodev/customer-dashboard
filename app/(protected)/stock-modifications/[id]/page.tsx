@@ -1,5 +1,10 @@
 import { notFound } from "next/navigation";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import { getStockModification } from "@/lib/actions/stock-modification-actions";
 import StockModificationForm from "@/components/forms/stock_modification_form";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,11 +37,6 @@ export default async function StockModificationPage({ params }: { params: Params
     const item = await getStockModification(resolvedParams.id);
     if (!item) notFound();
 
-    const breadcrumbItems = [
-      { title: "Stock Modifications", link: "/stock-modifications" },
-      { title: item.modificationNumber, link: "" },
-    ];
-
     const currency = item.currency || DEFAULT_CURRENCY;
     const categoryLabel =
       MODIFICATION_CATEGORY_OPTIONS.find((o) => o.value === item.category)?.label ??
@@ -47,20 +47,26 @@ export default async function StockModificationPage({ params }: { params: Params
     const netChange = item.items?.reduce((sum, line) => sum + Number(line.quantityChange), 0) ?? 0;
 
     return (
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-        <BreadcrumbsNav items={breadcrumbItems} />
-        <div className="flex items-start justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold">{item.modificationNumber}</h1>
-            <p className="text-sm text-muted-foreground">
-              {categoryLabel} — {item.reason}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground">Settlement currency:</span>
-            <span className="font-mono font-semibold bg-gray-100 px-2 py-0.5 rounded">{currency}</span>
-          </div>
-        </div>
+      <PageShell>
+        <PageBreadcrumbs
+          items={[
+            { title: "Stock Modifications", href: "/stock-modifications" },
+            { title: item.modificationNumber },
+          ]}
+        />
+        <PageHeader
+          title={item.modificationNumber}
+          subtitle={`${categoryLabel} — ${item.reason}`}
+          actions={
+            <span className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.02em] text-muted-foreground">
+              Settlement currency:{" "}
+              <span className="rounded bg-canvas px-2 py-0.5 font-semibold text-ink">
+                {currency}
+              </span>
+            </span>
+          }
+        />
+        <PageBody>
 
         <Card>
           <CardContent className="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
@@ -157,26 +163,27 @@ export default async function StockModificationPage({ params }: { params: Params
             </CardContent>
           </Card>
         )}
-      </div>
+        </PageBody>
+      </PageShell>
     );
   }
 
-  const breadcrumbItems = [
-    { title: "Stock Modifications", link: "/stock-modifications" },
-    { title: "New", link: "" },
-  ];
-
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <div>
-        <div className="hidden sm:block mb-2">
-          <BreadcrumbsNav items={breadcrumbItems} />
-        </div>
-        <h1 className="text-2xl font-bold">Stock Modification</h1>
-        <p className="text-sm text-muted-foreground">Record a stock adjustment</p>
-      </div>
-      <StockModificationForm />
-    </div>
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Stock Modifications", href: "/stock-modifications" },
+          { title: "New" },
+        ]}
+      />
+      <PageHeader
+        title="Stock Modification"
+        subtitle="Record a stock adjustment."
+      />
+      <PageBody>
+        <StockModificationForm />
+      </PageBody>
+    </PageShell>
   );
 }
 

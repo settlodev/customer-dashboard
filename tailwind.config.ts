@@ -12,7 +12,13 @@ const config: Config = {
   ],
   theme: {
     fontFamily: {
-      satoshi: ["Inter", "sans-serif"],
+      // Single source of truth: Inter (sans) and JetBrains Mono (mono)
+      // are loaded once via next/font in app/layout.tsx and exposed as
+      // CSS variables. `font-sans` / `font-mono` resolve to those.
+      // `satoshi` is kept as a legacy alias for old call sites.
+      sans: ["var(--font-sans)", ...defaultTheme.fontFamily.sans],
+      mono: ["var(--font-mono)", ...defaultTheme.fontFamily.mono],
+      satoshi: ["var(--font-sans)", "Inter", "sans-serif"],
     },
     extend: {
       fontSize: {
@@ -452,6 +458,35 @@ const config: Config = {
         success: "#219653",
         danger: "#D34053",
         warning: "#FFA70B",
+
+        // ── Dashboard design-system tokens (HSL via globals.css) ─────
+        // These power utilities like bg-canvas, border-line, text-ink-2,
+        // text-pos. Each maps to a CSS variable so dark mode swaps in
+        // automatically without changing class names.
+        canvas: "hsl(var(--canvas))",
+        surface: "hsl(var(--surface))",
+        ink: {
+          DEFAULT: "hsl(var(--ink))",
+          2: "hsl(var(--ink-2))",
+          3: "hsl(var(--ink-3))",
+        },
+        "muted-2": "hsl(var(--muted-2))",
+        line: {
+          DEFAULT: "hsl(var(--line))",
+          2: "hsl(var(--line-2))",
+        },
+        pos: {
+          DEFAULT: "hsl(var(--pos))",
+          tint: "hsl(var(--pos-tint))",
+        },
+        neg: {
+          DEFAULT: "hsl(var(--neg))",
+          tint: "hsl(var(--neg-tint))",
+        },
+        warn: {
+          DEFAULT: "hsl(var(--warn))",
+          tint: "hsl(var(--warn-tint))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

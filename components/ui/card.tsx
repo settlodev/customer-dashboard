@@ -2,6 +2,11 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Generic surface container — sits on the canvas with a hairline
+ * border + subtle shadow. Use for any block of content that needs to
+ * read as "its own thing" against the page.
+ */
 const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -9,7 +14,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-xl bg-white dark:bg-gray-900 text-card-foreground shadow-sm",
+      "rounded-xl border border-line bg-card text-card-foreground shadow-sm",
       className
     )}
     {...props}
@@ -36,7 +41,7 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "text-base font-semibold leading-tight tracking-tight text-ink",
       className
     )}
     {...props}

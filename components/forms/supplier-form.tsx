@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Form,
@@ -22,12 +22,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogIcon,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { ShieldCheck } from "lucide-react";
-import CancelButton from "@/components/widgets/cancel-button";
-import { SubmitButton } from "@/components/widgets/submit-button";
+import {
+  Building2,
+  CheckCircle2,
+  FileBadge,
+  ShieldCheck,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import { FormError } from "@/components/widgets/form-error";
 import { useToast } from "@/hooks/use-toast";
 import type { FormResponse } from "@/types/types";
@@ -39,6 +55,8 @@ import {
 } from "@/lib/actions/supplier-actions";
 import { fetchSettloSupplierCatalog } from "@/lib/actions/settlo-supplier-actions";
 
+import styles from "./styles/form-shell.module.css";
+
 type FormValues = z.infer<typeof SupplierSchema>;
 
 const UNLINKED = "__unlinked__";
@@ -49,6 +67,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
   const [catalog, setCatalog] = useState<SettloSupplier[]>([]);
   const { toast } = useToast();
   const router = useRouter();
+  const isEditing = !!item;
 
   useEffect(() => {
     fetchSettloSupplierCatalog().then(setCatalog);
@@ -61,9 +80,11 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
           name: item.name,
           contactPersonName: item.contactPersonName,
           contactPersonPhone: item.contactPersonPhone,
+          contactPersonEmail: item.contactPersonEmail ?? "",
           phone: item.phone ?? "",
           email: item.email ?? "",
           address: item.address ?? "",
+          notes: item.notes ?? "",
           registrationNumber: item.registrationNumber ?? "",
           tinNumber: item.tinNumber ?? "",
           settloSupplierId: item.settloSupplierId ?? "",
@@ -72,9 +93,11 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
           name: "",
           contactPersonName: "",
           contactPersonPhone: "",
+          contactPersonEmail: "",
           phone: "",
           email: "",
           address: "",
+          notes: "",
           registrationNumber: "",
           tinNumber: "",
           settloSupplierId: "",
@@ -95,11 +118,6 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
     [toast],
   );
 
-  /**
-   * Picking a marketplace supplier pre-fills the commercial fields so the user
-   * doesn't have to retype them. Contact person stays blank — that's always
-   * the business user's own contact, not the marketplace record's.
-   */
   const applyCatalogPick = (id: string) => {
     if (id === UNLINKED) {
       form.setValue("settloSupplierId", "");
@@ -149,71 +167,91 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
   return (
     <Form {...form}>
       <FormError message={response?.message} />
-      <form onSubmit={form.handleSubmit(submit, onInvalid)} className="space-y-6">
-        {/* Marketplace link */}
-        {catalog.length > 0 && (
-          <Card className="rounded-xl shadow-sm">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-3 mb-4">
-                <ShieldCheck className="h-5 w-5 text-emerald-600 mt-0.5" />
-                <div>
-                  <h3 className="text-base font-medium">Marketplace link</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Optional. Linking to a Settlo-verified supplier pre-fills
-                    commercial details and unlocks financing features where
-                    available.
+      <form
+        onSubmit={form.handleSubmit(submit, onInvalid)}
+        className={styles.formRoot}
+      >
+        <div className={styles.formStack}>
+          {catalog.length > 0 && (
+            <section className={`${styles.formCard} ${styles.formCardOptional}`}>
+              <header className={styles.formCardHead}>
+                <div className={styles.icoBox}>
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3>
+                    Marketplace link
+                    <span className={styles.optionalTag}>OPTIONAL</span>
+                  </h3>
+                  <p className={styles.formCardHeadDesc}>
+                    Linking to a Settlo-verified supplier pre-fills commercial
+                    details and unlocks financing where available.
                   </p>
                 </div>
+              </header>
+              <div className={styles.formBody}>
+                <FormField
+                  control={form.control}
+                  name="settloSupplierId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={styles.fieldLabel}>
+                        Linked marketplace supplier
+                      </FormLabel>
+                      <Select
+                        value={field.value || UNLINKED}
+                        onValueChange={(v) => applyCatalogPick(v)}
+                        disabled={isPending}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Not linked" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={UNLINKED}>Not linked</SelectItem>
+                          {catalog.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                              {c.verificationStatus === "VERIFIED"
+                                ? " · Verified"
+                                : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-              <FormField
-                control={form.control}
-                name="settloSupplierId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Linked marketplace supplier</FormLabel>
-                    <Select
-                      value={field.value || UNLINKED}
-                      onValueChange={(v) => {
-                        applyCatalogPick(v);
-                      }}
-                      disabled={isPending}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Not linked" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value={UNLINKED}>Not linked</SelectItem>
-                        {catalog.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name}
-                            {c.verificationStatus === "VERIFIED" ? " · Verified" : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-        )}
+            </section>
+          )}
 
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-6">
-            {/* Company */}
-            <div>
-              <h3 className="text-lg font-medium mb-4">Company</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <Building2 className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Company</h3>
+                <p className={styles.formCardHeadDesc}>
+                  Trading name and where to reach the business itself.
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 01</span>
+              </div>
+            </header>
+            <div className={styles.formBody}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        Supplier name <span className="text-red-500">*</span>
+                      <FormLabel className={styles.fieldLabel}>
+                        Supplier name <span className="req">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input
@@ -231,7 +269,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel className={styles.fieldLabel}>Email</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
@@ -250,7 +288,9 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Company phone</FormLabel>
+                      <FormLabel className={styles.fieldLabel}>
+                        Company phone
+                      </FormLabel>
                       <FormControl>
                         <PhoneInput
                           placeholder="Company switchboard"
@@ -263,12 +303,14 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                     </FormItem>
                   )}
                 />
+              </div>
+              <div className="mt-4">
                 <FormField
                   control={form.control}
                   name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Address</FormLabel>
+                      <FormLabel className={styles.fieldLabel}>Address</FormLabel>
                       <FormControl>
                         <Textarea
                           rows={2}
@@ -283,25 +325,58 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   )}
                 />
               </div>
+              <div className="mt-4">
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={styles.fieldLabel}>
+                        Notes
+                        <span className={styles.optionalTag}>OPTIONAL · INTERNAL</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={3}
+                          placeholder="Internal notes about this supplier — payment terms, delivery quirks, contacts. Visible only to your team."
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
+          </section>
 
-            <Separator />
-
-            {/* Contact person */}
-            <div>
-              <h3 className="text-lg font-medium mb-4">Contact person</h3>
-              <p className="text-xs text-muted-foreground mb-4">
-                The human we call at this supplier — separate from the company
-                phone number.
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <UserRound className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Contact person</h3>
+                <p className={styles.formCardHeadDesc}>
+                  The human you call at this supplier — separate from the
+                  company switchboard.
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 02</span>
+              </div>
+            </header>
+            <div className={styles.formBody}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="contactPersonName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        Name <span className="text-red-500">*</span>
+                      <FormLabel className={styles.fieldLabel}>
+                        Name <span className="req">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input
@@ -319,8 +394,8 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   name="contactPersonPhone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        Phone <span className="text-red-500">*</span>
+                      <FormLabel className={styles.fieldLabel}>
+                        Phone <span className="req">*</span>
                       </FormLabel>
                       <FormControl>
                         <PhoneInput
@@ -333,21 +408,57 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="contactPersonEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={styles.fieldLabel}>
+                        Email
+                        <span className={styles.optionalTag}>OPTIONAL</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="contact@example.com"
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
+          </section>
 
-            <Separator />
-
-            {/* Registration */}
-            <div>
-              <h3 className="text-lg font-medium mb-4">Registration</h3>
+          <section className={`${styles.formCard} ${styles.formCardOptional}`}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <FileBadge className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>
+                  Registration
+                  <span className={styles.optionalTag}>OPTIONAL</span>
+                </h3>
+                <p className={styles.formCardHeadDesc}>
+                  Statutory IDs used on procurement documents and tax filings.
+                </p>
+              </div>
+            </header>
+            <div className={styles.formBody}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="registrationNumber"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Registration number</FormLabel>
+                      <FormLabel className={styles.fieldLabel}>
+                        Registration number
+                      </FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Optional"
@@ -365,7 +476,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   name="tinNumber"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>TIN</FormLabel>
+                      <FormLabel className={styles.fieldLabel}>TIN</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Optional"
@@ -380,16 +491,44 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </section>
+        </div>
 
-        <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
-          <CancelButton />
-          <Separator orientation="vertical" className="h-5" />
-          <SubmitButton
-            isPending={isPending}
-            label={item ? "Update supplier" : "Create supplier"}
-          />
+        <div className={styles.formFoot}>
+          <div className={styles.formFootSpacer} />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isPending}
+                title="Discard changes and go back"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Discard
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent tone="danger">
+              <AlertDialogIcon>
+                <Trash2 className="h-5 w-5" />
+              </AlertDialogIcon>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Unsaved changes will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction onClick={() => router.back()}>
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button type="submit" disabled={isPending}>
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+            {isEditing ? "Update supplier" : "Create supplier"}
+          </Button>
         </div>
       </form>
     </Form>

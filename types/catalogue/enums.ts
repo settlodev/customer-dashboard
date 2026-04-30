@@ -41,6 +41,22 @@ export const SELECTION_TYPE_OPTIONS: { value: SelectionType; label: string }[] =
   { value: "MULTI", label: "Multiple Selection" },
 ];
 
+// ── Currency ────────────────────────────────────────────────────────
+
+// Common currencies for product native pricing. ISO-4217 3-letter codes.
+// Backend stores VARCHAR(3); merchants outside this list can be added later
+// without a schema change.
+export const CURRENCY_OPTIONS: { value: string; label: string }[] = [
+  { value: "TZS", label: "TZS — Tanzanian Shilling" },
+  { value: "USD", label: "USD — US Dollar" },
+  { value: "EUR", label: "EUR — Euro" },
+  { value: "KES", label: "KES — Kenyan Shilling" },
+  { value: "UGX", label: "UGX — Ugandan Shilling" },
+  { value: "RWF", label: "RWF — Rwandan Franc" },
+  { value: "GBP", label: "GBP — British Pound" },
+  { value: "ZAR", label: "ZAR — South African Rand" },
+];
+
 // ── Stock enums ─────────────────────────────────────────────────────
 
 export type MaterialType =

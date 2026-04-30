@@ -42,7 +42,6 @@ import {
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
 } from "@radix-ui/react-icons";
-import { ProductCSVDialog } from "../csv/CSVImport";
 import { CSVStockDialog } from "../csv/stockCsvImport";
 import {
   DropdownMenu,
@@ -54,7 +53,6 @@ import {
 } from "../ui/dropdown-menu";
 import Loading from "@/components/ui/loading";
 import { usePaginationState } from "@/hooks/usePaginationState";
-import TableExport from "../widgets/export";
 import StockExport from "../widgets/export-stock";
 import StockIntakeExport from "../widgets/export-intake";
 import { BulkArchive } from "../widgets/bulk-archive";
@@ -398,15 +396,21 @@ export function DataTable<TData, TValue>({
     );
   }
 
+  const totalRows = table.getFilteredRowModel().rows.length;
+  const selectedRows = table.getFilteredSelectedRowModel().rows.length;
+  const currentPage = table.getState().pagination.pageIndex + 1;
+  const totalPages = Math.max(1, table.getPageCount());
+
   return (
-    <motion.div>
-      {/* ── Toolbar ── */}
-      <div className="flex items-center justify-between mb-2 gap-2">
-        {/* Search */}
-        <div className="relative flex-1 md:max-w-md">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+    <motion.div className="space-y-3">
+      {/* ── Toolbar ─────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Search-box — design's pill-shaped input with the icon
+            inside a hairline border on the card surface. */}
+        <div className="relative flex-1 md:max-w-[320px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="w-full rounded-md border-0 bg-muted pl-10 md:w-[200px] lg:w-[320px] transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="h-9 pl-9 text-[12.5px]"
             placeholder="Search..."
             type="search"
             value={
@@ -418,17 +422,24 @@ export function DataTable<TData, TValue>({
           />
         </div>
 
-        {/* ✅ Desktop actions — lg and above */}
-        <div className="hidden lg:flex items-center space-x-2">
+        {/* Desktop actions — lg and above */}
+        <div className="ml-auto hidden items-center gap-2 lg:flex">
           {renderArchiveComponent()}
 
           {filterKey && filterOptions && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button className="h-8 gap-1" size="sm" variant="outline">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-dashed border-line-2 text-ink-3 hover:text-ink"
+                >
                   <ListFilter className="h-3.5 w-3.5" />
                   <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Filter
+                    {statusFilter
+                      ? filterOptions.find((o) => o.value === statusFilter)
+                          ?.label
+                      : "Filter"}
                   </span>
                 </Button>
               </DropdownMenuTrigger>
@@ -452,14 +463,13 @@ export function DataTable<TData, TValue>({
           {pageConfig.exportComponent}
         </div>
 
-        {/* ✅ Mobile / Tablet actions — below lg */}
-        <div className="flex lg:hidden items-center gap-2">
-          {/* Archive stays inline — it's a contextual/important action */}
+        {/* Mobile / Tablet actions — below lg */}
+        <div className="ml-auto flex items-center gap-2 lg:hidden">
           {renderArchiveComponent()}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 gap-1.5">
+              <Button variant="outline" size="sm">
                 <MoreHorizontal className="h-4 w-4" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                   Actions
@@ -467,7 +477,6 @@ export function DataTable<TData, TValue>({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
-              {/* Filter options */}
               {filterKey && filterOptions && (
                 <>
                   <DropdownMenuLabel>Filter by</DropdownMenuLabel>
@@ -486,7 +495,6 @@ export function DataTable<TData, TValue>({
                 </>
               )}
 
-              {/* Import / Export */}
               {(pageConfig.importComponent || pageConfig.exportComponent) && (
                 <>
                   <DropdownMenuLabel>Import & Export</DropdownMenuLabel>
@@ -494,7 +502,7 @@ export function DataTable<TData, TValue>({
                   {pageConfig.importComponent && (
                     <div
                       className="flex flex-col gap-1 px-2 py-1"
-                      // ✅ Prevent dropdown dismissing before dialog opens
+                      // Prevent dropdown dismissing before dialog opens
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -517,14 +525,14 @@ export function DataTable<TData, TValue>({
         </div>
       </div>
 
-      {/* ── Table ── */}
+      {/* ── Table + foot pager (single shell) ────────────────── */}
       {loading ? (
-        <div className="flex items-center justify-center h-48">
+        <div className="flex h-48 items-center justify-center rounded-xl border border-line bg-card">
           <Loading />
         </div>
       ) : (
-        <div className="rounded-md border">
-          <Table className="relative">
+        <div className="overflow-hidden rounded-xl border border-line bg-card">
+          <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -548,9 +556,7 @@ export function DataTable<TData, TValue>({
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
                     className={
-                      onRowClick || rowClickBasePath
-                        ? "cursor-pointer hover:bg-muted/50"
-                        : ""
+                      onRowClick || rowClickBasePath ? "cursor-pointer" : ""
                     }
                     onClick={(e) => {
                       if (!onRowClick && !rowClickBasePath) return;
@@ -584,7 +590,7 @@ export function DataTable<TData, TValue>({
               ) : (
                 <TableRow>
                   <TableCell
-                    className="h-24 text-center"
+                    className="h-24 text-center text-muted-foreground"
                     colSpan={columns.length}
                   >
                     No results.
@@ -593,28 +599,23 @@ export function DataTable<TData, TValue>({
               )}
             </TableBody>
           </Table>
-        </div>
-      )}
 
-      {/* ── Pagination ── */}
-      <div className="flex flex-col gap-2 sm:flex-row items-center justify-end space-x-2 py-4">
-        <div className="flex items-center justify-between w-full">
-          <div className="flex-1 text-sm text-muted-foreground">
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {table.getFilteredRowModel().rows.length} row(s) selected.
-          </div>
-          <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
-            <div className="flex items-center space-x-2">
-              <p className="whitespace-nowrap text-sm font-medium">
-                Rows per page
-              </p>
+          {/* Mono table-foot pager — consolidates pagination,
+              rows-per-page, and selection summary into a single strip. */}
+          <div className="flex flex-col items-stretch gap-2 border-t border-line bg-surface px-4 py-2.5 font-mono text-[11.5px] text-muted-foreground sm:flex-row sm:items-center">
+            <div className="flex-1">
+              {selectedRows > 0
+                ? `${selectedRows} of ${totalRows} selected`
+                : `Showing ${totalRows.toLocaleString()} row${totalRows === 1 ? "" : "s"}`}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline">Rows:</span>
               <Select
                 value={`${table.getState().pagination.pageSize}`}
-                onValueChange={(value) => {
-                  table.setPageSize(Number(value));
-                }}
+                onValueChange={(value) => table.setPageSize(Number(value))}
               >
-                <SelectTrigger className="h-8 w-[70px]">
+                <SelectTrigger className="h-7 w-[60px] px-2 font-mono text-[11px]">
                   <SelectValue
                     placeholder={table.getState().pagination.pageSize}
                   />
@@ -628,54 +629,68 @@ export function DataTable<TData, TValue>({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-        </div>
 
-        <div className="flex items-center justify-between sm:justify-end gap-2 w-full">
-          <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-            Page {table.getState().pagination.pageIndex + 1} of{" "}
-            {table.getPageCount()}
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              aria-label="Go to first page"
-              className="hidden h-8 w-8 p-0 lg:flex"
-              disabled={!table.getCanPreviousPage()}
-              variant="outline"
-              onClick={() => table.setPageIndex(0)}
-            >
-              <DoubleArrowLeftIcon aria-hidden="true" className="h-4 w-4" />
-            </Button>
-            <Button
-              aria-label="Go to previous page"
-              className="h-8 w-8 p-0"
-              disabled={!table.getCanPreviousPage()}
-              variant="outline"
-              onClick={() => table.previousPage()}
-            >
-              <ChevronLeftIcon aria-hidden="true" className="h-4 w-4" />
-            </Button>
-            <Button
-              aria-label="Go to next page"
-              className="h-8 w-8 p-0"
-              disabled={!table.getCanNextPage()}
-              variant="outline"
-              onClick={() => table.nextPage()}
-            >
-              <ChevronRightIcon aria-hidden="true" className="h-4 w-4" />
-            </Button>
-            <Button
-              aria-label="Go to last page"
-              className="hidden h-8 w-8 p-0 lg:flex"
-              disabled={!table.getCanNextPage()}
-              variant="outline"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            >
-              <DoubleArrowRightIcon aria-hidden="true" className="h-4 w-4" />
-            </Button>
+            {/* Pager — design's outline-square buttons. */}
+            <div className="flex items-center gap-1">
+              <PagerButton
+                aria-label="First page"
+                onClick={() => table.setPageIndex(0)}
+                disabled={!table.getCanPreviousPage()}
+              >
+                <DoubleArrowLeftIcon className="h-3 w-3" />
+              </PagerButton>
+              <PagerButton
+                aria-label="Previous page"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+              >
+                <ChevronLeftIcon className="h-3 w-3" />
+              </PagerButton>
+              <span className="px-2 tabular-nums text-ink-3">
+                {currentPage} / {totalPages}
+              </span>
+              <PagerButton
+                aria-label="Next page"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+              >
+                <ChevronRightIcon className="h-3 w-3" />
+              </PagerButton>
+              <PagerButton
+                aria-label="Last page"
+                onClick={() => table.setPageIndex(totalPages - 1)}
+                disabled={!table.getCanNextPage()}
+              >
+                <DoubleArrowRightIcon className="h-3 w-3" />
+              </PagerButton>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </motion.div>
+  );
+}
+
+/**
+ * Pager button — small mono outline square. Lives in the table-foot
+ * pairing with `bg-surface` so it reads as part of the table card
+ * instead of a separate row.
+ */
+function PagerButton({
+  children,
+  className,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type="button"
+      className={
+        "grid h-7 w-7 place-items-center rounded-md border border-line bg-card text-ink-3 transition-colors hover:bg-canvas hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-card disabled:hover:text-ink-3 " +
+        (className ?? "")
+      }
+      {...props}
+    >
+      {children}
+    </button>
   );
 }

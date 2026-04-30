@@ -17,7 +17,16 @@ export default async function Page() {
       </div>
       {data.totalElements > 0 ? (
         <Card><CardContent className="px-2 sm:px-6 pt-6">
-          <DataTable columns={columns} data={data.content} searchKey="modificationNumber" pageNo={0} total={data.totalElements} pageCount={data.totalPages} />
+          <DataTable
+            columns={columns}
+            data={data.content}
+            searchKey="modificationNumber"
+            pageNo={0}
+            total={data.totalElements}
+            pageCount={data.totalPages}
+            disableArchive
+            rowClickBasePath="/warehouse-stock-modifications"
+          />
         </CardContent></Card>
       ) : (<NoItems newItemUrl="/warehouse-stock-modifications/new" itemName="stock modifications" />)}
     </div>

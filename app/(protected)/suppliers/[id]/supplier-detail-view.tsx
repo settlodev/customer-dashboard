@@ -129,6 +129,7 @@ function OverviewTab({ supplier }: { supplier: Supplier }) {
           <Row label="Email" value={supplier.email || "\u2014"} />
           <Row label="Company phone" value={supplier.phone || "\u2014"} />
           <Row label="Address" value={supplier.address || "\u2014"} multiline />
+          <Row label="Notes" value={supplier.notes || "\u2014"} multiline />
         </CardContent>
       </Card>
 
@@ -140,6 +141,7 @@ function OverviewTab({ supplier }: { supplier: Supplier }) {
           </h3>
           <Row label="Name" value={supplier.contactPersonName} />
           <Row label="Phone" value={supplier.contactPersonPhone} />
+          <Row label="Email" value={supplier.contactPersonEmail || "\u2014"} />
         </CardContent>
       </Card>
 

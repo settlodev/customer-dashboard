@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import {
   Table,
   TableBody,
@@ -165,44 +166,52 @@ export function StockDetailView({
 
   return (
     <div className="space-y-6">
-      {/* ── Summary cards ─────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <SummaryCard
-          icon={<Boxes className="h-4 w-4" />}
-          label="Qty on Hand"
+      {/* ── Summary KPIs ──────────────────────────────────────── */}
+      <KpiStrip cols={6}>
+        <KpiCard
+          icon={<Boxes className="h-3 w-3" />}
+          label="Qty on hand"
           value={totalQty.toLocaleString()}
+          unit={stock.baseUnitName}
         />
-        <SummaryCard
-          icon={<DollarSign className="h-4 w-4" />}
-          label="Total Value"
-          value={<Money amount={totalValue} currency={currency} />}
+        <KpiCard
+          icon={<DollarSign className="h-3 w-3" />}
+          label="Total value"
+          value={totalValue.toLocaleString(undefined, {
+            maximumFractionDigits: 0,
+          })}
+          unit={currency}
         />
-        <SummaryCard
-          icon={<ShieldCheck className="h-4 w-4" />}
+        <KpiCard
+          icon={<ShieldCheck className="h-3 w-3" />}
           label="Available"
           value={totalAvailable.toLocaleString()}
-          subtitle={
+          delta={
             totalReserved > 0
               ? `${totalReserved.toLocaleString()} reserved`
               : undefined
           }
-          subtitleClass="text-amber-600 dark:text-amber-400"
+          deltaTone={totalReserved > 0 ? "neg" : "neutral"}
         />
-        <SummaryCard
-          icon={<Truck className="h-4 w-4" />}
-          label="In Transit"
-          value={totalInTransit > 0 ? totalInTransit.toLocaleString() : "\u2014"}
-          subtitle={
+        <KpiCard
+          icon={<Truck className="h-3 w-3" />}
+          label="In transit"
+          value={
+            totalInTransit > 0 ? totalInTransit.toLocaleString() : "\u2014"
+          }
+          delta={
             totalInTransit > 0
-              ? `Expected: ${(totalQty + totalInTransit).toLocaleString()}`
+              ? `Expected ${(totalQty + totalInTransit).toLocaleString()}`
               : undefined
           }
+          deltaTone="neutral"
         />
-        <SummaryCard
-          icon={<TrendingUp className="h-4 w-4" />}
+        <KpiCard
+          icon={<TrendingUp className="h-3 w-3" />}
           label="Turnover (30d)"
-          value={avgTurnover > 0 ? `${avgTurnover.toFixed(1)}x` : "\u2014"}
-          subtitle={
+          value={avgTurnover > 0 ? avgTurnover.toFixed(1) : "\u2014"}
+          unit={avgTurnover > 0 ? "\u00d7" : undefined}
+          delta={
             avgTurnover >= 3
               ? "Fast moving"
               : avgTurnover >= 1
@@ -211,54 +220,83 @@ export function StockDetailView({
                   ? "Slow moving"
                   : undefined
           }
-          subtitleClass={
+          deltaTone={
             avgTurnover >= 3
-              ? "text-green-600 dark:text-green-400"
+              ? "pos"
               : avgTurnover >= 1
-                ? "text-amber-600 dark:text-amber-400"
-                : "text-red-600 dark:text-red-400"
+                ? "neutral"
+                : avgTurnover > 0
+                  ? "neg"
+                  : "neutral"
           }
         />
-        <SummaryCard
-          icon={<AlertTriangle className="h-4 w-4" />}
-          label="Stockout Risk"
+        <KpiCard
+          icon={<AlertTriangle className="h-3 w-3" />}
+          label="Stockout risk"
           value={
             worstRisk
               ? worstRisk.daysUntilStockout >= 0
-                ? `${worstRisk.daysUntilStockout}d`
+                ? worstRisk.daysUntilStockout
                 : riskCfg.label
               : "\u2014"
           }
-          valueClass={riskCfg.color}
-          subtitle={worstRisk ? riskCfg.label : undefined}
-          subtitleClass={riskCfg.color}
+          unit={
+            worstRisk && worstRisk.daysUntilStockout >= 0 ? "days" : undefined
+          }
+          delta={worstRisk ? riskCfg.label : undefined}
+          deltaTone={
+            worstRisk
+              ? worstRisk.riskLevel === "CRITICAL" ||
+                worstRisk.riskLevel === "HIGH"
+                ? "neg"
+                : worstRisk.riskLevel === "MEDIUM"
+                  ? "neutral"
+                  : "pos"
+              : "neutral"
+          }
         />
-      </div>
+      </KpiStrip>
 
-      {/* ── Tabs ──────────────────────────────────────────────── */}
-      <div className="border-b overflow-x-auto">
-        <div className="flex gap-1 min-w-max">
+      {/* ── Tabs ──────────────────────────────────────────────────
+          Design vocabulary: segmented underline tabs sitting on the
+          surface tone of a card shell. Lifts straight from the
+          prototype's `.form-tabs`. */}
+      <div className="overflow-x-auto rounded-xl border border-line bg-card">
+        <div className="flex min-w-max gap-0 border-b border-line bg-surface px-2">
           {TABS.map((t) => {
             const Icon = t.icon;
             const isActive = tab === t.key;
             let badge: string | null = null;
-            if (t.key === "batches" && totalBatches > 0) badge = String(totalBatches);
+            if (t.key === "batches" && totalBatches > 0)
+              badge = String(totalBatches);
             if (t.key === "movements" && movements.length > 0)
               badge = String(movementSummary.totalMovements);
             return (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                role="tab"
+                aria-selected={isActive}
+                className={`-mb-px flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 py-3 text-[12.5px] font-medium transition-colors ${
                   isActive
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
+                    ? "border-primary text-ink"
+                    : "border-transparent text-muted-foreground hover:text-ink-2"
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon
+                  className={`h-3.5 w-3.5 ${
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  }`}
+                />
                 {t.label}
                 {badge && (
-                  <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  <span
+                    className={`rounded-[3px] px-1.5 font-mono text-[9.5px] tracking-[0.02em] ${
+                      isActive
+                        ? "border border-line bg-card text-ink-3"
+                        : "bg-canvas text-muted-foreground"
+                    }`}
+                  >
                     {badge}
                   </span>
                 )}
@@ -318,45 +356,6 @@ export function StockDetailView({
       )}
       {tab === "audit" && <AuditTab entries={auditEntries} />}
     </div>
-  );
-}
-
-// ── Summary card ────────────────────────────────────────────────────
-
-function SummaryCard({
-  icon,
-  label,
-  value,
-  valueClass,
-  subtitle,
-  subtitleClass,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: React.ReactNode;
-  valueClass?: string;
-  subtitle?: string;
-  subtitleClass?: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 text-muted-foreground mb-1">
-          {icon}
-          <span className="text-xs font-medium">{label}</span>
-        </div>
-        <p
-          className={`text-2xl font-bold ${valueClass || "text-gray-900 dark:text-gray-100"}`}
-        >
-          {value}
-        </p>
-        {subtitle && (
-          <p className={`text-xs mt-0.5 ${subtitleClass || "text-muted-foreground"}`}>
-            {subtitle}
-          </p>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 
@@ -596,59 +595,33 @@ function BatchesTab({
   return (
     <div className="space-y-6">
       {/* Batch summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <Layers className="h-4 w-4" />
-              <span className="text-xs font-medium">Active Batches</span>
-            </div>
-            <p className="text-xl font-bold">{allBatches.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <Boxes className="h-4 w-4" />
-              <span className="text-xs font-medium">Batch Qty</span>
-            </div>
-            <p className="text-xl font-bold">{totalBatchQty.toLocaleString()}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <DollarSign className="h-4 w-4" />
-              <span className="text-xs font-medium">Batch Value</span>
-            </div>
-            <p className="text-xl font-bold">
-              <Money amount={totalBatchValue} currency={currency} />
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <Clock className="h-4 w-4 text-amber-500" />
-              <span className="text-xs font-medium">Expiring Soon</span>
-            </div>
-            <p
-              className={`text-xl font-bold ${
-                expiringCount > 0
-                  ? "text-amber-600 dark:text-amber-400"
-                  : ""
-              }`}
-            >
-              {expiringCount}
-            </p>
-            {expiringCount > 0 && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                within 7 days
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <KpiStrip cols={4}>
+        <KpiCard
+          icon={<Layers className="h-3 w-3" />}
+          label="Active batches"
+          value={allBatches.length.toLocaleString()}
+        />
+        <KpiCard
+          icon={<Boxes className="h-3 w-3" />}
+          label="Batch qty"
+          value={totalBatchQty.toLocaleString()}
+        />
+        <KpiCard
+          icon={<DollarSign className="h-3 w-3" />}
+          label="Batch value"
+          value={totalBatchValue.toLocaleString(undefined, {
+            maximumFractionDigits: 0,
+          })}
+          unit={currency}
+        />
+        <KpiCard
+          icon={<Clock className="h-3 w-3" />}
+          label="Expiring soon"
+          value={expiringCount.toLocaleString()}
+          delta={expiringCount > 0 ? "Within 7 days" : undefined}
+          deltaTone={expiringCount > 0 ? "neg" : "neutral"}
+        />
+      </KpiStrip>
 
       {/* Batch table */}
       <Card>
@@ -846,72 +819,52 @@ function MovementsTab({
   return (
     <div className="space-y-6">
       {/* Movement summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <ArrowDownRight className="h-4 w-4 text-green-500" />
-              <span className="text-xs font-medium">Qty In (30d)</span>
-            </div>
-            <p className="text-xl font-bold text-green-600 dark:text-green-400">
-              +{summary.totalQuantityIn.toLocaleString()}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <ArrowUpRight className="h-4 w-4 text-red-500" />
-              <span className="text-xs font-medium">Qty Out (30d)</span>
-            </div>
-            <p className="text-xl font-bold text-red-600 dark:text-red-400">
-              -{summary.totalQuantityOut.toLocaleString()}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <Activity className="h-4 w-4" />
-              <span className="text-xs font-medium">Net Change</span>
-            </div>
-            <p
-              className={`text-xl font-bold ${
-                summary.netQuantityChange > 0
-                  ? "text-green-600 dark:text-green-400"
-                  : summary.netQuantityChange < 0
-                    ? "text-red-600 dark:text-red-400"
-                    : ""
-              }`}
-            >
-              {summary.netQuantityChange > 0 ? "+" : ""}
-              {summary.netQuantityChange.toLocaleString()}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <DollarSign className="h-4 w-4 text-green-500" />
-              <span className="text-xs font-medium">Cost In</span>
-            </div>
-            <p className="text-xl font-bold text-green-600 dark:text-green-400">
-              <Money amount={summary.totalCostIn} currency={currency} />
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <DollarSign className="h-4 w-4 text-red-500" />
-              <span className="text-xs font-medium">Cost Out</span>
-            </div>
-            <p className="text-xl font-bold text-red-600 dark:text-red-400">
-              <Money amount={summary.totalCostOut} currency={currency} />
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <KpiStrip cols={5}>
+        <KpiCard
+          icon={<ArrowDownRight className="h-3 w-3" />}
+          label="Qty in (30d)"
+          value={`+${summary.totalQuantityIn.toLocaleString()}`}
+          delta="incoming"
+          deltaTone="pos"
+        />
+        <KpiCard
+          icon={<ArrowUpRight className="h-3 w-3" />}
+          label="Qty out (30d)"
+          value={`−${summary.totalQuantityOut.toLocaleString()}`}
+          delta="outgoing"
+          deltaTone="neg"
+        />
+        <KpiCard
+          icon={<Activity className="h-3 w-3" />}
+          label="Net change"
+          value={`${summary.netQuantityChange > 0 ? "+" : ""}${summary.netQuantityChange.toLocaleString()}`}
+          deltaTone={
+            summary.netQuantityChange > 0
+              ? "pos"
+              : summary.netQuantityChange < 0
+                ? "neg"
+                : "neutral"
+          }
+        />
+        <KpiCard
+          icon={<DollarSign className="h-3 w-3" />}
+          label="Cost in"
+          value={summary.totalCostIn.toLocaleString(undefined, {
+            maximumFractionDigits: 0,
+          })}
+          unit={currency}
+          deltaTone="pos"
+        />
+        <KpiCard
+          icon={<DollarSign className="h-3 w-3" />}
+          label="Cost out"
+          value={summary.totalCostOut.toLocaleString(undefined, {
+            maximumFractionDigits: 0,
+          })}
+          unit={currency}
+          deltaTone="neg"
+        />
+      </KpiStrip>
 
       {/* Movement type breakdown */}
       {summary.byType.length > 0 && (

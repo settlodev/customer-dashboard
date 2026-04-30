@@ -1,55 +1,44 @@
 import { notFound } from "next/navigation";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import { Product } from "@/types/product/type";
 import ProductForm from "@/components/forms/product_form";
 import { getProduct } from "@/lib/actions/product-actions";
 
 type Params = Promise<{ id: string }>;
 
+// Edit page for an existing product. New-product creation lives at /products/new.
 export default async function ProductEditPage({ params }: { params: Params }) {
   const resolvedParams = await params;
-  const isNewItem = resolvedParams.id === "new";
-  let product: Product | null = null;
 
-  if (!isNewItem) {
-    try {
-      product = await getProduct(resolvedParams.id);
-      if (!product) notFound();
-    } catch {
-      throw new Error("Failed to load product details");
-    }
+  let product: Product | null = null;
+  try {
+    product = await getProduct(resolvedParams.id);
+    if (!product) notFound();
+  } catch {
+    throw new Error("Failed to load product details");
   }
 
-  const breadCrumbItems = isNewItem
-    ? [
-        { title: "Products", link: "/products" },
-        { title: "New", link: "" },
-      ]
-    : [
-        { title: "Products", link: "/products" },
-        { title: product!.name, link: `/products/${product!.id}` },
-        { title: "Edit", link: "" },
-      ];
-
   return (
-    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 mt-12">
-      <div className="space-y-6 max-w-[1400px] mx-auto">
-        <div>
-          <div className="hidden sm:block mb-2">
-            <BreadcrumbsNav items={breadCrumbItems} />
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            {isNewItem ? "Add Product" : "Edit Product"}
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {isNewItem
-              ? "Add a new product to your business"
-              : "Update product details and variants"}
-          </p>
-        </div>
-
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Products", href: "/products" },
+          { title: product.name, href: `/products/${product.id}` },
+          { title: "Edit" },
+        ]}
+      />
+      <PageHeader
+        title={`Edit ${product.name}`}
+        subtitle="Update product details, variants, modifiers, and addons."
+      />
+      <PageBody>
         <ProductForm item={product} />
-      </div>
-    </div>
+      </PageBody>
+    </PageShell>
   );
 }

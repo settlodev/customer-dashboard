@@ -1,16 +1,28 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  Plus,
+  RotateCcw,
+  Truck,
+  DollarSign,
+  AlertTriangle,
+} from "lucide-react";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
 import { DataTable } from "@/components/tables/data-table";
-import { columns, SupplierReturnRow } from "@/components/tables/supplier-return/columns";
+import {
+  columns,
+  SupplierReturnRow,
+} from "@/components/tables/supplier-return/columns";
 import { getSupplierReturns } from "@/lib/actions/supplier-return-actions";
 import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
 import type { SupplierReturnStatus } from "@/types/supplier-return/type";
-
-const breadcrumbItems = [{ title: "Supplier Returns", link: "/supplier-returns" }];
 
 const STATUS_VALUES: SupplierReturnStatus[] = [
   "DRAFT",
@@ -48,39 +60,78 @@ export default async function Page({ searchParams }: Params) {
   const pageCount = responseData.totalPages ?? 0;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <BreadcrumbsNav items={breadcrumbItems} />
-        <Button asChild>
-          <Link href="/supplier-returns/new">
-            <Plus className="mr-1.5 h-4 w-4" />
-            New Return
-          </Link>
-        </Button>
-      </div>
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Supplier Returns" }]} />
+      <PageHeader
+        title="Supplier Returns"
+        subtitle="Send goods back to suppliers — track dispatch, completion, and credit notes."
+        actions={
+          <Button asChild size="sm">
+            <Link href="/supplier-returns/new">
+              <Plus className="mr-1.5 h-4 w-4" />
+              New Return
+            </Link>
+          </Button>
+        }
+      />
+      <PageBody>
+        {/* Placeholder KPIs — wire to real aggregates later. */}
+        <KpiStrip cols={4}>
+          <KpiCard
+            icon={<RotateCcw className="h-3 w-3" />}
+            label="Returns (30d)"
+            value="14"
+            delta="+3 wk"
+            deltaTone="pos"
+            spark={[2, 4, 5, 6, 8, 10, 12, 13]}
+          />
+          <KpiCard
+            icon={<Truck className="h-3 w-3" />}
+            label="In transit"
+            value="3"
+            unit="active"
+            delta="1 due today"
+            deltaTone="neutral"
+          />
+          <KpiCard
+            icon={<DollarSign className="h-3 w-3" />}
+            label="Credit due"
+            value="4,820,000"
+            unit="TZS"
+            delta="awaiting credit notes"
+            deltaTone="neutral"
+          />
+          <KpiCard
+            icon={<AlertTriangle className="h-3 w-3" />}
+            label="Disputes"
+            value="1"
+            delta="needs review"
+            deltaTone="neg"
+          />
+        </KpiStrip>
 
-      {total > 0 || status ? (
-        <Card>
-          <CardContent className="px-2 sm:px-6 pt-6">
-            <DataTable
-              columns={columns}
-              data={data}
-              searchKey="returnNumber"
-              pageNo={page}
-              total={total}
-              pageCount={pageCount}
-              disableArchive
-              filterKey="status"
-              filterOptions={STATUS_VALUES.map((s) => ({
-                value: s,
-                label: s.replace(/_/g, " "),
-              }))}
-            />
-          </CardContent>
-        </Card>
-      ) : (
-        <NoItems newItemUrl="/supplier-returns/new" itemName="supplier returns" />
-      )}
-    </div>
+        {total > 0 || status ? (
+          <DataTable
+            columns={columns}
+            data={data}
+            searchKey="returnNumber"
+            pageNo={page}
+            total={total}
+            pageCount={pageCount}
+            disableArchive
+            filterKey="status"
+            filterOptions={STATUS_VALUES.map((s) => ({
+              value: s,
+              label: s.replace(/_/g, " "),
+            }))}
+          />
+        ) : (
+          <NoItems
+            newItemUrl="/supplier-returns/new"
+            itemName="supplier returns"
+          />
+        )}
+      </PageBody>
+    </PageShell>
   );
 }

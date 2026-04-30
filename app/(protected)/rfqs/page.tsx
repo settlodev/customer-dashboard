@@ -1,16 +1,33 @@
 import Link from "next/link";
-import { Plus, Lock } from "lucide-react";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  Plus,
+  Lock,
+  FileText,
+  Inbox,
+  Clock,
+  ShieldCheck,
+} from "lucide-react";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
+import {
+  Alert,
+  AlertIcon,
+  AlertBody,
+  AlertTitle,
+  AlertDescription,
+} from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/rfq/columns";
 import { getRfqs } from "@/lib/actions/rfq-actions";
 import { getLocationConfig } from "@/lib/actions/location-config-actions";
 import type { RfqStatus } from "@/types/rfq/type";
-
-const breadcrumbItems = [{ title: "Requests for Quotation", link: "/rfqs" }];
 
 const STATUS_VALUES: RfqStatus[] = [
   "DRAFT",
@@ -48,52 +65,93 @@ export default async function Page({ searchParams }: Params) {
   const rfqEnabled = config?.rfqEnabled ?? false;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <BreadcrumbsNav items={breadcrumbItems} />
-        {rfqEnabled && (
-          <Button asChild>
-            <Link href="/rfqs/new">
-              <Plus className="mr-1.5 h-4 w-4" />
-              New RFQ
-            </Link>
-          </Button>
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Requests for Quotation" }]} />
+      <PageHeader
+        title="Requests for Quotation"
+        subtitle="Raise quotes from multiple suppliers, evaluate, and award."
+        actions={
+          rfqEnabled ? (
+            <Button asChild size="sm">
+              <Link href="/rfqs/new">
+                <Plus className="mr-1.5 h-4 w-4" />
+                New RFQ
+              </Link>
+            </Button>
+          ) : undefined
+        }
+      />
+      <PageBody>
+        {!rfqEnabled && (
+          <Alert tone="warning">
+            <AlertIcon>
+              <Lock className="h-3.5 w-3.5" />
+            </AlertIcon>
+            <AlertBody>
+              <AlertTitle>RFQs disabled</AlertTitle>
+              <AlertDescription>
+                Ask an admin to toggle{" "}
+                <code className="font-mono">rfqEnabled</code> in location
+                settings to raise quotes from multiple suppliers.
+              </AlertDescription>
+            </AlertBody>
+          </Alert>
         )}
-      </div>
 
-      {!rfqEnabled && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          <Lock className="h-4 w-4 shrink-0 mt-0.5" />
-          <span>
-            Requests for Quotation aren&apos;t enabled for this location. Ask
-            an admin to toggle <code>rfqEnabled</code> in location settings to
-            raise quotes from multiple suppliers.
-          </span>
-        </div>
-      )}
+        {/* Placeholder KPIs — wire to real aggregates later. */}
+        <KpiStrip cols={4}>
+          <KpiCard
+            icon={<FileText className="h-3 w-3" />}
+            label="Open RFQs"
+            value="6"
+            unit="active"
+            delta="2 awaiting quotes"
+            deltaTone="neutral"
+          />
+          <KpiCard
+            icon={<Inbox className="h-3 w-3" />}
+            label="Quotes received (30d)"
+            value="38"
+            delta="+12 wk"
+            deltaTone="pos"
+            spark={[6, 10, 14, 18, 22, 28, 34, 38]}
+          />
+          <KpiCard
+            icon={<Clock className="h-3 w-3" />}
+            label="Avg quote turnaround"
+            value="2.1"
+            unit="days"
+            delta="−0.5 d"
+            deltaTone="pos"
+          />
+          <KpiCard
+            icon={<ShieldCheck className="h-3 w-3" />}
+            label="Awarded (30d)"
+            value="11"
+            delta="92% on time"
+            deltaTone="pos"
+          />
+        </KpiStrip>
 
-      {total > 0 || status ? (
-        <Card>
-          <CardContent className="px-2 sm:px-6 pt-6">
-            <DataTable
-              columns={columns}
-              data={data}
-              searchKey="rfqNumber"
-              pageNo={page}
-              total={total}
-              pageCount={pageCount}
-              disableArchive
-              filterKey="status"
-              filterOptions={STATUS_VALUES.map((s) => ({
-                value: s,
-                label: s.replace(/_/g, " "),
-              }))}
-            />
-          </CardContent>
-        </Card>
-      ) : rfqEnabled ? (
-        <NoItems newItemUrl="/rfqs/new" itemName="RFQs" />
-      ) : null}
-    </div>
+        {total > 0 || status ? (
+          <DataTable
+            columns={columns}
+            data={data}
+            searchKey="rfqNumber"
+            pageNo={page}
+            total={total}
+            pageCount={pageCount}
+            disableArchive
+            filterKey="status"
+            filterOptions={STATUS_VALUES.map((s) => ({
+              value: s,
+              label: s.replace(/_/g, " "),
+            }))}
+          />
+        ) : rfqEnabled ? (
+          <NoItems newItemUrl="/rfqs/new" itemName="RFQs" />
+        ) : null}
+      </PageBody>
+    </PageShell>
   );
 }

@@ -3,8 +3,20 @@
 import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { Calendar as CalendarIcon, Plus, Trash2, Link2, Unlink } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  Plus,
+  Trash2,
+  Truck,
+  PackagePlus,
+  UserCheck,
+  Link2,
+  Unlink,
+  AlertTriangle,
+} from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,16 +31,32 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogIcon,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { NumericFormat } from "react-number-format";
 import { useToast } from "@/hooks/use-toast";
-import { FormError } from "../widgets/form-error";
-import CancelButton from "../widgets/cancel-button";
-import { SubmitButton } from "../widgets/submit-button";
+import {
+  Alert,
+  AlertIcon,
+  AlertBody,
+  AlertTitle,
+  AlertDescription,
+} from "@/components/ui/alert";
 import SupplierSelector from "../widgets/supplier-selector";
+
+import styles from "./styles/form-shell.module.css";
 import StaffSelectorWidget from "../widgets/staff_selector_widget";
 import StockVariantSelector from "../widgets/stock-variant-selector";
 import type { VariantMeta } from "../widgets/stock-variant-selector";
@@ -57,6 +85,7 @@ interface GrnFormProps {
 }
 
 export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
@@ -241,23 +270,40 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
 
   return (
     <Form {...form}>
-      <FormError message={response?.message} />
-      <form onSubmit={form.handleSubmit(submitData)} className="space-y-6">
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-medium">GRN details</h3>
-                <p className="text-xs text-muted-foreground">
-                  Tie the receipt to a supplier, and optionally to an open LPO so
-                  we can update that order and track performance.
-                </p>
-              </div>
+      {response?.responseType === "error" && response?.message ? (
+        <Alert tone="danger" className="mb-3">
+          <AlertIcon>
+            <AlertTriangle className="h-3.5 w-3.5" />
+          </AlertIcon>
+          <AlertBody>
+            <AlertTitle>We couldn&apos;t save this goods received note</AlertTitle>
+            <AlertDescription>{response.message}</AlertDescription>
+          </AlertBody>
+        </Alert>
+      ) : null}
+      <form
+        onSubmit={form.handleSubmit(submitData)}
+        className={styles.formRoot}
+      >
+        <div className={styles.formStack}>
+        <section className={styles.formCard}>
+          <header className={styles.formCardHead}>
+            <div className={styles.icoBox}>
+              <Truck className="h-3.5 w-3.5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3>GRN details</h3>
+              <p className={styles.formCardHeadDesc}>
+                Tie the receipt to a supplier, and optionally to an open LPO.
+              </p>
+            </div>
+            <div className={styles.formCardActions}>
+              <span className={styles.stepBadge}>STEP 01</span>
               {linkedLpo ? (
-                <div className="flex items-center gap-2">
+                <>
                   <Badge variant="secondary" className="gap-1">
                     <Link2 className="h-3 w-3" />
-                    Linked LPO: {linkedLpo.lpoNumber}
+                    {linkedLpo.lpoNumber}
                   </Badge>
                   <Button
                     type="button"
@@ -266,14 +312,15 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                     onClick={unlinkLpo}
                     disabled={isPending}
                   >
-                    <Unlink className="h-4 w-4 mr-1" /> Unlink
+                    <Unlink className="h-3.5 w-3.5 mr-1" /> Unlink
                   </Button>
-                </div>
+                </>
               ) : (
                 <LpoPickerDialog onPick={applyLpo} />
               )}
             </div>
-
+          </header>
+          <div className={styles.formBody}>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
@@ -387,18 +434,28 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                 </FormItem>
               )}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        {/* ── Delivery person ────────────────────────────────────── */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-4">
-            <div>
-              <h3 className="text-lg font-medium">Delivery person</h3>
-              <p className="text-xs text-muted-foreground">
-                Optional — useful for contact-tracing short deliveries or returns.
+        <section className={styles.formCard}>
+          <header className={styles.formCardHead}>
+            <div className={styles.icoBox}>
+              <UserCheck className="h-3.5 w-3.5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3>
+                Delivery person
+                <span className={styles.optionalTag}>OPTIONAL</span>
+              </h3>
+              <p className={styles.formCardHeadDesc}>
+                Useful for contact-tracing short deliveries or returns.
               </p>
             </div>
+            <div className={styles.formCardActions}>
+              <span className={styles.stepBadge}>STEP 02</span>
+            </div>
+          </header>
+          <div className={styles.formBody}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
@@ -454,20 +511,23 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                 )}
               />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        {/* ── Items ──────────────────────────────────────────────── */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium">Items</h3>
-                <p className="text-xs text-muted-foreground">
-                  One row per variant. Serial-tracked items require serials
-                  matching the received quantity.
-                </p>
-              </div>
+        <section className={styles.formCard}>
+          <header className={styles.formCardHead}>
+            <div className={styles.icoBox}>
+              <PackagePlus className="h-3.5 w-3.5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3>Items</h3>
+              <p className={styles.formCardHeadDesc}>
+                One row per variant. Serial-tracked items require serials
+                matching the received quantity.
+              </p>
+            </div>
+            <div className={styles.formCardActions}>
+              <span className={styles.stepBadge}>STEP 03</span>
               <Button
                 type="button"
                 variant="outline"
@@ -477,9 +537,11 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                 }
                 disabled={isPending}
               >
-                <Plus className="w-4 h-4 mr-1" /> Add item
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add item
               </Button>
             </div>
+          </header>
+          <div className={styles.formBody}>
 
             {fields.map((field, index) => {
               const meta = itemMeta[field.id];
@@ -717,17 +779,45 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                 </div>
               );
             })}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
+        </div>
 
-        <div className="flex items-center gap-4 pt-2 pb-4">
-          <CancelButton disabled={itemsLoading} />
-          <Separator orientation="vertical" className="h-5" />
-          <SubmitButton
-            isPending={isPending}
-            isDisabled={itemsLoading}
-            label={itemsLoading ? "Loading items…" : "Create GRN"}
-          />
+        <div className={styles.formFoot}>
+          <div className={styles.formFootSpacer} />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isPending || itemsLoading}
+                title="Discard changes and go back"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Discard
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent tone="danger">
+              <AlertDialogIcon>
+                <Trash2 className="h-5 w-5" />
+              </AlertDialogIcon>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard this GRN?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Unsaved changes will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction onClick={() => router.back()}>
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button type="submit" disabled={isPending || itemsLoading}>
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+            {itemsLoading ? "Loading items…" : "Create GRN"}
+          </Button>
         </div>
       </form>
     </Form>

@@ -13,6 +13,10 @@ export interface Category {
   sortOrder: number;
   parentId: string | null;
   parentName: string | null;
+  // Departments are a paid-tier feature attached at the category level. The
+  // server returns the UUID always and the resolved name when known.
+  departmentId: string | null;
+  departmentName: string | null;
   children: Category[];
   createdAt: string;
   updatedAt: string;

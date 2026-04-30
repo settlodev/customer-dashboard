@@ -1,0 +1,849 @@
+.formRoot {
+  --pf-primary: hsl(var(--primary));
+  --pf-primary-deep: hsl(var(--primary-dark));
+  --pf-primary-tint: hsl(var(--primary) / 0.12);
+  --pf-primary-tint-2: hsl(var(--primary) / 0.06);
+  --pf-bg: hsl(var(--surface));
+  --pf-canvas: hsl(var(--canvas));
+  --pf-card: hsl(var(--card));
+  --pf-ink: hsl(var(--ink));
+  --pf-ink-2: hsl(var(--ink-2));
+  --pf-ink-3: hsl(var(--ink-3));
+  --pf-muted: hsl(var(--muted-foreground));
+  --pf-muted-2: hsl(var(--muted-2));
+  --pf-line: hsl(var(--line));
+  --pf-line-2: hsl(var(--line-2));
+  --pf-pos: hsl(var(--pos));
+  --pf-pos-tint: hsl(var(--pos-tint));
+  --pf-neg: hsl(var(--neg));
+  --pf-warn: hsl(var(--warn));
+  --pf-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  color: var(--pf-ink);
+}
+
+.mono {
+  font-family: var(--pf-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* ── Layout grid ─────────────────────────────────────────────────── */
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+  align-items: start;
+}
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+@media (max-width: 1024px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Card chrome ─────────────────────────────────────────────────── */
+.formCard {
+  background: var(--pf-card);
+  border: 1px solid var(--pf-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.formCardOptional {
+  border-style: dashed;
+  border-color: var(--pf-line-2);
+}
+.formCardHead {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--pf-line);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.icoBox {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--pf-canvas);
+  display: grid;
+  place-items: center;
+  color: var(--pf-ink-3);
+  flex-shrink: 0;
+}
+.formCardHead h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.formCardHeadDesc {
+  font-size: 12px;
+  color: var(--pf-muted);
+  margin-top: 2px;
+}
+.formCardActions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.stepBadge {
+  font-family: var(--pf-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  background: var(--pf-canvas);
+  color: var(--pf-ink-3);
+  border: 1px solid var(--pf-line);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-weight: 500;
+}
+.optionalTag {
+  display: inline-block;
+  margin-left: 6px;
+  font-family: var(--pf-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  color: var(--pf-muted);
+  background: var(--pf-line);
+  padding: 2px 6px;
+  border-radius: 3px;
+  vertical-align: 2px;
+}
+.formBody {
+  padding: 18px 20px 22px;
+}
+.formBodyEmpty {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--pf-muted);
+}
+.formBodyEmpty .l {
+  font-size: 13px;
+}
+.formBodyEmpty .h {
+  font-size: 11.5px;
+  margin-top: 4px;
+}
+
+/* ── Field grid ──────────────────────────────────────────────────── */
+.fieldRow {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 2), 1fr);
+  gap: 14px 16px;
+}
+.fieldRow + .fieldRow {
+  margin-top: 14px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.fieldLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--pf-ink-2);
+}
+.fieldLabel .req {
+  color: var(--pf-primary);
+}
+.fieldLabel .opt {
+  font-family: var(--pf-mono);
+  font-size: 10px;
+  color: var(--pf-muted);
+  margin-left: auto;
+  letter-spacing: 0.04em;
+}
+.fieldHint {
+  font-size: 11.5px;
+  color: var(--pf-muted);
+  line-height: 1.45;
+  margin-top: 2px;
+}
+
+/* ── Input chrome (mono-prefix wrapper for currency/price) ───────── */
+.inputWithPrefix {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--pf-line-2);
+  border-radius: 6px;
+  background: var(--pf-card);
+  overflow: hidden;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.inputWithPrefix:focus-within {
+  border-color: var(--pf-primary);
+  box-shadow: 0 0 0 3px var(--pf-primary-tint);
+}
+.inputPrefix {
+  padding: 8px 10px;
+  background: var(--pf-bg);
+  border-right: 1px solid var(--pf-line);
+  font-family: var(--pf-mono);
+  font-size: 11.5px;
+  color: var(--pf-muted);
+  display: grid;
+  place-items: center;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+/* shadcn Input rendered inside the wrapper — strip its native border/ring */
+.inputWithPrefix :global(input) {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  padding: 8px 11px !important;
+  font-variant-numeric: tabular-nums;
+  height: auto !important;
+  min-width: 0;
+  flex: 1;
+}
+.marginReadout {
+  font-family: var(--pf-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  color: var(--pf-pos);
+  margin-top: 2px;
+}
+
+/* ── Tag-input ───────────────────────────────────────────────────── */
+.tagInput {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border: 1px solid var(--pf-line-2);
+  border-radius: 6px;
+  padding: 5px 6px;
+  background: var(--pf-card);
+  min-height: 36px;
+  align-items: center;
+}
+.tagInput:focus-within {
+  border-color: var(--pf-primary);
+  box-shadow: 0 0 0 3px var(--pf-primary-tint);
+}
+.tagChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--pf-canvas);
+  border: 1px solid var(--pf-line);
+  border-radius: 4px;
+  padding: 2px 4px 2px 8px;
+  font-size: 11.5px;
+  color: var(--pf-ink-2);
+  font-family: var(--pf-mono);
+}
+.tagChipX {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: grid;
+  place-items: center;
+  color: var(--pf-muted);
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+.tagChipX:hover {
+  background: var(--pf-line);
+  color: var(--pf-ink);
+}
+.tagInput input {
+  border: 0;
+  outline: 0;
+  flex: 1;
+  font-size: 12.5px;
+  padding: 4px 6px;
+  background: transparent;
+  font-family: inherit;
+  min-width: 100px;
+  color: var(--pf-ink);
+}
+
+/* ── Tabs (segmented bottom-border) ──────────────────────────────── */
+.formTabs {
+  display: flex;
+  border-bottom: 1px solid var(--pf-line);
+  padding: 0 20px;
+  background: var(--pf-bg);
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.formTab {
+  padding: 12px 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--pf-muted);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.1s, border-color 0.1s;
+}
+.formTab:hover {
+  color: var(--pf-ink-2);
+}
+.formTabOn {
+  color: var(--pf-ink);
+  border-bottom-color: var(--pf-primary);
+}
+.formTab :global(svg) {
+  color: var(--pf-muted);
+}
+.formTabOn :global(svg) {
+  color: var(--pf-primary);
+}
+.formTabCount {
+  font-family: var(--pf-mono);
+  font-size: 9.5px;
+  background: var(--pf-canvas);
+  color: var(--pf-muted);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.formTabOn .formTabCount {
+  background: var(--pf-card);
+  border: 1px solid var(--pf-line);
+  color: var(--pf-ink-3);
+}
+
+/* ── Toggle row + stock-deduct sub-panel ─────────────────────────── */
+.toggleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--pf-bg);
+  border: 1px solid var(--pf-line);
+  border-radius: 8px;
+}
+.toggleRow .l {
+  font-weight: 500;
+  font-size: 13px;
+}
+.toggleRow .h {
+  font-size: 12px;
+  color: var(--pf-muted);
+  margin-top: 2px;
+}
+
+.deductPanel {
+  margin-top: 14px;
+  padding: 16px 16px 18px;
+  background: var(--pf-bg);
+  border: 1px solid var(--pf-line);
+  border-radius: 8px;
+}
+.deductPanelLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--pf-ink-2);
+  margin-bottom: 10px;
+}
+.radioGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.radioCard {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--pf-line-2);
+  border-radius: 8px;
+  background: var(--pf-card);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.radioCard:hover {
+  border-color: var(--pf-ink-3);
+}
+.radioCardOn {
+  border-color: var(--pf-primary);
+  background: var(--pf-primary-tint-2);
+}
+.radioCard .dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--pf-line-2);
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: grid;
+  place-items: center;
+  background: var(--pf-card);
+}
+.radioCardOn .dot {
+  border-color: var(--pf-primary);
+}
+.radioCardOn .dot::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pf-primary);
+}
+.radioCard .l {
+  font-size: 13px;
+  font-weight: 500;
+}
+.radioCard .h {
+  font-size: 11.5px;
+  color: var(--pf-muted);
+  margin-top: 2px;
+  line-height: 1.45;
+}
+
+.recipeNote {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px dashed var(--pf-line-2);
+  border-radius: 6px;
+  background: var(--pf-card);
+  text-align: center;
+  color: var(--pf-muted);
+  font-size: 12.5px;
+}
+.recipeNote a {
+  color: var(--pf-primary);
+  font-weight: 500;
+}
+
+/* ── Live preview card ───────────────────────────────────────────── */
+.previewCard {
+  background: var(--pf-card);
+  border: 1px solid var(--pf-line);
+  border-radius: 12px;
+  position: sticky;
+  top: 16px;
+}
+.previewHead {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--pf-line);
+  font-family: var(--pf-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pf-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pf-pos);
+  box-shadow: 0 0 0 3px rgba(14, 139, 95, 0.18);
+  flex-shrink: 0;
+}
+.previewBody {
+  padding: 18px;
+}
+.previewThumb {
+  height: 140px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--pf-primary), #ffa876);
+  display: grid;
+  place-items: center;
+  color: white;
+  font-family: inherit;
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
+}
+.previewThumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent 60%);
+  pointer-events: none;
+}
+.previewThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  inset: 0;
+}
+.previewName {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.previewMeta {
+  font-family: var(--pf-mono);
+  font-size: 10.5px;
+  color: var(--pf-muted);
+  letter-spacing: 0.02em;
+  margin-top: 3px;
+}
+.previewPrice {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--pf-line-2);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.previewPriceNum {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+.previewPriceCurr {
+  font-family: var(--pf-mono);
+  font-size: 11px;
+  color: var(--pf-muted);
+}
+
+.checklist {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pf-line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.checklistItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--pf-ink-3);
+}
+.checklistMark {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--pf-line-2);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 9px;
+  color: white;
+}
+.checklistItemDone .checklistMark {
+  background: var(--pf-pos);
+  border-color: var(--pf-pos);
+}
+.checklistItemDone {
+  color: var(--pf-ink-2);
+}
+.checklistNum {
+  margin-left: auto;
+  font-family: var(--pf-mono);
+  font-size: 10.5px;
+  color: var(--pf-muted);
+}
+
+.readiness {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pf-line);
+}
+.readinessHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.readinessLabel {
+  font-family: var(--pf-mono);
+  font-size: 10px;
+  color: var(--pf-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.readinessPct {
+  font-family: var(--pf-mono);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--pf-ink-2);
+}
+.readinessPctDone {
+  color: var(--pf-pos);
+}
+.readinessBar {
+  height: 4px;
+  background: var(--pf-line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.readinessBarFill {
+  height: 100%;
+  background: var(--pf-primary);
+  transition: width 0.2s;
+}
+.readinessBarFillDone {
+  background: var(--pf-pos);
+}
+
+/* ── Media zone (hero + 4-thumb rail) ────────────────────────────── */
+.mediaZone {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.mediaHero {
+  position: relative;
+  border: 1.5px dashed var(--pf-line-2);
+  border-radius: 10px;
+  background: var(--pf-card);
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.mediaHero:hover {
+  border-color: var(--pf-primary);
+  background: var(--pf-primary-tint-2);
+}
+.mediaHeroDrag {
+  border-color: var(--pf-primary);
+  border-style: solid;
+  background: var(--pf-primary-tint);
+}
+.mediaHero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  inset: 0;
+}
+.mediaHeroTag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-family: var(--pf-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  padding: 3px 7px;
+  border-radius: 3px;
+  backdrop-filter: blur(8px);
+}
+.mediaHeroX {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(8px);
+  border: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.mediaHeroX:hover {
+  background: var(--pf-neg);
+}
+.mediaHeroEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  padding: 24px;
+}
+.mediaHeroIco {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--pf-canvas);
+  display: grid;
+  place-items: center;
+  color: var(--pf-muted);
+  margin-bottom: 4px;
+}
+.mediaHero:hover .mediaHeroIco {
+  color: var(--pf-primary);
+}
+.mediaHeroCta {
+  font-size: 13px;
+  color: var(--pf-ink-2);
+}
+.mediaHeroCta b {
+  color: var(--pf-primary);
+  font-weight: 500;
+}
+.mediaHeroSpec {
+  font-family: var(--pf-mono);
+  font-size: 10px;
+  color: var(--pf-muted);
+  letter-spacing: 0.06em;
+}
+
+.mediaRailGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.mediaSlot {
+  position: relative;
+  aspect-ratio: 1;
+  border: 1px dashed var(--pf-line-2);
+  border-radius: 8px;
+  background: var(--pf-card);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  overflow: hidden;
+  color: var(--pf-muted);
+  transition: border-color 0.12s, background 0.12s;
+}
+.mediaSlot:hover {
+  border-color: var(--pf-primary);
+  color: var(--pf-primary);
+}
+.mediaSlotHas {
+  border-style: solid;
+  border-color: var(--pf-line);
+  background: var(--pf-bg);
+}
+.mediaSlotPrimary {
+  border-color: var(--pf-primary);
+  border-width: 2px;
+  box-shadow: 0 0 0 2px var(--pf-primary-tint);
+}
+.mediaSlot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  inset: 0;
+}
+.mediaSlotX {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.12s;
+  border: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.mediaSlot:hover .mediaSlotX {
+  opacity: 1;
+}
+.mediaRailMeta {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--pf-line);
+}
+.mediaRailMeta .fname {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--pf-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mediaRailMeta .fsize {
+  font-family: var(--pf-mono);
+  font-size: 10px;
+  color: var(--pf-muted);
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+}
+
+/* ── Sticky form footer ──────────────────────────────────────────── */
+.formFoot {
+  position: sticky;
+  bottom: 0;
+  background: color-mix(in srgb, var(--pf-canvas) 85%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--pf-line);
+  margin: 24px -16px -16px;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 4;
+  flex-wrap: wrap;
+}
+.formFootSaveState {
+  font-family: var(--pf-mono);
+  font-size: 11px;
+  color: var(--pf-muted);
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.formFootSpacer {
+  flex: 1;
+  min-width: 12px;
+}
+
+.generateLink {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--pf-primary);
+  font-family: var(--pf-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.generateLink:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.descCount {
+  font-family: var(--pf-mono);
+  font-size: 11px;
+  color: var(--pf-muted);
+  letter-spacing: 0.02em;
+}

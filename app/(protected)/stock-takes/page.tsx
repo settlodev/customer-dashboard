@@ -1,8 +1,27 @@
 import Link from "next/link";
-import { Plus, Lock } from "lucide-react";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  Plus,
+  Lock,
+  ClipboardCheck,
+  Activity,
+  ShieldCheck,
+  AlertTriangle,
+} from "lucide-react";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
+import {
+  Alert,
+  AlertIcon,
+  AlertBody,
+  AlertTitle,
+  AlertDescription,
+} from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-take/columns";
@@ -10,8 +29,6 @@ import { getStockTakes } from "@/lib/actions/stock-take-actions";
 import { getLocationConfig } from "@/lib/actions/location-config-actions";
 import type { CycleCountType, StockTakeStatus } from "@/types/stock-take/type";
 import CycleCountTypeFilter from "@/components/widgets/stock-take/cycle-count-filter";
-
-const breadcrumbItems = [{ title: "Stock Takes", link: "/stock-takes" }];
 
 const STATUS_VALUES: StockTakeStatus[] = [
   "DRAFT",
@@ -50,54 +67,95 @@ export default async function Page({ searchParams }: Params) {
   const cycleCountingEnabled = config?.cycleCountingEnabled ?? false;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <BreadcrumbsNav items={breadcrumbItems} />
-        <div className="flex items-center gap-2">
-          {cycleCountingEnabled && <CycleCountTypeFilter />}
-          {cycleCountingEnabled && (
-            <Button asChild>
-              <Link href="/stock-takes/new">
-                <Plus className="mr-1.5 h-4 w-4" />
-                New Stock Take
-              </Link>
-            </Button>
-          )}
-        </div>
-      </div>
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Stock Takes" }]} />
+      <PageHeader
+        title="Stock Takes"
+        subtitle="Cycle counts and physical inventory reconciliation."
+        actions={
+          cycleCountingEnabled ? (
+            <>
+              <CycleCountTypeFilter />
+              <Button asChild size="sm">
+                <Link href="/stock-takes/new">
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  New Stock Take
+                </Link>
+              </Button>
+            </>
+          ) : undefined
+        }
+      />
 
-      {!cycleCountingEnabled && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          <Lock className="h-4 w-4 shrink-0 mt-0.5" />
-          <span>
-            Cycle counting is disabled for this location. Enable it in location
-            settings before running stock takes.
-          </span>
-        </div>
-      )}
+      <PageBody>
+        {!cycleCountingEnabled && (
+          <Alert tone="warning">
+            <AlertIcon>
+              <Lock className="h-3.5 w-3.5" />
+            </AlertIcon>
+            <AlertBody>
+              <AlertTitle>Cycle counting disabled</AlertTitle>
+              <AlertDescription>
+                Enable it in location settings before running stock takes.
+              </AlertDescription>
+            </AlertBody>
+          </Alert>
+        )}
 
-      {total > 0 || status || cycleCountType ? (
-        <Card>
-          <CardContent className="px-2 sm:px-6 pt-6">
-            <DataTable
-              columns={columns}
-              data={data}
-              searchKey="takeNumber"
-              pageNo={page}
-              total={total}
-              pageCount={pageCount}
-              disableArchive
-              filterKey="status"
-              filterOptions={STATUS_VALUES.map((s) => ({
-                value: s,
-                label: s.replace(/_/g, " "),
-              }))}
-            />
-          </CardContent>
-        </Card>
-      ) : cycleCountingEnabled ? (
-        <NoItems newItemUrl="/stock-takes/new" itemName="stock takes" />
-      ) : null}
-    </div>
+        {/* Placeholder KPIs — wire to real aggregates later. */}
+        <KpiStrip cols={4}>
+          <KpiCard
+            icon={<ClipboardCheck className="h-3 w-3" />}
+            label="Open takes"
+            value="3"
+            unit="active"
+            delta="2 in progress"
+            deltaTone="neutral"
+          />
+          <KpiCard
+            icon={<Activity className="h-3 w-3" />}
+            label="Counts (30d)"
+            value="14"
+            delta="+3 wk"
+            deltaTone="pos"
+            spark={[2, 3, 4, 5, 7, 8, 10, 12]}
+          />
+          <KpiCard
+            icon={<ShieldCheck className="h-3 w-3" />}
+            label="Avg accuracy"
+            value="98.6"
+            unit="%"
+            delta="+0.4 pts"
+            deltaTone="pos"
+          />
+          <KpiCard
+            icon={<AlertTriangle className="h-3 w-3" />}
+            label="Variances flagged"
+            value="7"
+            delta="needs review"
+            deltaTone="neg"
+          />
+        </KpiStrip>
+
+        {total > 0 || status || cycleCountType ? (
+          <DataTable
+            columns={columns}
+            data={data}
+            searchKey="takeNumber"
+            pageNo={page}
+            total={total}
+            pageCount={pageCount}
+            disableArchive
+            filterKey="status"
+            filterOptions={STATUS_VALUES.map((s) => ({
+              value: s,
+              label: s.replace(/_/g, " "),
+            }))}
+          />
+        ) : cycleCountingEnabled ? (
+          <NoItems newItemUrl="/stock-takes/new" itemName="stock takes" />
+        ) : null}
+      </PageBody>
+    </PageShell>
   );
 }
