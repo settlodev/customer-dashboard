@@ -50,7 +50,7 @@ export const columns: ColumnDef<Staff>[] = [
       return (
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+            <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
               {firstName} {lastName}
             </span>
             {owner && (
@@ -72,9 +72,9 @@ export const columns: ColumnDef<Staff>[] = [
     enableHiding: true,
     cell: ({ row }) => {
       const roles = row.original.roles;
-      if (!roles || roles.length === 0) return <span className="text-sm text-muted-foreground">—</span>;
+      if (!roles || roles.length === 0) return <span className="text-muted-foreground">—</span>;
       return (
-        <span className="text-sm text-gray-600 dark:text-gray-400">
+        <span className="text-gray-600 dark:text-gray-400">
           {roles.map((r) => r.name).join(", ")}
         </span>
       );
@@ -91,7 +91,7 @@ export const columns: ColumnDef<Staff>[] = [
         : departmentName || "—";
       return (
         <div className="hidden lg:block">
-          <span className="text-sm text-gray-600 dark:text-gray-400">{display}</span>
+          <span className="text-gray-600 dark:text-gray-400">{display}</span>
         </div>
       );
     },
@@ -102,7 +102,7 @@ export const columns: ColumnDef<Staff>[] = [
     header: () => <div className="hidden md:block">Phone</div>,
     cell: ({ row }) => (
       <div className="hidden md:block">
-        <span className="text-sm text-gray-600 dark:text-gray-400">
+        <span className="text-gray-600 dark:text-gray-400">
           {row.original.phoneNumber || "—"}
         </span>
       </div>

@@ -57,7 +57,7 @@ export const columns: ColumnDef<StockIntakeRecord>[] = [
     header: "Supplier",
     cell: ({ row }) => (
       <div className="min-w-[160px]">
-        <div className="text-sm text-gray-700">
+        <div className="text-gray-700">
           {row.original.supplierName || <span className="text-gray-400">—</span>}
         </div>
         {row.original.supplierReference && (
@@ -72,7 +72,7 @@ export const columns: ColumnDef<StockIntakeRecord>[] = [
     id: "totalQuantity",
     header: () => <div className="text-right">Total qty</div>,
     cell: ({ row }) => (
-      <div className="text-right text-sm text-gray-600">
+      <div className="text-right text-gray-600">
         {Number(row.original.totalQuantity ?? 0).toLocaleString()}
       </div>
     ),
@@ -81,7 +81,7 @@ export const columns: ColumnDef<StockIntakeRecord>[] = [
     id: "totalValue",
     header: () => <div className="text-right">Value</div>,
     cell: ({ row }) => (
-      <div className="text-right text-sm font-medium text-gray-900">
+      <div className="text-right font-medium text-gray-900">
         <Money
           amount={Number(row.original.totalValue ?? 0)}
           currency={row.original.currency || DEFAULT_CURRENCY}
@@ -93,7 +93,7 @@ export const columns: ColumnDef<StockIntakeRecord>[] = [
     accessorKey: "confirmedByName",
     header: "Confirmed by",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600">
+      <span className="text-gray-600">
         {row.original.confirmedByName || "—"}
       </span>
     ),
@@ -113,7 +113,7 @@ export const columns: ColumnDef<StockIntakeRecord>[] = [
     accessorKey: "receivedDate",
     header: "Received",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 whitespace-nowrap">
+      <span className="text-gray-600 whitespace-nowrap">
         {formatDate(row.original.receivedDate ?? row.original.createdAt)}
       </span>
     ),

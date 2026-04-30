@@ -49,7 +49,7 @@ export const columns: ColumnDef<StockTake>[] = [
     accessorKey: "cycleCountType",
     header: "Type",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600">
+      <span className="text-gray-600">
         {row.original.cycleCountType
           ? CYCLE_COUNT_TYPE_LABELS[row.original.cycleCountType]
           : "—"}
@@ -88,7 +88,7 @@ export const columns: ColumnDef<StockTake>[] = [
     id: "variance",
     header: () => <div className="text-right">Variance</div>,
     cell: ({ row }) => (
-      <div className="text-right text-sm">
+      <div className="text-right">
         {row.original.itemsWithVariance > 0 ? (
           <span className="text-amber-700 font-medium">
             {row.original.itemsWithVariance}
@@ -103,7 +103,7 @@ export const columns: ColumnDef<StockTake>[] = [
     accessorKey: "startedByName",
     header: "Started by",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600">
+      <span className="text-gray-600">
         {row.original.startedByName || "—"}
       </span>
     ),
@@ -123,7 +123,7 @@ export const columns: ColumnDef<StockTake>[] = [
     accessorKey: "createdAt",
     header: "Created",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 whitespace-nowrap">
+      <span className="text-gray-600 whitespace-nowrap">
         {formatDate(row.original.createdAt)}
       </span>
     ),

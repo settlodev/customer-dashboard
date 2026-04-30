@@ -311,7 +311,7 @@ export function DashboardSidebarShell({
       </button>
 
       {/* Desktop floating sidebar */}
-      <aside className="sticky top-3 hidden h-[calc(100vh-24px)] w-[296px] flex-shrink-0 overflow-hidden rounded-2xl border border-line bg-card shadow-[0_1px_0_rgba(20,17,12,0.02),0_14px_40px_-16px_rgba(20,17,12,0.10),0_4px_10px_-4px_rgba(20,17,12,0.05)] lg:flex lg:flex-col">
+      <aside className="my-3 ml-3 hidden w-[296px] flex-shrink-0 overflow-hidden rounded-2xl border border-line bg-card shadow-[0_1px_0_rgba(20,17,12,0.02),0_14px_40px_-16px_rgba(20,17,12,0.10),0_4px_10px_-4px_rgba(20,17,12,0.05)] lg:flex lg:flex-col">
         <DashboardSidebarContent data={data} user={user} />
       </aside>
 

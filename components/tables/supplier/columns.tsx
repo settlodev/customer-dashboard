@@ -24,12 +24,12 @@ export const columns: ColumnDef<Supplier>[] = [
         row.original;
       return (
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 text-sm font-semibold shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 font-semibold shrink-0">
             {name?.charAt(0)?.toUpperCase() || "S"}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+              <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
                 {name}
               </span>
               {linkedToSettloSupplier && (
@@ -57,7 +57,7 @@ export const columns: ColumnDef<Supplier>[] = [
     enableHiding: true,
     header: "Email",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 dark:text-gray-400">
+      <span className="text-gray-600 dark:text-gray-400">
         {row.original.email || "\u2014"}
       </span>
     ),
@@ -67,7 +67,7 @@ export const columns: ColumnDef<Supplier>[] = [
     header: "Phone",
     enableHiding: true,
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 dark:text-gray-400">
+      <span className="text-gray-600 dark:text-gray-400">
         {row.original.phone || row.original.contactPersonPhone || "\u2014"}
       </span>
     ),

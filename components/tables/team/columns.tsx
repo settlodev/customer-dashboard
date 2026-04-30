@@ -48,7 +48,7 @@ export const columns: ColumnDef<AccountMember>[] = [
       const { firstName, lastName, email } = row.original;
       return (
         <div className="min-w-0">
-          <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">
+          <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">
             {firstName} {lastName}
           </span>
           <span className="text-xs text-muted-foreground block truncate">{email}</span>
@@ -62,7 +62,7 @@ export const columns: ColumnDef<AccountMember>[] = [
     enableHiding: true,
     cell: ({ row }) => {
       const roles = row.original.roles;
-      if (!roles?.length) return <span className="text-sm text-muted-foreground">—</span>;
+      if (!roles?.length) return <span className="text-muted-foreground">—</span>;
       return (
         <div className="flex flex-wrap gap-1">
           {roles.map((r) => (

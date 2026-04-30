@@ -1,5 +1,10 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
+import {
+  motion,
+  useReducedMotion,
+  type HTMLMotionProps,
+} from "framer-motion"
 
 import { cn } from "@/lib/utils"
 
@@ -89,8 +94,14 @@ interface AlertProps
   className?: string
 }
 
+// Subtle entrance: tiny downward drift + fade. Quick enough that the
+// alert reads as "appearing" rather than "animating in". Reduced-motion
+// users get an instant render — no transform, no opacity ramp.
+const ALERT_ENTER = { duration: 0.22, ease: [0.32, 0.72, 0, 1] as const }
+
 const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
   ({ className, tone, variant, ...props }, ref) => {
+    const reduce = useReducedMotion()
     // Map legacy variant names onto the new shape.
     const isLegacyDestructive = variant === "destructive"
     const resolvedVariant: AlertVariant =
@@ -101,14 +112,17 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
       tone ?? (isLegacyDestructive ? "danger" : "default")
 
     return (
-      <div
+      <motion.div
         ref={ref}
         role="alert"
+        initial={reduce ? false : { opacity: 0, y: -4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={reduce ? { duration: 0 } : ALERT_ENTER}
         className={cn(
           alertVariants({ tone: resolvedTone, variant: resolvedVariant }),
           className,
         )}
-        {...props}
+        {...(props as HTMLMotionProps<"div">)}
       />
     )
   },

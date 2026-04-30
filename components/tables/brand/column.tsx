@@ -74,11 +74,11 @@ export const columns: ColumnDef<Brand>[] = [
               loading="lazy"
             />
           ) : (
-            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 text-sm font-semibold shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 font-semibold shrink-0">
               {initial}
             </div>
           )}
-          <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
+          <span className="font-medium text-gray-900 dark:text-gray-100">
             {name}
           </span>
         </div>

@@ -33,7 +33,7 @@ export const columns: ColumnDef<UnitOfMeasure>[] = [
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+              <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
                 {u.name}
               </span>
               {u.systemGenerated && (

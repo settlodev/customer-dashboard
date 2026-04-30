@@ -58,7 +58,7 @@ export const columns: ColumnDef<BomRule>[] = [
           <Beaker className="h-4 w-4 text-orange-500" />
         </div>
         <div className="min-w-0">
-          <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">
+          <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">
             {row.original.name}
           </span>
           <span className="text-xs text-muted-foreground">
@@ -88,7 +88,7 @@ export const columns: ColumnDef<BomRule>[] = [
     header: "Items",
     enableHiding: true,
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 dark:text-gray-400">
+      <span className="text-gray-600 dark:text-gray-400">
         {row.original.items?.filter((i) => !!i.itemCategory).length ?? 0}
       </span>
     ),
@@ -98,7 +98,7 @@ export const columns: ColumnDef<BomRule>[] = [
     header: "Outputs",
     enableHiding: true,
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 dark:text-gray-400">
+      <span className="text-gray-600 dark:text-gray-400">
         {row.original.outputs?.length ?? 0}
       </span>
     ),
@@ -110,10 +110,10 @@ export const columns: ColumnDef<BomRule>[] = [
     cell: ({ row }) => {
       const v = row.original.baseCostCached;
       if (v === null || v === undefined) {
-        return <span className="text-sm text-muted-foreground italic">not calculated</span>;
+        return <span className="text-muted-foreground italic">not calculated</span>;
       }
       return (
-        <span className="text-sm text-gray-700 dark:text-gray-300 tabular-nums">
+        <span className="text-gray-700 dark:text-gray-300 tabular-nums">
           {v.toLocaleString(undefined, { maximumFractionDigits: 4 })}
         </span>
       );

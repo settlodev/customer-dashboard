@@ -159,12 +159,12 @@ export function ExchangeRatesPanel({ base = "TZS" }: { base?: string }) {
               <TableBody>
                 {rates.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell className="text-sm font-mono whitespace-nowrap">
+                    <TableCell className="font-mono whitespace-nowrap">
                       {r.sourceCurrency}
                       <ArrowRight className="h-3 w-3 inline mx-1 text-muted-foreground" />
                       {r.targetCurrency}
                     </TableCell>
-                    <TableCell className="text-right text-sm font-medium">
+                    <TableCell className="text-right font-medium">
                       {Number(r.rate).toLocaleString(undefined, {
                         maximumFractionDigits: 8,
                       })}
@@ -512,12 +512,12 @@ function CurrentRatesCard({
               <TableBody>
                 {sorted.map((r) => (
                   <TableRow key={`${r.sourceCurrency}-${r.targetCurrency}`}>
-                    <TableCell className="text-sm font-mono whitespace-nowrap">
+                    <TableCell className="font-mono whitespace-nowrap">
                       {r.sourceCurrency}
                       <ArrowRight className="h-3 w-3 inline mx-1 text-muted-foreground" />
                       {r.targetCurrency}
                     </TableCell>
-                    <TableCell className="text-right text-sm font-medium">
+                    <TableCell className="text-right font-medium">
                       {Number(r.rate).toLocaleString(undefined, {
                         maximumFractionDigits: 6,
                       })}

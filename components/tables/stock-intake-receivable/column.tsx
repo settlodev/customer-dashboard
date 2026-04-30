@@ -55,7 +55,7 @@ export const columns: ColumnDef<StockReceipt>[] = [
               <span className="text-xs bg-muted px-2 py-1 rounded">
                 {item.quantityReceived}x
               </span>
-              <span className="text-sm truncate">{item.stockVariantName}</span>
+              <span className="truncate">{item.stockVariantName}</span>
             </div>
           ))}
           {items.length > 3 && (

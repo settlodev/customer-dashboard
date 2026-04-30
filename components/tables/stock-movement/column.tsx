@@ -36,7 +36,7 @@ export const columns: ColumnDef<StockMovement>[] = [
     header: "Stock Item",
     cell: ({ row }) => (
       <div className="min-w-0">
-        <span className="text-sm font-medium text-gray-900 dark:text-gray-100 block truncate">
+        <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">
           {row.original.variantName}
         </span>
         <span className="text-xs text-muted-foreground">{row.original.stockName}</span>
@@ -50,7 +50,7 @@ export const columns: ColumnDef<StockMovement>[] = [
       const qty = row.original.quantity;
       const isPositive = qty > 0;
       return (
-        <span className={`text-sm font-medium ${isPositive ? "text-green-600" : "text-red-600"}`}>
+        <span className={`font-medium ${isPositive ? "text-green-600" : "text-red-600"}`}>
           {isPositive ? "+" : ""}{qty.toLocaleString()}
         </span>
       );
@@ -63,7 +63,7 @@ export const columns: ColumnDef<StockMovement>[] = [
       <Money
         amount={row.original.unitCost}
         currency={row.original.currency}
-        className="text-sm text-gray-600"
+        className="text-gray-600"
       />
     ),
   },
@@ -74,7 +74,7 @@ export const columns: ColumnDef<StockMovement>[] = [
       <Money
         amount={row.original.totalCost}
         currency={row.original.currency}
-        className="text-sm font-medium text-gray-700"
+        className="font-medium text-gray-700"
       />
     ),
   },
@@ -82,7 +82,7 @@ export const columns: ColumnDef<StockMovement>[] = [
     accessorKey: "occurredAt",
     header: "Date",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600">
+      <span className="text-gray-600">
         {new Date(row.original.occurredAt).toLocaleDateString("en-GB", {
           day: "2-digit",
           month: "short",

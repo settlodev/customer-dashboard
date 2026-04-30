@@ -243,7 +243,7 @@ function ActivityTab({ entries }: { entries: AuditLogEntry[] }) {
             <TableBody>
               {entries.map((entry) => (
                 <TableRow key={entry.id}>
-                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                  <TableCell className="text-muted-foreground whitespace-nowrap">
                     {new Date(entry.createdAt).toLocaleString(undefined, {
                       month: "short",
                       day: "numeric",
@@ -257,7 +257,7 @@ function ActivityTab({ entries }: { entries: AuditLogEntry[] }) {
                       {AUDIT_ACTION_LABELS[entry.action] ?? entry.action}
                     </span>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell>
                     {entry.staffName ?? <span className="text-muted-foreground">\u2014</span>}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground max-w-[360px]">

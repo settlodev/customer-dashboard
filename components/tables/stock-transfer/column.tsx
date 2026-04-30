@@ -62,7 +62,7 @@ export const columns: ColumnDef<StockTransfer>[] = [
     id: "route",
     header: "Route",
     cell: ({ row }) => (
-      <div className="text-sm">
+      <div >
         <span className="text-gray-900">{row.original.sourceLocationName || "Source"}</span>
         <span className="text-gray-400 mx-1">&rarr;</span>
         <span className="text-gray-900">{row.original.destinationLocationName || "Destination"}</span>
@@ -73,7 +73,7 @@ export const columns: ColumnDef<StockTransfer>[] = [
     id: "items",
     header: "Items",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600">
+      <span className="text-gray-600">
         {row.original.items?.length ?? 0}
       </span>
     ),
@@ -95,7 +95,7 @@ export const columns: ColumnDef<StockTransfer>[] = [
     accessorKey: "createdAt",
     header: "Date",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600">
+      <span className="text-gray-600">
         {new Date(row.original.createdAt).toLocaleDateString("en-GB", {
           day: "2-digit",
           month: "short",

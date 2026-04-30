@@ -122,7 +122,7 @@ export function SupplierSourceListPanel({ supplierId, entries }: Props) {
               <TableBody>
                 {entries.map((e) => (
                   <TableRow key={e.id}>
-                    <TableCell className="text-sm font-medium">
+                    <TableCell className="font-medium">
                       {e.stockVariantName || e.stockName || e.stockVariantId}
                     </TableCell>
                     <TableCell className="text-right">

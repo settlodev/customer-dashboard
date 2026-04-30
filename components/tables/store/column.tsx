@@ -56,7 +56,7 @@ export const columns: ColumnDef<EnrichedStore>[] = [
           <StoreIcon className="h-4 w-4 text-violet-500" />
         </div>
         <div className="min-w-0">
-          <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">
+          <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">
             {row.original.name}
           </span>
           {row.original.code && (
@@ -70,7 +70,7 @@ export const columns: ColumnDef<EnrichedStore>[] = [
     id: "location",
     header: "Location",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 dark:text-gray-400">
+      <span className="text-gray-600 dark:text-gray-400">
         {(row.original as any).locationName || "\u2014"}
       </span>
     ),

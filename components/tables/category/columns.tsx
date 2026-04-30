@@ -79,7 +79,7 @@ export const columns: ColumnDef<Category>[] = [
             />
           )}
           <div className="min-w-0">
-            <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">
+            <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">
               {name}
             </span>
             {hasParent && (
@@ -99,7 +99,7 @@ export const columns: ColumnDef<Category>[] = [
     cell: ({ row }) => {
       const count = (row.original as any).productCount ?? 0;
       return (
-        <span className="text-sm text-gray-900 dark:text-gray-100">
+        <span className="text-gray-900 dark:text-gray-100">
           {new Intl.NumberFormat("en-US").format(count)}
         </span>
       );
@@ -115,7 +115,7 @@ export const columns: ColumnDef<Category>[] = [
       const count = (row.original as any).productVariantsCount ?? 0;
       return (
         <div className="hidden md:block">
-          <span className="text-sm text-gray-600 dark:text-gray-400">
+          <span className="text-gray-600 dark:text-gray-400">
             {new Intl.NumberFormat("en-US").format(count)}
           </span>
         </div>

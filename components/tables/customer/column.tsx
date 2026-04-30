@@ -50,7 +50,7 @@ export const columns: ColumnDef<Customer>[] = [
     ),
     cell: ({ row }) => (
       <div className="min-w-0">
-        <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">
+        <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">
           {row.original.firstName} {row.original.lastName}
         </span>
         {row.original.customerAccountNumber && (
@@ -67,7 +67,7 @@ export const columns: ColumnDef<Customer>[] = [
     header: () => <div className="hidden md:block">Phone</div>,
     cell: ({ row }) => (
       <div className="hidden md:block">
-        <span className="text-sm text-gray-600 dark:text-gray-400">
+        <span className="text-gray-600 dark:text-gray-400">
           {row.original.phoneNumber || "—"}
         </span>
       </div>
@@ -79,7 +79,7 @@ export const columns: ColumnDef<Customer>[] = [
     header: () => <div className="hidden lg:block">Email</div>,
     cell: ({ row }) => (
       <div className="hidden lg:block">
-        <span className="text-sm text-gray-600 dark:text-gray-400">
+        <span className="text-gray-600 dark:text-gray-400">
           {row.original.email || "—"}
         </span>
       </div>
@@ -143,7 +143,7 @@ export const columns: ColumnDef<Customer>[] = [
     header: () => <div className="text-center">Orders</div>,
     cell: ({ row }) => (
       <div className="text-center">
-        <span className="text-sm text-gray-600 dark:text-gray-400">
+        <span className="text-gray-600 dark:text-gray-400">
           {row.original.totalOrders ?? 0}
         </span>
       </div>

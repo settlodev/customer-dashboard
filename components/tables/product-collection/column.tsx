@@ -67,7 +67,7 @@ export const columns: ColumnDef<ProductCollection>[] = [
             </div>
           )}
           <div className="min-w-0">
-            <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">
+            <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">
               {row.original.name}
             </span>
             {row.original.description && (
@@ -85,7 +85,7 @@ export const columns: ColumnDef<ProductCollection>[] = [
     header: "Products",
     enableHiding: true,
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 dark:text-gray-400">
+      <span className="text-gray-600 dark:text-gray-400">
         {row.original.productCount}
       </span>
     ),

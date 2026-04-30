@@ -53,7 +53,7 @@ export const columns: ColumnDef<StockWithBalance>[] = [
           <Package className="h-4 w-4 text-blue-500" />
         </div>
         <div className="min-w-0">
-          <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">
+          <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">
             {row.original.name}
           </span>
           <span className="text-xs text-muted-foreground">
@@ -103,7 +103,7 @@ export const columns: ColumnDef<StockWithBalance>[] = [
       return (
         <div className="flex items-center gap-1.5">
           <span
-            className={`text-sm font-medium ${
+            className={`font-medium ${
               isOut
                 ? "text-red-600 dark:text-red-400"
                 : isLow
@@ -132,7 +132,7 @@ export const columns: ColumnDef<StockWithBalance>[] = [
     accessorFn: (row) => row.totalValue,
     enableHiding: true,
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 dark:text-gray-400">
+      <span className="text-gray-600 dark:text-gray-400">
         {row.original.totalValue > 0
           ? row.original.totalValue.toLocaleString(undefined, {
               minimumFractionDigits: 0,

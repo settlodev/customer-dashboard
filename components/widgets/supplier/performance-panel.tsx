@@ -143,28 +143,28 @@ export function SupplierPerformancePanel({ metrics, locationLabels }: Props) {
                 <TableBody>
                   {metrics.map((m) => (
                     <TableRow key={m.id}>
-                      <TableCell className="text-sm">
+                      <TableCell>
                         {m.locationId
                           ? (locationLabels?.[m.locationId] ?? m.locationId.slice(0, 8))
                           : "All locations"}
                       </TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="text-right">
                         {m.totalOrders.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="text-right">
                         {m.totalGrns.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="text-right">
                         {m.avgLeadTimeDays != null
                           ? `${m.avgLeadTimeDays.toFixed(1)}d`
                           : "\u2014"}
                       </TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="text-right">
                         {m.fillRate != null
                           ? `${(m.fillRate * 100).toFixed(1)}%`
                           : "\u2014"}
                       </TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="text-right">
                         {m.qualityScore != null
                           ? `${(m.qualityScore * 100).toFixed(1)}%`
                           : "\u2014"}

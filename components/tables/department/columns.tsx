@@ -76,13 +76,13 @@ export const columns: ColumnDef<Department>[] = [
             />
           ) : (
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-semibold shrink-0"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-semibold shrink-0"
               style={{ backgroundColor: color || "#6b7280" }}
             >
               {initial}
             </div>
           )}
-          <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
+          <span className="font-medium text-gray-900 dark:text-gray-100">
             {name}
           </span>
         </div>

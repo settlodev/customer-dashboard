@@ -161,14 +161,14 @@ export function ConversionsPanel({ unit, allUnits, conversions }: Props) {
                   const isEditing = editing?.id === c.id;
                   return (
                     <TableRow key={c.id}>
-                      <TableCell className="text-sm font-medium whitespace-nowrap">
+                      <TableCell className="font-medium whitespace-nowrap">
                         1 {c.fromUnitAbbreviation}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         <ArrowRight className="h-4 w-4" />
                       </TableCell>
-                      <TableCell className="text-sm">{c.toUnitAbbreviation}</TableCell>
-                      <TableCell className="text-right text-sm font-mono">
+                      <TableCell>{c.toUnitAbbreviation}</TableCell>
+                      <TableCell className="text-right font-mono">
                         {isEditing ? (
                           <NumericFormat
                             customInput={Input}

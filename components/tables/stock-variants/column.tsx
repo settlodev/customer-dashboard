@@ -49,7 +49,7 @@ export const columns: ColumnDef<StockVariant>[] = [
           <Package className="h-4 w-4 text-blue-500" />
         </div>
         <div className="min-w-0">
-          <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">
+          <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">
             {row.original.displayName}
           </span>
           {row.original.sku && (
@@ -64,7 +64,7 @@ export const columns: ColumnDef<StockVariant>[] = [
     header: "Unit",
     enableHiding: true,
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 dark:text-gray-400">
+      <span className="text-gray-600 dark:text-gray-400">
         {row.original.unitAbbreviation}
       </span>
     ),
@@ -74,7 +74,7 @@ export const columns: ColumnDef<StockVariant>[] = [
     header: "Conversion",
     enableHiding: true,
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 dark:text-gray-400">
+      <span className="text-gray-600 dark:text-gray-400">
         {row.original.conversionToBase}
       </span>
     ),
@@ -84,7 +84,7 @@ export const columns: ColumnDef<StockVariant>[] = [
     header: "Serial",
     enableHiding: true,
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 dark:text-gray-400">
+      <span className="text-gray-600 dark:text-gray-400">
         {row.original.serialTracked ? "Yes" : "\u2014"}
       </span>
     ),

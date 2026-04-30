@@ -128,7 +128,7 @@ export default function PaginatedStockTable({
                             {isPositive ? "+" : ""}{movement.quantity.toLocaleString()}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right text-sm text-gray-600">
+                        <TableCell className="text-right text-gray-600">
                           {movement.unitCost != null ? movement.unitCost.toLocaleString() : "\u2014"}
                         </TableCell>
                         <TableCell className="text-xs text-gray-500">

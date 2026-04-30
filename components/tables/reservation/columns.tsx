@@ -56,7 +56,7 @@ export const columns: ColumnDef<Reservation>[] = [
         <div>
           <div className="font-medium">{formatted}</div>
           {timeStr && (
-            <div className="text-sm text-muted-foreground">{timeStr}</div>
+            <div className="text-muted-foreground">{timeStr}</div>
           )}
         </div>
       );
@@ -108,7 +108,7 @@ export const columns: ColumnDef<Reservation>[] = [
       const status = row.original.depositPaymentStatus as DepositPaymentStatus | null;
       if (!status) return <div className="text-muted-foreground">—</div>;
       const label = DEPOSIT_STATUS_LABELS[status] || status;
-      return <div className="text-sm">{label}</div>;
+      return <div >{label}</div>;
     },
   },
   {
@@ -116,7 +116,7 @@ export const columns: ColumnDef<Reservation>[] = [
     header: "Source",
     cell: ({ row }) => {
       const source = row.original.source;
-      return <div className="text-sm">{source || "—"}</div>;
+      return <div >{source || "—"}</div>;
     },
   },
   {

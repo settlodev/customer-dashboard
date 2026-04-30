@@ -319,18 +319,18 @@ function OverviewTab({
                 <TableBody>
                   {topValued.map((v) => (
                     <TableRow key={v.stockVariantId}>
-                      <TableCell className="text-sm font-medium">{v.variantName}</TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="font-medium">{v.variantName}</TableCell>
+                      <TableCell className="text-right">
                         {v.quantityOnHand.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
+                      <TableCell className="text-right text-muted-foreground">
                         {v.averageCost > 0 ? (
                           <Money amount={v.averageCost} currency={currency} />
                         ) : (
                           "\u2014"
                         )}
                       </TableCell>
-                      <TableCell className="text-right text-sm font-medium">
+                      <TableCell className="text-right font-medium">
                         <Money amount={v.totalValue} currency={currency} />
                       </TableCell>
                     </TableRow>
@@ -432,11 +432,11 @@ function RiskTab({
                     const cfg = RISK_LEVEL_CONFIG[f.riskLevel];
                     return (
                       <TableRow key={f.stockVariantId}>
-                        <TableCell className="text-sm font-medium">{f.variantName}</TableCell>
-                        <TableCell className="text-right text-sm">
+                        <TableCell className="font-medium">{f.variantName}</TableCell>
+                        <TableCell className="text-right">
                           {f.currentQuantity.toLocaleString()}
                         </TableCell>
-                        <TableCell className="text-right text-sm text-muted-foreground">
+                        <TableCell className="text-right text-muted-foreground">
                           {f.avgDailyConsumption > 0
                             ? f.avgDailyConsumption.toLocaleString(undefined, {
                                 minimumFractionDigits: 1,
@@ -444,7 +444,7 @@ function RiskTab({
                               })
                             : "\u2014"}
                         </TableCell>
-                        <TableCell className="text-right text-sm font-medium">
+                        <TableCell className="text-right font-medium">
                           {f.daysUntilStockout >= 0 ? f.daysUntilStockout : "\u2014"}
                         </TableCell>
                         <TableCell>
@@ -489,7 +489,7 @@ function RiskTab({
                 <TableBody>
                   {reorder.slice(0, 50).map((r) => (
                     <TableRow key={r.stockVariantId}>
-                      <TableCell className="text-sm font-medium">{r.variantName}</TableCell>
+                      <TableCell className="font-medium">{r.variantName}</TableCell>
                       <TableCell
                         className={`text-right text-sm font-medium ${
                           r.currentAvailableQuantity <= r.reorderPoint
@@ -499,13 +499,13 @@ function RiskTab({
                       >
                         {r.currentAvailableQuantity.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
+                      <TableCell className="text-right text-muted-foreground">
                         {r.reorderPoint.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right text-sm font-medium text-blue-600 dark:text-blue-400">
+                      <TableCell className="text-right font-medium text-blue-600 dark:text-blue-400">
                         {r.suggestedOrderQuantity.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="text-right">
                         {r.daysOfStockRemaining >= 0 ? `${r.daysOfStockRemaining}d` : "\u2014"}
                       </TableCell>
                     </TableRow>
@@ -703,16 +703,16 @@ function AgingTab({
                   {buckets.flatMap((b) =>
                     b.items.slice(0, 20).map((i) => (
                       <TableRow key={`${b.range}-${i.batchNumber ?? i.variantId}`}>
-                        <TableCell className="text-sm font-medium">{i.displayName}</TableCell>
+                        <TableCell className="font-medium">{i.displayName}</TableCell>
                         <TableCell className="text-xs font-mono text-muted-foreground">
                           {i.batchNumber ?? "\u2014"}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">{b.range}</TableCell>
-                        <TableCell className="text-right text-sm">{i.quantity.toLocaleString()}</TableCell>
-                        <TableCell className="text-right text-sm">
+                        <TableCell className="text-right">{i.quantity.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">
                           <Money amount={i.value} currency={displayCurrency} />
                         </TableCell>
-                        <TableCell className="text-right text-sm">{i.daysSinceReceipt}d</TableCell>
+                        <TableCell className="text-right">{i.daysSinceReceipt}d</TableCell>
                       </TableRow>
                     )),
                   )}
@@ -747,14 +747,14 @@ function AgingTab({
                 <TableBody>
                   {deadStock.slice(0, 100).map((d) => (
                     <TableRow key={d.stockVariantId}>
-                      <TableCell className="text-sm font-medium">{d.variantName}</TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="font-medium">{d.variantName}</TableCell>
+                      <TableCell className="text-right">
                         {d.quantityOnHand.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="text-right">
                         <Money amount={d.totalValue} currency={currency} />
                       </TableCell>
-                      <TableCell className="text-right text-sm font-medium">
+                      <TableCell className="text-right font-medium">
                         {d.daysSinceLastMovement}d
                       </TableCell>
                     </TableRow>
@@ -806,7 +806,7 @@ function ActivityTab({ entries }: { entries: AuditLogEntry[] }) {
             <TableBody>
               {entries.map((entry) => (
                 <TableRow key={entry.id}>
-                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                  <TableCell className="text-muted-foreground whitespace-nowrap">
                     {new Date(entry.createdAt).toLocaleString(undefined, {
                       month: "short",
                       day: "numeric",
@@ -822,7 +822,7 @@ function ActivityTab({ entries }: { entries: AuditLogEntry[] }) {
                   <TableCell className="text-xs font-mono text-muted-foreground">
                     {entry.entityType}
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell>
                     {entry.staffName ?? <span className="text-muted-foreground">\u2014</span>}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground max-w-[360px]">

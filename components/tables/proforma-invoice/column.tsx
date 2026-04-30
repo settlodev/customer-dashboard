@@ -120,7 +120,7 @@ export const columns: ColumnDef<Proforma>[] = [
       </Button>
     ),
     cell: ({ row }) => (
-      <p className="font-medium text-sm whitespace-nowrap">
+      <p className="font-medium whitespace-nowrap">
         {row.original.customerFirstName} {row.original.customerLastName}
       </p>
     ),
@@ -129,7 +129,7 @@ export const columns: ColumnDef<Proforma>[] = [
     accessorKey: "dateCreated",
     header: "Creation Date",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 whitespace-nowrap">
+      <span className="text-gray-600 whitespace-nowrap">
         {formatDate(row.original.dateCreated)}
       </span>
     ),
@@ -138,7 +138,7 @@ export const columns: ColumnDef<Proforma>[] = [
     accessorKey: "expiresAt",
     header: "Due Date",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 whitespace-nowrap">
+      <span className="text-gray-600 whitespace-nowrap">
         {formatDate(row.original.expiresAt)}
       </span>
     ),
@@ -156,7 +156,7 @@ export const columns: ColumnDef<Proforma>[] = [
       </Button>
     ),
     cell: ({ row }) => (
-      <span className="font-medium text-sm whitespace-nowrap">
+      <span className="font-medium whitespace-nowrap">
         {formatCurrency(row.original.grossAmount ?? 0)}
       </span>
     ),
@@ -165,7 +165,7 @@ export const columns: ColumnDef<Proforma>[] = [
     accessorKey: "totalDiscountAmount",
     header: "Discount",
     cell: ({ row }) => (
-      <span className="text-sm text-red-500 whitespace-nowrap">
+      <span className="text-red-500 whitespace-nowrap">
         {row.original.totalDiscountAmount > 0
           ? `− ${formatCurrency(row.original.totalDiscountAmount)}`
           : "—"}
@@ -180,7 +180,7 @@ export const columns: ColumnDef<Proforma>[] = [
         (row.original.grossAmount ?? 0) -
         (row.original.appliedDiscountAmount ?? 0);
       return (
-        <span className="font-semibold text-sm whitespace-nowrap">
+        <span className="font-semibold whitespace-nowrap">
           {formatCurrency(Math.max(0, net))}
         </span>
       );

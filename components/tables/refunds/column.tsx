@@ -69,7 +69,7 @@ export const columns: ColumnDef<OrderItemRefunds>[] = [
             <span className="text-white bg-green-500 p-1 rounded-sm">Yes</span>
           )}
           {!stock && (
-            <span className="text-sm text-white bg-yellow-500 p-1 rounded-sm">
+            <span className="text-white bg-yellow-500 p-1 rounded-sm">
               No
             </span>
           )}

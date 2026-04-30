@@ -95,7 +95,7 @@ export function ReservationsPanel({ reservations }: Props) {
                       : "\u2014";
                     return (
                       <TableRow key={r.id}>
-                        <TableCell className="text-sm font-medium">
+                        <TableCell className="font-medium">
                           {r.stockVariantName ?? r.stockVariantId.slice(0, 8)}
                           {r.stockVariantSku && (
                             <span className="block text-[10px] text-muted-foreground">
@@ -103,10 +103,10 @@ export function ReservationsPanel({ reservations }: Props) {
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right text-sm font-medium">
+                        <TableCell className="text-right font-medium">
                           {Number(r.quantity).toLocaleString()}
                         </TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell>
                           {refLabel}
                           {r.referenceId && (
                             <span className="block text-[10px] font-mono text-muted-foreground">

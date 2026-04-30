@@ -78,7 +78,7 @@ export const columns: ColumnDef<Space>[] = [
             <CornerDownRight className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600 shrink-0 -ml-6" />
           )}
           <div className="min-w-0">
-            <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">
+            <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">
               {name}
             </span>
             {(hasParent || code) && (
@@ -109,7 +109,7 @@ export const columns: ColumnDef<Space>[] = [
       return (
         <div className="flex items-center gap-1.5">
           <Users className="h-3.5 w-3.5 text-gray-400" />
-          <span className="text-sm text-gray-900 dark:text-gray-100">
+          <span className="text-gray-900 dark:text-gray-100">
             {min ? `${min}–${max}` : max}
           </span>
         </div>

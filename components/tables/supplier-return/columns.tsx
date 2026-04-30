@@ -54,14 +54,14 @@ export const columns: ColumnDef<SupplierReturnRow>[] = [
     accessorKey: "supplierName",
     header: "Supplier",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600">{row.original.supplierName || "—"}</span>
+      <span className="text-gray-600">{row.original.supplierName || "—"}</span>
     ),
   },
   {
     id: "items",
     header: "Items",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600">{row.original.items?.length ?? 0}</span>
+      <span className="text-gray-600">{row.original.items?.length ?? 0}</span>
     ),
   },
   {
@@ -73,7 +73,7 @@ export const columns: ColumnDef<SupplierReturnRow>[] = [
         0,
       );
       return (
-        <div className="text-right text-sm text-gray-600">
+        <div className="text-right text-gray-600">
           {(total ?? 0).toLocaleString()}
         </div>
       );
@@ -90,7 +90,7 @@ export const columns: ColumnDef<SupplierReturnRow>[] = [
       const currency =
         row.original.currency || row.original.items?.[0]?.currency || DEFAULT_CURRENCY;
       return (
-        <div className="text-right text-sm font-medium text-gray-900">
+        <div className="text-right font-medium text-gray-900">
           <Money amount={total ?? 0} currency={currency} />
         </div>
       );
@@ -100,7 +100,7 @@ export const columns: ColumnDef<SupplierReturnRow>[] = [
     accessorKey: "returnedByName",
     header: "Returned by",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600">
+      <span className="text-gray-600">
         {row.original.returnedByName || "—"}
       </span>
     ),
@@ -120,7 +120,7 @@ export const columns: ColumnDef<SupplierReturnRow>[] = [
     accessorKey: "createdAt",
     header: "Created",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600 whitespace-nowrap">
+      <span className="text-gray-600 whitespace-nowrap">
         {formatDate(row.original.createdAt)}
       </span>
     ),

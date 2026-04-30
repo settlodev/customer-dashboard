@@ -330,22 +330,22 @@ function VariantBreakdownTable({ data }: { data: ProductVariantSummary[] }) {
             <TableBody>
               {data.map((v) => (
                 <TableRow key={v.variantId}>
-                  <TableCell className="text-sm font-medium">
+                  <TableCell className="font-medium">
                     {v.itemName}
                   </TableCell>
-                  <TableCell className="text-sm text-right">
+                  <TableCell className="text-right">
                     {v.quantitySold.toLocaleString()}
                   </TableCell>
-                  <TableCell className="text-sm text-right hidden sm:table-cell">
+                  <TableCell className="text-right hidden sm:table-cell">
                     {v.grossSales.toLocaleString()}
                   </TableCell>
-                  <TableCell className="text-sm text-right">
+                  <TableCell className="text-right">
                     {v.netSales.toLocaleString()}
                   </TableCell>
-                  <TableCell className="text-sm text-right hidden md:table-cell">
+                  <TableCell className="text-right hidden md:table-cell">
                     {v.grossProfit.toLocaleString()}
                   </TableCell>
-                  <TableCell className="text-sm text-right hidden md:table-cell">
+                  <TableCell className="text-right hidden md:table-cell">
                     {v.profitMargin.toFixed(1)}%
                   </TableCell>
                 </TableRow>

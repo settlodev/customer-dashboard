@@ -48,7 +48,7 @@ export const columns: ColumnDef<Role>[] = [
       const { name, description } = row.original;
       return (
         <div className="min-w-0">
-          <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">{name}</span>
+          <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">{name}</span>
           {description && (
             <span className="text-xs text-muted-foreground block truncate">{description}</span>
           )}
@@ -73,7 +73,7 @@ export const columns: ColumnDef<Role>[] = [
     cell: ({ row }) => {
       const count = row.original.permissionCount ?? row.original.permissionKeys?.length ?? 0;
       return (
-        <span className="text-sm text-gray-600 dark:text-gray-400">
+        <span className="text-gray-600 dark:text-gray-400">
           {count} {count === 1 ? "permission" : "permissions"}
         </span>
       );

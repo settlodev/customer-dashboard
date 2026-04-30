@@ -130,16 +130,16 @@ export function SupplierPricingPanel({ supplierId, defaultCurrency, pricing }: P
               <TableBody>
                 {pricing.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell className="text-sm font-medium">
+                    <TableCell className="font-medium">
                       {row.stockVariantName || row.stockName || row.stockVariantId}
                     </TableCell>
-                    <TableCell className="text-right text-sm">
+                    <TableCell className="text-right">
                       <Money amount={row.unitPrice} currency={row.currency} />
                     </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
+                    <TableCell className="text-right text-muted-foreground">
                       {row.minOrderQuantity.toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
+                    <TableCell className="text-right text-muted-foreground">
                       {row.leadTimeDays}d
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground max-w-[140px] truncate">

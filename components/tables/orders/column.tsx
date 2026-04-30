@@ -51,7 +51,7 @@ export const columns: ColumnDef<Orders>[] = [
         cell: ({ row }) => (
             <div className="hidden md:flex lg:flex flex-col">
                 <span className="font-medium">{row.original.customerName}</span>
-                <span className="text-sm text-gray-500">{row.original.platformType}</span>
+                <span className="text-gray-500">{row.original.platformType}</span>
             </div>
         ),
     },

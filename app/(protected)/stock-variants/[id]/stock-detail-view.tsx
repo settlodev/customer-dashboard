@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import {
@@ -33,7 +34,11 @@ import {
 } from "lucide-react";
 import type { Stock } from "@/types/stock/type";
 import type { InventoryBalance } from "@/types/inventory-balance/type";
-import type { StockMovement, StockMovementSummary } from "@/types/stock-movement/type";
+import type {
+  StockMovement,
+  StockMovementSummary,
+  ReferenceType,
+} from "@/types/stock-movement/type";
 import {
   MOVEMENT_TYPE_LABELS,
   REFERENCE_TYPE_LABELS,
@@ -114,6 +119,36 @@ const TABS = [
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
+
+// Maps a movement reference to its detail page. Returns `null` for
+// reference types that have no dedicated detail route (rules, opening
+// stock, batch recalls).
+function referenceHref(
+  refType: ReferenceType,
+  refId: string,
+): string | null {
+  switch (refType) {
+    case "GRN":
+      return `/goods-received/${refId}`;
+    case "STOCK_INTAKE":
+      return `/stock-intakes/${refId}`;
+    case "SUPPLIER_RETURN":
+      return `/supplier-returns/${refId}`;
+    case "TRANSFER":
+      return `/stock-transfers/${refId}`;
+    case "STOCK_MODIFICATION":
+      return `/stock-modifications/${refId}`;
+    case "ADJUSTMENT":
+      return `/stock-takes/${refId}`;
+    case "SALE_ORDER":
+    case "ORDER_VOID":
+      return `/orders/${refId}`;
+    case "RETURN":
+      return `/refunds/${refId}`;
+    default:
+      return null;
+  }
+}
 
 export function StockDetailView({
   stock,
@@ -411,7 +446,7 @@ function OverviewTab({
                   >
                     <TableCell>
                       <div>
-                        <span className="font-medium text-sm">
+                        <span className="font-medium">
                           {v.displayName}
                         </span>
                         {v.isDefault && (
@@ -431,7 +466,7 @@ function OverviewTab({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell>
                       <span>{v.unitAbbreviation}</span>
                       {v.conversionToBase !== 1 &&
                         (() => {
@@ -459,7 +494,7 @@ function OverviewTab({
                           );
                         })()}
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell>
                       <BarcodeManager
                         variantId={v.id}
                         variantName={v.displayName}
@@ -469,7 +504,7 @@ function OverviewTab({
                       />
                     </TableCell>
                     <TableCell
-                      className={`text-right text-sm font-medium ${
+                      className={`text-right font-medium ${
                         bal?.outOfStock
                           ? "text-red-600 dark:text-red-400"
                           : bal?.lowStock
@@ -479,10 +514,10 @@ function OverviewTab({
                     >
                       {qty.toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right text-sm">
+                    <TableCell className="text-right">
                       {(bal?.availableQuantity ?? 0).toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
+                    <TableCell className="text-right text-muted-foreground">
                       {(bal?.reservedQuantity ?? 0) > 0 ? (
                         <span className="text-amber-600 dark:text-amber-400">
                           {bal!.reservedQuantity.toLocaleString()}
@@ -491,7 +526,7 @@ function OverviewTab({
                         "\u2014"
                       )}
                     </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
+                    <TableCell className="text-right text-muted-foreground">
                       {(bal?.inTransitQuantity ?? 0) > 0 ? (
                         <span className="text-blue-600 dark:text-blue-400">
                           {bal!.inTransitQuantity.toLocaleString()}
@@ -500,7 +535,7 @@ function OverviewTab({
                         "\u2014"
                       )}
                     </TableCell>
-                    <TableCell className="text-right text-sm">
+                    <TableCell className="text-right">
                       {value > 0 ? <Money amount={value} currency={currency} /> : "\u2014"}
                     </TableCell>
                     <TableCell>
@@ -672,16 +707,21 @@ function BatchesTab({
                             : ""
                       }
                     >
-                      <TableCell className="font-mono text-sm font-medium">
-                        {b.batchNumber}
+                      <TableCell className="font-medium">
+                        <Link
+                          href={`/stock-batches/${b.id}`}
+                          className="hover:underline"
+                        >
+                          {b.batchNumber}
+                        </Link>
                       </TableCell>
-                      <TableCell className="text-sm">
+                      <TableCell>
                         {b.variantName}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-muted-foreground">
                         {b.supplierBatchReference || "\u2014"}
                       </TableCell>
-                      <TableCell className="text-sm whitespace-nowrap">
+                      <TableCell className="whitespace-nowrap">
                         {b.expiryDate ? (
                           <span
                             className={
@@ -716,16 +756,16 @@ function BatchesTab({
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right text-sm font-medium">
+                      <TableCell className="text-right font-medium">
                         {b.quantityOnHand.toLocaleString()}
                         <span className="block text-[10px] text-muted-foreground">
                           {consumed.toFixed(0)}% used
                         </span>
                       </TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
+                      <TableCell className="text-right text-muted-foreground">
                         {b.initialQuantity.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
+                      <TableCell className="text-right text-muted-foreground">
                         {b.unitCost != null
                           ? (
                             <div className="flex flex-col items-end">
@@ -748,12 +788,12 @@ function BatchesTab({
                           )
                           : "\u2014"}
                       </TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="text-right">
                         {batchValue > 0
                           ? <Money amount={batchValue} currency={b.currency || currency} />
                           : "\u2014"}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                      <TableCell className="text-muted-foreground whitespace-nowrap">
                         {new Date(b.receivedDate).toLocaleDateString(
                           undefined,
                           { month: "short", day: "numeric", year: "numeric" },
@@ -795,6 +835,19 @@ function MovementsTab({
   currency: string;
   rsSummary: RsMovementSummary | null;
 }) {
+  const activeVariants = stock.variants.filter((v) => !v.archived);
+  const [activeVariantId, setActiveVariantId] = useState<string>(
+    activeVariants[0]?.id ?? "",
+  );
+  const activeVariant =
+    activeVariants.find((v) => v.id === activeVariantId) ?? activeVariants[0];
+  const activeMovements = activeVariant
+    ? variantMovementsMap[activeVariant.id] ?? []
+    : [];
+  const activeVariantSummary = activeVariant
+    ? variantSummaryMap[activeVariant.id]
+    : undefined;
+
   // Prefer Reports Service totals when available — materialised views are the
   // canonical source for aggregations. Falls back to the inventory sum otherwise.
   const summary = rsSummary
@@ -823,14 +876,14 @@ function MovementsTab({
         <KpiCard
           icon={<ArrowDownRight className="h-3 w-3" />}
           label="Qty in (30d)"
-          value={`+${summary.totalQuantityIn.toLocaleString()}`}
+          value={`+${Math.abs(summary.totalQuantityIn).toLocaleString()}`}
           delta="incoming"
           deltaTone="pos"
         />
         <KpiCard
           icon={<ArrowUpRight className="h-3 w-3" />}
           label="Qty out (30d)"
-          value={`−${summary.totalQuantityOut.toLocaleString()}`}
+          value={`−${Math.abs(summary.totalQuantityOut).toLocaleString()}`}
           delta="outgoing"
           deltaTone="neg"
         />
@@ -866,71 +919,52 @@ function MovementsTab({
         />
       </KpiStrip>
 
-      {/* Movement type breakdown */}
-      {summary.byType.length > 0 && (
-        <Card>
-          <CardContent className="pt-6">
-            <h3 className="text-sm font-semibold mb-3">
-              Movement Breakdown (30 days)
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {summary.byType.map((s) => {
-                // Backend computes direction + |totalQuantity| (V025+).
-                // Falls back to local computation only for older payloads.
-                const isIn = s.direction
-                  ? s.direction === "IN"
-                  : s.totalQuantity >= 0;
-                const qtyDisplay = s.totalQuantityAbs ?? Math.abs(s.totalQuantity);
-                return (
-                  <div
-                    key={s.movementType}
-                    className="rounded-lg border p-3 space-y-1"
-                  >
-                    <span className="text-xs text-muted-foreground">
-                      {MOVEMENT_TYPE_LABELS[
-                        s.movementType as keyof typeof MOVEMENT_TYPE_LABELS
-                      ] ?? s.movementType}
-                    </span>
-                    <p
-                      className={`text-lg font-semibold ${
-                        isIn
-                          ? "text-green-600 dark:text-green-400"
-                          : "text-red-600 dark:text-red-400"
-                      }`}
-                    >
-                      {isIn ? "+" : "-"}
-                      {qtyDisplay.toLocaleString()}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground">
-                        {s.count} txn{s.count !== 1 ? "s" : ""}
-                      </span>
-                      {s.totalCost > 0 && (
-                        <span className="text-[10px] text-muted-foreground">
-                          {s.totalCost.toLocaleString(undefined, {
-                            maximumFractionDigits: 0,
-                          })}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Movement history — one card per variant so Coca-Cola 300ml and
+      {/* Movement history — variant-scoped tabs so Coca-Cola 300ml and
           Coca-Cola 500ml movements stay visually separate. */}
-      {stock.variants
-        .filter((v) => !v.archived)
-        .map((variant) => {
-          const variantMovements = variantMovementsMap[variant.id] ?? [];
-          const variantSummary = variantSummaryMap[variant.id];
+      {activeVariant && (() => {
+          const variant = activeVariant;
+          const variantMovements = activeMovements;
+          const variantSummary = activeVariantSummary;
           return (
       <Card key={variant.id}>
         <CardContent className="pt-6">
+          {activeVariants.length > 1 && (
+            <div className="overflow-x-auto -mx-1 px-1 mb-4">
+              <div
+                role="tablist"
+                aria-label="Variant movements"
+                className="inline-flex items-center gap-1 bg-muted p-1 rounded-lg"
+              >
+                {activeVariants.map((v) => {
+                  const isActive = variant.id === v.id;
+                  const count =
+                    variantSummaryMap[v.id]?.totalMovements ??
+                    variantMovementsMap[v.id]?.length ??
+                    0;
+                  return (
+                    <button
+                      key={v.id}
+                      role="tab"
+                      aria-selected={isActive}
+                      onClick={() => setActiveVariantId(v.id)}
+                      className={`whitespace-nowrap px-3 py-1.5 text-xs rounded-md transition-colors ${
+                        isActive
+                          ? "bg-background shadow-sm font-medium text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {v.displayName ?? v.name}
+                      {count > 0 && (
+                        <span className="ml-1.5 text-[10px] opacity-70">
+                          ({count})
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
             <h3 className="text-sm font-semibold">
               {variant.displayName ?? variant.name}
@@ -943,8 +977,8 @@ function MovementsTab({
             </h3>
             {variantSummary && (
               <span className="text-xs text-muted-foreground">
-                {"+"}{variantSummary.totalQuantityIn.toLocaleString()}
-                {" / -"}{variantSummary.totalQuantityOut.toLocaleString()}
+                {"+"}{Math.abs(variantSummary.totalQuantityIn).toLocaleString()}
+                {" / −"}{Math.abs(variantSummary.totalQuantityOut).toLocaleString()}
                 {" net "}
                 <span className={variantSummary.netQuantityChange >= 0
                   ? "text-green-600 dark:text-green-400"
@@ -960,8 +994,9 @@ function MovementsTab({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
+                    <TableHead>Date &amp; Time</TableHead>
                     <TableHead>Source</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
                     <TableHead className="text-right">Unit Cost</TableHead>
                     <TableHead className="text-right">Total Cost</TableHead>
@@ -977,49 +1012,64 @@ function MovementsTab({
                     const qtyDisplay = m.quantityAbs ?? Math.abs(m.quantity);
                     const totalCostDisplay = m.totalCostAbs
                       ?? (m.totalCost != null ? Math.abs(m.totalCost) : null);
+                    const sourceLabel = m.referenceType
+                      ? REFERENCE_TYPE_LABELS[m.referenceType] ?? m.referenceType
+                      : MOVEMENT_TYPE_LABELS[
+                          m.movementType as keyof typeof MOVEMENT_TYPE_LABELS
+                        ] ?? m.movementType;
+                    const sourceHref =
+                      m.referenceType && m.referenceId
+                        ? referenceHref(m.referenceType, m.referenceId)
+                        : null;
+                    const sourceContent = (
+                      <>
+                        {sourceLabel}
+                        {m.referenceNumber ? (
+                          <span className="font-normal text-muted-foreground">
+                            {" — "}
+                            {m.referenceNumber}
+                          </span>
+                        ) : null}
+                      </>
+                    );
                     return (
                       <TableRow key={m.movementId}>
-                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                          {new Date(m.occurredAt).toLocaleDateString(
-                            undefined,
-                            {
-                              month: "short",
-                              day: "numeric",
-                              year:
-                                new Date(m.occurredAt).getFullYear() !==
-                                new Date().getFullYear()
-                                  ? "numeric"
-                                  : undefined,
-                            },
+                        <TableCell className="text-muted-foreground whitespace-nowrap">
+                          {new Date(m.occurredAt).toLocaleString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {sourceHref ? (
+                            <Link
+                              href={sourceHref}
+                              className="hover:underline"
+                            >
+                              {sourceContent}
+                            </Link>
+                          ) : (
+                            sourceContent
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-col gap-0.5 min-w-0">
-                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                              {m.referenceType
-                                ? REFERENCE_TYPE_LABELS[m.referenceType] ?? m.referenceType
-                                : MOVEMENT_TYPE_LABELS[
-                                    m.movementType as keyof typeof MOVEMENT_TYPE_LABELS
-                                  ] ?? m.movementType}
-                              {m.referenceNumber ? (
-                                <span className="text-muted-foreground"> — {m.referenceNumber}</span>
-                              ) : null}
-                            </span>
-                            <span
-                              className={`inline-flex items-center rounded-full self-start px-2 py-0.5 text-[10px] font-medium ${
-                                isIn
-                                  ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
-                                  : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"
-                              }`}
-                            >
-                              {MOVEMENT_TYPE_LABELS[
-                                m.movementType as keyof typeof MOVEMENT_TYPE_LABELS
-                              ] ?? m.movementType}
-                            </span>
-                          </div>
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                              isIn
+                                ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
+                                : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"
+                            }`}
+                          >
+                            {MOVEMENT_TYPE_LABELS[
+                              m.movementType as keyof typeof MOVEMENT_TYPE_LABELS
+                            ] ?? m.movementType}
+                          </span>
                         </TableCell>
                         <TableCell
-                          className={`text-right text-sm font-medium ${
+                          className={`text-right font-medium ${
                             isIn
                               ? "text-green-600 dark:text-green-400"
                               : "text-red-600 dark:text-red-400"
@@ -1028,12 +1078,12 @@ function MovementsTab({
                           {isIn ? "+" : "-"}
                           {qtyDisplay.toLocaleString()}
                         </TableCell>
-                        <TableCell className="text-right text-sm text-muted-foreground">
+                        <TableCell className="text-right text-muted-foreground">
                           {m.unitCost != null
                             ? <Money amount={m.unitCost} currency={m.currency || currency} />
                             : "\u2014"}
                         </TableCell>
-                        <TableCell className="text-right text-sm text-muted-foreground">
+                        <TableCell className="text-right text-muted-foreground">
                           {totalCostDisplay != null && totalCostDisplay !== 0
                             ? <Money amount={totalCostDisplay} currency={m.currency || currency} />
                             : "\u2014"}
@@ -1052,7 +1102,7 @@ function MovementsTab({
         </CardContent>
       </Card>
           );
-        })}
+        })()}
     </div>
   );
 }
@@ -1216,39 +1266,39 @@ function SalesTab({
                       : 0;
                   return (
                     <TableRow key={`${item.variantId}-${idx}`}>
-                      <TableCell className="font-medium text-sm">
+                      <TableCell className="font-medium">
                         {item.itemName}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-muted-foreground">
                         {item.departmentName || "\u2014"}
                       </TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="text-right">
                         {item.quantitySold.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="text-right">
                         {item.grossSales.toLocaleString(undefined, {
                           maximumFractionDigits: 0,
                         })}
                       </TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
+                      <TableCell className="text-right text-muted-foreground">
                         {item.totalDiscount > 0
                           ? item.totalDiscount.toLocaleString(undefined, {
                               maximumFractionDigits: 0,
                             })
                           : "\u2014"}
                       </TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="text-right">
                         {item.netSales.toLocaleString(undefined, {
                           maximumFractionDigits: 0,
                         })}
                       </TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
+                      <TableCell className="text-right text-muted-foreground">
                         {item.totalCost.toLocaleString(undefined, {
                           maximumFractionDigits: 0,
                         })}
                       </TableCell>
                       <TableCell
-                        className={`text-right text-sm font-medium ${
+                        className={`text-right font-medium ${
                           item.grossProfit >= 0
                             ? "text-green-600 dark:text-green-400"
                             : "text-red-600 dark:text-red-400"
@@ -1258,7 +1308,7 @@ function SalesTab({
                           maximumFractionDigits: 0,
                         })}
                       </TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="text-right">
                         <span
                           className={
                             margin >= 20
@@ -1327,11 +1377,11 @@ function AnalyticsTab({
                 <TableBody>
                   {reorder.map((r) => (
                     <TableRow key={r.stockVariantId}>
-                      <TableCell className="font-medium text-sm">
+                      <TableCell className="font-medium">
                         {r.variantName}
                       </TableCell>
                       <TableCell
-                        className={`text-right text-sm font-medium ${
+                        className={`text-right font-medium ${
                           r.currentAvailableQuantity <= r.reorderPoint
                             ? "text-red-600 dark:text-red-400"
                             : ""
@@ -1339,7 +1389,7 @@ function AnalyticsTab({
                       >
                         {r.currentAvailableQuantity.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
+                      <TableCell className="text-right text-muted-foreground">
                         {r.avgDailyConsumption > 0
                           ? r.avgDailyConsumption.toLocaleString(undefined, {
                               minimumFractionDigits: 1,
@@ -1347,13 +1397,13 @@ function AnalyticsTab({
                             })
                           : "\u2014"}
                       </TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
+                      <TableCell className="text-right text-muted-foreground">
                         {r.reorderPoint.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right text-sm font-medium text-blue-600 dark:text-blue-400">
+                      <TableCell className="text-right font-medium text-blue-600 dark:text-blue-400">
                         {r.suggestedOrderQuantity.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="text-right">
                         <span
                           className={
                             r.daysOfStockRemaining <= 3
@@ -1402,13 +1452,13 @@ function AnalyticsTab({
                     const cfg = RISK_LEVEL_CONFIG[f.riskLevel];
                     return (
                       <TableRow key={f.stockVariantId}>
-                        <TableCell className="font-medium text-sm">
+                        <TableCell className="font-medium">
                           {f.variantName}
                         </TableCell>
-                        <TableCell className="text-right text-sm">
+                        <TableCell className="text-right">
                           {f.currentQuantity.toLocaleString()}
                         </TableCell>
-                        <TableCell className="text-right text-sm text-muted-foreground">
+                        <TableCell className="text-right text-muted-foreground">
                           {f.avgDailyConsumption > 0
                             ? f.avgDailyConsumption.toLocaleString(undefined, {
                                 minimumFractionDigits: 1,
@@ -1416,7 +1466,7 @@ function AnalyticsTab({
                               })
                             : "\u2014"}
                         </TableCell>
-                        <TableCell className="text-right text-sm font-medium">
+                        <TableCell className="text-right font-medium">
                           {f.daysUntilStockout >= 0
                             ? f.daysUntilStockout
                             : "\u2014"}
@@ -1428,7 +1478,7 @@ function AnalyticsTab({
                             {cfg.label}
                           </span>
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
+                        <TableCell className="text-muted-foreground">
                           {f.estimatedStockoutDate
                             ? new Date(
                                 f.estimatedStockoutDate,
@@ -1674,7 +1724,7 @@ function AuditTab({ entries }: { entries: AuditLogEntry[] }) {
             <TableBody>
               {entries.map((entry) => (
                 <TableRow key={entry.id}>
-                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                  <TableCell className="text-muted-foreground whitespace-nowrap">
                     {new Date(entry.createdAt).toLocaleString(undefined, {
                       month: "short",
                       day: "numeric",
@@ -1691,7 +1741,7 @@ function AuditTab({ entries }: { entries: AuditLogEntry[] }) {
                   <TableCell className="text-xs font-mono text-muted-foreground">
                     {entry.entityType}
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell>
                     {entry.staffName ? (
                       <span className="inline-flex items-center gap-1.5">
                         <User className="h-3 w-3 text-muted-foreground" />
