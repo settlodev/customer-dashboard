@@ -17,6 +17,10 @@ export const menuItems = (
 const getNormalMenuItems = (
   args?: MenuItemArgType,
 ) => {
+  // Default to true so warehouse / loading states keep the link visible
+  // until entitlements are known. The page-level UpgradeGate is the
+  // backstop when a user clicks through with an underprivileged plan.
+  const hasDepartmentsModule = args?.hasDepartmentsModule !== false;
   return [
     // Analytics & Reporting
     {
@@ -74,12 +78,16 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
-        {
-          title: "Department report",
-          link: "/report/department",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
+        ...(hasDepartmentsModule
+          ? [
+              {
+                title: "Department report",
+                link: "/report/department",
+                current: args?.isCurrentItem,
+                icon: "cart",
+              },
+            ]
+          : []),
         {
           title: "Expense report",
           link: "/report/expense",
@@ -103,12 +111,16 @@ const getNormalMenuItems = (
       current: args?.isCurrentItem,
       icon: "inventory",
       items: [
-        {
-          title: "Departments",
-          link: "/departments",
-          current: args?.isCurrentItem,
-          icon: "folder",
-        },
+        ...(hasDepartmentsModule
+          ? [
+              {
+                title: "Departments",
+                link: "/departments",
+                current: args?.isCurrentItem,
+                icon: "folder",
+              },
+            ]
+          : []),
         {
           title: "Categories",
           link: "/categories",
@@ -247,6 +259,12 @@ const getNormalMenuItems = (
         {
           title: "Supplier returns",
           link: "/supplier-returns",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Units of measure",
+          link: "/units",
           current: args?.isCurrentItem,
           icon: "cart",
         },

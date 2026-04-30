@@ -124,7 +124,10 @@ export async function updateStock(
       description: validated.data.description,
       baseUnitId: validated.data.baseUnitId,
       materialType: validated.data.materialType,
-      imageUrl: validated.data.imageUrl || undefined,
+      // Wrap the form's single primary URL into the list shape the
+      // backend expects. Pass `undefined` to leave the gallery alone,
+      // an empty list to clear it.
+      imageUrls: validated.data.imageUrl ? [validated.data.imageUrl] : undefined,
     });
 
     for (const variant of validated.data.variants) {
@@ -503,20 +506,149 @@ export async function uploadStockImages(
   return dataUrls;
 }
 
-// ── Save as draft (STUB) ────────────────────────────────────────────
+// ── Save as draft ───────────────────────────────────────────────────
+//
+// Persists the in-progress form state without enforcing StockSchema's
+// validation. Two flavors:
+//   - First save (no stockId): POST /api/v1/stocks with draft=true.
+//     Backend swaps in a placeholder name when blank, falls back to the
+//     "Item" UoM for missing baseUnitId, and accepts zero variants.
+//     Suppresses the STOCK_ITEM_CREATED Kafka fan-out until publish.
+//   - Subsequent save (stockId set): PUT /api/v1/stocks/{id} with
+//     whatever top-level fields are filled. Variants are managed
+//     through the dedicated /variants endpoints — same separation as
+//     the regular update flow.
+//
+// The response carries the persisted stock so the form can pin the new
+// id and switch into edit mode without a full reload.
+type DraftStockInput = Partial<z.infer<typeof StockSchema>>;
+type DraftStockVariant = Partial<z.infer<typeof StockSchema>["variants"][number]>;
+
+function mapStockVariantPartial(v: DraftStockVariant) {
+  return {
+    name: v.name?.trim() || undefined,
+    sku: v.sku || undefined,
+    unitId: v.unitId || undefined,
+    conversionToBase: v.conversionToBase ?? undefined,
+    barcode: v.barcode || undefined,
+    serialTracked: v.serialTracked,
+    startingQuantity:
+      v.initialQuantity != null && v.initialQuantity > 0 ? v.initialQuantity : undefined,
+    startingUnitCost:
+      v.initialQuantity != null && v.initialQuantity > 0
+        ? v.initialUnitCost ?? 0
+        : undefined,
+    reorderPoint: v.reorderPoint,
+    reorderQuantity: v.reorderQuantity,
+    preferredSupplierId:
+      v.preferredSupplierId && v.preferredSupplierId.length > 0
+        ? v.preferredSupplierId
+        : undefined,
+    lowStockThreshold: v.lowStockThreshold,
+    overstockThreshold: v.overstockThreshold,
+  };
+}
+
 export async function saveStockDraft(
-  values: unknown,
+  values: DraftStockInput,
   stockId?: string,
 ): Promise<FormResponse> {
-  void values;
-  void stockId;
-  // eslint-disable-next-line no-console
-  console.warn(
-    "[saveStockDraft] STUB — drafts are not yet wired up on the backend.",
-  );
-  return parseStringify({
-    responseType: "error",
-    message: "Drafts are not yet wired up on the backend.",
-    error: new Error("saveStockDraft not implemented"),
-  });
+  try {
+    const apiClient = new ApiClient();
+
+    const variantsArray = Array.isArray(values.variants) ? values.variants : [];
+    const meaningfulVariants = variantsArray
+      .map((v) => v as DraftStockVariant)
+      .filter((v) => v && (v.name?.trim() || v.sku || v.barcode))
+      .map(mapStockVariantPartial);
+
+    const imageUrls = values.imageUrl ? [values.imageUrl] : undefined;
+
+    if (!stockId) {
+      const payload = {
+        name: values.name?.trim() || undefined,
+        description: values.description || undefined,
+        baseUnitId: values.baseUnitId || undefined,
+        materialType: values.materialType || undefined,
+        imageUrls,
+        variants: meaningfulVariants.length ? meaningfulVariants : undefined,
+        draft: true,
+      };
+
+      const created = (await apiClient.post(
+        inventoryUrl("/api/v1/stocks"),
+        payload,
+      )) as Stock;
+
+      revalidatePath("/stock-variants");
+      return parseStringify({
+        responseType: "success",
+        message: "Draft saved",
+        data: created,
+      });
+    }
+
+    // Existing draft — only top-level fields go through PUT. Variants stay
+    // owned by the dedicated /variants endpoints.
+    await apiClient.put(inventoryUrl(`/api/v1/stocks/${stockId}`), {
+      name: values.name?.trim() || undefined,
+      description: values.description ?? undefined,
+      baseUnitId: values.baseUnitId || undefined,
+      materialType: values.materialType || undefined,
+      imageUrls,
+    });
+
+    revalidatePath("/stock-variants");
+    revalidatePath(`/stock-variants/${stockId}`);
+    return parseStringify({
+      responseType: "success",
+      message: "Draft saved",
+    });
+  } catch (error: unknown) {
+    const e = error as { message?: string; code?: string; metadata?: unknown };
+    return parseStringify({
+      responseType: "error",
+      message: e?.message ?? "Failed to save draft",
+      error: error instanceof Error ? error : new Error(String(error)),
+      errorCode: e?.code,
+      metadata: e?.metadata,
+    });
+  }
+}
+
+/**
+ * Promote a draft stock item to published. The backend revalidates that
+ * the stock now has a real name and at least one variant before flipping
+ * the draft flag and firing the deferred STOCK_ITEM_CREATED Kafka event.
+ * Idempotent for already-published stocks.
+ */
+export async function publishStock(
+  stockId: string,
+): Promise<FormResponse | void> {
+  if (!stockId) throw new Error("Stock ID is required");
+
+  try {
+    const apiClient = new ApiClient();
+    const published = (await apiClient.post(
+      inventoryUrl(`/api/v1/stocks/${stockId}/publish`),
+      {},
+    )) as Stock;
+
+    revalidatePath("/stock-variants");
+    revalidatePath(`/stock-variants/${stockId}`);
+    return parseStringify({
+      responseType: "success",
+      message: "Stock published",
+      data: published,
+    });
+  } catch (error: unknown) {
+    const e = error as { message?: string; code?: string; metadata?: unknown };
+    return parseStringify({
+      responseType: "error",
+      message: e?.message ?? "Failed to publish stock",
+      error: error instanceof Error ? error : new Error(String(error)),
+      errorCode: e?.code,
+      metadata: e?.metadata,
+    });
+  }
 }

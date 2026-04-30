@@ -47,6 +47,13 @@ export const ProductVariantSchema = object({
   // DIRECT-mode wiring
   stockVariantId: string().uuid().optional().nullish(),
   directQuantity: preprocess(toOptionalNumber, number().positive().optional().nullish()),
+
+  // Auto-retire-on-sellout (V36): when true, the backend's order consumer
+  // archives this variant the moment its stock hits zero (with
+  // archivedReason=SOLD_OUT). Surfaces as a per-variant toggle in the
+  // form; only meaningful for tracked variants — UNLIMITED variants
+  // ignore the setting since there's nothing to "sell out."
+  autoRetireOnSellout: boolean().default(false),
 }).superRefine((val, ctx) => {
   // Pricing strategy ⇒ required field per branch
   if (val.pricingStrategy === "PERCENTAGE_MARKUP" && val.markupPercentage == null) {
@@ -122,8 +129,12 @@ export const ProductSchema = object({
   taxInclusive: boolean().default(false),
   taxClass: z.enum(["A", "B", "C", "D", "E", "ZANZIBAR"]).optional().nullish(),
   active: boolean().default(true),
+  // DRAFT included so the form can round-trip a draft product without
+  // tripping the schema parser. The Save-as-Draft / Publish flow is what
+  // actually moves a product between DRAFT and ACTIVE; merchants don't
+  // pick DRAFT manually from the lifecycle dropdown.
   lifecycleStatus: z
-    .enum(["ACTIVE", "DISCONTINUED", "END_OF_LIFE"])
+    .enum(["DRAFT", "ACTIVE", "DISCONTINUED", "END_OF_LIFE"])
     .default("ACTIVE"),
   replacementProductId: string().uuid().optional().nullish(),
 

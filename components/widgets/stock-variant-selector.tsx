@@ -24,6 +24,8 @@ export interface VariantMeta {
   id: string;
   displayName: string;
   serialTracked: boolean;
+  /** The variant's tracking unit — anchor for compatible-unit lookups. */
+  unitId: string;
 }
 
 interface Props {
@@ -107,6 +109,7 @@ const StockVariantSelector: React.FC<Props> = ({
               id: variant.id,
               displayName: variant.displayName || `${stock.name} - ${variant.name}`,
               serialTracked: variant.serialTracked ?? false,
+              unitId: variant.unitId,
               disabled: disabledValues.includes(variant.id),
               searchString: `${stock.name} ${variant.name} ${variant.sku || ""}`.toLowerCase(),
             })),
@@ -129,14 +132,45 @@ const StockVariantSelector: React.FC<Props> = ({
   }, [allVariantOptions, value]);
 
   const handleSelect = useCallback(
-    (option: { id: string; displayName: string; serialTracked: boolean }) => {
+    (option: { id: string; displayName: string; serialTracked: boolean; unitId: string }) => {
       const deselecting = option.id === value;
       onChange(deselecting ? "" : option.id);
-      onVariantMeta?.(deselecting ? null : { id: option.id, displayName: option.displayName, serialTracked: option.serialTracked });
+      onVariantMeta?.(
+        deselecting
+          ? null
+          : {
+              id: option.id,
+              displayName: option.displayName,
+              serialTracked: option.serialTracked,
+              unitId: option.unitId,
+            },
+      );
       setOpen(false);
     },
     [value, onChange, onVariantMeta],
   );
+
+  // Emit meta once when an incoming `value` first resolves to a real variant
+  // (initial mount, edit forms). Tracks the last-emitted id so it never
+  // double-fires for user-driven selections handled by handleSelect.
+  const lastEmittedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!onVariantMeta) return;
+    if (!value) {
+      lastEmittedRef.current = null;
+      return;
+    }
+    if (lastEmittedRef.current === value) return;
+    const opt = allVariantOptions.find((o) => o.id === value);
+    if (!opt) return;
+    lastEmittedRef.current = value;
+    onVariantMeta({
+      id: opt.id,
+      displayName: opt.displayName,
+      serialTracked: opt.serialTracked,
+      unitId: opt.unitId,
+    });
+  }, [value, allVariantOptions, onVariantMeta]);
 
   // While we have a value but haven't resolved it yet, show a loading
   // indicator instead of the placeholder. Once the fetch settles, fall

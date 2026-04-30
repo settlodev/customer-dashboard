@@ -11,6 +11,13 @@ export interface Stock {
   materialType: MaterialType;
   imageUrl: string | null;
   variants: StockVariant[];
+  /**
+   * True when the stock item is an in-progress form save (V35). The
+   * default catalog list excludes drafts; promote via the publish action.
+   * Optional on read so older response payloads that pre-date V35 still
+   * type-check.
+   */
+  draft?: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -5,6 +5,7 @@ import { parseStringify } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import type { FormResponse } from "@/types/types";
 import type {
+  CompatibleUnit,
   ConvertResult,
   UnitConversion,
   UnitConversionPayload,
@@ -62,6 +63,20 @@ export async function getAllConversions(): Promise<UnitConversion[]> {
       inventoryUrl("/api/v1/units-of-measure/conversions"),
     );
     return (parseStringify(data) ?? []) as UnitConversion[];
+  } catch {
+    return [];
+  }
+}
+
+export async function getCompatibleUnits(
+  unitId: string,
+): Promise<CompatibleUnit[]> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(
+      inventoryUrl(`/api/v1/units-of-measure/${unitId}/compatible`),
+    );
+    return (parseStringify(data) ?? []) as CompatibleUnit[];
   } catch {
     return [];
   }

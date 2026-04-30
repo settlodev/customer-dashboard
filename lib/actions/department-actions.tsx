@@ -12,6 +12,7 @@ import {
   DepartmentReport,
 } from "@/types/department/type";
 import { DepartmentSchema } from "@/types/department/schema";
+import { getCurrentDestination } from "@/lib/actions/context";
 
 // ---------------------------------------------------------------------------
 // List / Search
@@ -58,6 +59,33 @@ export const searchDepartmentByName = async (
     const apiClient = new ApiClient();
     const data = await apiClient.get(
       `/api/v1/departments/search?query=${encodeURIComponent(query)}`,
+    );
+    return parseStringify(data);
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Fetch the active departments for the user's current location/store
+ * destination. Used by the category form to drive the auto-select vs
+ * dropdown decision: a single result means "auto-pick", several mean
+ * "show a picker".
+ */
+export const fetchDepartmentsForCurrentLocation = async (
+  activeOnly: boolean = true,
+): Promise<Department[]> => {
+  await getAuthenticatedUser();
+  const destination = await getCurrentDestination();
+  if (!destination) return [];
+  try {
+    const apiClient = new ApiClient();
+    const params = new URLSearchParams({
+      locationId: destination.id,
+      activeOnly: String(activeOnly),
+    });
+    const data = await apiClient.get(
+      `/api/v1/departments/list?${params.toString()}`,
     );
     return parseStringify(data);
   } catch (error) {

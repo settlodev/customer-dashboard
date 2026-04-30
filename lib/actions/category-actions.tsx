@@ -126,13 +126,8 @@ export async function updateCategory(
       imageUrl: validated.data.imageUrl,
       parentId: validated.data.parentId || undefined,
       removeParent: validated.data.parentId === null || validated.data.parentId === "",
-      departmentId: validated.data.departmentId || undefined,
-      // Mirrors the inventory backend's UpdateCategoryRequest contract:
-      // null/empty departmentId on the form is treated as "clear it" via the
-      // explicit removeDepartment flag, since null on the wire means "leave
-      // alone" in PATCH-style semantics.
-      removeDepartment:
-        validated.data.departmentId === null || validated.data.departmentId === "",
+      // Department is mandatory; the schema guarantees a UUID is present.
+      departmentId: validated.data.departmentId,
       sortOrder: validated.data.sortOrder,
       active: validated.data.active,
     });

@@ -1,4 +1,5 @@
 import type {
+  ArchiveReason,
   DestinationType,
   TaxClass,
   LifecycleStatus,
@@ -25,6 +26,11 @@ export interface Product {
   taxClass: TaxClass | null;
   active: boolean;
   archivedAt: string | null;
+  /**
+   * Why this product was archived (paired with {@link archivedAt}). Null
+   * for live products and rows archived before V36.
+   */
+  archivedReason: ArchiveReason | null;
   lifecycleStatus: LifecycleStatus;
   replacementProductId: string | null;
   tags: string[];
@@ -63,6 +69,20 @@ export interface ProductVariant {
   markupAmount: number | null;
   active: boolean;
   archivedAt: string | null;
+  /**
+   * Why this variant was archived. SOLD_OUT means the order consumer
+   * auto-retired it once its stock hit zero (only fires when
+   * autoRetireOnSellout is true). MERCHANT_ACTION means the merchant
+   * archived it manually. Null for live variants and rows archived
+   * before V36.
+   */
+  archivedReason: ArchiveReason | null;
+  /**
+   * When true, the order consumer auto-archives this variant the moment
+   * its on-hand inventory hits zero. For unique / one-off items the
+   * merchant never plans to restock.
+   */
+  autoRetireOnSellout: boolean;
   unlimited: boolean;
   costPrice: number | null;
   availableQuantity: number | null;

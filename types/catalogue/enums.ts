@@ -7,7 +7,21 @@ export type DestinationType = "LOCATION" | "WAREHOUSE" | "STORE";
 
 export type TaxClass = "A" | "B" | "C" | "D" | "E" | "ZANZIBAR";
 
-export type LifecycleStatus = "ACTIVE" | "DISCONTINUED" | "END_OF_LIFE";
+// DRAFT is the initial state set when a merchant uses "Save as draft" in
+// the product form. The merchant promotes it via the publish action;
+// we deliberately don't expose DRAFT in LIFECYCLE_STATUS_OPTIONS below
+// because it's never a user-selectable status, only a flow result.
+export type LifecycleStatus =
+  | "DRAFT"
+  | "ACTIVE"
+  | "DISCONTINUED"
+  | "END_OF_LIFE";
+
+// Why a product or variant was archived (V36). MERCHANT_ACTION = the
+// merchant explicitly archived. SOLD_OUT = the order consumer
+// auto-archived a variant flagged autoRetireOnSellout once its stock
+// hit zero. null on rows archived before V36 (treat as MERCHANT_ACTION).
+export type ArchiveReason = "MERCHANT_ACTION" | "SOLD_OUT";
 
 export type PricingStrategy = "MANUAL" | "PERCENTAGE_MARKUP" | "FIXED_MARKUP";
 

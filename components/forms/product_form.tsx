@@ -109,6 +109,7 @@ import {
   removePriceOverride,
   uploadProductImages,
   saveProductDraft,
+  publishProduct,
 } from "@/lib/actions/product-actions";
 import {
   listModifierGroups,
@@ -157,6 +158,7 @@ const DEFAULT_VARIANT: ProductVariantInput = {
   availableQuantity: undefined,
   stockVariantId: undefined,
   directQuantity: undefined,
+  autoRetireOnSellout: false,
 };
 
 function variantToInput(v: ProductVariant): ProductVariantInput {
@@ -180,6 +182,7 @@ function variantToInput(v: ProductVariant): ProductVariantInput {
     availableQuantity: v.availableQuantity ?? undefined,
     stockVariantId: v.stockVariantId ?? undefined,
     directQuantity: v.directQuantity ?? undefined,
+    autoRetireOnSellout: v.autoRetireOnSellout ?? false,
   };
 }
 
@@ -586,14 +589,40 @@ export default function ProductForm({ item }: ProductFormProps) {
       if (result?.responseType === "error") {
         toast({
           variant: "destructive",
-          title: "Drafts not yet wired up",
+          title: "Couldn't save draft",
           description: result.message,
         });
-      } else {
-        toast({ title: "Draft saved" });
+        return;
+      }
+      toast({ title: "Draft saved" });
+      // First save returns the freshly-created product so we can pin its
+      // id on the URL — subsequent saves PUT against /products/{id}.
+      // Skip the navigation when we're already on the edit route.
+      const newId = (result?.data as { id?: string } | undefined)?.id;
+      if (!item?.id && newId) {
+        router.replace(`/products/${newId}/edit`);
       }
     });
-  }, [form, item?.id, toast]);
+  }, [form, item?.id, router, toast]);
+
+  const handlePublish = useCallback(() => {
+    if (!item?.id) return;
+    startTransition(async () => {
+      const result = await publishProduct(item.id);
+      if (result?.responseType === "error") {
+        toast({
+          variant: "destructive",
+          title: "Couldn't publish product",
+          description: result.message,
+        });
+        return;
+      }
+      toast({ title: "Product published" });
+      router.push("/products");
+    });
+  }, [item?.id, router, toast]);
+
+  const isDraftProduct = item?.lifecycleStatus === "DRAFT";
 
   // Discard navigation runs straight from the AlertDialog's confirm
   // button below, so this used to be a confirm() guard — kept the
@@ -1385,6 +1414,21 @@ export default function ProductForm({ item }: ProductFormProps) {
           >
             <FileText className="h-3.5 w-3.5 mr-1.5" /> Save as draft
           </Button>
+          {isEditMode && isDraftProduct && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePublish}
+              disabled={isPending || !isValid}
+              title={
+                isValid
+                  ? "Publish this draft — makes it live in the catalog"
+                  : `Complete required fields (${remainingFields} remaining)`
+              }
+            >
+              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Publish
+            </Button>
+          )}
           <Button
             type="submit"
             disabled={isPending || !isValid}
@@ -1892,6 +1936,32 @@ function VariantEditor({
                       />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name={`variants.${index}.autoRetireOnSellout`}
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2 flex items-start gap-3 rounded-md border border-dashed border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+                    <FormControl>
+                      <Switch
+                        checked={!!field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={disabled}
+                        className="mt-0.5"
+                      />
+                    </FormControl>
+                    <div className="space-y-0.5">
+                      <FormLabel className="!mt-0 cursor-pointer text-sm">
+                        Retire after sell-out
+                      </FormLabel>
+                      <p className="text-xs text-muted-foreground leading-snug">
+                        For unique items you won&apos;t restock. The variant
+                        disappears from the POS the moment its stock hits
+                        zero; historical sales stay in reports.
+                      </p>
+                    </div>
                   </FormItem>
                 )}
               />

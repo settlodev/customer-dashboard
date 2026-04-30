@@ -13,6 +13,9 @@ import { parseListStatus } from "@/components/layouts/list-status";
 import NoItems from "@/components/layouts/no-items";
 import { columns } from "@/components/tables/department/columns";
 import { searchDepartment } from "@/lib/actions/department-actions";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getEntityEntitlements } from "@/lib/actions/entitlement-actions";
+import { UpgradeGate } from "@/components/widgets/upgrade-gate";
 import { Plus } from "lucide-react";
 
 type Params = {
@@ -27,10 +30,37 @@ type Params = {
 export default async function Page({ searchParams }: Params) {
   const resolvedSearchParams = await searchParams;
 
+  // DEPARTMENTS_MODULE entitlement gate. The auto-created Main department
+  // still exists for every location regardless — this only hides the
+  // CRUD surface for packages that don't include the feature.
+  const currentLocation = await getCurrentLocation();
+  if (currentLocation?.id) {
+    const item = await getEntityEntitlements(currentLocation.id);
+    const allowed = item ? item.features["DEPARTMENTS_MODULE"] === true : true;
+    if (!allowed) {
+      return (
+        <PageShell>
+          <PageBreadcrumbs items={[{ title: "Departments" }]} />
+          <PageHeader title="Departments" />
+          <PageBody>
+            <UpgradeGate
+              featureName="Departments"
+              description="Multi-department management is available on Professional and Enterprise plans. Your location still has a default Main department for day-to-day use."
+            />
+          </PageBody>
+        </PageShell>
+      );
+    }
+  }
+
   const q = resolvedSearchParams.search || "";
   const page = Number(resolvedSearchParams.page) || 0;
   const pageLimit = Number(resolvedSearchParams.limit);
   const status = parseListStatus(resolvedSearchParams.status);
+
+  const maxAllowed = currentLocation?.id
+    ? (await getEntityEntitlements(currentLocation.id))?.limits["MAX_DEPARTMENTS"]
+    : undefined;
 
   const responseData = await searchDepartment(q, page, pageLimit);
 
@@ -49,14 +79,27 @@ export default async function Page({ searchParams }: Params) {
       <PageBreadcrumbs items={[{ title: "Departments" }]} />
       <PageHeader
         title="Departments"
-        subtitle="Top-level grouping above categories."
+        subtitle={
+          maxAllowed !== undefined && maxAllowed !== -1
+            ? `Top-level grouping above categories. ${total} of ${maxAllowed} used.`
+            : "Top-level grouping above categories."
+        }
         actions={
-          <Button asChild>
-            <Link href="/departments/new">
+          maxAllowed !== undefined &&
+          maxAllowed !== -1 &&
+          total >= maxAllowed ? (
+            <Button disabled title={`Your plan caps you at ${maxAllowed} departments per location`}>
               <Plus className="mr-1.5 h-4 w-4" />
               Add Department
-            </Link>
-          </Button>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link href="/departments/new">
+                <Plus className="mr-1.5 h-4 w-4" />
+                Add Department
+              </Link>
+            </Button>
+          )
         }
       />
 

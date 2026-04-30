@@ -118,24 +118,28 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             <EditIcon className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {data.active ? (
-            <DropdownMenuItem
-              onClick={() => setArchiveModalOpen(true)}
-              className="text-red-600 focus:text-red-600"
-            >
-              <ArchiveIcon className="mr-2 h-4 w-4" />
-              Archive
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem
-              onClick={handleUnarchive}
-              disabled={isUnarchiving}
-              className="text-green-600 focus:text-green-600"
-            >
-              <ArchiveRestore className="mr-2 h-4 w-4" />
-              {isUnarchiving ? "Restoring..." : "Unarchive"}
-            </DropdownMenuItem>
+          {!data.isDefault && (
+            <>
+              <DropdownMenuSeparator />
+              {data.active ? (
+                <DropdownMenuItem
+                  onClick={() => setArchiveModalOpen(true)}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <ArchiveIcon className="mr-2 h-4 w-4" />
+                  Archive
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onClick={handleUnarchive}
+                  disabled={isUnarchiving}
+                  className="text-green-600 focus:text-green-600"
+                >
+                  <ArchiveRestore className="mr-2 h-4 w-4" />
+                  {isUnarchiving ? "Restoring..." : "Unarchive"}
+                </DropdownMenuItem>
+              )}
+            </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>

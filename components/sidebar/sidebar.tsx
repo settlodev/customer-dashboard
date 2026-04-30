@@ -47,10 +47,15 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
     const pathname = usePathname();
     const [visibleIndex, setVisibleIndex] = useState<number>(-1);
 
+    const { entitlements } = useEntitlements();
+    const hasDepartmentsModule =
+        entitlements?.features?.DEPARTMENTS_MODULE === true;
+
     const myMenuItems = menuItems({
         menuType,
         isCurrentItem: false,
         hasMultipleDestinations: data.hasMultipleDestinations,
+        hasDepartmentsModule,
     });
 
     // Auto-expand the section that contains the current page (only on navigation)

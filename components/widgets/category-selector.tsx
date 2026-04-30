@@ -9,6 +9,8 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Category } from "@/types/category/type";
 import { fetchAllCategories, createCategory } from "@/lib/actions/category-actions";
+import { fetchDepartmentsForCurrentLocation } from "@/lib/actions/department-actions";
+import type { Department } from "@/types/department/type";
 import { FormError } from "@/components/widgets/form-error";
 import { usePathname } from "next/navigation";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
@@ -51,6 +53,11 @@ const CategorySelector = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | undefined>("");
   const [selectedValue, setSelectedValue] = useState<string | undefined>(value);
+  // Resolved at mount; the inline create modal needs a departmentId to
+  // submit since department is mandatory on categories. We pick the
+  // location's default (or the only available department) — locations
+  // with multiple departments need to use the full category form.
+  const [defaultDepartmentId, setDefaultDepartmentId] = useState<string | null>(null);
   const pathname = usePathname();
 
   // In simple mode, use external categories. Otherwise, self-fetch.
@@ -79,6 +86,21 @@ const CategorySelector = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [simple]);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetchDepartmentsForCurrentLocation(true)
+      .then((depts: Department[]) => {
+        if (cancelled) return;
+        const preferred =
+          depts.find((d) => d.isDefault) ?? (depts.length === 1 ? depts[0] : null);
+        setDefaultDepartmentId(preferred ? preferred.id : null);
+      })
+      .catch(() => setDefaultDepartmentId(null));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const resetForm = () => {
     setNewCategoryName("");
     setParentCategory("");
@@ -92,6 +114,14 @@ const CategorySelector = ({
     setError("");
     setIsSubmitting(true);
 
+    if (!defaultDepartmentId) {
+      setError(
+        "This location has multiple departments — please use the full category form to choose one.",
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const response = await createCategory(
         {
@@ -99,6 +129,7 @@ const CategorySelector = ({
           active: true,
           imageUrl: imageUrl,
           parentId: parentCategory || undefined,
+          departmentId: defaultDepartmentId,
         },
         pathname,
       );

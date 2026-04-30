@@ -82,6 +82,16 @@ const fmt = (v: number) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(v);
 
 export default function DepartmentReportPage() {
+  const { entitlements, loading: entLoading } = useEntitlements();
+
+  // The aggregated features map is "any item has the feature" — that
+  // matches the dashboard policy (one Pro/Enterprise location is enough
+  // to unlock cross-location department reporting).
+  const allowed =
+    entLoading ||
+    !entitlements ||
+    entitlements.features?.DEPARTMENTS_MODULE === true;
+
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDepartment, setSelectedDepartment] =
     useState<Department | null>(null);
@@ -98,12 +108,22 @@ export default function DepartmentReportPage() {
   });
 
   useEffect(() => {
+    if (!allowed) return;
     fetchAllDepartments()
       .then(setDepartments)
       .catch(() =>
         toast({ variant: "destructive", title: "Failed to load departments" }),
       );
-  }, []);
+  }, [allowed]);
+
+  if (!allowed) {
+    return (
+      <UpgradeGate
+        featureName="Department reports"
+        description="Department-level reporting is available on Professional and Enterprise plans. Upgrade to compare sales, items, and profit by department."
+      />
+    );
+  }
 
   const DateTimePicker = ({ value, onChange, label }: DatePickerProps) => {
     const handleDateSelect = (date: Date | undefined) => {

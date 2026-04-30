@@ -27,6 +27,16 @@ export interface UnitConversion {
   systemGenerated: boolean;
 }
 
+export interface CompatibleUnit {
+  unitId: string;
+  name: string;
+  abbreviation: string;
+  unitType: UnitType;
+  /** Multiply a quantity in the anchor unit by this to express it in this unit. */
+  factorFromAnchor: number;
+  systemGenerated: boolean;
+}
+
 export interface ConvertResult {
   result: number;
   fromUnit: string;
@@ -42,7 +52,10 @@ export const UnitOfMeasureSchema = object({
     .trim()
     .min(1, "Abbreviation is required")
     .max(20, "Abbreviation cannot exceed 20 characters"),
-  unitType: string({ required_error: "Pick a unit type" }),
+  unitType: z.enum(["WEIGHT", "VOLUME", "LENGTH", "PIECE", "AREA"], {
+    required_error: "Pick a unit type",
+    invalid_type_error: "Pick a unit type",
+  }),
 });
 
 export type UnitOfMeasurePayload = z.infer<typeof UnitOfMeasureSchema>;
@@ -50,7 +63,12 @@ export type UnitOfMeasurePayload = z.infer<typeof UnitOfMeasureSchema>;
 export const UnitConversionSchema = object({
   fromUnitId: string().uuid("Pick a from-unit"),
   toUnitId: string().uuid("Pick a to-unit"),
-  multiplier: string({ required_error: "Multiplier is required" }),
+  multiplier: string({ required_error: "Multiplier is required" })
+    .min(1, "Multiplier is required")
+    .refine((v) => {
+      const n = Number(v);
+      return Number.isFinite(n) && n > 0;
+    }, "Multiplier must be a positive number"),
 }).refine((v) => v.fromUnitId !== v.toUnitId, {
   path: ["toUnitId"],
   message: "From and to units must differ",

@@ -85,6 +85,11 @@ export const columns: ColumnDef<Department>[] = [
           <span className="font-medium text-gray-900 dark:text-gray-100">
             {name}
           </span>
+          {row.original.isDefault && (
+            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              Default
+            </span>
+          )}
         </div>
       );
     },

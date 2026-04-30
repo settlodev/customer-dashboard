@@ -51,6 +51,10 @@ type VariantPayload = {
   stockLinkType?: "DIRECT" | null;
   stockVariantId?: string | null;
   directQuantity?: number | null;
+  // Auto-retire-on-sellout (V36): forwarded straight to the backend.
+  // Only meaningful for tracked variants — the order consumer reads it
+  // when a DIRECT-link deduction empties the stock.
+  autoRetireOnSellout?: boolean;
 };
 
 function mapVariant(v: ProductVariantInput): VariantPayload {
@@ -67,6 +71,7 @@ function mapVariant(v: ProductVariantInput): VariantPayload {
     markupAmount:
       v.pricingStrategy === "FIXED_MARKUP" ? v.markupAmount ?? undefined : undefined,
     unlimited: false,
+    autoRetireOnSellout: v.autoRetireOnSellout ?? false,
   };
 
   switch (v.sellabilityMode) {
@@ -328,7 +333,10 @@ export async function updateProduct(
       description: validData.data.description || undefined,
       categoryIds: validData.data.categoryIds,
       brandId: validData.data.brandId || undefined,
-      imageUrl: validData.data.imageUrl || undefined,
+      // Wrap the form's single primary URL into the list shape the
+      // backend expects (V32). Pass `undefined` to leave the gallery
+      // alone, an empty list to clear it.
+      imageUrls: validData.data.imageUrl ? [validData.data.imageUrl] : undefined,
       sellOnline: validData.data.sellOnline,
       trackStock: deriveTrackStock(validData.data.variants),
       taxInclusive: validData.data.taxInclusive,
@@ -740,29 +748,176 @@ export async function uploadProductImages(
   return dataUrls;
 }
 
-// ── Save as draft (STUB) ────────────────────────────────────────────
-// TODO(drafts): wire up real draft persistence. The product form's
-// "Save as draft" button calls this with the in-progress form values
-// (validation deliberately bypassed) so merchants can park work without
-// satisfying every required field. Replace the body with a backend call
-// that stores a draft record (separate table or product flag) without
-// going through ProductSchema's strict validation.
+// ── Save as draft ───────────────────────────────────────────────────
+//
+// Persists the in-progress form state without enforcing ProductSchema's
+// validation. Two flavors:
+//   - First save (no productId): POST /api/v1/products with draft=true.
+//     Backend swaps in a placeholder name when blank, skips the categories
+//     and variants requirements, and suppresses the PRODUCT_CREATED Kafka
+//     fan-out until publish.
+//   - Subsequent save (productId set): PUT /api/v1/products/{id} with
+//     whatever top-level fields are filled. Variants are managed through
+//     the dedicated /variants endpoints — the same separation as the
+//     regular update flow.
+//
+// The response carries the persisted product so the form can pin the new
+// id and switch into edit mode without a full reload.
+type DraftProductInput = Partial<z.infer<typeof ProductSchema>>;
+
+function mapVariantPartial(v: Partial<ProductVariantInput>) {
+  // Drafts may have wholly empty rows; skip those upstream. Anything else
+  // we forward as-is, letting the backend's draft path apply placeholders.
+  const sellMode = v.sellabilityMode ?? "UNLIMITED";
+  return {
+    name: v.name?.trim() || undefined,
+    sku: v.sku || undefined,
+    imageUrl: v.imageUrl || undefined,
+    active: v.active,
+    pricingStrategy: v.pricingStrategy,
+    price: v.price ?? undefined,
+    costPrice: v.costPrice ?? undefined,
+    markupPercentage:
+      v.pricingStrategy === "PERCENTAGE_MARKUP" ? v.markupPercentage ?? undefined : undefined,
+    markupAmount:
+      v.pricingStrategy === "FIXED_MARKUP" ? v.markupAmount ?? undefined : undefined,
+    unlimited: sellMode === "UNLIMITED",
+    availableQuantity:
+      sellMode === "UNLIMITED" ? v.availableQuantity ?? undefined : undefined,
+    stockLinkType: sellMode === "DIRECT" ? "DIRECT" : undefined,
+    stockVariantId: sellMode === "DIRECT" ? v.stockVariantId ?? undefined : undefined,
+    directQuantity: sellMode === "DIRECT" ? v.directQuantity ?? undefined : undefined,
+    // Forward the toggle for tracked variants only — UNLIMITED ignores
+    // it on the backend, no point sending it.
+    autoRetireOnSellout:
+      sellMode !== "UNLIMITED" ? v.autoRetireOnSellout ?? undefined : undefined,
+  };
+}
+
 export async function saveProductDraft(
-  values: unknown,
+  values: DraftProductInput,
   productId?: string,
 ): Promise<FormResponse> {
-  // Mark the parameters as "intentionally unused for now" so the stub keeps
-  // the right shape for the real implementation. Drop the void casts when
-  // wiring this up.
-  void values;
-  void productId;
-  // eslint-disable-next-line no-console
-  console.warn(
-    "[saveProductDraft] STUB — drafts are not yet wired up on the backend.",
-  );
-  return parseStringify({
-    responseType: "error",
-    message: "Drafts are not yet wired up on the backend.",
-    error: new Error("saveProductDraft not implemented"),
-  });
+  try {
+    const apiClient = new ApiClient();
+    const destination = await getCurrentDestination();
+
+    const variantsArray = Array.isArray(values.variants) ? values.variants : [];
+    const meaningfulVariants = variantsArray
+      .map((v) => v as Partial<ProductVariantInput>)
+      .filter((v) => v && (v.name?.trim() || v.sku || v.price != null))
+      .map(mapVariantPartial);
+
+    const imageUrls = values.imageUrl ? [values.imageUrl] : undefined;
+    const categoryIds = Array.isArray(values.categoryIds) && values.categoryIds.length
+      ? values.categoryIds
+      : undefined;
+    const tags = Array.isArray(values.tags) && values.tags.length ? values.tags : undefined;
+
+    if (!productId) {
+      // Fresh draft — backend assigns an id and stamps draft=true.
+      const payload = {
+        locationType: destination?.type ?? "LOCATION",
+        name: values.name?.trim() || undefined,
+        nativeCurrency: values.nativeCurrency || undefined,
+        description: values.description || undefined,
+        categoryIds,
+        brandId: values.brandId || undefined,
+        imageUrls,
+        sellOnline: values.sellOnline,
+        taxInclusive: values.taxInclusive,
+        taxClass: values.taxClass || undefined,
+        tags,
+        variants: meaningfulVariants.length ? meaningfulVariants : undefined,
+        modifierGroupIds: values.modifierGroupIds?.length
+          ? values.modifierGroupIds
+          : undefined,
+        addonGroupIds: values.addonGroupIds?.length ? values.addonGroupIds : undefined,
+        draft: true,
+      };
+
+      const created = (await apiClient.post(
+        inventoryUrl("/api/v1/products"),
+        payload,
+      )) as Product;
+
+      revalidatePath("/products");
+      return parseStringify({
+        responseType: "success",
+        message: "Draft saved",
+        data: created,
+      });
+    }
+
+    // Existing draft — only top-level fields go through PUT. Variants stay
+    // owned by the dedicated /variants endpoints, mirroring the regular
+    // updateProduct flow.
+    await apiClient.put(inventoryUrl(`/api/v1/products/${productId}`), {
+      name: values.name?.trim() || undefined,
+      nativeCurrency: values.nativeCurrency || undefined,
+      description: values.description ?? undefined,
+      categoryIds,
+      brandId: values.brandId || undefined,
+      imageUrls,
+      sellOnline: values.sellOnline,
+      taxInclusive: values.taxInclusive,
+      taxClass: values.taxClass || undefined,
+      tags,
+      replacementProductId: values.replacementProductId || undefined,
+    });
+
+    revalidatePath("/products");
+    revalidatePath(`/products/${productId}/edit`);
+    return parseStringify({
+      responseType: "success",
+      message: "Draft saved",
+    });
+  } catch (error: unknown) {
+    const e = error as { message?: string; code?: string; metadata?: unknown };
+    return parseStringify({
+      responseType: "error",
+      message: e?.message ?? "Failed to save draft",
+      error: error instanceof Error ? error : new Error(String(error)),
+      errorCode: e?.code,
+      metadata: e?.metadata,
+    });
+  }
+}
+
+/**
+ * Promote a draft product to ACTIVE. The backend revalidates that the
+ * product now has a real name, at least one category, and at least one
+ * priced variant before flipping the lifecycle flag and firing the
+ * deferred PRODUCT_CREATED Kafka event. Idempotent for already-published
+ * products.
+ */
+export async function publishProduct(
+  productId: string,
+): Promise<FormResponse | void> {
+  if (!productId) throw new Error("Product ID is required");
+
+  try {
+    const apiClient = new ApiClient();
+    const published = (await apiClient.post(
+      inventoryUrl(`/api/v1/products/${productId}/publish`),
+      {},
+    )) as Product;
+
+    revalidatePath("/products");
+    revalidatePath(`/products/${productId}/edit`);
+    return parseStringify({
+      responseType: "success",
+      message: "Product published",
+      data: published,
+    });
+  } catch (error: unknown) {
+    const e = error as { message?: string; code?: string; metadata?: unknown };
+    return parseStringify({
+      responseType: "error",
+      message: e?.message ?? "Failed to publish product",
+      error: error instanceof Error ? error : new Error(String(error)),
+      errorCode: e?.code,
+      metadata: e?.metadata,
+    });
+  }
 }

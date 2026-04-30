@@ -82,6 +82,7 @@ import {
   unarchiveStockVariant,
   uploadStockImages,
   saveStockDraft,
+  publishStock,
 } from "@/lib/actions/stock-actions";
 import { assignBarcode } from "@/lib/actions/barcode-actions";
 import { getUnits, convertUnits } from "@/lib/actions/unit-actions";
@@ -90,6 +91,7 @@ import type { UnitOfMeasure } from "@/types/unit/type";
 import { StockSchema } from "@/types/stock/schema";
 import type { FormResponse } from "@/types/types";
 import UnitSelector from "@/components/widgets/unit-selector";
+import CompatibleUnitSelector from "@/components/widgets/compatible-unit-selector";
 import SupplierSelector from "@/components/widgets/supplier-selector";
 import { MATERIAL_TYPE_OPTIONS } from "@/types/catalogue/enums";
 import { BusinessDayClosedDialog } from "@/components/widgets/business-day-closed-dialog";
@@ -237,18 +239,97 @@ export default function StockForm({ item, balances }: StockFormProps) {
     }
   }, [baseUnitId, isEditing, fields.length, form]);
 
+  // Re-validate variants whenever the base unit actually changes (not on
+  // mount). Variants whose existing unit can no longer scale down to the new
+  // base — different family, or same family but larger — get reset to the
+  // base. Existing data on edit-form mount is left untouched: prevBaseUnitRef
+  // starts undefined and only flips to a known value after the first render.
+  const prevBaseUnitRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const prev = prevBaseUnitRef.current;
+    prevBaseUnitRef.current = baseUnitId;
+    if (prev === undefined) return;
+    if (prev === baseUnitId || !baseUnitId) return;
+
+    const variants = form.getValues("variants") ?? [];
+    variants.forEach(async (v, i) => {
+      if (!v.unitId) return;
+      if (v.unitId === baseUnitId) {
+        form.setValue(`variants.${i}.conversionToBase`, 1);
+        return;
+      }
+      const variantAbbr =
+        unitMap.get(v.unitId)?.abbreviation ?? `variant ${i + 1} unit`;
+      const baseAbbr = unitMap.get(baseUnitId)?.abbreviation ?? "new base";
+      const result = await convertUnits(v.unitId, baseUnitId, 1);
+      if (!result) {
+        form.setValue(`variants.${i}.unitId`, baseUnitId);
+        form.setValue(`variants.${i}.conversionToBase`, 1);
+        toast({
+          variant: "destructive",
+          title: `Variant ${i + 1} unit reset`,
+          description: `No conversion from ${variantAbbr} to ${baseAbbr}. Reverted to ${baseAbbr}.`,
+        });
+        return;
+      }
+      if (result.result > 1) {
+        form.setValue(`variants.${i}.unitId`, baseUnitId);
+        form.setValue(`variants.${i}.conversionToBase`, 1);
+        toast({
+          variant: "destructive",
+          title: `Variant ${i + 1} unit reset`,
+          description: `${variantAbbr} is larger than ${baseAbbr}. Reverted to ${baseAbbr}.`,
+        });
+        return;
+      }
+      form.setValue(`variants.${i}.conversionToBase`, result.result);
+    });
+    // unitMap intentionally omitted — toast labels read whatever's current; we
+    // don't want this effect to re-fire just because the unit catalog refreshed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseUnitId, form, toast]);
+
   const handleVariantUnitChange = async (index: number, newUnitId: string) => {
-    form.setValue(`variants.${index}.unitId`, newUnitId);
     const currentBase = form.getValues("baseUnitId");
-    if (!currentBase || !newUnitId) return;
+    if (!currentBase || !newUnitId) {
+      form.setValue(`variants.${index}.unitId`, newUnitId);
+      return;
+    }
     if (newUnitId === currentBase) {
+      form.setValue(`variants.${index}.unitId`, newUnitId);
       form.setValue(`variants.${index}.conversionToBase`, 1);
       return;
     }
     const result = await convertUnits(newUnitId, currentBase, 1);
-    if (result) {
-      form.setValue(`variants.${index}.conversionToBase`, result.result);
+    if (!result) {
+      // No conversion path — shouldn't happen since CompatibleUnitSelector
+      // only surfaces reachable units, but guard anyway.
+      const baseAbbr = unitMap.get(currentBase)?.abbreviation ?? "base unit";
+      toast({
+        variant: "destructive",
+        title: "No conversion defined",
+        description: `Define a conversion to ${baseAbbr} under Units of measure first.`,
+      });
+      return;
     }
+    // Variant must scale down from base — 1 variant unit ≤ 1 base unit.
+    // Rejects e.g. base=ml + variant=L (result.result = 1000) so the smaller
+    // unit always sits at the variant level. PIECE-family already restricted
+    // to PIECE-PIECE by the compatible selector itself.
+    if (result.result > 1) {
+      const variantAbbr =
+        unitMap.get(newUnitId)?.abbreviation ?? "variant unit";
+      const baseAbbr =
+        unitMap.get(currentBase)?.abbreviation ?? "base unit";
+      toast({
+        variant: "destructive",
+        title: "Variant must be smaller than base",
+        description: `1 ${variantAbbr} = ${result.result} ${baseAbbr}. Pick a smaller unit, or set ${variantAbbr} as the base unit instead.`,
+      });
+      return;
+    }
+    form.setValue(`variants.${index}.unitId`, newUnitId);
+    form.setValue(`variants.${index}.conversionToBase`, result.result);
   };
 
   const handleVariantArchive = async (index: number, shouldArchive: boolean) => {
@@ -473,14 +554,39 @@ export default function StockForm({ item, balances }: StockFormProps) {
       if (result?.responseType === "error") {
         toast({
           variant: "destructive",
-          title: "Drafts not yet wired up",
+          title: "Couldn't save draft",
           description: result.message,
         });
-      } else {
-        toast({ title: "Draft saved" });
+        return;
+      }
+      toast({ title: "Draft saved" });
+      // First save returns the freshly-created stock so we can pin its id
+      // on the URL — subsequent saves PUT against /stocks/{id}.
+      const newId = (result?.data as { id?: string } | undefined)?.id;
+      if (!item?.id && newId) {
+        router.replace(`/stock-variants/${newId}/edit`);
       }
     });
-  }, [form, item?.id, toast]);
+  }, [form, item?.id, router, toast]);
+
+  const handlePublish = useCallback(() => {
+    if (!item?.id) return;
+    startTransition(async () => {
+      const result = await publishStock(item.id);
+      if (result?.responseType === "error") {
+        toast({
+          variant: "destructive",
+          title: "Couldn't publish stock",
+          description: result.message,
+        });
+        return;
+      }
+      toast({ title: "Stock published" });
+      router.push("/stock-variants");
+    });
+  }, [item?.id, router, toast]);
+
+  const isDraftStock = item?.draft === true;
 
   const handleDiscard = useCallback(() => {
     router.back();
@@ -823,12 +929,18 @@ export default function StockForm({ item, balances }: StockFormProps) {
                                     Unit <span className="text-red-500">*</span>
                                   </FormLabel>
                                   <FormControl>
-                                    <UnitSelector
+                                    <CompatibleUnitSelector
+                                      anchorUnitId={baseUnitId || undefined}
                                       value={f.value}
                                       onChange={(v) =>
                                         handleVariantUnitChange(index, v)
                                       }
-                                      isDisabled={isDisabled}
+                                      isDisabled={isDisabled || !baseUnitId}
+                                      placeholder={
+                                        baseUnitId
+                                          ? "Select unit"
+                                          : "Pick base unit first"
+                                      }
                                     />
                                   </FormControl>
                                   {conversionLabel && (
@@ -1401,6 +1513,21 @@ export default function StockForm({ item, balances }: StockFormProps) {
             >
               <FileText className="h-3.5 w-3.5 mr-1.5" /> Save as draft
             </Button>
+            {isEditing && isDraftStock && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePublish}
+                disabled={isPending || !isValid}
+                title={
+                  isValid
+                    ? "Publish this draft — makes it live in the catalog"
+                    : `Complete required fields (${remainingFields} remaining)`
+                }
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Publish
+              </Button>
+            )}
             <Button
               type="submit"
               disabled={isPending || !isValid}

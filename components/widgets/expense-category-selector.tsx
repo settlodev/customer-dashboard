@@ -9,6 +9,8 @@ import { Plus, Tag } from "lucide-react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { createCategory } from "@/lib/actions/category-actions";
+import { fetchDepartmentsForCurrentLocation } from "@/lib/actions/department-actions";
+import type { Department } from "@/types/department/type";
 import { FormError } from "@/components/widgets/form-error";
 import { usePathname } from 'next/navigation';
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
@@ -45,7 +47,27 @@ const ExpenseCategorySelector = ({
     const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>(
         []
       );
+    // Department is mandatory on categories. The inline create modal here
+    // resolves to the location's default (or the only available department)
+    // since it has no UI for picking one.
+    const [defaultDepartmentId, setDefaultDepartmentId] = useState<string | null>(null);
     const pathname = usePathname();
+
+    useEffect(() => {
+        let cancelled = false;
+        fetchDepartmentsForCurrentLocation(true)
+            .then((depts: Department[]) => {
+                if (cancelled) return;
+                const preferred =
+                    depts.find((d) => d.isDefault) ??
+                    (depts.length === 1 ? depts[0] : null);
+                setDefaultDepartmentId(preferred ? preferred.id : null);
+            })
+            .catch(() => setDefaultDepartmentId(null));
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         setSelectedValue(value);
@@ -78,6 +100,13 @@ const ExpenseCategorySelector = ({
         if (!newCategoryName.trim()) return;
         setError("");
 
+        if (!defaultDepartmentId) {
+            setError(
+                "This location has multiple departments — please use the full category form to choose one.",
+            );
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const response = await createCategory(
@@ -85,6 +114,7 @@ const ExpenseCategorySelector = ({
                     name: newCategoryName,
                     active: true,
                     imageUrl: imageUrl,
+                    departmentId: defaultDepartmentId,
                 },
                 pathname,
             );

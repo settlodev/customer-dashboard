@@ -63,8 +63,11 @@ import {
   AlertTitle,
   AlertDescription,
 } from "@/components/ui/alert";
-import StockVariantSelector from "@/components/widgets/stock-variant-selector";
+import StockVariantSelector, {
+  type VariantMeta,
+} from "@/components/widgets/stock-variant-selector";
 import UnitSelector from "@/components/widgets/unit-selector";
+import CompatibleUnitSelector from "@/components/widgets/compatible-unit-selector";
 
 import styles from "./styles/form-shell.module.css";
 
@@ -503,107 +506,13 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
             <div className={styles.formBody}>
               <div className="space-y-3">
                 {outputsField.fields.map((field, index) => (
-                  <div
+                  <OutputRow
                     key={field.id}
-                    className="border rounded-lg p-4 bg-gray-50/50 dark:bg-gray-900/30 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3"
-                  >
-                    <FormField
-                      control={form.control}
-                      name={`outputs.${index}.stockVariantId`}
-                      render={({ field: f }) => (
-                        <FormItem className="md:col-span-2">
-                          <FormLabel className="text-xs">
-                            Variant <span className="text-red-500">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <StockVariantSelector
-                              placeholder="Output variant"
-                              value={f.value ?? ""}
-                              onChange={f.onChange}
-                              isDisabled={isPending}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`outputs.${index}.outputType`}
-                      render={({ field: f }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Type</FormLabel>
-                          <Select value={f.value} onValueChange={f.onChange}>
-                            <FormControl>
-                              <SelectTrigger className="h-9">
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {Object.entries(BOM_OUTPUT_TYPE_LABELS).map(([val, label]) => (
-                                <SelectItem key={val} value={val}>
-                                  {label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`outputs.${index}.yieldQuantity`}
-                      render={({ field: f }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
-                            Qty <span className="text-red-500">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <NumericFormat
-                              className="flex h-9 w-full rounded-md border-0 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
-                              value={f.value ?? ""}
-                              onValueChange={(v) =>
-                                f.onChange(v.value ? Number(v.value) : undefined)
-                              }
-                              placeholder="1"
-                              disabled={isPending}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`outputs.${index}.yieldUnitId`}
-                      render={({ field: f }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
-                            Unit <span className="text-red-500">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <UnitSelector
-                              {...f}
-                              value={f.value ?? ""}
-                              placeholder="Unit"
-                              isDisabled={isPending}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="flex items-end justify-end">
-                      <button
-                        type="button"
-                        onClick={() => outputsField.remove(index)}
-                        disabled={isPending}
-                        className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+                    form={form}
+                    index={index}
+                    isPending={isPending}
+                    onRemove={() => outputsField.remove(index)}
+                  />
                 ))}
                 {outputsField.fields.length === 0 && (
                   <p className="text-xs text-muted-foreground italic">
@@ -882,6 +791,10 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
   const category = form.watch(`items.${index}.itemCategory`) as BomItemCategory | undefined;
   const strategy = form.watch(`items.${index}.substitutionStrategy`);
   const isStockish = category === "STOCK" || category === "NON_STOCK" || !category;
+  // Variant's tracking unit drives the unit dropdown's compatibility list.
+  // Set on initial render via StockVariantSelector's onVariantMeta callback
+  // (fires for both user picks and edit-mode value resolution).
+  const [anchorUnitId, setAnchorUnitId] = useState<string | undefined>(undefined);
 
   return (
     <div className="border rounded-lg p-4 bg-gray-50/50 dark:bg-gray-900/30 space-y-3">
@@ -957,6 +870,9 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
                     placeholder="Select stock item"
                     value={field.value ?? ""}
                     onChange={field.onChange}
+                    onVariantMeta={(m: VariantMeta | null) =>
+                      setAnchorUnitId(m?.unitId)
+                    }
                     isDisabled={isPending}
                   />
                 </FormControl>
@@ -992,9 +908,10 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
             <FormItem>
               <FormLabel className="text-xs">Unit</FormLabel>
               <FormControl>
-                <UnitSelector
-                  {...field}
+                <CompatibleUnitSelector
+                  anchorUnitId={anchorUnitId}
                   value={field.value ?? ""}
+                  onChange={field.onChange}
                   placeholder="Unit"
                   isDisabled={isPending}
                 />
@@ -1219,6 +1136,124 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Per-output row ──────────────────────────────────────────────────
+
+interface OutputRowProps {
+  form: ReturnType<typeof useForm<FormValues>>;
+  index: number;
+  isPending: boolean;
+  onRemove: () => void;
+}
+
+function OutputRow({ form, index, isPending, onRemove }: OutputRowProps) {
+  const [anchorUnitId, setAnchorUnitId] = useState<string | undefined>(undefined);
+
+  return (
+    <div className="border rounded-lg p-4 bg-gray-50/50 dark:bg-gray-900/30 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
+      <FormField
+        control={form.control}
+        name={`outputs.${index}.stockVariantId`}
+        render={({ field: f }) => (
+          <FormItem className="md:col-span-2">
+            <FormLabel className="text-xs">
+              Variant <span className="text-red-500">*</span>
+            </FormLabel>
+            <FormControl>
+              <StockVariantSelector
+                placeholder="Output variant"
+                value={f.value ?? ""}
+                onChange={f.onChange}
+                onVariantMeta={(m: VariantMeta | null) =>
+                  setAnchorUnitId(m?.unitId)
+                }
+                isDisabled={isPending}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name={`outputs.${index}.outputType`}
+        render={({ field: f }) => (
+          <FormItem>
+            <FormLabel className="text-xs">Type</FormLabel>
+            <Select value={f.value} onValueChange={f.onChange}>
+              <FormControl>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {Object.entries(BOM_OUTPUT_TYPE_LABELS).map(([val, label]) => (
+                  <SelectItem key={val} value={val}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name={`outputs.${index}.yieldQuantity`}
+        render={({ field: f }) => (
+          <FormItem>
+            <FormLabel className="text-xs">
+              Qty <span className="text-red-500">*</span>
+            </FormLabel>
+            <FormControl>
+              <NumericFormat
+                className="flex h-9 w-full rounded-md border-0 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                value={f.value ?? ""}
+                onValueChange={(v) =>
+                  f.onChange(v.value ? Number(v.value) : undefined)
+                }
+                placeholder="1"
+                disabled={isPending}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name={`outputs.${index}.yieldUnitId`}
+        render={({ field: f }) => (
+          <FormItem>
+            <FormLabel className="text-xs">
+              Unit <span className="text-red-500">*</span>
+            </FormLabel>
+            <FormControl>
+              <CompatibleUnitSelector
+                anchorUnitId={anchorUnitId}
+                value={f.value ?? ""}
+                onChange={f.onChange}
+                placeholder="Unit"
+                isDisabled={isPending}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <div className="flex items-end justify-end">
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={isPending}
+          className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }

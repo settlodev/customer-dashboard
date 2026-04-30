@@ -31,7 +31,8 @@ import {
   fetchAllCategories,
   updateCategory,
 } from "@/lib/actions/category-actions";
-import { fetchAllDepartments } from "@/lib/actions/department-actions";
+import { fetchDepartmentsForCurrentLocation } from "@/lib/actions/department-actions";
+import type { Department } from "@/types/department/type";
 import { Category } from "@/types/category/type";
 import { FormResponse } from "@/types/types";
 import { CategorySchema } from "@/types/category/schema";
@@ -63,16 +64,18 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
   const router = useRouter();
   const isEditing = !!item;
 
-  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [departmentsLoaded, setDepartmentsLoaded] = useState(false);
 
   useEffect(() => {
     const getData = async () => {
       const [cats, depts] = await Promise.all([
         fetchAllCategories(),
-        fetchAllDepartments().catch(() => []),
+        fetchDepartmentsForCurrentLocation(true).catch(() => [] as Department[]),
       ]);
       setCategories(cats);
-      setDepartments((depts ?? []).map((d: any) => ({ id: d.id, name: d.name })));
+      setDepartments(depts ?? []);
+      setDepartmentsLoaded(true);
     };
     getData();
   }, []);
@@ -84,11 +87,29 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
       description: item?.description ?? "",
       imageUrl: imageUrl || item?.imageUrl || "",
       parentId: item?.parentId || "",
-      departmentId: item?.departmentId ?? undefined,
+      departmentId: item?.departmentId ?? "",
       sortOrder: item?.sortOrder ?? 0,
       active: item?.active ?? true,
     },
   });
+
+  // Auto-select the department once the list has loaded. The form already
+  // carries the saved value when editing, so this only fires for new
+  // categories that haven't picked one yet. We prefer the location's
+  // explicit default and fall back to the only available option.
+  useEffect(() => {
+    if (!departmentsLoaded) return;
+    if (form.getValues("departmentId")) return;
+    if (departments.length === 0) return;
+    const preferred =
+      departments.find((d) => d.isDefault) ??
+      (departments.length === 1 ? departments[0] : undefined);
+    if (preferred) {
+      form.setValue("departmentId", preferred.id, { shouldValidate: true });
+    }
+  }, [departmentsLoaded, departments, form]);
+
+  const showDepartmentPicker = departments.length > 1;
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
@@ -217,40 +238,38 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="departmentId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className={styles.fieldLabel}>
-                            Department
-                            <span className="opt">OPTIONAL</span>
-                          </FormLabel>
-                          <Select
-                            onValueChange={(v) =>
-                              field.onChange(v === "__none__" ? null : v)
-                            }
-                            value={field.value ?? "__none__"}
-                            disabled={isPending}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="No department" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="__none__">No department</SelectItem>
-                              {departments.map((d) => (
-                                <SelectItem key={d.id} value={d.id}>
-                                  {d.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {showDepartmentPicker && (
+                      <FormField
+                        control={form.control}
+                        name="departmentId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              Department <span className="req">*</span>
+                            </FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value ?? ""}
+                              disabled={isPending}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select department" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {departments.map((d) => (
+                                  <SelectItem key={d.id} value={d.id}>
+                                    {d.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
 
                     <FormField
                       control={form.control}
