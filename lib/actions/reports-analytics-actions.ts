@@ -3,6 +3,7 @@
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import type {
+  RsInventoryDashboardSummary,
   RsItemSalesSummary,
   RsMovement,
   RsMovementSummary,
@@ -123,6 +124,30 @@ export async function getItemSalesSummary(
       `${ANALYTICS}/item-sales/summary?${params.toString()}`,
     );
     return parseStringify(data) as RsItemSalesSummary;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Six-tile inventory dashboard summary for the stock items list page.
+ * Live current values come from `fact_inventory_current`; week-over-week and
+ * 30-day deltas come from `fact_inventory_snapshot_daily`. Returns null on
+ * transport/auth failure so the page can render placeholders rather than
+ * blow up.
+ */
+export async function getInventoryDashboardSummary(
+  locationId: string,
+  currency?: string,
+): Promise<RsInventoryDashboardSummary | null> {
+  try {
+    const apiClient = new ApiClient("reports");
+    const params = new URLSearchParams({ locationId });
+    if (currency) params.set("currency", currency);
+    const data = await apiClient.get(
+      `${ANALYTICS}/inventory/dashboard/summary?${params.toString()}`,
+    );
+    return parseStringify(data) as RsInventoryDashboardSummary;
   } catch {
     return null;
   }

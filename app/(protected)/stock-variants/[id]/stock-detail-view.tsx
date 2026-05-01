@@ -869,40 +869,48 @@ function MovementsTab({
         })),
       }
     : movementSummary;
+  // Per-variant KPI numbers — driven by the variant selector below. The
+  // stock-level `summary` (computed above) still feeds the breakdown chart
+  // further down the tab; the headline tiles narrow to whichever variant is
+  // selected so the user reads the numbers for the row they're inspecting.
+  const tileQtyIn = activeVariantSummary?.totalQuantityIn ?? 0;
+  const tileQtyOut = activeVariantSummary?.totalQuantityOut ?? 0;
+  const tileNet = activeVariantSummary?.netQuantityChange ?? 0;
+  const tileCostIn = activeVariantSummary?.totalCostIn ?? 0;
+  const tileCostOut = activeVariantSummary?.totalCostOut ?? 0;
+  const variantLabel =
+    activeVariant?.displayName ?? activeVariant?.name ?? "variant";
+
   return (
     <div className="space-y-6">
-      {/* Movement summary cards */}
+      {/* Movement summary cards — per-variant. */}
       <KpiStrip cols={5}>
         <KpiCard
           icon={<ArrowDownRight className="h-3 w-3" />}
           label="Qty in (30d)"
-          value={`+${Math.abs(summary.totalQuantityIn).toLocaleString()}`}
-          delta="incoming"
+          value={`+${Math.abs(tileQtyIn).toLocaleString()}`}
+          delta={`${variantLabel} · incoming`}
           deltaTone="pos"
         />
         <KpiCard
           icon={<ArrowUpRight className="h-3 w-3" />}
           label="Qty out (30d)"
-          value={`−${Math.abs(summary.totalQuantityOut).toLocaleString()}`}
-          delta="outgoing"
+          value={`−${Math.abs(tileQtyOut).toLocaleString()}`}
+          delta={`${variantLabel} · outgoing`}
           deltaTone="neg"
         />
         <KpiCard
           icon={<Activity className="h-3 w-3" />}
           label="Net change"
-          value={`${summary.netQuantityChange > 0 ? "+" : ""}${summary.netQuantityChange.toLocaleString()}`}
+          value={`${tileNet > 0 ? "+" : ""}${tileNet.toLocaleString()}`}
           deltaTone={
-            summary.netQuantityChange > 0
-              ? "pos"
-              : summary.netQuantityChange < 0
-                ? "neg"
-                : "neutral"
+            tileNet > 0 ? "pos" : tileNet < 0 ? "neg" : "neutral"
           }
         />
         <KpiCard
           icon={<DollarSign className="h-3 w-3" />}
           label="Cost in"
-          value={summary.totalCostIn.toLocaleString(undefined, {
+          value={tileCostIn.toLocaleString(undefined, {
             maximumFractionDigits: 0,
           })}
           unit={currency}
@@ -911,7 +919,7 @@ function MovementsTab({
         <KpiCard
           icon={<DollarSign className="h-3 w-3" />}
           label="Cost out"
-          value={summary.totalCostOut.toLocaleString(undefined, {
+          value={tileCostOut.toLocaleString(undefined, {
             maximumFractionDigits: 0,
           })}
           unit={currency}

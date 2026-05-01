@@ -31,6 +31,8 @@ import {
   fetchAllDepartments,
 } from "@/lib/actions/department-actions";
 import { Department } from "@/types/department/type";
+import { useEntitlements } from "@/context/entitlementContext";
+import { UpgradeGate } from "@/components/widgets/upgrade-gate";
 
 interface TopItems {
   name: string;

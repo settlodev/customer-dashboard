@@ -3,7 +3,9 @@ import { columns } from "@/components/tables/stock/column";
 import { getStocks } from "@/lib/actions/stock-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
+import { getInventoryDashboardSummary } from "@/lib/actions/reports-analytics-actions";
 import type { StockWithBalance } from "@/types/stock/type";
+import type { RsInventoryDashboardSummary } from "@/types/reports-analytics/type";
 import {
   PageShell,
   PageHeader,
@@ -36,9 +38,12 @@ export default async function Page({ searchParams }: Props) {
     getCurrentLocation(),
   ]);
 
-  const balances = location?.id
-    ? await getBalancesByLocation(location.id)
-    : [];
+  const [balances, summary] = location?.id
+    ? await Promise.all([
+        getBalancesByLocation(location.id),
+        getInventoryDashboardSummary(location.id, "TZS"),
+      ])
+    : [[], null as RsInventoryDashboardSummary | null];
 
   // Build a variant→balance lookup
   const balanceMap = new Map(balances.map((b) => [b.stockVariantId, b]));
@@ -79,6 +84,57 @@ export default async function Page({ searchParams }: Props) {
     { key: "all", label: "All", count: enriched.length, href: "/stock-variants?filter=all" },
   ];
 
+  // ── KPI tile derivations ─────────────────────────────────────────
+  // The endpoint returns null deltas when the comparison snapshot
+  // doesn't exist yet (e.g. fresh location); we let those slots stay
+  // empty rather than rendering a misleading 0.
+  const fmtCount = (n: number) => Math.round(n).toLocaleString();
+  const fmtNumber = (n: number, fractionDigits = 0) =>
+    n.toLocaleString(undefined, {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    });
+  const fmtSignedPct = (
+    pct: number | null,
+    suffix: string,
+  ): { text: string; tone: "pos" | "neg" | "neutral" } | undefined => {
+    if (pct === null || pct === undefined) return undefined;
+    const rounded = Math.round(pct * 10) / 10;
+    const sign = rounded > 0 ? "+" : rounded < 0 ? "−" : "";
+    const tone = rounded > 0 ? "pos" : rounded < 0 ? "neg" : "neutral";
+    return { text: `${sign}${Math.abs(rounded).toFixed(1)}${suffix}`, tone };
+  };
+  const fmtSignedCount = (
+    n: number,
+    suffix: string,
+  ): { text: string; tone: "pos" | "neg" | "neutral" } => {
+    const sign = n > 0 ? "+" : n < 0 ? "−" : "";
+    const tone = n > 0 ? "pos" : n < 0 ? "neg" : "neutral";
+    return { text: `${sign}${Math.abs(n).toLocaleString()} ${suffix}`, tone };
+  };
+  const fmtSignedDays = (
+    days: number | null,
+  ): { text: string; tone: "pos" | "neg" | "neutral" } | undefined => {
+    if (days === null || days === undefined) return undefined;
+    const rounded = Math.round(days * 10) / 10;
+    const sign = rounded > 0 ? "+" : rounded < 0 ? "−" : "";
+    // Fewer days on hand = inventory turning faster → tone "pos".
+    const tone = rounded < 0 ? "pos" : rounded > 0 ? "neg" : "neutral";
+    return { text: `${sign}${Math.abs(rounded).toFixed(1)} d`, tone };
+  };
+
+  const valueDelta = fmtSignedPct(summary?.totalInventoryValueWowPct ?? null, "% wk");
+  const unitsDelta = fmtSignedPct(summary?.unitsInStockWowPct ?? null, "% wk");
+  const skusDelta = summary
+    ? fmtSignedCount(summary.activeSkusDailyDelta, "today")
+    : undefined;
+  const sellThroughDelta = fmtSignedPct(summary?.sellThroughPpDelta ?? null, " pts");
+  const daysDelta = fmtSignedDays(summary?.avgDaysOnHandDelta ?? null);
+  const criticalDelta =
+    summary && summary.criticalStockSkus > 0
+      ? { text: `${summary.criticalStockSkus} critical`, tone: "neg" as const }
+      : undefined;
+
   return (
     <PageShell>
       <PageBreadcrumbs items={[{ title: "Stock Items" }]} />
@@ -90,62 +146,70 @@ export default async function Page({ searchParams }: Props) {
 
       <PageBody>
         {/* ── Summary KPIs ─────────────────────────────────────────
-            Dummy values today — wire to real aggregates later when
-            the inventory analytics endpoint exposes them. The shape
-            stays stable, so the only churn at that point is the JSX
-            values. */}
+            Live from the Reports Service inventory dashboard endpoint.
+            Current values come from fact_inventory_current (real-time);
+            week-over-week and 30-day deltas come from the daily snapshot
+            fact table — null until at least one snapshot exists. */}
         <KpiStrip cols={6}>
           <KpiCard
             icon={<DollarSign className="h-3 w-3" />}
             label="Total inventory value"
-            value="714,232,919"
-            unit="TZS"
-            delta="+4.2% wk"
-            deltaTone="pos"
-            spark={[40, 42, 48, 45, 52, 58, 62, 64]}
+            value={summary ? fmtCount(summary.totalInventoryValue) : "—"}
+            unit={summary?.totalInventoryCurrency ?? "TZS"}
+            delta={valueDelta?.text}
+            deltaTone={valueDelta?.tone ?? "neutral"}
+            spark={summary?.sparklines?.totalInventoryValue}
           />
           <KpiCard
             icon={<Boxes className="h-3 w-3" />}
             label="Active SKUs"
-            value="12,847"
-            delta="+38 today"
-            deltaTone="pos"
-            spark={[100, 102, 110, 108, 118, 122, 125, 128]}
+            value={summary ? fmtCount(summary.activeSkus) : "—"}
+            delta={skusDelta?.text}
+            deltaTone={skusDelta?.tone ?? "neutral"}
+            spark={summary?.sparklines?.activeSkus}
           />
           <KpiCard
             icon={<Layers className="h-3 w-3" />}
             label="Units in stock"
-            value="48,290"
-            delta="−1.1% wk"
-            deltaTone="neg"
-            spark={[60, 58, 55, 56, 52, 50, 48, 48]}
+            value={summary ? fmtCount(summary.unitsInStock) : "—"}
+            delta={unitsDelta?.text}
+            deltaTone={unitsDelta?.tone ?? "neutral"}
+            spark={summary?.sparklines?.unitsInStock}
           />
           <KpiCard
             icon={<AlertTriangle className="h-3 w-3" />}
             label="Low-stock alerts"
-            value="14"
+            value={summary ? fmtCount(summary.lowStockSkus) : "—"}
             unit="SKUs"
-            delta="3 critical"
-            deltaTone="neg"
-            spark={[8, 10, 9, 12, 11, 13, 14, 14]}
+            delta={criticalDelta?.text}
+            deltaTone={criticalDelta?.tone ?? "neutral"}
+            spark={summary?.sparklines?.lowStockSkus}
           />
           <KpiCard
             icon={<TrendingUp className="h-3 w-3" />}
             label="Sell-through (30d)"
-            value="68.4"
+            value={
+              summary?.sellThroughPct != null
+                ? fmtNumber(summary.sellThroughPct, 1)
+                : "—"
+            }
             unit="%"
-            delta="+2.8 pts"
-            deltaTone="pos"
-            spark={[55, 58, 60, 62, 64, 66, 67, 68]}
+            delta={sellThroughDelta?.text}
+            deltaTone={sellThroughDelta?.tone ?? "neutral"}
+            spark={summary?.sparklines?.sellThroughPct}
           />
           <KpiCard
             icon={<RefreshCw className="h-3 w-3" />}
             label="Avg. days on hand"
-            value="22.6"
+            value={
+              summary?.avgDaysOnHand != null
+                ? fmtNumber(summary.avgDaysOnHand, 1)
+                : "—"
+            }
             unit="days"
-            delta="−1.4 d"
-            deltaTone="pos"
-            spark={[28, 27, 26, 25, 24, 23, 23, 22.6]}
+            delta={daysDelta?.text}
+            deltaTone={daysDelta?.tone ?? "neutral"}
+            spark={summary?.sparklines?.avgDaysOnHand}
           />
         </KpiStrip>
 

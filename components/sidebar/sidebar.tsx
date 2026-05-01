@@ -29,6 +29,7 @@ import {
 import VersionDisplay from "../widgets/versioning";
 import { UrlObject } from "url";
 import { MenuType } from "@/types/menu-item-type";
+import { useEntitlements } from "@/context/entitlementContext";
 
 interface SidebarProps {
     data: BusinessPropsType;
