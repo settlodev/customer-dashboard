@@ -279,6 +279,7 @@ function RegisterForm({ step }: { step: string }) {
       firstName: "", lastName: "", email: "", phoneNumber: "",
       password: "", confirmPassword: "",
       countryId: defaultCountry ?? "",
+      gender: undefined,
       referredByCode: referredByCode ?? "",
     },
   });
@@ -534,18 +535,42 @@ function RegisterForm({ step }: { step: string }) {
                   <form onSubmit={form.handleSubmit(submitData)} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <FormField control={form.control} name="firstName" render={({ field }) => (
-                        <FormItem><FormLabel className="text-sm text-gray-700">First name</FormLabel><FormControl><Input disabled={isPending} placeholder="John" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel className="text-sm text-gray-700">First name</FormLabel><FormControl><Input disabled={isPending} placeholder="John" {...field} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={form.control} name="lastName" render={({ field }) => (
-                        <FormItem><FormLabel className="text-sm text-gray-700">Last name</FormLabel><FormControl><Input disabled={isPending} placeholder="Doe" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel className="text-sm text-gray-700">Last name</FormLabel><FormControl><Input disabled={isPending} placeholder="Doe" {...field} /></FormControl><FormMessage /></FormItem>
                       )} />
                     </div>
-                    <FormField control={form.control} name="email" render={({ field }) => (
-                      <FormItem><FormLabel className="text-sm text-gray-700">Email address</FormLabel><FormControl><Input placeholder="you@example.com" type="email" disabled={isPending} className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField control={form.control} name="email" render={({ field }) => (
+                        <FormItem><FormLabel className="text-sm text-gray-700">Email address</FormLabel><FormControl><Input placeholder="you@example.com" type="email" disabled={isPending} {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
                       <FormField control={form.control} name="phoneNumber" render={({ field }) => (
                         <FormItem><FormLabel className="text-sm text-gray-700">Phone number</FormLabel><FormControl><PhoneInput placeholder="Enter phone number" {...field} disabled={isPending} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField control={form.control} name="gender" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm text-gray-700">Gender</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value ?? ""}
+                            disabled={isPending}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select gender" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="MALE">Male</SelectItem>
+                              <SelectItem value="FEMALE">Female</SelectItem>
+                              <SelectItem value="UNDISCLOSED">Prefer not to say</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
                       )} />
                       <FormField control={form.control} name="countryId" render={({ field }) => (
                         <FormItem><FormLabel className="text-sm text-gray-700">Country</FormLabel><FormControl><CountrySelector {...field} defaultCode={DEFAULT_COUNTRY_CODE} isDisabled={isPending} placeholder="Select country" /></FormControl><FormMessage /></FormItem>
@@ -557,7 +582,7 @@ function RegisterForm({ step }: { step: string }) {
                           <FormLabel className="text-sm text-gray-700">Password</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Input disabled={isPending} type={showPassword ? "text" : "password"} placeholder="Min. 8 characters" className="h-11 pr-11" {...field} />
+                              <Input disabled={isPending} type={showPassword ? "text" : "password"} placeholder="Min. 8 characters" className="pr-10" {...field} />
                               <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" tabIndex={-1}>
                                 {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
                               </button>
@@ -567,13 +592,13 @@ function RegisterForm({ step }: { step: string }) {
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="confirmPassword" render={({ field }) => (
-                        <FormItem><FormLabel className="text-sm text-gray-700">Confirm password</FormLabel><FormControl><Input disabled={isPending} type={showPassword ? "text" : "password"} placeholder="Re-enter password" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel className="text-sm text-gray-700">Confirm password</FormLabel><FormControl><Input disabled={isPending} type={showPassword ? "text" : "password"} placeholder="Re-enter password" {...field} /></FormControl><FormMessage /></FormItem>
                       )} />
                     </div>
                     <FormField control={form.control} name="referredByCode" render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm text-gray-700">Referral code <span className="text-gray-400 font-normal">(optional)</span></FormLabel>
-                        <FormControl><Input {...field} disabled={isPending} value={field.value || ""} placeholder="Enter referral code" className="h-11" /></FormControl>
+                        <FormControl><Input {...field} disabled={isPending} value={field.value || ""} placeholder="Enter referral code" /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
@@ -643,7 +668,7 @@ function RegisterForm({ step }: { step: string }) {
                         <FormField control={businessForm.control} name="name" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-sm text-gray-700">Business name <span className="text-red-500">*</span></FormLabel>
-                            <FormControl><Input placeholder={`e.g. ${session?.data?.user?.firstName || "Your"}'s Business`} {...field} disabled={isPending} className="h-11" /></FormControl>
+                            <FormControl><Input placeholder={`e.g. ${session?.data?.user?.firstName || "Your"}'s Business`} {...field} disabled={isPending} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -692,7 +717,7 @@ function RegisterForm({ step }: { step: string }) {
                             <FormField control={businessForm.control} name="email" render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-sm text-gray-700">Email</FormLabel>
-                                <FormControl><Input {...field} disabled={isPending} type="email" value={field.value || ""} placeholder="info@yourbusiness.com" className="h-11" /></FormControl>
+                                <FormControl><Input {...field} disabled={isPending} type="email" value={field.value || ""} placeholder="info@yourbusiness.com" /></FormControl>
                                 <FormMessage />
                               </FormItem>
                             )} />
@@ -700,16 +725,16 @@ function RegisterForm({ step }: { step: string }) {
                           <FormField control={businessForm.control} name="website" render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-sm text-gray-700">Website</FormLabel>
-                              <FormControl><Input {...field} disabled={isPending} value={field.value || ""} placeholder="https://yourbusiness.com" className="h-11" /></FormControl>
+                              <FormControl><Input {...field} disabled={isPending} value={field.value || ""} placeholder="https://yourbusiness.com" /></FormControl>
                               <FormMessage />
                             </FormItem>
                           )} />
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField control={businessForm.control} name="region" render={({ field }) => (
-                              <FormItem><FormLabel className="text-sm text-gray-700">City / Region</FormLabel><FormControl><Input {...field} disabled={isPending} placeholder="e.g. Dar es Salaam" className="h-11" value={field.value || ""} /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormLabel className="text-sm text-gray-700">City / Region</FormLabel><FormControl><Input {...field} disabled={isPending} placeholder="e.g. Dar es Salaam" value={field.value || ""} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={businessForm.control} name="address" render={({ field }) => (
-                              <FormItem><FormLabel className="text-sm text-gray-700">Street address</FormLabel><FormControl><Input {...field} disabled={isPending} placeholder="e.g. 123 Uhuru Street" className="h-11" value={field.value || ""} /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormLabel className="text-sm text-gray-700">Street address</FormLabel><FormControl><Input {...field} disabled={isPending} placeholder="e.g. 123 Uhuru Street" value={field.value || ""} /></FormControl><FormMessage /></FormItem>
                             )} />
                           </div>
                           <FormField control={businessForm.control} name="description" render={({ field }) => (
@@ -763,7 +788,7 @@ function RegisterForm({ step }: { step: string }) {
                             <div className="rounded-lg border border-gray-200 p-4">
                               <label className="text-xs font-medium text-gray-600 mb-1 block">Daily cutoff time <span className="text-red-500">*</span></label>
                               <Select value={singleCutoffTime} onValueChange={setSingleCutoffTime} disabled={isPending}>
-                                <SelectTrigger className="h-10 text-sm"><SelectValue placeholder="e.g. 04:00 — quiet hour when we roll over the business day" /></SelectTrigger>
+                                <SelectTrigger><SelectValue placeholder="e.g. 04:00 — quiet hour when we roll over the business day" /></SelectTrigger>
                                 <SelectContent>{businessTimes.map((t: BusinessTimeType, i: number) => (<SelectItem key={i} value={t.name}>{t.label}</SelectItem>))}</SelectContent>
                               </Select>
                               <p className="text-xs text-gray-400 mt-2">e.g. 04:00 — quiet hour when we roll over the business day</p>
@@ -806,16 +831,16 @@ function RegisterForm({ step }: { step: string }) {
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                   <label className="text-xs font-medium text-gray-600 mb-1 block">Location name *</label>
-                                  <Input value={loc.name} onChange={(e) => updateLocation(loc.id, "name", e.target.value)} placeholder="e.g. Main Branch" disabled={isPending} className="h-10" />
+                                  <Input value={loc.name} onChange={(e) => updateLocation(loc.id, "name", e.target.value)} placeholder="e.g. Main Branch" disabled={isPending} />
                                 </div>
                                 <div>
                                   <label className="text-xs font-medium text-gray-600 mb-1 block">City / Region</label>
-                                  <Input value={loc.city} onChange={(e) => updateLocation(loc.id, "city", e.target.value)} placeholder="e.g. Dar es Salaam" disabled={isPending} className="h-10" />
+                                  <Input value={loc.city} onChange={(e) => updateLocation(loc.id, "city", e.target.value)} placeholder="e.g. Dar es Salaam" disabled={isPending} />
                                 </div>
                               </div>
                               <div>
                                 <label className="text-xs font-medium text-gray-600 mb-1 block">Street address</label>
-                                <Input value={loc.address} onChange={(e) => updateLocation(loc.id, "address", e.target.value)} placeholder="e.g. 123 Uhuru Street" disabled={isPending} className="h-10" />
+                                <Input value={loc.address} onChange={(e) => updateLocation(loc.id, "address", e.target.value)} placeholder="e.g. 123 Uhuru Street" disabled={isPending} />
                               </div>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
@@ -824,7 +849,7 @@ function RegisterForm({ step }: { step: string }) {
                                 </div>
                                 <div>
                                   <label className="text-xs font-medium text-gray-600 mb-1 block">Email <span className="text-gray-400">(inherits from business)</span></label>
-                                  <Input type="email" value={loc.email} onChange={(e) => updateLocation(loc.id, "email", e.target.value)} placeholder="Leave empty to inherit" disabled={isPending} className="h-10" />
+                                  <Input type="email" value={loc.email} onChange={(e) => updateLocation(loc.id, "email", e.target.value)} placeholder="Leave empty to inherit" disabled={isPending} />
                                 </div>
                               </div>
 
@@ -848,7 +873,7 @@ function RegisterForm({ step }: { step: string }) {
                                     onValueChange={(v) => updateLocation(loc.id, "dailyCutoffTime", v)}
                                     disabled={isPending}
                                   >
-                                    <SelectTrigger className="h-10 text-sm"><SelectValue placeholder="e.g. 04:00" /></SelectTrigger>
+                                    <SelectTrigger><SelectValue placeholder="e.g. 04:00" /></SelectTrigger>
                                     <SelectContent>{businessTimes.map((t: BusinessTimeType, i: number) => (<SelectItem key={i} value={t.name}>{t.label}</SelectItem>))}</SelectContent>
                                   </Select>
                                   <p className="text-xs text-gray-400 mt-2">Quiet hour when we roll over the business day</p>
@@ -888,7 +913,7 @@ function RegisterForm({ step }: { step: string }) {
                     )}
 
                     {/* ── Submit ────────────────────────── */}
-                    <Button type="submit" disabled={isPending} className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-lg transition-all duration-200 shadow-md shadow-primary/20">
+                    <Button type="submit" disabled={isPending} className="w-full h-11 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-200 shadow-md shadow-primary/20">
                       {isPending ? <Loader2Icon className="w-4 h-4 animate-spin" /> : (
                         <span className="flex items-center gap-2">Complete Setup<CheckIcon className="w-4 h-4" /></span>
                       )}

@@ -100,18 +100,27 @@ export interface BomOperation {
   notes?: string | null;
 }
 
+export interface BomRuleAttachment {
+  id: string;
+  bomRuleId: string;
+  productVariantId?: string | null;
+  modifierOptionId?: string | null;
+  lifecycleStatus: BomLifecycleStatus;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface BomRule {
   id: string;
   businessId: string;
   locationId: string;
   locationType: LocationType;
-  productVariantId: string;
-  modifierOptionId?: string | null;
   name: string;
   revisionNumber: string;
   lifecycleStatus: BomLifecycleStatus;
-  effectiveFrom: string;
-  effectiveTo?: string | null;
   baseQuantity: number;
   baseUnitId: string;
   baseUnitName?: string | null;
@@ -122,6 +131,7 @@ export interface BomRule {
   items: BomRuleItem[];
   outputs: BomRuleOutput[];
   operations: BomOperation[];
+  attachments: BomRuleAttachment[];
   createdAt: string;
   updatedAt: string;
 }
@@ -156,15 +166,15 @@ export interface ExplodedLine {
   requiresDeduction: boolean;
 }
 
-// Multi-level where-used response
+// Multi-level where-used response — targets live on attachments now,
+// so the where-used view returns just rule identity. Use the rule's
+// `attachments` collection to resolve which targets it's bound to.
 export interface WhereUsedNode {
   depth: number;
   ruleId: string;
   parentRuleId?: string | null;
   businessId: string;
   locationId: string;
-  productVariantId?: string | null;
-  modifierOptionId?: string | null;
   name: string;
   revisionNumber: string;
   lifecycleStatus: BomLifecycleStatus;

@@ -153,7 +153,6 @@ function LoginForm() {
                           type="email"
                           disabled={isPending}
                           autoComplete="email"
-                          className="h-11"
                         />
                       </FormControl>
                       <FormMessage />
@@ -185,7 +184,7 @@ function LoginForm() {
                             placeholder="Enter your password"
                             {...field}
                             disabled={isPending}
-                            className="h-11 pr-11"
+                            className="pr-10"
                             autoComplete="current-password"
                           />
                           <button

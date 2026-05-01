@@ -6,41 +6,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CellAction } from "@/components/tables/product/cell-action";
+import { TableAvatar } from "@/components/tables/shared/table-avatar";
 import { ProductVariantRow } from "@/types/product/type";
-import Image from "next/image";
-
-// Deterministic colour for the prod-cell initials thumb. Mirrors the
-// design palette: brand orange + a few inks/jewel tones so adjacent
-// rows don't all look the same. Same input → same colour.
-const THUMB_PALETTE = [
-  "#EB7F44",
-  "#0E8B5F",
-  "#C4892B",
-  "#1F1F1F",
-  "#C8442A",
-  "#6B2D5C",
-  "#0E7C7B",
-  "#C25E26",
-  "#1E3A8A",
-  "#525252",
-];
-function thumbColor(seed: string) {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  }
-  return THUMB_PALETTE[hash % THUMB_PALETTE.length];
-}
-
-function initialsFor(name: string) {
-  const parts = name.trim().split(/\s+/).slice(0, 2);
-  return (
-    parts
-      .map((p) => p[0]?.toUpperCase() ?? "")
-      .join("")
-      .slice(0, 2) || "?"
-  );
-}
 
 export const columns: ColumnDef<ProductVariantRow>[] = [
   {
@@ -78,45 +45,14 @@ export const columns: ColumnDef<ProductVariantRow>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      const image = row.original.imageUrl;
-      const isValidImageUrl =
-        image &&
-        (image.startsWith("http://") ||
-          image.startsWith("https://") ||
-          image.startsWith("/"));
-
       const sku = row.original.sku;
-      const initials = initialsFor(row.original.name);
-      const bg = thumbColor(row.original.id);
-
       return (
         <div className="flex min-w-[240px] items-center gap-3">
-          {isValidImageUrl ? (
-            <Image
-              src={image}
-              alt={row.original.name}
-              className="h-9 w-9 flex-shrink-0 rounded-lg object-cover"
-              width={36}
-              height={36}
-              loading="lazy"
-            />
-          ) : (
-            <div
-              className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg text-[14px] font-semibold tracking-tight text-white"
-              style={{ backgroundColor: bg }}
-              aria-hidden
-            >
-              {initials}
-              {/* Subtle highlight matches the design's `.prod-thumb::after` */}
-              <span
-                className="pointer-events-none absolute inset-0"
-                style={{
-                  background:
-                    "linear-gradient(135deg, rgba(255,255,255,0.25), transparent 60%)",
-                }}
-              />
-            </div>
-          )}
+          <TableAvatar
+            name={row.original.name}
+            imageUrl={row.original.imageUrl}
+            seed={row.original.id}
+          />
           <div className="min-w-0">
             <div className="truncate text-[13px] font-medium text-ink">
               {row.original.name}

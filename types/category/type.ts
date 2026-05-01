@@ -19,6 +19,9 @@ export interface Category {
   // mirror has not caught up yet.
   departmentId: string;
   departmentName: string | null;
+  // Number of products linked to this category. Populated by the list
+  // endpoint; other endpoints may omit it, hence nullable.
+  productCount: number | null;
   children: Category[];
   createdAt: string;
   updatedAt: string;

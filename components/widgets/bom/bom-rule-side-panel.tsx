@@ -281,16 +281,12 @@ function MetadataCard({ rule }: { rule: BomRule }) {
         <MetaRow label="Outputs" value={rule.outputs?.length ?? 0} />
         <MetaRow label="Operations" value={rule.operations?.length ?? 0} />
         <MetaRow
-          label="Effective from"
-          value={
-            rule.effectiveFrom ? new Date(rule.effectiveFrom).toLocaleString() : "—"
-          }
+          label="Open attachments"
+          value={(rule.attachments ?? []).filter((a) => !a.effectiveTo).length}
         />
         <MetaRow
-          label="Effective to"
-          value={
-            rule.effectiveTo ? new Date(rule.effectiveTo).toLocaleString() : "Open"
-          }
+          label="Total attachments"
+          value={(rule.attachments ?? []).length}
         />
       </CardContent>
     </Card>

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Pencil, Plus } from "lucide-react";
+import { Loader2, Pencil, Plus, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -85,16 +85,18 @@ export function UnitDialog({
     });
   };
 
+  const isEditing = !!unit;
+
   const resolvedTrigger = trigger ?? (
     <Button size="sm">
-      {unit ? (
+      {isEditing ? (
         <>
-          <Pencil className="h-4 w-4 mr-1.5" />
+          <Pencil className="mr-1.5 h-4 w-4" />
           Edit unit
         </>
       ) : (
         <>
-          <Plus className="h-4 w-4 mr-1.5" />
+          <Plus className="mr-1.5 h-4 w-4" />
           Add unit
         </>
       )}
@@ -107,12 +109,21 @@ export function UnitDialog({
         <DialogTrigger asChild>{resolvedTrigger}</DialogTrigger>
       )}
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{unit ? "Edit unit" : "Add unit of measure"}</DialogTitle>
-          <DialogDescription>
-            Custom units belong to your business only. System units are
-            read-only and shared across the platform.
-          </DialogDescription>
+        <DialogHeader className="space-y-2">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line bg-canvas text-ink-3">
+              <Ruler className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-base">
+                {isEditing ? "Edit unit" : "Add unit of measure"}
+              </DialogTitle>
+              <DialogDescription className="mt-1 font-mono text-[12px] leading-relaxed">
+                Custom units belong to your business only. System units are
+                read-only and shared across the platform.
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <Form {...form}>
@@ -122,7 +133,9 @@ export function UnitDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
+                  <FormLabel className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+                    Name <span className="text-neg">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="e.g. Sack"
@@ -140,7 +153,9 @@ export function UnitDialog({
                 name="abbreviation"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Abbreviation</FormLabel>
+                    <FormLabel className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+                      Abbreviation <span className="text-neg">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input
                         placeholder="e.g. sack"
@@ -157,7 +172,9 @@ export function UnitDialog({
                 name="unitType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Type</FormLabel>
+                    <FormLabel className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+                      Type <span className="text-neg">*</span>
+                    </FormLabel>
                     <Select
                       value={field.value}
                       onValueChange={field.onChange}
@@ -182,6 +199,12 @@ export function UnitDialog({
               />
             </div>
 
+            <p className="font-mono text-[11px] leading-relaxed text-muted-foreground">
+              Pick the right type — it gates which other units this one can
+              convert to. Weight units convert to weight units, volume to
+              volume, and so on.
+            </p>
+
             <DialogFooter>
               <Button
                 type="button"
@@ -192,8 +215,8 @@ export function UnitDialog({
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {unit ? "Update" : "Create"}
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isEditing ? "Update" : "Create"}
               </Button>
             </DialogFooter>
           </form>

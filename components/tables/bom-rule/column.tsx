@@ -120,16 +120,22 @@ export const columns: ColumnDef<BomRule>[] = [
     },
   },
   {
-    accessorKey: "effectiveFrom",
-    header: "Effective from",
+    id: "earliestAttachment",
+    header: "Earliest attached",
     enableHiding: true,
-    cell: ({ row }) => (
-      <span className="text-xs text-gray-600 dark:text-gray-400">
-        {row.original.effectiveFrom
-          ? format(new Date(row.original.effectiveFrom), "yyyy-MM-dd")
-          : "—"}
-      </span>
-    ),
+    cell: ({ row }) => {
+      // Effective dates moved onto attachments. The list shows the rule's
+      // earliest open attachment as a coarse "in-use since" hint.
+      const earliest = (row.original.attachments ?? [])
+        .filter((a) => !a.effectiveTo)
+        .map((a) => a.effectiveFrom)
+        .sort()[0];
+      return (
+        <span className="text-xs text-gray-600 dark:text-gray-400">
+          {earliest ? format(new Date(earliest), "yyyy-MM-dd") : "—"}
+        </span>
+      );
+    },
   },
   {
     id: "actions",

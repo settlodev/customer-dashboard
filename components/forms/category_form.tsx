@@ -34,9 +34,7 @@ import {
 import { fetchDepartmentsForCurrentLocation } from "@/lib/actions/department-actions";
 import type { Department } from "@/types/department/type";
 import { Category } from "@/types/category/type";
-import { FormResponse } from "@/types/types";
 import { CategorySchema } from "@/types/category/schema";
-import { FormError } from "@/components/widgets/form-error";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
@@ -56,7 +54,6 @@ import styles from "./styles/form-shell.module.css";
 
 const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
   const [isPending, startTransition] = useTransition();
-  const [response, setResponse] = useState<FormResponse | undefined>();
   const [imageUrl, setImageUrl] = useState<string>(item?.imageUrl || "");
   const [categories, setCategories] = useState<Category[] | null>([]);
 
@@ -88,7 +85,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
       imageUrl: imageUrl || item?.imageUrl || "",
       parentId: item?.parentId || "",
       departmentId: item?.departmentId ?? "",
-      sortOrder: item?.sortOrder ?? 0,
+      sortOrder: 0,
       active: item?.active ?? true,
     },
   });
@@ -126,23 +123,25 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
   );
 
   const submitData = (values: z.infer<typeof CategorySchema>) => {
-    setResponse(undefined);
     if (imageUrl) values.imageUrl = imageUrl;
+    values.sortOrder = 0;
 
     startTransition(() => {
       if (item) {
         updateCategory(item.id, values, "category").then((data) => {
-          if (data) setResponse(data);
           if (data?.responseType === "success") {
             toast({ variant: "success", title: "Success", description: data.message });
+          } else if (data?.responseType === "error") {
+            toast({ variant: "destructive", title: "Error", description: data.message });
           }
         });
       } else {
         createCategory(values, "category").then((data) => {
-          if (data) setResponse(data);
           if (data?.responseType === "success") {
             toast({ variant: "success", title: "Success", description: data.message });
             router.push("/categories");
+          } else if (data?.responseType === "error") {
+            toast({ variant: "destructive", title: "Error", description: data.message });
           }
         });
       }
@@ -151,7 +150,6 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
 
   return (
     <Form {...form}>
-      <FormError message={response?.message} />
       <form
         onSubmit={form.handleSubmit(submitData, onInvalid)}
         className={styles.formRoot}
@@ -271,34 +269,6 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                       />
                     )}
 
-                    <FormField
-                      control={form.control}
-                      name="sortOrder"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className={styles.fieldLabel}>
-                            Display order
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              placeholder="e.g. 1"
-                              {...field}
-                              value={field.value ?? ""}
-                              onChange={(e) =>
-                                field.onChange(
-                                  e.target.value === ""
-                                    ? undefined
-                                    : Number(e.target.value),
-                                )
-                              }
-                              disabled={isPending}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                   </div>
 
                   <FormField

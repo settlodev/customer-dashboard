@@ -135,6 +135,31 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
             <div className="flex-1 overflow-y-auto scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <nav className="flex-1 space-y-1 px-3 py-4">
                     {myMenuItems.map((section, sectionIndex) => {
+                        // Leaf section: a top-level link with no submenu — renders as
+                        // a single Link instead of a collapsible group.
+                        const sectionLink = (section as { link?: string }).link;
+                        const isLeaf = !!sectionLink && (!section.items || section.items.length === 0);
+                        if (isLeaf) {
+                            const isActive = pathname === sectionLink || pathname.startsWith(sectionLink + "/");
+                            return (
+                                <div key={sectionIndex} className="py-1">
+                                    <Link
+                                        href={sectionLink}
+                                        onClick={isMobile ? onClose : undefined}
+                                        className={cn(
+                                            "flex w-full items-center rounded-lg p-2 transition-colors duration-200",
+                                            isActive
+                                                ? "border-l-2 border-primary rounded-l-none bg-primary/10 text-gray-900 dark:text-white font-semibold"
+                                                : "text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800",
+                                        )}
+                                    >
+                                        <span className="text-xs">{getIcon(section.icon)}</span>
+                                        <span className="ml-2 text-sm font-medium">{section.label}</span>
+                                    </Link>
+                                </div>
+                            );
+                        }
+
                         const sectionHasActive = section.items.some(
                             (item: MenuItem) => pathname === item.link || pathname.startsWith(item.link + "/")
                         );

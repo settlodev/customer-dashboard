@@ -284,8 +284,20 @@
   padding: 0 20px;
   background: var(--pf-bg);
   gap: 0;
+  /* Horizontal scroll stays usable (touch / shift-wheel / arrow keys
+     navigate the overflow), but the scrollbar UI is hidden in every
+     browser so it doesn't compete visually with the bottom-border
+     active-tab indicator. The vertical-overflow lock is critical:
+     without it, browsers reserve scrollbar gutter space the moment a
+     descendant briefly overflows on the cross axis, which surfaces a
+     stray vertical scrollbar on the tab strip. */
   overflow-x: auto;
-  scrollbar-width: thin;
+  overflow-y: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE / legacy Edge */
+}
+.formTabs::-webkit-scrollbar {
+  display: none; /* Chrome / Safari / WebKit */
 }
 .formTab {
   padding: 12px 14px;
@@ -439,8 +451,6 @@
   background: var(--pf-card);
   border: 1px solid var(--pf-line);
   border-radius: 12px;
-  position: sticky;
-  top: 16px;
 }
 .previewHead {
   padding: 12px 16px;

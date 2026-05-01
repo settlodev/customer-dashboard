@@ -572,6 +572,7 @@ export const register = async (
       phoneNumber: validatedData.data.phoneNumber,
       phoneRegion,
       countryId: validatedData.data.countryId,
+      gender: validatedData.data.gender,
       accountType: "OWNER",
       referredByCode: validatedData.data.referredByCode || undefined,
     };

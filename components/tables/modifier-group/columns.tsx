@@ -1,15 +1,15 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, CornerDownRight } from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CellAction } from "@/components/tables/category/cell-action";
+import { CellAction } from "@/components/tables/modifier-group/cell-action";
 import { TableAvatar } from "@/components/tables/shared/table-avatar";
-import { Category } from "@/types/category/type";
+import type { ModifierGroup } from "@/types/product/type";
 
-export const columns: ColumnDef<Category>[] = [
+export const columns: ColumnDef<ModifierGroup>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -40,53 +40,48 @@ export const columns: ColumnDef<Category>[] = [
         className="-ml-2 h-auto px-2 font-mono text-[10.5px] font-medium uppercase tracking-[0.06em] text-muted-foreground hover:text-ink"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
       >
-        Category
+        Modifier group
         <ArrowUpDown className="ml-1 h-3 w-3 opacity-60" />
       </Button>
     ),
     cell: ({ row }) => {
-      const hasParent = !!row.original.parentName;
+      const optionCount = row.original.options?.length ?? 0;
       return (
-        <div className="flex min-w-[240px] items-center gap-2">
-          {hasParent && (
-            <CornerDownRight
-              className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground/60"
-              aria-hidden
-            />
-          )}
-          <TableAvatar
-            name={row.original.name}
-            imageUrl={row.original.imageUrl}
-            seed={row.original.id}
-          />
+        <div className="flex min-w-[240px] items-center gap-3">
+          <TableAvatar name={row.original.name} seed={row.original.id} />
           <div className="min-w-0">
             <div className="truncate text-[13px] font-medium text-ink">
               {row.original.name}
             </div>
-            {hasParent && (
-              <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                in {row.original.parentName}
-              </div>
-            )}
+            <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+              {optionCount} option{optionCount === 1 ? "" : "s"}
+            </div>
           </div>
         </div>
       );
     },
   },
   {
-    accessorKey: "productCount",
+    id: "selectionType",
     enableHiding: true,
-    header: () => <span className="hidden md:inline">Products</span>,
-    cell: ({ row }) => {
-      const count = row.original.productCount ?? 0;
-      return (
-        <div className="hidden md:block">
-          <Badge variant="soft">
-            {new Intl.NumberFormat("en-US").format(count)}
-          </Badge>
-        </div>
-      );
-    },
+    header: () => <span className="hidden md:inline">Selection</span>,
+    cell: ({ row }) => (
+      <div className="hidden md:block">
+        <Badge variant="soft">
+          {row.original.selectionType === "SINGLE" ? "Single" : "Multi"}
+        </Badge>
+      </div>
+    ),
+  },
+  {
+    id: "range",
+    enableHiding: true,
+    header: () => <span className="hidden lg:inline">Min–Max</span>,
+    cell: ({ row }) => (
+      <span className="hidden font-mono tabular-nums text-[12px] text-ink-3 lg:inline">
+        {row.original.minSelections}–{row.original.maxSelections}
+      </span>
+    ),
   },
   {
     id: "status",
@@ -94,10 +89,19 @@ export const columns: ColumnDef<Category>[] = [
     enableHiding: true,
     cell: ({ row }) => {
       const isArchived = row.original.archivedAt != null;
+      const isActive = row.original.active && !isArchived;
+      if (isArchived) {
+        return (
+          <Badge variant="soft">
+            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
+            Archived
+          </Badge>
+        );
+      }
       return (
-        <Badge variant={isArchived ? "soft" : "pos"}>
+        <Badge variant={isActive ? "pos" : "soft"}>
           <span className="h-1.5 w-1.5 rounded-full bg-current" />
-          {isArchived ? "Archived" : "Active"}
+          {isActive ? "Active" : "Inactive"}
         </Badge>
       );
     },

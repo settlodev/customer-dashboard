@@ -17,11 +17,19 @@
  *      absorbs business-switching + user account into one popover),
  *      copyright
  *
- * Mobile: the desktop aside is hidden below `lg`; a small round trigger
- * pinned top-left opens the same content inside a Sheet.
+ * Mobile: the desktop aside is hidden below `lg`. A separate
+ * `MobileSidebarTrigger` (rendered by the protected layout in a
+ * sticky bar at the top of <main>) opens the same content inside a
+ * Sheet, coordinated through `SidebarContext`.
  */
 
-import React, { useEffect, useRef, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -50,6 +58,91 @@ import { SidebarAccountMenu } from "./sidebar-account-menu";
 import { menuItems } from "@/types/menu_items";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { ExtendedUser } from "@/types/types";
+
+// Shared open/close state for the mobile sidebar Sheet. The trigger
+// button lives in the page chrome (a sticky bar at the top of <main>)
+// while the Sheet itself is rendered by DashboardSidebarShell, so they
+// need a context to coordinate. This avoids the old approach of a
+// fixed-positioned trigger button that forced every page to add
+// `max-lg:pl-14` padding to clear it.
+interface SidebarContextValue {
+  mobileOpen: boolean;
+  setMobileOpen: (open: boolean) => void;
+}
+
+const SidebarContext = createContext<SidebarContextValue | null>(null);
+
+function useSidebar(): SidebarContextValue {
+  const ctx = useContext(SidebarContext);
+  if (!ctx) {
+    throw new Error(
+      "useSidebar must be used inside <SidebarProvider> — wrap the protected layout.",
+    );
+  }
+  return ctx;
+}
+
+export function SidebarProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  return (
+    <SidebarContext.Provider value={{ mobileOpen, setMobileOpen }}>
+      {children}
+    </SidebarContext.Provider>
+  );
+}
+
+/**
+ * Hamburger trigger that opens the mobile sidebar Sheet. Place inside
+ * the mobile-only top bar in <main>. Hidden on desktop via `lg:hidden`.
+ */
+export function MobileSidebarTrigger({ className }: { className?: string }) {
+  const { setMobileOpen } = useSidebar();
+  return (
+    <button
+      type="button"
+      onClick={() => setMobileOpen(true)}
+      className={cn(
+        "grid h-9 w-9 place-items-center rounded-lg border border-line bg-card text-ink shadow-sm",
+        className,
+      )}
+      aria-label="Open navigation"
+    >
+      <Menu className="h-4 w-4" />
+    </button>
+  );
+}
+
+/**
+ * Mobile-only top bar that sits at the top of <main>. Hosts the
+ * hamburger trigger and a Settlo logo so there's still branding when
+ * the sidebar Sheet is closed (the only other place the logo lives).
+ * Hidden on desktop via `lg:hidden`.
+ */
+export function MobileTopBar() {
+  return (
+    <div className="flex h-12 flex-shrink-0 items-center gap-3 border-b border-line bg-canvas/95 px-3 backdrop-blur lg:hidden">
+      <MobileSidebarTrigger />
+      <Link
+        href="/dashboard"
+        aria-label="Go to dashboard"
+        className="flex items-center"
+      >
+        <Image
+          src="/images/logo_new.png"
+          alt="Settlo"
+          width={92}
+          height={28}
+          className="h-6 w-auto object-contain dark:brightness-0 dark:invert"
+          priority
+        />
+      </Link>
+    </div>
+  );
+}
 
 interface MenuItemShape {
   link: string;
@@ -201,6 +294,32 @@ function DashboardSidebarContent({
       {/* ── Workspace nav (accordion sections) ───────────────────── */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
         {sections.map((section, sectionIndex) => {
+          // Leaf section: top-level direct link, no submenu.
+          const sectionLink = (section as { link?: string }).link;
+          if (sectionLink && (!section.items || section.items.length === 0)) {
+            const isActive =
+              pathname === sectionLink || pathname.startsWith(sectionLink + "/");
+            return (
+              <div key={section.label} className="py-0.5">
+                <Link
+                  href={sectionLink}
+                  onClick={isMobile ? onClose : undefined}
+                  className={cn(
+                    "flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-ink text-card"
+                      : "text-ink-3 hover:bg-canvas hover:text-ink",
+                  )}
+                >
+                  <span className={cn(isActive ? "text-card" : "text-primary")}>
+                    {getSectionIcon(section.icon)}
+                  </span>
+                  <span>{section.label}</span>
+                </Link>
+              </div>
+            );
+          }
+
           const sectionHasActive = section.items.some(
             (item: MenuItemShape) =>
               pathname === item.link || pathname.startsWith(item.link + "/"),
@@ -286,38 +405,43 @@ interface DashboardSidebarShellProps {
 }
 
 /**
- * Renders the desktop floating sidebar, the mobile-only trigger button,
- * and the mobile Sheet — all wired to a single open/close state. Drop
- * this once near the top of the protected layout's main row.
+ * Renders the desktop floating sidebar and the mobile Sheet, wired to
+ * the shared `SidebarContext` so the trigger lives elsewhere (a sticky
+ * top bar in <main>). Drop this once inside the protected layout.
+ *
+ * The mobile Sheet uses `hideClose` so the auto-X from SheetContent
+ * doesn't double-up with the custom X rendered inside the sidebar's
+ * own top header row.
  */
 export function DashboardSidebarShell({
   data,
   user,
 }: DashboardSidebarShellProps) {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const { mobileOpen, setMobileOpen } = useSidebar();
 
   return (
     <>
-      {/* Mobile-only floating menu trigger. Pinned top-left so it stays
-          reachable even on long pages. The fixed positioning means it
-          doesn't take grid space when desktop sidebar is visible. */}
-      <button
-        type="button"
-        onClick={() => setMobileOpen(true)}
-        className="fixed left-3 top-3 z-30 grid h-9 w-9 place-items-center rounded-lg border border-line bg-card text-ink shadow-sm lg:hidden"
-        aria-label="Open navigation"
-      >
-        <Menu className="h-4 w-4" />
-      </button>
-
       {/* Desktop floating sidebar */}
       <aside className="my-3 ml-3 hidden w-[296px] flex-shrink-0 overflow-hidden rounded-2xl border border-line bg-card shadow-[0_1px_0_rgba(20,17,12,0.02),0_14px_40px_-16px_rgba(20,17,12,0.10),0_4px_10px_-4px_rgba(20,17,12,0.05)] lg:flex lg:flex-col">
         <DashboardSidebarContent data={data} user={user} />
       </aside>
 
-      {/* Mobile sheet */}
+      {/* Mobile sheet. The inline `top` / `height` overrides reserve
+          space for the SubscriptionBanner — the banner is `relative
+          z-[60]` while the Sheet is `fixed z-50`, so without this
+          override the banner would clip the Sheet's logo row. The
+          `--banner-h` variable is set by `<SubscriptionBanner />`
+          (defaults to 0px when no banner is showing). */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="w-[296px] bg-card p-0">
+        <SheetContent
+          side="left"
+          className="w-[296px] bg-card p-0"
+          style={{
+            top: "var(--banner-h, 0px)",
+            height: "auto",
+          }}
+          hideClose
+        >
           <DashboardSidebarContent
             data={data}
             user={user}

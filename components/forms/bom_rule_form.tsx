@@ -103,14 +103,26 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
   const isWarehouse = locationType === "WAREHOUSE";
   const isEditing = !!rule;
 
+  // The rule's target + effective window now lives on an Attachment.
+  // For the create flow the form ships a single-element `attachments[0]`
+  // so the merchant can author "create + attach" in one motion. On edit
+  // we don't surface attachments here — they're managed via the
+  // attachments tab + dedicated attach/detach actions.
   const form = useForm<FormValues>({
     resolver: zodResolver(CreateBomRuleSchema) as never,
     defaultValues: {
-      productVariantId: rule?.productVariantId ?? undefined,
-      modifierOptionId: rule?.modifierOptionId ?? undefined,
+      attachments: rule
+        ? []
+        : [
+            {
+              productVariantId: undefined,
+              modifierOptionId: undefined,
+              effectiveFrom: undefined,
+              effectiveTo: undefined,
+              notes: undefined,
+            },
+          ],
       name: rule?.name ?? "",
-      effectiveFrom: rule?.effectiveFrom ?? undefined,
-      effectiveTo: rule?.effectiveTo ?? undefined,
       baseQuantity: rule?.baseQuantity ?? 1,
       baseUnitId: rule?.baseUnitId ?? "",
       notes: rule?.notes ?? undefined,
@@ -184,11 +196,10 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
 
   const submitData = (values: FormValues) => {
     setResponse(undefined);
-    const payload = { ...values, effectiveFrom: values.effectiveFrom ?? new Date().toISOString() };
 
     startTransition(async () => {
       const res = isEditing
-        ? await reviseBomRule(rule!.id, payload as never)
+        ? await reviseBomRule(rule!.id, values as never)
         : await createBomRule(values);
       if (res) setResponse(res);
       if (res?.responseType === "success") {
@@ -254,24 +265,26 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="productVariantId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">Product variant</FormLabel>
-                    <FormControl>
-                      <StockVariantSelector
-                        placeholder="Attach to product"
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                        isDisabled={isPending || isEditing}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-xs" />
-                  </FormItem>
-                )}
-              />
+              {!isEditing && (
+                <FormField
+                  control={form.control}
+                  name={"attachments.0.productVariantId" as never}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Product variant</FormLabel>
+                      <FormControl>
+                        <StockVariantSelector
+                          placeholder="Attach to product"
+                          value={(field.value as string) ?? ""}
+                          onChange={field.onChange}
+                          isDisabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}
@@ -316,94 +329,110 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="effectiveFrom"
-                render={({ field }) => {
-                  const selected = field.value ? new Date(field.value) : undefined;
-                  return (
-                    <FormItem>
-                      <FormLabel className="text-xs">Effective from</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              disabled={isPending}
-                              className={cn(
-                                "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
-                                !selected && "text-muted-foreground",
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
-                              {selected ? format(selected, "PPP") : "Pick a date"}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={selected}
-                            onSelect={(d) => {
-                              field.onChange(d ? d.toISOString() : undefined);
-                              const to = form.getValues("effectiveTo");
-                              if (d && to && new Date(to) < d) {
-                                form.setValue("effectiveTo", undefined, { shouldDirty: true });
-                              }
-                            }}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage className="text-xs" />
-                    </FormItem>
-                  );
-                }}
-              />
+              {!isEditing && (
+                <FormField
+                  control={form.control}
+                  name={"attachments.0.effectiveFrom" as never}
+                  render={({ field }) => {
+                    const selected = field.value
+                      ? new Date(field.value as string)
+                      : undefined;
+                    return (
+                      <FormItem>
+                        <FormLabel className="text-xs">Effective from</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                disabled={isPending}
+                                className={cn(
+                                  "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
+                                  !selected && "text-muted-foreground",
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                {selected ? format(selected, "PPP") : "Pick a date"}
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[300px] p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={selected}
+                              onSelect={(d) => {
+                                field.onChange(d ? d.toISOString() : undefined);
+                                const to = form.getValues(
+                                  "attachments.0.effectiveTo" as never,
+                                );
+                                if (d && to && new Date(to as unknown as string) < d) {
+                                  form.setValue(
+                                    "attachments.0.effectiveTo" as never,
+                                    undefined as never,
+                                    { shouldDirty: true },
+                                  );
+                                }
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    );
+                  }}
+                />
+              )}
 
-              <FormField
-                control={form.control}
-                name="effectiveTo"
-                render={({ field }) => {
-                  const selected = field.value ? new Date(field.value) : undefined;
-                  const fromValue = form.watch("effectiveFrom");
-                  const fromDate = fromValue ? new Date(fromValue) : undefined;
-                  return (
-                    <FormItem>
-                      <FormLabel className="text-xs">Effective to</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              disabled={isPending}
-                              className={cn(
-                                "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
-                                !selected && "text-muted-foreground",
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
-                              {selected ? format(selected, "PPP") : "Pick a date"}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={selected}
-                            onSelect={(d) => field.onChange(d ? d.toISOString() : undefined)}
-                            disabled={(date) => (fromDate ? date < fromDate : false)}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage className="text-xs" />
-                    </FormItem>
-                  );
-                }}
-              />
+              {!isEditing && (
+                <FormField
+                  control={form.control}
+                  name={"attachments.0.effectiveTo" as never}
+                  render={({ field }) => {
+                    const selected = field.value
+                      ? new Date(field.value as string)
+                      : undefined;
+                    const fromValue = form.watch(
+                      "attachments.0.effectiveFrom" as never,
+                    ) as unknown as string | undefined;
+                    const fromDate = fromValue ? new Date(fromValue) : undefined;
+                    return (
+                      <FormItem>
+                        <FormLabel className="text-xs">Effective to</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                disabled={isPending}
+                                className={cn(
+                                  "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
+                                  !selected && "text-muted-foreground",
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                {selected ? format(selected, "PPP") : "Pick a date"}
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[300px] p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={selected}
+                              onSelect={(d) => field.onChange(d ? d.toISOString() : undefined)}
+                              disabled={(date) => (fromDate ? date < fromDate : false)}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    );
+                  }}
+                />
+              )}
 
               <FormField
                 control={form.control}

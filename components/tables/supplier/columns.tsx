@@ -2,50 +2,77 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, ShieldCheck } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { TableAvatar } from "@/components/tables/shared/table-avatar";
 import type { Supplier } from "@/types/supplier/type";
 
 export const columns: ColumnDef<Supplier>[] = [
+  {
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        aria-label="Select all"
+        checked={table.getIsAllPageRowsSelected()}
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        aria-label="Select row"
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+    size: 32,
+  },
   {
     accessorKey: "name",
     enableHiding: false,
     header: ({ column }) => (
       <Button
-        className="text-left p-0 font-semibold"
         variant="ghost"
+        size="xs"
+        className="-ml-2 h-auto px-2 font-mono text-[10.5px] font-medium uppercase tracking-[0.06em] text-muted-foreground hover:text-ink"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
       >
         Supplier
-        <ArrowUpDown className="ml-2 h-4 w-4" />
+        <ArrowUpDown className="ml-1 h-3 w-3 opacity-60" />
       </Button>
     ),
     cell: ({ row }) => {
-      const { name, contactPersonName, linkedToSettloSupplier, settloSupplierName } =
-        row.original;
+      const {
+        id,
+        name,
+        contactPersonName,
+        linkedToSettloSupplier,
+        settloSupplierName,
+      } = row.original;
       return (
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 font-semibold shrink-0">
-            {name?.charAt(0)?.toUpperCase() || "S"}
-          </div>
+        <div className="flex min-w-[240px] items-center gap-3">
+          <TableAvatar name={name} seed={id} />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+              <span className="truncate text-[13px] font-medium text-ink">
                 {name}
               </span>
               {linkedToSettloSupplier && (
-                <span className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 shrink-0">
+                <Badge variant="pos" className="shrink-0">
                   <ShieldCheck className="h-3 w-3" />
                   Linked
-                </span>
+                </Badge>
               )}
             </div>
             {contactPersonName && (
-              <span className="text-xs text-muted-foreground block truncate">
+              <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
                 {contactPersonName}
                 {settloSupplierName && linkedToSettloSupplier
                   ? ` · via ${settloSupplierName}`
                   : ""}
-              </span>
+              </div>
             )}
           </div>
         </div>
@@ -55,30 +82,30 @@ export const columns: ColumnDef<Supplier>[] = [
   {
     accessorKey: "email",
     enableHiding: true,
-    header: "Email",
+    header: () => <span className="hidden md:inline">Email</span>,
     cell: ({ row }) => (
-      <span className="text-gray-600 dark:text-gray-400">
-        {row.original.email || "\u2014"}
+      <span className="hidden text-[12px] text-ink-3 md:inline">
+        {row.original.email || "—"}
       </span>
     ),
   },
   {
     accessorKey: "phone",
-    header: "Phone",
     enableHiding: true,
+    header: () => <span className="hidden md:inline">Phone</span>,
     cell: ({ row }) => (
-      <span className="text-gray-600 dark:text-gray-400">
-        {row.original.phone || row.original.contactPersonPhone || "\u2014"}
+      <span className="hidden text-[12px] text-ink-3 md:inline">
+        {row.original.phone || row.original.contactPersonPhone || "—"}
       </span>
     ),
   },
   {
     accessorKey: "registrationNumber",
-    header: "Reg #",
     enableHiding: true,
+    header: () => <span className="hidden lg:inline">Reg #</span>,
     cell: ({ row }) => (
-      <span className="text-xs font-mono text-muted-foreground">
-        {row.original.registrationNumber || "\u2014"}
+      <span className="hidden font-mono text-[10.5px] tracking-[0.02em] text-muted-foreground lg:inline">
+        {row.original.registrationNumber || "—"}
       </span>
     ),
   },
@@ -87,17 +114,12 @@ export const columns: ColumnDef<Supplier>[] = [
     header: "Status",
     enableHiding: true,
     cell: ({ row }) => {
-      const isActive = !row.original.archivedAt;
+      const isArchived = row.original.archivedAt != null;
       return (
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-            isActive
-              ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
-              : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-          }`}
-        >
-          {isActive ? "Active" : "Archived"}
-        </span>
+        <Badge variant={isArchived ? "soft" : "pos"}>
+          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+          {isArchived ? "Archived" : "Active"}
+        </Badge>
       );
     },
   },

@@ -28,11 +28,17 @@ import {
   ArrowUpFromLine,
   ImageIcon,
   AlertTriangle,
+  ChevronUp,
+  ChevronDown,
+  Pencil,
+  Search,
 } from "lucide-react";
 import { NumericFormat } from "react-number-format";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import CurrencySelector from "@/components/widgets/currency-selector";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
@@ -82,6 +88,7 @@ import type {
   ProductVariant,
   ModifierGroup,
   AddonGroup,
+  AddonGroupItem,
   PriceOverrideResponse,
 } from "@/types/product/type";
 import {
@@ -91,9 +98,7 @@ import {
 } from "@/types/product/schema";
 import {
   TAX_CLASS_OPTIONS,
-  LIFECYCLE_STATUS_OPTIONS,
   PRICING_STRATEGY_OPTIONS,
-  CURRENCY_OPTIONS,
 } from "@/types/catalogue/enums";
 
 import {
@@ -116,12 +121,14 @@ import {
   listProductModifierGroups,
   attachModifierGroup,
   detachModifierGroup,
+  updateAttachedModifierGroup,
 } from "@/lib/actions/modifier-actions";
 import {
   listAddonGroups,
   listProductAddonGroups,
   attachAddonGroup,
   detachAddonGroup,
+  updateAttachedAddonGroup,
 } from "@/lib/actions/addon-actions";
 import { fetchAllBrands } from "@/lib/actions/brand-actions";
 import { fetchAllCategories } from "@/lib/actions/category-actions";
@@ -216,9 +223,7 @@ export default function ProductForm({ item }: ProductFormProps) {
   // stock-tracking pickers and submits to /products/with-stock so the
   // backend creates a 1:1 stock item alongside the product. Always
   // false in edit mode — auto-create is a creation-time concept.
-  const [autoCreateStock, setAutoCreateStock] = useState<boolean>(
-    () => !item,
-  );
+  const [autoCreateStock, setAutoCreateStock] = useState<boolean>(() => !item);
 
   useEffect(() => {
     let cancelled = false;
@@ -574,15 +579,6 @@ export default function ProductForm({ item }: ProductFormProps) {
       .filter((n): n is string => !!n);
   }, [watchedCategoryIds, categories]);
 
-  // Autosave timestamp for the sticky footer indicator. Re-renders every
-  // minute so the displayed time stays roughly current; real autosave
-  // wiring is a separate concern.
-  const [now, setNow] = useState<Date>(() => new Date());
-  useEffect(() => {
-    const i = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(i);
-  }, []);
-
   const handleSaveAsDraft = useCallback(() => {
     startTransition(async () => {
       const result = await saveProductDraft(form.getValues(), item?.id);
@@ -603,6 +599,28 @@ export default function ProductForm({ item }: ProductFormProps) {
         router.replace(`/products/${newId}/edit`);
       }
     });
+  }, [form, item?.id, router, toast]);
+
+  // Save the current product as a draft so the merchant doesn't lose
+  // progress when bouncing out to /modifier-groups/new. Returns true on
+  // success so the caller can decide whether to proceed with the
+  // navigation.
+  const saveDraftBeforeLibraryNav = useCallback(async (): Promise<boolean> => {
+    const result = await saveProductDraft(form.getValues(), item?.id);
+    if (result?.responseType === "error") {
+      toast({
+        variant: "destructive",
+        title: "Couldn't save draft",
+        description: result.message,
+      });
+      return false;
+    }
+    toast({ title: "Draft saved" });
+    const newId = (result?.data as { id?: string } | undefined)?.id;
+    if (!item?.id && newId) {
+      router.replace(`/products/${newId}/edit`);
+    }
+    return true;
   }, [form, item?.id, router, toast]);
 
   const handlePublish = useCallback(() => {
@@ -670,16 +688,17 @@ export default function ProductForm({ item }: ProductFormProps) {
               </header>
 
               <div className={styles.formBody}>
-                {/* Name (span 2) + Currency + Brand on a 4-col grid */}
-                <div
-                  className={styles.fieldRow}
-                  style={{ ["--cols" as never]: 4 } as React.CSSProperties}
-                >
+                {/* Name + Currency + Brand: 4-col on xl (Name spans 2),
+                    2-col on sm/md/lg, single column on phones. The
+                    Name keeps its 2-of-4 span only at xl; below that
+                    it goes full row width so the input doesn't get
+                    cramped. */}
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-4">
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
-                      <FormItem className="col-span-2 min-w-0">
+                      <FormItem className="min-w-0 sm:col-span-2">
                         <FormLabel className={styles.fieldLabel}>
                           Product name <span className="req">*</span>
                         </FormLabel>
@@ -708,24 +727,14 @@ export default function ProductForm({ item }: ProductFormProps) {
                         <FormLabel className={styles.fieldLabel}>
                           Currency
                         </FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value || "TZS"}
-                          disabled={isPending}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="TZS" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {CURRENCY_OPTIONS.map((c) => (
-                              <SelectItem key={c.value} value={c.value}>
-                                {c.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <CurrencySelector
+                            value={field.value || "TZS"}
+                            onChange={field.onChange}
+                            isDisabled={isPending}
+                            placeholder="TZS"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -880,9 +889,9 @@ export default function ProductForm({ item }: ProductFormProps) {
                         </FormControl>
                         <p className={styles.fieldHint}>
                           <span className={styles.descCount}>
-                            {(field.value?.length ?? 0)}/500
+                            {field.value?.length ?? 0}/500
                           </span>
-                          {" · Used on receipts and online menu."}
+                          {" · Used on e-commerce website and digital menu."}
                         </p>
                         <FormMessage />
                       </FormItem>
@@ -981,9 +990,9 @@ export default function ProductForm({ item }: ProductFormProps) {
                           </FormLabel>
                           <p className="text-xs text-muted-foreground">
                             Creates a matching stock item with a 1:1 link per
-                            variant so deductions just work. Switch off to
-                            link an existing stock item, use a recipe, or
-                            sell without inventory.
+                            variant so deductions just work. Switch off to link
+                            an existing stock item, use a recipe, or sell
+                            without inventory.
                           </p>
                         </div>
                         <Switch
@@ -1077,16 +1086,19 @@ export default function ProductForm({ item }: ProductFormProps) {
               {activeTab === "modifiers" && (
                 <div className={styles.formBody}>
                   {isEditMode ? (
-                    <ProductModifierGroupsSection productId={item!.id} />
+                    <ProductModifierGroupsSection
+                      productId={item!.id}
+                      saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
+                    />
                   ) : (
-                    <NewProductLibraryPicker
-                      kind="modifier"
+                    <NewProductModifierGroupsPicker
                       value={form.watch("modifierGroupIds") ?? []}
                       onChange={(ids) =>
                         form.setValue("modifierGroupIds", ids, {
                           shouldDirty: true,
                         })
                       }
+                      saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
                     />
                   )}
                 </div>
@@ -1096,16 +1108,19 @@ export default function ProductForm({ item }: ProductFormProps) {
               {activeTab === "addons" && (
                 <div className={styles.formBody}>
                   {isEditMode ? (
-                    <ProductAddonGroupsSection productId={item!.id} />
+                    <ProductAddonGroupsSection
+                      productId={item!.id}
+                      saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
+                    />
                   ) : (
-                    <NewProductLibraryPicker
-                      kind="addon"
+                    <NewProductAddonGroupsPicker
                       value={form.watch("addonGroupIds") ?? []}
                       onChange={(ids) =>
                         form.setValue("addonGroupIds", ids, {
                           shouldDirty: true,
                         })
                       }
+                      saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
                     />
                   )}
                 </div>
@@ -1146,12 +1161,10 @@ export default function ProductForm({ item }: ProductFormProps) {
                     </div>
                   </header>
                   <div className={styles.formBody}>
-                    <div
-                      className={styles.fieldRow}
-                      style={
-                        { ["--cols" as never]: 3 } as React.CSSProperties
-                      }
-                    >
+                    {/* Tax class + Tax inclusive + Sell online: 3-col
+                        on lg+, 2-col on sm/md (third wraps), 1 col on
+                        phones. Same pattern as the Product details row. */}
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
                       <FormField
                         control={form.control}
                         name="taxClass"
@@ -1162,9 +1175,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                             </FormLabel>
                             <Select
                               onValueChange={(v) =>
-                                field.onChange(
-                                  v === "__none__" ? undefined : v,
-                                )
+                                field.onChange(v === "__none__" ? undefined : v)
                               }
                               value={field.value ?? "__none__"}
                               disabled={isPending}
@@ -1192,20 +1203,24 @@ export default function ProductForm({ item }: ProductFormProps) {
                         control={form.control}
                         name="taxInclusive"
                         render={({ field }) => (
-                          <FormItem className={styles.toggleRow}>
-                            <div>
-                              <div className="l">Tax inclusive</div>
-                              <div className="h">
-                                Price already includes tax
-                              </div>
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              Tax inclusive
+                            </FormLabel>
+                            <div className="flex h-9 w-full items-center gap-2 rounded-md border border-line bg-card px-3 text-xs">
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  disabled={isPending}
+                                />
+                              </FormControl>
+                              <span className="truncate text-muted-foreground">
+                                {field.value
+                                  ? "Price includes tax"
+                                  : "Tax added at checkout"}
+                              </span>
                             </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                disabled={isPending}
-                              />
-                            </FormControl>
                           </FormItem>
                         )}
                       />
@@ -1214,120 +1229,34 @@ export default function ProductForm({ item }: ProductFormProps) {
                         control={form.control}
                         name="sellOnline"
                         render={({ field }) => (
-                          <FormItem className={styles.toggleRow}>
-                            <div>
-                              <div className="l">Sell online</div>
-                              <div className="h">
-                                Visible in the online catalog
-                              </div>
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              Sell online
+                            </FormLabel>
+                            <div className="flex h-9 w-full items-center gap-2 rounded-md border border-line bg-card px-3 text-xs">
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  disabled={isPending}
+                                />
+                              </FormControl>
+                              <span className="truncate text-muted-foreground">
+                                {field.value
+                                  ? "Visible in the online catalog"
+                                  : "Hidden from the online catalog"}
+                              </span>
                             </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                disabled={isPending}
-                              />
-                            </FormControl>
                           </FormItem>
                         )}
                       />
                     </div>
 
                     {isEditMode && (
-                      <>
-                        <div
-                          style={{
-                            margin: "20px 0 14px",
-                            paddingTop: 18,
-                            borderTop: "1px solid var(--pf-line)",
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 12,
-                          }}
-                        >
-                          <div className={styles.icoBox}>
-                            <Globe className="h-3.5 w-3.5" />
-                          </div>
-                          <div>
-                            <h3
-                              style={{
-                                margin: 0,
-                                fontSize: 14,
-                                fontWeight: 600,
-                                letterSpacing: "-0.01em",
-                              }}
-                            >
-                              Lifecycle
-                            </h3>
-                            <p className={styles.formCardHeadDesc}>
-                              Status and replacement behavior.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div
-                          className={styles.fieldRow}
-                          style={
-                            { ["--cols" as never]: 2 } as React.CSSProperties
-                          }
-                        >
-                          <FormField
-                            control={form.control}
-                            name="lifecycleStatus"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className={styles.fieldLabel}>
-                                  Status
-                                </FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  value={field.value}
-                                  disabled={isPending}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {LIFECYCLE_STATUS_OPTIONS.map((o) => (
-                                      <SelectItem
-                                        key={o.value}
-                                        value={o.value}
-                                      >
-                                        {o.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name="active"
-                            render={({ field }) => (
-                              <FormItem className={styles.toggleRow}>
-                                <div>
-                                  <div className="l">Active</div>
-                                  <div className="h">
-                                    Inactive products are hidden in the POS
-                                  </div>
-                                </div>
-                                <FormControl>
-                                  <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    disabled={isPending}
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                      </>
+                      <ProductLifecycleControl
+                        form={form}
+                        disabled={isPending}
+                      />
                     )}
                   </div>
                 </>
@@ -1365,16 +1294,8 @@ export default function ProductForm({ item }: ProductFormProps) {
           </aside>
         </div>
 
-        {/* Sticky autosave footer */}
+        {/* Sticky footer */}
         <div className={styles.formFoot}>
-          <div className={styles.formFootSaveState}>
-            <span className={styles.liveDot} />
-            AUTOSAVED ·{" "}
-            {now.toLocaleTimeString("en-GB", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </div>
           <div className={styles.formFootSpacer} />
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -1553,7 +1474,8 @@ function VariantEditor({
   // which is why this is an "approximate" display value.
   useEffect(() => {
     if (mode !== "DIRECT") return;
-    if (!stockVariantId || directQuantity == null || directQuantity <= 0) return;
+    if (!stockVariantId || directQuantity == null || directQuantity <= 0)
+      return;
     const unitCost = stockVariantCosts[stockVariantId];
     if (unitCost == null) return;
     const derivedCost = Number((unitCost * directQuantity).toFixed(4));
@@ -1856,7 +1778,9 @@ function VariantEditor({
             name={`variants.${index}.sellabilityMode`}
             render={({ field }) => (
               <FormItem className="space-y-2">
-                <FormLabel className="text-sm">How is stock deducted?</FormLabel>
+                <FormLabel className="text-sm">
+                  How is stock deducted?
+                </FormLabel>
                 <FormControl>
                   <RadioGroup
                     onValueChange={field.onChange}
@@ -1921,8 +1845,7 @@ function VariantEditor({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Quantity per sale{" "}
-                      <span className="text-red-500">*</span>
+                      Quantity per sale <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <NumericFormat
@@ -1958,8 +1881,8 @@ function VariantEditor({
                       </FormLabel>
                       <p className="text-xs text-muted-foreground leading-snug">
                         For unique items you won&apos;t restock. The variant
-                        disappears from the POS the moment its stock hits
-                        zero; historical sales stay in reports.
+                        disappears from the POS the moment its stock hits zero;
+                        historical sales stay in reports.
                       </p>
                     </div>
                   </FormItem>
@@ -2373,19 +2296,23 @@ function MediaCard({
   );
 }
 
-
 // ─────────────────────────────────────────────────────────────────────
 // Modifier groups (attach/detach from the business library)
 // ─────────────────────────────────────────────────────────────────────
 
-function ProductModifierGroupsSection({ productId }: { productId: string }) {
+function ProductModifierGroupsSection({
+  productId,
+  saveDraftBeforeLibraryNav,
+}: {
+  productId: string;
+  saveDraftBeforeLibraryNav: () => Promise<boolean>;
+}) {
   const { toast } = useToast();
   const [attached, setAttached] = useState<ModifierGroup[]>([]);
   const [library, setLibrary] = useState<ModifierGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [picker, setPicker] = useState(false);
-  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -2407,13 +2334,12 @@ function ProductModifierGroupsSection({ productId }: { productId: string }) {
     (g) => !attachedIds.has(g.id) && g.archivedAt == null && g.active,
   );
 
-  const attach = async () => {
-    if (!selectedGroupId) return;
+  const attach = async (groupId: string) => {
     setBusy(true);
     try {
       const result = await attachModifierGroup(
         productId,
-        selectedGroupId,
+        groupId,
         attached.length,
       );
       if (
@@ -2429,7 +2355,6 @@ function ProductModifierGroupsSection({ productId }: { productId: string }) {
         });
       } else {
         toast({ title: "Attached" });
-        setSelectedGroupId("");
         setPicker(false);
         await refresh();
       }
@@ -2438,8 +2363,7 @@ function ProductModifierGroupsSection({ productId }: { productId: string }) {
     }
   };
 
-  const detach = async (groupId: string, name: string) => {
-    if (!confirm(`Detach modifier group "${name}" from this product?`)) return;
+  const detach = async (groupId: string) => {
     setBusy(true);
     try {
       await detachModifierGroup(productId, groupId);
@@ -2450,114 +2374,674 @@ function ProductModifierGroupsSection({ productId }: { productId: string }) {
     }
   };
 
+  // Reorder via the attachment endpoint. We ship a fresh sortOrder for
+  // every row so the backend's view of the list always matches what the
+  // merchant sees on screen — no relying on natural insertion order.
+  const move = async (index: number, direction: -1 | 1) => {
+    const next = index + direction;
+    if (next < 0 || next >= attached.length) return;
+    const reordered = [...attached];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(next, 0, moved);
+    setAttached(reordered);
+    setBusy(true);
+    try {
+      await Promise.all(
+        reordered.map((g, i) =>
+          updateAttachedModifierGroup(productId, g.id, i),
+        ),
+      );
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        title: "Reorder failed",
+        description: e?.message ?? "Could not save the new order",
+      });
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <Card className="rounded-xl shadow-sm">
-      <CardContent className="pt-6 space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-medium flex items-center gap-2">
-              <Settings2 className="h-5 w-5 text-gray-400" />
-              Modifier groups
-            </h3>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Attach reusable groups from your library. Manage the library at{" "}
-              <a
-                href="/modifier-groups"
-                className="underline hover:text-primary"
-                target="_blank"
-                rel="noreferrer"
-              >
-                /modifier-groups
-              </a>
-              .
-            </p>
-          </div>
-          {!picker && candidates.length > 0 && (
+    <section className={styles.formCard}>
+      <header className={styles.formCardHead}>
+        <div className={styles.icoBox}>
+          <Settings2 className="h-3.5 w-3.5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3>Modifier groups</h3>
+          <p className={styles.formCardHeadDesc}>
+            Reusable customer-facing tweaks (milk type, spice level, extras).
+          </p>
+        </div>
+        <div className={styles.formCardActions}>
+          <CreateLibraryGroupButton
+            kind="modifier"
+            saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
+            disabled={busy}
+          />
+          {!picker && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setPicker(true)}
-              disabled={busy || loading}
+              disabled={busy || loading || candidates.length === 0}
+              title={
+                candidates.length === 0 && library.length > 0
+                  ? "Every active group is already attached"
+                  : undefined
+              }
             >
-              <Plus className="w-4 h-4 mr-1" /> Attach group
+              <Plus className="mr-1 h-3.5 w-3.5" /> Attach group
             </Button>
           )}
         </div>
+      </header>
 
+      <div className={styles.formBody}>
         {picker && (
-          <div className="rounded-md border p-3 flex items-center gap-2 bg-background">
-            <Select
-              value={selectedGroupId}
-              onValueChange={setSelectedGroupId}
-              disabled={busy}
-            >
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Pick a modifier group" />
-              </SelectTrigger>
-              <SelectContent>
-                {candidates.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    {g.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              type="button"
-              size="sm"
-              onClick={attach}
-              disabled={busy || !selectedGroupId}
-            >
-              <Save className="h-3.5 w-3.5 mr-1" /> Attach
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setPicker(false);
-                setSelectedGroupId("");
-              }}
-              disabled={busy}
-            >
-              Cancel
-            </Button>
-          </div>
+          <ModifierGroupPicker
+            candidates={candidates}
+            disabled={busy}
+            onPick={attach}
+            onCancel={() => setPicker(false)}
+          />
         )}
 
         {loading ? (
-          <p className="text-sm text-muted-foreground text-center py-3">
+          <p className="py-4 text-center text-xs text-muted-foreground">
             Loading…
           </p>
         ) : attached.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-3">
-            {library.length === 0
-              ? "No modifier groups yet. Create one in the library first."
-              : "No groups attached to this product."}
+          <ModifierGroupsEmpty
+            hasLibrary={library.length > 0}
+            mode="attached"
+          />
+        ) : (
+          <div className="space-y-2.5">
+            {attached.map((g, idx) => (
+              <AttachedModifierGroupRow
+                key={g.id}
+                group={g}
+                position={idx}
+                total={attached.length}
+                disabled={busy}
+                onMoveUp={() => move(idx, -1)}
+                onMoveDown={() => move(idx, 1)}
+                onDetach={() => detach(g.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Picker — searchable list of library candidates rendered as cards.
+// Shows the same metadata the attached row shows, so the merchant
+// commits with full context.
+// ─────────────────────────────────────────────────────────────────────
+function ModifierGroupPicker({
+  candidates,
+  disabled,
+  onPick,
+  onCancel,
+}: {
+  candidates: ModifierGroup[];
+  disabled: boolean;
+  onPick: (groupId: string) => void;
+  onCancel: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return candidates;
+    return candidates.filter(
+      (g) =>
+        g.name.toLowerCase().includes(q) ||
+        g.options.some((o) => o.name.toLowerCase().includes(q)),
+    );
+  }, [candidates, query]);
+
+  return (
+    <div className="mb-3 rounded-md border border-line bg-card">
+      <div className="flex items-center gap-2 border-b border-line p-2.5">
+        <Search className="h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          autoFocus
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by group name or option…"
+          className="h-7 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-0"
+          disabled={disabled}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          disabled={disabled}
+          className="h-7"
+        >
+          Cancel
+        </Button>
+      </div>
+      <div className="max-h-72 overflow-y-auto p-2">
+        {filtered.length === 0 ? (
+          <p className="py-4 text-center text-xs text-muted-foreground">
+            {candidates.length === 0
+              ? "Every active group is already attached."
+              : `No groups match "${query}".`}
           </p>
         ) : (
-          attached.map((g) => (
-            <AttachedGroupRow
-              key={g.id}
-              title={g.name}
-              subtitle={`${
-                g.selectionType === "SINGLE" ? "Single" : "Multi"
-              } · ${g.minSelections}–${g.maxSelections} · ${
-                g.options.length
-              } option${g.options.length === 1 ? "" : "s"}${
-                !g.active ? " · inactive" : ""
-              }`}
-              onDetach={() => detach(g.id, g.name)}
-              disabled={busy}
-              optionsPreview={g.options
-                .filter((o) => o.active && o.archivedAt == null)
-                .map((o) => o.name)}
-            />
-          ))
+          <div className="space-y-1.5">
+            {filtered.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => onPick(g.id)}
+                disabled={disabled}
+                className="flex w-full items-start justify-between gap-3 rounded-md border border-line bg-background p-2.5 text-left transition-colors hover:border-foreground/30 hover:bg-card disabled:opacity-60"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{g.name}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    {modifierMetaLine(g)}
+                  </div>
+                  {g.options.length > 0 && (
+                    <OptionChips options={g.options} max={5} />
+                  )}
+                </div>
+                <span className="mt-0.5 shrink-0 text-xs font-medium text-primary">
+                  Attach
+                </span>
+              </button>
+            ))}
+          </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Attached row — compact card with reorder, edit-in-library, and detach.
+// ─────────────────────────────────────────────────────────────────────
+function AttachedModifierGroupRow({
+  group,
+  position,
+  total,
+  disabled,
+  onMoveUp,
+  onMoveDown,
+  onDetach,
+}: {
+  group: ModifierGroup;
+  position: number;
+  total: number;
+  disabled: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDetach: () => void;
+}) {
+  const isRequired =
+    group.selectionType === "SINGLE" && group.minSelections >= 1;
+  return (
+    <div className="rounded-md border border-line bg-card">
+      <div className="flex items-start justify-between gap-3 px-3 pt-2.5">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[10.5px] font-medium uppercase tracking-wide text-muted-foreground">
+              {position + 1}/{total}
+            </span>
+            <span className="truncate text-sm font-medium">{group.name}</span>
+            {isRequired && (
+              <Badge
+                variant="soft"
+                className="px-1.5 py-0 text-[10px] uppercase"
+              >
+                Required
+              </Badge>
+            )}
+            {!group.active && (
+              <Badge
+                variant="soft"
+                className="px-1.5 py-0 text-[10px] uppercase"
+              >
+                Inactive
+              </Badge>
+            )}
+          </div>
+          <div className="mt-0.5 text-xs text-muted-foreground">
+            {modifierMetaLine(group)}
+          </div>
+        </div>
+        <div className="flex items-center gap-0.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onMoveUp}
+            disabled={disabled || position === 0}
+            className="h-7 w-7 p-0"
+            title="Move up"
+          >
+            <ChevronUp className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onMoveDown}
+            disabled={disabled || position === total - 1}
+            className="h-7 w-7 p-0"
+            title="Move down"
+          >
+            <ChevronDown className="h-3.5 w-3.5" />
+          </Button>
+          <a
+            href={`/modifier-groups/${group.id}`}
+            target="_blank"
+            rel="noreferrer"
+            title="Edit in library"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </a>
+          <DetachConfirmDialog
+            kind="modifier"
+            groupName={group.name}
+            disabled={disabled}
+            onConfirm={onDetach}
+          />
+        </div>
+      </div>
+
+      {group.options.length > 0 ? (
+        <div className="px-3 pb-2.5 pt-1.5">
+          <OptionChips options={group.options} max={6} />
+        </div>
+      ) : (
+        <p className="px-3 pb-2.5 pt-1 text-[11px] italic text-muted-foreground">
+          No options yet — add some in the library.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Compact metadata line shared by the picker and the attached row.
+// Includes selection mode, bounds, option count, default name, and a
+// tracking-mode breakdown so the merchant sees recipe-driven groups at
+// a glance.
+function modifierMetaLine(g: ModifierGroup): string {
+  const mode =
+    g.selectionType === "SINGLE"
+      ? g.minSelections >= 1
+        ? "Single · required"
+        : "Single · optional"
+      : `Multi · ${g.minSelections}–${g.maxSelections}`;
+  const total = g.options.length;
+  const liveOptions = g.options.filter((o) => o.active && o.archivedAt == null);
+  const tracked = liveOptions.filter((o) => o.stockVariantId != null).length;
+  const defaultOpt = liveOptions.find((o) => o.isDefault);
+  const parts = [
+    mode,
+    `${total} option${total === 1 ? "" : "s"}`,
+    tracked > 0 ? `${tracked} tracked` : null,
+    defaultOpt ? `default: ${defaultOpt.name}` : null,
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Create-mode picker — collects modifier-group IDs to attach in the
+// same transaction as product creation. Same look/feel as the edit-mode
+// section so the UX doesn't shift between create and edit.
+// ─────────────────────────────────────────────────────────────────────
+function NewProductModifierGroupsPicker({
+  value,
+  onChange,
+  saveDraftBeforeLibraryNav,
+}: {
+  value: string[];
+  onChange: (ids: string[]) => void;
+  saveDraftBeforeLibraryNav: () => Promise<boolean>;
+}) {
+  const [library, setLibrary] = useState<ModifierGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [picker, setPicker] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const groups = await listModifierGroups();
+      if (cancelled) return;
+      setLibrary(groups);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const byId = useMemo(() => new Map(library.map((g) => [g.id, g])), [library]);
+  const selectedSet = new Set(value);
+  const candidates = library.filter(
+    (g) => !selectedSet.has(g.id) && g.archivedAt == null && g.active,
+  );
+
+  const attach = (groupId: string) => {
+    onChange([...value, groupId]);
+    setPicker(false);
+  };
+  const detach = (groupId: string) =>
+    onChange(value.filter((x) => x !== groupId));
+  const move = (index: number, direction: -1 | 1) => {
+    const next = index + direction;
+    if (next < 0 || next >= value.length) return;
+    const reordered = [...value];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(next, 0, moved);
+    onChange(reordered);
+  };
+
+  return (
+    <section className={styles.formCard}>
+      <header className={styles.formCardHead}>
+        <div className={styles.icoBox}>
+          <Settings2 className="h-3.5 w-3.5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3>Modifier groups</h3>
+          <p className={styles.formCardHeadDesc}>
+            Pick groups to attach when this product is saved.
+          </p>
+        </div>
+        <div className={styles.formCardActions}>
+          <CreateLibraryGroupButton
+            kind="modifier"
+            saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
+            disabled={false}
+          />
+          {!picker && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPicker(true)}
+              disabled={loading || candidates.length === 0}
+              title={
+                candidates.length === 0 && library.length > 0
+                  ? "Every active group is already selected"
+                  : undefined
+              }
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" /> Attach group
+            </Button>
+          )}
+        </div>
+      </header>
+
+      <div className={styles.formBody}>
+        {picker && (
+          <ModifierGroupPicker
+            candidates={candidates}
+            disabled={false}
+            onPick={attach}
+            onCancel={() => setPicker(false)}
+          />
+        )}
+
+        {loading ? (
+          <p className="py-4 text-center text-xs text-muted-foreground">
+            Loading…
+          </p>
+        ) : value.length === 0 ? (
+          <ModifierGroupsEmpty
+            hasLibrary={library.length > 0}
+            mode="selected"
+          />
+        ) : (
+          <div className="space-y-2.5">
+            {value.map((id, idx) => {
+              const g = byId.get(id);
+              if (!g) {
+                return (
+                  <div
+                    key={id}
+                    className="rounded-md border border-dashed border-line bg-card px-3 py-2 text-xs text-muted-foreground"
+                  >
+                    Selected group <code>{id.slice(0, 8)}</code> not found in
+                    library — it may have been archived.
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => detach(id)}
+                      className="ml-2 h-6 px-2 text-red-600 hover:text-red-700"
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                );
+              }
+              return (
+                <AttachedModifierGroupRow
+                  key={id}
+                  group={g}
+                  position={idx}
+                  total={value.length}
+                  disabled={false}
+                  onMoveUp={() => move(idx, -1)}
+                  onMoveDown={() => move(idx, 1)}
+                  onDetach={() => detach(id)}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// Confirmation for detaching a modifier or addon group from the product.
+// Renders the same trash icon button the section used to use, but wraps
+// it in an AlertDialog instead of calling the bare browser confirm()
+// — both for visual consistency with the rest of the form and because
+// the native dialog can't be styled to match the dashboard.
+function DetachConfirmDialog({
+  kind,
+  groupName,
+  disabled,
+  onConfirm,
+}: {
+  kind: "modifier" | "addon";
+  groupName: string;
+  disabled: boolean;
+  onConfirm: () => void | Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const noun = kind === "modifier" ? "modifier" : "addon";
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={disabled}
+          className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+          title="Detach"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent tone="danger">
+        <AlertDialogIcon>
+          <Trash2 className="h-5 w-5" />
+        </AlertDialogIcon>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Detach {noun} group?</AlertDialogTitle>
+          <AlertDialogDescription>
+            <span className="font-medium text-foreground">{groupName}</span>{" "}
+            will no longer be attached to this product. The group itself stays
+            in your library and can be re-attached anytime.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async () => {
+              await onConfirm();
+              setOpen(false);
+            }}
+          >
+            Detach
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+// Save-then-jump action for adding a new library group from inside the
+// product form. Confirms first so the merchant doesn't lose unsaved
+// edits, then navigates this tab to /modifier-groups/new or
+// /addon-groups/new depending on `kind`. Browsers block popups, so we
+// stay in-tab — the merchant comes back to the product via the saved
+// draft on the products list.
+function CreateLibraryGroupButton({
+  kind,
+  saveDraftBeforeLibraryNav,
+  disabled,
+}: {
+  kind: "modifier" | "addon";
+  saveDraftBeforeLibraryNav: () => Promise<boolean>;
+  disabled: boolean;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+
+  const target =
+    kind === "modifier" ? "/modifier-groups/new" : "/addon-groups/new";
+  const noun = kind === "modifier" ? "modifier" : "addon";
+
+  const proceed = async () => {
+    setPending(true);
+    try {
+      const ok = await saveDraftBeforeLibraryNav();
+      if (ok) {
+        router.push(target);
+      } else {
+        setOpen(false);
+      }
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={disabled}
+          title={`Create a new ${noun} group`}
+        >
+          <Plus className="mr-1 h-3.5 w-3.5" /> New group
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogIcon>
+          <Sparkles className="h-5 w-5" />
+        </AlertDialogIcon>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Save this product as a draft?</AlertDialogTitle>
+          <AlertDialogDescription>
+            We&apos;ll save your unsaved edits as a draft, then take you to the
+            new {noun}-group page. Your draft will be waiting on the products
+            list so you can come back and attach the new group.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={proceed} disabled={pending}>
+            {pending ? "Saving…" : "Save draft & continue"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+// Compact in-tab empty state — `formBodyEmpty` is sized for full pages
+// and felt heavy here. Tight stack, single line of guidance, matches
+// the row visuals around it.
+function ModifierGroupsEmpty({
+  hasLibrary,
+  mode,
+}: {
+  hasLibrary: boolean;
+  mode: "attached" | "selected";
+}) {
+  const title = !hasLibrary
+    ? "No modifier groups in your library"
+    : mode === "attached"
+      ? "Nothing attached"
+      : "Nothing selected";
+  const detail = !hasLibrary
+    ? "Create one in the library to attach it here."
+    : "Use Attach group to pick from your library.";
+  return (
+    <div className="flex items-center gap-2 rounded-md border border-dashed border-line bg-card/50 px-3 py-2.5">
+      <Settings2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <p className="text-xs font-medium">{title}</p>
+        <p className="text-[11px] text-muted-foreground">{detail}</p>
+      </div>
+    </div>
+  );
+}
+
+function OptionChips({
+  options,
+  max,
+}: {
+  options: ModifierGroup["options"];
+  max: number;
+}) {
+  const live = options.filter((o) => o.active && o.archivedAt == null);
+  const shown = live.slice(0, max);
+  const rest = live.length - shown.length;
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {shown.map((o) => (
+        <span
+          key={o.id}
+          className={`inline-flex items-center gap-1 rounded-full border border-line bg-background px-1.5 py-0.5 text-[11px] ${
+            o.isDefault
+              ? "border-primary/40 text-primary"
+              : "text-muted-foreground"
+          }`}
+        >
+          {o.name}
+          {o.isDefault && <span aria-hidden="true">★</span>}
+        </span>
+      ))}
+      {rest > 0 && (
+        <span className="text-[11px] text-muted-foreground">+{rest} more</span>
+      )}
+    </div>
   );
 }
 
@@ -2565,14 +3049,19 @@ function ProductModifierGroupsSection({ productId }: { productId: string }) {
 // Addon groups (attach/detach from the business library)
 // ─────────────────────────────────────────────────────────────────────
 
-function ProductAddonGroupsSection({ productId }: { productId: string }) {
+function ProductAddonGroupsSection({
+  productId,
+  saveDraftBeforeLibraryNav,
+}: {
+  productId: string;
+  saveDraftBeforeLibraryNav: () => Promise<boolean>;
+}) {
   const { toast } = useToast();
   const [attached, setAttached] = useState<AddonGroup[]>([]);
   const [library, setLibrary] = useState<AddonGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [picker, setPicker] = useState(false);
-  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -2594,13 +3083,12 @@ function ProductAddonGroupsSection({ productId }: { productId: string }) {
     (g) => !attachedIds.has(g.id) && g.archivedAt == null && g.active,
   );
 
-  const attach = async () => {
-    if (!selectedGroupId) return;
+  const attach = async (groupId: string) => {
     setBusy(true);
     try {
       const result = await attachAddonGroup(
         productId,
-        selectedGroupId,
+        groupId,
         attached.length,
       );
       if (
@@ -2616,7 +3104,6 @@ function ProductAddonGroupsSection({ productId }: { productId: string }) {
         });
       } else {
         toast({ title: "Attached" });
-        setSelectedGroupId("");
         setPicker(false);
         await refresh();
       }
@@ -2625,8 +3112,7 @@ function ProductAddonGroupsSection({ productId }: { productId: string }) {
     }
   };
 
-  const detach = async (groupId: string, name: string) => {
-    if (!confirm(`Detach addon group "${name}" from this product?`)) return;
+  const detach = async (groupId: string) => {
     setBusy(true);
     try {
       await detachAddonGroup(productId, groupId);
@@ -2637,317 +3123,690 @@ function ProductAddonGroupsSection({ productId }: { productId: string }) {
     }
   };
 
+  // Reorder via the attachment endpoint. Optimistic local reorder; ship
+  // a fresh sortOrder for every row so the backend's view always matches
+  // what the merchant sees, and refresh from the server on failure.
+  const move = async (index: number, direction: -1 | 1) => {
+    const next = index + direction;
+    if (next < 0 || next >= attached.length) return;
+    const reordered = [...attached];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(next, 0, moved);
+    setAttached(reordered);
+    setBusy(true);
+    try {
+      await Promise.all(
+        reordered.map((g, i) => updateAttachedAddonGroup(productId, g.id, i)),
+      );
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        title: "Reorder failed",
+        description: e?.message ?? "Could not save the new order",
+      });
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <Card className="rounded-xl shadow-sm">
-      <CardContent className="pt-6 space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-medium flex items-center gap-2">
-              <TagIcon className="h-5 w-5 text-gray-400" />
-              Addon groups
-            </h3>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Attach reusable groups from your library. Manage the library at{" "}
-              <a
-                href="/addon-groups"
-                className="underline hover:text-primary"
-                target="_blank"
-                rel="noreferrer"
-              >
-                /addon-groups
-              </a>
-              .
-            </p>
-          </div>
-          {!picker && candidates.length > 0 && (
+    <section className={styles.formCard}>
+      <header className={styles.formCardHead}>
+        <div className={styles.icoBox}>
+          <TagIcon className="h-3.5 w-3.5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3>Addon groups</h3>
+          <p className={styles.formCardHeadDesc}>
+            Companion items the customer can tack on (sides, drinks, extras).
+          </p>
+        </div>
+        <div className={styles.formCardActions}>
+          <CreateLibraryGroupButton
+            kind="addon"
+            saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
+            disabled={busy}
+          />
+          {!picker && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setPicker(true)}
-              disabled={busy || loading}
+              disabled={busy || loading || candidates.length === 0}
+              title={
+                candidates.length === 0 && library.length > 0
+                  ? "Every active group is already attached"
+                  : undefined
+              }
             >
-              <Plus className="w-4 h-4 mr-1" /> Attach group
+              <Plus className="mr-1 h-3.5 w-3.5" /> Attach group
             </Button>
           )}
         </div>
+      </header>
 
+      <div className={styles.formBody}>
         {picker && (
-          <div className="rounded-md border p-3 flex items-center gap-2 bg-background">
-            <Select
-              value={selectedGroupId}
-              onValueChange={setSelectedGroupId}
-              disabled={busy}
-            >
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Pick an addon group" />
-              </SelectTrigger>
-              <SelectContent>
-                {candidates.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    {g.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              type="button"
-              size="sm"
-              onClick={attach}
-              disabled={busy || !selectedGroupId}
-            >
-              <Save className="h-3.5 w-3.5 mr-1" /> Attach
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setPicker(false);
-                setSelectedGroupId("");
-              }}
-              disabled={busy}
-            >
-              Cancel
-            </Button>
-          </div>
+          <AddonGroupPicker
+            candidates={candidates}
+            disabled={busy}
+            onPick={attach}
+            onCancel={() => setPicker(false)}
+          />
         )}
 
         {loading ? (
-          <p className="text-sm text-muted-foreground text-center py-3">
+          <p className="py-4 text-center text-xs text-muted-foreground">
             Loading…
           </p>
         ) : attached.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-3">
-            {library.length === 0
-              ? "No addon groups yet. Create one in the library first."
-              : "No groups attached to this product."}
-          </p>
+          <AddonGroupsEmpty hasLibrary={library.length > 0} mode="attached" />
         ) : (
-          attached.map((g) => (
-            <AttachedGroupRow
-              key={g.id}
-              title={g.name}
-              subtitle={`${g.minSelections}–${g.maxSelections} addon${
-                g.maxSelections === 1 ? "" : "s"
-              } · ${g.items.length} item${g.items.length === 1 ? "" : "s"}${
-                !g.active ? " · inactive" : ""
-              }`}
-              onDetach={() => detach(g.id, g.name)}
-              disabled={busy}
-              optionsPreview={g.items
-                .filter((i) => i.active)
-                .map((i) => i.productVariantDisplayName)}
-            />
-          ))
+          <div className="space-y-2.5">
+            {attached.map((g, idx) => (
+              <AttachedAddonGroupRow
+                key={g.id}
+                group={g}
+                position={idx}
+                total={attached.length}
+                disabled={busy}
+                onMoveUp={() => move(idx, -1)}
+                onMoveDown={() => move(idx, 1)}
+                onDetach={() => detach(g.id)}
+              />
+            ))}
+          </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
-// Picker shown on the create form (no productId yet). Selected IDs ride
-// along on the create payload as `modifierGroupIds` / `addonGroupIds` and
-// the backend attaches them in the same transaction.
-function NewProductLibraryPicker({
-  kind,
+// ─────────────────────────────────────────────────────────────────────
+// Addon picker — searchable list of library candidates, parity with
+// the modifier picker.
+// ─────────────────────────────────────────────────────────────────────
+function AddonGroupPicker({
+  candidates,
+  disabled,
+  onPick,
+  onCancel,
+}: {
+  candidates: AddonGroup[];
+  disabled: boolean;
+  onPick: (groupId: string) => void;
+  onCancel: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return candidates;
+    return candidates.filter(
+      (g) =>
+        g.name.toLowerCase().includes(q) ||
+        g.items.some((i) =>
+          i.productVariantDisplayName.toLowerCase().includes(q),
+        ),
+    );
+  }, [candidates, query]);
+
+  return (
+    <div className="mb-3 rounded-md border border-line bg-card">
+      <div className="flex items-center gap-2 border-b border-line p-2.5">
+        <Search className="h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          autoFocus
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by group name or item…"
+          className="h-7 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-0"
+          disabled={disabled}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          disabled={disabled}
+          className="h-7"
+        >
+          Cancel
+        </Button>
+      </div>
+      <div className="max-h-72 overflow-y-auto p-2">
+        {filtered.length === 0 ? (
+          <p className="py-4 text-center text-xs text-muted-foreground">
+            {candidates.length === 0
+              ? "Every active group is already attached."
+              : `No groups match "${query}".`}
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            {filtered.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => onPick(g.id)}
+                disabled={disabled}
+                className="flex w-full items-start justify-between gap-3 rounded-md border border-line bg-background p-2.5 text-left transition-colors hover:border-foreground/30 hover:bg-card disabled:opacity-60"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{g.name}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    {addonMetaLine(g)}
+                  </div>
+                  {g.items.length > 0 && (
+                    <AddonItemChips items={g.items} max={5} />
+                  )}
+                </div>
+                <span className="mt-0.5 shrink-0 text-xs font-medium text-primary">
+                  Attach
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Attached addon row — mirrors the modifier row layout (position pill,
+// reorder, edit-in-library, detach).
+// ─────────────────────────────────────────────────────────────────────
+function AttachedAddonGroupRow({
+  group,
+  position,
+  total,
+  disabled,
+  onMoveUp,
+  onMoveDown,
+  onDetach,
+}: {
+  group: AddonGroup;
+  position: number;
+  total: number;
+  disabled: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDetach: () => void;
+}) {
+  const isRequired = group.minSelections >= 1;
+  return (
+    <div className="rounded-md border border-line bg-card">
+      <div className="flex items-start justify-between gap-3 px-3 pt-2.5">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[10.5px] font-medium uppercase tracking-wide text-muted-foreground">
+              {position + 1}/{total}
+            </span>
+            <span className="truncate text-sm font-medium">{group.name}</span>
+            {isRequired && (
+              <Badge
+                variant="soft"
+                className="px-1.5 py-0 text-[10px] uppercase"
+              >
+                Required
+              </Badge>
+            )}
+            {!group.active && (
+              <Badge
+                variant="soft"
+                className="px-1.5 py-0 text-[10px] uppercase"
+              >
+                Inactive
+              </Badge>
+            )}
+          </div>
+          <div className="mt-0.5 text-xs text-muted-foreground">
+            {addonMetaLine(group)}
+          </div>
+        </div>
+        <div className="flex items-center gap-0.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onMoveUp}
+            disabled={disabled || position === 0}
+            className="h-7 w-7 p-0"
+            title="Move up"
+          >
+            <ChevronUp className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onMoveDown}
+            disabled={disabled || position === total - 1}
+            className="h-7 w-7 p-0"
+            title="Move down"
+          >
+            <ChevronDown className="h-3.5 w-3.5" />
+          </Button>
+          <a
+            href={`/addon-groups/${group.id}`}
+            target="_blank"
+            rel="noreferrer"
+            title="Edit in library"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </a>
+          <DetachConfirmDialog
+            kind="addon"
+            groupName={group.name}
+            disabled={disabled}
+            onConfirm={onDetach}
+          />
+        </div>
+      </div>
+
+      {group.items.length > 0 ? (
+        <div className="px-3 pb-2.5 pt-1.5">
+          <AddonItemChips items={group.items} max={6} />
+        </div>
+      ) : (
+        <p className="px-3 pb-2.5 pt-1 text-[11px] italic text-muted-foreground">
+          No items yet — add some in the library.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Compact metadata for an addon group: range, item count, override count.
+function addonMetaLine(g: AddonGroup): string {
+  const range =
+    g.minSelections === g.maxSelections
+      ? `${g.minSelections}`
+      : `${g.minSelections}–${g.maxSelections}`;
+  const total = g.items.length;
+  const live = g.items.filter((i) => i.active);
+  const overridden = live.filter((i) => i.priceOverride != null).length;
+  const parts = [
+    `Pick ${range}`,
+    `${total} item${total === 1 ? "" : "s"}`,
+    overridden > 0 ? `${overridden} custom-priced` : null,
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
+
+function AddonItemChips({
+  items,
+  max,
+}: {
+  items: AddonGroupItem[];
+  max: number;
+}) {
+  const live = items.filter((i) => i.active);
+  const shown = live.slice(0, max);
+  const rest = live.length - shown.length;
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {shown.map((i) => (
+        <span
+          key={i.id}
+          className={`inline-flex items-center gap-1 rounded-full border border-line bg-background px-1.5 py-0.5 text-[11px] ${
+            i.priceOverride != null
+              ? "border-primary/40 text-primary"
+              : "text-muted-foreground"
+          }`}
+          title={
+            i.priceOverride != null
+              ? `Custom price: ${i.priceOverride}`
+              : undefined
+          }
+        >
+          {i.productVariantDisplayName}
+        </span>
+      ))}
+      {rest > 0 && (
+        <span className="text-[11px] text-muted-foreground">+{rest} more</span>
+      )}
+    </div>
+  );
+}
+
+function AddonGroupsEmpty({
+  hasLibrary,
+  mode,
+}: {
+  hasLibrary: boolean;
+  mode: "attached" | "selected";
+}) {
+  const title = !hasLibrary
+    ? "No addon groups in your library"
+    : mode === "attached"
+      ? "Nothing attached"
+      : "Nothing selected";
+  const detail = !hasLibrary
+    ? "Create one in the library to attach it here."
+    : "Use Attach group to pick from your library.";
+  return (
+    <div className="flex items-center gap-2 rounded-md border border-dashed border-line bg-card/50 px-3 py-2.5">
+      <TagIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <p className="text-xs font-medium">{title}</p>
+        <p className="text-[11px] text-muted-foreground">{detail}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Create-mode addon picker — collects addon-group IDs to attach in the
+// same transaction as product creation. Same look/feel as edit mode.
+// ─────────────────────────────────────────────────────────────────────
+function NewProductAddonGroupsPicker({
   value,
   onChange,
+  saveDraftBeforeLibraryNav,
 }: {
-  kind: "modifier" | "addon";
   value: string[];
   onChange: (ids: string[]) => void;
+  saveDraftBeforeLibraryNav: () => Promise<boolean>;
 }) {
-  const [library, setLibrary] = useState<
-    Array<{ id: string; name: string; archivedAt: string | null; active: boolean }>
-  >([]);
+  const [library, setLibrary] = useState<AddonGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [picking, setPicking] = useState(false);
-  const [selectedId, setSelectedId] = useState<string>("");
+  const [picker, setPicker] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const groups =
-        kind === "modifier"
-          ? await listModifierGroups()
-          : await listAddonGroups();
+      const groups = await listAddonGroups();
       if (cancelled) return;
-      setLibrary(
-        groups.map((g) => ({
-          id: g.id,
-          name: g.name,
-          archivedAt: g.archivedAt,
-          active: g.active,
-        })),
-      );
+      setLibrary(groups);
       setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [kind]);
+  }, []);
 
-  const byId = new Map(library.map((g) => [g.id, g]));
+  const byId = useMemo(() => new Map(library.map((g) => [g.id, g])), [library]);
   const selectedSet = new Set(value);
   const candidates = library.filter(
     (g) => !selectedSet.has(g.id) && g.archivedAt == null && g.active,
   );
 
-  const add = () => {
-    if (!selectedId) return;
-    onChange([...value, selectedId]);
-    setSelectedId("");
-    setPicking(false);
+  const attach = (groupId: string) => {
+    onChange([...value, groupId]);
+    setPicker(false);
+  };
+  const detach = (groupId: string) =>
+    onChange(value.filter((x) => x !== groupId));
+  const move = (index: number, direction: -1 | 1) => {
+    const next = index + direction;
+    if (next < 0 || next >= value.length) return;
+    const reordered = [...value];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(next, 0, moved);
+    onChange(reordered);
   };
 
-  const remove = (id: string) => onChange(value.filter((x) => x !== id));
-
-  const Icon = kind === "modifier" ? Settings2 : TagIcon;
-  const libraryHref = kind === "modifier" ? "/modifier-groups" : "/addon-groups";
-  const labelPlural = kind === "modifier" ? "modifier groups" : "addon groups";
-
   return (
-    <Card className="rounded-xl shadow-sm">
-      <CardContent className="pt-6 space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-medium flex items-center gap-2">
-              <Icon className="h-5 w-5 text-gray-400" />
-              {kind === "modifier" ? "Modifier groups" : "Addon groups"}
-            </h3>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Pick groups from your library to attach when this product is
-              saved. Manage the library at{" "}
-              <a
-                href={libraryHref}
-                className="underline hover:text-primary"
-                target="_blank"
-                rel="noreferrer"
-              >
-                {libraryHref}
-              </a>
-              .
-            </p>
-          </div>
-          {!picking && candidates.length > 0 && (
+    <section className={styles.formCard}>
+      <header className={styles.formCardHead}>
+        <div className={styles.icoBox}>
+          <TagIcon className="h-3.5 w-3.5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3>Addon groups</h3>
+          <p className={styles.formCardHeadDesc}>
+            Pick groups to attach when this product is saved.
+          </p>
+        </div>
+        <div className={styles.formCardActions}>
+          <CreateLibraryGroupButton
+            kind="addon"
+            saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
+            disabled={false}
+          />
+          {!picker && (
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setPicking(true)}
+              onClick={() => setPicker(true)}
+              disabled={loading || candidates.length === 0}
+              title={
+                candidates.length === 0 && library.length > 0
+                  ? "Every active group is already selected"
+                  : undefined
+              }
             >
-              <Plus className="w-4 h-4 mr-1" /> Attach group
+              <Plus className="mr-1 h-3.5 w-3.5" /> Attach group
             </Button>
           )}
         </div>
+      </header>
 
-        {picking && (
-          <div className="rounded-md border p-3 flex items-center gap-2 bg-background">
-            <Select value={selectedId} onValueChange={setSelectedId}>
-              <SelectTrigger className="flex-1">
-                <SelectValue
-                  placeholder={`Pick a ${kind === "modifier" ? "modifier" : "addon"} group`}
+      <div className={styles.formBody}>
+        {picker && (
+          <AddonGroupPicker
+            candidates={candidates}
+            disabled={false}
+            onPick={attach}
+            onCancel={() => setPicker(false)}
+          />
+        )}
+
+        {loading ? (
+          <p className="py-4 text-center text-xs text-muted-foreground">
+            Loading…
+          </p>
+        ) : value.length === 0 ? (
+          <AddonGroupsEmpty hasLibrary={library.length > 0} mode="selected" />
+        ) : (
+          <div className="space-y-2.5">
+            {value.map((id, idx) => {
+              const g = byId.get(id);
+              if (!g) {
+                return (
+                  <div
+                    key={id}
+                    className="rounded-md border border-dashed border-line bg-card px-3 py-2 text-xs text-muted-foreground"
+                  >
+                    Selected group <code>{id.slice(0, 8)}</code> not found in
+                    library — it may have been archived.
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => detach(id)}
+                      className="ml-2 h-6 px-2 text-red-600 hover:text-red-700"
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                );
+              }
+              return (
+                <AttachedAddonGroupRow
+                  key={id}
+                  group={g}
+                  position={idx}
+                  total={value.length}
+                  disabled={false}
+                  onMoveUp={() => move(idx, -1)}
+                  onMoveDown={() => move(idx, 1)}
+                  onDetach={() => detach(id)}
                 />
-              </SelectTrigger>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Lifecycle / visibility — single Status control that drives the two
+// underlying form fields (`lifecycleStatus` + `active`). Replaces the
+// older "Status dropdown + Active switch" pair which forced merchants
+// to reason about an invalid combination matrix.
+// ─────────────────────────────────────────────────────────────────────
+
+type LifecycleStatusKey =
+  | "DRAFT"
+  | "ACTIVE"
+  | "HIDDEN"
+  | "DISCONTINUED"
+  | "END_OF_LIFE";
+
+const LIFECYCLE_STATUS_KEYS: {
+  key: Exclude<LifecycleStatusKey, "DRAFT">;
+  label: string;
+  hint: string;
+  lifecycleStatus: "ACTIVE" | "DISCONTINUED" | "END_OF_LIFE";
+  active: boolean;
+}[] = [
+  {
+    key: "ACTIVE",
+    label: "Active",
+    hint: "Live in the POS and online catalog.",
+    lifecycleStatus: "ACTIVE",
+    active: true,
+  },
+  {
+    key: "HIDDEN",
+    label: "Hidden",
+    hint: "Temporarily hidden from POS — out of season, low stock, etc.",
+    lifecycleStatus: "ACTIVE",
+    active: false,
+  },
+  {
+    key: "DISCONTINUED",
+    label: "Discontinued",
+    hint: "No longer being sold. Kept for reports; consider setting a replacement.",
+    lifecycleStatus: "DISCONTINUED",
+    active: false,
+  },
+  {
+    key: "END_OF_LIFE",
+    label: "End of life",
+    hint: "Fully retired. Hidden everywhere; preserved for historical orders.",
+    lifecycleStatus: "END_OF_LIFE",
+    active: false,
+  },
+];
+
+function ProductLifecycleControl({
+  form,
+  disabled,
+}: {
+  form: ReturnType<typeof useForm<ProductInput>>;
+  disabled: boolean;
+}) {
+  const lifecycleStatus = form.watch("lifecycleStatus");
+  const active = form.watch("active");
+  const isDraft = lifecycleStatus === "DRAFT";
+
+  const currentKey: LifecycleStatusKey = isDraft
+    ? "DRAFT"
+    : lifecycleStatus === "DISCONTINUED"
+      ? "DISCONTINUED"
+      : lifecycleStatus === "END_OF_LIFE"
+        ? "END_OF_LIFE"
+        : active
+          ? "ACTIVE"
+          : "HIDDEN";
+
+  const handleChange = (next: string) => {
+    const entry = LIFECYCLE_STATUS_KEYS.find((s) => s.key === next);
+    if (!entry) return;
+    form.setValue("lifecycleStatus", entry.lifecycleStatus, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    form.setValue("active", entry.active, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
+  const currentHint =
+    LIFECYCLE_STATUS_KEYS.find((s) => s.key === currentKey)?.hint ?? null;
+
+  return (
+    <>
+      <div
+        style={{
+          margin: "20px 0 14px",
+          paddingTop: 18,
+          borderTop: "1px solid var(--pf-line)",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 12,
+        }}
+      >
+        <div className={styles.icoBox}>
+          <Globe className="h-3.5 w-3.5" />
+        </div>
+        <div>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 14,
+              fontWeight: 600,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            Lifecycle
+          </h3>
+          <p className={styles.formCardHeadDesc}>
+            One control for visibility and retirement — replaces the old status
+            / active pair.
+          </p>
+        </div>
+      </div>
+
+      <div
+        className={styles.fieldRow}
+        style={{ ["--cols" as never]: 1 } as React.CSSProperties}
+      >
+        <FormItem>
+          <FormLabel className={styles.fieldLabel}>Status</FormLabel>
+          {isDraft ? (
+            // Draft is a flow-only state — the merchant moves out of it via
+            // the Save-as-draft / Publish footer buttons. Show it read-only
+            // here so the dropdown can't accidentally side-step the flow.
+            <div className="flex h-9 items-center gap-2 rounded-md border border-line bg-card px-3 text-sm">
+              <span className="font-medium">Draft</span>
+              <span className="text-xs text-muted-foreground">
+                Use Publish in the footer to make this product live.
+              </span>
+            </div>
+          ) : (
+            <Select
+              value={currentKey}
+              onValueChange={handleChange}
+              disabled={disabled}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+              </FormControl>
               <SelectContent>
-                {candidates.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    {g.name}
+                {LIFECYCLE_STATUS_KEYS.map((s) => (
+                  <SelectItem key={s.key} value={s.key}>
+                    {s.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Button type="button" size="sm" onClick={add} disabled={!selectedId}>
-              <Save className="h-3.5 w-3.5 mr-1" /> Attach
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setPicking(false);
-                setSelectedId("");
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        )}
-
-        {loading ? (
-          <p className="text-sm text-muted-foreground text-center py-3">
-            Loading…
-          </p>
-        ) : value.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-3">
-            {library.length === 0
-              ? `No ${labelPlural} yet. Create one in the library first.`
-              : `No ${labelPlural} selected.`}
-          </p>
-        ) : (
-          value.map((id) => {
-            const g = byId.get(id);
-            return (
-              <div
-                key={id}
-                className="rounded-lg border p-3 bg-gray-50/50 dark:bg-gray-900/30 flex items-center justify-between gap-2"
-              >
-                <div className="font-medium text-sm">{g?.name ?? id}</div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => remove(id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
-                </Button>
-              </div>
-            );
-          })
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function AttachedGroupRow({
-  title,
-  subtitle,
-  onDetach,
-  disabled,
-  optionsPreview,
-}: {
-  title: string;
-  subtitle: string;
-  onDetach: () => void;
-  disabled: boolean;
-  optionsPreview: string[];
-}) {
-  return (
-    <div className="rounded-lg border p-4 bg-gray-50/50 dark:bg-gray-900/30 flex items-start justify-between gap-2">
-      <div className="min-w-0">
-        <div className="font-medium text-sm">{title}</div>
-        <div className="text-xs text-muted-foreground">{subtitle}</div>
-        {optionsPreview.length > 0 && (
-          <div className="text-xs text-muted-foreground mt-1 truncate">
-            {optionsPreview.slice(0, 6).join(", ")}
-            {optionsPreview.length > 6 && ` +${optionsPreview.length - 6} more`}
-          </div>
-        )}
+          )}
+          {currentHint && <p className={styles.fieldHint}>{currentHint}</p>}
+        </FormItem>
       </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={onDetach}
-        disabled={disabled}
-        className="text-red-600 hover:text-red-700"
-      >
-        <Trash2 className="h-3.5 w-3.5 mr-1" /> Detach
-      </Button>
-    </div>
+    </>
   );
 }
 
@@ -2987,6 +3846,52 @@ function PriceOverridesSection({
   const [draft, setDraft] = useState({ currency: "", price: 0 });
   const [busy, setBusy] = useState(false);
 
+  // Defensive: collapse any duplicate variants by id so React doesn't
+  // see two children with the same key. The backend sometimes returns
+  // a refreshed product where a freshly-created variant overlaps with
+  // an in-flight optimistic copy.
+  const uniqueVariants = useMemo(() => {
+    const seen = new Map<string, ProductVariant>();
+    for (const v of variants) {
+      if (!seen.has(v.id)) seen.set(v.id, v);
+    }
+    return Array.from(seen.values());
+  }, [variants]);
+
+  const variant = useMemo(
+    () => uniqueVariants.find((v) => v.id === selectedVariantId),
+    [uniqueVariants, selectedVariantId],
+  );
+
+  // Filter the supported-currency list down to ones that aren't already
+  // overridden for this variant + aren't the variant's native currency
+  // (a native-currency override would be a no-op).
+  const overriddenCodes = useMemo(
+    () => new Set(overrides.map((o) => o.currency)),
+    [overrides],
+  );
+
+  // Same defensive dedupe for overrides — the API can serve a stale
+  // row alongside a fresh upsert briefly, and we'd rather show one
+  // entry than crash with duplicate keys.
+  const uniqueOverrides = useMemo(() => {
+    const seen = new Map<string, (typeof overrides)[number]>();
+    for (const o of overrides) {
+      if (!seen.has(o.id)) seen.set(o.id, o);
+    }
+    return Array.from(seen.values());
+  }, [overrides]);
+  // Codes the picker should hide: every currency that already has an
+  // override on this variant, plus the variant's native currency
+  // (a native-currency override would be a no-op).
+  const excludeCurrencyCodes = useMemo(
+    () => [
+      ...Array.from(overriddenCodes),
+      ...(variant?.nativeCurrency ? [variant.nativeCurrency] : []),
+    ],
+    [overriddenCodes, variant],
+  );
+
   const add = async () => {
     if (!draft.currency || !draft.price) return;
     setBusy(true);
@@ -3022,38 +3927,40 @@ function PriceOverridesSection({
     }
   };
 
-  const variant = useMemo(
-    () => variants.find((v) => v.id === selectedVariantId),
-    [variants, selectedVariantId],
-  );
-
   return (
-    <Card className="rounded-xl shadow-sm mt-6">
-      <CardContent className="pt-6 space-y-4">
-        <div>
-          <h3 className="text-lg font-medium flex items-center gap-2">
-            <Globe className="h-5 w-5 text-gray-400" />
-            Currency price overrides
-          </h3>
-          <p className="text-sm text-muted-foreground mt-0.5">
+    <section className={styles.formCard}>
+      <header className={styles.formCardHead}>
+        <div className={styles.icoBox}>
+          <Globe className="h-3.5 w-3.5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3>Currency price overrides</h3>
+          <p className={styles.formCardHeadDesc}>
             Set explicit prices for non-native currencies. Without an override,
             orders use FX conversion of the variant&apos;s native price.
           </p>
         </div>
+      </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className={styles.formBody}>
+        {/* Authoring row — 4 cells on a wide viewport, 2x2 on medium,
+            single column on narrow phones. xl=1280px is the right
+            breakpoint because the form's left column only gets enough
+            room (~880px+) for 4 in a row at that viewport size; below
+            that it gracefully falls back to 2x2. */}
+        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div>
-            <label className="text-xs text-muted-foreground">Variant</label>
+            <label className={styles.fieldLabel}>Variant</label>
             <Select
               value={selectedVariantId}
               onValueChange={setSelectedVariantId}
               disabled={busy}
             >
-              <SelectTrigger className="mt-1">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {variants.map((v) => (
+                {uniqueVariants.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
                     {v.displayName || v.name}
                   </SelectItem>
@@ -3061,64 +3968,20 @@ function PriceOverridesSection({
               </SelectContent>
             </Select>
           </div>
-          {variant && (
-            <div className="text-xs text-muted-foreground self-end pb-3">
-              Native: {variant.price.toLocaleString()} {variant.nativeCurrency}
-            </div>
-          )}
-        </div>
 
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : (
-          <div className="space-y-2">
-            {overrides.map((o) => (
-              <div
-                key={o.id}
-                className="flex items-center justify-between rounded-md bg-background border p-2 px-3 text-sm"
-              >
-                <div>
-                  <span className="font-medium">{o.currency}</span>
-                  <span className="text-muted-foreground ml-2">
-                    {o.price.toLocaleString()}
-                  </span>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => remove(o.currency)}
-                  disabled={busy}
-                  className="text-red-600 hover:text-red-700 h-7 w-7 p-0"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            ))}
-            {overrides.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-2">
-                No overrides yet.
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="grid grid-cols-3 gap-2 items-end">
           <div>
-            <label className="text-xs text-muted-foreground">Currency</label>
-            <Input
-              value={draft.currency}
-              onChange={(e) =>
-                setDraft({ ...draft, currency: e.target.value.toUpperCase() })
-              }
-              maxLength={3}
-              placeholder="USD"
-              disabled={busy}
-              className="mt-1 uppercase"
+            <label className={styles.fieldLabel}>Currency</label>
+            <CurrencySelector
+              value={draft.currency || null}
+              onChange={(v) => setDraft({ ...draft, currency: v })}
+              isDisabled={busy}
+              placeholder="Pick a currency"
+              excludeCodes={excludeCurrencyCodes}
             />
           </div>
+
           <div>
-            <label className="text-xs text-muted-foreground">Price</label>
+            <label className={styles.fieldLabel}>Price</label>
             <NumericFormat
               customInput={Input}
               value={draft.price || ""}
@@ -3129,19 +3992,77 @@ function PriceOverridesSection({
               allowNegative={false}
               thousandSeparator=","
               disabled={busy}
-              className="mt-1"
+              placeholder="0.00"
             />
           </div>
+
           <Button
             type="button"
+            className="h-10 w-full"
             onClick={add}
-            disabled={busy || draft.currency.length !== 3 || !draft.price}
+            disabled={busy || !draft.currency || !draft.price}
           >
-            <Plus className="w-4 h-4 mr-1" /> Save override
+            <Plus className="mr-1 h-3.5 w-3.5" /> Save
           </Button>
         </div>
-      </CardContent>
-    </Card>
+
+        {variant && (
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            Native price for{" "}
+            <span className="font-medium text-foreground">
+              {variant.displayName || variant.name}
+            </span>
+            : {variant.price.toLocaleString()} {variant.nativeCurrency}
+          </p>
+        )}
+
+        {/* Existing overrides */}
+        <div className="mt-4 space-y-1.5">
+          {loading ? (
+            <p className="py-3 text-center text-xs text-muted-foreground">
+              Loading…
+            </p>
+          ) : uniqueOverrides.length === 0 ? (
+            <div className="flex items-center gap-2 rounded-md border border-dashed border-line bg-card/50 px-3 py-2.5">
+              <Globe className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <div className="min-w-0">
+                <p className="text-xs font-medium">No overrides yet</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Use the row above to add a per-currency price.
+                </p>
+              </div>
+            </div>
+          ) : (
+            uniqueOverrides.map((o) => (
+              <div
+                key={o.id}
+                className="flex items-center justify-between rounded-md border border-line bg-card px-3 py-1.5"
+              >
+                <div className="flex items-baseline gap-3">
+                  <span className="font-mono text-xs font-medium uppercase tracking-wide">
+                    {o.currency}
+                  </span>
+                  <span className="text-sm tabular-nums">
+                    {o.price.toLocaleString()}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => remove(o.currency)}
+                  disabled={busy}
+                  className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+                  title={`Remove ${o.currency} override`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 

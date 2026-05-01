@@ -218,6 +218,11 @@ export function SidebarAccountMenu({
         left: anchor.left,
         bottom: anchor.bottom,
         width: Math.max(anchor.width, 300),
+        // Force pointer events on; when this popover is opened from
+        // inside a modal mobile Sheet (Radix Dialog), the portal target
+        // (document.body) inherits pointer-events: none, which makes
+        // taps fall through to the menu items behind.
+        pointerEvents: "auto",
       }}
       className="z-[1100] flex max-h-[calc(100vh-32px)] flex-col overflow-hidden rounded-2xl border border-line bg-card p-1.5 shadow-[0_1px_0_rgba(20,17,12,0.04),0_24px_60px_-16px_rgba(20,17,12,0.28),0_6px_16px_-6px_rgba(20,17,12,0.10)]"
     >

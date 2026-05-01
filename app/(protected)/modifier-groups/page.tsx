@@ -1,46 +1,83 @@
+import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/tables/data-table";
 import {
   PageShell,
   PageHeader,
   PageBreadcrumbs,
   PageBody,
 } from "@/components/layouts/page-shell";
-import ModifierGroupsManager, {
-  type StockVariantOption,
-} from "@/components/forms/modifier_groups_manager";
+import { StatusTabs } from "@/components/layouts/status-tabs";
+import { parseListStatus } from "@/components/layouts/list-status";
+import NoItems from "@/components/layouts/no-items";
+import { columns } from "@/components/tables/modifier-group/columns";
 import { listModifierGroups } from "@/lib/actions/modifier-actions";
-import { getStocks } from "@/lib/actions/stock-actions";
+import { Plus } from "lucide-react";
 
-export default async function Page() {
-  const [groups, stocks] = await Promise.all([
-    listModifierGroups().catch(() => []),
-    getStocks().catch(() => [] as any[]),
-  ]);
+type Params = {
+  searchParams: Promise<{
+    search?: string;
+    page?: string;
+    limit?: string;
+    status?: string;
+  }>;
+};
 
-  const stockVariants: StockVariantOption[] = [];
-  for (const stock of stocks ?? []) {
-    for (const v of stock.variants ?? []) {
-      if (v.archived) continue;
-      stockVariants.push({
-        id: v.id,
-        label: `${stock.name} — ${v.name}`,
-      });
-    }
-  }
+async function Page({ searchParams }: Params) {
+  const resolvedSearchParams = await searchParams;
+
+  const q = (resolvedSearchParams.search || "").trim().toLowerCase();
+  const status = parseListStatus(resolvedSearchParams.status);
+
+  const all = await listModifierGroups().catch(() => []);
+
+  const filtered = all
+    .filter((g) =>
+      status === "archived" ? g.archivedAt != null : g.archivedAt == null,
+    )
+    .filter((g) => (q ? g.name.toLowerCase().includes(q) : true));
+
+  const total = filtered.length;
 
   return (
     <PageShell>
       <PageBreadcrumbs items={[{ title: "Modifier groups" }]} />
       <PageHeader
         title="Modifier groups"
-        subtitle="Variants like sizes, additions, or notes attached to products."
+        subtitle="Reusable groups of customer-facing tweaks (milk type, spice level). Attach a group to any number of products."
+        actions={
+          <Button asChild>
+            <Link href="/modifier-groups/new">
+              <Plus className="mr-1.5 h-4 w-4" />
+              Add group
+            </Link>
+          </Button>
+        }
       />
 
       <PageBody>
-        <ModifierGroupsManager
-          initialGroups={groups}
-          stockVariants={stockVariants}
-        />
+        <StatusTabs basePath="/modifier-groups" value={status} />
+
+        {total > 0 || q !== "" ? (
+          <Card>
+            <CardContent className="px-2 pt-6 sm:px-6">
+              <DataTable
+                columns={columns}
+                data={filtered}
+                searchKey="name"
+                pageNo={0}
+                total={total}
+                pageCount={1}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <NoItems newItemUrl="/modifier-groups/new" itemName="modifier groups" />
+        )}
       </PageBody>
     </PageShell>
   );
 }
+
+export default Page;

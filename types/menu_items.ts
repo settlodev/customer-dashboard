@@ -22,6 +22,17 @@ const getNormalMenuItems = (
   // backstop when a user clicks through with an underprivileged plan.
   const hasDepartmentsModule = args?.hasDepartmentsModule !== false;
   return [
+    // Top-level link — appears as its own row in the sidebar (no submenu).
+    {
+      label: "Business overview",
+      link: "/business-overview",
+      showSeparator: true,
+      collapsible: false,
+      current: args?.isCurrentItem,
+      icon: "inventory",
+      items: [],
+    },
+
     // Analytics & Reporting
     {
       label: "Reports",

@@ -152,3 +152,25 @@ export async function getInventoryDashboardSummary(
     return null;
   }
 }
+
+/**
+ * Business-wide variant of the dashboard summary — aggregates the same six
+ * tiles across every location belonging to the business. Powers the business
+ * overview page.
+ */
+export async function getInventoryBusinessDashboardSummary(
+  businessId: string,
+  currency?: string,
+): Promise<RsInventoryDashboardSummary | null> {
+  try {
+    const apiClient = new ApiClient("reports");
+    const params = new URLSearchParams({ businessId });
+    if (currency) params.set("currency", currency);
+    const data = await apiClient.get(
+      `${ANALYTICS}/inventory/dashboard/business-summary?${params.toString()}`,
+    );
+    return parseStringify(data) as RsInventoryDashboardSummary;
+  } catch {
+    return null;
+  }
+}

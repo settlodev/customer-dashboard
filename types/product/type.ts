@@ -128,9 +128,13 @@ export interface ModifierOption {
   name: string;
   priceAdjustment: number;
   isDefault: boolean;
+  // Mirrors the variant tracking trio. RECIPE-mode options carry the
+  // mode label even though their direct fields are null — the actual
+  // recipe lives in a bom_rules row keyed on this option's id.
+  sellabilityMode: SellabilityMode;
   stockVariantId: string | null;
   stockVariantName: string | null;
-  stockQuantity: number | null;
+  directQuantity: number | null;
   sortOrder: number;
   active: boolean;
   archivedAt: string | null;

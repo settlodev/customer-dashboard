@@ -209,7 +209,6 @@ export default function BusinessLocationPage() {
                       onChange={(e) => setLocationName(e.target.value)}
                       placeholder="e.g. Main Branch"
                       disabled={isPending}
-                      className="h-11"
                     />
                   </div>
                   <div>
@@ -236,7 +235,6 @@ export default function BusinessLocationPage() {
                       onChange={(e) => setCity(e.target.value)}
                       placeholder="e.g. Dar es Salaam"
                       disabled={isPending}
-                      className="h-11"
                     />
                   </div>
                   <div>
@@ -248,7 +246,6 @@ export default function BusinessLocationPage() {
                       onChange={(e) => setAddress(e.target.value)}
                       placeholder="e.g. 123 Uhuru Street"
                       disabled={isPending}
-                      className="h-11"
                     />
                   </div>
                 </div>

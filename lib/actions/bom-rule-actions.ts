@@ -8,6 +8,7 @@ import { inventoryUrl } from "./inventory-client";
 import {
   BomCostSnapshot,
   BomRule,
+  BomRuleAttachment,
   BomRuleDiff,
   ExplodedLine,
   ReplaceVariantApplyResult,
@@ -15,6 +16,8 @@ import {
   WhereUsedNode,
 } from "@/types/bom/type";
 import {
+  AttachBomRuleSchema,
+  AttachBomRuleValues,
   CalculateCostSchema,
   CopyToLocationSchema,
   CreateBomRuleSchema,
@@ -63,17 +66,41 @@ export async function getBomRule(id: string): Promise<BomRule | null> {
   }
 }
 
-export async function getBomRuleRevisions(
-  productVariantId: string,
-): Promise<BomRule[]> {
+/**
+ * Attachment timeline for a target. Returns the list of bindings the
+ * variant or modifier-option has had over time, most recent first; each
+ * entry's {@code bomRuleId} resolves to the rule that was in force.
+ */
+export async function getBomRuleRevisions(args: {
+  productVariantId?: string;
+  modifierOptionId?: string;
+}): Promise<BomRuleAttachment[]> {
+  try {
+    const apiClient = new ApiClient();
+    const params = new URLSearchParams();
+    if (args.productVariantId) params.set("productVariantId", args.productVariantId);
+    if (args.modifierOptionId) params.set("modifierOptionId", args.modifierOptionId);
+    const data = await apiClient.get(
+      inventoryUrl(`/api/v1/bom/rules/revisions?${params.toString()}`),
+    );
+    return parseStringify(data) as BomRuleAttachment[];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * List every attachment (open + closed) of a rule.
+ */
+export async function getBomRuleAttachments(
+  ruleId: string,
+): Promise<BomRuleAttachment[]> {
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(
-      inventoryUrl(
-        `/api/v1/bom/rules/revisions?productVariantId=${encodeURIComponent(productVariantId)}`,
-      ),
+      inventoryUrl(`/api/v1/bom/rules/${ruleId}/attachments`),
     );
-    return parseStringify(data) as BomRule[];
+    return parseStringify(data) as BomRuleAttachment[];
   } catch {
     return [];
   }
@@ -242,6 +269,91 @@ export async function deprecateBomRule(id: string): Promise<FormResponse | void>
     return parseStringify({
       responseType: "error",
       message: error?.message ?? "Failed to deprecate",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+// ── Attachment lifecycle ─────────────────────────────────────────────
+
+export async function attachBomRule(
+  ruleId: string,
+  values: AttachBomRuleValues,
+): Promise<FormResponse | void> {
+  const validated = AttachBomRuleSchema.safeParse(values);
+  if (!validated.success) {
+    return parseStringify({
+      responseType: "error",
+      message: validated.error.issues[0]?.message ?? "Invalid attachment",
+      error: new Error(validated.error.message),
+    });
+  }
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.post(
+      inventoryUrl(`/api/v1/bom/rules/${ruleId}/attachments`),
+      validated.data,
+    );
+    revalidatePath("/bom-rules");
+    revalidatePath(`/bom-rules/${ruleId}`);
+    return parseStringify({
+      responseType: "success",
+      message: "Recipe attached",
+      data,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to attach recipe",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function closeBomRuleAttachment(
+  attachmentId: string,
+): Promise<FormResponse | void> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.delete(
+      inventoryUrl(`/api/v1/bom/rules/attachments/${attachmentId}`),
+    );
+    revalidatePath("/bom-rules");
+    return parseStringify({
+      responseType: "success",
+      message: "Attachment closed",
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to close attachment",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function swapBomRuleAttachment(
+  attachmentId: string,
+  newRuleId: string,
+): Promise<FormResponse | void> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.post(
+      inventoryUrl(
+        `/api/v1/bom/rules/attachments/${attachmentId}/swap?newRuleId=${encodeURIComponent(newRuleId)}`,
+      ),
+      {},
+    );
+    revalidatePath("/bom-rules");
+    return parseStringify({
+      responseType: "success",
+      message: "Recipe swapped",
+      data,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to swap recipe",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }

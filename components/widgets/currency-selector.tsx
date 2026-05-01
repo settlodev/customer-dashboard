@@ -44,6 +44,11 @@ interface Props {
   /** When true, fetch unique currencies from the countries endpoint in addition
    *  to the built-in common list. Useful for forms that may need rarer codes. */
   includeAllCountries?: boolean;
+  /** Codes to remove from the picker — for cases where the form already
+   *  has those currencies covered (e.g. price overrides shouldn't allow
+   *  picking the variant's own native currency). The current `value` is
+   *  always kept visible so the trigger can still display it. */
+  excludeCodes?: string[];
 }
 
 const CurrencySelector: React.FC<Props> = ({
@@ -54,6 +59,7 @@ const CurrencySelector: React.FC<Props> = ({
   isRequired,
   className,
   includeAllCountries = false,
+  excludeCodes,
 }) => {
   const [extra, setExtra] = useState<{ code: string; name: string }[]>([]);
 
@@ -91,9 +97,19 @@ const CurrencySelector: React.FC<Props> = ({
         merged.push({ code, name: code });
       }
     }
-    merged.sort((a, b) => a.code.localeCompare(b.code));
-    return merged;
-  }, [extra, value]);
+    // Filter out excluded codes (preserving the current value so the
+    // trigger can render it even if the parent meant to hide it).
+    const exclude = new Set(
+      (excludeCodes ?? [])
+        .map((c) => c?.toUpperCase?.())
+        .filter((c): c is string => !!c),
+    );
+    const filtered = merged.filter(
+      (o) => o.code === value?.toUpperCase() || !exclude.has(o.code),
+    );
+    filtered.sort((a, b) => a.code.localeCompare(b.code));
+    return filtered;
+  }, [extra, value, excludeCodes]);
 
   return (
     <Select

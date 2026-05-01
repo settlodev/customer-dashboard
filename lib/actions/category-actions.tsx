@@ -32,6 +32,48 @@ export async function getCategoryTree(): Promise<Category[]> {
   }
 }
 
+// The backend's flat list endpoint orders only by sortOrder, so children
+// land wherever their sortOrder places them in the global list rather
+// than under their parent. We flatten the tree depth-first here so the
+// list view can render proper hierarchy without server changes.
+export async function fetchCategoriesHierarchical(): Promise<Category[]> {
+  const all = await fetchAllCategories();
+  if (!all || all.length === 0) return [];
+
+  const byId = new Map<string, Category>();
+  for (const c of all) byId.set(c.id, c);
+
+  const ROOT = "__root__";
+  const childrenByParent = new Map<string, Category[]>();
+  for (const c of all) {
+    const key = c.parentId && byId.has(c.parentId) ? c.parentId : ROOT;
+    const arr = childrenByParent.get(key) ?? [];
+    arr.push(c);
+    childrenByParent.set(key, arr);
+  }
+
+  for (const arr of childrenByParent.values()) {
+    arr.sort((a, b) => {
+      const so = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+      return so !== 0 ? so : a.name.localeCompare(b.name);
+    });
+  }
+
+  const result: Category[] = [];
+  const visited = new Set<string>();
+  const visit = (parentKey: string) => {
+    for (const item of childrenByParent.get(parentKey) ?? []) {
+      if (visited.has(item.id)) continue;
+      visited.add(item.id);
+      result.push(item);
+      visit(item.id);
+    }
+  };
+  visit(ROOT);
+
+  return result;
+}
+
 export async function searchCategories(
   q: string,
   page: number,

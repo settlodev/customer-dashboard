@@ -1,6 +1,19 @@
 import { notFound } from "next/navigation";
-import { Lock, ShieldCheck } from "lucide-react";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  ArrowLeftRight,
+  Calendar,
+  Hash,
+  Layers,
+  Lock,
+  ShieldCheck,
+} from "lucide-react";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   getConversionsForUnit,
@@ -19,6 +32,17 @@ const UNIT_TYPE_LABELS = Object.fromEntries(
   UNIT_TYPE_OPTIONS.map((o) => [o.value, o.label]),
 ) as Record<string, string>;
 
+const formatDate = (iso: string | null | undefined) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
 export default async function UnitDetailPage({
   params,
 }: {
@@ -33,91 +57,115 @@ export default async function UnitDetailPage({
 
   if (!unit) notFound();
 
-  const breadcrumbItems = [
-    { title: "Units", link: "/units" },
-    { title: unit.name, link: "" },
-  ];
+  const typeLabel = UNIT_TYPE_LABELS[unit.unitType] ?? unit.unitType;
+
+  const compatibleCount = allUnits.filter(
+    (u) => u.unitType === unit.unitType && u.id !== unit.id && !u.archivedAt,
+  ).length;
+
+  const customConversions = conversions.filter((c) => !c.systemGenerated).length;
+  const systemConversions = conversions.filter((c) => c.systemGenerated).length;
+
+  const statusBadge = unit.systemGenerated ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+      <ShieldCheck className="h-3.5 w-3.5" />
+      System
+    </span>
+  ) : unit.archivedAt ? (
+    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+      Archived
+    </span>
+  ) : (
+    <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950/30 dark:text-green-400">
+      Active
+    </span>
+  );
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <BreadcrumbsNav items={breadcrumbItems} />
-          <div className="flex items-center gap-3 mt-2">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-              {unit.name}
-            </h1>
-            {unit.systemGenerated ? (
-              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                System
-              </span>
-            ) : unit.archivedAt ? (
-              <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                Archived
-              </span>
-            ) : (
-              <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400">
-                Active
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {UNIT_TYPE_LABELS[unit.unitType] ?? unit.unitType} · {unit.abbreviation}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {!unit.systemGenerated && <UnitEditTrigger unit={unit} />}
-          <UnitStatusActions unit={unit} />
-        </div>
-      </div>
-
-      {unit.systemGenerated && (
-        <Card className="border-dashed">
-          <CardContent className="flex items-start gap-3 py-4">
-            <Lock className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-            <div className="text-sm">
-              <p className="font-medium">System-managed unit</p>
-              <p className="text-xs text-muted-foreground">
-                This is a platform-seeded unit. It&apos;s available to all
-                businesses and can&apos;t be edited or archived. You can still
-                add custom conversions that go through it.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Tile label="Name" value={unit.name} />
-        <Tile label="Abbreviation" value={unit.abbreviation} />
-        <Tile
-          label="Unit type"
-          value={UNIT_TYPE_LABELS[unit.unitType] ?? unit.unitType}
-        />
-      </div>
-
-      <ConversionsPanel
-        unit={unit}
-        allUnits={allUnits}
-        conversions={conversions}
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Units of measure", href: "/units" },
+          { title: unit.name },
+        ]}
       />
+      <PageHeader
+        title={unit.name}
+        titleAccessory={statusBadge}
+        subtitle={
+          <>
+            {typeLabel} · <span className="font-medium">{unit.abbreviation}</span>
+          </>
+        }
+        actions={
+          <span className="flex items-center gap-2">
+            {!unit.systemGenerated && <UnitEditTrigger unit={unit} />}
+            <UnitStatusActions unit={unit} />
+          </span>
+        }
+      />
+      <PageBody>
+        <KpiStrip cols={4}>
+          <KpiCard
+            icon={<Layers className="h-3 w-3" />}
+            label="Unit type"
+            value={typeLabel}
+            delta={`compatible with ${compatibleCount.toLocaleString()} ${compatibleCount === 1 ? "unit" : "units"}`}
+            deltaTone="neutral"
+          />
+          <KpiCard
+            icon={<Hash className="h-3 w-3" />}
+            label="Abbreviation"
+            value={unit.abbreviation}
+            delta={unit.systemGenerated ? "platform-seeded" : "custom"}
+            deltaTone="neutral"
+          />
+          <KpiCard
+            icon={<ArrowLeftRight className="h-3 w-3" />}
+            label="Conversions"
+            value={conversions.length.toLocaleString()}
+            delta={
+              customConversions > 0
+                ? `${customConversions} custom · ${systemConversions} system`
+                : systemConversions > 0
+                  ? `${systemConversions} system only`
+                  : "none defined"
+            }
+            deltaTone="neutral"
+          />
+          <KpiCard
+            icon={<Calendar className="h-3 w-3" />}
+            label="Created"
+            value={formatDate(unit.createdAt)}
+            delta={unit.updatedAt ? `updated ${formatDate(unit.updatedAt)}` : undefined}
+            deltaTone="neutral"
+          />
+        </KpiStrip>
 
-      <ConvertCalculator anchor={unit} allUnits={allUnits} />
-    </div>
+        {unit.systemGenerated && (
+          <Card className="border-dashed">
+            <CardContent className="flex items-start gap-3 py-4">
+              <Lock className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+              <div className="text-sm">
+                <p className="font-medium">System-managed unit</p>
+                <p className="text-xs text-muted-foreground">
+                  This is a platform-seeded unit. It&apos;s available to all
+                  businesses and can&apos;t be edited or archived. You can still
+                  add custom conversions that go through it.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <ConversionsPanel
+          unit={unit}
+          allUnits={allUnits}
+          conversions={conversions}
+        />
+
+        <ConvertCalculator anchor={unit} allUnits={allUnits} />
+      </PageBody>
+    </PageShell>
   );
 }
-
-function Tile({ label, value }: { label: string; value: string }) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-          {label}
-        </p>
-        <p className="text-sm font-medium">{value}</p>
-      </CardContent>
-    </Card>
-  );
-}
-

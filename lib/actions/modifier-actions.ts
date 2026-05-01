@@ -13,6 +13,26 @@ import {
   type ModifierOptionInput,
 } from "@/types/product/schema";
 
+// Wire payload for tracking — always sends sellabilityMode so the
+// backend can map to the (unlimited, stockLinkType) pair authoritatively.
+// stockVariantId / directQuantity are only meaningful in DIRECT mode
+// and are cleared otherwise so a stale link can't sneak through a mode
+// flip.
+function stockFieldsFor(input: ModifierOptionInput) {
+  if (input.sellabilityMode === "DIRECT") {
+    return {
+      sellabilityMode: "DIRECT" as const,
+      stockVariantId: input.stockVariantId || undefined,
+      directQuantity: input.directQuantity ?? undefined,
+    };
+  }
+  return {
+    sellabilityMode: input.sellabilityMode,
+    stockVariantId: undefined,
+    directQuantity: undefined,
+  };
+}
+
 // Modifier groups are business-scoped library entities. They live at
 // /api/v1/modifier-groups and get attached to products via
 // /api/v1/products/{id}/modifier-groups/{groupId}. Auth headers
@@ -72,8 +92,7 @@ export async function createModifierGroup(
           name: o.name,
           priceAdjustment: o.priceAdjustment,
           isDefault: o.isDefault,
-          stockVariantId: o.stockVariantId || undefined,
-          stockQuantity: o.stockQuantity ?? undefined,
+          ...stockFieldsFor(o),
           sortOrder: o.sortOrder,
           active: o.active,
         })),
@@ -85,6 +104,79 @@ export async function createModifierGroup(
     return parseStringify({
       responseType: "error",
       message: error?.message ?? "Failed to create modifier group",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+// Bulk save: create-or-update a group AND its options in a single call from
+// the form. Stub for now — composes the existing primitives (group POST/PUT
+// which already accepts an `options[]` on create, plus per-option create /
+// update / delete on edit). Replace the body with a single backend endpoint
+// once /api/v1/modifier-groups/{id}:bulk lands.
+export async function saveModifierGroupWithOptions(
+  groupId: string | null,
+  input: ModifierGroupInput,
+): Promise<ModifierGroup | FormResponse> {
+  const valid = ModifierGroupSchema.safeParse(input);
+  if (!valid.success) {
+    return parseStringify({
+      responseType: "error",
+      message: "Please fill all the required fields",
+      error: new Error(valid.error.message),
+    });
+  }
+
+  // Create path — the existing POST already accepts options[] inline, so
+  // one network round-trip is enough.
+  if (!groupId) {
+    return createModifierGroup(valid.data);
+  }
+
+  // Edit path — group PUT ignores options, so we fan out per-option calls.
+  // Diff the incoming list against what the server currently has:
+  //   - option with no id              → POST
+  //   - option whose id exists today   → PUT
+  //   - existing id missing from input → DELETE
+  try {
+    const groupUpdate = await updateModifierGroup(groupId, valid.data);
+    if ("responseType" in groupUpdate && groupUpdate.responseType === "error") {
+      return groupUpdate;
+    }
+
+    const existing = await getModifierGroup(groupId);
+    const existingIds = new Set((existing?.options ?? []).map((o) => o.id));
+    const keptIds = new Set(
+      valid.data.options
+        .map((o) => o.id)
+        .filter((id): id is string => !!id),
+    );
+
+    for (const [index, opt] of valid.data.options.entries()) {
+      const payload = { ...opt, sortOrder: opt.sortOrder ?? index };
+      if (opt.id && existingIds.has(opt.id)) {
+        const r = await updateModifierOption(groupId, opt.id, payload);
+        if ("responseType" in r && r.responseType === "error") return r;
+      } else {
+        const r = await createModifierOption(groupId, payload);
+        if ("responseType" in r && r.responseType === "error") return r;
+      }
+    }
+
+    for (const id of existingIds) {
+      if (!keptIds.has(id)) {
+        await deleteModifierOption(groupId, id);
+      }
+    }
+
+    revalidatePath(`/modifier-groups`);
+    revalidatePath(`/modifier-groups/${groupId}`);
+    const fresh = await getModifierGroup(groupId);
+    return parseStringify(fresh ?? (groupUpdate as ModifierGroup));
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to save modifier group",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
@@ -172,8 +264,7 @@ export async function createModifierOption(
         name: valid.data.name,
         priceAdjustment: valid.data.priceAdjustment,
         isDefault: valid.data.isDefault,
-        stockVariantId: valid.data.stockVariantId || undefined,
-        stockQuantity: valid.data.stockQuantity ?? undefined,
+        ...stockFieldsFor(valid.data),
         sortOrder: valid.data.sortOrder,
         active: valid.data.active,
       },
@@ -210,8 +301,7 @@ export async function updateModifierOption(
         name: valid.data.name,
         priceAdjustment: valid.data.priceAdjustment,
         isDefault: valid.data.isDefault,
-        stockVariantId: valid.data.stockVariantId || undefined,
-        stockQuantity: valid.data.stockQuantity ?? undefined,
+        ...stockFieldsFor(valid.data),
         sortOrder: valid.data.sortOrder,
         active: valid.data.active,
       },

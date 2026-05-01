@@ -366,7 +366,7 @@ function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
                     <Button
                       type="submit"
                       disabled={isPending}
-                      className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
+                      className="w-full h-11 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
                     >
                       {isPending ? (
                         <span className="flex items-center gap-2">
@@ -407,7 +407,7 @@ function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
                     <Button
                       onClick={submitCode}
                       disabled={isPending || verificationCode.length !== 6}
-                      className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
+                      className="w-full h-11 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
                     >
                       {isPending ? (
                         <span className="flex items-center gap-2">
@@ -492,7 +492,7 @@ function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
                     <Button
                       type="submit"
                       disabled={isPending}
-                      className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
+                      className="w-full h-11 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
                     >
                       {isPending ? (
                         <span className="flex items-center gap-2">
@@ -525,7 +525,7 @@ function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
 
                   <Button
                     onClick={() => (window.location.href = "/login")}
-                    className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300"
+                    className="w-full h-11 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300"
                   >
                     Go to Login
                   </Button>

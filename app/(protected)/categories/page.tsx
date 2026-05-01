@@ -12,7 +12,7 @@ import { StatusTabs } from "@/components/layouts/status-tabs";
 import { parseListStatus } from "@/components/layouts/list-status";
 import NoItems from "@/components/layouts/no-items";
 import { columns } from "@/components/tables/category/columns";
-import { searchCategories } from "@/lib/actions/category-actions";
+import { fetchCategoriesHierarchical } from "@/lib/actions/category-actions";
 import { Plus } from "lucide-react";
 
 type Params = {
@@ -27,20 +27,33 @@ type Params = {
 export default async function Page({ searchParams }: Params) {
   const resolvedSearchParams = await searchParams;
 
-  const q = resolvedSearchParams.search || "";
+  const q = (resolvedSearchParams.search || "").trim().toLowerCase();
   const page = Number(resolvedSearchParams.page) || 0;
-  const pageLimit = Number(resolvedSearchParams.limit);
+  const pageLimit = Number(resolvedSearchParams.limit) || 10;
   const status = parseListStatus(resolvedSearchParams.status);
 
-  const responseData = await searchCategories(q, page, pageLimit);
-  // Mirrors the products list: filter the server-paginated page
-  // client-side. Counts may drift slightly per-page, but this matches
-  // the rest of the inventory section so the UX is coherent.
-  const data = responseData.content.filter((c) =>
+  // Children must sit directly under their parent in the rendered list,
+  // so we need the whole set in one shot — server-side pagination would
+  // split a parent from its descendants. The upstream cap is 200, which
+  // matches the form selectors.
+  const ordered = await fetchCategoriesHierarchical();
+
+  const statusFiltered = ordered.filter((c) =>
     status === "archived" ? c.archivedAt != null : c.archivedAt == null,
   );
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+
+  const filtered = q
+    ? statusFiltered.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          (c.parentName?.toLowerCase().includes(q) ?? false),
+      )
+    : statusFiltered;
+
+  const total = filtered.length;
+  const pageCount = Math.max(1, Math.ceil(total / pageLimit));
+  const startIdx = (page > 0 ? page - 1 : 0) * pageLimit;
+  const data = filtered.slice(startIdx, startIdx + pageLimit);
 
   return (
     <PageShell>

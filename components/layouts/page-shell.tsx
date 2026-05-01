@@ -60,11 +60,6 @@ export function PageShell({
     <div
       className={cn(
         "mx-auto w-full px-4 py-6 md:px-8 md:py-8 lg:pl-4",
-        // The mobile menu trigger (top-3 / left-3 from the sidebar
-        // shell) overlaps the very top-left of the page on small
-        // screens. Add a small inline-start gap on mobile only so
-        // page titles never collide with it.
-        "max-lg:pl-14",
         MAX_WIDTH_MAP[maxWidth],
         className,
       )}

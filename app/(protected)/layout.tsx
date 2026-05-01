@@ -1,7 +1,11 @@
 import React, { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { SessionProvider } from "next-auth/react";
-import { DashboardSidebarShell } from "@/components/sidebar/dashboard-sidebar";
+import {
+  DashboardSidebarShell,
+  MobileTopBar,
+  SidebarProvider,
+} from "@/components/sidebar/dashboard-sidebar";
 import { LoadingBarProvider } from "@/components/navigation/loading-bar-provider";
 import {
   getBusinessDropDown,
@@ -130,34 +134,43 @@ export default async function RootLayout({
     <SessionProvider refetchInterval={0} refetchOnWindowFocus={false}>
       <EntitlementProvider initialEntitlements={entitlements}>
         <LoadingBarProvider>
-          <div className="flex h-screen flex-col overflow-hidden bg-canvas dark:bg-gray-950">
-            <SubscriptionBanner />
-            <div className="flex flex-1 min-h-0 overflow-hidden">
-              <DashboardSidebarShell data={businessData} user={user} />
+          <SidebarProvider>
+            <div className="flex h-screen flex-col overflow-hidden bg-canvas dark:bg-gray-950">
+              <SubscriptionBanner />
+              <div className="flex flex-1 min-h-0 overflow-hidden">
+                <DashboardSidebarShell data={businessData} user={user} />
 
-              <main className="flex flex-1 min-w-0 flex-col overflow-hidden">
-                <div className="relative flex-1 overflow-y-auto">
-                  <Suspense
-                    fallback={
-                      <div className="flex h-full items-center justify-center">
-                        <div className="flex items-center space-x-2">
-                          <div className="h-2 w-2 animate-bounce rounded-full bg-primary" />
-                          <div className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:0.2s]" />
-                          <div className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:0.4s]" />
+                <main className="flex flex-1 min-w-0 flex-col overflow-hidden">
+                  {/* Mobile-only top bar (hamburger + logo). Lives here
+                      instead of as a fixed-positioned floater so page
+                      content keeps the full mobile width — the old
+                      floater forced every PageShell to add `pl-14` on
+                      mobile, which pushed everything right. */}
+                  <MobileTopBar />
+
+                  <div className="relative flex-1 overflow-y-auto">
+                    <Suspense
+                      fallback={
+                        <div className="flex h-full items-center justify-center">
+                          <div className="flex items-center space-x-2">
+                            <div className="h-2 w-2 animate-bounce rounded-full bg-primary" />
+                            <div className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:0.2s]" />
+                            <div className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:0.4s]" />
+                          </div>
                         </div>
-                      </div>
-                    }
-                  >
-                    {children}
-                  </Suspense>
-                </div>
+                      }
+                    >
+                      {children}
+                    </Suspense>
+                  </div>
 
-                <div className="sticky bottom-0 z-[110]">
-                  <Toaster />
-                </div>
-              </main>
+                  <div className="sticky bottom-0 z-[110]">
+                    <Toaster />
+                  </div>
+                </main>
+              </div>
             </div>
-          </div>
+          </SidebarProvider>
         </LoadingBarProvider>
       </EntitlementProvider>
       <WhatsAppButton

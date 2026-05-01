@@ -132,8 +132,10 @@ export function SubscriptionBanner() {
     setDismissed(false);
   }, [subscriptionStatus]);
 
-  if (loading || dismissed) return null;
-
+  // Compute variant up-front so we can publish the banner height to a
+  // CSS variable (`--banner-h`) before the conditional return below.
+  // React requires hooks to be called unconditionally, so the variable
+  // useEffect has to live above any `return null`.
   const daysLeft = paidThrough ? getDaysUntil(paidThrough) : null;
   const timeLeft = paidThrough ? formatTimeRemaining(paidThrough) : null;
 
@@ -208,7 +210,20 @@ export function SubscriptionBanner() {
     };
   }
 
-  if (!variant) return null;
+  // Publish banner height as a CSS variable so other layout pieces can
+  // reserve space (e.g., the mobile sidebar Sheet uses it for its
+  // `top` so it starts below the banner instead of being clipped by
+  // it). Resets to 0 when the banner isn't shown.
+  const isShowing = !loading && !dismissed && variant !== null;
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--banner-h", isShowing ? "36px" : "0px");
+    return () => {
+      root.style.setProperty("--banner-h", "0px");
+    };
+  }, [isShowing]);
+
+  if (!isShowing || !variant) return null;
 
   const styles = TONE_STYLES[variant.tone];
 

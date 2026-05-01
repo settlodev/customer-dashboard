@@ -1,5 +1,8 @@
 import { isValidPhoneNumber } from "libphonenumber-js";
-import { object, string } from "zod";
+import { object, string, enum as zEnum, infer as zInfer } from "zod";
+
+export const GenderEnum = zEnum(["MALE", "FEMALE", "UNDISCLOSED"]);
+export type Gender = zInfer<typeof GenderEnum>;
 
 export const LoginSchema = object({
   email: string()
@@ -43,6 +46,10 @@ export const RegisterSchema = object({
   countryId: string({ required_error: "Country is required" }).uuid(
     "Please select a valid country",
   ),
+  gender: zEnum(["MALE", "FEMALE", "UNDISCLOSED"], {
+    required_error: "Please select a gender",
+    invalid_type_error: "Please select a gender",
+  }),
   referredByCode: string().optional().nullish(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",

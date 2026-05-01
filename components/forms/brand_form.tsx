@@ -15,9 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import React, { useCallback, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { FormResponse } from "@/types/types";
 import { Button } from "@/components/ui/button";
-import { FormError } from "../widgets/form-error";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,7 +39,6 @@ import styles from "./styles/form-shell.module.css";
 
 function BrandForm({ item }: { item: Brand | null | undefined }) {
   const [isPending, startTransition] = useTransition();
-  const [response, setResponse] = useState<FormResponse | undefined>();
   const [imageUrl, setImageUrl] = useState<string>(item?.imageUrl || "");
   const { toast } = useToast();
   const router = useRouter();
@@ -77,7 +74,6 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
     startTransition(() => {
       if (item) {
         updateBrand(item.id, values).then((data) => {
-          if (data) setResponse(data);
           if (data && data.responseType === "success") {
             toast({ variant: "success", title: "Success", description: data.message });
             router.push("/brands");
@@ -86,7 +82,6 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
       } else {
         createBrand(values)
           .then((data) => {
-            if (data) setResponse(data);
             if (data && data.responseType === "success") {
               toast({ variant: "success", title: "Success", description: data.message });
               router.push("/brands");
@@ -105,7 +100,6 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
 
   return (
     <Form {...form}>
-      <FormError message={response?.message} />
       <form
         onSubmit={form.handleSubmit(submitData, onInvalid)}
         className={styles.formRoot}

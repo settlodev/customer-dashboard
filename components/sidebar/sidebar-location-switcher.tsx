@@ -3,13 +3,6 @@
 /**
  * Top sidebar destination toggle.
  *
- * Single anchor button that opens a popover with three segmented tabs
- * (Locations / Warehouses / Stores) of whatever the current business
- * exposes. Active scope mirrors the server resolver order in
- * lib/actions/context.ts: warehouse → store → location.
- *
- * Wires to existing server actions (`switchToLocation`, `switchToStore`,
- * `switchToWarehouse`); a confirm dialog blocks accidental switches.
  */
 
 import * as Sentry from "@sentry/nextjs";
@@ -81,9 +74,6 @@ const SCOPE_META: Record<
   store: { label: "Stores", singular: "store", icon: StoreIcon },
 };
 
-// Token-driven tints. Store uses --pos (green); warehouse uses indigo
-// because the dashboard already reserves indigo for "secondary depot"
-// styling in the goods-received and transfer flows.
 const SCOPE_TINT: Record<ScopeKey, string> = {
   location: "bg-primary/10 text-primary border-primary/30",
   warehouse: "bg-indigo-50 text-indigo-600 border-indigo-200",
@@ -101,8 +91,7 @@ export function SidebarLocationSwitcher({
   const active: Active | null = useMemo(() => {
     if (warehouse?.id) return { kind: "warehouse", data: warehouse };
     if (currentStore?.id) return { kind: "store", data: currentStore };
-    if (currentLocation?.id)
-      return { kind: "location", data: currentLocation };
+    if (currentLocation?.id) return { kind: "location", data: currentLocation };
     return null;
   }, [warehouse, currentStore, currentLocation]);
 
@@ -121,14 +110,10 @@ export function SidebarLocationSwitcher({
   const btnRef = useRef<HTMLButtonElement | null>(null);
   const popRef = useRef<HTMLDivElement | null>(null);
 
-  // Snap the popover's segmented tab back to the live scope every time
-  // it opens, so users don't see the previous tab's stale selection.
   useEffect(() => {
     if (open && active) setScope(active.kind);
   }, [open, active]);
 
-  // Reposition on scroll/resize; the trigger lives in a sticky sidebar
-  // and a fixed-position popover would otherwise drift.
   useEffect(() => {
     if (!open) return;
     const update = () => {
@@ -178,10 +163,10 @@ export function SidebarLocationSwitcher({
   const items = useMemo(() => {
     const base =
       scope === "location"
-        ? locationList ?? []
+        ? (locationList ?? [])
         : scope === "warehouse"
-          ? warehouseList ?? []
-          : storeList ?? [];
+          ? (warehouseList ?? [])
+          : (storeList ?? []);
     if (!query.trim()) return base;
     const q = query.toLowerCase();
     return base.filter((it) => {
@@ -245,7 +230,7 @@ export function SidebarLocationSwitcher({
   const activeName = active?.data.name ?? "Select destination";
   const activeMeta = active
     ? active.kind === "location"
-      ? (active.data as Location).region ?? ""
+      ? ((active.data as Location).region ?? "")
       : ((active.data as Store | Warehouses).code ?? "")
     : "";
 
@@ -257,7 +242,8 @@ export function SidebarLocationSwitcher({
         position: "fixed",
         left: anchor.left,
         top: anchor.top,
-        width: Math.max(anchor.width, 300),
+        width: Math.max(anchor.width, 380),
+        pointerEvents: "auto",
       }}
       className="z-[1100] flex max-h-[calc(100vh-32px)] flex-col overflow-hidden rounded-2xl border border-line bg-card p-1.5 shadow-[0_1px_0_rgba(20,17,12,0.04),0_24px_60px_-16px_rgba(20,17,12,0.30),0_6px_16px_-6px_rgba(20,17,12,0.10)]"
     >
@@ -331,16 +317,14 @@ export function SidebarLocationSwitcher({
 
         {items.map((it) => {
           const id = it.id;
-          const isCurrent =
-            active?.kind === scope && active.data.id === id;
-          const itemActive =
-            (it as { active?: boolean }).active !== false;
+          const isCurrent = active?.kind === scope && active.data.id === id;
+          const itemActive = (it as { active?: boolean }).active !== false;
           const subline =
             scope === "location"
-              ? (it as Location).region ?? ""
+              ? ((it as Location).region ?? "")
               : scope === "warehouse"
                 ? `${(it as Warehouses).code ?? ""}${(it as Warehouses).primary ? " · Primary" : ""}`
-                : (it as Store).code ?? "";
+                : ((it as Store).code ?? "");
 
           const dest: Active =
             scope === "location"
@@ -400,21 +384,13 @@ export function SidebarLocationSwitcher({
         })}
       </div>
 
-      {/* footer — Add / Manage. The handlers are stubs until the backend
-          exposes a generic "add destination" entry point per scope. */}
-      <div className="mt-0.5 flex items-center gap-1 border-t border-line px-1 pb-1 pt-1.5">
+      <div className="mt-0.5 border-t border-line px-1 pb-1 pt-1.5">
         <button
           type="button"
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-md px-2.5 py-2 text-[12px] font-medium text-ink-2 transition-colors hover:bg-primary/[0.08] hover:text-primary-dark"
+          className="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-2 text-[12.5px] font-semibold text-primary-dark transition-colors hover:bg-primary hover:text-primary-foreground hover:shadow-sm"
         >
-          <Plus className="h-3 w-3" />
+          <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
           Add {SCOPE_META[scope].singular}
-        </button>
-        <button
-          type="button"
-          className="rounded-md px-2.5 py-2 text-[11px] text-muted-foreground transition-colors hover:bg-canvas hover:text-ink"
-        >
-          Manage all
         </button>
       </div>
     </div>

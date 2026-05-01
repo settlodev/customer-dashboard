@@ -30,6 +30,7 @@ import {
 import {
   BOM_LIFECYCLE_LABELS,
   BomRule,
+  BomRuleAttachment,
   BomRuleDiff,
 } from "@/types/bom/type";
 
@@ -40,18 +41,26 @@ interface Props {
 
 export default function BomRevisionsDialog({ rule, trigger }: Props) {
   const [open, setOpen] = useState(false);
-  const [revisions, setRevisions] = useState<BomRule[] | null>(null);
+  const [revisions, setRevisions] = useState<BomRuleAttachment[] | null>(null);
   const [diff, setDiff] = useState<BomRuleDiff | null>(null);
   const [compareId, setCompareId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // The rule's history is now expressed as the timeline of attachments
+  // for whichever target the rule is currently bound to. We pick the
+  // first open attachment as the seed for the timeline lookup.
+  const primaryAttachment = (rule.attachments ?? []).find((a) => !a.effectiveTo);
+
   useEffect(() => {
-    if (!open || revisions !== null) return;
+    if (!open || revisions !== null || !primaryAttachment) return;
     startTransition(async () => {
-      const list = await getBomRuleRevisions(rule.productVariantId);
+      const list = await getBomRuleRevisions({
+        productVariantId: primaryAttachment.productVariantId ?? undefined,
+        modifierOptionId: primaryAttachment.modifierOptionId ?? undefined,
+      });
       setRevisions(list);
     });
-  }, [open, revisions, rule.productVariantId]);
+  }, [open, revisions, primaryAttachment]);
 
   const handleCompare = (otherId: string) => {
     setCompareId(otherId);
@@ -90,33 +99,38 @@ export default function BomRevisionsDialog({ rule, trigger }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {revisions.map((r) => (
-                <TableRow key={r.id} className={r.id === rule.id ? "bg-emerald-50/50" : ""}>
-                  <TableCell className="font-medium">{r.revisionNumber}</TableCell>
+              {revisions.map((a) => (
+                <TableRow
+                  key={a.id}
+                  className={a.bomRuleId === rule.id ? "bg-emerald-50/50" : ""}
+                >
+                  <TableCell className="font-medium">
+                    {a.bomRuleId.slice(0, 8)}
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="text-xs">
-                      {BOM_LIFECYCLE_LABELS[r.lifecycleStatus]}
+                      {BOM_LIFECYCLE_LABELS[a.lifecycleStatus]}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-xs">
-                    {format(new Date(r.effectiveFrom), "yyyy-MM-dd HH:mm")}
+                    {format(new Date(a.effectiveFrom), "yyyy-MM-dd HH:mm")}
                   </TableCell>
                   <TableCell className="text-xs">
-                    {r.effectiveTo
-                      ? format(new Date(r.effectiveTo), "yyyy-MM-dd HH:mm")
+                    {a.effectiveTo
+                      ? format(new Date(a.effectiveTo), "yyyy-MM-dd HH:mm")
                       : "Open"}
                   </TableCell>
                   <TableCell className="text-right">
-                    {r.id === rule.id ? (
+                    {a.bomRuleId === rule.id ? (
                       <span className="text-xs text-muted-foreground">current</span>
                     ) : (
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleCompare(r.id)}
-                        disabled={isPending && compareId === r.id}
+                        onClick={() => handleCompare(a.bomRuleId)}
+                        disabled={isPending && compareId === a.bomRuleId}
                       >
-                        {isPending && compareId === r.id ? (
+                        {isPending && compareId === a.bomRuleId ? (
                           <Loader2 className="h-3 w-3 animate-spin mr-1" />
                         ) : null}
                         Diff

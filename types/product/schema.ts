@@ -172,17 +172,33 @@ export const ModifierOptionSchema = object({
   name: string({ required_error: "Option name is required" }).min(1),
   priceAdjustment: preprocess(toNumber, number()).default(0),
   isDefault: boolean().default(false),
+  // Mirrors the product variant tracking model:
+  //   UNLIMITED → no stock movement when the option is picked
+  //   DIRECT    → deduct `directQuantity` of `stockVariantId` per selection
+  //   RECIPE    → resolve at sale time via a BOM rule keyed on this option id
+  // RECIPE-mode recipes live in /bom rules (which already carry a
+  // `modifierOptionId`), so the form only stores the intent here.
+  sellabilityMode: z.enum(["UNLIMITED", "DIRECT", "RECIPE"]).default("UNLIMITED"),
   stockVariantId: string().uuid().optional().nullish(),
-  stockQuantity: preprocess(toOptionalNumber, number().positive().optional().nullish()),
+  directQuantity: preprocess(toOptionalNumber, number().positive().optional().nullish()),
   sortOrder: preprocess(toNumber, number().int().nonnegative()).default(0),
   active: boolean().default(true),
 }).superRefine((val, ctx) => {
-  if (val.stockVariantId && (val.stockQuantity == null || val.stockQuantity <= 0)) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["stockQuantity"],
-      message: "Set how much stock this option consumes",
-    });
+  if (val.sellabilityMode === "DIRECT") {
+    if (!val.stockVariantId) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["stockVariantId"],
+        message: "Pick a stock item to link",
+      });
+    }
+    if (val.directQuantity == null || val.directQuantity <= 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["directQuantity"],
+        message: "Quantity per selection must be greater than zero",
+      });
+    }
   }
 });
 
@@ -196,21 +212,32 @@ export const ModifierGroupSchema = object({
   maxSelections: preprocess(toNumber, number().int().min(1)).default(1),
   sortOrder: preprocess(toNumber, number().int().nonnegative()).default(0),
   active: boolean().default(true),
-  options: array(ModifierOptionSchema).default([]),
+  options: array(ModifierOptionSchema)
+    .min(1, "Add at least one option")
+    .default([]),
 }).superRefine((val, ctx) => {
   if (val.maxSelections < val.minSelections) {
     ctx.addIssue({
       code: "custom",
       path: ["maxSelections"],
-      message: "Max selections must be ≥ min selections",
+      message: "Max must be ≥ min",
     });
   }
-  if (val.selectionType === "SINGLE" && val.maxSelections > 1) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["maxSelections"],
-      message: "SINGLE selection groups allow at most 1 selection",
-    });
+  if (val.selectionType === "SINGLE") {
+    if (val.maxSelections !== 1) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["maxSelections"],
+        message: "Single-choice groups allow exactly 1 selection",
+      });
+    }
+    if (val.minSelections > 1) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["minSelections"],
+        message: "Single-choice groups allow at most 1 minimum",
+      });
+    }
   }
   // No two options with same name in a group
   const seen = new Set<string>();
@@ -225,13 +252,38 @@ export const ModifierGroupSchema = object({
     }
     if (k) seen.add(k);
   });
-  // At most one default per group
-  const defaults = val.options.filter((o) => o.isDefault).length;
-  if (defaults > 1) {
+  // SINGLE permits at most one default. MULTI permits multiple defaults
+  // (each pre-checks an option) up to the group's max selections.
+  const defaultsCount = val.options.filter((o) => o.isDefault).length;
+  if (val.selectionType === "SINGLE" && defaultsCount > 1) {
     ctx.addIssue({
       code: "custom",
       path: ["options"],
       message: "Only one option can be marked default",
+    });
+  }
+  // Pre-selected defaults must fit inside the selection bounds — a group
+  // that pre-selects 4 options but caps at 2 fails at runtime.
+  if (defaultsCount > val.maxSelections) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["options"],
+      message: `You have ${defaultsCount} default${defaultsCount === 1 ? "" : "s"} but the group allows at most ${val.maxSelections}`,
+    });
+  }
+  // Single-required groups must commit to a default once any options
+  // exist — otherwise the customer sees the group with nothing checked
+  // and we have no way to satisfy minSelections=1.
+  if (
+    val.selectionType === "SINGLE" &&
+    val.minSelections >= 1 &&
+    val.options.length > 0 &&
+    defaultsCount === 0
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["options"],
+      message: "Pick a default option — this group requires a selection",
     });
   }
 });

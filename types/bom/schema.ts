@@ -134,10 +134,28 @@ export const BomOperationSchema = object({
   notes: string().optional().nullable(),
 });
 
-const BaseRuleFields = {
-  name: string({ required_error: "Rule name is required" }).min(2, "Name must be at least 2 characters"),
+// An attachment is the binding between a rule and a single target.
+// Exactly one of productVariantId / modifierOptionId is set.
+export const AttachBomRuleSchema = object({
+  productVariantId: string().uuid().optional().nullable(),
+  modifierOptionId: string().uuid().optional().nullable(),
   effectiveFrom: string().optional().nullable(),
   effectiveTo: string().optional().nullable(),
+  notes: string().optional().nullable(),
+}).superRefine((value, ctx) => {
+  const hasVariant = !!value.productVariantId;
+  const hasModifier = !!value.modifierOptionId;
+  if (hasVariant === hasModifier) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Exactly one of productVariantId / modifierOptionId must be set",
+      path: ["productVariantId"],
+    });
+  }
+});
+
+const BaseRuleFields = {
+  name: string({ required_error: "Rule name is required" }).min(2, "Name must be at least 2 characters"),
   baseQuantity: preprocess(toNumber, number().positive().default(1)),
   baseUnitId: string({ required_error: "Base unit is required" }).uuid(),
   notes: string().optional().nullable(),
@@ -147,29 +165,14 @@ const BaseRuleFields = {
 } as const;
 
 export const CreateBomRuleSchema = object({
-  productVariantId: string().uuid().optional().nullable(),
-  modifierOptionId: string().uuid().optional().nullable(),
   ...BaseRuleFields,
-}).superRefine((value, ctx) => {
-  if (!value.productVariantId && !value.modifierOptionId) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Either productVariantId or modifierOptionId is required",
-      path: ["productVariantId"],
-    });
-  }
-  if (value.productVariantId && value.modifierOptionId) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Only one of productVariantId / modifierOptionId may be set",
-      path: ["modifierOptionId"],
-    });
-  }
+  // Optional inline attachments — sent alongside the rule so the
+  // merchant can ship "create recipe and attach" in one motion.
+  attachments: array(AttachBomRuleSchema).default([]),
 });
 
 export const ReviseBomRuleSchema = object({
   ...BaseRuleFields,
-  effectiveFrom: string({ required_error: "Effective-from is required on revisions" }),
 });
 
 export const CopyToLocationSchema = object({
@@ -200,3 +203,4 @@ export type CreateBomRuleValues = z.infer<typeof CreateBomRuleSchema>;
 export type ReviseBomRuleValues = z.infer<typeof ReviseBomRuleSchema>;
 export type CopyToLocationValues = z.infer<typeof CopyToLocationSchema>;
 export type ReplaceVariantValues = z.infer<typeof ReplaceVariantSchema>;
+export type AttachBomRuleValues = z.infer<typeof AttachBomRuleSchema>;
