@@ -12,7 +12,9 @@ export interface DailySnapshotSummary {
 }
 
 export interface InventorySnapshot {
-  id: string;
+  /** Synthetic row id when sourced from the Inventory Service. The Reports
+   *  Service fact has no per-row id (the natural key is variantId+date). */
+  id?: string;
   locationType: string;
   locationId: string;
   stockVariantId: string;
@@ -36,6 +38,8 @@ export interface InventorySnapshot {
   inTransitQuantity: number;
   averageCost: number | null;
   currentBatchCost: number | null;
-  currency: string | null;
-  createdAt: string;
+  /** Location base currency. Reports Service omits — defaults to null. */
+  currency?: string | null;
+  /** Row creation timestamp. Reports Service omits — UI doesn't read it. */
+  createdAt?: string;
 }

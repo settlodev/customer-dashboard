@@ -1,6 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import { getStock } from "@/lib/actions/stock-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
@@ -15,7 +20,6 @@ import {
   getReorderSuggestions,
 } from "@/lib/actions/inventory-analytics-actions";
 import { getBatchesByVariant } from "@/lib/actions/stock-batch-actions";
-import { getItemSalesSummary } from "@/lib/actions/item-sales-actions";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import { getLocationConfig } from "@/lib/actions/location-config-actions";
 import { getVariantSnapshotHistory } from "@/lib/actions/inventory-snapshot-actions";
@@ -34,7 +38,6 @@ import type {
   ReorderSuggestion,
 } from "@/types/inventory-analytics/type";
 import type { StockBatch } from "@/types/stock-batch/type";
-import type { ItemSalesAggregate } from "@/types/item-sales/type";
 import type { InventorySnapshot } from "@/types/inventory-snapshot/type";
 import type { AuditLogEntry } from "@/types/audit-log/type";
 import type { RsMovementSummary } from "@/types/reports-analytics/type";
@@ -85,7 +88,6 @@ export default async function StockDetailPage({
     allAbc,
     reorderSuggestions,
     batchArrays,
-    salesSummary,
     snapshotArrays,
     auditPage,
     rsMovementSummaries,
@@ -110,9 +112,6 @@ export default async function StockDetailPage({
     getAbcAnalysis(),
     getReorderSuggestions(),
     Promise.all(stock.variants.map((v) => getBatchesByVariant(v.id))),
-    locationId
-      ? getItemSalesSummary(locationId, fromDate, toDate)
-      : Promise.resolve(null),
     Promise.all(
       stock.variants.map((v) =>
         getVariantSnapshotHistory(v.id, chartFromDate, toDate),
@@ -188,10 +187,6 @@ export default async function StockDetailPage({
   const abc = allAbc.filter((a) => variantIds.has(a.stockVariantId));
   const reorder = reorderSuggestions.filter((r) => variantIds.has(r.stockVariantId));
 
-  // Filter sales data to this stock's variants (sales are by product variant ID,
-  // which may differ from stock variant ID — include all for now, the view filters)
-  const salesItems: ItemSalesAggregate[] = salesSummary?.items ?? [];
-
   // Per-variant snapshot map, plus a summed-by-date series for stock-level charts.
   const variantSnapshotMap: Record<string, InventorySnapshot[]> = {};
   stock.variants.forEach((v, i) => {
@@ -247,79 +242,76 @@ export default async function StockDetailPage({
     MATERIAL_TYPE_OPTIONS.find((o) => o.value === stock.materialType)?.label ??
     stock.materialType;
 
-  const breadcrumbItems = [
-    { title: "Stock Items", link: "/stock-variants" },
-    { title: stock.name, link: "" },
-  ];
-
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <div className="hidden sm:block mb-2">
-            <BreadcrumbsNav items={breadcrumbItems} />
-          </div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-              {stock.name}
-            </h1>
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                stock.archived
-                  ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                  : "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
-              }`}
-            >
-              {stock.archived ? "Archived" : "Active"}
-            </span>
-          </div>
-          <p className="text-sm text-muted-foreground">
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Stock Items", href: "/stock-variants" },
+          { title: stock.name },
+        ]}
+      />
+      <PageHeader
+        title={stock.name}
+        titleAccessory={
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              stock.archived
+                ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                : "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
+            }`}
+          >
+            {stock.archived ? "Archived" : "Active"}
+          </span>
+        }
+        subtitle={
+          <>
             {materialLabel} &middot; {stock.baseUnitName}
             {stock.description ? ` \u00B7 ${stock.description}` : ""}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/stock-variants/${id}/edit`}>
-              <Pencil className="mr-1.5 h-4 w-4" />
-              Edit
-            </Link>
-          </Button>
-          <StockDetailActions stock={stock} />
-        </div>
-      </div>
-
-      {/* Tabbed detail content (client component) */}
-      <StockDetailView
-        stock={stock}
-        balanceMap={balanceMap}
-        batchMap={batchMap}
-        variantSummaryMap={variantSummaryMap}
-        variantMovementsMap={variantMovementsMap}
-        movements={movements}
-        forecasts={forecasts}
-        turnover={turnover}
-        abc={abc}
-        reorder={reorder}
-        salesItems={salesItems}
-        movementSummary={movementSummary}
-        totalQty={totalQty}
-        totalValue={totalValue}
-        totalReserved={totalReserved}
-        totalInTransit={totalInTransit}
-        totalAvailable={totalAvailable}
-        worstRisk={worstRisk}
-        avgTurnover={avgTurnover}
-        currency={currency}
-        locationId={locationId ?? null}
-        autoReorderEnabled={locationConfig?.autoReorderEnabled ?? false}
-        variantSnapshotMap={variantSnapshotMap}
-        stockSnapshots={stockSnapshots}
-        auditEntries={auditEntries}
-        rsSummary={rsSummary}
+          </>
+        }
+        actions={
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/stock-variants/${id}/edit`}>
+                <Pencil className="mr-1.5 h-4 w-4" />
+                Edit
+              </Link>
+            </Button>
+            <StockDetailActions stock={stock} />
+          </>
+        }
       />
-    </div>
+
+      <PageBody>
+        <StockDetailView
+          stock={stock}
+          balanceMap={balanceMap}
+          batchMap={batchMap}
+          variantSummaryMap={variantSummaryMap}
+          variantMovementsMap={variantMovementsMap}
+          movements={movements}
+          forecasts={forecasts}
+          turnover={turnover}
+          abc={abc}
+          reorder={reorder}
+          movementSummary={movementSummary}
+          totalQty={totalQty}
+          totalValue={totalValue}
+          totalReserved={totalReserved}
+          totalInTransit={totalInTransit}
+          totalAvailable={totalAvailable}
+          worstRisk={worstRisk}
+          avgTurnover={avgTurnover}
+          currency={currency}
+          locationId={locationId ?? null}
+          autoReorderEnabled={locationConfig?.autoReorderEnabled ?? false}
+          variantSnapshotMap={variantSnapshotMap}
+          stockSnapshots={stockSnapshots}
+          auditEntries={auditEntries}
+          rsSummary={rsSummary}
+        />
+      </PageBody>
+    </PageShell>
   );
 }
 

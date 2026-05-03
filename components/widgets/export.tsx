@@ -172,6 +172,7 @@ const TableExport: React.FC<TableExportProps> = ({
   return (
     <Button
       variant="outline"
+      size="sm"
       onClick={handleDownload}
       disabled={isLoading}
     >

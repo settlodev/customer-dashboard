@@ -21,6 +21,15 @@ export const CreateGrnItemSchema = z
         .number({ required_error: "Unit cost is required" })
         .nonnegative("Unit cost cannot be negative"),
     ),
+    /**
+     * Optional purchase pack (e.g. "Crate" while the variant is tracked in
+     * "Bottle"). When set, `receivedQuantity` and `unitCost` are interpreted
+     * in this unit and the backend converts to stock units on receive.
+     */
+    purchaseUnitId: z.preprocess(
+      (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+      z.string().uuid().optional().nullish(),
+    ),
     batchNumber: z.string().optional(),
     supplierBatchReference: z.string().optional(),
     expiryDate: z.string().optional(),

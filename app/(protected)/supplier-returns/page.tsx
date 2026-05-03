@@ -1,18 +1,11 @@
 import Link from "next/link";
-import {
-  Plus,
-  RotateCcw,
-  Truck,
-  DollarSign,
-  AlertTriangle,
-} from "lucide-react";
+import { Plus } from "lucide-react";
 import {
   PageShell,
   PageHeader,
   PageBreadcrumbs,
   PageBody,
 } from "@/components/layouts/page-shell";
-import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import { Button } from "@/components/ui/button";
 import NoItems from "@/components/layouts/no-items";
 import { DataTable } from "@/components/tables/data-table";
@@ -22,6 +15,9 @@ import {
 } from "@/components/tables/supplier-return/columns";
 import { getSupplierReturns } from "@/lib/actions/supplier-return-actions";
 import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getSupplierReturnKpi } from "@/lib/actions/reports-analytics-actions";
+import { SupplierReturnKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
 import type { SupplierReturnStatus } from "@/types/supplier-return/type";
 
 const STATUS_VALUES: SupplierReturnStatus[] = [
@@ -46,9 +42,10 @@ export default async function Page({ searchParams }: Params) {
   const pageLimit = Number(resolvedParams.limit) || 20;
   const status = STATUS_VALUES.find((s) => s === resolvedParams.status);
 
-  const [responseData, suppliers] = await Promise.all([
+  const [responseData, suppliers, location] = await Promise.all([
     getSupplierReturns(page ? page - 1 : 0, pageLimit, status),
     fetchAllSuppliers(),
+    getCurrentLocation(),
   ]);
   const supplierMap = Object.fromEntries(suppliers.map((s) => [s.id, s.name]));
 
@@ -58,6 +55,8 @@ export default async function Page({ searchParams }: Params) {
   }));
   const total = responseData.totalElements ?? 0;
   const pageCount = responseData.totalPages ?? 0;
+
+  const kpi = location?.id ? await getSupplierReturnKpi(location.id) : null;
 
   return (
     <PageShell>
@@ -75,56 +74,24 @@ export default async function Page({ searchParams }: Params) {
         }
       />
       <PageBody>
-        {/* Placeholder KPIs — wire to real aggregates later. */}
-        <KpiStrip cols={4}>
-          <KpiCard
-            icon={<RotateCcw className="h-3 w-3" />}
-            label="Returns (30d)"
-            value="14"
-            delta="+3 wk"
-            deltaTone="pos"
-            spark={[2, 4, 5, 6, 8, 10, 12, 13]}
-          />
-          <KpiCard
-            icon={<Truck className="h-3 w-3" />}
-            label="In transit"
-            value="3"
-            unit="active"
-            delta="1 due today"
-            deltaTone="neutral"
-          />
-          <KpiCard
-            icon={<DollarSign className="h-3 w-3" />}
-            label="Credit due"
-            value="4,820,000"
-            unit="TZS"
-            delta="awaiting credit notes"
-            deltaTone="neutral"
-          />
-          <KpiCard
-            icon={<AlertTriangle className="h-3 w-3" />}
-            label="Disputes"
-            value="1"
-            delta="needs review"
-            deltaTone="neg"
-          />
-        </KpiStrip>
-
         {total > 0 || status ? (
-          <DataTable
-            columns={columns}
-            data={data}
-            searchKey="returnNumber"
-            pageNo={page}
-            total={total}
-            pageCount={pageCount}
-            disableArchive
-            filterKey="status"
-            filterOptions={STATUS_VALUES.map((s) => ({
-              value: s,
-              label: s.replace(/_/g, " "),
-            }))}
-          />
+          <>
+            <SupplierReturnKpiStrip summary={kpi} />
+            <DataTable
+              columns={columns}
+              data={data}
+              searchKey="returnNumber"
+              pageNo={page}
+              total={total}
+              pageCount={pageCount}
+              disableArchive
+              filterKey="status"
+              filterOptions={STATUS_VALUES.map((s) => ({
+                value: s,
+                label: s.replace(/_/g, " "),
+              }))}
+            />
+          </>
         ) : (
           <NoItems
             newItemUrl="/supplier-returns/new"

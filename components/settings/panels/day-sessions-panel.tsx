@@ -23,6 +23,7 @@ const KEYS = [
   "autoOpenDay",
   "autoCloseDay",
   "closeGraceMinutes",
+  "maxSessionLengthHours",
   "minimumSettlementAmount",
 ] as const;
 
@@ -69,7 +70,7 @@ export function DaySessionsPanel({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field
             label="Close grace (minutes)"
-            hint="Delay after close-time before auto-close fires. 0–720 (12 h)."
+            hint="Delay after close-time before auto-close fires. 0–720 (12 h). The extend button is only available inside this window."
           >
             <Input
               type="number"
@@ -79,6 +80,24 @@ export function DaySessionsPanel({
               onChange={(e) =>
                 p.setField(
                   "closeGraceMinutes",
+                  e.target.value === "" ? null : Number(e.target.value),
+                )
+              }
+              disabled={p.isPending}
+            />
+          </Field>
+          <Field
+            label="Max session length (hours)"
+            hint="Hard upper bound — sessions longer than this are auto-closed regardless of operating hours. 6–168 (7 days)."
+          >
+            <Input
+              type="number"
+              min={6}
+              max={168}
+              value={v.maxSessionLengthHours ?? ""}
+              onChange={(e) =>
+                p.setField(
+                  "maxSessionLengthHours",
                   e.target.value === "" ? null : Number(e.target.value),
                 )
               }

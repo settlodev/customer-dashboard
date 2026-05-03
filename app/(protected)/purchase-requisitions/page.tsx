@@ -1,17 +1,19 @@
 import Link from "next/link";
-import { Plus, FileText, ShieldCheck, Clock, AlertTriangle } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
   PageShell,
   PageHeader,
   PageBreadcrumbs,
   PageBody,
 } from "@/components/layouts/page-shell";
-import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import { Button } from "@/components/ui/button";
 import NoItems from "@/components/layouts/no-items";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/requisition/columns";
 import { getRequisitions } from "@/lib/actions/requisition-actions";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getPurchaseRequisitionKpi } from "@/lib/actions/reports-analytics-actions";
+import { PurchaseRequisitionKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
 import type { RequisitionStatus } from "@/types/requisition/type";
 
 const STATUS_VALUES: RequisitionStatus[] = [
@@ -37,15 +39,16 @@ export default async function Page({ searchParams }: Params) {
   const pageLimit = Number(resolvedParams.limit) || 20;
   const status = STATUS_VALUES.find((s) => s === resolvedParams.status);
 
-  const responseData = await getRequisitions(
-    page ? page - 1 : 0,
-    pageLimit,
-    status,
-  );
+  const [responseData, location] = await Promise.all([
+    getRequisitions(page ? page - 1 : 0, pageLimit, status),
+    getCurrentLocation(),
+  ]);
 
   const data = responseData.content ?? [];
   const total = responseData.totalElements ?? 0;
   const pageCount = responseData.totalPages ?? 0;
+
+  const kpi = location?.id ? await getPurchaseRequisitionKpi(location.id) : null;
 
   return (
     <PageShell>
@@ -63,56 +66,24 @@ export default async function Page({ searchParams }: Params) {
         }
       />
       <PageBody>
-        {/* Placeholder KPIs — wire to real aggregates later. */}
-        <KpiStrip cols={4}>
-          <KpiCard
-            icon={<FileText className="h-3 w-3" />}
-            label="Open requisitions"
-            value="9"
-            unit="active"
-            delta="3 awaiting approval"
-            deltaTone="neutral"
-          />
-          <KpiCard
-            icon={<ShieldCheck className="h-3 w-3" />}
-            label="Approved (30d)"
-            value="42"
-            delta="+6 wk"
-            deltaTone="pos"
-            spark={[18, 22, 24, 28, 30, 34, 38, 40]}
-          />
-          <KpiCard
-            icon={<Clock className="h-3 w-3" />}
-            label="Avg approval time"
-            value="11"
-            unit="hrs"
-            delta="−1.5 hr"
-            deltaTone="pos"
-          />
-          <KpiCard
-            icon={<AlertTriangle className="h-3 w-3" />}
-            label="Rejected (30d)"
-            value="3"
-            delta="needs review"
-            deltaTone="neg"
-          />
-        </KpiStrip>
-
         {total > 0 || status ? (
-          <DataTable
-            columns={columns}
-            data={data}
-            searchKey="requisitionNumber"
-            pageNo={page}
-            total={total}
-            pageCount={pageCount}
-            disableArchive
-            filterKey="status"
-            filterOptions={STATUS_VALUES.map((s) => ({
-              value: s,
-              label: s.replace(/_/g, " "),
-            }))}
-          />
+          <>
+            <PurchaseRequisitionKpiStrip summary={kpi} />
+            <DataTable
+              columns={columns}
+              data={data}
+              searchKey="requisitionNumber"
+              pageNo={page}
+              total={total}
+              pageCount={pageCount}
+              disableArchive
+              filterKey="status"
+              filterOptions={STATUS_VALUES.map((s) => ({
+                value: s,
+                label: s.replace(/_/g, " "),
+              }))}
+            />
+          </>
         ) : (
           <NoItems
             newItemUrl="/purchase-requisitions/new"

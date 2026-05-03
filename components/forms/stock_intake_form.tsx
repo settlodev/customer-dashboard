@@ -57,6 +57,7 @@ import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 import type { VariantMeta } from "@/components/widgets/stock-variant-selector";
 import SupplierSelector from "@/components/widgets/supplier-selector";
 import CurrencySelector from "@/components/widgets/currency-selector";
+import CompatibleUnitSelector from "@/components/widgets/compatible-unit-selector";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
 import { BusinessDayClosedDialog } from "@/components/widgets/business-day-closed-dialog";
 import { useBusinessDayGuard } from "@/hooks/use-business-day-guard";
@@ -75,6 +76,9 @@ export default function StockIntakeForm() {
 
   const [serialTrackedMap, setSerialTrackedMap] = useState<Record<number, boolean>>({});
   const [serialInputs, setSerialInputs] = useState<Record<number, string[]>>({});
+  // Variant tracking unit per row — anchors the purchase-pack picker so it
+  // only surfaces units convertible to the variant's stock unit.
+  const [variantUnitMap, setVariantUnitMap] = useState<Record<number, string | undefined>>({});
 
   const form = useForm<z.infer<typeof StockIntakeRecordSchema>>({
     resolver: zodResolver(StockIntakeRecordSchema),
@@ -115,6 +119,7 @@ export default function StockIntakeForm() {
 
   const handleVariantMeta = useCallback((index: number, meta: VariantMeta | null) => {
     setSerialTrackedMap((prev) => ({ ...prev, [index]: meta?.serialTracked ?? false }));
+    setVariantUnitMap((prev) => ({ ...prev, [index]: meta?.unitId }));
     if (!meta?.serialTracked) {
       setSerialInputs((prev) => {
         const next = { ...prev };
@@ -122,7 +127,16 @@ export default function StockIntakeForm() {
         return next;
       });
     }
-  }, []);
+    // Variant change can invalidate any picked purchase pack — clear so the
+    // operator re-picks against the new anchor.
+    if (meta?.unitId) {
+      const current = form.getValues(`items.${index}.purchaseUnitId`);
+      if (current && current === meta.unitId) {
+        // Picking the variant's own unit is equivalent to "no pack" — normalize.
+        form.setValue(`items.${index}.purchaseUnitId`, undefined, { shouldDirty: false });
+      }
+    }
+  }, [form]);
 
   const submitData = (values: z.infer<typeof StockIntakeRecordSchema>) => {
     for (let i = 0; i < values.items.length; i++) {
@@ -440,6 +454,11 @@ export default function StockIntakeForm() {
                                 delete next[index];
                                 return next;
                               });
+                              setVariantUnitMap((prev) => {
+                                const next = { ...prev };
+                                delete next[index];
+                                return next;
+                              });
                             }}
                             className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"
                           >
@@ -548,6 +567,46 @@ export default function StockIntakeForm() {
                           }}
                         />
                       </div>
+
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.purchaseUnitId`}
+                        render={({ field: f }) => {
+                          const anchor = variantUnitMap[index];
+                          const isSerial = !!serialTrackedMap[index];
+                          const usingPack = !!f.value && f.value !== anchor;
+                          return (
+                            <FormItem>
+                              <FormLabel className="text-xs">
+                                Purchase unit
+                                <span className="opt ml-1.5">OPTIONAL</span>
+                              </FormLabel>
+                              <FormControl>
+                                <CompatibleUnitSelector
+                                  anchorUnitId={anchor}
+                                  value={f.value ?? ""}
+                                  onChange={(v) => f.onChange(v || undefined)}
+                                  isDisabled={isPending || !anchor || isSerial}
+                                  placeholder={
+                                    isSerial
+                                      ? "Not available for serial-tracked items"
+                                      : anchor
+                                        ? "Same as stock unit"
+                                        : "Pick a stock item first"
+                                  }
+                                />
+                              </FormControl>
+                              <p className="text-[11px] text-muted-foreground">
+                                {isSerial
+                                  ? "Serial-tracked items must be entered one-by-one in the variant's stock unit."
+                                  : usingPack
+                                    ? "Quantity & unit cost above are interpreted in this pack — converted to stock units on save."
+                                    : "Leave blank to enter qty & cost directly in the variant's tracking unit."}
+                              </p>
+                            </FormItem>
+                          );
+                        }}
+                      />
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <FormField

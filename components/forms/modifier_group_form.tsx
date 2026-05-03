@@ -12,6 +12,8 @@ import {
   Layers,
   AlertTriangle,
   Info,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { NumericFormat } from "react-number-format";
 
@@ -262,6 +264,12 @@ export function ModifierGroupForm({ group, stockVariants }: Props) {
     });
   };
 
+  const handleMoveOption = (index: number, direction: -1 | 1) => {
+    const next = index + direction;
+    if (next < 0 || next >= optionsArray.fields.length) return;
+    optionsArray.move(index, next);
+  };
+
   const handleRemoveOption = (index: number) => {
     const wasDefault = !!form.getValues(`options.${index}.isDefault`);
     optionsArray.remove(index);
@@ -312,6 +320,19 @@ export function ModifierGroupForm({ group, stockVariants }: Props) {
               </div>
               <div className={styles.formCardActions}>
                 <span className={styles.stepBadge}>STEP 01</span>
+                {isEditing && group?.attachedProductCount != null && (
+                  <Badge
+                    variant="soft"
+                    title="Editing this group affects every product it's attached to"
+                    className="shrink-0"
+                  >
+                    {group.attachedProductCount === 0
+                      ? "Not in use"
+                      : `Used by ${group.attachedProductCount} product${
+                          group.attachedProductCount === 1 ? "" : "s"
+                        }`}
+                  </Badge>
+                )}
                 {isArchived && (
                   <Badge variant="soft" className="shrink-0">
                     Archived
@@ -564,6 +585,8 @@ export function ModifierGroupForm({ group, stockVariants }: Props) {
                       stockVariants={stockVariants}
                       disabled={isPending || isArchived}
                       onRemove={() => handleRemoveOption(index)}
+                      onMoveUp={() => handleMoveOption(index, -1)}
+                      onMoveDown={() => handleMoveOption(index, 1)}
                       isSingle={isSingle}
                       isSingleRequired={isSingleRequired}
                       defaultsCount={defaultsCount}
@@ -640,6 +663,8 @@ interface OptionRowProps {
   stockVariants: StockVariantOption[];
   disabled: boolean;
   onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   isSingle: boolean;
   isSingleRequired: boolean;
   defaultsCount: number;
@@ -653,6 +678,8 @@ function OptionRow({
   stockVariants,
   disabled,
   onRemove,
+  onMoveUp,
+  onMoveDown,
   isSingle,
   isSingleRequired,
   defaultsCount,
@@ -660,6 +687,7 @@ function OptionRow({
   totalOptions,
 }: OptionRowProps) {
   const isDefault = !!form.watch(`options.${index}.isDefault`);
+  const isActive = form.watch(`options.${index}.active`) !== false;
 
   // Single-required groups must always carry exactly one default. When
   // this option is the lone default and no other options exist, the
@@ -674,7 +702,9 @@ function OptionRow({
     !isSingle && !isDefault && defaultsCount >= maxSelections;
 
   // SINGLE flips are mutually exclusive — turning one on clears the
-  // others. MULTI just toggles the one row.
+  // others. MULTI just toggles the one row. Either way, marking an
+  // inactive option as Default also reactivates it (POS can't
+  // pre-check an inactive option).
   const handleDefaultChange = (next: boolean) => {
     if (isSingle && next) {
       const all = form.getValues("options") ?? [];
@@ -691,6 +721,28 @@ function OptionRow({
       shouldDirty: true,
       shouldValidate: true,
     });
+    if (next && !isActive) {
+      form.setValue(`options.${index}.active`, true, {
+        shouldDirty: true,
+        shouldValidate: false,
+      });
+    }
+  };
+
+  // Toggling Active off auto-clears Default so the data layer never
+  // carries an inactive+default contradiction (which the POS can't
+  // honour anyway).
+  const handleActiveChange = (next: boolean) => {
+    form.setValue(`options.${index}.active`, next, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    if (!next && isDefault) {
+      form.setValue(`options.${index}.isDefault`, false, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
   };
 
   return (
@@ -737,34 +789,49 @@ function OptionRow({
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name={`options.${index}.active`}
-            render={({ field }) => (
-              <FormItem className="!mt-0 flex items-center gap-1.5">
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    disabled={disabled}
-                  />
-                </FormControl>
-                <FormLabel className="!mt-0 text-xs text-muted-foreground">
-                  Active
-                </FormLabel>
-              </FormItem>
-            )}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onRemove}
-            disabled={disabled}
-            className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          <FormItem className="!mt-0 flex items-center gap-1.5">
+            <Switch
+              checked={isActive}
+              onCheckedChange={handleActiveChange}
+              disabled={disabled}
+            />
+            <span className="!mt-0 text-xs text-muted-foreground">Active</span>
+          </FormItem>
+          <div className="ml-1 flex items-center gap-0.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onMoveUp}
+              disabled={disabled || index === 0}
+              className="h-7 w-7 p-0"
+              title="Move up"
+            >
+              <ChevronUp className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onMoveDown}
+              disabled={disabled || index === totalOptions - 1}
+              className="h-7 w-7 p-0"
+              title="Move down"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onRemove}
+              disabled={disabled}
+              className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+              title="Remove"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
       </div>
 

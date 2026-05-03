@@ -61,6 +61,12 @@ export interface ProductVariant {
   displayName: string;
   slug: string;
   sku: string | null;
+  /**
+   * Optional barcode. Merchant-entered or auto-generated via
+   * `POST /api/v1/product-barcodes/variants/{id}`. Unique across the
+   * location when non-null.
+   */
+  barcode: string | null;
   imageUrl: string | null;
   pricingStrategy: PricingStrategy;
   price: number;
@@ -91,6 +97,23 @@ export interface ProductVariant {
   stockVariantId: string | null;
   stockVariantName: string | null;
   directQuantity: number | null;
+  /**
+   * Live unit cost as of the read. The inventory service joins the matching
+   * `inventory_balance` row server-side for DIRECT-linked variants
+   * (`(currentBatchCost ?? averageCost) * directQuantity`); UNLIMITED and
+   * recipe-linked variants — and DIRECT variants without a balance row yet
+   * — fall back to the merchant-set `costPrice`. Read this directly in
+   * list rows; do NOT re-derive from `getBalancesByLocation`.
+   */
+  currentCost: number | null;
+  /**
+   * Live sellable quantity as of the read. Populated only for
+   * DIRECT-linked variants (`floor((onHand - reserved) / directQuantity)`).
+   * Null for UNLIMITED variants (the row should fall back to
+   * `unlimited`/`availableQuantity`) and for recipe-linked variants
+   * (computing those requires walking the BOM rule, intentionally deferred).
+   */
+  qtyAvailable: number | null;
   currencyPriceOverrides: Record<string, number>;
   createdAt: string;
   updatedAt: string;
@@ -118,6 +141,9 @@ export interface ModifierGroup {
   active: boolean;
   options: ModifierOption[];
   archivedAt: string | null;
+  /** Number of distinct products this group is currently attached to.
+   *  Backend returns null when not asked for it; treat as unknown. */
+  attachedProductCount?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -156,6 +182,8 @@ export interface AddonGroup {
   active: boolean;
   items: AddonGroupItem[];
   archivedAt: string | null;
+  /** Number of distinct products this group is currently attached to. */
+  attachedProductCount?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -168,6 +196,7 @@ export interface AddonGroupItem {
   productVariantDisplayName: string;
   price: number;
   priceOverride: number | null;
+  isDefault: boolean;
   sortOrder: number;
   active: boolean;
   createdAt: string;

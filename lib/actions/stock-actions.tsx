@@ -17,13 +17,47 @@ import { inventoryUrl } from "./inventory-client";
 
 // ── Stock CRUD ──────────────────────────────────────────────────────
 
-export async function getStocks(): Promise<Stock[]> {
+// Tab-aligned view filter mirroring the backend's StockListView enum.
+// One value per merchant-facing tab so the page can render whatever the
+// API returns without any client-side row filtering.
+export type StockView = "active" | "archived" | "draft" | "all";
+
+export async function getStocks(view?: StockView): Promise<Stock[]> {
   try {
     const apiClient = new ApiClient();
-    const data = await apiClient.get(inventoryUrl("/api/v1/stocks"));
+    const url = view
+      ? `/api/v1/stocks?view=${view.toUpperCase()}`
+      : "/api/v1/stocks";
+    const data = await apiClient.get(inventoryUrl(url));
     return parseStringify(data) as Stock[];
   } catch {
     return [];
+  }
+}
+
+// Convenience alias retained for callers that prefer the named function.
+// Routes through the same view filter so the backend stays the single
+// source of truth for "which rows are drafts".
+export async function getDraftStocks(): Promise<Stock[]> {
+  return getStocks("draft");
+}
+
+// Per-tab counts powering the merchant tab badges. One call replaces
+// the prior pattern of fetching every view just to read its `.length`.
+export interface StockListCounts {
+  active: number;
+  archived: number;
+  draft: number;
+  all: number;
+}
+
+export async function getStockCounts(): Promise<StockListCounts> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(inventoryUrl("/api/v1/stocks/counts"));
+    return parseStringify(data) as StockListCounts;
+  } catch {
+    return { active: 0, archived: 0, draft: 0, all: 0 };
   }
 }
 
@@ -62,8 +96,6 @@ export async function createStock(
       variants: validated.data.variants.map((v) => ({
         name: v.name,
         sku: v.sku || undefined,
-        unitId: v.unitId,
-        conversionToBase: v.conversionToBase,
         barcode: v.barcode || undefined,
         serialTracked: v.serialTracked,
         startingQuantity: v.initialQuantity && v.initialQuantity > 0 ? v.initialQuantity : undefined,
@@ -137,8 +169,6 @@ export async function updateStock(
           {
             name: variant.name,
             sku: variant.sku || undefined,
-            unitId: variant.unitId,
-            conversionToBase: variant.conversionToBase,
             barcode: variant.barcode || undefined,
             serialTracked: variant.serialTracked,
           },
@@ -153,8 +183,6 @@ export async function updateStock(
           {
             name: variant.name,
             sku: variant.sku || undefined,
-            unitId: variant.unitId,
-            conversionToBase: variant.conversionToBase,
             barcode: variant.barcode ?? "",
             serialTracked: variant.serialTracked,
           },
@@ -343,7 +371,6 @@ export async function downloadStockCSV(): Promise<string> {
     "Display Name",
     "SKU",
     "Unit",
-    "Conversion to Base",
     "Barcode",
     "Serial Tracked",
     "Material Type",
@@ -358,7 +385,6 @@ export async function downloadStockCSV(): Promise<string> {
         v.displayName,
         v.sku || "",
         v.unitAbbreviation,
-        String(v.conversionToBase),
         v.barcode || "",
         v.serialTracked ? "Yes" : "No",
         stock.materialType,
@@ -413,17 +439,9 @@ export async function createStockWithProduct(
     });
   }
 
-  const missingPrice = validated.data.variants.some(
-    (v) => !v.sellingPrice || v.sellingPrice <= 0,
-  );
-  if (missingPrice) {
-    return parseStringify({
-      responseType: "error",
-      message:
-        "Each variant needs a selling price when also creating a product",
-      error: new Error("variant.sellingPrice required"),
-    });
-  }
+  // Selling price is advisory at submit time — the form surfaces a warning
+  // when qty>0 with no price, but we still let the call through so the
+  // product can be created and priced later.
 
   try {
     const apiClient = new ApiClient();
@@ -437,8 +455,6 @@ export async function createStockWithProduct(
       variants: validated.data.variants.map((v) => ({
         name: v.name,
         sku: v.sku || undefined,
-        unitId: v.unitId,
-        conversionToBase: v.conversionToBase,
         barcode: v.barcode || undefined,
         serialTracked: v.serialTracked,
         startingQuantity:
@@ -528,8 +544,6 @@ function mapStockVariantPartial(v: DraftStockVariant) {
   return {
     name: v.name?.trim() || undefined,
     sku: v.sku || undefined,
-    unitId: v.unitId || undefined,
-    conversionToBase: v.conversionToBase ?? undefined,
     barcode: v.barcode || undefined,
     serialTracked: v.serialTracked,
     startingQuantity:

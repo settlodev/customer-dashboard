@@ -82,6 +82,15 @@ const UI_ERROR_MESSAGES: Record<string, string> = {
     SERVER_ERROR: "Something went wrong on our end. Please try again later.",
     OAUTH_TOKEN_INVALID: "Social sign-in verification failed. Please try again.",
     OAUTH_PROVIDER_ERROR: "Could not connect to the sign-in provider. Please try again.",
+    // Per-account / per-business name conflicts. The DB constraints are
+    // scoped (uk_business_account_name etc.) so two different accounts
+    // can use the same business name — copy reflects that.
+    BUSINESS_NAME_TAKEN: "You already have a business with this name. Pick a different name or sign in to your existing business.",
+    LOCATION_NAME_TAKEN: "A location with this name already exists in this business. Pick a different name.",
+    STORE_NAME_TAKEN: "A store with this name already exists in this business. Pick a different name.",
+    WAREHOUSE_NAME_TAKEN: "A warehouse with this name already exists in this business. Pick a different name.",
+    CUSTOMER_PHONE_TAKEN: "A customer with this phone number already exists at this location.",
+    DATA_INTEGRITY_ERROR: "This action conflicts with existing data. Please refresh and try again.",
 };
 
 /**

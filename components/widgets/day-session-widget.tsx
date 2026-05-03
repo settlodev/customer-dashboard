@@ -5,9 +5,12 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
+  Clock,
   Loader2,
+  LockKeyhole,
   Minus,
   PlayCircle,
+  PlusCircle,
   RotateCw,
   ShoppingBag,
   TrendingUp,
@@ -21,7 +24,11 @@ import {
   DaySessionSummary,
   getDaySessionSummary,
 } from "@/lib/actions/day-session-summary-actions";
-import { openDaySession } from "@/lib/actions/location-day-sessions-actions";
+import {
+  closeDaySession,
+  extendDaySession,
+  openDaySession,
+} from "@/lib/actions/location-day-sessions-actions";
 
 const REFRESH_INTERVAL_MS = 60_000;
 const EXPANDED_STORAGE_KEY = "daySessionWidget.expanded";
@@ -183,10 +190,55 @@ export function DaySessionWidget({ locationId }: DaySessionWidgetProps) {
     });
   };
 
+  const handleClose = () => {
+    if (!locationId) return;
+    if (typeof window !== "undefined" && !window.confirm(
+      "Close the business day? Trailing payments will still settle on this session."
+    )) return;
+    startTransition(async () => {
+      const result = await closeDaySession(locationId);
+      if (result.responseType === "success") {
+        toast({ variant: "success", title: "Business day closed" });
+        await load();
+        window.dispatchEvent(new CustomEvent(DAY_SESSION_CHANGED_EVENT));
+      } else {
+        // Most likely error: open orders still in flight. Surface so the
+        // operator can settle them or force-close from the close-day page.
+        toast({
+          variant: "destructive",
+          title: "Could not close the day",
+          description: result.message,
+        });
+      }
+    });
+  };
+
+  const handleExtend = (minutes: number) => {
+    if (!locationId || !summary?.session?.id) return;
+    startTransition(async () => {
+      const result = await extendDaySession(
+        locationId,
+        summary.session!.id,
+        minutes,
+      );
+      if (result.responseType === "success") {
+        toast({ variant: "success", title: `Session extended by ${minutes} minutes` });
+        await load();
+        window.dispatchEvent(new CustomEvent(DAY_SESSION_CHANGED_EVENT));
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Could not extend the session",
+          description: result.message,
+        });
+      }
+    });
+  };
+
   if (!locationId) return null;
 
   return (
-    <div className="fixed bottom-6 right-[5rem] z-40 flex justify-end">
+    <div className="fixed bottom-6 right-6 z-40 flex justify-end">
       <AnimatePresence mode="popLayout">
         {summary === null ? (
           minimized ? (
@@ -262,9 +314,12 @@ export function DaySessionWidget({ locationId }: DaySessionWidgetProps) {
                 summary={summary}
                 currency={currency}
                 loading={loading}
+                pending={pending}
                 onRefresh={load}
                 onCollapse={() => persistExpanded(false)}
                 onMinimize={() => persistMinimized(true)}
+                onClose={handleClose}
+                onExtend={handleExtend}
               />
             </div>
           </motion.div>
@@ -444,25 +499,38 @@ function OpenCardContent({
   summary,
   currency,
   loading,
+  pending,
   onRefresh,
   onCollapse,
   onMinimize,
+  onClose,
+  onExtend,
 }: {
   summary: DaySessionSummary;
   currency: string;
   loading: boolean;
+  pending: boolean;
   onRefresh: () => void;
   onCollapse: () => void;
   onMinimize: () => void;
+  onClose: () => void;
+  onExtend: (minutes: number) => void;
 }) {
   const { session, report } = summary;
   const duration = useDuration(session?.openedAt ?? "");
   if (!session) return null;
 
+  // Backend sets extensionAllowed=true only inside the grace window.
+  // Hide the button entirely outside it — operator can't extend yet
+  // anyway, surfacing it disabled would just invite "why?".
+  const extensionAllowed = session.extensionAllowed === true;
+  const extensionCount = session.extensionCount ?? 0;
+  const effectiveCloseAt = session.effectiveCloseAt ?? session.extendedUntil ?? null;
+
   return (
     <>
       <div className="flex items-start justify-between px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
             <LiveDot size="md" />
             <span className="text-sm font-semibold">{session.identifier}</span>
@@ -470,8 +538,19 @@ function OpenCardContent({
           <div className="text-xs text-muted-foreground mt-0.5">
             {session.businessDate} · open {duration}
           </div>
+          {effectiveCloseAt && (
+            <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              <span>Auto-closes {formatTime(effectiveCloseAt)}</span>
+              {extensionCount > 0 && (
+                <span className="text-amber-600 dark:text-amber-400">
+                  · extended ×{extensionCount}
+                </span>
+              )}
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <motion.button
             onClick={onRefresh}
             aria-label="Refresh"
@@ -515,13 +594,6 @@ function OpenCardContent({
               tone="danger"
             />
           )}
-          {report.expenses.count > 0 && (
-            <Row
-              label={`Expenses (${report.expenses.count})`}
-              value={`-${formatMoney(report.expenses.amount, currency)}`}
-              tone="muted"
-            />
-          )}
           <div className="pt-1">
             <Row label="Cash in drawer" value={formatMoney(report.cashNet, currency)} strong />
           </div>
@@ -546,6 +618,44 @@ function OpenCardContent({
           {loading ? "Loading summary…" : "No metrics yet for this session."}
         </div>
       )}
+
+      <div className="flex gap-2 px-4 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+        {extensionAllowed && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onExtend(30)}
+            disabled={pending}
+            className="h-8 flex-1 rounded-md"
+            title="Push the auto-close back by 30 minutes"
+          >
+            {pending ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <>
+                <PlusCircle className="w-3 h-3 mr-1.5" />
+                +30 min
+              </>
+            )}
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="default"
+          onClick={onClose}
+          disabled={pending}
+          className={cn("h-8 rounded-md", extensionAllowed ? "flex-1" : "w-full")}
+        >
+          {pending ? (
+            <Loader2 className="w-3 h-3 animate-spin" />
+          ) : (
+            <>
+              <LockKeyhole className="w-3 h-3 mr-1.5" />
+              Close day
+            </>
+          )}
+        </Button>
+      </div>
     </>
   );
 }
@@ -650,6 +760,21 @@ function formatDuration(openedAt: Date): string {
 function formatMoney(value: number, currency: string): string {
   const n = Number(value) || 0;
   return `${currency} ${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+}
+
+/**
+ * Wall-clock time of an ISO-8601 instant in the operator's locale —
+ * "Auto-closes 22:30". Day boundary skipped for legibility (a session
+ * scheduled to close in <24h almost never crosses two date boundaries
+ * worth showing).
+ */
+function formatTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return iso;
+  }
 }
 
 function formatCompactMoney(value: number, currency: string): string {

@@ -154,6 +154,7 @@ interface StockVariantOption {
 const DEFAULT_VARIANT: ProductVariantInput = {
   name: "Default",
   sku: "",
+  barcode: "",
   imageUrl: "",
   active: true,
   sellabilityMode: "UNLIMITED",
@@ -178,6 +179,7 @@ function variantToInput(v: ProductVariant): ProductVariantInput {
     id: v.id,
     name: v.name,
     sku: v.sku ?? "",
+    barcode: v.barcode ?? "",
     imageUrl: v.imageUrl ?? "",
     active: v.active,
     sellabilityMode: mode,
@@ -1542,7 +1544,7 @@ function VariantEditor({
       )}
 
       {showHeader && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FormField
             control={form.control}
             name={`variants.${index}.name`}
@@ -1574,6 +1576,26 @@ function VariantEditor({
                     placeholder="Auto-generated if blank"
                     {...field}
                     value={field.value ?? ""}
+                    disabled={disabled}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name={`variants.${index}.barcode`}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Barcode</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Optional · scan or enter, or generate later"
+                    {...field}
+                    value={field.value ?? ""}
+                    maxLength={50}
                     disabled={disabled}
                   />
                 </FormControl>

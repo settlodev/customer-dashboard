@@ -31,7 +31,6 @@ const StockExport: React.FC<TableExportProps> = ({
       'Display Name',
       'SKU',
       'Unit',
-      'Conversion',
       'Barcode',
     ];
 
@@ -42,7 +41,6 @@ const StockExport: React.FC<TableExportProps> = ({
         stock.displayName || '',
         stock.sku || '',
         stock.unitAbbreviation || '',
-        stock.conversionToBase?.toString() || '1',
         stock.barcode || '',
       ].map(escapeCSVValue).join(',')),
     ];

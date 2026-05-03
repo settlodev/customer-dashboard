@@ -6,12 +6,14 @@ import {
   PageBreadcrumbs,
   PageBody,
 } from "@/components/layouts/page-shell";
-import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-modification/column";
 import { searchStockModifications } from "@/lib/actions/stock-modification-actions";
-import { Plus, Activity, ArrowDownRight, ArrowUpRight, AlertTriangle } from "lucide-react";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getStockModificationKpi } from "@/lib/actions/reports-analytics-actions";
+import { StockModificationKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
+import { Plus } from "lucide-react";
 import {
   MODIFICATION_CATEGORY_OPTIONS,
   ModificationCategory,
@@ -35,15 +37,16 @@ export default async function Page({ searchParams }: Params) {
     ? (resolvedParams.category as ModificationCategory)
     : undefined;
 
-  const responseData = await searchStockModifications(
-    page ? page - 1 : 0,
-    pageLimit,
-    category,
-  );
+  const [responseData, location] = await Promise.all([
+    searchStockModifications(page ? page - 1 : 0, pageLimit, category),
+    getCurrentLocation(),
+  ]);
 
   const data = responseData.content;
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;
+
+  const kpi = location?.id ? await getStockModificationKpi(location.id) : null;
 
   return (
     <PageShell>
@@ -61,55 +64,25 @@ export default async function Page({ searchParams }: Params) {
         }
       />
       <PageBody>
-        {/* Placeholder KPIs — wire to real aggregates later. */}
-        <KpiStrip cols={4}>
-          <KpiCard
-            icon={<Activity className="h-3 w-3" />}
-            label="Modifications (30d)"
-            value="58"
-            delta="+12 wk"
-            deltaTone="pos"
-            spark={[20, 22, 26, 28, 30, 36, 42, 50]}
-          />
-          <KpiCard
-            icon={<ArrowUpRight className="h-3 w-3" />}
-            label="Net adjustment up"
-            value="+1,420"
-            unit="units"
-            deltaTone="pos"
-          />
-          <KpiCard
-            icon={<ArrowDownRight className="h-3 w-3" />}
-            label="Net adjustment down"
-            value="−980"
-            unit="units"
-            deltaTone="neg"
-          />
-          <KpiCard
-            icon={<AlertTriangle className="h-3 w-3" />}
-            label="High-cost write-offs"
-            value="4"
-            delta="approval pending"
-            deltaTone="neg"
-          />
-        </KpiStrip>
-
         {total > 0 || category ? (
-          <DataTable
-            columns={columns}
-            data={data}
-            searchKey="modificationNumber"
-            pageNo={page}
-            total={total}
-            pageCount={pageCount}
-            disableArchive
-            rowClickBasePath="/stock-modifications"
-            filterKey="category"
-            filterOptions={MODIFICATION_CATEGORY_OPTIONS.map((o) => ({
-              label: o.label,
-              value: o.value,
-            }))}
-          />
+          <>
+            <StockModificationKpiStrip summary={kpi} />
+            <DataTable
+              columns={columns}
+              data={data}
+              searchKey="modificationNumber"
+              pageNo={page}
+              total={total}
+              pageCount={pageCount}
+              disableArchive
+              rowClickBasePath="/stock-modifications"
+              filterKey="category"
+              filterOptions={MODIFICATION_CATEGORY_OPTIONS.map((o) => ({
+                label: o.label,
+                value: o.value,
+              }))}
+            />
+          </>
         ) : (
           <NoItems newItemUrl="/stock-modifications/new" itemName="stock modifications" />
         )}

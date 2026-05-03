@@ -27,6 +27,13 @@ interface Props {
   sku?: string | null;
   /** Disables assign/generate controls when the variant is archived etc. */
   disabled?: boolean;
+  /**
+   * Server action that assigns / auto-generates the barcode. Defaults to
+   * the stock-variant action so existing call sites stay untouched. Pass
+   * a product-specific action (e.g. {@code assignProductBarcode}) to
+   * reuse this widget for product variants.
+   */
+  assign?: (variantId: string, barcode?: string) => Promise<unknown>;
 }
 
 /**
@@ -40,6 +47,7 @@ export function BarcodeManager({
   barcode,
   sku,
   disabled = false,
+  assign,
 }: Props) {
   const [manageOpen, setManageOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
@@ -53,6 +61,7 @@ export function BarcodeManager({
         variantName={variantName}
         barcode={null}
         disabled={disabled}
+        assign={assign}
         trigger={
           <Button
             type="button"
@@ -81,6 +90,7 @@ export function BarcodeManager({
         variantName={variantName}
         barcode={barcode}
         disabled={disabled}
+        assign={assign}
         trigger={
           <Button
             type="button"
@@ -122,6 +132,7 @@ function BarcodeManageDialog({
   barcode,
   disabled,
   trigger,
+  assign,
 }: {
   open: boolean;
   onOpenChange: (next: boolean) => void;
@@ -130,6 +141,7 @@ function BarcodeManageDialog({
   barcode: string | null;
   disabled: boolean;
   trigger: React.ReactNode;
+  assign?: (variantId: string, barcode?: string) => Promise<unknown>;
 }) {
   const [custom, setCustom] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -137,6 +149,7 @@ function BarcodeManageDialog({
   const [imageLoading, setImageLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const assignFn = assign ?? assignBarcode;
 
   useEffect(() => {
     if (!open || !barcode) {
@@ -158,10 +171,10 @@ function BarcodeManageDialog({
     };
   }, [open, barcode]);
 
-  const assign = (code?: string) => {
+  const submit = (code?: string) => {
     startTransition(async () => {
       try {
-        await assignBarcode(variantId, code);
+        await assignFn(variantId, code);
         toast({
           title: code ? "Barcode assigned" : "Barcode generated",
           description: variantName,
@@ -226,7 +239,7 @@ function BarcodeManageDialog({
             />
             <Button
               type="button"
-              onClick={() => assign(custom.trim())}
+              onClick={() => submit(custom.trim())}
               disabled={isPending || disabled || custom.trim().length === 0}
             >
               Save
@@ -238,7 +251,7 @@ function BarcodeManageDialog({
           <Button
             type="button"
             variant="outline"
-            onClick={() => assign()}
+            onClick={() => submit()}
             disabled={isPending || disabled}
           >
             {isPending ? (

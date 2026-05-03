@@ -252,6 +252,7 @@ const [uploadError, setUploadError] = useState<string | null>(null);
       <DialogTrigger asChild>
         <Button
           variant="outline"
+          size="sm"
           onClick={() => setIsOpen(true)}
         >
           <Upload className="h-4 w-4 mr-1.5" />

@@ -13,13 +13,6 @@ export const StockVariantSchema = object({
     "Variant name is required",
   ),
   sku: string().optional().nullish(),
-  unitId: string({ required_error: "Unit is required" }).uuid(
-    "Select a valid unit",
-  ),
-  conversionToBase: preprocess(
-    toNumber,
-    number().positive().default(1),
-  ),
   barcode: string().max(50).optional().nullish(),
   serialTracked: boolean().default(false),
   archived: boolean().default(false),
@@ -29,7 +22,10 @@ export const StockVariantSchema = object({
 
   // Selling price for the matching product variant when autoCreateProduct
   // is set on the stock form. Ignored on the regular createStock path.
-  sellingPrice: preprocess(toNumber, number().positive().optional()),
+  // Nonnegative (not strictly positive) so merchants can save a
+  // not-yet-priced product variant — the stock form surfaces an inline
+  // warning when qty>0 with no price set.
+  sellingPrice: preprocess(toNumber, number().nonnegative().optional()),
 
   // Optional reorder / alert config, applied to the InventoryBalance row the
   // stock creation flow creates. Left undefined → backend doesn't touch them.

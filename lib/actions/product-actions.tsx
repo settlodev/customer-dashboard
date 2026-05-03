@@ -39,6 +39,10 @@ import { getCurrentDestination } from "./context";
 type VariantPayload = {
   name: string;
   sku?: string | null;
+  // Optional barcode — backend treats blank as "leave alone" on update,
+  // null/undefined as "don't touch", and a non-blank value as "set this
+  // (must be unique across the location)".
+  barcode?: string | null;
   imageUrl?: string | null;
   active?: boolean;
   pricingStrategy: "MANUAL" | "PERCENTAGE_MARKUP" | "FIXED_MARKUP";
@@ -61,6 +65,7 @@ function mapVariant(v: ProductVariantInput): VariantPayload {
   const base: VariantPayload = {
     name: v.name,
     sku: v.sku || undefined,
+    barcode: v.barcode || undefined,
     imageUrl: v.imageUrl || undefined,
     active: v.active,
     pricingStrategy: v.pricingStrategy,
@@ -116,10 +121,16 @@ export async function fetchAllProducts(): Promise<Product[]> {
   }
 }
 
+// Tab-aligned view filter mirroring the backend's ProductListView enum.
+// The dashboard sends one of these values per merchant tab and renders
+// the response unchanged — no client-side row filtering.
+export type ProductView = "active" | "archived" | "draft" | "all";
+
 export async function searchProducts(
   q: string,
   page: number,
   pageLimit: number,
+  view?: ProductView,
 ): Promise<ApiResponse<Product>> {
   try {
     const apiClient = new ApiClient();
@@ -130,6 +141,10 @@ export async function searchProducts(
     params.set("size", String(pageLimit || 10));
     params.set("sortBy", "createdAt");
     params.set("sortDirection", "DESC");
+    // Tab filter — backend's ProductController.getAll routes ?view= to
+    // the matching repository finder (active+not-archived, archived,
+    // drafts, or every non-deleted row).
+    if (view) params.set("view", view.toUpperCase());
 
     const data = await apiClient.get(
       inventoryUrl(`/api/v1/products?${params.toString()}`),
@@ -144,6 +159,28 @@ export async function getProduct(id: string): Promise<Product> {
   const apiClient = new ApiClient();
   const data = await apiClient.get(inventoryUrl(`/api/v1/products/${id}`));
   return parseStringify(data);
+}
+
+// Per-tab counts powering the merchant tab badges on /products.
+// One round-trip replaces the prior pattern of inferring counts from a
+// full list fetch.
+export interface ProductListCounts {
+  active: number;
+  archived: number;
+  draft: number;
+  all: number;
+}
+
+export async function getProductCounts(): Promise<ProductListCounts> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(
+      inventoryUrl("/api/v1/products/counts"),
+    );
+    return parseStringify(data) as ProductListCounts;
+  } catch {
+    return { active: 0, archived: 0, draft: 0, all: 0 };
+  }
 }
 
 // ── Products: create / update / delete ──────────────────────────────
@@ -772,6 +809,7 @@ function mapVariantPartial(v: Partial<ProductVariantInput>) {
   return {
     name: v.name?.trim() || undefined,
     sku: v.sku || undefined,
+    barcode: v.barcode || undefined,
     imageUrl: v.imageUrl || undefined,
     active: v.active,
     pricingStrategy: v.pricingStrategy,

@@ -1,19 +1,11 @@
 import Link from "next/link";
-import {
-  Plus,
-  Lock,
-  ClipboardCheck,
-  Activity,
-  ShieldCheck,
-  AlertTriangle,
-} from "lucide-react";
+import { Plus, Lock } from "lucide-react";
 import {
   PageShell,
   PageHeader,
   PageBreadcrumbs,
   PageBody,
 } from "@/components/layouts/page-shell";
-import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import {
   Alert,
   AlertIcon,
@@ -27,6 +19,9 @@ import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-take/columns";
 import { getStockTakes } from "@/lib/actions/stock-take-actions";
 import { getLocationConfig } from "@/lib/actions/location-config-actions";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getStockTakeKpi } from "@/lib/actions/reports-analytics-actions";
+import { StockTakeKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
 import type { CycleCountType, StockTakeStatus } from "@/types/stock-take/type";
 import CycleCountTypeFilter from "@/components/widgets/stock-take/cycle-count-filter";
 
@@ -56,15 +51,18 @@ export default async function Page({ searchParams }: Params) {
   const status = STATUS_VALUES.find((s) => s === resolvedParams.status);
   const cycleCountType = CYCLE_COUNT_VALUES.find((c) => c === resolvedParams.cycleCountType);
 
-  const [responseData, config] = await Promise.all([
+  const [responseData, config, location] = await Promise.all([
     getStockTakes(page ? page - 1 : 0, pageLimit, status, cycleCountType),
     getLocationConfig(),
+    getCurrentLocation(),
   ]);
 
   const data = responseData.content ?? [];
   const total = responseData.totalElements ?? 0;
   const pageCount = responseData.totalPages ?? 0;
   const cycleCountingEnabled = config?.cycleCountingEnabled ?? false;
+
+  const kpi = location?.id ? await getStockTakeKpi(location.id) : null;
 
   return (
     <PageShell>
@@ -102,56 +100,24 @@ export default async function Page({ searchParams }: Params) {
           </Alert>
         )}
 
-        {/* Placeholder KPIs — wire to real aggregates later. */}
-        <KpiStrip cols={4}>
-          <KpiCard
-            icon={<ClipboardCheck className="h-3 w-3" />}
-            label="Open takes"
-            value="3"
-            unit="active"
-            delta="2 in progress"
-            deltaTone="neutral"
-          />
-          <KpiCard
-            icon={<Activity className="h-3 w-3" />}
-            label="Counts (30d)"
-            value="14"
-            delta="+3 wk"
-            deltaTone="pos"
-            spark={[2, 3, 4, 5, 7, 8, 10, 12]}
-          />
-          <KpiCard
-            icon={<ShieldCheck className="h-3 w-3" />}
-            label="Avg accuracy"
-            value="98.6"
-            unit="%"
-            delta="+0.4 pts"
-            deltaTone="pos"
-          />
-          <KpiCard
-            icon={<AlertTriangle className="h-3 w-3" />}
-            label="Variances flagged"
-            value="7"
-            delta="needs review"
-            deltaTone="neg"
-          />
-        </KpiStrip>
-
         {total > 0 || status || cycleCountType ? (
-          <DataTable
-            columns={columns}
-            data={data}
-            searchKey="takeNumber"
-            pageNo={page}
-            total={total}
-            pageCount={pageCount}
-            disableArchive
-            filterKey="status"
-            filterOptions={STATUS_VALUES.map((s) => ({
-              value: s,
-              label: s.replace(/_/g, " "),
-            }))}
-          />
+          <>
+            <StockTakeKpiStrip summary={kpi} />
+            <DataTable
+              columns={columns}
+              data={data}
+              searchKey="takeNumber"
+              pageNo={page}
+              total={total}
+              pageCount={pageCount}
+              disableArchive
+              filterKey="status"
+              filterOptions={STATUS_VALUES.map((s) => ({
+                value: s,
+                label: s.replace(/_/g, " "),
+              }))}
+            />
+          </>
         ) : cycleCountingEnabled ? (
           <NoItems newItemUrl="/stock-takes/new" itemName="stock takes" />
         ) : null}

@@ -148,15 +148,18 @@ export const columns: ColumnDef<StockWithBalance>[] = [
     enableHiding: true,
     cell: ({ row }) => {
       const archived = row.original.archived;
+      const draft = row.original.draft === true;
+      const label = draft ? "Draft" : archived ? "Archived" : "Active";
+      const tone = draft
+        ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+        : archived
+          ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+          : "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400";
       return (
         <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-            !archived
-              ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
-              : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-          }`}
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${tone}`}
         >
-          {archived ? "Archived" : "Active"}
+          {label}
         </span>
       );
     },

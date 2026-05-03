@@ -5,6 +5,7 @@ import { extractSubscriptionStatus } from "@/lib/jwt-utils";
 import { parseStringify } from "@/lib/utils";
 import { FormResponse, activeBusiness, TokenRefreshResponse } from "@/types/types";
 import ApiClient from "@/lib/settlo-api-client";
+import { getUIErrorMessage } from "@/lib/settlo-api-error-handler";
 import { cookies } from "next/headers";
 import { Business } from "@/types/business/type";
 import { Location } from "@/types/location/type";
@@ -412,11 +413,22 @@ export const createBusinessWithLocations = async (data: {
       throw error;
     }
 
+    // Pull the structured error code (set by handleSettloApiError on the
+    // ErrorResponseType it throws) and translate via UI_ERROR_MESSAGES so
+    // the form gets human-readable copy without each caller branching.
+    // BUSINESS_NAME_TAKEN / LOCATION_NAME_TAKEN are the field-level
+    // signals the form uses to highlight the offending input.
+    const errorCode: string | undefined = error?.code;
+    const friendlyMessage = getUIErrorMessage(
+      errorCode,
+      error?.message,
+      "Something went wrong while processing your request, please try again.",
+    );
+
     return parseStringify({
       responseType: "error",
-      message:
-        error.message ||
-        "Something went wrong while processing your request, please try again.",
+      message: friendlyMessage,
+      errorCode,
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }

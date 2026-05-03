@@ -85,6 +85,10 @@ export interface GrnItem {
   originalUnitCost: number | null;
   /** Exchange rate captured at receive time. */
   rateUsed: number | null;
+  /** Pack the operator transacted in (null when entered directly in stock units). */
+  purchaseUnitId: string | null;
+  /** Quantity as the operator typed it in `purchaseUnitId` (null when not used). */
+  purchaseQuantity: number | null;
   batchNumber: string | null;
   supplierBatchReference: string | null;
   expiryDate: string | null;
@@ -110,6 +114,8 @@ export interface CreateGrnItemPayload {
   stockVariantId: string;
   receivedQuantity: number;
   unitCost: number;
+  /** Optional purchase pack — see `GrnItem.purchaseUnitId`. */
+  purchaseUnitId?: string;
   batchNumber?: string;
   supplierBatchReference?: string;
   expiryDate?: string;

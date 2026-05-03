@@ -94,6 +94,7 @@ export async function createGrn(
       expiryDate: item.expiryDate || undefined,
       batchNumber: item.batchNumber || undefined,
       supplierBatchReference: item.supplierBatchReference || undefined,
+      purchaseUnitId: item.purchaseUnitId || undefined,
     })),
   };
 

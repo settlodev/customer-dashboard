@@ -114,6 +114,13 @@ export interface LocationSettings {
   autoOpenDay: boolean;
   autoCloseDay: boolean;
   closeGraceMinutes: number;
+  /**
+   * Hard upper bound on session length before the scheduler force-closes.
+   * Acts as both a fallback (when operating hours for the day are missing
+   * or marked closed) and a cap on the hours-derived close moment. Range
+   * 6–168 (matches the backend CHECK constraint).
+   */
+  maxSessionLengthHours: number;
   continuousOperation: boolean;
   dailyCutoffTime: string | null; // HH:mm
 

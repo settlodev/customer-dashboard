@@ -33,6 +33,8 @@ export default async function Page({ params }: { params: Params }) {
       productVariants.push({
         id: v.id,
         label: `${product.name} — ${v.name}`,
+        price: v.price ?? null,
+        costPrice: v.costPrice ?? null,
       });
     }
   }

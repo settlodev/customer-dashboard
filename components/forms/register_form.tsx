@@ -465,7 +465,23 @@ function RegisterForm({ step }: { step: string }) {
             locations: locationsList,
           });
           if (!response) { setError("Something went wrong."); return; }
-          if (response.responseType === "error") { setError(response.message); }
+          if (response.responseType === "error") {
+            // Specific name-conflict codes — surface a field-level error
+            // so the offending input is highlighted, not just a banner.
+            // Falls back to the global error string for anything else.
+            const code = (response as { errorCode?: string }).errorCode;
+            if (code === "BUSINESS_NAME_TAKEN" || code === "LOCATION_NAME_TAKEN") {
+              // Step 3 reuses the business name field as the
+              // single-location's name when only one location is being
+              // registered, so a conflict on either side maps to the
+              // same input. Multi-location flows still see the message
+              // in the global banner with enough context to act on it.
+              businessForm.setError("name", { type: "server", message: response.message });
+              setError(response.message);
+            } else {
+              setError(response.message);
+            }
+          }
           else if (response.responseType === "success") { router.push("/dashboard"); }
         } catch (err: any) {
           setError(err.message || "An unexpected error occurred.");

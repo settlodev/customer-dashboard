@@ -55,6 +55,10 @@ export interface StockIntakeRecordItem {
   originalUnitCost: number | null;
   /** Exchange rate captured at confirm time (originalCurrency → currency). */
   rateUsed: number | null;
+  /** Pack the operator transacted in (null when entered directly in stock units). */
+  purchaseUnitId: string | null;
+  /** Quantity as the operator typed it in `purchaseUnitId` (null when not used). */
+  purchaseQuantity: number | null;
   /** Per-unit serial numbers for serial-tracked variants. */
   serialNumbers: string[] | null;
 }

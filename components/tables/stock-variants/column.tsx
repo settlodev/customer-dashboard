@@ -70,16 +70,6 @@ export const columns: ColumnDef<StockVariant>[] = [
     ),
   },
   {
-    accessorKey: "conversionToBase",
-    header: "Conversion",
-    enableHiding: true,
-    cell: ({ row }) => (
-      <span className="text-gray-600 dark:text-gray-400">
-        {row.original.conversionToBase}
-      </span>
-    ),
-  },
-  {
     id: "serialTracked",
     header: "Serial",
     enableHiding: true,

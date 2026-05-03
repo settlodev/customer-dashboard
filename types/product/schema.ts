@@ -21,6 +21,7 @@ export const ProductVariantSchema = object({
     .min(1, "Variant name is required"),
 
   sku: string().optional().nullish(),
+  barcode: string().max(50).optional().nullish(),
   imageUrl: string().optional().nullish(),
   active: boolean().default(true),
 
@@ -296,6 +297,7 @@ export const AddonGroupItemSchema = object({
   id: string().uuid().optional().nullish(),
   productVariantId: string({ required_error: "Pick a product variant" }).uuid(),
   priceOverride: preprocess(toOptionalNumber, number().nonnegative().optional().nullish()),
+  isDefault: boolean().default(false),
   sortOrder: preprocess(toNumber, number().int().nonnegative()).default(0),
   active: boolean().default(true),
 });
@@ -309,13 +311,48 @@ export const AddonGroupSchema = object({
   maxSelections: preprocess(toNumber, number().int().min(1)).default(10),
   sortOrder: preprocess(toNumber, number().int().nonnegative()).default(0),
   active: boolean().default(true),
-  items: array(AddonGroupItemSchema).default([]),
+  items: array(AddonGroupItemSchema)
+    .min(1, "Add at least one item")
+    .default([]),
 }).superRefine((val, ctx) => {
   if (val.maxSelections < val.minSelections) {
     ctx.addIssue({
       code: "custom",
       path: ["maxSelections"],
-      message: "Max selections must be ≥ min selections",
+      message: "Max must be ≥ min",
+    });
+  }
+  // No duplicate variants in the same group — the backend's partial
+  // unique index would reject this anyway, so catch it before we POST.
+  const seen = new Set<string>();
+  val.items.forEach((it, i) => {
+    if (it.productVariantId && seen.has(it.productVariantId)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["items", i, "productVariantId"],
+        message: "This variant is already in the group",
+      });
+    }
+    if (it.productVariantId) seen.add(it.productVariantId);
+  });
+  // Pre-selected defaults must fit inside the selection bounds — a
+  // group that ships with 5 defaults but caps at 3 would fail at
+  // checkout the first time a customer opens it.
+  const defaultsCount = val.items.filter((i) => i.isDefault).length;
+  if (defaultsCount > val.maxSelections) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["items"],
+      message: `You have ${defaultsCount} default${defaultsCount === 1 ? "" : "s"} but the group allows at most ${val.maxSelections}`,
+    });
+  }
+  // A required group (min ≥ 1) needs at least min defaults so the
+  // bundled state is valid out of the box.
+  if (val.minSelections >= 1 && defaultsCount < val.minSelections) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["items"],
+      message: `Pre-select at least ${val.minSelections} item${val.minSelections === 1 ? "" : "s"} so this required group ships in a valid state`,
     });
   }
 });

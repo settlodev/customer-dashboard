@@ -223,8 +223,18 @@ export const columns: ColumnDef<ProductVariantRow>[] = [
     cell: ({ row }) => {
       const productArchived = row.original.product.archivedAt != null;
       const variantArchived = row.original.variantArchivedAt != null;
+      const isDraft = row.original.product.lifecycleStatus === "DRAFT";
       const isActive =
         row.original.product.active && row.original.variantActive;
+
+      if (isDraft) {
+        return (
+          <Badge variant="warn">
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            Draft
+          </Badge>
+        );
+      }
 
       if (productArchived || variantArchived) {
         return (

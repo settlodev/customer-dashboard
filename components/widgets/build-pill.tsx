@@ -42,7 +42,7 @@ export function BuildPill({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "pointer-events-none fixed bottom-3 right-3 z-30",
+        "pointer-events-none fixed top-3 right-3 z-30",
         className,
       )}
     >
@@ -60,7 +60,7 @@ export function BuildPill({ className }: { className?: string }) {
               <span>{sha}</span>
             </button>
           </TooltipTrigger>
-          <TooltipContent side="top" align="end" className="max-w-[260px]">
+          <TooltipContent side="bottom" align="end" className="max-w-[260px]">
             <div className="flex flex-col gap-1">
               <p className="text-[12px] font-medium tracking-tight">
                 Build information

@@ -8,7 +8,12 @@ import React, {
   useState,
   useTransition,
 } from "react";
-import { useForm, useFieldArray, type FieldErrors } from "react-hook-form";
+import {
+  useForm,
+  useFieldArray,
+  useWatch,
+  type FieldErrors,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
@@ -22,7 +27,6 @@ import {
   ArchiveRestore,
   Loader2,
   Wand2,
-  ArrowRightLeft,
   SlidersHorizontal,
   ChevronDown,
   ChevronRight,
@@ -85,17 +89,21 @@ import {
   publishStock,
 } from "@/lib/actions/stock-actions";
 import { assignBarcode } from "@/lib/actions/barcode-actions";
-import { getUnits, convertUnits } from "@/lib/actions/unit-actions";
+import { getUnits } from "@/lib/actions/unit-actions";
+import { fetchAllCategories } from "@/lib/actions/category-actions";
 import type { Stock } from "@/types/stock/type";
 import type { UnitOfMeasure } from "@/types/unit/type";
+import type { Category } from "@/types/category/type";
 import { StockSchema } from "@/types/stock/schema";
 import type { FormResponse } from "@/types/types";
 import UnitSelector from "@/components/widgets/unit-selector";
-import CompatibleUnitSelector from "@/components/widgets/compatible-unit-selector";
 import SupplierSelector from "@/components/widgets/supplier-selector";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { MATERIAL_TYPE_OPTIONS } from "@/types/catalogue/enums";
 import { BusinessDayClosedDialog } from "@/components/widgets/business-day-closed-dialog";
 import { useBusinessDayGuard } from "@/hooks/use-business-day-guard";
+import { useLocationCurrency } from "@/hooks/use-location-currency";
+import { formatMoney } from "@/lib/helpers";
 
 import styles from "./styles/form-shell.module.css";
 
@@ -109,8 +117,6 @@ interface StockFormProps {
 
 const DEFAULT_VARIANT = {
   name: "",
-  unitId: "",
-  conversionToBase: 1,
   serialTracked: false,
   archived: false,
   initialQuantity: 0,
@@ -122,19 +128,6 @@ const DEFAULT_VARIANT = {
   overstockThreshold: undefined as number | undefined,
   sellingPrice: undefined as number | undefined,
 };
-
-function formatConversion(
-  conversion: number,
-  variantAbbr: string,
-  baseAbbr: string,
-): string {
-  if (conversion >= 1) {
-    const v = Math.round(conversion * 1e6) / 1e6;
-    return `1 ${variantAbbr} = ${v.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${baseAbbr}`;
-  }
-  const inv = Math.round((1 / conversion) * 1e6) / 1e6;
-  return `${inv.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${variantAbbr} = 1 ${baseAbbr}`;
-}
 
 interface GalleryImage {
   name: string;
@@ -162,14 +155,28 @@ export default function StockForm({ item, balances }: StockFormProps) {
   // (variants[i].sellingPrice) so Coca-Cola 330ml and 500ml are priced
   // independently.
   const [autoCreateProduct, setAutoCreateProduct] = useState<boolean>(false);
+  // Categories are required by the product side when autoCreateProduct is on.
+  // Held outside the form because they're not part of StockSchema — they
+  // travel as productOptions to createStockWithProduct.
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const locationCurrency = useLocationCurrency();
 
   const isEditing = !!item;
   const lastSyncedNameRef = useRef("");
-  const lastSyncedUnitRef = useRef("");
 
   useEffect(() => {
     getUnits().then(setUnits);
   }, []);
+
+  // Lazy-load categories the first time the merchant flips on
+  // autoCreateProduct, so create-only-stock flows skip the round-trip.
+  useEffect(() => {
+    if (!autoCreateProduct || categories.length > 0) return;
+    fetchAllCategories()
+      .then((c) => setCategories(c ?? []))
+      .catch(() => setCategories([]));
+  }, [autoCreateProduct, categories.length]);
 
   const unitMap = useMemo(
     () => new Map(units.map((u) => [u.id, u])),
@@ -189,8 +196,6 @@ export default function StockForm({ item, balances }: StockFormProps) {
             id: v.id,
             name: v.name,
             sku: v.sku ?? undefined,
-            unitId: v.unitId,
-            conversionToBase: v.conversionToBase,
             barcode: v.barcode ?? undefined,
             serialTracked: v.serialTracked,
             archived: v.archived,
@@ -216,7 +221,13 @@ export default function StockForm({ item, balances }: StockFormProps) {
   const stockName = form.watch("name");
   const baseUnitId = form.watch("baseUnitId");
   const materialType = form.watch("materialType");
-  const watchedVariants = form.watch("variants");
+  // useWatch (vs form.watch) for the variants array so nested field updates
+  // — especially sellingPrice typed inside <NumericFormat> — reliably
+  // re-trigger the readiness memo.
+  const watchedVariants = useWatch({
+    control: form.control,
+    name: "variants",
+  });
 
   // Auto-sync stock name → first variant name (single-variant create flow)
   useEffect(() => {
@@ -227,110 +238,6 @@ export default function StockForm({ item, balances }: StockFormProps) {
       lastSyncedNameRef.current = stockName || "";
     }
   }, [stockName, isEditing, fields.length, form]);
-
-  // Auto-sync base unit → first variant unit
-  useEffect(() => {
-    if (isEditing || fields.length > 1) return;
-    const current = form.getValues("variants.0.unitId");
-    if (current === "" || current === lastSyncedUnitRef.current) {
-      form.setValue("variants.0.unitId", baseUnitId || "");
-      form.setValue("variants.0.conversionToBase", 1);
-      lastSyncedUnitRef.current = baseUnitId || "";
-    }
-  }, [baseUnitId, isEditing, fields.length, form]);
-
-  // Re-validate variants whenever the base unit actually changes (not on
-  // mount). Variants whose existing unit can no longer scale down to the new
-  // base — different family, or same family but larger — get reset to the
-  // base. Existing data on edit-form mount is left untouched: prevBaseUnitRef
-  // starts undefined and only flips to a known value after the first render.
-  const prevBaseUnitRef = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    const prev = prevBaseUnitRef.current;
-    prevBaseUnitRef.current = baseUnitId;
-    if (prev === undefined) return;
-    if (prev === baseUnitId || !baseUnitId) return;
-
-    const variants = form.getValues("variants") ?? [];
-    variants.forEach(async (v, i) => {
-      if (!v.unitId) return;
-      if (v.unitId === baseUnitId) {
-        form.setValue(`variants.${i}.conversionToBase`, 1);
-        return;
-      }
-      const variantAbbr =
-        unitMap.get(v.unitId)?.abbreviation ?? `variant ${i + 1} unit`;
-      const baseAbbr = unitMap.get(baseUnitId)?.abbreviation ?? "new base";
-      const result = await convertUnits(v.unitId, baseUnitId, 1);
-      if (!result) {
-        form.setValue(`variants.${i}.unitId`, baseUnitId);
-        form.setValue(`variants.${i}.conversionToBase`, 1);
-        toast({
-          variant: "destructive",
-          title: `Variant ${i + 1} unit reset`,
-          description: `No conversion from ${variantAbbr} to ${baseAbbr}. Reverted to ${baseAbbr}.`,
-        });
-        return;
-      }
-      if (result.result > 1) {
-        form.setValue(`variants.${i}.unitId`, baseUnitId);
-        form.setValue(`variants.${i}.conversionToBase`, 1);
-        toast({
-          variant: "destructive",
-          title: `Variant ${i + 1} unit reset`,
-          description: `${variantAbbr} is larger than ${baseAbbr}. Reverted to ${baseAbbr}.`,
-        });
-        return;
-      }
-      form.setValue(`variants.${i}.conversionToBase`, result.result);
-    });
-    // unitMap intentionally omitted — toast labels read whatever's current; we
-    // don't want this effect to re-fire just because the unit catalog refreshed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baseUnitId, form, toast]);
-
-  const handleVariantUnitChange = async (index: number, newUnitId: string) => {
-    const currentBase = form.getValues("baseUnitId");
-    if (!currentBase || !newUnitId) {
-      form.setValue(`variants.${index}.unitId`, newUnitId);
-      return;
-    }
-    if (newUnitId === currentBase) {
-      form.setValue(`variants.${index}.unitId`, newUnitId);
-      form.setValue(`variants.${index}.conversionToBase`, 1);
-      return;
-    }
-    const result = await convertUnits(newUnitId, currentBase, 1);
-    if (!result) {
-      // No conversion path — shouldn't happen since CompatibleUnitSelector
-      // only surfaces reachable units, but guard anyway.
-      const baseAbbr = unitMap.get(currentBase)?.abbreviation ?? "base unit";
-      toast({
-        variant: "destructive",
-        title: "No conversion defined",
-        description: `Define a conversion to ${baseAbbr} under Units of measure first.`,
-      });
-      return;
-    }
-    // Variant must scale down from base — 1 variant unit ≤ 1 base unit.
-    // Rejects e.g. base=ml + variant=L (result.result = 1000) so the smaller
-    // unit always sits at the variant level. PIECE-family already restricted
-    // to PIECE-PIECE by the compatible selector itself.
-    if (result.result > 1) {
-      const variantAbbr =
-        unitMap.get(newUnitId)?.abbreviation ?? "variant unit";
-      const baseAbbr =
-        unitMap.get(currentBase)?.abbreviation ?? "base unit";
-      toast({
-        variant: "destructive",
-        title: "Variant must be smaller than base",
-        description: `1 ${variantAbbr} = ${result.result} ${baseAbbr}. Pick a smaller unit, or set ${variantAbbr} as the base unit instead.`,
-      });
-      return;
-    }
-    form.setValue(`variants.${index}.unitId`, newUnitId);
-    form.setValue(`variants.${index}.conversionToBase`, result.result);
-  };
 
   const handleVariantArchive = async (index: number, shouldArchive: boolean) => {
     const variantId = form.getValues(`variants.${index}.id`);
@@ -408,7 +315,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
           if (d) setResponse(d);
         });
       } else if (autoCreateProduct) {
-        createStockWithProduct(values, {}).then((d) => {
+        createStockWithProduct(values, { categoryIds }).then((d) => {
           if (businessDayGuard.catch(d, () => runSubmit(values))) return;
           if (d) setResponse(d);
         });
@@ -422,19 +329,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
   };
 
   const handleAddVariant = () => {
-    append({ ...DEFAULT_VARIANT, unitId: form.getValues("baseUnitId") || "" });
-  };
-
-  const getConversionLabel = (index: number) => {
-    const variantUnitId = watchedVariants?.[index]?.unitId;
-    const conversion = watchedVariants?.[index]?.conversionToBase;
-    if (!variantUnitId || !baseUnitId || !conversion || conversion <= 0)
-      return null;
-    if (variantUnitId === baseUnitId) return null;
-    const vu = unitMap.get(variantUnitId);
-    const bu = unitMap.get(baseUnitId);
-    if (!vu || !bu) return null;
-    return formatConversion(conversion, vu.abbreviation, bu.abbreviation);
+    append({ ...DEFAULT_VARIANT });
   };
 
   // ── Image gallery ──────────────────────────────────────────────────
@@ -514,25 +409,36 @@ export default function StockForm({ item, balances }: StockFormProps) {
     form.setValue("imageUrl", primary?.dataUrl ?? "", { shouldDirty: true });
   }, [galleryImages, primaryIdx, form]);
 
-  // Readiness checklist — adds a 5th step when auto-create-product is on
-  // (every variant must have a positive selling price).
-  const requiredFilled = useMemo(() => {
-    const base = [
+  // Readiness checklist. The four mandatory items gate submit; "Variant
+  // prices" is advisory — it's tracked in the checklist for visibility but
+  // does NOT block submission. Inline warnings on the price input itself
+  // surface mispricing (qty>0+price=0, price<cost). When autoCreateProduct
+  // is on, "Categories" is also mandatory (the product side rejects
+  // uncategorised products).
+  const requiredFilled = useMemo(
+    () => [
       !!stockName?.trim(),
       !!baseUnitId,
       !!watchedVariants?.[0]?.name?.trim(),
-      !!watchedVariants?.[0]?.unitId,
-    ];
-    if (autoCreateProduct) {
-      const allPriced = (watchedVariants ?? []).every(
-        (v) => (v?.sellingPrice ?? 0) > 0,
-      );
-      base.push(allPriced);
-    }
-    return base;
-  }, [stockName, baseUnitId, watchedVariants, autoCreateProduct]);
+      ...(autoCreateProduct ? [categoryIds.length > 0] : []),
+    ],
+    [stockName, baseUnitId, watchedVariants, autoCreateProduct, categoryIds],
+  );
+  const advisoryAllPriced = useMemo(() => {
+    if (!autoCreateProduct) return null;
+    const active = (watchedVariants ?? []).filter((v) => !v?.archived);
+    if (active.length === 0) return false;
+    return active.every((v) => {
+      const n = Number(v?.sellingPrice);
+      return Number.isFinite(n) && n > 0;
+    });
+  }, [watchedVariants, autoCreateProduct]);
+  const checklistItems =
+    advisoryAllPriced === null
+      ? requiredFilled
+      : [...requiredFilled, advisoryAllPriced];
   const completion = Math.round(
-    (requiredFilled.filter(Boolean).length / requiredFilled.length) * 100,
+    (checklistItems.filter(Boolean).length / checklistItems.length) * 100,
   );
   const isValid = requiredFilled.every(Boolean);
   const remainingFields = requiredFilled.filter((v) => !v).length;
@@ -743,25 +649,52 @@ export default function StockForm({ item, balances }: StockFormProps) {
                   </div>
 
                   {!isEditing && (
-                    <div className="mt-4 flex items-start justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-                      <div className="space-y-0.5 min-w-0">
-                        <FormLabel className="text-sm font-medium text-foreground">
-                          Also create a sellable product
-                        </FormLabel>
-                        <p className="text-xs text-muted-foreground">
-                          Use when this stock item IS the sellable thing
-                          (bottled drinks, packaged goods). Creates a
-                          matching product with one variant per stock
-                          variant, linked 1:1 with the selling price you
-                          set on each variant below. Leave off for raw
-                          materials consumed by recipes.
-                        </p>
+                    <div className="mt-4 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-0.5 min-w-0">
+                          <FormLabel className="text-sm font-medium text-foreground">
+                            Also create a sellable product
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            Use when this stock item IS the sellable thing
+                            (bottled drinks, packaged goods). Creates a
+                            matching product with one variant per stock
+                            variant, linked 1:1 with the selling price you
+                            set on each variant below. Leave off for raw
+                            materials consumed by recipes.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={autoCreateProduct}
+                          onCheckedChange={setAutoCreateProduct}
+                          disabled={isPending}
+                        />
                       </div>
-                      <Switch
-                        checked={autoCreateProduct}
-                        onCheckedChange={setAutoCreateProduct}
-                        disabled={isPending}
-                      />
+
+                      {autoCreateProduct && (
+                        <div className="space-y-1">
+                          <FormLabel className="text-xs">
+                            Categories{" "}
+                            <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <MultiSelect
+                            options={categories.map((c) => ({
+                              label: c.name,
+                              value: c.id,
+                            }))}
+                            onValueChange={setCategoryIds}
+                            defaultValue={categoryIds}
+                            placeholder="Pick at least one category"
+                            maxCount={5}
+                          />
+                          {categoryIds.length === 0 && (
+                            <p className="text-[11px] text-muted-foreground">
+                              Categorisation drives reports, addons, and tax
+                              rules.
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -803,7 +736,6 @@ export default function StockForm({ item, balances }: StockFormProps) {
                       const origVariant = item?.variants?.find(
                         (v) => v.id === variantId,
                       );
-                      const conversionLabel = getConversionLabel(index);
 
                       return (
                         <div
@@ -890,10 +822,10 @@ export default function StockForm({ item, balances }: StockFormProps) {
                                 <span className="text-muted-foreground">
                                   Avg Cost:{" "}
                                   <strong className="text-foreground">
-                                    {bal.averageCost.toLocaleString(undefined, {
-                                      minimumFractionDigits: 2,
-                                      maximumFractionDigits: 2,
-                                    })}
+                                    {formatMoney(
+                                      bal.averageCost,
+                                      locationCurrency,
+                                    )}
                                   </strong>
                                 </span>
                               )}
@@ -916,39 +848,6 @@ export default function StockForm({ item, balances }: StockFormProps) {
                                       disabled={isDisabled}
                                     />
                                   </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`variants.${index}.unitId`}
-                              render={({ field: f }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs">
-                                    Unit <span className="text-red-500">*</span>
-                                  </FormLabel>
-                                  <FormControl>
-                                    <CompatibleUnitSelector
-                                      anchorUnitId={baseUnitId || undefined}
-                                      value={f.value}
-                                      onChange={(v) =>
-                                        handleVariantUnitChange(index, v)
-                                      }
-                                      isDisabled={isDisabled || !baseUnitId}
-                                      placeholder={
-                                        baseUnitId
-                                          ? "Select unit"
-                                          : "Pick base unit first"
-                                      }
-                                    />
-                                  </FormControl>
-                                  {conversionLabel && (
-                                    <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-1">
-                                      <ArrowRightLeft className="h-3 w-3" />
-                                      {conversionLabel}
-                                    </p>
-                                  )}
                                   <FormMessage />
                                 </FormItem>
                               )}
@@ -1057,59 +956,88 @@ export default function StockForm({ item, balances }: StockFormProps) {
                               <FormField
                                 control={form.control}
                                 name={`variants.${index}.initialUnitCost`}
-                                render={({ field: f }) => (
-                                  <FormItem>
-                                    <FormLabel className="text-xs">
-                                      Initial unit cost
-                                    </FormLabel>
-                                    <FormControl>
-                                      <NumericFormat
-                                        className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
-                                        value={f.value}
-                                        onValueChange={(v) =>
-                                          f.onChange(v.floatValue ?? 0)
-                                        }
-                                        thousandSeparator
-                                        placeholder="0"
-                                        disabled={isPending}
-                                        decimalScale={4}
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
+                                render={({ field: f }) => {
+                                  const variant = watchedVariants?.[index];
+                                  const qty = Number(variant?.initialQuantity);
+                                  const cost = Number(f.value);
+                                  const showQtyNoCost =
+                                    Number.isFinite(qty) &&
+                                    qty > 0 &&
+                                    !(Number.isFinite(cost) && cost > 0);
+                                  return (
+                                    <FormItem>
+                                      <FormLabel className="text-xs">
+                                        Initial unit cost ({locationCurrency})
+                                      </FormLabel>
+                                      <FormControl>
+                                        <NumericFormat
+                                          className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
+                                          value={f.value}
+                                          onValueChange={(v) =>
+                                            f.onChange(v.floatValue ?? 0)
+                                          }
+                                          thousandSeparator
+                                          placeholder="0"
+                                          disabled={isPending}
+                                          decimalScale={4}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                      {showQtyNoCost && (
+                                        <p className="mt-1 flex items-center gap-1 text-[11px] text-amber-600">
+                                          <AlertTriangle className="h-3 w-3 shrink-0" />
+                                          Stock has quantity but no cost.
+                                        </p>
+                                      )}
+                                    </FormItem>
+                                  );
+                                }}
                               />
                               {autoCreateProduct && (
                                 <FormField
                                   control={form.control}
                                   name={`variants.${index}.sellingPrice`}
-                                  render={({ field: f }) => (
-                                    <FormItem>
-                                      <FormLabel className="text-xs">
-                                        Selling price{" "}
-                                        <span className="text-red-500">*</span>
-                                      </FormLabel>
-                                      <FormControl>
-                                        <NumericFormat
-                                          className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
-                                          value={f.value ?? ""}
-                                          onValueChange={(v) =>
-                                            f.onChange(
-                                              v.value === ""
-                                                ? undefined
-                                                : Number(v.value),
-                                            )
-                                          }
-                                          thousandSeparator
-                                          decimalScale={2}
-                                          allowNegative={false}
-                                          placeholder="0.00"
-                                          disabled={isPending}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
+                                  render={({ field: f }) => {
+                                    const variant = watchedVariants?.[index];
+                                    const cost = Number(variant?.initialUnitCost);
+                                    const price = Number(f.value);
+                                    const hasPrice =
+                                      Number.isFinite(price) && price > 0;
+                                    const hasCost =
+                                      Number.isFinite(cost) && cost > 0;
+                                    const showBelowCost =
+                                      hasPrice && hasCost && price < cost;
+                                    return (
+                                      <FormItem>
+                                        <FormLabel className="text-xs">
+                                          Selling price ({locationCurrency})
+                                        </FormLabel>
+                                        <FormControl>
+                                          <NumericFormat
+                                            className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
+                                            value={f.value ?? ""}
+                                            onValueChange={(v) =>
+                                              f.onChange(v.floatValue)
+                                            }
+                                            thousandSeparator
+                                            decimalScale={2}
+                                            allowNegative={false}
+                                            placeholder="0.00"
+                                            disabled={isPending}
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                        {showBelowCost && (
+                                          <p className="mt-1 flex items-center gap-1 text-[11px] text-amber-600">
+                                            <AlertTriangle className="h-3 w-3 shrink-0" />
+                                            Below unit cost (
+                                            {formatMoney(cost, locationCurrency)}
+                                            ) — selling at a loss.
+                                          </p>
+                                        )}
+                                      </FormItem>
+                                    );
+                                  }}
                                 />
                               )}
                             </div>
@@ -1203,10 +1131,8 @@ export default function StockForm({ item, balances }: StockFormProps) {
                                   row.preferredSupplierId.length > 0) ||
                                 row?.lowStockThreshold != null ||
                                 row?.overstockThreshold != null;
-                              const variantUnit = unitMap.get(
-                                row?.unitId ?? "",
-                              );
-                              const unitAbbr = variantUnit?.abbreviation ?? "";
+                              const baseUnit = unitMap.get(baseUnitId ?? "");
+                              const unitAbbr = baseUnit?.abbreviation ?? "";
 
                               return (
                                 <div className="border-t pt-3 mt-2">
@@ -1442,8 +1368,12 @@ export default function StockForm({ item, balances }: StockFormProps) {
                   ...(autoCreateProduct
                     ? [
                         {
+                          label: "Categories",
+                          done: categoryIds.length > 0,
+                        },
+                        {
                           label: "Variant prices",
-                          done: !!requiredFilled[4],
+                          done: !!advisoryAllPriced,
                         },
                       ]
                     : []),

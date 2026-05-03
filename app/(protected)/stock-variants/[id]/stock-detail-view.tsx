@@ -26,7 +26,6 @@ import {
   ShieldCheck,
   Truck,
   Clock,
-  ShoppingCart,
   RefreshCw,
   History,
   LineChart as LineChartIcon,
@@ -52,7 +51,6 @@ import type {
 import { RISK_LEVEL_CONFIG, ABC_CONFIG } from "@/types/inventory-analytics/type";
 import type { StockBatch } from "@/types/stock-batch/type";
 import { BATCH_STATUS_CONFIG } from "@/types/stock-batch/type";
-import type { ItemSalesAggregate } from "@/types/item-sales/type";
 import { Money } from "@/components/widgets/money";
 import {
   ReorderConfigDialog,
@@ -83,7 +81,6 @@ interface Props {
   turnover: StockTurnoverItem[];
   abc: AbcAnalysisItem[];
   reorder: ReorderSuggestion[];
-  salesItems: ItemSalesAggregate[];
   movementSummary: StockMovementSummary;
   totalQty: number;
   totalValue: number;
@@ -113,7 +110,6 @@ const TABS = [
   { key: "charts", label: "Charts", icon: LineChartIcon },
   { key: "batches", label: "Batches", icon: Layers },
   { key: "movements", label: "Movements", icon: Activity },
-  { key: "sales", label: "Sales", icon: ShoppingCart },
   { key: "analytics", label: "Analytics", icon: BarChart3 },
   { key: "audit", label: "Audit", icon: History },
 ] as const;
@@ -161,7 +157,6 @@ export function StockDetailView({
   turnover,
   abc,
   reorder,
-  salesItems,
   movementSummary,
   totalQty,
   totalValue,
@@ -378,9 +373,6 @@ export function StockDetailView({
           rsSummary={rsSummary}
         />
       )}
-      {tab === "sales" && (
-        <SalesTab salesItems={salesItems} stock={stock} />
-      )}
       {tab === "analytics" && (
         <AnalyticsTab
           forecasts={forecasts}
@@ -468,31 +460,6 @@ function OverviewTab({
                     </TableCell>
                     <TableCell>
                       <span>{v.unitAbbreviation}</span>
-                      {v.conversionToBase !== 1 &&
-                        (() => {
-                          const c = v.conversionToBase;
-                          if (c >= 1) {
-                            return (
-                              <span className="block text-[10px] text-muted-foreground">
-                                1 {v.unitAbbreviation} ={" "}
-                                {c.toLocaleString(undefined, {
-                                  maximumFractionDigits: 6,
-                                })}{" "}
-                                {stock.baseUnitAbbreviation}
-                              </span>
-                            );
-                          }
-                          const inv = Math.round((1 / c) * 1e6) / 1e6;
-                          return (
-                            <span className="block text-[10px] text-muted-foreground">
-                              {inv.toLocaleString(undefined, {
-                                maximumFractionDigits: 6,
-                              })}{" "}
-                              {v.unitAbbreviation} = 1{" "}
-                              {stock.baseUnitAbbreviation}
-                            </span>
-                          );
-                        })()}
                     </TableCell>
                     <TableCell>
                       <BarcodeManager
@@ -1111,232 +1078,6 @@ function MovementsTab({
       </Card>
           );
         })()}
-    </div>
-  );
-}
-
-// ── Sales tab ──────────────────────────────────────────────────────
-
-function SalesTab({
-  salesItems,
-  stock,
-}: {
-  salesItems: ItemSalesAggregate[];
-  stock: Stock;
-}) {
-  if (salesItems.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <ShoppingCart className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">
-            No sales data available for the last 30 days. Sales data appears
-            when linked product variants are sold via POS.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const totalQtySold = salesItems.reduce((s, i) => s + i.quantitySold, 0);
-  const totalGross = salesItems.reduce((s, i) => s + i.grossSales, 0);
-  const totalNet = salesItems.reduce((s, i) => s + i.netSales, 0);
-  const totalCost = salesItems.reduce((s, i) => s + i.totalCost, 0);
-  const totalProfit = salesItems.reduce((s, i) => s + i.grossProfit, 0);
-  const totalDiscount = salesItems.reduce((s, i) => s + i.totalDiscount, 0);
-  const profitMargin = totalNet > 0 ? (totalProfit / totalNet) * 100 : 0;
-
-  return (
-    <div className="space-y-6">
-      {/* Sales summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <ShoppingCart className="h-4 w-4" />
-              <span className="text-xs font-medium">Qty Sold</span>
-            </div>
-            <p className="text-xl font-bold">
-              {totalQtySold.toLocaleString()}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <DollarSign className="h-4 w-4" />
-              <span className="text-xs font-medium">Gross Sales</span>
-            </div>
-            <p className="text-xl font-bold">
-              {totalGross.toLocaleString(undefined, {
-                maximumFractionDigits: 0,
-              })}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <DollarSign className="h-4 w-4" />
-              <span className="text-xs font-medium">Net Sales</span>
-            </div>
-            <p className="text-xl font-bold">
-              {totalNet.toLocaleString(undefined, {
-                maximumFractionDigits: 0,
-              })}
-            </p>
-            {totalDiscount > 0 && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                -{totalDiscount.toLocaleString(undefined, { maximumFractionDigits: 0 })} discounts
-              </p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <ArrowUpRight className="h-4 w-4" />
-              <span className="text-xs font-medium">COGS</span>
-            </div>
-            <p className="text-xl font-bold">
-              {totalCost.toLocaleString(undefined, {
-                maximumFractionDigits: 0,
-              })}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <TrendingUp className="h-4 w-4" />
-              <span className="text-xs font-medium">Gross Profit</span>
-            </div>
-            <p
-              className={`text-xl font-bold ${
-                totalProfit >= 0
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-red-600 dark:text-red-400"
-              }`}
-            >
-              {totalProfit.toLocaleString(undefined, {
-                maximumFractionDigits: 0,
-              })}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <BarChart3 className="h-4 w-4" />
-              <span className="text-xs font-medium">Margin</span>
-            </div>
-            <p
-              className={`text-xl font-bold ${
-                profitMargin >= 20
-                  ? "text-green-600 dark:text-green-400"
-                  : profitMargin >= 10
-                    ? "text-amber-600 dark:text-amber-400"
-                    : "text-red-600 dark:text-red-400"
-              }`}
-            >
-              {profitMargin.toFixed(1)}%
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Sales per item table */}
-      <Card>
-        <CardContent className="pt-6">
-          <h3 className="text-sm font-semibold mb-3">
-            Item Sales Breakdown (30 days)
-          </h3>
-          <div className="rounded-md border overflow-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead className="text-right">Qty Sold</TableHead>
-                  <TableHead className="text-right">Gross Sales</TableHead>
-                  <TableHead className="text-right">Discounts</TableHead>
-                  <TableHead className="text-right">Net Sales</TableHead>
-                  <TableHead className="text-right">COGS</TableHead>
-                  <TableHead className="text-right">Profit</TableHead>
-                  <TableHead className="text-right">Margin</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {salesItems.map((item, idx) => {
-                  const margin =
-                    item.netSales > 0
-                      ? (item.grossProfit / item.netSales) * 100
-                      : 0;
-                  return (
-                    <TableRow key={`${item.variantId}-${idx}`}>
-                      <TableCell className="font-medium">
-                        {item.itemName}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {item.departmentName || "\u2014"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {item.quantitySold.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {item.grossSales.toLocaleString(undefined, {
-                          maximumFractionDigits: 0,
-                        })}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {item.totalDiscount > 0
-                          ? item.totalDiscount.toLocaleString(undefined, {
-                              maximumFractionDigits: 0,
-                            })
-                          : "\u2014"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {item.netSales.toLocaleString(undefined, {
-                          maximumFractionDigits: 0,
-                        })}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {item.totalCost.toLocaleString(undefined, {
-                          maximumFractionDigits: 0,
-                        })}
-                      </TableCell>
-                      <TableCell
-                        className={`text-right font-medium ${
-                          item.grossProfit >= 0
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-red-600 dark:text-red-400"
-                        }`}
-                      >
-                        {item.grossProfit.toLocaleString(undefined, {
-                          maximumFractionDigits: 0,
-                        })}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span
-                          className={
-                            margin >= 20
-                              ? "text-green-600 dark:text-green-400"
-                              : margin >= 10
-                                ? "text-amber-600 dark:text-amber-400"
-                                : "text-red-600 dark:text-red-400"
-                          }
-                        >
-                          {margin.toFixed(1)}%
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

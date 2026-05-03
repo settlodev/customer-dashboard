@@ -5,8 +5,12 @@ import {
   PageShell,
 } from "@/components/layouts/page-shell";
 import { InventoryKpiStrip } from "@/components/widgets/inventory/inventory-kpi-strip";
+import { ProductsKpiStrip } from "@/components/widgets/products/products-kpi-strip";
 import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
-import { getInventoryBusinessDashboardSummary } from "@/lib/actions/reports-analytics-actions";
+import {
+  getInventoryBusinessDashboardSummary,
+  getProductsBusinessKpi,
+} from "@/lib/actions/reports-analytics-actions";
 
 const CURRENCY = "TZS";
 
@@ -25,10 +29,10 @@ export default async function BusinessOverviewPage() {
     );
   }
 
-  const summary = await getInventoryBusinessDashboardSummary(
-    business.id,
-    CURRENCY,
-  );
+  const [summary, productsKpi] = await Promise.all([
+    getInventoryBusinessDashboardSummary(business.id, CURRENCY),
+    getProductsBusinessKpi(business.id, CURRENCY),
+  ]);
 
   return (
     <PageShell>
@@ -40,6 +44,7 @@ export default async function BusinessOverviewPage() {
 
       <PageBody>
         <InventoryKpiStrip summary={summary} />
+        <ProductsKpiStrip summary={productsKpi} />
       </PageBody>
     </PageShell>
   );

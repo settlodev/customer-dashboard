@@ -1,50 +1,133 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { Pencil } from "lucide-react";
 import {
   PageShell,
+  PageHeader,
   PageBreadcrumbs,
   PageBody,
 } from "@/components/layouts/page-shell";
+import { Button } from "@/components/ui/button";
 import { getProduct } from "@/lib/actions/product-actions";
-import { Product } from "@/types/product/type";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getLocationCurrency } from "@/lib/actions/currency-actions";
+import { getItemSalesSummary } from "@/lib/actions/item-sales-actions";
+// Reads come from the Reports Service so the Inventory Service stays out
+// of the read path. Mutations (reorder config, threshold writes) still go
+// through the Inventory Service via {@code inventory-balance-actions}.
 import {
-  Package,
-  Tag,
-  Building2,
-  Layers,
-  Box,
-  BarChart3,
-} from "lucide-react";
-import ProductDetailDashboard from "@/components/dashboard/ProductDetailDashboard";
+  getBalanceSummariesByLocation,
+  getVariantsSnapshotHistory,
+  getAuditLogByEntity,
+} from "@/lib/actions/inventory-analytics-reports-actions";
+import type { Product } from "@/types/product/type";
+import type { InventoryBalanceSummary } from "@/types/inventory-balance/summary-type";
+import type { InventorySnapshot } from "@/types/inventory-snapshot/type";
+import { ProductDetailView } from "./product-detail-view";
+import { ProductDetailActions } from "./product-detail-actions";
+import { BulkBarcodeGenerator } from "@/components/widgets/products/bulk-barcode-generator";
 
 type Params = Promise<{ id: string }>;
 
 export default async function ProductPage({ params }: { params: Params }) {
-  const resolvedParams = await params;
+  const { id } = await params;
 
   // /products/new is now a sibling route — bounce there if someone
   // links to /products/new through the dynamic segment.
-  if (resolvedParams.id === "new") {
-    redirect("/products/new");
-  }
+  if (id === "new") redirect("/products/new");
 
   let product: Product | null = null;
-
   try {
-    product = await getProduct(resolvedParams.id);
+    product = await getProduct(id);
     if (!product) notFound();
   } catch {
     throw new Error("Failed to load product details");
   }
 
-  const isValidImageUrl =
-    product.imageUrl &&
-    (product.imageUrl.startsWith("http://") ||
-      product.imageUrl.startsWith("https://") ||
-      product.imageUrl.startsWith("/"));
+  const [location, currency] = await Promise.all([
+    getCurrentLocation().catch(() => null),
+    getLocationCurrency(),
+  ]);
 
-  const categoryName = product.categories?.[0]?.name || null;
+  const locationId = location?.id ?? null;
+
+  // Date windows: 30d for sales, 90d for snapshot charts.
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const ninetyDaysAgo = new Date(now);
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  const fromDate30 = thirtyDaysAgo.toISOString().split("T")[0];
+  const toDate = now.toISOString().split("T")[0];
+  const fromDate90 = ninetyDaysAgo.toISOString().split("T")[0];
+
+  // Linked stock variants — drives balance + snapshot fetches.
+  const linkedStockVariantIds = Array.from(
+    new Set(
+      product.variants
+        .filter((v) => v.stockLinkType === "DIRECT" && v.stockVariantId)
+        .map((v) => v.stockVariantId as string),
+    ),
+  );
+
+  // Parallel fetches against the Reports Service. All have empty/null
+  // fallbacks server-side so the page renders even when any individual
+  // request fails. Snapshots come back in a single bundled response —
+  // saves N round-trips for multi-variant products.
+  const [scopedBalances, salesSummary, bundledSnapshots, auditPage] =
+    await Promise.all([
+      locationId && linkedStockVariantIds.length > 0
+        ? getBalanceSummariesByLocation(locationId, linkedStockVariantIds)
+        : Promise.resolve([] as InventoryBalanceSummary[]),
+      locationId
+        ? getItemSalesSummary(locationId, fromDate30, toDate)
+        : Promise.resolve(null),
+      linkedStockVariantIds.length > 0
+        ? getVariantsSnapshotHistory(linkedStockVariantIds, fromDate90, toDate)
+        : Promise.resolve([] as InventorySnapshot[]),
+      getAuditLogByEntity("PRODUCT", id, 0, 50),
+    ]);
+
+  // Balance map for the linked stock variants only — already filtered
+  // server-side, so just key by stockVariantId.
+  const stockBalanceMap: Record<string, InventoryBalanceSummary> = {};
+  for (const b of scopedBalances) {
+    stockBalanceMap[b.stockVariantId] = b;
+  }
+
+  // Snapshot map keyed by stockVariantId — group the bundled response.
+  const variantSnapshotMap: Record<string, InventorySnapshot[]> = {};
+  for (const sv of linkedStockVariantIds) {
+    variantSnapshotMap[sv] = [];
+  }
+  for (const snap of bundledSnapshots) {
+    const list = variantSnapshotMap[snap.stockVariantId];
+    if (list) list.push(snap);
+  }
+
+  const isArchived = product.archivedAt != null;
+  const isDraft = product.lifecycleStatus === "DRAFT";
+
+  const statusLabel = isArchived
+    ? "Archived"
+    : isDraft
+      ? "Draft"
+      : product.active
+        ? "Active"
+        : "Inactive";
+  const statusClass = isArchived
+    ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+    : isDraft
+      ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+      : product.active
+        ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
+        : "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400";
+
+  const subtitleParts = [
+    product.categories?.[0]?.name,
+    product.departmentName,
+    product.brandName,
+  ].filter(Boolean) as string[];
 
   return (
     <PageShell>
@@ -54,191 +137,46 @@ export default async function ProductPage({ params }: { params: Params }) {
           { title: product.name },
         ]}
       />
+      <PageHeader
+        title={product.name}
+        titleAccessory={
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClass}`}
+          >
+            {statusLabel}
+          </span>
+        }
+        subtitle={
+          subtitleParts.length > 0 ? subtitleParts.join(" · ") : undefined
+        }
+        actions={
+          <>
+            <BulkBarcodeGenerator
+              scope="product"
+              productId={product.id}
+              productName={product.name}
+            />
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/products/${product.id}/edit`}>
+                <Pencil className="mr-1.5 h-4 w-4" />
+                Edit
+              </Link>
+            </Button>
+            <ProductDetailActions product={product} />
+          </>
+        }
+      />
+
       <PageBody>
-      <ProductDetailDashboard
-        productId={resolvedParams.id}
-        productName={product.name}
-        productImage={isValidImageUrl ? product.imageUrl : null}
-        categoryName={categoryName ?? ""}
-        sku={product.variants?.[0]?.sku ?? ""}
-        status={product.active}
-        isArchived={!product.active}
-        editUrl={`/products/${product.id}/edit`}
-      >
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <SummaryCard label="Category" value={categoryName || "—"} icon={Tag} />
-          <SummaryCard
-            label="Department"
-            value={product.departmentName || "—"}
-            icon={Building2}
-          />
-          <SummaryCard
-            label="Available Stock"
-            value={
-              product.trackStock
-                ? (product.variants
-                    ?.reduce((sum, v) => sum + (v.availableQuantity ?? 0), 0)
-                    .toLocaleString() ?? "0")
-                : "Unlimited"
-            }
-            icon={Box}
-          />
-          <SummaryCard
-            label="Tracking"
-            value={product.trackStock ? "Enabled" : "Disabled"}
-            icon={BarChart3}
-          />
-        </div>
-      </ProductDetailDashboard>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="rounded-xl shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-medium flex items-center gap-2">
-              <Package className="h-4 w-4 text-muted-foreground" />
-              Product Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <DetailRow label="Brand" value={product.brandName} />
-            <DetailRow label="Tax Class" value={product.taxClass} />
-            <div className="flex items-center justify-between py-1">
-              <span className="text-sm text-muted-foreground">Tax Inclusive</span>
-              <Badge variant={product.taxInclusive ? "default" : "secondary"}>
-                {product.taxInclusive ? "Yes" : "No"}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between py-1">
-              <span className="text-sm text-muted-foreground">Sell Online</span>
-              <Badge variant={product.sellOnline ? "default" : "secondary"}>
-                {product.sellOnline ? "Yes" : "No"}
-              </Badge>
-            </div>
-            <DetailRow label="Lifecycle" value={product.lifecycleStatus} />
-            {product.tags?.length > 0 && (
-              <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-muted-foreground">Tags</span>
-                <div className="flex gap-1 flex-wrap justify-end">
-                  {product.tags.map((tag) => (
-                    <Badge key={tag} variant="outline" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-xl shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-medium flex items-center gap-2">
-              <Layers className="h-4 w-4 text-muted-foreground" />
-              Variants ({product.variants?.length ?? 0})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {product.variants?.length ? (
-              product.variants.map((variant) => (
-                <div
-                  key={variant.id}
-                  className="flex items-center justify-between py-2 border-b last:border-b-0"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {variant.displayName || variant.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {variant.sku && `SKU: ${variant.sku}`}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                      {variant.price?.toLocaleString()} {variant.nativeCurrency}
-                    </p>
-                    {variant.availableQuantity != null && !variant.unlimited && (
-                      <p className="text-xs text-muted-foreground">
-                        Stock: {variant.availableQuantity.toLocaleString()}
-                      </p>
-                    )}
-                    {variant.unlimited && (
-                      <p className="text-xs text-muted-foreground">Unlimited</p>
-                    )}
-                    {variant.stockLinkType === "DIRECT" && (
-                      <p className="text-xs text-muted-foreground">
-                        Linked: {variant.stockVariantName ?? "stock item"}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No variants configured
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {product.description && (
-        <Card className="rounded-xl shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-medium">Description</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-              {product.description}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+        <ProductDetailView
+          product={product}
+          stockBalanceMap={stockBalanceMap}
+          salesItems={salesSummary?.items ?? []}
+          variantSnapshotMap={variantSnapshotMap}
+          auditEntries={auditPage.content ?? []}
+          currency={currency}
+        />
       </PageBody>
     </PageShell>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <Card className="rounded-xl shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {label}
-        </CardTitle>
-        <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-          <Icon className="h-4 w-4 text-gray-500" />
-        </div>
-      </CardHeader>
-      <CardContent className="p-4 pt-1">
-        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {value}
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function DetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null | undefined;
-}) {
-  return (
-    <div className="flex items-center justify-between py-1">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-        {value || "—"}
-      </span>
-    </div>
   );
 }

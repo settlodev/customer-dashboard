@@ -15,14 +15,15 @@ import {
   ProductVariant,
   ProductVariantRow,
 } from "@/types/product/type";
-import { searchProducts } from "@/lib/actions/product-actions";
-import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
+import { searchProducts, getProductCounts } from "@/lib/actions/product-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getProductsKpi } from "@/lib/actions/reports-analytics-actions";
 import { ProductCSVDialog } from "@/components/csv/CSVImport";
 import { Plus } from "lucide-react";
 import TableExport from "@/components/widgets/export";
 import { ProductStatusTabs } from "@/components/tables/product/status-tabs";
-import type { InventoryBalance } from "@/types/inventory-balance/type";
+import { ProductsKpiStrip } from "@/components/widgets/products/products-kpi-strip";
+import { BulkBarcodeGenerator } from "@/components/widgets/products/bulk-barcode-generator";
 
 type Params = {
   searchParams: Promise<{
@@ -62,40 +63,26 @@ function variantDisplayName(
 }
 
 /**
- * Build one {@link ProductVariantRow} from a (product, variant) pair,
- * enriching with live inventory data so the list can render Cost and
- * Available without per-row API calls.
+ * Build one {@link ProductVariantRow} from a (product, variant) pair.
+ *
+ * <p>Live cost and sellable quantity come from the inventory service —
+ * {@code currentCost} and {@code qtyAvailable} are joined into the
+ * variant response server-side from the {@code inventory_balance}
+ * projection. The page used to fetch every balance for the location and
+ * derive these client-side, but that scaled poorly (a 100k-product
+ * location was shipping hundreds of thousands of balance rows per page
+ * render). For UNLIMITED variants the server leaves {@code qtyAvailable}
+ * null so the row falls back to the merchant-set
+ * {@code availableQuantity} cap, or "Unlimited" when no cap is set.
  */
 function enrichVariant(
   product: Product,
   variant: ProductVariant,
-  balanceMap: Map<string, InventoryBalance>,
   isOnlyVariant: boolean,
 ): ProductVariantRow {
-  let currentCost: number | null = null;
-  let sellableQty: number | "Unlimited" | null = null;
-
-  if (variant.unlimited) {
-    currentCost = variant.costPrice;
-    sellableQty =
-      variant.availableQuantity != null ? variant.availableQuantity : "Unlimited";
-  } else if (variant.stockLinkType === "DIRECT" && variant.stockVariantId) {
-    const bal = balanceMap.get(variant.stockVariantId);
-    const directQty = variant.directQuantity ?? 1;
-    if (bal) {
-      const unitCost = bal.currentBatchCost ?? bal.averageCost;
-      if (unitCost != null) currentCost = unitCost * directQty;
-      if (directQty > 0) {
-        sellableQty = Math.floor(bal.availableQuantity / directQty);
-      }
-    } else {
-      currentCost = variant.costPrice;
-    }
-  } else {
-    // RECIPE or unconfigured tracking — surface stored cost; sellable
-    // requires walking the BOM rule and is deferred.
-    currentCost = variant.costPrice;
-  }
+  const sellableQty: number | "Unlimited" | null = variant.unlimited
+    ? variant.availableQuantity ?? "Unlimited"
+    : variant.qtyAvailable;
 
   return {
     // id = productId so the existing row-click navigates to the product
@@ -118,7 +105,7 @@ function enrichVariant(
     costPrice: variant.costPrice,
     variantActive: variant.active,
     variantArchivedAt: variant.archivedAt,
-    _currentCost: currentCost,
+    _currentCost: variant.currentCost,
     _sellableQty: sellableQty,
   };
 }
@@ -129,45 +116,44 @@ async function Page({ searchParams }: Params) {
   const q = resolvedSearchParams.search || "";
   const page = Number(resolvedSearchParams.page) || 0;
   const pageLimit = Number(resolvedSearchParams.limit);
-  const status: "active" | "archived" =
-    resolvedSearchParams.status === "archived" ? "archived" : "active";
+  const status: "active" | "archived" | "draft" | "all" =
+    resolvedSearchParams.status === "archived"
+      ? "archived"
+      : resolvedSearchParams.status === "draft"
+        ? "draft"
+        : resolvedSearchParams.status === "all"
+          ? "all"
+          : "active";
 
-  const [responseData, location] = await Promise.all([
-    searchProducts(q, page, pageLimit),
+  // Filtering happens entirely on the backend via ?view=. Each merchant
+  // tab maps 1:1 to a backend finder (Active = lifecycle=ACTIVE AND
+  // not-archived, Archived = archivedAt!=null, Drafts = lifecycle=DRAFT,
+  // All = every non-deleted row). Live qty / cost ride along on each
+  // variant — joined into the response from inventory_balance — so this
+  // page no longer needs a second balances round-trip.
+  const [responseData, counts, location] = await Promise.all([
+    searchProducts(q, page, pageLimit, status),
+    getProductCounts(),
     getCurrentLocation().catch(() => null),
   ]);
 
-  // One bulk balances call covers every stock variant referenced by the
-  // products on this page — far cheaper than per-variant lookups.
-  const balances: InventoryBalance[] = location?.id
-    ? await getBalancesByLocation(location.id).catch(() => [])
-    : [];
-  const balanceMap = new Map(balances.map((b) => [b.stockVariantId, b]));
-
-  // Flatten each product into one row per variant. Filter by tab:
-  //   active   → variant.archivedAt == null AND product.archivedAt == null
-  //   archived → variant.archivedAt != null OR product.archivedAt != null
-  // The display-name dedup uses the count of all variants the response
-  // returned (the backend already excludes soft-deleted ones), regardless
-  // of archive state, so an archived single-variant product still reads
-  // as "Coca-Cola" rather than "Coca-Cola Default".
+  // Flatten each product into one row per variant. The display-name
+  // dedup uses the count of all variants the response returned (the
+  // backend already excludes soft-deleted ones), regardless of archive
+  // state, so an archived single-variant product still reads as
+  // "Coca-Cola" rather than "Coca-Cola Default".
   const filteredData: ProductVariantRow[] = responseData.content.flatMap((p) => {
     const allLiveVariants = p.variants ?? [];
     if (allLiveVariants.length === 0) return [];
     const isOnlyVariant = allLiveVariants.length === 1;
-    const productArchived = p.archivedAt != null;
 
-    return allLiveVariants
-      .filter((v) => {
-        const variantArchived = v.archivedAt != null;
-        const isArchivedRow = variantArchived || productArchived;
-        return status === "archived" ? isArchivedRow : !isArchivedRow;
-      })
-      .map((v) => enrichVariant(p, v, balanceMap, isOnlyVariant));
+    return allLiveVariants.map((v) => enrichVariant(p, v, isOnlyVariant));
   });
 
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;
+
+  const kpi = location?.id ? await getProductsKpi(location.id, "TZS") : null;
 
   return (
     <PageShell>
@@ -178,8 +164,9 @@ async function Page({ searchParams }: Params) {
         actions={
           <>
             <TableExport filename="products" useEndpoint />
+            <BulkBarcodeGenerator scope="all" />
             <ProductCSVDialog />
-            <Button asChild>
+            <Button asChild size="sm">
               <Link href="/products/new">
                 <Plus className="mr-1.5 h-4 w-4" />
                 Add product
@@ -190,22 +177,24 @@ async function Page({ searchParams }: Params) {
       />
 
       <PageBody>
-        <ProductStatusTabs value={status} />
-
         {total > 0 || q !== "" ? (
-          <Card>
-            <CardContent className="px-2 pt-6 sm:px-6">
-              <DataTable
-                columns={columns}
-                data={filteredData}
-                searchKey="name"
-                pageNo={page}
-                total={total}
-                pageCount={pageCount}
-                rowClickBasePath="/products"
-              />
-            </CardContent>
-          </Card>
+          <>
+            <ProductsKpiStrip summary={kpi} />
+            <ProductStatusTabs value={status} counts={counts} />
+            <Card>
+              <CardContent className="px-2 pt-6 sm:px-6">
+                <DataTable
+                  columns={columns}
+                  data={filteredData}
+                  searchKey="name"
+                  pageNo={page}
+                  total={total}
+                  pageCount={pageCount}
+                  rowClickBasePath="/products"
+                />
+              </CardContent>
+            </Card>
+          </>
         ) : (
           <NoItems newItemUrl="/products/new" itemName="products" />
         )}

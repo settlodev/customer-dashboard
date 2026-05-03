@@ -72,6 +72,29 @@ export const columns: ColumnDef<AddonGroup>[] = [
     ),
   },
   {
+    id: "usedBy",
+    enableHiding: true,
+    header: () => <span className="hidden md:inline">Used by</span>,
+    cell: ({ row }) => {
+      const count = row.original.attachedProductCount;
+      if (count == null) {
+        return <span className="hidden md:inline text-[11px] text-muted-foreground">—</span>;
+      }
+      if (count === 0) {
+        return (
+          <span className="hidden md:inline text-[11px] text-muted-foreground">
+            Not in use
+          </span>
+        );
+      }
+      return (
+        <Badge variant="soft" className="hidden md:inline-flex">
+          {count} product{count === 1 ? "" : "s"}
+        </Badge>
+      );
+    },
+  },
+  {
     id: "status",
     header: "Status",
     enableHiding: true,

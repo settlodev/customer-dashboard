@@ -60,6 +60,7 @@ import styles from "./styles/form-shell.module.css";
 import StaffSelectorWidget from "../widgets/staff_selector_widget";
 import StockVariantSelector from "../widgets/stock-variant-selector";
 import type { VariantMeta } from "../widgets/stock-variant-selector";
+import CompatibleUnitSelector from "../widgets/compatible-unit-selector";
 import { LpoPickerDialog } from "../widgets/grn/lpo-picker";
 import type { LpoWithSupplierName } from "../widgets/grn/lpo-picker";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
@@ -78,6 +79,8 @@ const startOfToday = () => {
 interface ItemMeta {
   displayName?: string;
   serialTracked: boolean;
+  /** Variant's tracking unit — anchors the purchase-pack picker. */
+  unitId?: string;
 }
 
 interface GrnFormProps {
@@ -164,6 +167,7 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
           [fieldId]: {
             displayName: meta.displayName,
             serialTracked: meta.serialTracked,
+            unitId: meta.unitId,
           },
         };
       });
@@ -653,6 +657,48 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name={`items.${index}.purchaseUnitId`}
+                    render={({ field: f }) => {
+                      const anchor = meta?.unitId;
+                      const isSerial = !!meta?.serialTracked;
+                      const usingPack = !!f.value && f.value !== anchor;
+                      return (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            Purchase unit
+                            <span className="text-muted-foreground ml-1.5 font-normal">
+                              optional
+                            </span>
+                          </FormLabel>
+                          <FormControl>
+                            <CompatibleUnitSelector
+                              anchorUnitId={anchor}
+                              value={f.value ?? ""}
+                              onChange={(v) => f.onChange(v || undefined)}
+                              isDisabled={isPending || !anchor || isSerial}
+                              placeholder={
+                                isSerial
+                                  ? "Not available for serial-tracked items"
+                                  : anchor
+                                    ? "Same as stock unit"
+                                    : "Pick a stock item first"
+                              }
+                            />
+                          </FormControl>
+                          <p className="text-[11px] text-muted-foreground">
+                            {isSerial
+                              ? "Serial-tracked items must be entered one-by-one in the variant's stock unit."
+                              : usingPack
+                                ? "Quantity & unit cost above are interpreted in this pack — converted to stock units on receive."
+                                : "Leave blank to enter qty & cost directly in the variant's tracking unit."}
+                          </p>
+                        </FormItem>
+                      );
+                    }}
+                  />
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <FormField

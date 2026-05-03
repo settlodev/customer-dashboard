@@ -152,25 +152,55 @@ export async function saveModifierGroupWithOptions(
         .filter((id): id is string => !!id),
     );
 
+    // Roll-forward: collect failures instead of bailing on the first
+    // one. With a backend `:bulk` endpoint we'd commit atomically; until
+    // then partial success is far better UX than "saved 0, blocked on
+    // option 3, lost everything else."
+    const errors: string[] = [];
+    let saved = 0;
+    const total = valid.data.options.length;
+
     for (const [index, opt] of valid.data.options.entries()) {
       const payload = { ...opt, sortOrder: opt.sortOrder ?? index };
-      if (opt.id && existingIds.has(opt.id)) {
-        const r = await updateModifierOption(groupId, opt.id, payload);
-        if ("responseType" in r && r.responseType === "error") return r;
-      } else {
-        const r = await createModifierOption(groupId, payload);
-        if ("responseType" in r && r.responseType === "error") return r;
+      try {
+        const r =
+          opt.id && existingIds.has(opt.id)
+            ? await updateModifierOption(groupId, opt.id, payload)
+            : await createModifierOption(groupId, payload);
+        if ("responseType" in r && r.responseType === "error") {
+          errors.push(`Option ${index + 1} (${opt.name}): ${r.message}`);
+        } else {
+          saved++;
+        }
+      } catch (e: any) {
+        errors.push(`Option ${index + 1} (${opt.name}): ${e?.message ?? String(e)}`);
       }
     }
 
     for (const id of existingIds) {
       if (!keptIds.has(id)) {
-        await deleteModifierOption(groupId, id);
+        try {
+          await deleteModifierOption(groupId, id);
+        } catch (e: any) {
+          errors.push(`Removing option ${id}: ${e?.message ?? String(e)}`);
+        }
       }
     }
 
     revalidatePath(`/modifier-groups`);
     revalidatePath(`/modifier-groups/${groupId}`);
+
+    if (errors.length > 0) {
+      return parseStringify({
+        responseType: "error",
+        message:
+          errors.length === total
+            ? `No options could be saved (${errors.length} error${errors.length === 1 ? "" : "s"}): ${errors[0]}`
+            : `Saved ${saved} of ${total} option${total === 1 ? "" : "s"}; ${errors.length} failed. ${errors[0]}`,
+        error: new Error(errors.join("\n")),
+      });
+    }
+
     const fresh = await getModifierGroup(groupId);
     return parseStringify(fresh ?? (groupUpdate as ModifierGroup));
   } catch (error: any) {

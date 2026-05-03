@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, ChefHat, Layers, Activity, AlertTriangle } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -8,15 +8,18 @@ import {
   PageBreadcrumbs,
   PageBody,
 } from "@/components/layouts/page-shell";
-import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/bom-rule/column";
 import { getBomRules } from "@/lib/actions/bom-rule-actions";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getBomRulesKpi } from "@/lib/actions/reports-analytics-actions";
+import { BomRulesKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
 
 export default async function BomRulesPage() {
-  const rules = await getBomRules();
+  const [rules, location] = await Promise.all([getBomRules(), getCurrentLocation()]);
   const total = rules.length;
+  const kpi = location?.id ? await getBomRulesKpi(location.id) : null;
 
   return (
     <PageShell>
@@ -34,48 +37,18 @@ export default async function BomRulesPage() {
         }
       />
       <PageBody>
-        {/* Placeholder KPIs — wire to real aggregates later. */}
-        <KpiStrip cols={4}>
-          <KpiCard
-            icon={<ChefHat className="h-3 w-3" />}
-            label="Active rules"
-            value={total.toLocaleString()}
-            delta={total > 0 ? "in use" : "none yet"}
-            deltaTone="neutral"
-          />
-          <KpiCard
-            icon={<Layers className="h-3 w-3" />}
-            label="Linked variants"
-            value="316"
-            delta="+8 wk"
-            deltaTone="pos"
-          />
-          <KpiCard
-            icon={<Activity className="h-3 w-3" />}
-            label="Consumption hits (7d)"
-            value="2,184"
-            delta="+4.1% wk"
-            deltaTone="pos"
-            spark={[120, 130, 145, 155, 170, 190, 210, 218]}
-          />
-          <KpiCard
-            icon={<AlertTriangle className="h-3 w-3" />}
-            label="Rules needing review"
-            value="2"
-            delta="missing components"
-            deltaTone="neg"
-          />
-        </KpiStrip>
-
         {total > 0 ? (
-          <DataTable
-            columns={columns}
-            data={rules}
-            searchKey="name"
-            pageNo={0}
-            total={total}
-            pageCount={1}
-          />
+          <>
+            <BomRulesKpiStrip summary={kpi} />
+            <DataTable
+              columns={columns}
+              data={rules}
+              searchKey="name"
+              pageNo={0}
+              total={total}
+              pageCount={1}
+            />
+          </>
         ) : (
           <NoItems newItemUrl="/bom-rules/new" itemName="consumption rules" />
         )}

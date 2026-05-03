@@ -64,43 +64,47 @@ const VerificationPage = () => {
     });
   }, [token, tokenHandled, router]);
 
-  const handleVerify = useCallback(() => {
-    if (verificationCode.length !== 6) {
-      setError("Please enter the complete 6-digit code.");
-      return;
-    }
+  const handleVerify = useCallback(
+    (codeOverride?: string) => {
+      const code = codeOverride ?? verificationCode;
+      if (code.length !== 6) {
+        setError("Please enter the complete 6-digit code.");
+        return;
+      }
 
-    setError("");
-    setSuccess("");
+      setError("");
+      setSuccess("");
 
-    startTransition(async () => {
-      try {
-        const data = await verifyEmailCode(verificationCode);
+      startTransition(async () => {
+        try {
+          const data = await verifyEmailCode(code);
 
-        if (data.responseType === "error") {
-          setError(data.message);
-          return;
-        }
-
-        if (data.responseType === "success") {
-          setSuccess(data.message);
-
-          if (data.data && (data.data as any).requiresLogin) {
-            setTimeout(() => {
-              router.push("/login");
-            }, 2000);
+          if (data.responseType === "error") {
+            setError(data.message);
             return;
           }
 
-          setTimeout(() => {
-            router.push("/business-registration");
-          }, 1500);
+          if (data.responseType === "success") {
+            setSuccess(data.message);
+
+            if (data.data && (data.data as any).requiresLogin) {
+              setTimeout(() => {
+                router.push("/login");
+              }, 2000);
+              return;
+            }
+
+            setTimeout(() => {
+              router.push("/business-registration");
+            }, 1500);
+          }
+        } catch (err: any) {
+          setError(err?.message || "Verification failed. Please try again.");
         }
-      } catch (err: any) {
-        setError(err?.message || "Verification failed. Please try again.");
-      }
-    });
-  }, [verificationCode, router]);
+      });
+    },
+    [verificationCode, router],
+  );
 
   const handleResend = useCallback(async () => {
     setError("");
@@ -183,7 +187,7 @@ const VerificationPage = () => {
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="pb-12 px-8 pt-6">
+          <CardContent className="pb-12 px-6 pt-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -197,21 +201,27 @@ const VerificationPage = () => {
                 <InputOTP
                   maxLength={6}
                   value={verificationCode}
-                  onChange={(value) => setVerificationCode(value)}
+                  onChange={(value) => {
+                    setVerificationCode(value);
+                    if (value.length === 6 && !isPending) {
+                      handleVerify(value);
+                    }
+                  }}
                   disabled={isPending}
                 >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
+                  <InputOTPGroup className="gap-3">
+                    {[0, 1, 2, 3, 4, 5].map((i) => (
+                      <InputOTPSlot
+                        key={i}
+                        index={i}
+                        className="h-16 w-14 text-2xl font-bold"
+                      />
+                    ))}
                   </InputOTPGroup>
                 </InputOTP>
 
                 <Button
-                  onClick={handleVerify}
+                  onClick={() => handleVerify()}
                   disabled={isPending || verificationCode.length !== 6}
                   className="w-full h-11 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
                 >

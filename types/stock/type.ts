@@ -28,10 +28,13 @@ export interface StockVariant {
   name: string;
   displayName: string;
   sku: string | null;
+  /**
+   * Denormalized convenience copy of the parent stock's `baseUnitId` —
+   * every variant of a stock transacts in the same tracking unit.
+   */
   unitId: string;
   unitName: string;
   unitAbbreviation: string;
-  conversionToBase: number;
   archived: boolean;
   isDefault: boolean;
   barcode: string | null;

@@ -1,6 +1,10 @@
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock/column";
-import { getStocks } from "@/lib/actions/stock-actions";
+import {
+  getStocks,
+  getStockCounts,
+  type StockView,
+} from "@/lib/actions/stock-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import { getInventoryDashboardSummary } from "@/lib/actions/reports-analytics-actions";
@@ -24,9 +28,18 @@ type Props = {
 
 export default async function Page({ searchParams }: Props) {
   const { filter = "active" } = await searchParams;
+  const view: StockView =
+    filter === "archived" || filter === "draft" || filter === "all"
+      ? filter
+      : "active";
 
-  const [stocks, location] = await Promise.all([
-    getStocks(),
+  // One backend call returns the rows for the selected tab; a separate
+  // counts endpoint feeds every tab badge in a single round-trip — no
+  // client-side row filtering and no fetching tabs the merchant didn't
+  // open.
+  const [rows, counts, location] = await Promise.all([
+    getStocks(view),
+    getStockCounts(),
     getCurrentLocation(),
   ]);
 
@@ -41,7 +54,7 @@ export default async function Page({ searchParams }: Props) {
   const balanceMap = new Map(balances.map((b) => [b.stockVariantId, b]));
 
   // Enrich stocks with aggregated balance data
-  const enriched: StockWithBalance[] = stocks.map((stock) => {
+  const enrich = (stock: typeof rows[number]): StockWithBalance => {
     let totalQuantity = 0;
     let totalValue = 0;
     let lowStock = false;
@@ -58,22 +71,15 @@ export default async function Page({ searchParams }: Props) {
     }
 
     return { ...stock, totalQuantity, totalValue, lowStock, outOfStock };
-  });
+  };
 
-  const activeCount = enriched.filter((s) => !s.archived).length;
-  const archivedCount = enriched.filter((s) => s.archived).length;
-
-  const filtered =
-    filter === "archived"
-      ? enriched.filter((s) => s.archived)
-      : filter === "all"
-        ? enriched
-        : enriched.filter((s) => !s.archived);
+  const filtered: StockWithBalance[] = rows.map(enrich);
 
   const tabs = [
-    { key: "active", label: "Active", count: activeCount, href: "/stock-variants" },
-    { key: "archived", label: "Archived", count: archivedCount, href: "/stock-variants?filter=archived" },
-    { key: "all", label: "All", count: enriched.length, href: "/stock-variants?filter=all" },
+    { key: "active", label: "Active", count: counts.active, href: "/stock-variants" },
+    { key: "draft", label: "Drafts", count: counts.draft, href: "/stock-variants?filter=draft" },
+    { key: "archived", label: "Archived", count: counts.archived, href: "/stock-variants?filter=archived" },
+    { key: "all", label: "All", count: counts.all, href: "/stock-variants?filter=all" },
   ];
 
 
@@ -87,7 +93,7 @@ export default async function Page({ searchParams }: Props) {
       />
 
       <PageBody>
-        <InventoryKpiStrip summary={summary} />
+        {filtered.length > 0 && <InventoryKpiStrip summary={summary} />}
 
         {/* Filter tabs — design's `.tabs` pill (matches Active/Archived
             on the products list). */}

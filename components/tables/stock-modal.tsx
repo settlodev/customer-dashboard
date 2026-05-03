@@ -90,7 +90,7 @@ export default function StockModal({
                           Unit
                         </span>
                         <span className="w-2/3 pl-2 text-sm">
-                          {variant.unitAbbreviation} (×{variant.conversionToBase})
+                          {variant.unitAbbreviation}
                         </span>
                       </div>
                       {variant.serialTracked && (
