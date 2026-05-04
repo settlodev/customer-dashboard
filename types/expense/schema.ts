@@ -36,13 +36,12 @@ export const ExpenseSchema = object({
 
       return val;
     },
-    number({ message: "Please expense paid amount should be valid number" })
-      .nonnegative({
-        message: "Please expense paid amount should be positive number",
-      })
-      .gt(0, {
-        message: "Please expense paid amount should be greater than 0",
-      }),
+    number({
+      message: "Please expense paid amount should be valid number",
+    }).nonnegative({
+      message:
+        "Please expense paid amount should be greater than or equal to 0",
+    }),
   ).optional(),
   date: string({ required_error: "Date is required" }),
   receiptUrl: string().optional().nullish(),

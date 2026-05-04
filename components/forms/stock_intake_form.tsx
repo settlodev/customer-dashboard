@@ -875,6 +875,9 @@ function StockIntakeForm({
           router.push(`/goods-received/${successModal.receiptId}`)
         }
         onViewAll={() => router.push("/stock-intakes")}
+        onClose={() =>
+          setSuccessModal({ open: false, receiptId: undefined, count: 0 })
+        }
       />
     </Form>
   );
