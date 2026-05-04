@@ -161,11 +161,11 @@ export function InvoiceDocument({
               <img
                 src={data.locationLogo}
                 alt="Logo"
-                className="h-16 w-auto object-contain flex-shrink-0"
+                className="max-h-32 w-full object-contain flex-shrink-0"
                 style={{ border: `1px solid ${SECONDARY}`, borderRadius: 4 }}
               />
             ) : (
-              <div className="h-14 w-14 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0" />
+              <div className="h-20 w-20 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0" />
             )}
           </div>
 
