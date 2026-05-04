@@ -27,7 +27,12 @@ export const PaymentMethodCard = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const hasChildren = method.children && method.children.length > 0;
   const isToggling = toggling === method.id;
-  const anyChildEnabled = hasChildren && method.children!.some((c) => c.enabled);
+  const anyChildEnabled =
+    hasChildren && method.children!.some((c) => c.enabled);
+
+  // Check if this method should not have a switch (only dropdown)
+  const shouldOnlyShowDropdown =
+    method.code === "PAYMENT_AGGREGATORS" || method.code === "NO_CHARGE";
 
   const getIcon = (code: string) => {
     switch (code) {
@@ -41,6 +46,8 @@ export const PaymentMethodCard = ({
         return <Banknote className="w-4 h-4" />;
       case "PAYMENT_AGGREGATORS":
         return <Zap className="w-4 h-4" />;
+      case "NO_CHARGE":
+        return <Banknote className="w-4 h-4" />;
       default:
         return <CreditCard className="w-4 h-4" />;
     }
@@ -48,7 +55,8 @@ export const PaymentMethodCard = ({
 
   const getStatusText = () => {
     if (!hasChildren) return method.enabled ? "Enabled" : "Disabled";
-    if (method.enabled) return `All ${method.displayName.toLowerCase()} types accepted`;
+    if (method.enabled)
+      return `All ${method.displayName.toLowerCase()} types accepted`;
     if (anyChildEnabled) {
       const enabledChildren = method.children!.filter((c) => c.enabled);
       return enabledChildren.map((c) => c.displayName).join(", ");
@@ -78,13 +86,18 @@ export const PaymentMethodCard = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {isToggling ? (
-            <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-          ) : (
-            <Switch
-              checked={method.enabled}
-              onCheckedChange={(checked) => onToggle(method.id, checked)}
-            />
+          {/* Only show switch if it's NOT a payment aggregator or no charge method */}
+          {!shouldOnlyShowDropdown && (
+            <>
+              {isToggling ? (
+                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+              ) : (
+                <Switch
+                  checked={method.enabled}
+                  onCheckedChange={(checked) => onToggle(method.id, checked)}
+                />
+              )}
+            </>
           )}
           {hasChildren && (
             <button
@@ -108,7 +121,9 @@ export const PaymentMethodCard = ({
           <div className="flex items-center gap-1.5 mb-3 text-xs text-gray-400 dark:text-gray-500">
             <Info className="w-3 h-3 flex-shrink-0" />
             {method.enabled ? (
-              <span>All types accepted. Toggle individually to be specific.</span>
+              <span>
+                All types accepted. Toggle individually to be specific.
+              </span>
             ) : anyChildEnabled ? (
               <span>Only selected types accepted.</span>
             ) : (
@@ -117,8 +132,8 @@ export const PaymentMethodCard = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-            {method.children!
-              .sort((a, b) => a.sortOrder - b.sortOrder)
+            {method
+              .children!.sort((a, b) => a.sortOrder - b.sortOrder)
               .map((child) => {
                 const childToggling = toggling === child.id;
 
@@ -144,7 +159,9 @@ export const PaymentMethodCard = ({
                     ) : (
                       <Switch
                         checked={child.enabled}
-                        onCheckedChange={(checked) => onToggle(child.id, checked)}
+                        onCheckedChange={(checked) =>
+                          onToggle(child.id, checked)
+                        }
                       />
                     )}
                   </div>

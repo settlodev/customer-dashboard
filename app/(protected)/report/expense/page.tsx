@@ -385,16 +385,16 @@ export default function ExpenseReportPage() {
         </div>
         {expenses && (
           <div className="flex gap-2">
-            <Button
-              onClick={generateCSV}
-              disabled={downloadingCsv}
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs gap-1.5"
-            >
-              <DownloadIcon className="h-3.5 w-3.5" />
-              {downloadingCsv ? "Exporting…" : "CSV"}
-            </Button>
+            {/*<Button*/}
+            {/*  onClick={generateCSV}*/}
+            {/*  disabled={downloadingCsv}*/}
+            {/*  variant="outline"*/}
+            {/*  size="sm"*/}
+            {/*  className="h-8 text-xs gap-1.5"*/}
+            {/*>*/}
+            {/*  <DownloadIcon className="h-3.5 w-3.5" />*/}
+            {/*  {downloadingCsv ? "Exporting…" : "CSV"}*/}
+            {/*</Button>*/}
             <Button
               onClick={generatePDF}
               disabled={downloadingPdf}
