@@ -44,8 +44,10 @@ export const openDaySession = async (
 ): Promise<FormResponse<DaySession>> => {
   try {
     const apiClient = new ApiClient();
-    const body: Record<string, unknown> = {};
-    if (notes) body.notes = notes;
+    // Always send a non-empty body — the backend rejects `{}` with
+    // INVALID_REQUEST_BODY, even though the controller declares the
+    // request optional.
+    const body: Record<string, unknown> = { notes: notes ?? null };
     const data = await apiClient.post(`/api/v1/locations/${locationId}/day-sessions/open`, body);
     return { responseType: "success", message: "Day session opened", data: parseStringify(data) };
   } catch (error) {
@@ -72,10 +74,11 @@ export const closeDaySession = async (
 ): Promise<FormResponse<DaySession>> => {
   try {
     const apiClient = new ApiClient();
-    const body: Record<string, unknown> = {};
+    // Always send `force` so the body is never the empty object `{}`,
+    // which the backend currently rejects with INVALID_REQUEST_BODY.
+    const body: Record<string, unknown> = { force: !!force };
     if (notes) body.notes = notes;
     if (typeof closingFloat === "number") body.closingFloat = closingFloat;
-    if (force) body.force = true;
     const data = await apiClient.post(`/api/v1/locations/${locationId}/day-sessions/close`, body);
     return { responseType: "success", message: "Day session closed", data: parseStringify(data) };
   } catch (error) {

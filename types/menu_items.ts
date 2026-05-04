@@ -168,12 +168,6 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "tag",
         },
-        {
-          title: "Suppliers",
-          link: "/suppliers",
-          current: args?.isCurrentItem,
-          icon: "truck",
-        },
       ],
     },
 
@@ -244,6 +238,35 @@ const getNormalMenuItems = (
           },
         ] : []),
         {
+          title: "Units of measure",
+          link: "/units",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+      ],
+    },
+
+    // Procurement — purchase-to-pay flow plus the parties on the other end
+    {
+      label: "Procurement",
+      showSeparator: true,
+      collapsible: false,
+      current: args?.isCurrentItem,
+      icon: "stock",
+      items: [
+        {
+          title: "Suppliers",
+          link: "/suppliers",
+          current: args?.isCurrentItem,
+          icon: "truck",
+        },
+        {
+          title: "Vendors (coming soon)",
+          link: "/vendors",
+          current: args?.isCurrentItem,
+          icon: "truck",
+        },
+        {
           title: "Purchase requisitions",
           link: "/purchase-requisitions",
           current: args?.isCurrentItem,
@@ -273,12 +296,6 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
-        {
-          title: "Units of measure",
-          link: "/units",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
       ],
     },
 
@@ -297,33 +314,10 @@ const getNormalMenuItems = (
           icon: "shopping-cart",
         },
         {
-          title: "Proforma",
-          link: "/proforma-invoice",
-          current: args?.isCurrentItem,
-          icon: "rotate-ccw",
-        },
-        {
           title: "Refunds",
           link: "/refunds",
           current: args?.isCurrentItem,
           icon: "rotate-ccw",
-        },
-      ],
-    },
-
-    // Customer Management
-    {
-      label: "Customer management",
-      showSeparator: true,
-      collapsible: false,
-      current: args?.isCurrentItem,
-      icon: "customers",
-      items: [
-        {
-          title: "Customers",
-          link: "/customers",
-          current: args?.isCurrentItem,
-          icon: "users",
         },
         {
           title: "Discounts",
@@ -334,13 +328,13 @@ const getNormalMenuItems = (
       ],
     },
 
-    // Staff & Roles Management
+    // People — staff, account members, roles, customers all in one place
     {
-      label: "Staff management",
+      label: "People",
       showSeparator: true,
       collapsible: false,
       current: args?.isCurrentItem,
-      icon: "users",
+      icon: "customers",
       items: [
         {
           title: "Staff",
@@ -349,7 +343,13 @@ const getNormalMenuItems = (
           icon: "cart",
         },
         {
-          title: "Team",
+          title: "Shifts",
+          link: "/shifts",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Account members",
           link: "/team",
           current: args?.isCurrentItem,
           icon: "cart",
@@ -361,8 +361,43 @@ const getNormalMenuItems = (
           icon: "cart",
         },
         {
-          title: "Shifts",
-          link: "/shifts",
+          title: "Customers",
+          link: "/customers",
+          current: args?.isCurrentItem,
+          icon: "users",
+        },
+      ],
+    },
+
+    // Accounting — ledger views: expenses, invoices, AP, AR
+    {
+      label: "Accounting",
+      showSeparator: true,
+      collapsible: false,
+      current: args?.isCurrentItem,
+      icon: "general",
+      items: [
+        {
+          title: "Expenses",
+          link: "/expenses",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Invoices",
+          link: "/proforma-invoice",
+          current: args?.isCurrentItem,
+          icon: "rotate-ccw",
+        },
+        {
+          title: "Creditors (coming soon)",
+          link: "/creditors",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Debtors (coming soon)",
+          link: "/debtors",
           current: args?.isCurrentItem,
           icon: "cart",
         },
@@ -377,12 +412,6 @@ const getNormalMenuItems = (
       current: args?.isCurrentItem,
       icon: "general",
       items: [
-        {
-          title: "Expenses",
-          link: "/expenses",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
         {
           title: "Tables & spaces",
           link: "/spaces",

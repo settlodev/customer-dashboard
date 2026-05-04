@@ -27,8 +27,9 @@ export const ProductVariantSchema = object({
 
   // Sellability mode drives validation across pricing/stock fields.
   // Stored on the form only; mapped to (trackStock, unlimited, stockLinkType)
-  // in the action layer.
-  sellabilityMode: z.enum(["UNLIMITED", "DIRECT", "RECIPE"]).default("UNLIMITED"),
+  // in the action layer. QUANTITY = untracked product with a self-managed
+  // counter (variant.unlimited=false, variant.availableQuantity=N).
+  sellabilityMode: z.enum(["UNLIMITED", "QUANTITY", "DIRECT", "RECIPE"]).default("UNLIMITED"),
 
   // Pricing
   pricingStrategy: z.enum(["MANUAL", "PERCENTAGE_MARKUP", "FIXED_MARKUP"]).default("MANUAL"),
@@ -40,14 +41,20 @@ export const ProductVariantSchema = object({
   markupPercentage: preprocess(toOptionalNumber, number().positive().optional().nullish()),
   markupAmount: preprocess(toOptionalNumber, number().positive().optional().nullish()),
 
-  // UNLIMITED-mode self-managed counter (only used when sellabilityMode=UNLIMITED
-  // and the merchant wants a soft cap). When unlimited stays true on the variant
-  // entity, this can be left empty.
+  // QUANTITY-mode self-managed counter. The order consumer in the inventory
+  // service decrements this on sale (no stock ledger involvement) until it
+  // hits zero, after which realtime sales hard-fail with INSUFFICIENT_STOCK.
+  // Left empty for UNLIMITED / DIRECT / RECIPE.
   availableQuantity: preprocess(toOptionalNumber, number().nonnegative().optional().nullish()),
 
   // DIRECT-mode wiring
   stockVariantId: string().uuid().optional().nullish(),
   directQuantity: preprocess(toOptionalNumber, number().positive().optional().nullish()),
+
+  // RECIPE-mode wiring. Lives in form state only — the product backend
+  // doesn't take this field. The action fans out attachBomRule(ruleId, {
+  // productVariantId }) for each set value after the variant is persisted.
+  bomRuleId: string().uuid().optional().nullish(),
 
   // Auto-retire-on-sellout (V36): when true, the backend's order consumer
   // archives this variant the moment its stock hits zero (with
@@ -72,13 +79,25 @@ export const ProductVariantSchema = object({
     });
   }
 
-  // Cost-price requirement: enforced for UNLIMITED variants because the backend
-  // will reject the create otherwise. RECIPE/DIRECT can derive cost from stock.
-  if (val.sellabilityMode === "UNLIMITED" && val.costPrice == null) {
+  // Cost-price requirement: enforced for UNLIMITED and QUANTITY variants
+  // because the backend has no stock item to derive cost from.
+  // RECIPE/DIRECT can derive cost from stock.
+  if ((val.sellabilityMode === "UNLIMITED" || val.sellabilityMode === "QUANTITY")
+        && val.costPrice == null) {
     ctx.addIssue({
       code: "custom",
       path: ["costPrice"],
-      message: "Cost price is required for unlimited variants",
+      message: "Cost price is required for unlimited and set-quantity variants",
+    });
+  }
+
+  // QUANTITY requires an initial counter value
+  if (val.sellabilityMode === "QUANTITY"
+        && (val.availableQuantity == null || val.availableQuantity < 0)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["availableQuantity"],
+      message: "Set the starting quantity (must be zero or more)",
     });
   }
 

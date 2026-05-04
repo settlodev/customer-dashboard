@@ -190,11 +190,7 @@ export function AddonGroupForm({ group, productVariants }: Props) {
         title: isEditing ? "Saved" : "Created",
         description: `${saved.name} ${isEditing ? "updated" : "created"}.`,
       });
-      if (!isEditing) {
-        router.push(`/addon-groups/${saved.id}`);
-      } else {
-        router.refresh();
-      }
+      router.push(`/addon-groups/${saved.id}`);
     });
   };
 

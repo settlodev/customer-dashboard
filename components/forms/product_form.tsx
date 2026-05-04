@@ -11,6 +11,7 @@ import React, {
 import { useForm, useFieldArray, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Plus,
   Trash2,
@@ -32,6 +33,7 @@ import {
   ChevronDown,
   Pencil,
   Search,
+  Loader2,
 } from "lucide-react";
 import { NumericFormat } from "react-number-format";
 
@@ -59,6 +61,8 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MultiSelect } from "@/components/ui/multi-select";
+import ConsumptionRuleSelector from "@/components/widgets/consumption-rule-selector";
+import { resolveRuleForProduct } from "@/lib/actions/bom-rule-actions";
 
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -166,13 +170,21 @@ const DEFAULT_VARIANT: ProductVariantInput = {
   availableQuantity: undefined,
   stockVariantId: undefined,
   directQuantity: undefined,
+  bomRuleId: undefined,
   autoRetireOnSellout: false,
 };
 
-function variantToInput(v: ProductVariant): ProductVariantInput {
-  let mode: "UNLIMITED" | "DIRECT" | "RECIPE";
+function variantToInput(
+  v: ProductVariant,
+  productTracksStock: boolean,
+): ProductVariantInput {
+  // RECIPE and QUANTITY both have unlimited=false, stockLinkType=null —
+  // product.trackStock is the discriminator: tracked product → recipe-driven,
+  // untracked product → self-managed counter.
+  let mode: "UNLIMITED" | "QUANTITY" | "DIRECT" | "RECIPE";
   if (v.unlimited) mode = "UNLIMITED";
   else if (v.stockLinkType === "DIRECT") mode = "DIRECT";
+  else if (!productTracksStock) mode = "QUANTITY";
   else mode = "RECIPE";
 
   return {
@@ -191,6 +203,10 @@ function variantToInput(v: ProductVariant): ProductVariantInput {
     availableQuantity: v.availableQuantity ?? undefined,
     stockVariantId: v.stockVariantId ?? undefined,
     directQuantity: v.directQuantity ?? undefined,
+    // For RECIPE-mode variants, the active rule is held on a separate
+    // BomRuleAttachment table — the form fetches it lazily and primes
+    // the field when the variant first renders. Default undefined here.
+    bomRuleId: undefined,
     autoRetireOnSellout: v.autoRetireOnSellout ?? false,
   };
 }
@@ -208,6 +224,7 @@ export default function ProductForm({ item }: ProductFormProps) {
   const [categories, setCategories] = useState<{ id: string; name: string }[]>(
     [],
   );
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [stockVariants, setStockVariants] = useState<StockVariantOption[]>([]);
   // Map of stockVariantId → weighted-average cost at the current location.
   // Used by the variant editor to derive a variant's cost when DIRECT mode
@@ -238,6 +255,7 @@ export default function ProductForm({ item }: ProductFormProps) {
       if (cancelled) return;
       setBrands((b ?? []).map((x: any) => ({ id: x.id, name: x.name })));
       setCategories((c ?? []).map((x: any) => ({ id: x.id, name: x.name })));
+      setCategoriesLoading(false);
       const sv: StockVariantOption[] = [];
       for (const stock of s ?? []) {
         for (const v of stock.variants ?? []) {
@@ -296,7 +314,9 @@ export default function ProductForm({ item }: ProductFormProps) {
           active: item.active,
           lifecycleStatus: item.lifecycleStatus,
           replacementProductId: item.replacementProductId ?? undefined,
-          variants: (item.variants ?? []).map(variantToInput),
+          variants: (item.variants ?? []).map((v) =>
+            variantToInput(v, item.trackStock),
+          ),
         }
       : {
           name: "",
@@ -378,7 +398,7 @@ export default function ProductForm({ item }: ProductFormProps) {
         setRemovedVariantIds([]);
 
         toast({ title: "Saved", description: "Product updated successfully." });
-        router.refresh();
+        router.push(`/products/${item!.id}`);
       } catch (e: any) {
         if (e?.digest?.startsWith("NEXT_REDIRECT")) throw e;
         setResponse({
@@ -552,6 +572,8 @@ export default function ProductForm({ item }: ProductFormProps) {
     autoCreateStock ||
     firstVariant?.sellabilityMode === "UNLIMITED" ||
     firstVariant?.sellabilityMode === "RECIPE" ||
+    (firstVariant?.sellabilityMode === "QUANTITY" &&
+      (firstVariant?.availableQuantity ?? -1) >= 0) ||
     (firstVariant?.sellabilityMode === "DIRECT" &&
       !!firstVariant?.stockVariantId &&
       (firstVariant?.directQuantity ?? 0) > 0);
@@ -794,6 +816,12 @@ export default function ProductForm({ item }: ProductFormProps) {
                       <FormItem>
                         <FormLabel className={styles.fieldLabel}>
                           Categories <span className="req">*</span>
+                          {categoriesLoading && (
+                            <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Loading…
+                            </span>
+                          )}
                         </FormLabel>
                         <FormControl>
                           <MultiSelect
@@ -803,8 +831,13 @@ export default function ProductForm({ item }: ProductFormProps) {
                             }))}
                             onValueChange={field.onChange}
                             defaultValue={field.value ?? []}
-                            placeholder="Pick at least one category"
+                            placeholder={
+                              categoriesLoading
+                                ? "Loading categories…"
+                                : "Pick at least one category"
+                            }
                             maxCount={5}
+                            disabled={categoriesLoading}
                           />
                         </FormControl>
                         {!field.value?.length && (
@@ -1436,17 +1469,22 @@ function VariantEditor({
   const directQuantity = form.watch(`variants.${index}.directQuantity`);
   const currency = form.watch("nativeCurrency") || "TZS";
   const currencySuffix = ` ${currency}`;
-  const tracksStock = mode !== "UNLIMITED";
+  // "Track stock" means the inventory ledger drives availability — only
+  // DIRECT (linked stock item) and RECIPE (BOM rule) qualify. UNLIMITED
+  // and QUANTITY both leave the product untracked at the catalog level.
+  const tracksStock = mode === "DIRECT" || mode === "RECIPE";
   const isMarkupMode =
     pricingStrategy === "PERCENTAGE_MARKUP" ||
     pricingStrategy === "FIXED_MARKUP";
 
-  // Toggling the master "Track stock" switch flips between UNLIMITED (off)
-  // and DIRECT (on, default to direct stock link). Switching to RECIPE
-  // happens via the inner radio after enabling tracking.
+  // Toggling the master "Track stock" switch flips between the OFF default
+  // (UNLIMITED — merchant can switch to QUANTITY via the inner radio) and
+  // ON (DIRECT — inner radio offers RECIPE). Inner radios live below this
+  // toggle and own the within-state transitions.
   const handleTrackToggle = (track: boolean) => {
     if (track) {
       form.setValue(`variants.${index}.sellabilityMode`, "DIRECT");
+      form.setValue(`variants.${index}.availableQuantity`, undefined);
     } else {
       form.setValue(`variants.${index}.sellabilityMode`, "UNLIMITED");
       form.setValue(`variants.${index}.stockVariantId`, undefined);
@@ -1792,6 +1830,97 @@ function VariantEditor({
         </FormItem>
       )}
 
+      {/* Untracked sub-fields — Unlimited vs Set quantity.
+          QUANTITY is a self-managed counter on the variant; the order
+          consumer decrements it on sale (no stock ledger). */}
+      {!autoCreateStock && !tracksStock && (
+        <div className="space-y-4 rounded-lg border p-4">
+          <FormField
+            control={form.control}
+            name={`variants.${index}.sellabilityMode`}
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel className="text-sm">
+                  How should this variant be sold?
+                </FormLabel>
+                <FormControl>
+                  <RadioGroup
+                    onValueChange={(next) => {
+                      field.onChange(next);
+                      if (next === "UNLIMITED") {
+                        form.setValue(
+                          `variants.${index}.availableQuantity`,
+                          undefined,
+                        );
+                      } else if (next === "QUANTITY") {
+                        const current = form.getValues(
+                          `variants.${index}.availableQuantity`,
+                        );
+                        if (current == null) {
+                          form.setValue(
+                            `variants.${index}.availableQuantity`,
+                            0,
+                            { shouldValidate: true },
+                          );
+                        }
+                      }
+                    }}
+                    value={field.value}
+                    className="grid grid-cols-1 md:grid-cols-2 gap-3"
+                    disabled={disabled}
+                  >
+                    <SellabilityCard
+                      value="UNLIMITED"
+                      current={field.value}
+                      title="Unlimited"
+                      description="Always available — no quantity tracking"
+                    />
+                    <SellabilityCard
+                      value="QUANTITY"
+                      current={field.value}
+                      title="Set quantity"
+                      description="Manually enter a count; deducts on each sale"
+                    />
+                  </RadioGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {mode === "QUANTITY" && (
+            <FormField
+              control={form.control}
+              name={`variants.${index}.availableQuantity`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Starting quantity{" "}
+                    <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <NumericFormat
+                      customInput={Input}
+                      placeholder="0"
+                      value={field.value ?? ""}
+                      onValueChange={(v) => field.onChange(v.floatValue)}
+                      decimalScale={6}
+                      allowNegative={false}
+                      disabled={disabled}
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Deducts on every sale; sales fail once it hits zero.
+                    Adjust here at any time to refill.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+        </div>
+      )}
+
       {/* Tracking sub-fields — only when toggle is ON and not auto-create */}
       {!autoCreateStock && tracksStock && (
         <div className="space-y-4 rounded-lg border border-blue-200/60 dark:border-blue-900/50 bg-blue-50/40 dark:bg-blue-950/20 p-4">
@@ -1914,13 +2043,17 @@ function VariantEditor({
           )}
 
           {mode === "RECIPE" && (
-            <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 p-3 flex gap-2.5">
-              <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-800 dark:text-amber-200">
-                Recipe-driven: define which stock items get deducted in{" "}
-                <strong>Consumption Rules</strong> after saving the product.
-              </div>
-            </div>
+            <RecipeAttachField
+              control={form.control}
+              variantIndex={index}
+              variantId={form.watch(`variants.${index}.id`) as string | undefined}
+              disabled={disabled}
+              onPrime={(ruleId) =>
+                form.setValue(`variants.${index}.bomRuleId`, ruleId, {
+                  shouldDirty: false,
+                })
+              }
+            />
           )}
         </div>
       )}
@@ -1945,6 +2078,79 @@ function VariantEditor({
           )}
         />
       )}
+    </div>
+  );
+}
+
+// Inline RECIPE-mode attachment picker — shown beneath the Direct/Recipe
+// radio when Recipe is selected. Lets the operator attach an existing
+// consumption rule or jump out to /bom-rules/new to author one. The
+// product action fans out attachBomRule() calls per variant after save.
+function RecipeAttachField({
+  control,
+  variantIndex,
+  variantId,
+  disabled,
+  onPrime,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: any;
+  variantIndex: number;
+  variantId?: string;
+  disabled?: boolean;
+  onPrime: (ruleId: string | undefined) => void;
+}) {
+  const primedRef = useRef(false);
+  // Edit-mode prime: fetch the active rule for this existing variant once
+  // and seed the form so the picker reflects what's currently attached.
+  useEffect(() => {
+    if (primedRef.current) return;
+    if (!variantId) return;
+    primedRef.current = true;
+    resolveRuleForProduct(variantId)
+      .then((rule) => onPrime(rule?.id ?? undefined))
+      .catch(() => onPrime(undefined));
+  }, [variantId, onPrime]);
+
+  return (
+    <div className="rounded-md border bg-muted/30 p-3 space-y-2.5">
+      <div className="flex items-start gap-2.5">
+        <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+        <p className="text-sm text-muted-foreground">
+          Recipe-driven: stock is deducted via a consumption rule at sale
+          time. Pick an existing rule or create a new one.
+        </p>
+      </div>
+      <div className="flex items-end gap-2">
+        <FormField
+          control={control}
+          name={`variants.${variantIndex}.bomRuleId`}
+          render={({ field }) => (
+            <FormItem className="flex-1">
+              <FormLabel className="text-xs">Consumption rule</FormLabel>
+              <FormControl>
+                <ConsumptionRuleSelector
+                  value={field.value as string | undefined}
+                  onChange={(v) => field.onChange(v || undefined)}
+                  isDisabled={disabled}
+                  placeholder="Pick a rule to attach"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button asChild variant="outline" size="sm" className="shrink-0">
+          <Link href="/bom-rules/new" target="_blank" rel="noopener noreferrer">
+            <Plus className="mr-1 h-4 w-4" />
+            New rule
+          </Link>
+        </Button>
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Attaching here applies after the product is saved. New rules open
+        in a new tab so this form keeps its state.
+      </p>
     </div>
   );
 }
@@ -2666,7 +2872,7 @@ function AttachedModifierGroupRow({
             <ChevronDown className="h-3.5 w-3.5" />
           </Button>
           <a
-            href={`/modifier-groups/${group.id}`}
+            href={`/modifier-groups/${group.id}/edit`}
             target="_blank"
             rel="noreferrer"
             title="Edit in library"
@@ -3411,7 +3617,7 @@ function AttachedAddonGroupRow({
             <ChevronDown className="h-3.5 w-3.5" />
           </Button>
           <a
-            href={`/addon-groups/${group.id}`}
+            href={`/addon-groups/${group.id}/edit`}
             target="_blank"
             rel="noreferrer"
             title="Edit in library"

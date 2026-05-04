@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/team/columns";
@@ -29,8 +34,6 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
-
-const breadcrumbItems = [{ title: "Team", link: "/team" }];
 
 export default function TeamPage() {
   const [members, setMembers] = useState<AccountMember[]>([]);
@@ -84,48 +87,53 @@ export default function TeamPage() {
   };
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <div className="flex items-center justify-between">
-        <BreadcrumbsNav items={breadcrumbItems} />
-        <Button size="sm" onClick={() => setShowInvite(true)}>
-          <PlusIcon className="h-4 w-4 mr-1.5" />
-          Invite Member
-        </Button>
-      </div>
-
-      {isLoading ? (
-        <Card>
-          <CardContent className="py-12 flex items-center justify-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Loading team members...</span>
-          </CardContent>
-        </Card>
-      ) : members.length > 0 ? (
-        <Card>
-          <CardContent className="px-2 sm:px-6 pt-6">
-            <DataTable
-              columns={columns}
-              data={members}
-              searchKey="firstName"
-              pageNo={0}
-              total={members.length}
-              pageCount={1}
-            />
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="py-16 flex flex-col items-center justify-center text-center">
-            <UserPlus className="h-10 w-10 text-muted-foreground mb-4" />
-            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">No team members yet</h3>
-            <p className="text-xs text-muted-foreground mb-4">Invite members to collaborate on your account.</p>
-            <Button size="sm" onClick={() => setShowInvite(true)}>
-              <PlusIcon className="h-4 w-4 mr-1.5" />
-              Invite Member
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Account members" }]} />
+      <PageHeader
+        title="Account members"
+        subtitle="Account members who can collaborate on this business."
+        actions={
+          <Button size="sm" onClick={() => setShowInvite(true)}>
+            <PlusIcon className="h-4 w-4 mr-1.5" />
+            Invite Member
+          </Button>
+        }
+      />
+      <PageBody>
+        {isLoading ? (
+          <Card>
+            <CardContent className="py-12 flex items-center justify-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Loading team members...</span>
+            </CardContent>
+          </Card>
+        ) : members.length > 0 ? (
+          <Card>
+            <CardContent className="px-2 sm:px-6 pt-6">
+              <DataTable
+                columns={columns}
+                data={members}
+                searchKey="firstName"
+                pageNo={0}
+                total={members.length}
+                pageCount={1}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="py-16 flex flex-col items-center justify-center text-center">
+              <UserPlus className="h-10 w-10 text-muted-foreground mb-4" />
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">No team members yet</h3>
+              <p className="text-xs text-muted-foreground mb-4">Invite members to collaborate on your account.</p>
+              <Button size="sm" onClick={() => setShowInvite(true)}>
+                <PlusIcon className="h-4 w-4 mr-1.5" />
+                Invite Member
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </PageBody>
 
       {/* Invite Modal */}
       <Dialog open={showInvite} onOpenChange={setShowInvite}>
@@ -209,6 +217,6 @@ export default function TeamPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

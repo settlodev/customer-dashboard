@@ -40,6 +40,7 @@ import type { InventoryBalanceSummary } from "@/types/inventory-balance/summary-
 import type { ItemSalesAggregate } from "@/types/item-sales/type";
 import type { InventorySnapshot } from "@/types/inventory-snapshot/type";
 import type { AuditLogEntry } from "@/types/audit-log/type";
+import type { ProductRecipeSummary, VariantRecipeSummary } from "@/types/bom/type";
 import { AUDIT_ACTION_LABELS } from "@/types/audit-log/type";
 import {
   PRICING_STRATEGY_OPTIONS,
@@ -66,6 +67,8 @@ interface Props {
   auditEntries: AuditLogEntry[];
   /** Location currency — labels every cost/value display. */
   currency: string;
+  /** Per-variant recipe payload — empty when the product has no RECIPE-mode variants. */
+  recipeSummary: ProductRecipeSummary;
 }
 
 const TABS = [
@@ -122,6 +125,7 @@ export function ProductDetailView({
   variantSnapshotMap,
   auditEntries,
   currency,
+  recipeSummary,
 }: Props) {
   const [tab, setTab] = useState<TabKey>("overview");
 
@@ -293,6 +297,7 @@ export function ProductDetailView({
           product={product}
           stockBalanceMap={stockBalanceMap}
           currency={currency}
+          recipeSummary={recipeSummary}
         />
       )}
       {tab === "sales" && (
@@ -708,10 +713,12 @@ function InventoryTab({
   product,
   stockBalanceMap,
   currency,
+  recipeSummary,
 }: {
   product: Product;
   stockBalanceMap: Record<string, InventoryBalanceSummary>;
   currency: string;
+  recipeSummary: ProductRecipeSummary;
 }) {
   const trackedVariants = product.variants.filter(
     (v) =>
@@ -720,14 +727,16 @@ function InventoryTab({
       v.stockVariantId != null,
   );
 
-  if (trackedVariants.length === 0) {
+  const recipeVariants = recipeSummary.variants ?? [];
+
+  if (trackedVariants.length === 0 && recipeVariants.length === 0) {
     return (
       <Card>
         <CardContent className="py-12 text-center">
           <Boxes className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
           <p className="text-sm text-muted-foreground">
             No tracked variants. Inventory data appears for variants linked
-            directly to a stock item.
+            directly to a stock item or driven by a recipe.
           </p>
         </CardContent>
       </Card>
@@ -752,45 +761,52 @@ function InventoryTab({
 
   return (
     <div className="space-y-6">
-      <KpiStrip cols={5}>
-        <KpiCard
-          icon={<Boxes className="h-3 w-3" />}
-          label="On hand"
-          value={totalOnHand.toLocaleString()}
-        />
-        <KpiCard
-          icon={<ShieldCheck className="h-3 w-3" />}
-          label="Available"
-          value={totalAvailable.toLocaleString()}
-        />
-        <KpiCard
-          icon={<AlertTriangle className="h-3 w-3" />}
-          label="Reserved"
-          value={
-            totalReserved > 0 ? totalReserved.toLocaleString() : "—"
-          }
-          deltaTone={totalReserved > 0 ? "neg" : "neutral"}
-        />
-        <KpiCard
-          icon={<Truck className="h-3 w-3" />}
-          label="In transit"
-          value={
-            totalInTransit > 0 ? totalInTransit.toLocaleString() : "—"
-          }
-          deltaTone="neutral"
-        />
-        <KpiCard
-          icon={<DollarSign className="h-3 w-3" />}
-          label="Value"
-          value={
-            totalValue > 0
-              ? totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })
-              : "—"
-          }
-          unit={totalValue > 0 ? currency : undefined}
-        />
-      </KpiStrip>
+      {trackedVariants.length > 0 && (
+        <KpiStrip cols={5}>
+          <KpiCard
+            icon={<Boxes className="h-3 w-3" />}
+            label="On hand"
+            value={totalOnHand.toLocaleString()}
+          />
+          <KpiCard
+            icon={<ShieldCheck className="h-3 w-3" />}
+            label="Available"
+            value={totalAvailable.toLocaleString()}
+          />
+          <KpiCard
+            icon={<AlertTriangle className="h-3 w-3" />}
+            label="Reserved"
+            value={
+              totalReserved > 0 ? totalReserved.toLocaleString() : "—"
+            }
+            deltaTone={totalReserved > 0 ? "neg" : "neutral"}
+          />
+          <KpiCard
+            icon={<Truck className="h-3 w-3" />}
+            label="In transit"
+            value={
+              totalInTransit > 0 ? totalInTransit.toLocaleString() : "—"
+            }
+            deltaTone="neutral"
+          />
+          <KpiCard
+            icon={<DollarSign className="h-3 w-3" />}
+            label="Value"
+            value={
+              totalValue > 0
+                ? totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })
+                : "—"
+            }
+            unit={totalValue > 0 ? currency : undefined}
+          />
+        </KpiStrip>
+      )}
 
+      {recipeVariants.length > 0 && (
+        <RecipeVariantsCard variants={recipeVariants} />
+      )}
+
+      {trackedVariants.length > 0 && (
       <Card>
         <CardContent className="pt-6">
           <h3 className="text-sm font-semibold mb-3">Linked stock variants</h3>
@@ -890,6 +906,150 @@ function InventoryTab({
           </div>
         </CardContent>
       </Card>
+      )}
+    </div>
+  );
+}
+
+// ── Recipe-driven variants (Inventory tab subsection) ──────────────
+
+function RecipeVariantsCard({
+  variants,
+}: {
+  variants: VariantRecipeSummary[];
+}) {
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Utensils className="h-4 w-4 text-muted-foreground" />
+            Recipe-driven variants
+          </h3>
+          <span className="text-xs text-muted-foreground">
+            Availability follows the weakest ingredient
+          </span>
+        </div>
+        <div className="space-y-4">
+          {variants.map((v) => (
+            <RecipeVariantRow key={v.variantId} variant={v} />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecipeVariantRow({ variant }: { variant: VariantRecipeSummary }) {
+  if (variant.ruleId == null) {
+    return (
+      <div className="rounded-md border border-amber-200/60 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20 p-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">{variant.variantName}</span>
+          <Badge variant="outline" className="text-amber-700 dark:text-amber-300">
+            No recipe attached
+          </Badge>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          This variant is recipe-driven but has no active rule. Attach one
+          from the Consumption Rules page so it can be sold.
+        </p>
+      </div>
+    );
+  }
+
+  const max = variant.maxSellable ?? 0;
+  const tone =
+    max <= 0
+      ? "text-red-600 dark:text-red-400"
+      : max < 5
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-emerald-600 dark:text-emerald-400";
+
+  return (
+    <div className="rounded-md border p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-sm font-medium truncate">{variant.variantName}</div>
+          <Link
+            href={`/bom-rules/${variant.ruleId}`}
+            className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+          >
+            {variant.ruleName ?? "Rule"}
+            {variant.revisionNumber ? ` · ${variant.revisionNumber}` : ""}
+            <ChevronRight className="h-3 w-3" />
+          </Link>
+        </div>
+        <div className="text-right">
+          <div className={`text-sm font-semibold ${tone}`}>
+            {max.toLocaleString()} sellable
+          </div>
+          {max <= 0 && variant.limitingStockVariantName && (
+            <div className="text-[10px] text-muted-foreground">
+              {variant.limitingStockVariantName} short
+            </div>
+          )}
+        </div>
+      </div>
+      {variant.ingredients.length > 0 && (
+        <div className="mt-3 rounded-md border overflow-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ingredient</TableHead>
+                <TableHead className="text-right">Per sale</TableHead>
+                <TableHead className="text-right">Available</TableHead>
+                <TableHead className="text-right">Yield</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {variant.ingredients.map((ing) => {
+                const yieldQty = ing.quantity > 0
+                  ? Math.floor(ing.available / ing.quantity)
+                  : 0;
+                const isBottleneck =
+                  variant.limitingStockVariantId != null &&
+                  variant.limitingStockVariantId === ing.stockVariantId;
+                return (
+                  <TableRow key={ing.stockVariantId}>
+                    <TableCell className="font-medium">
+                      {ing.stockVariantName ?? "—"}
+                      {ing.optional && (
+                        <span className="ml-1 text-[10px] text-muted-foreground">
+                          (optional)
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {ing.quantity.toLocaleString()}
+                      {ing.unitName ? ` ${ing.unitName}` : ""}
+                    </TableCell>
+                    <TableCell
+                      className={`text-right ${
+                        ing.available <= 0
+                          ? "text-red-600 dark:text-red-400"
+                          : ""
+                      }`}
+                    >
+                      {ing.available.toLocaleString()}
+                      {ing.unitName ? ` ${ing.unitName}` : ""}
+                    </TableCell>
+                    <TableCell
+                      className={`text-right font-medium ${
+                        isBottleneck
+                          ? "text-red-600 dark:text-red-400"
+                          : ""
+                      }`}
+                    >
+                      {yieldQty.toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }

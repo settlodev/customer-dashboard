@@ -1,15 +1,18 @@
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/staff/columns";
 import { fetchStaffPage, searchStaffByName } from "@/lib/actions/staff-actions";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import { Staff } from "@/types/staff";
 import NoItems from "@/components/layouts/no-items";
-import { Plus } from "lucide-react";
-
-const breadcrumbItems = [{ title: "Staff", link: "/staff" }];
 
 type Params = {
   searchParams: Promise<{
@@ -43,37 +46,39 @@ export default async function Page({ searchParams }: Params) {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <BreadcrumbsNav items={breadcrumbItems} />
-
-        <div className="flex items-center gap-2">
-          <Button asChild>
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Staff" }]} />
+      <PageHeader
+        title="Staff"
+        subtitle="Manage staff members for this location."
+        actions={
+          <Button asChild size="sm">
             <Link href="/staff/new/edit">
               <Plus className="mr-1.5 h-4 w-4" />
               Add Staff
             </Link>
           </Button>
-        </div>
-      </div>
-
-      {total > 0 || q !== "" ? (
-        <Card>
-          <CardContent className="px-2 sm:px-6 pt-6">
-            <DataTable
-              columns={columns}
-              data={data}
-              pageCount={pageCount}
-              pageNo={page}
-              searchKey="firstName"
-              total={total}
-              rowClickBasePath="/staff"
-            />
-          </CardContent>
-        </Card>
-      ) : (
-        <NoItems itemName="staff" newItemUrl="/staff/new/edit" />
-      )}
-    </div>
+        }
+      />
+      <PageBody>
+        {total > 0 || q !== "" ? (
+          <Card>
+            <CardContent className="px-2 sm:px-6 pt-6">
+              <DataTable
+                columns={columns}
+                data={data}
+                pageCount={pageCount}
+                pageNo={page}
+                searchKey="firstName"
+                total={total}
+                rowClickBasePath="/staff"
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <NoItems itemName="staff" newItemUrl="/staff/new/edit" />
+        )}
+      </PageBody>
+    </PageShell>
   );
 }

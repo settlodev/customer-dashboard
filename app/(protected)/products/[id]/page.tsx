@@ -20,9 +20,11 @@ import {
   getVariantsSnapshotHistory,
   getAuditLogByEntity,
 } from "@/lib/actions/inventory-analytics-reports-actions";
+import { getProductRecipeSummary } from "@/lib/actions/bom-rule-actions";
 import type { Product } from "@/types/product/type";
 import type { InventoryBalanceSummary } from "@/types/inventory-balance/summary-type";
 import type { InventorySnapshot } from "@/types/inventory-snapshot/type";
+import type { ProductRecipeSummary } from "@/types/bom/type";
 import { ProductDetailView } from "./product-detail-view";
 import { ProductDetailActions } from "./product-detail-actions";
 import { BulkBarcodeGenerator } from "@/components/widgets/products/bulk-barcode-generator";
@@ -70,11 +72,24 @@ export default async function ProductPage({ params }: { params: Params }) {
     ),
   );
 
+  // Recipe-mode variants: anything tracked but without a direct link is
+  // resolved via a BOM rule. The /recipe-summary endpoint returns one
+  // round-trip with the active rule + ingredient availability per variant
+  // so the Inventory tab can render the recipe section without N+1 calls.
+  const hasRecipeVariants =
+    product.trackStock &&
+    product.variants.some(
+      (v) =>
+        v.archivedAt == null &&
+        !v.unlimited &&
+        v.stockLinkType == null,
+    );
+
   // Parallel fetches against the Reports Service. All have empty/null
   // fallbacks server-side so the page renders even when any individual
   // request fails. Snapshots come back in a single bundled response —
   // saves N round-trips for multi-variant products.
-  const [scopedBalances, salesSummary, bundledSnapshots, auditPage] =
+  const [scopedBalances, salesSummary, bundledSnapshots, auditPage, recipeSummary] =
     await Promise.all([
       locationId && linkedStockVariantIds.length > 0
         ? getBalanceSummariesByLocation(locationId, linkedStockVariantIds)
@@ -86,6 +101,13 @@ export default async function ProductPage({ params }: { params: Params }) {
         ? getVariantsSnapshotHistory(linkedStockVariantIds, fromDate90, toDate)
         : Promise.resolve([] as InventorySnapshot[]),
       getAuditLogByEntity("PRODUCT", id, 0, 50),
+      hasRecipeVariants
+        ? getProductRecipeSummary(id)
+        : Promise.resolve({
+            productId: id,
+            locationId: locationId ?? "",
+            variants: [],
+          } as ProductRecipeSummary),
     ]);
 
   // Balance map for the linked stock variants only — already filtered
@@ -175,6 +197,7 @@ export default async function ProductPage({ params }: { params: Params }) {
           variantSnapshotMap={variantSnapshotMap}
           auditEntries={auditPage.content ?? []}
           currency={currency}
+          recipeSummary={recipeSummary}
         />
       </PageBody>
     </PageShell>

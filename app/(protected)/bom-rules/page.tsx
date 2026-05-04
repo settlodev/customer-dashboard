@@ -26,7 +26,7 @@ export default async function BomRulesPage() {
       <PageBreadcrumbs items={[{ title: "Consumption rules" }]} />
       <PageHeader
         title="Consumption rules"
-        subtitle="Recipes and routings that drive stock deduction on every sale and production run."
+        subtitle="Consumption rules and routings that drive stock deduction on every sale and production run."
         actions={
           <Button asChild size="sm">
             <Link href="/bom-rules/new">

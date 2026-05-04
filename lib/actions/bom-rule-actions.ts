@@ -11,6 +11,7 @@ import {
   BomRuleAttachment,
   BomRuleDiff,
   ExplodedLine,
+  ProductRecipeSummary,
   ReplaceVariantApplyResult,
   ReplaceVariantPreview,
   WhereUsedNode,
@@ -22,10 +23,14 @@ import {
   CopyToLocationSchema,
   CreateBomRuleSchema,
   CreateBomRuleValues,
+  CreateRecipeSchema,
+  CreateRecipeValues,
   ReplaceVariantSchema,
   ReplaceVariantValues,
   ReviseBomRuleSchema,
   ReviseBomRuleValues,
+  ReviseRecipeSchema,
+  ReviseRecipeValues,
   CopyToLocationValues,
 } from "@/types/bom/schema";
 
@@ -123,6 +128,26 @@ export async function resolveRuleForProduct(
   }
 }
 
+/**
+ * One-shot inventory-tab payload for a product's RECIPE-mode variants.
+ * Returns an empty list when the product has none. Errors fall back to
+ * an empty payload so the tab still renders the DIRECT section.
+ */
+export async function getProductRecipeSummary(
+  productId: string,
+): Promise<ProductRecipeSummary> {
+  try {
+    const apiClient = new ApiClient();
+    const params = new URLSearchParams({ productId });
+    const data = await apiClient.get(
+      inventoryUrl(`/api/v1/bom/rules/recipe-summary?${params.toString()}`),
+    );
+    return parseStringify(data) as ProductRecipeSummary;
+  } catch {
+    return { productId, locationId: "", variants: [] };
+  }
+}
+
 export async function explodeRule(
   id: string,
   orderQty = 1,
@@ -216,6 +241,74 @@ export async function createBomRule(
     return parseStringify({
       responseType: "error",
       message: error?.message ?? "Failed to create consumption rule",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+// ── Slim recipe writes (location-side, /api/v1/bom/recipes) ─────────
+
+export async function createRecipe(
+  values: CreateRecipeValues,
+): Promise<FormResponse | void> {
+  const validated = CreateRecipeSchema.safeParse(values);
+  if (!validated.success) {
+    return parseStringify({
+      responseType: "error",
+      message: validated.error.issues[0]?.message ?? "Please fill all required fields",
+      error: new Error(validated.error.message),
+    });
+  }
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(inventoryUrl("/api/v1/bom/recipes"), validated.data);
+    revalidatePath("/bom-rules");
+    return parseStringify({
+      responseType: "success",
+      message: "Recipe created successfully",
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to create recipe",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function reviseRecipe(
+  id: string,
+  values: ReviseRecipeValues,
+): Promise<FormResponse | void> {
+  const validated = ReviseRecipeSchema.safeParse(values);
+  if (!validated.success) {
+    return parseStringify({
+      responseType: "error",
+      message: validated.error.issues[0]?.message ?? "Please fill all required fields",
+      error: new Error(validated.error.message),
+    });
+  }
+  try {
+    const apiClient = new ApiClient();
+    // Forward the new rule on `data` so callers can compute the
+    // attachment diff (revise auto-rebinds existing open attachments to
+    // the new revision; the form then attach/close on top to apply any
+    // variant-binding changes the operator made in the picker).
+    const data = await apiClient.post(
+      inventoryUrl(`/api/v1/bom/recipes/${id}/revise`),
+      validated.data,
+    );
+    revalidatePath("/bom-rules");
+    revalidatePath(`/bom-rules/${id}`);
+    return parseStringify({
+      responseType: "success",
+      message: "Recipe revised successfully",
+      data,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to revise recipe",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }

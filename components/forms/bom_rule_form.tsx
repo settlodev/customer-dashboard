@@ -14,7 +14,6 @@ import {
   Percent,
   Plus,
   Trash2,
-  Wrench,
   AlertTriangle,
 } from "lucide-react";
 import { NumericFormat } from "react-number-format";
@@ -164,6 +163,8 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
         byProductValue: o.byProductValue ?? undefined,
         sortOrder: o.sortOrder ?? 0,
       })) ?? [],
+      // Operations are managed in warehouse management — round-trip
+      // existing values so this form doesn't wipe them on save.
       operations: rule?.operations?.map((op) => ({
         sequence: op.sequence,
         name: op.name,
@@ -181,7 +182,6 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
 
   const itemsField = useFieldArray({ control: form.control, name: "items" });
   const outputsField = useFieldArray({ control: form.control, name: "outputs" });
-  const operationsField = useFieldArray({ control: form.control, name: "operations" });
 
   const onInvalid = useCallback(
     (_errors: FieldErrors) => {
@@ -553,212 +553,6 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
           </section>
         )}
 
-        <section className={styles.formCard}>
-          <header className={styles.formCardHead}>
-            <div className={styles.icoBox}>
-              <Wrench className="h-3.5 w-3.5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3>
-                Operations / routing
-                <span className={styles.optionalTag}>OPTIONAL</span>
-              </h3>
-              <p className={styles.formCardHeadDesc}>
-                Labor, overhead, and machine costs. Total = (setup + baseQty ×
-                runPerUnit) / 60 × (labor + overhead + machine).
-              </p>
-            </div>
-            <div className={styles.formCardActions}>
-              <span className={styles.stepBadge}>
-                {isWarehouse ? "STEP 04" : "STEP 03"}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  operationsField.append({
-                    sequence: operationsField.fields.length + 10,
-                    name: "",
-                  })
-                }
-                disabled={isPending}
-              >
-                <Plus className="w-3.5 h-3.5 mr-1" /> Add operation
-              </Button>
-            </div>
-          </header>
-          <div className={styles.formBody}>
-            <div className="space-y-3">
-              {operationsField.fields.map((field, index) => (
-                <div
-                  key={field.id}
-                  className="border rounded-lg p-4 bg-gray-50/50 dark:bg-gray-900/30 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3"
-                >
-                  <FormField
-                    control={form.control}
-                    name={`operations.${index}.sequence`}
-                    render={({ field: f }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">
-                          Seq <span className="text-red-500">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            className="h-9"
-                            value={f.value ?? ""}
-                            onChange={(e) =>
-                              f.onChange(e.target.value ? Number(e.target.value) : undefined)
-                            }
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`operations.${index}.name`}
-                    render={({ field: f }) => (
-                      <FormItem className="md:col-span-2">
-                        <FormLabel className="text-xs">
-                          Name <span className="text-red-500">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            className="h-9"
-                            placeholder="Mix / Bake / Package"
-                            {...f}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`operations.${index}.setupMinutes`}
-                    render={({ field: f }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Setup (min)</FormLabel>
-                        <FormControl>
-                          <NumericFormat
-                            className="flex h-9 w-full rounded-md border-0 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
-                            value={f.value ?? ""}
-                            onValueChange={(v) =>
-                              f.onChange(v.value ? Number(v.value) : undefined)
-                            }
-                            placeholder="0"
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`operations.${index}.runMinutesPerUnit`}
-                    render={({ field: f }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Run/unit (min)</FormLabel>
-                        <FormControl>
-                          <NumericFormat
-                            className="flex h-9 w-full rounded-md border-0 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
-                            value={f.value ?? ""}
-                            onValueChange={(v) =>
-                              f.onChange(v.value ? Number(v.value) : undefined)
-                            }
-                            placeholder="0"
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`operations.${index}.laborRatePerHour`}
-                    render={({ field: f }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Labor/hr</FormLabel>
-                        <FormControl>
-                          <NumericFormat
-                            className="flex h-9 w-full rounded-md border-0 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
-                            value={f.value ?? ""}
-                            onValueChange={(v) =>
-                              f.onChange(v.value ? Number(v.value) : undefined)
-                            }
-                            placeholder="0"
-                            disabled={isPending}
-                            thousandSeparator
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`operations.${index}.overheadRatePerHour`}
-                    render={({ field: f }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Overhead/hr</FormLabel>
-                        <FormControl>
-                          <NumericFormat
-                            className="flex h-9 w-full rounded-md border-0 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
-                            value={f.value ?? ""}
-                            onValueChange={(v) =>
-                              f.onChange(v.value ? Number(v.value) : undefined)
-                            }
-                            placeholder="0"
-                            disabled={isPending}
-                            thousandSeparator
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`operations.${index}.machineRatePerHour`}
-                    render={({ field: f }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Machine/hr</FormLabel>
-                        <FormControl>
-                          <NumericFormat
-                            className="flex h-9 w-full rounded-md border-0 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
-                            value={f.value ?? ""}
-                            onValueChange={(v) =>
-                              f.onChange(v.value ? Number(v.value) : undefined)
-                            }
-                            placeholder="0"
-                            disabled={isPending}
-                            thousandSeparator
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <div className="md:col-span-6 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => operationsField.remove(index)}
-                      disabled={isPending}
-                      className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 text-xs inline-flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3 h-3" /> Remove
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {operationsField.fields.length === 0 && (
-                <p className="text-xs text-muted-foreground italic">
-                  No operations — routing cost contributes 0 to total.
-                </p>
-              )}
-            </div>
-          </div>
-        </section>
         </div>
 
         <div className={styles.formFoot}>
@@ -875,11 +669,16 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {Object.entries(BOM_ITEM_CATEGORY_LABELS).map(([val, label]) => (
-                    <SelectItem key={val} value={val}>
-                      {label}
-                    </SelectItem>
-                  ))}
+                  {Object.entries(BOM_ITEM_CATEGORY_LABELS)
+                    .filter(
+                      ([val]) =>
+                        val === "STOCK" || val === "NON_STOCK" || val === "SUB_RULE",
+                    )
+                    .map(([val, label]) => (
+                      <SelectItem key={val} value={val}>
+                        {label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </FormItem>

@@ -415,14 +415,27 @@ export default function StockForm({ item, balances }: StockFormProps) {
   // surface mispricing (qty>0+price=0, price<cost). When autoCreateProduct
   // is on, "Categories" is also mandatory (the product side rejects
   // uncategorised products).
+  const allVariantsNamed = useMemo(() => {
+    const active = (watchedVariants ?? []).filter((v) => !v?.archived);
+    if (active.length === 0) return false;
+    return active.every((v) => !!v?.name?.trim());
+  }, [watchedVariants]);
   const requiredFilled = useMemo(
     () => [
       !!stockName?.trim(),
       !!baseUnitId,
       !!watchedVariants?.[0]?.name?.trim(),
+      allVariantsNamed,
       ...(autoCreateProduct ? [categoryIds.length > 0] : []),
     ],
-    [stockName, baseUnitId, watchedVariants, autoCreateProduct, categoryIds],
+    [
+      stockName,
+      baseUnitId,
+      watchedVariants,
+      allVariantsNamed,
+      autoCreateProduct,
+      categoryIds,
+    ],
   );
   const advisoryAllPriced = useMemo(() => {
     if (!autoCreateProduct) return null;
@@ -447,12 +460,6 @@ export default function StockForm({ item, balances }: StockFormProps) {
   const materialTypeLabel =
     MATERIAL_TYPE_OPTIONS.find((m) => m.value === materialType)?.label ??
     materialType;
-
-  const [now, setNow] = useState<Date>(() => new Date());
-  useEffect(() => {
-    const i = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(i);
-  }, []);
 
   const handleSaveAsDraft = useCallback(() => {
     startTransition(async () => {
@@ -1396,14 +1403,6 @@ export default function StockForm({ item, balances }: StockFormProps) {
 
           {/* ── Sticky footer ──────────────────────────────────── */}
           <div className={styles.formFoot}>
-            <div className={styles.formFootSaveState}>
-              <span className={styles.liveDot} />
-              AUTOSAVED ·{" "}
-              {now.toLocaleTimeString("en-GB", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </div>
             <div className={styles.formFootSpacer} />
             <AlertDialog>
               <AlertDialogTrigger asChild>

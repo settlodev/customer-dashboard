@@ -27,6 +27,7 @@ import { GoogleGenAI } from "@google/genai";
 import { LocationDetails } from "@/types/menu/type";
 import { inventoryUrl } from "./inventory-client";
 import { getCurrentDestination } from "./context";
+import { attachBomRule } from "./bom-rule-actions";
 
 // ── Sellability mode mapping ────────────────────────────────────────
 //
@@ -84,7 +85,13 @@ function mapVariant(v: ProductVariantInput): VariantPayload {
       return {
         ...base,
         unlimited: true,
-        availableQuantity: v.availableQuantity ?? undefined,
+      };
+    case "QUANTITY":
+      return {
+        ...base,
+        unlimited: false,
+        // Self-managed counter; backend decrements on sale (no stock ledger).
+        availableQuantity: v.availableQuantity ?? 0,
       };
     case "DIRECT":
       return {
@@ -103,9 +110,45 @@ function mapVariant(v: ProductVariantInput): VariantPayload {
   }
 }
 
-// trackStock is derived: false only when every variant is UNLIMITED.
+// trackStock is true only when at least one variant ties to a stock item or
+// recipe. UNLIMITED and QUANTITY both leave the product untracked — the
+// QUANTITY counter lives on the variant, separate from the stock ledger.
 function deriveTrackStock(variants: ProductVariantInput[]): boolean {
-  return variants.some((v) => v.sellabilityMode !== "UNLIMITED");
+  return variants.some(
+    (v) => v.sellabilityMode === "DIRECT" || v.sellabilityMode === "RECIPE",
+  );
+}
+
+/**
+ * Fan out attachBomRule() per RECIPE-mode variant whose form state
+ * carries a {@code bomRuleId}. Resolves the variant id from {@code created}
+ * (positional match) when present — the create flow's response — falls
+ * back to the input variant's own id (edit flow).
+ *
+ * Failures are intentionally swallowed and logged: the product save
+ * already succeeded, the operator can re-attach manually if a single
+ * binding fails. Rolling the product back over a stray attach error
+ * would be unhelpful.
+ */
+async function attachRecipesForVariants(
+  inputs: ProductVariantInput[],
+  created: { id: string }[] | undefined,
+): Promise<void> {
+  for (let i = 0; i < inputs.length; i++) {
+    const input = inputs[i];
+    const ruleId = input.bomRuleId;
+    if (!ruleId) continue;
+    const variantId = created?.[i]?.id ?? input.id;
+    if (!variantId) continue;
+    try {
+      await attachBomRule(ruleId, { productVariantId: variantId });
+    } catch (e) {
+      console.warn(
+        `Recipe attach failed for variant ${variantId} → rule ${ruleId}:`,
+        e,
+      );
+    }
+  }
 }
 
 // ── Products: list + read ───────────────────────────────────────────
@@ -224,9 +267,10 @@ export async function createProduct(
         : undefined,
     })) as Product;
 
+    await attachRecipesForVariants(validData.data.variants, created.variants);
+
     revalidatePath("/products");
-    // Redirect to edit so merchant can immediately add modifiers/addons/overrides.
-    redirect(`/products/${created.id}/edit`);
+    redirect(`/products/${created.id}`);
   } catch (error: any) {
     if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     return parseStringify({
@@ -326,7 +370,7 @@ export async function createProductWithStock(
 
     revalidatePath("/products");
     revalidatePath("/stock-variants");
-    redirect(`/products/${created.id}/edit`);
+    redirect(`/products/${created.id}`);
   } catch (error: any) {
     if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     return parseStringify({
@@ -384,9 +428,17 @@ export async function updateProduct(
       replacementProductId: validData.data.replacementProductId || undefined,
     });
 
+    // Existing variants already carry their ids in form state — no
+    // mapping pass needed. Newly-added variants in edit mode aren't
+    // covered here yet (the PUT doesn't return the updated variant
+    // list); operators editing the variant set should attach via the
+    // recipe form for now.
+    await attachRecipesForVariants(validData.data.variants, undefined);
+
     revalidatePath("/products");
+    revalidatePath(`/products/${productId}`);
     revalidatePath(`/products/${productId}/edit`);
-    redirect(`/products/${productId}/edit`);
+    redirect(`/products/${productId}`);
   } catch (error: any) {
     if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     return parseStringify({
@@ -821,7 +873,7 @@ function mapVariantPartial(v: Partial<ProductVariantInput>) {
       v.pricingStrategy === "FIXED_MARKUP" ? v.markupAmount ?? undefined : undefined,
     unlimited: sellMode === "UNLIMITED",
     availableQuantity:
-      sellMode === "UNLIMITED" ? v.availableQuantity ?? undefined : undefined,
+      sellMode === "QUANTITY" ? v.availableQuantity ?? 0 : undefined,
     stockLinkType: sellMode === "DIRECT" ? "DIRECT" : undefined,
     stockVariantId: sellMode === "DIRECT" ? v.stockVariantId ?? undefined : undefined,
     directQuantity: sellMode === "DIRECT" ? v.directQuantity ?? undefined : undefined,

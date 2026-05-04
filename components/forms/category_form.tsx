@@ -31,7 +31,6 @@ import {
   fetchAllCategories,
   updateCategory,
 } from "@/lib/actions/category-actions";
-import { fetchDepartmentsForCurrentLocation } from "@/lib/actions/department-actions";
 import type { Department } from "@/types/department/type";
 import { Category } from "@/types/category/type";
 import { CategorySchema } from "@/types/category/schema";
@@ -52,7 +51,17 @@ import { CheckCircle2, FolderOpen, Trash2 } from "lucide-react";
 
 import styles from "./styles/form-shell.module.css";
 
-const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
+type CategoryFormProps = {
+  item: Category | null | undefined;
+  departments: Department[];
+  defaultDepartmentId?: string;
+};
+
+const CategoryForm = ({
+  item,
+  departments,
+  defaultDepartmentId,
+}: CategoryFormProps) => {
   const [isPending, startTransition] = useTransition();
   const [imageUrl, setImageUrl] = useState<string>(item?.imageUrl || "");
   const [categories, setCategories] = useState<Category[] | null>([]);
@@ -61,20 +70,8 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
   const router = useRouter();
   const isEditing = !!item;
 
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [departmentsLoaded, setDepartmentsLoaded] = useState(false);
-
   useEffect(() => {
-    const getData = async () => {
-      const [cats, depts] = await Promise.all([
-        fetchAllCategories(),
-        fetchDepartmentsForCurrentLocation(true).catch(() => [] as Department[]),
-      ]);
-      setCategories(cats);
-      setDepartments(depts ?? []);
-      setDepartmentsLoaded(true);
-    };
-    getData();
+    fetchAllCategories().then(setCategories);
   }, []);
 
   const form = useForm<z.infer<typeof CategorySchema>>({
@@ -84,27 +81,11 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
       description: item?.description ?? "",
       imageUrl: imageUrl || item?.imageUrl || "",
       parentId: item?.parentId || "",
-      departmentId: item?.departmentId ?? "",
+      departmentId: item?.departmentId ?? defaultDepartmentId ?? "",
       sortOrder: 0,
       active: item?.active ?? true,
     },
   });
-
-  // Auto-select the department once the list has loaded. The form already
-  // carries the saved value when editing, so this only fires for new
-  // categories that haven't picked one yet. We prefer the location's
-  // explicit default and fall back to the only available option.
-  useEffect(() => {
-    if (!departmentsLoaded) return;
-    if (form.getValues("departmentId")) return;
-    if (departments.length === 0) return;
-    const preferred =
-      departments.find((d) => d.isDefault) ??
-      (departments.length === 1 ? departments[0] : undefined);
-    if (preferred) {
-      form.setValue("departmentId", preferred.id, { shouldValidate: true });
-    }
-  }, [departmentsLoaded, departments, form]);
 
   const showDepartmentPicker = departments.length > 1;
 

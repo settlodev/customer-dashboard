@@ -245,11 +245,7 @@ export function ModifierGroupForm({ group, stockVariants }: Props) {
         description: `${saved.name} ${isEditing ? "updated" : "created"}.`,
       });
 
-      if (!isEditing) {
-        router.push(`/modifier-groups/${saved.id}`);
-      } else {
-        router.refresh();
-      }
+      router.push(`/modifier-groups/${saved.id}`);
     });
   };
 

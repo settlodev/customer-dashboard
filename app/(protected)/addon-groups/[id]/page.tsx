@@ -1,63 +1,93 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { Pencil } from "lucide-react";
 import {
   PageShell,
   PageHeader,
   PageBreadcrumbs,
   PageBody,
 } from "@/components/layouts/page-shell";
-import {
-  AddonGroupForm,
-  type ProductVariantOption,
-} from "@/components/forms/addon_group_form";
+import { Button } from "@/components/ui/button";
 import { getAddonGroup } from "@/lib/actions/addon-actions";
-import { fetchAllProducts } from "@/lib/actions/product-actions";
+import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import type { AddonGroup } from "@/types/product/type";
+import { AddonGroupDetailView } from "./addon-group-detail-view";
+import { AddonGroupDetailActions } from "./addon-group-detail-actions";
 
 type Params = Promise<{ id: string }>;
 
-export default async function Page({ params }: { params: Params }) {
+export default async function AddonGroupPage({
+  params,
+}: {
+  params: Params;
+}) {
   const { id } = await params;
-  const isNewItem = id === "new";
+
+  // /addon-groups/new is now a sibling route — bounce there if someone
+  // links to it through the dynamic segment.
+  if (id === "new") redirect("/addon-groups/new");
 
   let group: AddonGroup | null = null;
-  if (!isNewItem) {
+  try {
     group = await getAddonGroup(id);
     if (!group) notFound();
+  } catch {
+    throw new Error("Failed to load addon group");
   }
 
-  const products = await fetchAllProducts().catch(() => [] as any[]);
-  const productVariants: ProductVariantOption[] = [];
-  for (const product of products ?? []) {
-    for (const v of product.variants ?? []) {
-      if (v.archivedAt) continue;
-      productVariants.push({
-        id: v.id,
-        label: `${product.name} — ${v.name}`,
-        price: v.price ?? null,
-        costPrice: v.costPrice ?? null,
-      });
-    }
-  }
+  const currency = await getLocationCurrency();
+
+  const isArchived = group.archivedAt != null;
+  const statusLabel = isArchived
+    ? "Archived"
+    : group.active
+      ? "Active"
+      : "Inactive";
+  const statusClass = isArchived
+    ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+    : group.active
+      ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
+      : "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400";
+
+  const liveItems = (group.items ?? []).filter((i) => i.active);
+  const subtitleParts = [
+    `${liveItems.length} item${liveItems.length === 1 ? "" : "s"}`,
+    `${group.minSelections}–${group.maxSelections} selectable`,
+  ];
 
   return (
     <PageShell>
       <PageBreadcrumbs
         items={[
           { title: "Addon groups", href: "/addon-groups" },
-          { title: isNewItem ? "New" : group?.name || "Edit" },
+          { title: group.name },
         ]}
       />
       <PageHeader
-        title={isNewItem ? "Add addon group" : "Edit addon group"}
-        subtitle={
-          isNewItem
-            ? "Create a new group of optional add-ons."
-            : "Update group details and manage its items."
+        title={group.name}
+        titleAccessory={
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClass}`}
+          >
+            {statusLabel}
+          </span>
+        }
+        subtitle={subtitleParts.join(" · ")}
+        actions={
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/addon-groups/${group.id}/edit`}>
+                <Pencil className="mr-1.5 h-4 w-4" />
+                Edit
+              </Link>
+            </Button>
+            <AddonGroupDetailActions group={group} />
+          </>
         }
       />
 
       <PageBody>
-        <AddonGroupForm group={group} productVariants={productVariants} />
+        <AddonGroupDetailView group={group} currency={currency} />
       </PageBody>
     </PageShell>
   );

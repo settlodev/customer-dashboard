@@ -64,7 +64,7 @@ const toastVariants = cva(
         success:
           "[--tone:hsl(var(--pos))] [--tone-tint:hsl(var(--pos)/0.10)] border-line",
         destructive:
-          "[--tone:hsl(var(--neg))] [--tone-tint:hsl(var(--neg)/0.10)] border-[hsl(var(--neg)/0.18)] bg-[hsl(var(--neg)/0.04)]",
+          "[--tone:hsl(var(--neg))] [--tone-tint:hsl(var(--neg)/0.10)] border-[hsl(var(--neg)/0.18)]",
         warning:
           "[--tone:hsl(var(--warn))] [--tone-tint:hsl(var(--warn)/0.12)] border-line",
         info:

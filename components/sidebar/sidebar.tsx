@@ -19,6 +19,7 @@ import {
     Warehouse,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -186,29 +187,60 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                                 />
                             </button>
 
-                            {visibleIndex === sectionIndex && (
-                                <div className="mt-1 space-y-0.5">
-                                    {section.items.map((item: MenuItem) => {
-                                        const isItemActive = pathname === item.link || pathname.startsWith(item.link + "/");
-                                        return (
-                                        <Link
-                                            key={item.title}
-                                            href={item.link}
-                                            onClick={isMobile ? onClose : undefined}
-                                            className={cn(
-                                                "flex w-full items-center rounded-lg px-2 py-1.5 pl-10",
-                                                "text-sm transition-colors duration-200",
-                                                isItemActive
-                                                    ? "bg-primary/10 text-primary font-medium dark:bg-primary/20"
-                                                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200"
-                                            )}
+                            <AnimatePresence initial={false}>
+                                {visibleIndex === sectionIndex && (
+                                    <motion.div
+                                        key="content"
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{
+                                            height: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
+                                            opacity: { duration: 0.18, ease: "easeOut" },
+                                        }}
+                                        className="overflow-hidden"
+                                    >
+                                        <motion.div
+                                            initial="closed"
+                                            animate="open"
+                                            exit="closed"
+                                            variants={{
+                                                open: { transition: { staggerChildren: 0.025, delayChildren: 0.04 } },
+                                                closed: { transition: { staggerChildren: 0.015, staggerDirection: -1 } },
+                                            }}
+                                            className="mt-1 space-y-0.5"
                                         >
-                                            <span>{item.title}</span>
-                                        </Link>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                                            {section.items.map((item: MenuItem) => {
+                                                const isItemActive = pathname === item.link || pathname.startsWith(item.link + "/");
+                                                return (
+                                                <motion.div
+                                                    key={item.title}
+                                                    variants={{
+                                                        open: { opacity: 1, x: 0 },
+                                                        closed: { opacity: 0, x: -6 },
+                                                    }}
+                                                    transition={{ duration: 0.18, ease: "easeOut" }}
+                                                >
+                                                    <Link
+                                                        href={item.link}
+                                                        onClick={isMobile ? onClose : undefined}
+                                                        className={cn(
+                                                            "flex w-full items-center rounded-lg px-2 py-1.5 pl-10",
+                                                            "text-sm transition-colors duration-200",
+                                                            isItemActive
+                                                                ? "bg-primary/10 text-primary font-medium dark:bg-primary/20"
+                                                                : "text-gray-600 dark:text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200"
+                                                        )}
+                                                    >
+                                                        <span>{item.title}</span>
+                                                    </Link>
+                                                </motion.div>
+                                                );
+                                            })}
+                                        </motion.div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                         );
                     })}

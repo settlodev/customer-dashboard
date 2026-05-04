@@ -372,3 +372,32 @@ export const DEDUCTION_FAILURE_LABELS: Record<DeductionFailureReason, string> = 
   VALIDATION_ERROR: "Validation error",
   INTERNAL_ERROR: "Internal error",
 };
+
+// ── Recipe summary (Inventory tab payload) ──────────────────────────
+
+export interface RecipeIngredient {
+  stockVariantId: string;
+  stockVariantName: string | null;
+  quantity: number;
+  unitName: string | null;
+  available: number;
+  optional: boolean;
+}
+
+export interface VariantRecipeSummary {
+  variantId: string;
+  variantName: string;
+  ruleId: string | null;
+  ruleName: string | null;
+  revisionNumber: string | null;
+  maxSellable: number | null;
+  limitingStockVariantId: string | null;
+  limitingStockVariantName: string | null;
+  ingredients: RecipeIngredient[];
+}
+
+export interface ProductRecipeSummary {
+  productId: string;
+  locationId: string;
+  variants: VariantRecipeSummary[];
+}

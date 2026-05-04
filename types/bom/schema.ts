@@ -175,6 +175,90 @@ export const ReviseBomRuleSchema = object({
   ...BaseRuleFields,
 });
 
+// ── Slim location-side recipe schemas ────────────────────────────────
+//
+// Mirrors the inventory service's CreateRecipeRequest / ReviseRecipeRequest:
+// no baseQuantity/baseUnit (server defaults to 1 × Piece), no scrap, no
+// optional, no fixedQuantity, no effective windows. Item categories are
+// restricted to STOCK and SUB_RULE; substitution strategy is implicitly
+// AVAILABILITY when substitutes are present.
+
+// `quantity` is the absolute amount of the substitute to deduct in its own
+// tracking unit (e.g. 2 small eggs replace 1 large egg). Null means a 1:1
+// swap. The inventory service translates quantity ÷ primary.quantity into
+// the underlying conversionFactor the resolver expects.
+export const RecipeSubstituteSchema = object({
+  stockVariantId: string({ required_error: "Substitute variant is required" }).uuid(),
+  quantity: toPositiveNumber,
+  notes: string().optional().nullable(),
+});
+
+export const RecipeItemSchema = object({
+  itemCategory: z.enum(["STOCK", "SUB_RULE"]),
+  stockVariantId: string().uuid().optional().nullable(),
+  subRuleId: string().uuid().optional().nullable(),
+  quantity: toPositiveNumber,
+  quantityFormula: string().max(1000).optional().nullable(),
+  unitId: string().uuid().optional().nullable(),
+  scalesWithMultiplier: boolean().default(false),
+  sortOrder: preprocess(toNumber, number().int().nonnegative().default(0)),
+  notes: string().optional().nullable(),
+  substitutes: array(RecipeSubstituteSchema).default([]),
+}).superRefine((item, ctx) => {
+  if (item.itemCategory === "STOCK") {
+    if (!item.stockVariantId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Pick stock item",
+        path: ["stockVariantId"],
+      });
+    }
+    if (!item.unitId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Pick a unit",
+        path: ["unitId"],
+      });
+    }
+    if (!item.quantity && !item.quantityFormula) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Quantity is required",
+        path: ["quantity"],
+      });
+    }
+  }
+  if (item.itemCategory === "SUB_RULE" && !item.subRuleId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Pick a sub-rule",
+      path: ["subRuleId"],
+    });
+  }
+});
+
+export const CreateRecipeSchema = object({
+  name: string({ required_error: "Recipe name is required" })
+    .min(2, "Name must be at least 2 characters"),
+  notes: string().optional().nullable(),
+  items: array(RecipeItemSchema).min(1, "At least one item is required"),
+  attachments: array(AttachBomRuleSchema).min(
+    1,
+    "Pick at least one product",
+  ),
+});
+
+export const ReviseRecipeSchema = object({
+  name: string({ required_error: "Recipe name is required" })
+    .min(2, "Name must be at least 2 characters"),
+  notes: string().optional().nullable(),
+  items: array(RecipeItemSchema).min(1, "At least one item is required"),
+});
+
+export type CreateRecipeValues = z.infer<typeof CreateRecipeSchema>;
+export type ReviseRecipeValues = z.infer<typeof ReviseRecipeSchema>;
+export type RecipeItemValues = z.infer<typeof RecipeItemSchema>;
+
 export const CopyToLocationSchema = object({
   sourceLocationId: string().uuid(),
   targetLocationId: string().uuid(),

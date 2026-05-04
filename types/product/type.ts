@@ -120,11 +120,17 @@ export interface ProductVariant {
 }
 
 // Sellability mode — derived UI concept, not a backend field.
-// Maps to a (trackStock, unlimited, stockLinkType) triple:
-//   UNLIMITED → trackStock=false, unlimited=true, stockLinkType=null
+// Maps to a (trackStock, unlimited, stockLinkType, availableQuantity) tuple:
+//   UNLIMITED → trackStock=false, unlimited=true,  stockLinkType=null
+//   QUANTITY  → trackStock=false, unlimited=false, stockLinkType=null, availableQuantity=N
 //   DIRECT    → trackStock=true,  unlimited=false, stockLinkType="DIRECT", stockVariantId+directQuantity set
 //   RECIPE    → trackStock=true,  unlimited=false, stockLinkType=null  (BOM rule resolves at sale time)
-export type SellabilityMode = "UNLIMITED" | "DIRECT" | "RECIPE";
+export type SellabilityMode = "UNLIMITED" | "QUANTITY" | "DIRECT" | "RECIPE";
+
+// Modifier options use the same trio as variants minus QUANTITY — there's
+// no merchant-set counter for modifier add-ons; their availability follows
+// the linked stock item or recipe.
+export type ModifierSellabilityMode = "UNLIMITED" | "DIRECT" | "RECIPE";
 
 // ── Modifier Groups ─────────────────────────────────────────────────
 
@@ -154,10 +160,11 @@ export interface ModifierOption {
   name: string;
   priceAdjustment: number;
   isDefault: boolean;
-  // Mirrors the variant tracking trio. RECIPE-mode options carry the
-  // mode label even though their direct fields are null — the actual
-  // recipe lives in a bom_rules row keyed on this option's id.
-  sellabilityMode: SellabilityMode;
+  // Mirrors the variant tracking trio (no QUANTITY here — see
+  // ModifierSellabilityMode). RECIPE-mode options carry the mode label
+  // even though their direct fields are null — the actual recipe lives
+  // in a bom_rules row keyed on this option's id.
+  sellabilityMode: ModifierSellabilityMode;
   stockVariantId: string | null;
   stockVariantName: string | null;
   directQuantity: number | null;

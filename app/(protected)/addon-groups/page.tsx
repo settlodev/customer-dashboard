@@ -69,6 +69,7 @@ async function Page({ searchParams }: Params) {
                 pageNo={0}
                 total={total}
                 pageCount={1}
+                rowClickBasePath="/addon-groups"
               />
             </CardContent>
           </Card>
