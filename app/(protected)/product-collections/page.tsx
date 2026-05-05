@@ -43,15 +43,15 @@ export default async function Page({ searchParams }: Params) {
 
   return (
     <PageShell>
-      <PageBreadcrumbs items={[{ title: "Collections" }]} />
+      <PageBreadcrumbs items={[{ title: "Bundles" }]} />
       <PageHeader
-        title="Collections"
-        subtitle="Curated bundles of products."
+        title="Bundles"
+        subtitle="Bundles of variants sold together at one price."
         actions={
           <Button asChild>
             <Link href="/product-collections/new">
               <Plus className="mr-1.5 h-4 w-4" />
-              Add Collection
+              Add Bundle
             </Link>
           </Button>
         }
@@ -76,7 +76,7 @@ export default async function Page({ searchParams }: Params) {
         ) : (
           <NoItems
             newItemUrl="/product-collections/new"
-            itemName="product collections"
+            itemName="bundles"
           />
         )}
       </PageBody>

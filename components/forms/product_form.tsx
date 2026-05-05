@@ -11,7 +11,6 @@ import React, {
 import { useForm, useFieldArray, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   Plus,
   Trash2,
@@ -61,8 +60,28 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MultiSelect } from "@/components/ui/multi-select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import ConsumptionRuleSelector from "@/components/widgets/consumption-rule-selector";
+import RecipeForm from "@/components/forms/recipe-form";
+import {
+  ModifierGroupForm,
+  type StockVariantOption as ModifierStockOption,
+} from "@/components/forms/modifier_group_form";
+import {
+  AddonGroupForm,
+  type ProductVariantOption,
+} from "@/components/forms/addon_group_form";
+import CreateCategoryDialog from "@/components/widgets/create-category-dialog";
 import { resolveRuleForProduct } from "@/lib/actions/bom-rule-actions";
+import type { BomRule } from "@/types/bom/type";
+import type { Category } from "@/types/category/type";
 
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -112,6 +131,7 @@ import {
   createVariant,
   updateVariant,
   deleteVariant,
+  fetchAllProducts,
   generateAIDescription,
   listPriceOverrides,
   upsertPriceOverride,
@@ -625,27 +645,6 @@ export default function ProductForm({ item }: ProductFormProps) {
     });
   }, [form, item?.id, router, toast]);
 
-  // Save the current product as a draft so the merchant doesn't lose
-  // progress when bouncing out to /modifier-groups/new. Returns true on
-  // success so the caller can decide whether to proceed with the
-  // navigation.
-  const saveDraftBeforeLibraryNav = useCallback(async (): Promise<boolean> => {
-    const result = await saveProductDraft(form.getValues(), item?.id);
-    if (result?.responseType === "error") {
-      toast({
-        variant: "destructive",
-        title: "Couldn't save draft",
-        description: result.message,
-      });
-      return false;
-    }
-    toast({ title: "Draft saved" });
-    const newId = (result?.data as { id?: string } | undefined)?.id;
-    if (!item?.id && newId) {
-      router.replace(`/products/${newId}/edit`);
-    }
-    return true;
-  }, [form, item?.id, router, toast]);
 
   const handlePublish = useCallback(() => {
     if (!item?.id) return;
@@ -812,43 +811,86 @@ export default function ProductForm({ item }: ProductFormProps) {
                   <FormField
                     control={form.control}
                     name="categoryIds"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Categories <span className="req">*</span>
-                          {categoriesLoading && (
-                            <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              Loading…
-                            </span>
+                    render={({ field }) => {
+                      const selectedIds = field.value ?? [];
+                      return (
+                        <FormItem>
+                          <FormLabel className={styles.fieldLabel}>
+                            Categories <span className="req">*</span>
+                            {categoriesLoading && (
+                              <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Loading…
+                              </span>
+                            )}
+                          </FormLabel>
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <FormControl>
+                                <MultiSelect
+                                  // `key` forces a remount when the
+                                  // selection changes (e.g. after the
+                                  // create-category dialog primes a new
+                                  // id) — MultiSelect is internally
+                                  // stateful and only reads defaultValue
+                                  // once on mount.
+                                  key={selectedIds.join(",")}
+                                  options={categories.map((c) => ({
+                                    label: c.name,
+                                    value: c.id,
+                                  }))}
+                                  onValueChange={field.onChange}
+                                  defaultValue={selectedIds}
+                                  placeholder={
+                                    categoriesLoading
+                                      ? "Loading categories…"
+                                      : "Pick at least one category"
+                                  }
+                                  maxCount={5}
+                                  disabled={categoriesLoading}
+                                />
+                              </FormControl>
+                            </div>
+                            <CreateCategoryDialog
+                              disabled={categoriesLoading}
+                              onCreated={(category: Category) => {
+                                setCategories((prev) =>
+                                  prev.some((c) => c.id === category.id)
+                                    ? prev
+                                    : [
+                                        ...prev,
+                                        {
+                                          id: category.id,
+                                          name: category.name,
+                                        },
+                                      ],
+                                );
+                                field.onChange([...selectedIds, category.id]);
+                              }}
+                              trigger={
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  disabled={categoriesLoading}
+                                  className="shrink-0"
+                                  title="Create a new category"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              }
+                            />
+                          </div>
+                          {!field.value?.length && (
+                            <p className={styles.fieldHint}>
+                              Categorisation drives reports, addons, and tax
+                              rules.
+                            </p>
                           )}
-                        </FormLabel>
-                        <FormControl>
-                          <MultiSelect
-                            options={categories.map((c) => ({
-                              label: c.name,
-                              value: c.id,
-                            }))}
-                            onValueChange={field.onChange}
-                            defaultValue={field.value ?? []}
-                            placeholder={
-                              categoriesLoading
-                                ? "Loading categories…"
-                                : "Pick at least one category"
-                            }
-                            maxCount={5}
-                            disabled={categoriesLoading}
-                          />
-                        </FormControl>
-                        {!field.value?.length && (
-                          <p className={styles.fieldHint}>
-                            Categorisation drives reports, addons, and tax
-                            rules.
-                          </p>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
                 </div>
 
@@ -1121,10 +1163,7 @@ export default function ProductForm({ item }: ProductFormProps) {
               {activeTab === "modifiers" && (
                 <div className={styles.formBody}>
                   {isEditMode ? (
-                    <ProductModifierGroupsSection
-                      productId={item!.id}
-                      saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
-                    />
+                    <ProductModifierGroupsSection productId={item!.id} />
                   ) : (
                     <NewProductModifierGroupsPicker
                       value={form.watch("modifierGroupIds") ?? []}
@@ -1133,7 +1172,6 @@ export default function ProductForm({ item }: ProductFormProps) {
                           shouldDirty: true,
                         })
                       }
-                      saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
                     />
                   )}
                 </div>
@@ -1143,10 +1181,7 @@ export default function ProductForm({ item }: ProductFormProps) {
               {activeTab === "addons" && (
                 <div className={styles.formBody}>
                   {isEditMode ? (
-                    <ProductAddonGroupsSection
-                      productId={item!.id}
-                      saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
-                    />
+                    <ProductAddonGroupsSection productId={item!.id} />
                   ) : (
                     <NewProductAddonGroupsPicker
                       value={form.watch("addonGroupIds") ?? []}
@@ -1155,7 +1190,6 @@ export default function ProductForm({ item }: ProductFormProps) {
                           shouldDirty: true,
                         })
                       }
-                      saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
                     />
                   )}
                 </div>
@@ -2084,8 +2118,10 @@ function VariantEditor({
 
 // Inline RECIPE-mode attachment picker — shown beneath the Direct/Recipe
 // radio when Recipe is selected. Lets the operator attach an existing
-// consumption rule or jump out to /bom-rules/new to author one. The
-// product action fans out attachBomRule() calls per variant after save.
+// consumption rule or author a new one in a side drawer without leaving
+// the product form. The product action fans out attachBomRule() calls
+// per variant after save, so a freshly-created (still-orphan) rule gets
+// bound to the variant the moment the product is persisted.
 function RecipeAttachField({
   control,
   variantIndex,
@@ -2101,6 +2137,11 @@ function RecipeAttachField({
   onPrime: (ruleId: string | undefined) => void;
 }) {
   const primedRef = useRef(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  // Bumped each time a rule is created in the drawer — keys the selector
+  // so it remounts and re-fetches, picking up the brand-new rule.
+  const [selectorRefreshKey, setSelectorRefreshKey] = useState(0);
+
   // Edit-mode prime: fetch the active rule for this existing variant once
   // and seed the form so the picker reflects what's currently attached.
   useEffect(() => {
@@ -2111,6 +2152,12 @@ function RecipeAttachField({
       .then((rule) => onPrime(rule?.id ?? undefined))
       .catch(() => onPrime(undefined));
   }, [variantId, onPrime]);
+
+  const handleRuleCreated = (rule: BomRule) => {
+    onPrime(rule.id);
+    setSelectorRefreshKey((k) => k + 1);
+    setDrawerOpen(false);
+  };
 
   return (
     <div className="rounded-md border bg-muted/30 p-3 space-y-2.5">
@@ -2130,6 +2177,7 @@ function RecipeAttachField({
               <FormLabel className="text-xs">Consumption rule</FormLabel>
               <FormControl>
                 <ConsumptionRuleSelector
+                  key={selectorRefreshKey}
                   value={field.value as string | undefined}
                   onChange={(v) => field.onChange(v || undefined)}
                   isDisabled={disabled}
@@ -2140,16 +2188,49 @@ function RecipeAttachField({
             </FormItem>
           )}
         />
-        <Button asChild variant="outline" size="sm" className="shrink-0">
-          <Link href="/bom-rules/new" target="_blank" rel="noopener noreferrer">
-            <Plus className="mr-1 h-4 w-4" />
-            New rule
-          </Link>
-        </Button>
+        <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+          <SheetTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              disabled={disabled}
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              New rule
+            </Button>
+          </SheetTrigger>
+          <SheetContent
+            side="right"
+            // Wider on desktop so ingredient rows don't feel cramped, full
+            // height with an internal flex column layout (sticky header +
+            // scroll body) instead of one big scrolling block.
+            className="flex w-full flex-col gap-0 p-0 sm:max-w-3xl"
+            // Soft focus scrim — keeps the product form visible behind so
+            // the merchant doesn't lose context of what they're editing.
+            overlayClassName="bg-foreground/30 backdrop-blur-sm"
+          >
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+              <SheetHeader className="space-y-1">
+                <SheetTitle className="text-base">New consumption rule</SheetTitle>
+                <SheetDescription className="text-xs">
+                  Author the rule here — it&apos;ll attach to this variant
+                  when you save the product.
+                </SheetDescription>
+              </SheetHeader>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              <RecipeForm
+                hideAttachments
+                onCreated={handleRuleCreated}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Attaching here applies after the product is saved. New rules open
-        in a new tab so this form keeps its state.
+        Attaching here applies after the product is saved.
       </p>
     </div>
   );
@@ -2530,10 +2611,8 @@ function MediaCard({
 
 function ProductModifierGroupsSection({
   productId,
-  saveDraftBeforeLibraryNav,
 }: {
   productId: string;
-  saveDraftBeforeLibraryNav: () => Promise<boolean>;
 }) {
   const { toast } = useToast();
   const [attached, setAttached] = useState<ModifierGroup[]>([]);
@@ -2646,8 +2725,14 @@ function ProductModifierGroupsSection({
         <div className={styles.formCardActions}>
           <CreateLibraryGroupButton
             kind="modifier"
-            saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
             disabled={busy}
+            onCreated={async (group) => {
+              // Edit-mode: attach the new group to this product right
+              // away — the merchant's intent is "add a fresh group AND
+              // wire it up", and refreshing brings it into the attached
+              // list with the right sort order.
+              await attach(group.id);
+            }}
           />
           {!picker && (
             <Button
@@ -2934,11 +3019,9 @@ function modifierMetaLine(g: ModifierGroup): string {
 function NewProductModifierGroupsPicker({
   value,
   onChange,
-  saveDraftBeforeLibraryNav,
 }: {
   value: string[];
   onChange: (ids: string[]) => void;
-  saveDraftBeforeLibraryNav: () => Promise<boolean>;
 }) {
   const [library, setLibrary] = useState<ModifierGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2993,8 +3076,15 @@ function NewProductModifierGroupsPicker({
         <div className={styles.formCardActions}>
           <CreateLibraryGroupButton
             kind="modifier"
-            saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
             disabled={false}
+            onCreated={(group) => {
+              // Create-mode: stash in the local library so the picker
+              // can render its meta, and immediately push the id into
+              // the form's modifierGroupIds so it's pre-selected for
+              // attachment when the product saves.
+              setLibrary((prev) => [group as ModifierGroup, ...prev]);
+              onChange([...value, group.id]);
+            }}
           />
           {!picker && (
             <Button
@@ -3139,46 +3229,77 @@ function DetachConfirmDialog({
   );
 }
 
-// Save-then-jump action for adding a new library group from inside the
-// product form. Confirms first so the merchant doesn't lose unsaved
-// edits, then navigates this tab to /modifier-groups/new or
-// /addon-groups/new depending on `kind`. Browsers block popups, so we
-// stay in-tab — the merchant comes back to the product via the saved
-// draft on the products list.
+// Inline drawer for adding a new library group from inside the product
+// form — replaces the older "save draft and navigate away" flow. The
+// modifier or addon form is rendered inside a side Sheet; on success the
+// `onCreated` callback wires the new group into whatever picker hosted
+// the trigger. Lazy-loads the catalogue (stocks for modifier, products
+// for addon) only when the sheet is first opened.
 function CreateLibraryGroupButton({
   kind,
-  saveDraftBeforeLibraryNav,
+  onCreated,
   disabled,
 }: {
   kind: "modifier" | "addon";
-  saveDraftBeforeLibraryNav: () => Promise<boolean>;
+  onCreated: (group: ModifierGroup | AddonGroup) => void | Promise<void>;
   disabled: boolean;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [pending, setPending] = useState(false);
+  const [stockVariants, setStockVariants] = useState<ModifierStockOption[]>([]);
+  const [productVariants, setProductVariants] = useState<ProductVariantOption[]>(
+    [],
+  );
+  const [loaded, setLoaded] = useState(false);
 
-  const target =
-    kind === "modifier" ? "/modifier-groups/new" : "/addon-groups/new";
+  useEffect(() => {
+    if (!open || loaded) return;
+    let cancelled = false;
+    (async () => {
+      if (kind === "modifier") {
+        const stocks = await getStocks().catch(() => [] as any[]);
+        if (cancelled) return;
+        const opts: ModifierStockOption[] = [];
+        for (const s of stocks ?? []) {
+          for (const v of s.variants ?? []) {
+            if (v.archived) continue;
+            opts.push({ id: v.id, label: `${s.name} — ${v.name}` });
+          }
+        }
+        setStockVariants(opts);
+      } else {
+        const products = await fetchAllProducts().catch(() => [] as any[]);
+        if (cancelled) return;
+        const opts: ProductVariantOption[] = [];
+        for (const p of products ?? []) {
+          for (const v of p.variants ?? []) {
+            if (v.archivedAt) continue;
+            opts.push({
+              id: v.id,
+              label: `${p.name} — ${v.name}`,
+              price: v.price ?? null,
+              costPrice: v.costPrice ?? null,
+            });
+          }
+        }
+        setProductVariants(opts);
+      }
+      setLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, loaded, kind]);
+
   const noun = kind === "modifier" ? "modifier" : "addon";
 
-  const proceed = async () => {
-    setPending(true);
-    try {
-      const ok = await saveDraftBeforeLibraryNav();
-      if (ok) {
-        router.push(target);
-      } else {
-        setOpen(false);
-      }
-    } finally {
-      setPending(false);
-    }
+  const handleCreated = async (group: ModifierGroup | AddonGroup) => {
+    await onCreated(group);
+    setOpen(false);
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
         <Button
           type="button"
           variant="ghost"
@@ -3188,27 +3309,41 @@ function CreateLibraryGroupButton({
         >
           <Plus className="mr-1 h-3.5 w-3.5" /> New group
         </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogIcon>
-          <Sparkles className="h-5 w-5" />
-        </AlertDialogIcon>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Save this product as a draft?</AlertDialogTitle>
-          <AlertDialogDescription>
-            We&apos;ll save your unsaved edits as a draft, then take you to the
-            new {noun}-group page. Your draft will be waiting on the products
-            list so you can come back and attach the new group.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={proceed} disabled={pending}>
-            {pending ? "Saving…" : "Save draft & continue"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      </SheetTrigger>
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-3xl"
+        overlayClassName="bg-foreground/30 backdrop-blur-sm"
+      >
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <SheetHeader className="space-y-1">
+            <SheetTitle className="text-base">
+              New {noun} group
+            </SheetTitle>
+            <SheetDescription className="text-xs">
+              {kind === "modifier"
+                ? "Build a reusable group of customer-facing tweaks. It'll be added to this product when you save."
+                : "Build a reusable group of optional add-ons. It'll be added to this product when you save."}
+            </SheetDescription>
+          </SheetHeader>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {kind === "modifier" ? (
+            <ModifierGroupForm
+              group={null}
+              stockVariants={stockVariants}
+              onCreated={handleCreated}
+            />
+          ) : (
+            <AddonGroupForm
+              group={null}
+              productVariants={productVariants}
+              onCreated={handleCreated}
+            />
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -3279,10 +3414,8 @@ function OptionChips({
 
 function ProductAddonGroupsSection({
   productId,
-  saveDraftBeforeLibraryNav,
 }: {
   productId: string;
-  saveDraftBeforeLibraryNav: () => Promise<boolean>;
 }) {
   const { toast } = useToast();
   const [attached, setAttached] = useState<AddonGroup[]>([]);
@@ -3393,8 +3526,14 @@ function ProductAddonGroupsSection({
         <div className={styles.formCardActions}>
           <CreateLibraryGroupButton
             kind="addon"
-            saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
             disabled={busy}
+            onCreated={async (group) => {
+              // Edit-mode: attach the new group to this product right
+              // away — the merchant's intent is "add a fresh group AND
+              // wire it up", and refreshing brings it into the attached
+              // list with the right sort order.
+              await attach(group.id);
+            }}
           />
           {!picker && (
             <Button
@@ -3733,11 +3872,9 @@ function AddonGroupsEmpty({
 function NewProductAddonGroupsPicker({
   value,
   onChange,
-  saveDraftBeforeLibraryNav,
 }: {
   value: string[];
   onChange: (ids: string[]) => void;
-  saveDraftBeforeLibraryNav: () => Promise<boolean>;
 }) {
   const [library, setLibrary] = useState<AddonGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -3792,8 +3929,14 @@ function NewProductAddonGroupsPicker({
         <div className={styles.formCardActions}>
           <CreateLibraryGroupButton
             kind="addon"
-            saveDraftBeforeLibraryNav={saveDraftBeforeLibraryNav}
             disabled={false}
+            onCreated={(group) => {
+              // Create-mode: stash the new group in the local library so
+              // the picker can render its meta, and pre-select it via
+              // addonGroupIds so it's attached when the product saves.
+              setLibrary((prev) => [group as AddonGroup, ...prev]);
+              onChange([...value, group.id]);
+            }}
           />
           {!picker && (
             <Button

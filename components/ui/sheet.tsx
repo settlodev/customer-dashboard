@@ -21,7 +21,11 @@ const SheetOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
     className={cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      // The default is the heavy `bg-black/80` from the original shadcn
+      // template — it's right for the mobile sidebar takeover. Consumers
+      // wanting a subtler scrim should pass `overlayClassName` on
+      // SheetContent (e.g. `bg-foreground/30 backdrop-blur-sm`).
+      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     )}
     {...props}
@@ -57,14 +61,21 @@ interface SheetContentProps
    * renders its own close affordance and the auto-X would overlap.
    */
   hideClose?: boolean
+  /**
+   * Override the default backdrop scrim. Default is the heavy
+   * `bg-black/80` used by full-takeover sheets (mobile sidebar). Pass
+   * something like `bg-foreground/30 backdrop-blur-sm` for a subtler
+   * scrim that keeps the page legible underneath.
+   */
+  overlayClassName?: string
 }
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, hideClose, ...props }, ref) => (
+>(({ side = "right", className, children, hideClose, overlayClassName, ...props }, ref) => (
   <SheetPortal>
-    <SheetOverlay />
+    <SheetOverlay className={overlayClassName} />
     <SheetPrimitive.Content
       ref={ref}
       className={cn(sheetVariants({ side }), className)}

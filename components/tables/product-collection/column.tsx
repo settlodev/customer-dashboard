@@ -9,6 +9,20 @@ import { CellAction } from "./cell-action";
 import { TableAvatar } from "@/components/tables/shared/table-avatar";
 import { ProductCollection } from "@/types/product-collection/type";
 
+const formatMoney = (amount: number, currency: string | null | undefined) => {
+  const ccy = currency ?? "TZS";
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: ccy,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    // Fall back gracefully when an unsupported ISO code slips through.
+    return `${ccy} ${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(amount)}`;
+  }
+};
+
 export const columns: ColumnDef<ProductCollection>[] = [
   {
     id: "select",
@@ -40,7 +54,7 @@ export const columns: ColumnDef<ProductCollection>[] = [
         className="-ml-2 h-auto px-2 font-mono text-[10.5px] font-medium uppercase tracking-[0.06em] text-muted-foreground hover:text-ink"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
       >
-        Collection
+        Bundle
         <ArrowUpDown className="ml-1 h-3 w-3 opacity-60" />
       </Button>
     ),
@@ -65,16 +79,54 @@ export const columns: ColumnDef<ProductCollection>[] = [
     ),
   },
   {
-    accessorKey: "productCount",
+    accessorKey: "itemCount",
     enableHiding: true,
-    header: () => <span className="hidden md:inline">Products</span>,
+    header: () => <span className="hidden md:inline">Items</span>,
     cell: ({ row }) => (
       <div className="hidden md:block">
         <Badge variant="soft">
-          {new Intl.NumberFormat("en-US").format(row.original.productCount ?? 0)}
+          {new Intl.NumberFormat("en-US").format(row.original.itemCount ?? 0)}
         </Badge>
       </div>
     ),
+  },
+  {
+    id: "price",
+    enableHiding: true,
+    header: () => <span className="hidden md:inline">Bundle price</span>,
+    cell: ({ row }) => {
+      const { effectivePrice, defaultPrice, customPrice, nativeCurrency } = row.original;
+      const overridden = customPrice != null;
+      return (
+        <div className="hidden md:flex flex-col leading-tight">
+          <span className="text-[13px] font-medium text-ink">
+            {formatMoney(effectivePrice ?? 0, nativeCurrency)}
+          </span>
+          {overridden && (
+            <span className="text-[11px] text-muted-foreground">
+              {/* Show the would-be sum so merchants can see the discount/premium at a glance. */}
+              from {formatMoney(defaultPrice ?? 0, nativeCurrency)}
+            </span>
+          )}
+        </div>
+      );
+    },
+  },
+  {
+    id: "sellable",
+    enableHiding: true,
+    header: () => <span className="hidden md:inline">Stock</span>,
+    cell: ({ row }) => {
+      // Server-side derived: every constituent variant has stock for its
+      // required quantity. Empty bundles report unsellable too.
+      const sellable = row.original.sellable;
+      return (
+        <Badge variant={sellable ? "pos" : "soft"}>
+          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+          {sellable ? "Sellable" : "Out of stock"}
+        </Badge>
+      );
+    },
   },
   {
     id: "status",

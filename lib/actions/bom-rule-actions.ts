@@ -261,11 +261,18 @@ export async function createRecipe(
   }
   try {
     const apiClient = new ApiClient();
-    await apiClient.post(inventoryUrl("/api/v1/bom/recipes"), validated.data);
+    // Forward the new rule on `data` so callers can use the returned id
+    // immediately — drawer flows on the product form prime the variant's
+    // bomRuleId from this without a follow-up round trip.
+    const data = await apiClient.post(
+      inventoryUrl("/api/v1/bom/recipes"),
+      validated.data,
+    );
     revalidatePath("/bom-rules");
     return parseStringify({
       responseType: "success",
       message: "Recipe created successfully",
+      data,
     });
   } catch (error: any) {
     return parseStringify({

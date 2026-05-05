@@ -151,7 +151,7 @@ const getNormalMenuItems = (
           icon: "tag",
         },
         {
-          title: "Collections",
+          title: "Bundles",
           link: "/product-collections",
           current: args?.isCurrentItem,
           icon: "folder",

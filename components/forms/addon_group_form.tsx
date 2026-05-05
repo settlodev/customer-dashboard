@@ -84,6 +84,13 @@ export interface ProductVariantOption {
 interface Props {
   group: AddonGroup | null;
   productVariants: ProductVariantOption[];
+  /**
+   * Drawer/dialog mode: invoked with the freshly-created group instead
+   * of navigating to /addon-groups/{id}. The host owns sheet-close and
+   * any "now attach to product" follow-up. Only fires on create; the
+   * edit path still navigates as before.
+   */
+  onCreated?: (group: AddonGroup) => void;
 }
 
 const BLANK_ITEM: AddonGroupItemInput = {
@@ -107,7 +114,7 @@ function itemFromExisting(
   };
 }
 
-export function AddonGroupForm({ group, productVariants }: Props) {
+export function AddonGroupForm({ group, productVariants, onCreated }: Props) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -190,7 +197,11 @@ export function AddonGroupForm({ group, productVariants }: Props) {
         title: isEditing ? "Saved" : "Created",
         description: `${saved.name} ${isEditing ? "updated" : "created"}.`,
       });
-      router.push(`/addon-groups/${saved.id}`);
+      if (onCreated && !isEditing) {
+        onCreated(saved);
+      } else {
+        router.push(`/addon-groups/${saved.id}`);
+      }
     });
   };
 
@@ -510,41 +521,46 @@ export function AddonGroupForm({ group, productVariants }: Props) {
 
           {/* ── Footer actions ────────────────────────────────────── */}
           <div className="flex justify-end gap-2">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={isPending}
-                  title="Discard changes and go back"
-                >
-                  <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Discard
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent tone="danger">
-                <AlertDialogIcon>
-                  <Trash2 className="h-5 w-5" />
-                </AlertDialogIcon>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    {isEditing
-                      ? "Discard your changes?"
-                      : "Discard this group?"}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {isEditing
-                      ? "Unsaved edits to this group will be lost. This cannot be undone."
-                      : "This new group and its items will be lost. This cannot be undone."}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Keep editing</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDiscard}>
-                    Discard
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            {/* Drawer/dialog hosts (onCreated set) own their own close
+                affordance via the sheet X — hide the inner Discard so we
+                don't ship two cancel buttons. */}
+            {!onCreated && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={isPending}
+                    title="Discard changes and go back"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Discard
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent tone="danger">
+                  <AlertDialogIcon>
+                    <Trash2 className="h-5 w-5" />
+                  </AlertDialogIcon>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {isEditing
+                        ? "Discard your changes?"
+                        : "Discard this group?"}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {isEditing
+                        ? "Unsaved edits to this group will be lost. This cannot be undone."
+                        : "This new group and its items will be lost. This cannot be undone."}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDiscard}>
+                      Discard
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <Button
               type="submit"
               disabled={

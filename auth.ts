@@ -21,11 +21,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   },
   events: {
     async signIn({ user }) {
-      // Only create the authToken cookie if one doesn't already exist.
-      // The pre-authenticated login flow (server action) creates the cookie
-      // via createAuthTokenFromLogin() BEFORE calling signIn(), so we must
-      // not overwrite it — NextAuth strips custom fields (accessToken, etc.)
-      // from the user object, which would blank out the tokens.
       const existing = await getAuthToken();
       if (!existing?.accessToken) {
         await createAuthToken(user);
@@ -52,8 +47,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         session.user.bio = token.bio as string;
         session.user.avatar = token.avatar ? (token.avatar as string) : null;
         session.user.phoneNumber = token.phoneNumber as string;
-        // accessToken and refreshToken are read from the httpOnly authToken
-        // cookie by server actions — not stored in the session to avoid 431.
         session.user.emailVerified = token.emailVerified as Date;
         session.user.isBusinessRegistrationComplete =
           token.isBusinessRegistrationComplete as boolean;
@@ -72,9 +65,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (!token.sub) return token;
 
-      // ── Initial sign-in: populate token from the user object ──────
-      // The `user` object is only present on the first JWT creation
-      // (during signIn). All the data is already there from authorize().
       if (user) {
         const u = user as any;
         token.name = user.name;
@@ -82,8 +72,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         token.firstName = u.firstName;
         token.lastName = u.lastName;
         token.phoneNumber = u.phoneNumber;
-        // accessToken and refreshToken are NOT stored in the NextAuth JWT
-        // to keep the session cookie small (tokens are in the authToken cookie).
         token.emailVerified = u.emailVerified;
         token.isBusinessRegistrationComplete = u.isBusinessRegistrationComplete;
         token.isLocationRegistrationComplete = u.isLocationRegistrationComplete;
@@ -95,11 +83,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         return token;
       }
 
-      // ── Subsequent requests: keep existing token data ──────────────
-      // All user data is set on initial sign-in. The authToken cookie
-      // (managed by our server actions) is the source of truth for
-      // routing and display. No API call needed here — avoids hammering
-      // the accounts service on every session check.
       return token;
     },
   },

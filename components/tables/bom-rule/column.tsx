@@ -52,21 +52,36 @@ export const columns: ColumnDef<BomRule>[] = [
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => (
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-950/30 flex items-center justify-center flex-shrink-0">
-          <Beaker className="h-4 w-4 text-orange-500" />
+    cell: ({ row }) => {
+      // A rule is "unattached" when no open (effectiveTo == null) attachment
+      // points it at a product variant or modifier option. Surface it as a
+      // badge so orphans don't get forgotten in the catalogue.
+      const hasOpenAttachment = (row.original.attachments ?? []).some(
+        (a) => !a.effectiveTo,
+      );
+      return (
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-950/30 flex items-center justify-center flex-shrink-0">
+            <Beaker className="h-4 w-4 text-orange-500" />
+          </div>
+          <div className="min-w-0">
+            <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">
+              {row.original.name}
+            </span>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">
+                {row.original.revisionNumber}
+              </span>
+              {!hasOpenAttachment && (
+                <span className="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                  Unattached
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="min-w-0">
-          <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">
-            {row.original.name}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {row.original.revisionNumber}
-          </span>
-        </div>
-      </div>
-    ),
+      );
+    },
   },
   {
     accessorKey: "lifecycleStatus",

@@ -32,16 +32,16 @@ export default async function ProductCollectionPage({
     <PageShell>
       <PageBreadcrumbs
         items={[
-          { title: "Collections", href: "/product-collections" },
+          { title: "Bundles", href: "/product-collections" },
           { title: isNewItem ? "New" : item?.name || "Edit" },
         ]}
       />
       <PageHeader
-        title={isNewItem ? "Create Collection" : "Edit Collection"}
+        title={isNewItem ? "Create Bundle" : "Edit Bundle"}
         subtitle={
           isNewItem
-            ? "Group products into a collection"
-            : "Update collection details"
+            ? "Combine variants into a bundle with one price"
+            : "Update bundle items and pricing"
         }
       />
 

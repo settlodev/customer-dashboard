@@ -145,9 +145,26 @@ function ruleToFormValues(rule: BomRule): FormValues {
 interface RecipeFormProps {
   /** Existing rule to edit. Omit for create mode. */
   rule?: BomRule | null;
+  /**
+   * Drawer/dialog mode: invoked with the freshly-created rule instead of
+   * navigating to /bom-rules. The host owns redirect / sheet-close. Only
+   * fires on create; revise paths still navigate as before.
+   */
+  onCreated?: (rule: BomRule) => void;
+  /**
+   * Hide the product-variant multi-select. Use when the host is the
+   * product form itself — the parent attaches the new rule to the
+   * variant being edited via attachBomRule() after product save, so
+   * picking attachments here would be redundant and confusing.
+   */
+  hideAttachments?: boolean;
 }
 
-export default function RecipeForm({ rule }: RecipeFormProps = {}) {
+export default function RecipeForm({
+  rule,
+  onCreated,
+  hideAttachments,
+}: RecipeFormProps = {}) {
   const isEdit = !!rule;
   const router = useRouter();
   const { toast } = useToast();
@@ -323,7 +340,12 @@ export default function RecipeForm({ rule }: RecipeFormProps = {}) {
           title: "Consumption rule created",
           description: result.message,
         });
-        router.push("/bom-rules");
+        const created = result.data as BomRule | undefined;
+        if (onCreated && created) {
+          onCreated(created);
+        } else {
+          router.push("/bom-rules");
+        }
       } else if (result?.responseType === "error") {
         toast({
           variant: "destructive",
@@ -386,13 +408,13 @@ export default function RecipeForm({ rule }: RecipeFormProps = {}) {
           <header>
             <h2 className="text-base font-semibold">Consumption rule</h2>
             <p className="text-sm text-muted-foreground">
-              Name the consumption rule and (optionally) attach it to the
-              product variant it sells as. Stock is deducted automatically
-              when the variant sells.
+              {hideAttachments
+                ? "Name the rule and list its ingredients. It'll be attached to this variant when you save the product."
+                : "Name the consumption rule and (optionally) attach it to the product variants it sells as. Stock is deducted automatically when those variants sell."}
             </p>
           </header>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className={hideAttachments ? "grid gap-4" : "grid gap-4 md:grid-cols-2"}>
             <FormField
               control={form.control}
               name="name"
@@ -414,58 +436,59 @@ export default function RecipeForm({ rule }: RecipeFormProps = {}) {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="attachments"
-              render={() => {
-                const watched = form.watch("attachments") ?? [];
-                const selected = watched
-                  .map((a) => a?.productVariantId)
-                  .filter((id): id is string => !!id);
-                return (
-                  <FormItem>
-                    <FormLabel>
-                      {isEdit
-                        ? "Product variants attached"
-                        : "Product"}
-                      {!isEdit && <span className="text-red-500">*</span>}
-                    </FormLabel>
-                    <FormControl>
-                      <MultiSelect
-                        // `key` forces a re-mount when the seed set
-                        // changes (e.g. after a successful revise that
-                        // returned a new rule); MultiSelect is internally
-                        // stateful and only reads `defaultValue` once.
-                        key={selected.join(",")}
-                        options={variantOptions}
-                        defaultValue={selected}
-                        onValueChange={(ids) =>
-                          form.setValue(
-                            "attachments",
-                            ids.map((vid) => ({
-                              productVariantId: vid,
-                              modifierOptionId: undefined,
-                              effectiveFrom: undefined,
-                              effectiveTo: undefined,
-                              notes: undefined,
-                            })),
-                            { shouldValidate: true, shouldDirty: true },
-                          )
-                        }
-                        placeholder={
-                          productsLoading
-                            ? "Loading product variants…"
-                            : "Pick one or more variants this rule powers"
-                        }
-                        disabled={productsLoading || isPending}
-                        maxCount={6}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
+            {!hideAttachments && (
+              <FormField
+                control={form.control}
+                name="attachments"
+                render={() => {
+                  const watched = form.watch("attachments") ?? [];
+                  const selected = watched
+                    .map((a) => a?.productVariantId)
+                    .filter((id): id is string => !!id);
+                  return (
+                    <FormItem>
+                      <FormLabel>
+                        {isEdit
+                          ? "Product variants attached"
+                          : "Product (optional)"}
+                      </FormLabel>
+                      <FormControl>
+                        <MultiSelect
+                          // `key` forces a re-mount when the seed set
+                          // changes (e.g. after a successful revise that
+                          // returned a new rule); MultiSelect is internally
+                          // stateful and only reads `defaultValue` once.
+                          key={selected.join(",")}
+                          options={variantOptions}
+                          defaultValue={selected}
+                          onValueChange={(ids) =>
+                            form.setValue(
+                              "attachments",
+                              ids.map((vid) => ({
+                                productVariantId: vid,
+                                modifierOptionId: undefined,
+                                effectiveFrom: undefined,
+                                effectiveTo: undefined,
+                                notes: undefined,
+                              })),
+                              { shouldValidate: true, shouldDirty: true },
+                            )
+                          }
+                          placeholder={
+                            productsLoading
+                              ? "Loading product variants…"
+                              : "Pick one or more variants this rule powers"
+                          }
+                          disabled={productsLoading || isPending}
+                          maxCount={6}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            )}
           </div>
 
           <FormField
@@ -749,35 +772,40 @@ export default function RecipeForm({ rule }: RecipeFormProps = {}) {
         </section>
 
         <div className="flex justify-end gap-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={isPending}
-                title="Discard changes and go back"
-              >
-                <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Discard
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent tone="danger">
-              <AlertDialogIcon>
-                <Trash2 className="h-5 w-5" />
-              </AlertDialogIcon>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Discard changes?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Unsaved changes will be lost. This cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Keep editing</AlertDialogCancel>
-                <AlertDialogAction onClick={() => router.back()}>
-                  Discard
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {/* Drawer/dialog hosts (onCreated set) own their own close
+              affordance via the sheet X — we hide the in-form discard so
+              we don't ship two cancel buttons. */}
+          {!onCreated && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={isPending}
+                  title="Discard changes and go back"
+                >
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Discard
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent tone="danger">
+                <AlertDialogIcon>
+                  <Trash2 className="h-5 w-5" />
+                </AlertDialogIcon>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Unsaved changes will be lost. This cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => router.back()}>
+                    Discard
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           {isEdit && (
             <Button
               type="button"

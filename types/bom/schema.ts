@@ -242,10 +242,11 @@ export const CreateRecipeSchema = object({
     .min(2, "Name must be at least 2 characters"),
   notes: string().optional().nullable(),
   items: array(RecipeItemSchema).min(1, "At least one item is required"),
-  attachments: array(AttachBomRuleSchema).min(
-    1,
-    "Pick at least one product",
-  ),
+  // Optional at create time — a rule can be authored standalone and bound
+  // to product variants later. Backend's CreateRecipeRequest doesn't
+  // require attachments either; orphan rules surface as "Unattached" in
+  // the rules list so they don't get forgotten.
+  attachments: array(AttachBomRuleSchema).default([]),
 });
 
 export const ReviseRecipeSchema = object({

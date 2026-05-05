@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { History } from "lucide-react";
+import { History, Link2 } from "lucide-react";
 
 import {
   PageShell,
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import BomRuleForm from "@/components/forms/bom_rule_form";
 import RecipeForm from "@/components/forms/recipe-form";
 import BomRevisionsDialog from "@/components/widgets/bom/bom-revisions-dialog";
+import AttachRuleToProductDialog from "@/components/widgets/bom/attach-rule-to-product-dialog";
 import { getBomRule } from "@/lib/actions/bom-rule-actions";
 
 type Params = Promise<{ id: string }>;
@@ -56,15 +57,26 @@ export default async function BomRulePage({ params }: { params: Params }) {
         }
         actions={
           rule ? (
-            <BomRevisionsDialog
-              rule={rule}
-              trigger={
-                <Button variant="outline" size="sm">
-                  <History className="mr-1.5 h-4 w-4" />
-                  Revisions & diff
-                </Button>
-              }
-            />
+            <div className="flex items-center gap-2">
+              <AttachRuleToProductDialog
+                rule={rule}
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <Link2 className="mr-1.5 h-4 w-4" />
+                    Attach to product
+                  </Button>
+                }
+              />
+              <BomRevisionsDialog
+                rule={rule}
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <History className="mr-1.5 h-4 w-4" />
+                    Revisions & diff
+                  </Button>
+                }
+              />
+            </div>
           ) : undefined
         }
       />

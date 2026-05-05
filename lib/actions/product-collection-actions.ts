@@ -5,8 +5,14 @@ import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
-import { ProductCollection } from "@/types/product-collection/type";
-import { ProductCollectionSchema } from "@/types/product-collection/schema";
+import {
+  CollectionPrice,
+  ProductCollection,
+} from "@/types/product-collection/type";
+import {
+  CollectionPriceSchema,
+  ProductCollectionSchema,
+} from "@/types/product-collection/schema";
 import { inventoryUrl } from "./inventory-client";
 import { getCurrentDestination } from "./context";
 
@@ -59,23 +65,35 @@ export async function createProductCollection(
       name: validated.data.name,
       description: validated.data.description,
       imageUrl: validated.data.imageUrl,
-      productIds: validated.data.productIds,
+      nativeCurrency: validated.data.nativeCurrency,
+      // Backend treats null/undefined as "use default sum", so only send a
+      // value when the merchant explicitly entered one.
+      customPrice: validated.data.customPrice ?? undefined,
+      items: validated.data.items,
+      currencyOverrides: validated.data.currencyOverrides,
     });
 
     revalidatePath("/product-collections");
     return parseStringify({
       responseType: "success",
-      message: "Collection created successfully",
+      message: "Bundle created successfully",
     });
   } catch (error: any) {
     return parseStringify({
       responseType: "error",
-      message: error?.message ?? "Failed to create collection",
+      message: error?.message ?? "Failed to create bundle",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
 }
 
+/**
+ * Apply the form's full bundle state to the backend. The PUT endpoint
+ * only mutates display fields + active + native currency + custom
+ * price; bundle composition and currency overrides are managed via
+ * dedicated endpoints, so we diff items here and replace overrides
+ * wholesale (server semantics).
+ */
 export async function updateProductCollection(
   id: string,
   collection: z.infer<typeof ProductCollectionSchema>,
@@ -93,38 +111,74 @@ export async function updateProductCollection(
   try {
     const apiClient = new ApiClient();
 
-    // Update basic fields (the PUT endpoint doesn't accept productIds)
+    // 1) Metadata + native currency. customPrice on the PUT cannot clear
+    //    an existing override (PATCH-style null is ambiguous); use the
+    //    dedicated bundle-price endpoint for that — see step 3.
     await apiClient.put(inventoryUrl(`/api/v1/product-collections/${id}`), {
       name: validated.data.name,
       description: validated.data.description,
       imageUrl: validated.data.imageUrl,
       active: validated.data.active,
+      nativeCurrency: validated.data.nativeCurrency,
+      customPrice: validated.data.customPrice ?? undefined,
     });
 
-    // Sync products: get current state, compute diff, add/remove
+    // 2) Sync bundle items against the live state: add new variants,
+    //    remove dropped ones, and patch quantity for variants whose
+    //    quantity changed.
     const current = await getProductCollection(id);
-    const currentProductIds = new Set(current.products.map((p) => p.productId));
-    const desiredProductIds = new Set(validated.data.productIds);
+    const currentByVariant = new Map(
+      current.items.map((item) => [item.variantId, item]),
+    );
+    const desiredByVariant = new Map(
+      validated.data.items.map((item) => [item.variantId, item]),
+    );
 
-    const toAdd = validated.data.productIds.filter((pid) => !currentProductIds.has(pid));
-    const toRemove = current.products
-      .map((p) => p.productId)
-      .filter((pid) => !desiredProductIds.has(pid));
+    const toAdd = validated.data.items.filter(
+      (item) => !currentByVariant.has(item.variantId),
+    );
+    const toRemove = current.items
+      .map((item) => item.variantId)
+      .filter((variantId) => !desiredByVariant.has(variantId));
+    const toUpdate = validated.data.items.filter((item) => {
+      const existing = currentByVariant.get(item.variantId);
+      return existing != null && Number(existing.quantity) !== Number(item.quantity);
+    });
 
     await Promise.all([
-      ...toAdd.map((pid) => addProductToCollection(id, pid)),
-      ...toRemove.map((pid) => removeProductFromCollection(id, pid)),
+      ...toAdd.map((item) =>
+        addVariantToCollection(id, item.variantId, item.quantity),
+      ),
+      ...toRemove.map((variantId) => removeVariantFromCollection(id, variantId)),
+      ...toUpdate.map((item) =>
+        updateCollectionItemQuantity(id, item.variantId, item.quantity),
+      ),
     ]);
+
+    // 3) Allow merchants to clear the override by passing `customPrice =
+    //    null` in the form. The PUT above can't express "clear" so we
+    //    route through the dedicated endpoint when it transitioned from
+    //    set → unset.
+    if (current.customPrice != null && validated.data.customPrice == null) {
+      await setCollectionBundlePrice(id, null);
+    }
+
+    // 4) Replace currency overrides wholesale (server clears + re-inserts).
+    //    Skip when the form omitted the field entirely so we don't wipe
+    //    overrides set out-of-band.
+    if (validated.data.currencyOverrides !== undefined) {
+      await setCollectionCurrencyOverrides(id, validated.data.currencyOverrides);
+    }
 
     revalidatePath("/product-collections");
     return parseStringify({
       responseType: "success",
-      message: "Collection updated successfully",
+      message: "Bundle updated successfully",
     });
   } catch (error: any) {
     return parseStringify({
       responseType: "error",
-      message: error?.message ?? "Failed to update collection",
+      message: error?.message ?? "Failed to update bundle",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
@@ -142,11 +196,11 @@ export async function archiveProductCollection(id: string): Promise<FormResponse
     const apiClient = new ApiClient();
     await apiClient.post(inventoryUrl(`/api/v1/product-collections/${id}/archive`), {});
     revalidatePath("/product-collections");
-    return { responseType: "success", message: "Collection archived" };
+    return { responseType: "success", message: "Bundle archived" };
   } catch (error) {
     return {
       responseType: "error",
-      message: "Failed to archive collection",
+      message: "Failed to archive bundle",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
@@ -157,47 +211,102 @@ export async function unarchiveProductCollection(id: string): Promise<FormRespon
     const apiClient = new ApiClient();
     await apiClient.post(inventoryUrl(`/api/v1/product-collections/${id}/unarchive`), {});
     revalidatePath("/product-collections");
-    return { responseType: "success", message: "Collection restored" };
+    return { responseType: "success", message: "Bundle restored" };
   } catch (error) {
     return {
       responseType: "error",
-      message: "Failed to restore collection",
+      message: "Failed to restore bundle",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
 }
 
-export async function addProductToCollection(
+export async function addVariantToCollection(
   collectionId: string,
-  productId: string,
+  variantId: string,
+  quantity: number,
 ): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post(
-    inventoryUrl(`/api/v1/product-collections/${collectionId}/products/${productId}`),
-    {},
+    inventoryUrl(`/api/v1/product-collections/${collectionId}/items`),
+    { variantId, quantity },
   );
   revalidatePath("/product-collections");
 }
 
-export async function removeProductFromCollection(
+export async function updateCollectionItemQuantity(
   collectionId: string,
-  productId: string,
+  variantId: string,
+  quantity: number,
+): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.put(
+    inventoryUrl(
+      `/api/v1/product-collections/${collectionId}/items/${variantId}`,
+    ),
+    { quantity },
+  );
+  revalidatePath("/product-collections");
+}
+
+export async function removeVariantFromCollection(
+  collectionId: string,
+  variantId: string,
 ): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.delete(
-    inventoryUrl(`/api/v1/product-collections/${collectionId}/products/${productId}`),
+    inventoryUrl(
+      `/api/v1/product-collections/${collectionId}/items/${variantId}`,
+    ),
   );
   revalidatePath("/product-collections");
 }
 
-export async function reorderCollectionProducts(
+export async function reorderCollectionItems(
   collectionId: string,
-  productIds: string[],
+  variantIds: string[],
 ): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.put(
     inventoryUrl(`/api/v1/product-collections/${collectionId}/reorder`),
-    productIds,
+    variantIds,
   );
   revalidatePath("/product-collections");
 }
+
+/**
+ * Set or clear the bundle price override. Pass `null` to revert to the
+ * default-sum behaviour.
+ */
+export async function setCollectionBundlePrice(
+  collectionId: string,
+  customPrice: number | null,
+): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.put(
+    inventoryUrl(`/api/v1/product-collections/${collectionId}/bundle-price`),
+    { customPrice },
+  );
+  revalidatePath("/product-collections");
+}
+
+/**
+ * Replace the bundle's per-currency price overrides. Send an empty
+ * list to clear all overrides.
+ */
+export async function setCollectionCurrencyOverrides(
+  collectionId: string,
+  overrides: z.infer<typeof CollectionPriceSchema>[],
+): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.put(
+    inventoryUrl(
+      `/api/v1/product-collections/${collectionId}/currency-overrides`,
+    ),
+    overrides,
+  );
+  revalidatePath("/product-collections");
+}
+
+/** Convenience re-export so call-sites don't have to know the schema name. */
+export type ProductCollectionCurrencyOverride = CollectionPrice;
