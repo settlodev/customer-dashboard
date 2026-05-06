@@ -11,24 +11,24 @@ import {
 } from "@/components/layouts/page-shell";
 import { Button } from "@/components/ui/button";
 import { Space, TABLE_SPACE_TYPE_LABELS } from "@/types/space/type";
-import { getSpace, getTable } from "@/lib/actions/space-actions";
-import { SpaceDetailView } from "./space-detail-view";
+import { getTable, getSpace } from "@/lib/actions/space-actions";
+import { SpaceDetailView } from "@/app/(protected)/spaces/[id]/space-detail-view";
 
 type Params = Promise<{ id: string }>;
 
-export default async function SpacePage({ params }: { params: Params }) {
+export default async function TablePage({ params }: { params: Params }) {
   const { id } = await params;
 
-  if (id === "new") redirect("/spaces/new");
+  if (id === "new") redirect("/tables/new");
 
   let space: Space | null = null;
   let redirectTo: string | null = null;
   try {
-    space = await getSpace(id as UUID);
+    space = await getTable(id as UUID);
   } catch {
     try {
-      const asTable = await getTable(id as UUID);
-      redirectTo = `/tables/${asTable.id}`;
+      const asSpace = await getSpace(id as UUID);
+      redirectTo = `/spaces/${asSpace.id}`;
     } catch {
       /* fall through to notFound */
     }
@@ -57,7 +57,7 @@ export default async function SpacePage({ params }: { params: Params }) {
     <PageShell>
       <PageBreadcrumbs
         items={[
-          { title: "Spaces", href: "/spaces" },
+          { title: "Tables", href: "/tables" },
           { title: space.name },
         ]}
       />
@@ -80,7 +80,7 @@ export default async function SpacePage({ params }: { params: Params }) {
         subtitle={subtitleParts.join(" · ")}
         actions={
           <Button asChild variant="outline" size="sm">
-            <Link href={`/spaces/${space.id}/edit`}>
+            <Link href={`/tables/${space.id}/edit`}>
               <Pencil className="mr-1.5 h-4 w-4" />
               Edit
             </Link>

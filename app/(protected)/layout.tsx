@@ -1,6 +1,5 @@
 import React, { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
-import { SessionProvider } from "next-auth/react";
 import {
   DashboardSidebarShell,
   MobileTopBar,
@@ -83,20 +82,18 @@ export default async function RootLayout({
   // ── Expired / cancelled: minimal layout ───────────────────────────
   if (isSubscriptionDead) {
     return (
-      <SessionProvider refetchInterval={0} refetchOnWindowFocus={false}>
-        <EntitlementProvider initialEntitlements={entitlements}>
-          <div className="flex h-screen flex-col bg-canvas">
-            <ExpiredTopBar
-              businessName={currentBusiness?.name}
-              locationName={currentLocation?.name}
-            />
-            <main className="flex-1 overflow-y-auto">
-              {children}
-            </main>
-            <Toaster />
-          </div>
-        </EntitlementProvider>
-      </SessionProvider>
+      <EntitlementProvider initialEntitlements={entitlements}>
+        <div className="flex h-screen flex-col bg-canvas">
+          <ExpiredTopBar
+            businessName={currentBusiness?.name}
+            locationName={currentLocation?.name}
+          />
+          <main className="flex-1 overflow-y-auto">
+            {children}
+          </main>
+          <Toaster />
+        </div>
+      </EntitlementProvider>
     );
   }
 
@@ -131,7 +128,7 @@ export default async function RootLayout({
   // (breadcrumbs, title, actions) lives inside each page via
   // `<PageShell>` — see components/layouts/page-shell.tsx.
   return (
-    <SessionProvider refetchInterval={0} refetchOnWindowFocus={false}>
+    <>
       <EntitlementProvider initialEntitlements={entitlements}>
         <LoadingBarProvider>
           <SidebarProvider>
@@ -182,6 +179,6 @@ export default async function RootLayout({
         <DaySessionWidget locationId={currentLocation.id} />
       )}
       <BuildPill />
-    </SessionProvider>
+    </>
   );
 }

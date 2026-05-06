@@ -70,16 +70,19 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 import {
+  createTable,
+  updateTable,
   createSpace,
-  fetchAllSpaces,
-  fetchFloorPlans,
   updateSpace,
+  fetchAllSpaces,
+  fetchAllFloorPlans,
 } from "@/lib/actions/space-actions";
 import { SpaceSchema } from "@/types/space/schema";
 import {
   Space,
   FloorPlan,
   SPACE_TYPES,
+  BOOKABLE_TYPES,
   TABLE_SPACE_TYPE_LABELS,
   TABLE_STATUS_LABELS,
 } from "@/types/space/type";
@@ -91,11 +94,14 @@ import styles from "./styles/form-shell.module.css";
 
 type SpaceFormValues = z.infer<typeof SpaceSchema>;
 
+export type SpaceFormMode = "table" | "space";
+
 interface SpaceFormProps {
   item: Space | null | undefined;
+  mode: SpaceFormMode;
 }
 
-export default function SpaceForm({ item }: SpaceFormProps) {
+export default function SpaceForm({ item, mode }: SpaceFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -107,6 +113,12 @@ export default function SpaceForm({ item }: SpaceFormProps) {
   >("capacity");
 
   const isEditMode = !!item;
+  const listPath = mode === "table" ? "/tables" : "/spaces";
+  const allowedTypes = mode === "table" ? BOOKABLE_TYPES : SPACE_TYPES;
+  const defaultType =
+    mode === "table" ? TableSpaceType.TABLE : TableSpaceType.SECTION;
+  const noun = mode === "table" ? "table" : "space";
+  const Noun = mode === "table" ? "Table" : "Space";
 
   const form = useForm<SpaceFormValues>({
     resolver: zodResolver(SpaceSchema),
@@ -134,8 +146,8 @@ export default function SpaceForm({ item }: SpaceFormProps) {
           active: true,
           reservable: true,
           needsCleaning: false,
-          type: "TABLE" as TableSpaceType,
-          capacity: 2,
+          type: defaultType,
+          capacity: mode === "table" ? 2 : 20,
         },
   });
 
@@ -144,7 +156,7 @@ export default function SpaceForm({ item }: SpaceFormProps) {
       try {
         const [spacesData, floorPlansData] = await Promise.all([
           fetchAllSpaces(),
-          fetchFloorPlans(),
+          fetchAllFloorPlans(),
         ]);
         setSpaces(spacesData);
         setFloorPlans(floorPlansData);
@@ -214,27 +226,30 @@ export default function SpaceForm({ item }: SpaceFormProps) {
       setResponse(undefined);
       startTransition(async () => {
         try {
-          const result = isEditMode
-            ? await updateSpace(item!.id, values, item!.version)
-            : await createSpace(values);
+          const result =
+            mode === "table"
+              ? isEditMode
+                ? await updateTable(item!.id, values, item!.version)
+                : await createTable(values)
+              : isEditMode
+                ? await updateSpace(item!.id, values, item!.version)
+                : await createSpace(values);
           if (!result) return;
           setResponse(result);
           if (result.responseType === "success") {
             toast({
               variant: "success",
-              title: isEditMode ? "Table / space updated" : "Table / space created",
+              title: isEditMode ? `${Noun} updated` : `${Noun} created`,
               description: SettloErrorHandler.safeMessage(result.message),
             });
-            router.push("/spaces");
+            router.push(listPath);
           } else {
             toast({
               variant: "destructive",
               title: "Couldn't save",
               description: SettloErrorHandler.safeMessage(
                 result.message,
-                isEditMode
-                  ? "Failed to update table/space"
-                  : "Failed to create table/space",
+                isEditMode ? `Failed to update ${noun}` : `Failed to create ${noun}`,
               ),
             });
           }
@@ -263,7 +278,7 @@ export default function SpaceForm({ item }: SpaceFormProps) {
             <AlertTriangle className="h-3.5 w-3.5" />
           </AlertIcon>
           <AlertBody>
-            <AlertTitle>We couldn&apos;t save this table / space</AlertTitle>
+            <AlertTitle>We couldn&apos;t save this {noun}</AlertTitle>
             <AlertDescription>{response.message}</AlertDescription>
           </AlertBody>
         </Alert>
@@ -285,7 +300,7 @@ export default function SpaceForm({ item }: SpaceFormProps) {
                 <div className="flex-1 min-w-0">
                   <h3>Identity</h3>
                   <p className={styles.formCardHeadDesc}>
-                    Give this table or space a name and pick what it represents.
+                    Give this {noun} a name and pick what it represents.
                   </p>
                 </div>
                 <div className={styles.formCardActions}>
@@ -357,7 +372,7 @@ export default function SpaceForm({ item }: SpaceFormProps) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {Object.values(TableSpaceType).map((t) => (
+                            {allowedTypes.map((t) => (
                               <SelectItem key={t} value={t}>
                                 {TABLE_SPACE_TYPE_LABELS[t]}
                               </SelectItem>
@@ -926,7 +941,7 @@ export default function SpaceForm({ item }: SpaceFormProps) {
           {/* ── RIGHT — preview + tips ─────────────────────────── */}
           <aside className={styles.formStack}>
             <SpaceLivePreviewCard
-              name={name || "New table or space"}
+              name={name || (mode === "table" ? "New table" : "New space")}
               code={code}
               type={type}
               capacity={capacity}
@@ -988,12 +1003,12 @@ export default function SpaceForm({ item }: SpaceFormProps) {
               isValid
                 ? isEditMode
                   ? "Save changes"
-                  : "Create table / space"
+                  : `Create ${noun}`
                 : `Complete required fields (${remainingFields} remaining)`
             }
           >
             <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-            {isEditMode ? "Save changes" : "Create table / space"}
+            {isEditMode ? "Save changes" : `Create ${noun}`}
           </Button>
         </div>
       </form>

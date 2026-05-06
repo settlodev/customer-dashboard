@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
@@ -280,11 +281,10 @@ const FloorPlanDialog = ({
 
 const FloorPlanManager = ({
   floorPlans,
-  onRefresh,
 }: {
   floorPlans: FloorPlan[];
-  onRefresh: () => void;
 }) => {
+  const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<FloorPlan | null>(null);
   const [deletingId, setDeletingId] = useState<UUID | null>(null);
@@ -308,7 +308,7 @@ const FloorPlanManager = ({
         title: "Success",
         description: "Floor plan deleted successfully",
       });
-      onRefresh();
+      router.refresh();
     } catch {
       toast({
         variant: "destructive",
@@ -414,7 +414,7 @@ const FloorPlanManager = ({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         editingPlan={editingPlan}
-        onSaved={onRefresh}
+        onSaved={() => router.refresh()}
       />
     </>
   );

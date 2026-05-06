@@ -21,19 +21,24 @@ import {
 import DeleteModal from "@/components/tables/delete-modal";
 import { Space } from "@/types/space/type";
 import { toast } from "@/hooks/use-toast";
-import { deleteSpace } from "@/lib/actions/space-actions";
+import { deleteTable, deleteSpace } from "@/lib/actions/space-actions";
 
 interface CellActionProps {
   data: Space;
+  basePath: "/tables" | "/spaces";
 }
 
-export const CellAction: React.FC<CellActionProps> = ({ data }) => {
+export const CellAction: React.FC<CellActionProps> = ({ data, basePath }) => {
   const router = useRouter();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   const onDelete = async () => {
     try {
-      await deleteSpace(data.id);
+      if (basePath === "/tables") {
+        await deleteTable(data.id);
+      } else {
+        await deleteSpace(data.id);
+      }
       toast({
         variant: "success",
         title: "Deleted",
@@ -62,12 +67,12 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => router.push(`/spaces/${data.id}`)}>
+          <DropdownMenuItem onClick={() => router.push(`${basePath}/${data.id}`)}>
             <Eye className="mr-2 h-4 w-4" />
             View
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/spaces/${data.id}/edit`)}
+            onClick={() => router.push(`${basePath}/${data.id}/edit`)}
           >
             <EditIcon className="mr-2 h-4 w-4" />
             Edit

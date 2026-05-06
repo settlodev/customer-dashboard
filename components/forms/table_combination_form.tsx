@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
@@ -40,7 +41,6 @@ import { toast } from "@/hooks/use-toast";
 import {
   Space,
   TableCombination,
-  BOOKABLE_TYPES,
   TABLE_SPACE_TYPE_LABELS,
 } from "@/types/space/type";
 import { TableCombinationSchema } from "@/types/space/schema";
@@ -306,21 +306,18 @@ const CombinationDialog = ({
 
 const TableCombinationManager = ({
   combinations,
-  allSpaces,
-  onRefresh,
+  allTables,
 }: {
   combinations: TableCombination[];
-  allSpaces: Space[];
-  onRefresh: () => void;
+  allTables: Space[];
 }) => {
+  const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCombination, setEditingCombination] =
     useState<TableCombination | null>(null);
   const [deletingId, setDeletingId] = useState<UUID | null>(null);
 
-  const bookableTables = allSpaces.filter(
-    (s) => BOOKABLE_TYPES.includes(s.type) && s.active,
-  );
+  const bookableTables = allTables.filter((t) => t.active);
 
   const handleEdit = (combo: TableCombination) => {
     setEditingCombination(combo);
@@ -341,7 +338,7 @@ const TableCombinationManager = ({
         title: "Success",
         description: "Table combination deleted successfully",
       });
-      onRefresh();
+      router.refresh();
     } catch {
       toast({
         variant: "destructive",
@@ -449,7 +446,7 @@ const TableCombinationManager = ({
         onOpenChange={setDialogOpen}
         editingCombination={editingCombination}
         bookableTables={bookableTables}
-        onSaved={onRefresh}
+        onSaved={() => router.refresh()}
       />
     </>
   );

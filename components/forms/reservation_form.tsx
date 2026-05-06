@@ -13,6 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   AlertTriangle,
+  Calendar as CalendarIcon,
   CalendarDays,
   CheckCircle2,
   Clock,
@@ -26,11 +27,19 @@ import {
   User,
   Users,
 } from "lucide-react";
+import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   Form,
   FormControl,
@@ -46,6 +55,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import {
   Alert,
   AlertIcon,
@@ -79,7 +89,7 @@ import {
   createReservation,
   updateReservation,
 } from "@/lib/actions/reservation-actions";
-import { fetchAllSpaces } from "@/lib/actions/space-actions";
+import { fetchAllTables } from "@/lib/actions/space-actions";
 import { FormResponse } from "@/types/types";
 import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 
@@ -120,16 +130,10 @@ export default function ReservationForm({ item }: ReservationFormProps) {
   useEffect(() => {
     const loadSpaces = async () => {
       try {
-        const data = await fetchAllSpaces();
-        const bookable = data.filter(
-          (s: Space) =>
-            s.reservable &&
-            s.active &&
-            (s.type === "TABLE" || s.type === "SEAT"),
-        );
-        setSpaces(bookable);
+        const data = await fetchAllTables();
+        setSpaces(data.filter((t: Space) => t.reservable && t.active));
       } catch (error) {
-        console.error("Failed to load spaces:", error);
+        console.error("Failed to load tables:", error);
       }
     };
     loadSpaces();
@@ -264,22 +268,55 @@ export default function ReservationForm({ item }: ReservationFormProps) {
                   <FormField
                     control={form.control}
                     name="reservationDate"
-                    render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Date <span className="req">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            disabled={isPending}
-                            {...field}
-                            value={field.value ?? ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const selected = field.value
+                        ? new Date(field.value)
+                        : undefined;
+                      return (
+                        <FormItem className="min-w-0">
+                          <FormLabel className={styles.fieldLabel}>
+                            Date <span className="req">*</span>
+                          </FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  disabled={isPending}
+                                  className={cn(
+                                    "h-10 w-full justify-start text-left font-normal",
+                                    !selected && "text-muted-foreground",
+                                  )}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                  {selected
+                                    ? format(selected, "PPP")
+                                    : "Pick a date"}
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className="w-[300px] p-0"
+                              align="start"
+                            >
+                              <Calendar
+                                mode="single"
+                                selected={selected}
+                                onSelect={(d) =>
+                                  field.onChange(
+                                    d ? d.toISOString().split("T")[0] : "",
+                                  )
+                                }
+                                defaultMonth={selected ?? undefined}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage className="text-xs" />
+                        </FormItem>
+                      );
+                    }}
                   />
 
                   <FormField
@@ -291,11 +328,11 @@ export default function ReservationForm({ item }: ReservationFormProps) {
                           Start time <span className="req">*</span>
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            type="time"
+                          <TimePicker
+                            value={field.value}
+                            onChange={field.onChange}
                             disabled={isPending}
-                            {...field}
-                            value={field.value ?? ""}
+                            placeholder="Pick a start time"
                           />
                         </FormControl>
                         <FormMessage />
@@ -313,11 +350,11 @@ export default function ReservationForm({ item }: ReservationFormProps) {
                           <span className="opt">OPTIONAL</span>
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            type="time"
+                          <TimePicker
+                            value={field.value}
+                            onChange={field.onChange}
                             disabled={isPending}
-                            {...field}
-                            value={field.value ?? ""}
+                            placeholder="Pick an end time"
                           />
                         </FormControl>
                         <FormMessage />

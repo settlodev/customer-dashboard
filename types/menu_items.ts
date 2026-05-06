@@ -419,8 +419,26 @@ const getNormalMenuItems = (
       icon: "general",
       items: [
         {
-          title: "Tables & spaces",
+          title: "Tables",
+          link: "/tables",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Spaces",
           link: "/spaces",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Floor plans",
+          link: "/floor-plans",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Table combinations",
+          link: "/table-combinations",
           current: args?.isCurrentItem,
           icon: "cart",
         },

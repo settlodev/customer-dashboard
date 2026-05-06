@@ -77,6 +77,8 @@ export default async function Page({ searchParams }: Params) {
 
   // Pull a 30-day window so the KPI strip reflects an "active" picture
   // regardless of whether the user is on the list or calendar view.
+  // Fetch is best-effort — if the summary endpoint is unavailable the
+  // page should still render the table or calendar.
   const today = new Date();
   const windowStart = new Date(today);
   windowStart.setDate(windowStart.getDate() - 30);
@@ -84,10 +86,16 @@ export default async function Page({ searchParams }: Params) {
   windowEnd.setDate(windowEnd.getDate() + 30);
   const fmtIso = (d: Date) => d.toISOString().slice(0, 10);
 
-  const allRecent: Reservation[] = await fetchAllReservations({
-    from: fmtIso(windowStart),
-    to: fmtIso(windowEnd),
-  }).catch(() => []);
+  let allRecent: Reservation[] = [];
+  try {
+    const result = await fetchAllReservations({
+      from: fmtIso(windowStart),
+      to: fmtIso(windowEnd),
+    });
+    if (Array.isArray(result)) allRecent = result;
+  } catch {
+    allRecent = [];
+  }
 
   const totalRecent = allRecent.length;
   const todayCount = allRecent.filter(isToday).length;
@@ -109,15 +117,28 @@ export default async function Page({ searchParams }: Params) {
   let calendarReservations: Reservation[] = [];
 
   if (view === "calendar") {
-    calendarReservations = await searchReservationsByMonth(
-      calendarYear,
-      calendarMonth,
-    );
+    try {
+      const result = await searchReservationsByMonth(
+        calendarYear,
+        calendarMonth,
+      );
+      if (Array.isArray(result)) calendarReservations = result;
+    } catch {
+      calendarReservations = [];
+    }
   } else {
-    const responseData = await searchReservation(q, page, pageLimit);
-    data = responseData.content;
-    total = responseData.totalElements;
-    pageCount = responseData.totalPages;
+    try {
+      const responseData = await searchReservation(q, page, pageLimit);
+      if (responseData && Array.isArray(responseData.content)) {
+        data = responseData.content;
+        total = responseData.totalElements ?? 0;
+        pageCount = responseData.totalPages ?? 0;
+      }
+    } catch {
+      data = [];
+      total = 0;
+      pageCount = 0;
+    }
   }
 
   const hasAny = totalRecent > 0 || total > 0;

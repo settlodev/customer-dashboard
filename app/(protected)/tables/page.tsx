@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   LayoutGrid,
   Plus,
+  Table2,
   Users,
   XCircle,
 } from "lucide-react";
@@ -18,11 +19,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
-import {
-  searchSpaces,
-  fetchAllSpaces,
-  fetchAllTables,
-} from "@/lib/actions/space-actions";
+import { searchTables, fetchAllTables } from "@/lib/actions/space-actions";
 import { createSpaceColumns } from "@/components/tables/space/columns";
 
 type Params = {
@@ -33,15 +30,14 @@ type Params = {
   }>;
 };
 
-export default async function SpacesPage({ searchParams }: Params) {
+export default async function TablesPage({ searchParams }: Params) {
   const resolved = await searchParams;
   const q = resolved.search || "";
   const page = Number(resolved.page) || 0;
   const pageLimit = Number(resolved.limit) || 10;
 
-  const [responseData, allSpaces, allTables] = await Promise.all([
-    searchSpaces(q, page, pageLimit),
-    fetchAllSpaces().catch(() => []),
+  const [responseData, allTables] = await Promise.all([
+    searchTables(q, page, pageLimit),
     fetchAllTables().catch(() => []),
   ]);
 
@@ -49,35 +45,27 @@ export default async function SpacesPage({ searchParams }: Params) {
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;
 
-  const totalZones = allSpaces.length;
-  const activeZones = allSpaces.filter((z) => z.active).length;
-  const inactiveZones = totalZones - activeZones;
+  const totalTables = allTables.length;
+  const activeTables = allTables.filter((t) => t.active).length;
+  const inactiveTables = totalTables - activeTables;
+  const reservableTables = allTables.filter((t) => t.reservable && t.active).length;
+  const totalCapacity = allTables.reduce((sum, t) => sum + (t.capacity ?? 0), 0);
 
-  // Tables that are nested inside one of these zones (parent space).
-  const tablesInZones = allTables.filter((t) => t.parentSpaceId).length;
-
-  // Distinct floor plans referenced by zones (a quick "where these live").
-  const floorPlanIds = new Set(
-    allSpaces
-      .map((z) => z.floorPlanId)
-      .filter((id): id is NonNullable<typeof id> => !!id),
-  );
-
-  const columns = createSpaceColumns({ basePath: "/spaces", variant: "space" });
+  const columns = createSpaceColumns({ basePath: "/tables", variant: "table" });
   const hasFilters = !!q;
-  const hasAny = totalZones > 0;
+  const hasAny = totalTables > 0;
 
   return (
     <PageShell>
-      <PageBreadcrumbs items={[{ title: "Spaces" }]} />
+      <PageBreadcrumbs items={[{ title: "Tables" }]} />
       <PageHeader
-        title="Spaces"
-        subtitle="Sections, halls, rooms, terraces, and bars — the zones that group your tables."
+        title="Tables"
+        subtitle="Bookable tables and seats — what guests actually sit at."
         actions={
           <Button asChild size="sm">
-            <Link href="/spaces/new">
+            <Link href="/tables/new">
               <Plus className="mr-1.5 h-4 w-4" />
-              Add space
+              Add table
             </Link>
           </Button>
         }
@@ -88,36 +76,39 @@ export default async function SpacesPage({ searchParams }: Params) {
           <>
             <KpiStrip cols={4}>
               <KpiCard
-                icon={<LayoutGrid className="h-3 w-3" />}
-                label="Total spaces"
-                value={totalZones.toLocaleString()}
+                icon={<Table2 className="h-3 w-3" />}
+                label="Total tables"
+                value={totalTables.toLocaleString()}
               />
               <KpiCard
                 icon={<Users className="h-3 w-3" />}
-                label="Tables in spaces"
-                value={tablesInZones > 0 ? tablesInZones.toLocaleString() : "—"}
+                label="Total capacity"
+                value={totalCapacity > 0 ? totalCapacity.toLocaleString() : "—"}
+                unit={totalCapacity > 0 ? "seats" : undefined}
                 deltaTone="neutral"
               />
               <KpiCard
                 icon={<LayoutGrid className="h-3 w-3" />}
-                label="Floor plans used"
-                value={floorPlanIds.size > 0 ? floorPlanIds.size.toLocaleString() : "—"}
+                label="Reservable"
+                value={reservableTables.toLocaleString()}
                 deltaTone="neutral"
               />
               <KpiCard
                 icon={
-                  inactiveZones > 0 ? (
+                  inactiveTables > 0 ? (
                     <XCircle className="h-3 w-3" />
                   ) : (
                     <CheckCircle2 className="h-3 w-3" />
                   )
                 }
                 label="Inactive"
-                value={inactiveZones > 0 ? inactiveZones.toLocaleString() : "—"}
-                deltaTone={inactiveZones > 0 ? "neg" : "neutral"}
+                value={
+                  inactiveTables > 0 ? inactiveTables.toLocaleString() : "—"
+                }
+                deltaTone={inactiveTables > 0 ? "neg" : "neutral"}
                 delta={
-                  inactiveZones > 0
-                    ? `${activeZones.toLocaleString()} active`
+                  inactiveTables > 0
+                    ? `${activeTables.toLocaleString()} active`
                     : undefined
                 }
               />
@@ -132,13 +123,13 @@ export default async function SpacesPage({ searchParams }: Params) {
                   pageNo={page}
                   searchKey="name"
                   total={total}
-                  rowClickBasePath="/spaces"
+                  rowClickBasePath="/tables"
                 />
               </CardContent>
             </Card>
           </>
         ) : (
-          <NoItems itemName="space" newItemUrl="/spaces/new" />
+          <NoItems itemName="table" newItemUrl="/tables/new" />
         )}
       </PageBody>
     </PageShell>
