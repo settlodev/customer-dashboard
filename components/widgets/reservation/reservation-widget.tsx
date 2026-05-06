@@ -14,8 +14,6 @@ import {
   fetchPublicLocationInfo,
   fetchPublicReservationSettings,
   fetchPublicBookingQuestions,
-  fetchPublicReservationSlots,
-  fetchPublicReservationExceptions,
   fetchPublicAvailability,
   createPublicReservation,
 } from "@/lib/actions/public-reservation-actions";
@@ -24,7 +22,8 @@ import {
   PublicReservationSetting,
   BookingQuestion,
 } from "@/types/reservation-setting/type";
-import { AvailabilityResponse, AvailableSlot, ReservationSlot, ReservationException } from "@/types/reservation/type";
+import { BookingQuestionType } from "@/types/enums";
+import { AvailabilityResponse, AvailableSlot } from "@/types/reservation/type";
 import {
   GuestInfo,
   ReservationStep,
@@ -54,8 +53,6 @@ export default function ReservationWidget({
   const [location, setLocation] = useState<LocationDetails | null>(null);
   const [settings, setSettings] = useState<PublicReservationSetting | null>(initialSettings ?? null);
   const [bookingQuestions, setBookingQuestions] = useState<BookingQuestion[]>([]);
-  const [reservationSlots, setReservationSlots] = useState<ReservationSlot[]>([]);
-  const [reservationExceptions, setReservationExceptions] = useState<ReservationException[]>([]);
   const [availability, setAvailability] =
     useState<AvailabilityResponse | null>(null);
 
@@ -84,8 +81,11 @@ export default function ReservationWidget({
   const [confirmationMessage, setConfirmationMessage] = useState("");
 
   // --- derived ---
-  const primaryColor = settings?.primaryColor || "#EB7F44";
-  const secondaryColor = settings?.secondaryColor || "#1A1A2E";
+  // Branding now comes from the location/business details rather than from
+  // PublicReservationSetting, which is intentionally a strict subset that
+  // never exposes pacing or branding to public callers.
+  const primaryColor = "#EB7F44";
+  const secondaryColor = "#1A1A2E";
   const minParty = settings?.minPartySize ?? 1;
   const maxParty = settings?.maxPartySize ?? 20;
   const bookingWindowDays = settings?.bookingWindowDays ?? 30;
@@ -94,20 +94,19 @@ export default function ReservationWidget({
   useEffect(() => {
     const load = async () => {
       try {
-        const [loc, sett, questions, slots, exceptions] = await Promise.all([
+        // Slots and exceptions are no longer exposed publicly — the
+        // availability endpoint resolves them server-side and returns the
+        // already-merged list of bookable AvailableSlot windows for a date.
+        const [loc, sett, questions] = await Promise.all([
           fetchPublicLocationInfo(locationId),
           initialSettings !== undefined
             ? Promise.resolve(initialSettings)
             : fetchPublicReservationSettings(locationId),
           fetchPublicBookingQuestions(locationId),
-          fetchPublicReservationSlots(locationId),
-          fetchPublicReservationExceptions(locationId),
         ]);
         setLocation(loc);
         if (!initialSettings) setSettings(sett);
         setBookingQuestions(questions.filter((q) => q.active));
-        setReservationSlots(slots.filter((s) => s.active));
-        setReservationExceptions(exceptions);
 
         if (sett && !sett.enableOnlineBooking) {
           setError("Online booking is not currently available for this location.");
@@ -133,24 +132,16 @@ export default function ReservationWidget({
   maxDate.setDate(maxDate.getDate() + bookingWindowDays);
   const maxDateStr = maxDate.toISOString().split("T")[0];
 
-  // --- map JS day index (0=Sun) to schedule day name ---
-  const JS_DAY_TO_NAME = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
-  const scheduledDays = new Set(reservationSlots.map((s) => s.dayOfWeek));
-  const closedDates = new Set(
-    reservationExceptions
-      .filter((e) => e.type === "CLOSED" || e.type === "HOLIDAY" || e.type === "MAINTENANCE" || e.type === "BLOCKED")
-      .filter((e) => !e.startTime) // full-day closures only
-      .map((e) => e.date),
-  );
-
+  // Slot definitions and exception closures are no longer exposed publicly,
+  // so we only gate by the booking window here. The availability endpoint
+  // returns {@code closed: true} when a date is unavailable; the UI now
+  // surfaces that downstream rather than pre-disabling dates.
   const isDateDisabled = (date: Date) => {
-    // outside booking window
-    if (date < new Date(minDateStr + "T00:00:00") || date > new Date(maxDateStr + "T23:59:59")) return true;
-    // no schedule for this day of week
-    if (scheduledDays.size > 0 && !scheduledDays.has(JS_DAY_TO_NAME[date.getDay()])) return true;
-    // full-day exception closure
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    if (closedDates.has(dateStr)) return true;
+    if (
+      date < new Date(minDateStr + "T00:00:00") ||
+      date > new Date(maxDateStr + "T23:59:59")
+    )
+      return true;
     return false;
   };
 
@@ -310,10 +301,10 @@ export default function ReservationWidget({
     <div className="max-w-2xl mx-auto px-3 py-4 sm:p-6">
       {/* Header */}
       <div className="text-center mb-4 sm:mb-6">
-        {(settings?.logoUrl || location?.businessLogo) && (
+        {location?.businessLogo && (
           <img
-            src={settings?.logoUrl || location?.businessLogo}
-            alt={location?.locationName || ""}
+            src={location.businessLogo}
+            alt={location.locationName || ""}
             className="max-h-16 sm:max-h-24 mx-auto mb-2 sm:mb-3 object-contain"
           />
         )}
@@ -530,14 +521,14 @@ export default function ReservationWidget({
                     </div>
                   )}
 
-                  {!loadingSlots && availability && !availability.locationOpen && (
+                  {!loadingSlots && availability && availability.closed && (
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 text-center">
                       <p className="text-amber-800 font-medium text-sm">
                         Location is closed on this date
                       </p>
-                      {availability.closureReason && (
+                      {availability.closedReason && (
                         <p className="text-amber-600 text-xs sm:text-sm mt-1">
-                          {availability.closureReason}
+                          {availability.closedReason}
                         </p>
                       )}
                     </div>
@@ -545,7 +536,7 @@ export default function ReservationWidget({
 
                   {!loadingSlots &&
                     availability &&
-                    availability.locationOpen &&
+                    !availability.closed &&
                     availability.slots.length === 0 && (
                       <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50/50 p-4 sm:p-6 text-center">
                         <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-gray-300 mx-auto mb-2" />
@@ -560,7 +551,7 @@ export default function ReservationWidget({
 
                   {!loadingSlots &&
                     availability &&
-                    availability.locationOpen &&
+                    !availability.closed &&
                     availability.slots.length > 0 && (
                       <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                         {availability.slots.map((slot) => (
@@ -570,11 +561,11 @@ export default function ReservationWidget({
                               setSelectedSlot(slot);
                               setSelectedTable(null);
                             }}
-                            disabled={!slot.pacingAvailable}
+                            disabled={!slot.available}
                             className={`py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                               selectedSlot?.time === slot.time
                                 ? "text-white"
-                                : slot.pacingAvailable
+                                : slot.available
                                   ? "bg-white border border-gray-300 text-gray-700"
                                   : "bg-gray-100 text-gray-400 cursor-not-allowed"
                             }`}
@@ -593,8 +584,11 @@ export default function ReservationWidget({
             </div>
           </div>
 
-          {/* Table preference */}
-          {settings?.allowGuestTablePreference && selectedSlot && (
+          {/* Table preference — only shown when there are seating options to pick.
+              The new public API doesn't expose allowGuestTablePreference, so we
+              just show the picker whenever there's at least one available
+              table for the selected slot. */}
+          {selectedSlot && (selectedSlot.availableTables?.length ?? 0) > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <MapPin className="w-4 h-4 inline mr-1.5" />
@@ -602,8 +596,7 @@ export default function ReservationWidget({
               </label>
               {(() => {
                 const tables = selectedSlot.availableTables || [];
-                const combinations = selectedSlot.availableCombinations || [];
-                if (tables.length === 0 && combinations.length === 0) {
+                if (tables.length === 0) {
                   return (
                     <p className="text-xs text-gray-400">
                       No specific seating options available for this time.
@@ -630,11 +623,14 @@ export default function ReservationWidget({
                       >
                         <span className="font-medium block">{table.name}</span>
                         <span className={`text-xs ${selectedTable === table.id ? "text-white/80" : "text-gray-400"}`}>
-                          {table.type.charAt(0) + table.type.slice(1).toLowerCase()} · Up to {table.capacity}
+                          {table.parentName ? `${table.parentName} · ` : ""}Up to {table.capacity}
                         </span>
                       </button>
                     ))}
-                    {combinations.map((combo) => (
+                    {/* Combinations are no longer in the public availability
+                        response — Payment / table allocation engine resolves
+                        them server-side. The customer just picks a table. */}
+                    {[].map((combo: { id: string; name: string; capacity: number }) => (
                       <button
                         key={`combo-${combo.id}`}
                         onClick={() =>
@@ -858,41 +854,28 @@ export default function ReservationWidget({
             </div>
           )}
 
-          {/* Deposit info */}
-          {settings?.requireDeposit && settings.defaultDepositAmount && (
+          {/* Deposit info — deposit policy is now resolved server-side via
+              priority-based DepositRule entries (TABLE_SLOT > TABLE > SLOT >
+              GLOBAL). The public availability response doesn't surface the
+              resolved amount; the server returns the actual deposit on the
+              created reservation. UX surfaces the "online deposit collection"
+              flag so customers know cash will be requested at the venue
+              when off. */}
+          {settings?.enableOnlineDepositPayment && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-              <p className="font-medium">Deposit Required</p>
+              <p className="font-medium">A deposit may be required</p>
               <p className="text-blue-600 text-xs mt-1">
-                A deposit of{" "}
-                {settings.depositPerGuest
-                  ? `${settings.defaultDepositAmount.toLocaleString()} per guest (${(settings.defaultDepositAmount * partySize).toLocaleString()} total)`
-                  : settings.defaultDepositAmount.toLocaleString()}{" "}
-                is required for this reservation.
+                If a deposit applies to your booking you'll be prompted to pay
+                online after submitting this form.
               </p>
             </div>
           )}
 
-          {/* Cancellation policy acceptance */}
-          {settings?.cancellationPolicyText && (
-            <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-500">
-              <p className="font-medium text-gray-600 mb-1">
-                Cancellation Policy
-              </p>
-              <p className="mb-2">{settings.cancellationPolicyText}</p>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="accept-cancellation"
-                  checked={acceptedCancellationPolicy}
-                  onCheckedChange={(checked) =>
-                    setAcceptedCancellationPolicy(checked === true)
-                  }
-                />
-                <Label htmlFor="accept-cancellation" className="font-normal text-xs text-gray-600">
-                  I have read and accept the cancellation policy *
-                </Label>
-              </div>
-            </div>
-          )}
+          {/* Cancellation policy text is no longer included in the public
+              settings DTO (it's an internal-facing field on the full
+              ReservationSetting). To re-surface it here, expose
+              cancellationPolicyText on PublicReservationSettingDto in the
+              OMS and bump settlo-common, then conditionally render it. */}
 
           {/* Terms acceptance */}
           {settings?.termsAndConditions && (
@@ -930,7 +913,6 @@ export default function ReservationWidget({
               onClick={handleSubmit}
               disabled={
                 submitting ||
-                (!!settings?.cancellationPolicyText && !acceptedCancellationPolicy) ||
                 (!!settings?.termsAndConditions && !acceptedTerms)
               }
               className="flex-1 text-white"
@@ -1050,7 +1032,7 @@ function BookingQuestionField({
   const required = question.required;
 
   switch (question.questionType) {
-    case "FREE_TEXT":
+    case BookingQuestionType.TEXT:
       return (
         <div>
           <Label>
@@ -1064,7 +1046,22 @@ function BookingQuestionField({
         </div>
       );
 
-    case "SINGLE_SELECT":
+    case BookingQuestionType.NUMBER:
+      return (
+        <div>
+          <Label>
+            {question.questionText} {required && "*"}
+          </Label>
+          <Input
+            type="number"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="0"
+          />
+        </div>
+      );
+
+    case BookingQuestionType.SINGLE_CHOICE:
       return (
         <div>
           <Label>
@@ -1074,16 +1071,16 @@ function BookingQuestionField({
             {question.options
               .sort((a, b) => a.sortOrder - b.sortOrder)
               .map((opt) => (
-                <div key={opt.optionValue} className="flex items-center space-x-2">
+                <div key={opt.value} className="flex items-center space-x-2">
                   <RadioGroupItem
-                    value={opt.optionValue}
-                    id={`${question.id}-${opt.optionValue}`}
+                    value={opt.value}
+                    id={`${question.id}-${opt.value}`}
                   />
                   <Label
-                    htmlFor={`${question.id}-${opt.optionValue}`}
+                    htmlFor={`${question.id}-${opt.value}`}
                     className="font-normal"
                   >
-                    {opt.optionValue}
+                    {opt.label}
                   </Label>
                 </div>
               ))}
@@ -1091,7 +1088,7 @@ function BookingQuestionField({
         </div>
       );
 
-    case "MULTI_SELECT": {
+    case BookingQuestionType.MULTI_CHOICE: {
       const selected = value ? value.split(",").filter(Boolean) : [];
       const toggle = (opt: string) => {
         const next = selected.includes(opt)
@@ -1109,19 +1106,19 @@ function BookingQuestionField({
               .sort((a, b) => a.sortOrder - b.sortOrder)
               .map((opt) => (
                 <div
-                  key={opt.optionValue}
+                  key={opt.value}
                   className="flex items-center space-x-2"
                 >
                   <Checkbox
-                    id={`${question.id}-${opt.optionValue}`}
-                    checked={selected.includes(opt.optionValue)}
-                    onCheckedChange={() => toggle(opt.optionValue)}
+                    id={`${question.id}-${opt.value}`}
+                    checked={selected.includes(opt.value)}
+                    onCheckedChange={() => toggle(opt.value)}
                   />
                   <Label
-                    htmlFor={`${question.id}-${opt.optionValue}`}
+                    htmlFor={`${question.id}-${opt.value}`}
                     className="font-normal"
                   >
-                    {opt.optionValue}
+                    {opt.label}
                   </Label>
                 </div>
               ))}
@@ -1130,14 +1127,14 @@ function BookingQuestionField({
       );
     }
 
-    case "ACKNOWLEDGEMENT":
+    case BookingQuestionType.BOOLEAN:
       return (
         <div className="flex items-start space-x-2">
           <Checkbox
             id={`ack-${question.id}`}
             checked={value === "true"}
             onCheckedChange={(checked) =>
-              onChange(checked ? "true" : "")
+              onChange(checked ? "true" : "false")
             }
           />
           <Label htmlFor={`ack-${question.id}`} className="font-normal text-sm">

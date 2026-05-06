@@ -49,10 +49,8 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-import {
-  BookingQuestion,
-  BookingQuestionType,
-} from "@/types/reservation-setting/type";
+import { BookingQuestion } from "@/types/reservation-setting/type";
+import { BookingQuestionType } from "@/types/enums";
 import { BookingQuestionSchema } from "@/types/reservation-setting/schema";
 import {
   createBookingQuestion,
@@ -61,17 +59,19 @@ import {
 } from "@/lib/actions/reservation-setting-actions";
 
 const QUESTION_TYPE_LABELS: Record<BookingQuestionType, string> = {
-  MULTI_SELECT: "Multi-Select",
-  SINGLE_SELECT: "Single-Select",
-  ACKNOWLEDGEMENT: "Acknowledgement",
-  FREE_TEXT: "Free Text",
+  [BookingQuestionType.TEXT]: "Free text",
+  [BookingQuestionType.NUMBER]: "Number",
+  [BookingQuestionType.BOOLEAN]: "Yes / No",
+  [BookingQuestionType.SINGLE_CHOICE]: "Single choice",
+  [BookingQuestionType.MULTI_CHOICE]: "Multiple choice",
 };
 
 const QUESTION_TYPE_ICONS: Record<BookingQuestionType, React.ReactNode> = {
-  MULTI_SELECT: <CheckSquare className="h-4 w-4" />,
-  SINGLE_SELECT: <List className="h-4 w-4" />,
-  ACKNOWLEDGEMENT: <MessageSquare className="h-4 w-4" />,
-  FREE_TEXT: <AlignLeft className="h-4 w-4" />,
+  [BookingQuestionType.TEXT]: <AlignLeft className="h-4 w-4" />,
+  [BookingQuestionType.NUMBER]: <AlignLeft className="h-4 w-4" />,
+  [BookingQuestionType.BOOLEAN]: <MessageSquare className="h-4 w-4" />,
+  [BookingQuestionType.SINGLE_CHOICE]: <List className="h-4 w-4" />,
+  [BookingQuestionType.MULTI_CHOICE]: <CheckSquare className="h-4 w-4" />,
 };
 
 type BookingQuestionFormValues = z.infer<typeof BookingQuestionSchema>;
@@ -100,13 +100,14 @@ const QuestionDialog = ({
           active: editingQuestion.active,
           options: editingQuestion.options.map((o) => ({
             id: o.id as string | undefined,
-            optionValue: o.optionValue,
+            label: o.label,
+            value: o.value,
             sortOrder: o.sortOrder,
           })),
         }
       : {
           questionText: "",
-          questionType: "FREE_TEXT" as BookingQuestionType,
+          questionType: BookingQuestionType.TEXT,
           required: false,
           sortOrder: 0,
           active: true,
@@ -121,7 +122,8 @@ const QuestionDialog = ({
 
   const questionType = form.watch("questionType");
   const needsOptions =
-    questionType === "MULTI_SELECT" || questionType === "SINGLE_SELECT";
+    questionType === BookingQuestionType.SINGLE_CHOICE ||
+    questionType === BookingQuestionType.MULTI_CHOICE;
 
   React.useEffect(() => {
     if (editingQuestion) {
@@ -133,14 +135,15 @@ const QuestionDialog = ({
         active: editingQuestion.active,
         options: editingQuestion.options.map((o) => ({
           id: o.id as string | undefined,
-          optionValue: o.optionValue,
+          label: o.label,
+          value: o.value,
           sortOrder: o.sortOrder,
         })),
       });
     } else {
       form.reset({
         questionText: "",
-        questionType: "FREE_TEXT",
+        questionType: BookingQuestionType.TEXT,
         required: false,
         sortOrder: 0,
         active: true,
@@ -240,15 +243,14 @@ const QuestionDialog = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="FREE_TEXT">Free Text</SelectItem>
-                        <SelectItem value="SINGLE_SELECT">
-                          Single Select
+                        <SelectItem value={BookingQuestionType.TEXT}>Free text</SelectItem>
+                        <SelectItem value={BookingQuestionType.NUMBER}>Number</SelectItem>
+                        <SelectItem value={BookingQuestionType.BOOLEAN}>Yes / No</SelectItem>
+                        <SelectItem value={BookingQuestionType.SINGLE_CHOICE}>
+                          Single choice
                         </SelectItem>
-                        <SelectItem value="MULTI_SELECT">
-                          Multi Select
-                        </SelectItem>
-                        <SelectItem value="ACKNOWLEDGEMENT">
-                          Acknowledgement
+                        <SelectItem value={BookingQuestionType.MULTI_CHOICE}>
+                          Multiple choice
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -328,7 +330,8 @@ const QuestionDialog = ({
                       size="sm"
                       onClick={() =>
                         append({
-                          optionValue: "",
+                          label: "",
+                          value: "",
                           sortOrder: fields.length,
                         })
                       }
@@ -354,13 +357,44 @@ const QuestionDialog = ({
                       <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       <FormField
                         control={form.control}
-                        name={`options.${index}.optionValue`}
+                        name={`options.${index}.label`}
                         render={({ field }) => (
                           <FormItem className="flex-1">
                             <FormControl>
                               <Input
                                 {...field}
-                                placeholder={`Option ${index + 1}`}
+                                placeholder={`Label ${index + 1}`}
+                                disabled={isPending}
+                                onChange={(e) => {
+                                  const labelValue = e.target.value;
+                                  field.onChange(labelValue);
+                                  // Mirror label into value when value is empty —
+                                  // most options use the same string for both.
+                                  const currentValue = form.getValues(
+                                    `options.${index}.value`,
+                                  );
+                                  if (!currentValue) {
+                                    form.setValue(
+                                      `options.${index}.value`,
+                                      labelValue,
+                                    );
+                                  }
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`options.${index}.value`}
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder={`Value ${index + 1}`}
                                 disabled={isPending}
                               />
                             </FormControl>
@@ -538,7 +572,7 @@ const BookingQuestionsManager = ({
                               variant="outline"
                               className="text-xs font-normal"
                             >
-                              {opt.optionValue}
+                              {opt.label}
                             </Badge>
                           ))}
                       </div>

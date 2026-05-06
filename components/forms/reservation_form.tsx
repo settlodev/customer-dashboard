@@ -83,10 +83,9 @@ const ReservationForm = ({
       reservationEndTime: item?.reservationEndTime ?? undefined,
       peopleCount: item?.peopleCount ?? undefined,
       specialRequests: item?.specialRequests ?? undefined,
-      source: (item?.source as any) ?? undefined,
-      customer: (item?.customer as string) ?? undefined,
-      tableAndSpace: (item?.tableAndSpace as string) ?? undefined,
-      status: item?.status ?? true,
+      source: (item?.source as never) ?? "POS",
+      customerId: (item?.customer as string) ?? undefined,
+      tableSpaceId: (item?.tableAndSpace as string) ?? undefined,
     },
   });
 
@@ -236,7 +235,7 @@ const ReservationForm = ({
 
                 <FormField
                   control={form.control}
-                  name="customer"
+                  name="customerId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Customer</FormLabel>
@@ -254,7 +253,7 @@ const ReservationForm = ({
 
                 <FormField
                   control={form.control}
-                  name="tableAndSpace"
+                  name="tableSpaceId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Table</FormLabel>

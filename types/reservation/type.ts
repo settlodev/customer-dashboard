@@ -3,36 +3,80 @@ import {
   ReservationStatus,
   DepositPaymentStatus,
   ReservationExceptionType,
+  ReservationSource,
 } from "@/types/enums";
 
+/**
+ * Mirrors the OMS `ReservationResponseDto` from settlo-common 0.8.11.
+ * The shape is denormalised — customer / table / business / location are
+ * present both as UUIDs and as flattened display fields.
+ */
 export declare interface Reservation {
   id: UUID;
+
   reservationDate: string;
   reservationTime: string;
   reservationEndTime: string | null;
   peopleCount: number;
   reservationStatus: ReservationStatus;
   specialRequests: string | null;
+
   depositAmount: number | null;
   depositPaymentStatus: DepositPaymentStatus | null;
-  source: string | null;
+  source: ReservationSource | string | null;
+
+  // Table
   tableAndSpace: UUID | null;
   tableAndSpaceName: string | null;
+  tableMinimumSpend: number | null;
+  sectionId: UUID | null;
+  sectionName: string | null;
+
+  // Customer (denormalised)
   customer: UUID | null;
   customerName: string | null;
-  answers: ReservationAnswer[];
+  customerPhone: string | null;
+  customerEmail: string | null;
+
+  // Location (denormalised)
   location: UUID;
+  locationName: string | null;
+  locationPhone: string | null;
+  locationEmail: string | null;
+  locationAddress: string | null;
+  locationCity: string | null;
+  locationImage: string | null;
+  locationLogo: string | null;
+  locationBackgroundColor: string | null;
+  locationOpeningTime: string | null;
+  locationClosingTime: string | null;
+
+  // Business (denormalised)
+  business: UUID | null;
+  businessName: string | null;
+  businessLogo: string | null;
+  businessPrimaryColor: string | null;
+  businessSecondaryColor: string | null;
+  businessBannerImageUrl: string | null;
+  businessFaviconUrl: string | null;
+  businessFontFamily: string | null;
+  businessWebsite: string | null;
+
+  // Booking-question answers
+  answers: ReservationAnswer[];
+
+  // Audit / display
   status: boolean;
-  canDelete: boolean;
   isArchived: boolean;
+  canDelete: boolean;
 }
 
 export declare interface ReservationAnswer {
   id: UUID;
-  questionId: UUID;
-  questionText: string;
-  questionType: string;
-  answerText: string;
+  bookingQuestion: UUID;
+  questionText: string | null;
+  questionType: string | null;
+  answerValue: string;
 }
 
 export declare interface ReservationSlot {
@@ -44,10 +88,6 @@ export declare interface ReservationSlot {
   maxReservations: number | null;
   maxGuests: number | null;
   active: boolean;
-  location: UUID;
-  status: boolean;
-  canDelete: boolean;
-  isArchived: boolean;
 }
 
 export declare interface ReservationException {
@@ -57,58 +97,83 @@ export declare interface ReservationException {
   endTime: string | null;
   reason: string | null;
   type: ReservationExceptionType;
-  location: UUID;
-  status: boolean;
-  canDelete: boolean;
-  isArchived: boolean;
+  fullDay: boolean;
 }
+
+// ─── Availability ────────────────────────────────────────────────────
 
 export declare interface AvailableTable {
   id: UUID;
   name: string;
-  code: string | null;
   capacity: number;
   minCapacity: number | null;
-  type: string;
-  turnTimeMinutes: number | null;
-}
-
-export declare interface AvailableCombination {
-  id: UUID;
-  name: string;
-  capacity: number;
-  tableIds: UUID[];
+  parentId: UUID | null;
+  parentName: string | null;
 }
 
 export declare interface AvailableSlot {
   time: string;
-  endTime: string;
+  available: boolean;
+  reservationsRemaining: number | null;
+  guestsRemaining: number | null;
   availableTables: AvailableTable[];
-  availableCombinations: AvailableCombination[];
-  remainingCapacity: number;
-  currentReservations: number;
-  maxReservations: number | null;
-  pacingAvailable: boolean;
 }
 
 export declare interface AvailabilityResponse {
-  date: string;
-  partySize: number;
-  locationOpen: boolean;
-  closureReason: string | null;
   slots: AvailableSlot[];
+  closed: boolean;
+  closedReason: string | null;
 }
 
+// ─── Allocation result ──────────────────────────────────────────────
+
+/**
+ * Either {@code tableSpaceId} or {@code combinationId} is set, never both.
+ * Combination wins when no single table fits the party.
+ */
 export declare interface TableAllocationResult {
-  allocated: boolean;
-  tableId: UUID | null;
+  tableSpaceId: UUID | null;
   tableName: string | null;
+  capacity: number | null;
   combinationId: UUID | null;
   combinationName: string | null;
-  combinedTableIds: UUID[] | null;
-  totalCapacity: number;
-  reason: string | null;
 }
+
+// ─── Deposit payment ────────────────────────────────────────────────
+
+export declare interface ReservationDepositPaymentResponse {
+  reservationId: UUID;
+  depositAmount: number;
+  depositPaymentStatus: DepositPaymentStatus;
+  paymentStatus: "PROCESSING" | "SUCCESS" | "FAILED" | "ACCEPTED";
+  externalReferenceId: string | null;
+  paymentMethodName: string | null;
+  message: string | null;
+}
+
+// ─── Timeline / event log ───────────────────────────────────────────
+
+/**
+ * One row from the OMS reservation_events table — every action against a
+ * reservation produces one of these. Use {@code GET /reservations/{id}/events}
+ * to fetch the full timeline.
+ */
+export declare interface ReservationEvent {
+  id: UUID;
+  reservationId: UUID;
+  locationId: UUID;
+  eventType: string;
+  /** Staff user who triggered the action; null for system / public events. */
+  actorId: UUID | null;
+  /** USER, DEVICE, SYSTEM, etc. */
+  actorType: string | null;
+  description: string | null;
+  metadata: Record<string, unknown> | null;
+  occurredAt: string;
+  createdAt: string;
+}
+
+// ─── Display helpers ────────────────────────────────────────────────
 
 export const RESERVATION_STATUS_LABELS: Record<ReservationStatus, string> = {
   [ReservationStatus.PENDING]: "Pending",
@@ -164,16 +229,18 @@ export const DAYS_OF_WEEK = [
   "SUNDAY",
 ] as const;
 
-export const RESERVATION_SOURCES = [
-  "ONLINE",
-  "POS",
-  "PHONE",
-  "WALK_IN",
-] as const;
+export const RESERVATION_SOURCES: ReservationSource[] = [
+  ReservationSource.ONLINE,
+  ReservationSource.PHONE,
+  ReservationSource.WALK_IN,
+  ReservationSource.POS,
+  ReservationSource.THIRD_PARTY,
+];
 
-export const RESERVATION_SOURCE_LABELS: Record<string, string> = {
-  ONLINE: "Online",
-  POS: "POS",
-  PHONE: "Phone",
-  WALK_IN: "Walk-in",
+export const RESERVATION_SOURCE_LABELS: Record<ReservationSource, string> = {
+  [ReservationSource.ONLINE]: "Online",
+  [ReservationSource.PHONE]: "Phone",
+  [ReservationSource.WALK_IN]: "Walk-in",
+  [ReservationSource.POS]: "POS",
+  [ReservationSource.THIRD_PARTY]: "Third Party",
 };

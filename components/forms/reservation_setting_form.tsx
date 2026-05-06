@@ -32,10 +32,7 @@ import {
   ReservationSettingCategory,
 } from "@/types/reservation-setting/type";
 import { ReservationSettingSchema } from "@/types/reservation-setting/schema";
-import {
-  createReservationSettings,
-  updateReservationSettings,
-} from "@/lib/actions/reservation-setting-actions";
+import { upsertReservationSettings } from "@/lib/actions/reservation-setting-actions";
 import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 
 const DEFAULTS = {
@@ -49,10 +46,9 @@ const DEFAULTS = {
   requireGuestPhone: false,
   allowSpecialRequests: true,
   autoConfirm: false,
-  requireDeposit: false,
-  depositPerGuest: false,
   allowOnlineCancellation: true,
   chargeNoShowFee: false,
+  noShowGraceMinutes: 30,
   sendConfirmationEmail: true,
   sendConfirmationSms: false,
   sendReminderNotification: true,
@@ -60,6 +56,7 @@ const DEFAULTS = {
   defaultTurnTimeMinutes: 15,
   bufferMinutesBetweenSeatings: 0,
   enableWaitlist: false,
+  enableOnlineDepositPayment: false,
   autoAssignTable: true,
   allowGuestTablePreference: false,
 } satisfies Partial<z.input<typeof ReservationSettingSchema>>;
@@ -122,12 +119,9 @@ const ReservationSettingForm = ({
 
   const submitData = (values: z.infer<typeof ReservationSettingSchema>) => {
     setResponse(undefined);
+    void isNew; // legacy distinction — OMS uses a single PUT upsert endpoint
     startTransition(() => {
-      const action = isNew
-        ? createReservationSettings(values)
-        : updateReservationSettings(values);
-
-      action.then((data) => {
+      upsertReservationSettings(values).then((data: FormResponse | void) => {
         if (data) {
           setResponse(data);
           const msg = SettloErrorHandler.safeMessage(data.message);
@@ -307,11 +301,11 @@ const ReservationSettingForm = ({
   const categoryOrder: ReservationSettingCategory[] = [
     "booking_rules",
     "confirmation",
-    "deposit",
     "cancellation",
     "notifications",
     "pacing",
     "waitlist",
+    "deposit_collection",
     "table_assignment",
     "messages",
   ];

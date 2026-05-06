@@ -27,6 +27,7 @@ const AUTH_SERVICE_URL = requireEnv("AUTH_SERVICE_URL");
 const ACCOUNTS_SERVICE_URL = requireEnv("ACCOUNTS_SERVICE_URL");
 const REPORTS_SERVICE_URL = requireEnv("REPORTS_SERVICE_URL");
 const PAYMENT_SERVICE_URL = requireEnv("PAYMENT_SERVICE_URL");
+const ORDER_MANAGEMENT_SERVICE_URL = requireEnv("ORDER_MANAGEMENT_SERVICE_URL");
 const IS_DEV = process.env.NODE_ENV !== "production";
 
 const sharedHttpsAgent = new https.Agent({
@@ -235,7 +236,7 @@ class ApiClient {
   public isPlain: boolean;
 
   constructor(
-    service: "accounts" | "auth" | "reports" | "payments" | boolean = "accounts",
+    service: "accounts" | "auth" | "reports" | "payments" | "orders" | boolean = "accounts",
   ) {
     if (typeof service === "boolean") {
       this.baseURL = service ? AUTH_SERVICE_URL : ACCOUNTS_SERVICE_URL;
@@ -247,7 +248,9 @@ class ApiClient {
             ? REPORTS_SERVICE_URL
             : service === "payments"
               ? PAYMENT_SERVICE_URL
-              : ACCOUNTS_SERVICE_URL;
+              : service === "orders"
+                ? ORDER_MANAGEMENT_SERVICE_URL
+                : ACCOUNTS_SERVICE_URL;
     }
     this.isPlain = false;
 

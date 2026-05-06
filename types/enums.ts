@@ -134,3 +134,26 @@ export enum ReservationExceptionType {
     BLOCKED = "BLOCKED",
 }
 
+export enum BookingQuestionType {
+    TEXT = "TEXT",
+    NUMBER = "NUMBER",
+    BOOLEAN = "BOOLEAN",
+    SINGLE_CHOICE = "SINGLE_CHOICE",
+    MULTI_CHOICE = "MULTI_CHOICE",
+}
+
+export enum DepositRuleScope {
+    GLOBAL = "GLOBAL",
+    SLOT = "SLOT",
+    TABLE = "TABLE",
+    TABLE_SLOT = "TABLE_SLOT",
+}
+
+export enum ReservationSource {
+    ONLINE = "ONLINE",
+    PHONE = "PHONE",
+    WALK_IN = "WALK_IN",
+    POS = "POS",
+    THIRD_PARTY = "THIRD_PARTY",
+}
+
