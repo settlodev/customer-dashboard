@@ -19,7 +19,7 @@ import {
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
 import { searchSpaces, getSpaceStats } from "@/lib/actions/space-actions";
-import { createSpaceColumns } from "@/components/tables/space/columns";
+import { spaceColumns } from "@/components/tables/space/columns";
 
 type Params = {
   searchParams: Promise<{
@@ -58,7 +58,6 @@ export default async function SpacesPage({ searchParams }: Params) {
   const tablesInZones = stats.tablesInZones;
   const floorPlansUsed = stats.floorPlansUsed;
 
-  const columns = createSpaceColumns({ basePath: "/spaces", variant: "space" });
   const hasFilters = !!q;
   const hasAny = totalZones > 0;
 
@@ -121,7 +120,7 @@ export default async function SpacesPage({ searchParams }: Params) {
             <Card>
               <CardContent className="px-2 pt-6 sm:px-6">
                 <DataTable
-                  columns={columns}
+                  columns={spaceColumns}
                   data={data}
                   pageCount={pageCount}
                   pageNo={page}

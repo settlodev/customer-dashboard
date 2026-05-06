@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 interface WhatsAppButtonProps {
   userName?: string;
@@ -11,6 +12,8 @@ interface WhatsAppButtonProps {
   customMessage?: string;
   /** Set to true to hide this button on /reserve pages (used by global instance) */
   hideOnReserve?: boolean;
+  /** Override positioning classes (uses tw-merge so e.g. `lg:left-[320px]` overrides the default left-6 on lg+) */
+  className?: string;
 }
 
 const SETTLO_PHONE = "255759229777";
@@ -54,6 +57,7 @@ export default function WhatsAppButton({
   phoneNumber,
   customMessage,
   hideOnReserve,
+  className,
 }: WhatsAppButtonProps) {
   const pathname = usePathname();
 
@@ -70,7 +74,10 @@ export default function WhatsAppButton({
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"
-      className="fixed bottom-6 left-6 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-[#25D366] shadow-lg transition-transform hover:scale-110 active:scale-95"
+      className={cn(
+        "fixed bottom-6 left-6 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-[#25D366] shadow-lg transition-transform hover:scale-110 active:scale-95",
+        className,
+      )}
     >
       <WhatsAppIcon className="h-5 w-5" />
     </Link>

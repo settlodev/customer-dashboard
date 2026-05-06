@@ -11,6 +11,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
+import { tableColumns } from "@/components/tables/space/columns";
 import {
   PageShell,
   PageHeader,
@@ -20,7 +21,6 @@ import {
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
 import { searchTables, getTableStats } from "@/lib/actions/space-actions";
-import { createSpaceColumns } from "@/components/tables/space/columns";
 
 type Params = {
   searchParams: Promise<{
@@ -59,7 +59,6 @@ export default async function TablesPage({ searchParams }: Params) {
   const reservableTables = stats.reservable;
   const totalCapacity = stats.totalCapacity;
 
-  const columns = createSpaceColumns({ basePath: "/tables", variant: "table" });
   const hasFilters = !!q;
   const hasAny = totalTables > 0;
 
@@ -125,7 +124,7 @@ export default async function TablesPage({ searchParams }: Params) {
             <Card>
               <CardContent className="px-2 pt-6 sm:px-6">
                 <DataTable
-                  columns={columns}
+                  columns={tableColumns}
                   data={data}
                   pageCount={pageCount}
                   pageNo={page}

@@ -174,6 +174,7 @@ export default async function RootLayout({
         businessName={currentBusiness?.name}
         locationName={currentLocation?.name}
         hideOnReserve
+        className="lg:left-[320px]"
       />
       {currentLocation?.id && (
         <DaySessionWidget locationId={currentLocation.id} />
