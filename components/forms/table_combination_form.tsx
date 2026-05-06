@@ -1,13 +1,10 @@
 "use client";
 
-import React, { useCallback, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import React, { useCallback, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
-import { UUID } from "node:crypto";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -29,13 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Loader2,
-  Plus,
-  Pencil,
-  Trash2,
-  Combine,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 import {
@@ -47,13 +38,12 @@ import { TableCombinationSchema } from "@/types/space/schema";
 import {
   createTableCombination,
   updateTableCombination,
-  deleteTableCombination,
 } from "@/lib/actions/space-actions";
 import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 
 type CombinationFormValues = z.infer<typeof TableCombinationSchema>;
 
-const CombinationDialog = ({
+export const CombinationDialog = ({
   open,
   onOpenChange,
   editingCombination,
@@ -118,20 +108,31 @@ const CombinationDialog = ({
   const submitData = (values: CombinationFormValues) => {
     startTransition(async () => {
       const action = editingCombination
-        ? updateTableCombination(editingCombination.id, values, editingCombination.version)
+        ? updateTableCombination(
+            editingCombination.id,
+            values,
+            editingCombination.version,
+          )
         : createTableCombination(values);
 
       const data = await action;
       if (data) {
         if (data.responseType === "success") {
-          toast({ variant: "success", title: "Success", description: SettloErrorHandler.safeMessage(data.message) });
+          toast({
+            variant: "success",
+            title: "Success",
+            description: SettloErrorHandler.safeMessage(data.message),
+          });
           onOpenChange(false);
           onSaved();
         } else {
           toast({
             variant: "destructive",
             title: "Error",
-            description: SettloErrorHandler.safeMessage(data.message, "Failed to save table combination"),
+            description: SettloErrorHandler.safeMessage(
+              data.message,
+              "Failed to save table combination",
+            ),
           });
         }
       }
@@ -303,153 +304,3 @@ const CombinationDialog = ({
     </Dialog>
   );
 };
-
-const TableCombinationManager = ({
-  combinations,
-  allTables,
-}: {
-  combinations: TableCombination[];
-  allTables: Space[];
-}) => {
-  const router = useRouter();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingCombination, setEditingCombination] =
-    useState<TableCombination | null>(null);
-  const [deletingId, setDeletingId] = useState<UUID | null>(null);
-
-  const bookableTables = allTables.filter((t) => t.active);
-
-  const handleEdit = (combo: TableCombination) => {
-    setEditingCombination(combo);
-    setDialogOpen(true);
-  };
-
-  const handleAdd = () => {
-    setEditingCombination(null);
-    setDialogOpen(true);
-  };
-
-  const handleDelete = async (id: UUID) => {
-    setDeletingId(id);
-    try {
-      await deleteTableCombination(id);
-      toast({
-        variant: "success",
-        title: "Success",
-        description: "Table combination deleted successfully",
-      });
-      router.refresh();
-    } catch {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete table combination",
-      });
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  return (
-    <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Table Combinations</CardTitle>
-            <Button onClick={handleAdd} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Add Combination
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {combinations.length === 0 ? (
-            <div className="text-center py-8 border border-dashed rounded-lg">
-              <Combine className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">
-                No table combinations yet
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Group multiple tables together to seat larger parties
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={handleAdd}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add First Combination
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {combinations.map((combo) => (
-                <div
-                  key={combo.id}
-                  className="flex items-start justify-between gap-4 rounded-lg border p-4"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{combo.name}</span>
-                      <Badge variant="secondary" className="text-xs">
-                        Capacity: {combo.capacity}
-                      </Badge>
-                    </div>
-                    {combo.tables && combo.tables.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {combo.tables.map((table) => (
-                          <Badge
-                            key={table.id}
-                            variant="outline"
-                            className="text-xs font-normal"
-                          >
-                            {table.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(combo)}
-                      className="h-8 w-8"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(combo.id)}
-                      disabled={deletingId === combo.id}
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                    >
-                      {deletingId === combo.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <CombinationDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        editingCombination={editingCombination}
-        bookableTables={bookableTables}
-        onSaved={() => router.refresh()}
-      />
-    </>
-  );
-};
-
-export default TableCombinationManager;

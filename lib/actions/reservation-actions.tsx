@@ -191,9 +191,13 @@ export const updateReservationStatus = async (
 ): Promise<FormResponse | void> => {
   const location = await getCurrentLocation();
   try {
-    await oms().put(
-      `${base(location?.id as string)}/${id}/status?status=${status}`,
+    await oms().put<unknown, Record<string, never>>(
+      `${base(location?.id as string)}/${id}/status`,
       {},
+      {
+        params: { status },
+        headers: { Accept: "application/json" },
+      },
     );
   } catch (error: unknown) {
     revalidatePath("/reservations");

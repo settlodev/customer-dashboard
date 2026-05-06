@@ -2,8 +2,6 @@ import Link from "next/link";
 import { format, parse } from "date-fns";
 import {
   CalendarDays,
-  CalendarOff,
-  Clock,
   List,
   Plus,
   CalendarCheck,
@@ -186,18 +184,6 @@ export default async function Page({ searchParams }: Params) {
                 </Link>
               </Button>
             </div>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/settings?tab=reservations&subtab=schedule">
-                <Clock className="mr-1.5 h-4 w-4" />
-                Schedule
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/settings?tab=reservations&subtab=exceptions">
-                <CalendarOff className="mr-1.5 h-4 w-4" />
-                Exceptions
-              </Link>
-            </Button>
             <Button asChild size="sm">
               <Link href="/reservations/new">
                 <Plus className="mr-1.5 h-4 w-4" />

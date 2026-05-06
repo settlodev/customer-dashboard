@@ -1,7 +1,5 @@
 import { UUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
-import { Pencil } from "lucide-react";
 
 import {
   PageShell,
@@ -9,13 +7,13 @@ import {
   PageBreadcrumbs,
   PageBody,
 } from "@/components/layouts/page-shell";
-import { Button } from "@/components/ui/button";
 import {
   Reservation,
   RESERVATION_STATUS_LABELS,
 } from "@/types/reservation/type";
 import { getReservationById } from "@/lib/actions/reservation-actions";
 import { ReservationDetailView } from "./reservation-detail-view";
+import { ReservationActions } from "./reservation-actions";
 import { ReservationStatus } from "@/types/enums";
 
 type Params = Promise<{ id: string }>;
@@ -93,14 +91,7 @@ export default async function ReservationPage({
           </span>
         }
         subtitle={subtitleParts.join(" · ")}
-        actions={
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/reservations/${reservation.id}/edit`}>
-              <Pencil className="mr-1.5 h-4 w-4" />
-              Edit
-            </Link>
-          </Button>
-        }
+        actions={<ReservationActions reservation={reservation} />}
       />
 
       <PageBody>

@@ -1,4 +1,4 @@
-import { Inbox, ToggleLeft, Users, UsersRound } from "lucide-react";
+import { ToggleLeft, Users, UsersRound } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/tables/data-table";
@@ -14,6 +14,7 @@ import {
   PageBody,
 } from "@/components/layouts/page-shell";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
+import NoItems from "@/components/layouts/no-items";
 import { AddGroupButton } from "@/components/widgets/customer-group/add-group-button";
 import { CustomerGroup } from "@/types/customer/type";
 
@@ -114,29 +115,7 @@ export default async function CustomerGroupsPage({ searchParams }: Params) {
             </Card>
           </>
         ) : (
-          <div className="relative flex min-h-[calc(100vh-240px)] flex-col items-center justify-center overflow-hidden rounded-xl border border-line bg-card px-6 py-16 text-center">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-line to-transparent"
-            />
-
-            <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full border border-line bg-canvas">
-              <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden />
-            </div>
-
-            <h2 className="text-lg font-semibold leading-tight tracking-tight text-ink">
-              No customer groups data found
-            </h2>
-
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
-              There are no customer groups records found at the moment. Add a
-              new customer group record to start viewing data.
-            </p>
-
-            <div className="mt-6">
-              <AddGroupButton />
-            </div>
-          </div>
+          <NoItems itemName="customer groups" cta={<AddGroupButton />} />
         )}
       </PageBody>
     </PageShell>

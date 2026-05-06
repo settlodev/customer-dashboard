@@ -1,3 +1,4 @@
+import React from "react";
 import { Inbox, Plus } from "lucide-react";
 import Link from "next/link";
 
@@ -8,6 +9,8 @@ interface NoItemsProps {
   newItemUrl?: string;
   onAdd?: () => void;
   ctaLabel?: string;
+  /** Custom CTA node — takes precedence over newItemUrl/onAdd. Useful for dialog-based flows. */
+  cta?: React.ReactNode;
 }
 
 export default function NoItems({
@@ -15,6 +18,7 @@ export default function NoItems({
   newItemUrl,
   onAdd,
   ctaLabel,
+  cta,
 }: NoItemsProps) {
   const label = ctaLabel ?? `Add ${itemName}`;
 
@@ -38,7 +42,9 @@ export default function NoItems({
         {itemName} record to start viewing data.
       </p>
 
-      {newItemUrl ? (
+      {cta ? (
+        <div className="mt-6">{cta}</div>
+      ) : newItemUrl ? (
         <Button asChild className="mt-6" size="sm">
           <Link href={newItemUrl}>
             <Plus className="h-4 w-4" /> {label}

@@ -1,13 +1,10 @@
 "use client";
 
-import React, { useCallback, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import React, { useCallback, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
-import { UUID } from "node:crypto";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -28,8 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Pencil, Trash2, LayoutGrid } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 import { FloorPlan } from "@/types/space/type";
@@ -37,13 +33,12 @@ import { FloorPlanSchema } from "@/types/space/schema";
 import {
   createFloorPlan,
   updateFloorPlan,
-  deleteFloorPlan,
 } from "@/lib/actions/space-actions";
 import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 
 type FloorPlanFormValues = z.infer<typeof FloorPlanSchema>;
 
-const FloorPlanDialog = ({
+export const FloorPlanDialog = ({
   open,
   onOpenChange,
   editingPlan,
@@ -104,14 +99,21 @@ const FloorPlanDialog = ({
       const data = await action;
       if (data) {
         if (data.responseType === "success") {
-          toast({ variant: "success", title: "Success", description: SettloErrorHandler.safeMessage(data.message) });
+          toast({
+            variant: "success",
+            title: "Success",
+            description: SettloErrorHandler.safeMessage(data.message),
+          });
           onOpenChange(false);
           onSaved();
         } else {
           toast({
             variant: "destructive",
             title: "Error",
-            description: SettloErrorHandler.safeMessage(data.message, "Failed to save floor plan"),
+            description: SettloErrorHandler.safeMessage(
+              data.message,
+              "Failed to save floor plan",
+            ),
           });
         }
       }
@@ -278,146 +280,3 @@ const FloorPlanDialog = ({
     </Dialog>
   );
 };
-
-const FloorPlanManager = ({
-  floorPlans,
-}: {
-  floorPlans: FloorPlan[];
-}) => {
-  const router = useRouter();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<FloorPlan | null>(null);
-  const [deletingId, setDeletingId] = useState<UUID | null>(null);
-
-  const handleEdit = (plan: FloorPlan) => {
-    setEditingPlan(plan);
-    setDialogOpen(true);
-  };
-
-  const handleAdd = () => {
-    setEditingPlan(null);
-    setDialogOpen(true);
-  };
-
-  const handleDelete = async (id: UUID) => {
-    setDeletingId(id);
-    try {
-      await deleteFloorPlan(id);
-      toast({
-        variant: "success",
-        title: "Success",
-        description: "Floor plan deleted successfully",
-      });
-      router.refresh();
-    } catch {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete floor plan",
-      });
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  return (
-    <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Floor Plans</CardTitle>
-            <Button onClick={handleAdd} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Add Floor Plan
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {floorPlans.length === 0 ? (
-            <div className="text-center py-8 border border-dashed rounded-lg">
-              <LayoutGrid className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">
-                No floor plans yet
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Create floor plans to organize your tables visually
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={handleAdd}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add First Floor Plan
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {floorPlans.map((plan) => (
-                <div
-                  key={plan.id}
-                  className="flex items-center justify-between gap-4 rounded-lg border p-4"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{plan.name}</span>
-                      {plan.isDefault && (
-                        <Badge variant="secondary" className="text-xs">
-                          Default
-                        </Badge>
-                      )}
-                    </div>
-                    {plan.description && (
-                      <p className="text-xs text-muted-foreground mt-1 truncate">
-                        {plan.description}
-                      </p>
-                    )}
-                    {(plan.width || plan.height) && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {plan.width} × {plan.height} px
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(plan)}
-                      className="h-8 w-8"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(plan.id)}
-                      disabled={deletingId === plan.id}
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                    >
-                      {deletingId === plan.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <FloorPlanDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        editingPlan={editingPlan}
-        onSaved={() => router.refresh()}
-      />
-    </>
-  );
-};
-
-export default FloorPlanManager;
