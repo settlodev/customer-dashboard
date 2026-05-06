@@ -19,7 +19,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
-import { searchTables, fetchAllTables } from "@/lib/actions/space-actions";
+import { searchTables, getTableStats } from "@/lib/actions/space-actions";
 import { createSpaceColumns } from "@/components/tables/space/columns";
 
 type Params = {
@@ -30,26 +30,34 @@ type Params = {
   }>;
 };
 
+const EMPTY_STATS = {
+  total: 0,
+  active: 0,
+  inactive: 0,
+  reservable: 0,
+  totalCapacity: 0,
+};
+
 export default async function TablesPage({ searchParams }: Params) {
   const resolved = await searchParams;
   const q = resolved.search || "";
   const page = Number(resolved.page) || 0;
   const pageLimit = Number(resolved.limit) || 10;
 
-  const [responseData, allTables] = await Promise.all([
+  const [responseData, stats] = await Promise.all([
     searchTables(q, page, pageLimit),
-    fetchAllTables().catch(() => []),
+    getTableStats().catch(() => EMPTY_STATS),
   ]);
 
   const data = responseData.content;
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;
 
-  const totalTables = allTables.length;
-  const activeTables = allTables.filter((t) => t.active).length;
-  const inactiveTables = totalTables - activeTables;
-  const reservableTables = allTables.filter((t) => t.reservable && t.active).length;
-  const totalCapacity = allTables.reduce((sum, t) => sum + (t.capacity ?? 0), 0);
+  const totalTables = stats.total;
+  const inactiveTables = stats.inactive;
+  const activeTables = stats.active;
+  const reservableTables = stats.reservable;
+  const totalCapacity = stats.totalCapacity;
 
   const columns = createSpaceColumns({ basePath: "/tables", variant: "table" });
   const hasFilters = !!q;

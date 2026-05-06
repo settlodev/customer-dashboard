@@ -12,6 +12,8 @@ import {
   SpaceDTO,
   FloorPlan,
   TableCombination,
+  TableStats,
+  SpaceStats,
 } from "@/types/space/type";
 import {
   SpaceSchema,
@@ -156,6 +158,12 @@ export const deleteTable = async (id: UUID): Promise<void> => {
   revalidatePath("/tables");
 };
 
+export const getTableStats = async (): Promise<TableStats> => {
+  const apiClient = new ApiClient("orders");
+  const data = await apiClient.get("/api/v1/tables/stats");
+  return parseStringify(data);
+};
+
 // ─── Spaces ─────────────────────────────────────────────────────────
 // /api/v1/spaces — area types only (HALL, SECTION, TERRACE, BAR, COUNTER, ROOM).
 
@@ -241,6 +249,12 @@ export const deleteSpace = async (id: UUID): Promise<void> => {
   const apiClient = new ApiClient("orders");
   await apiClient.delete(`/api/v1/spaces/${id}`);
   revalidatePath("/spaces");
+};
+
+export const getSpaceStats = async (): Promise<SpaceStats> => {
+  const apiClient = new ApiClient("orders");
+  const data = await apiClient.get("/api/v1/spaces/stats");
+  return parseStringify(data);
 };
 
 // ─── Floor Plans ─────────────────────────────────────────────────────

@@ -18,11 +18,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
-import {
-  searchSpaces,
-  fetchAllSpaces,
-  fetchAllTables,
-} from "@/lib/actions/space-actions";
+import { searchSpaces, getSpaceStats } from "@/lib/actions/space-actions";
 import { createSpaceColumns } from "@/components/tables/space/columns";
 
 type Params = {
@@ -33,35 +29,34 @@ type Params = {
   }>;
 };
 
+const EMPTY_STATS = {
+  total: 0,
+  active: 0,
+  inactive: 0,
+  floorPlansUsed: 0,
+  tablesInZones: 0,
+};
+
 export default async function SpacesPage({ searchParams }: Params) {
   const resolved = await searchParams;
   const q = resolved.search || "";
   const page = Number(resolved.page) || 0;
   const pageLimit = Number(resolved.limit) || 10;
 
-  const [responseData, allSpaces, allTables] = await Promise.all([
+  const [responseData, stats] = await Promise.all([
     searchSpaces(q, page, pageLimit),
-    fetchAllSpaces().catch(() => []),
-    fetchAllTables().catch(() => []),
+    getSpaceStats().catch(() => EMPTY_STATS),
   ]);
 
   const data = responseData.content;
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;
 
-  const totalZones = allSpaces.length;
-  const activeZones = allSpaces.filter((z) => z.active).length;
-  const inactiveZones = totalZones - activeZones;
-
-  // Tables that are nested inside one of these zones (parent space).
-  const tablesInZones = allTables.filter((t) => t.parentSpaceId).length;
-
-  // Distinct floor plans referenced by zones (a quick "where these live").
-  const floorPlanIds = new Set(
-    allSpaces
-      .map((z) => z.floorPlanId)
-      .filter((id): id is NonNullable<typeof id> => !!id),
-  );
+  const totalZones = stats.total;
+  const activeZones = stats.active;
+  const inactiveZones = stats.inactive;
+  const tablesInZones = stats.tablesInZones;
+  const floorPlansUsed = stats.floorPlansUsed;
 
   const columns = createSpaceColumns({ basePath: "/spaces", variant: "space" });
   const hasFilters = !!q;
@@ -101,7 +96,7 @@ export default async function SpacesPage({ searchParams }: Params) {
               <KpiCard
                 icon={<LayoutGrid className="h-3 w-3" />}
                 label="Floor plans used"
-                value={floorPlanIds.size > 0 ? floorPlanIds.size.toLocaleString() : "—"}
+                value={floorPlansUsed > 0 ? floorPlansUsed.toLocaleString() : "—"}
                 deltaTone="neutral"
               />
               <KpiCard

@@ -1,92 +1,62 @@
-"use client";
+import { Inbox, ToggleLeft, Users, UsersRound } from "lucide-react";
 
-import React, { useCallback, useEffect, useState } from "react";
-import {
-  AlertTriangle,
-  Loader2,
-  Pencil,
-  Plus,
-  Trash2,
-  Users,
-} from "lucide-react";
-import { UUID } from "node:crypto";
-
-import {
-  PageBody,
-  PageBreadcrumbs,
-  PageHeader,
-  PageShell,
-} from "@/components/layouts/page-shell";
-import NoItems from "@/components/layouts/no-items";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import Loading from "@/components/ui/loading";
-import { toast } from "@/hooks/use-toast";
-
-import { GroupDialog } from "@/components/forms/customer_group_form";
+import { DataTable } from "@/components/tables/data-table";
+import { columns } from "@/components/tables/customer-group/column";
 import {
-  deleteCustomerGroup,
   fetchCustomerGroups,
+  searchCustomerGroups,
 } from "@/lib/actions/customer-actions";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
+import { AddGroupButton } from "@/components/widgets/customer-group/add-group-button";
 import { CustomerGroup } from "@/types/customer/type";
 
-export default function CustomerGroupsPage() {
-  const [groups, setGroups] = useState<CustomerGroup[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingGroup, setEditingGroup] = useState<CustomerGroup | null>(null);
-  const [deletingId, setDeletingId] = useState<UUID | null>(null);
+type Params = {
+  searchParams: Promise<{
+    search?: string;
+    page?: string;
+    limit?: string;
+  }>;
+};
 
-  const loadData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const data = await fetchCustomerGroups();
-      setGroups(data);
-    } catch (err) {
-      console.error("Failed to load customer groups:", err);
-      setError(err instanceof Error ? err.message : "Failed to load groups");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+export default async function CustomerGroupsPage({ searchParams }: Params) {
+  const resolved = await searchParams;
+  const q = resolved.search?.trim() ?? "";
+  const page = Number(resolved.page) || 0;
+  const pageLimit = Number(resolved.limit);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const [allGroups, responseData] = await Promise.all([
+    fetchCustomerGroups({ includeInactive: true }).catch(
+      () => [] as CustomerGroup[],
+    ),
+    searchCustomerGroups(q, page, pageLimit).catch(() => ({
+      content: [] as CustomerGroup[],
+      totalElements: 0,
+      totalPages: 0,
+      size: 0,
+      number: 0,
+    })),
+  ]);
 
-  const handleAdd = () => {
-    setEditingGroup(null);
-    setDialogOpen(true);
-  };
+  const totalGroups = allGroups.length;
+  const activeGroups = allGroups.filter((g) => g.active).length;
+  const inactiveGroups = totalGroups - activeGroups;
+  const totalMembers = allGroups.reduce(
+    (sum, g) => sum + (g.customerCount || 0),
+    0,
+  );
 
-  const handleEdit = (group: CustomerGroup) => {
-    setEditingGroup(group);
-    setDialogOpen(true);
-  };
+  const data: CustomerGroup[] = responseData.content;
+  const total = responseData.totalElements;
+  const pageCount = responseData.totalPages;
 
-  const handleDelete = async (id: UUID) => {
-    setDeletingId(id);
-    try {
-      await deleteCustomerGroup(id);
-      toast({
-        variant: "success",
-        title: "Success",
-        description: "Group deleted successfully",
-      });
-      loadData();
-    } catch {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete group",
-      });
-    } finally {
-      setDeletingId(null);
-    }
-  };
+  const hasAnyGroup = totalGroups > 0;
 
   return (
     <PageShell>
@@ -94,119 +64,81 @@ export default function CustomerGroupsPage() {
       <PageHeader
         title="Customer groups"
         subtitle="Organize and segment your customers into groups like VIPs, Corporate, or Regulars."
-        actions={
-          <Button onClick={handleAdd} size="sm">
-            <Plus className="mr-1.5 h-4 w-4" />
-            Add Group
-          </Button>
-        }
+        actions={<AddGroupButton />}
       />
-      <PageBody>
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loading />
-          </div>
-        ) : error ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center px-6 py-16 text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-line bg-destructive/10">
-                <AlertTriangle
-                  className="h-5 w-5 text-destructive"
-                  aria-hidden
-                />
-              </div>
-              <h3 className="text-base font-semibold tracking-tight text-ink">
-                Couldn&apos;t load customer groups
-              </h3>
-              <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
-                {error}
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-6"
-                onClick={loadData}
-              >
-                Retry
-              </Button>
-            </CardContent>
-          </Card>
-        ) : groups.length === 0 ? (
-          <NoItems itemName="customer groups" onAdd={handleAdd} />
-        ) : (
-          <Card>
-            <CardContent className="divide-y divide-line p-0">
-              {groups.map((group) => (
-                <div
-                  key={group.id}
-                  className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-medium text-ink">
-                        {group.name}
-                      </span>
-                      <Badge
-                        variant="secondary"
-                        className="gap-1 text-[11px] font-normal"
-                      >
-                        <Users className="h-3 w-3" aria-hidden />
-                        {group.customerCount}{" "}
-                        {group.customerCount === 1 ? "member" : "members"}
-                      </Badge>
-                      {!group.active && (
-                        <Badge
-                          variant="outline"
-                          className="text-[11px] font-normal"
-                        >
-                          Inactive
-                        </Badge>
-                      )}
-                    </div>
-                    {group.description && (
-                      <p className="mt-1 truncate text-xs text-muted-foreground">
-                        {group.description}
-                      </p>
-                    )}
-                  </div>
 
-                  <div className="flex flex-shrink-0 items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="iconSm"
-                      onClick={() => handleEdit(group)}
-                      aria-label={`Edit ${group.name}`}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="iconSm"
-                      onClick={() => handleDelete(group.id)}
-                      disabled={deletingId === group.id}
-                      className="text-destructive hover:text-destructive"
-                      aria-label={`Delete ${group.name}`}
-                    >
-                      {deletingId === group.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+      <PageBody>
+        {hasAnyGroup || q !== "" ? (
+          <>
+            <KpiStrip cols={4}>
+              <KpiCard
+                icon={<UsersRound className="h-3 w-3" />}
+                label="Total groups"
+                value={totalGroups.toLocaleString()}
+              />
+              <KpiCard
+                icon={<UsersRound className="h-3 w-3" />}
+                label="Active"
+                value={activeGroups.toLocaleString()}
+                deltaTone="pos"
+              />
+              <KpiCard
+                icon={<ToggleLeft className="h-3 w-3" />}
+                label="Inactive"
+                value={
+                  inactiveGroups > 0 ? inactiveGroups.toLocaleString() : "—"
+                }
+                deltaTone={inactiveGroups > 0 ? "neg" : "neutral"}
+              />
+              <KpiCard
+                icon={<Users className="h-3 w-3" />}
+                label="Members"
+                value={totalMembers > 0 ? totalMembers.toLocaleString() : "—"}
+                delta={totalMembers > 0 ? "Across all groups" : undefined}
+                deltaTone="neutral"
+              />
+            </KpiStrip>
+
+            <Card>
+              <CardContent className="px-2 pt-6 sm:px-6">
+                <DataTable
+                  columns={columns}
+                  data={data}
+                  pageCount={pageCount}
+                  pageNo={page}
+                  searchKey="name"
+                  total={total}
+                  disableArchive
+                />
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <div className="relative flex min-h-[calc(100vh-240px)] flex-col items-center justify-center overflow-hidden rounded-xl border border-line bg-card px-6 py-16 text-center">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-line to-transparent"
+            />
+
+            <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full border border-line bg-canvas">
+              <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden />
+            </div>
+
+            <h2 className="text-lg font-semibold leading-tight tracking-tight text-ink">
+              No customer groups data found
+            </h2>
+
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+              There are no customer groups records found at the moment. Add a
+              new customer group record to start viewing data.
+            </p>
+
+            <div className="mt-6">
+              <AddGroupButton />
+            </div>
+          </div>
         )}
       </PageBody>
-
-      <GroupDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        editingGroup={editingGroup}
-        onSaved={loadData}
-      />
     </PageShell>
   );
 }

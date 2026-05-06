@@ -56,10 +56,13 @@ const buildPagedResponse = <T,>(
   pageLimit: number,
 ): ApiResponse<T> => {
   const size = pageLimit > 0 ? pageLimit : 10;
-  const safePage = page > 0 ? page : 0;
+  // Dashboard pager is 1-indexed (?page=1 is the first page); convert to a
+  // 0-indexed slice index here. Without this, ?page=1 was returning the
+  // second slice — empty for most accounts, producing a flash-then-blank.
+  const pageIndex = Math.max(0, (page > 0 ? page : 1) - 1);
   const totalElements = items.length;
   const totalPages = totalElements === 0 ? 0 : Math.ceil(totalElements / size);
-  const start = safePage * size;
+  const start = pageIndex * size;
   const content = items.slice(start, start + size);
 
   return parseStringify({
@@ -67,14 +70,14 @@ const buildPagedResponse = <T,>(
     totalElements,
     totalPages,
     size,
-    number: safePage,
-    first: safePage === 0,
-    last: safePage >= totalPages - 1,
+    number: pageIndex,
+    first: pageIndex === 0,
+    last: pageIndex >= Math.max(0, totalPages - 1),
     numberOfElements: content.length,
     empty: content.length === 0,
     pageable: {
       totalElements,
-      pageNumber: safePage,
+      pageNumber: pageIndex,
       pageSize: size,
       sort: { empty: true, unsorted: true, sorted: false },
       offset: start,

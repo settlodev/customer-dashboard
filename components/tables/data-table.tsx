@@ -285,12 +285,25 @@ export function DataTable<TData, TValue>({
     return () => clearTimeout(timer);
   }, [data]);
 
+  // Seed the column filter from `?search=` so the visible input matches
+  // the URL on first paint. Captured once on mount — subsequent edits
+  // flow through the column's filter value and back into the URL via
+  // the effect below.
+  const initialColumnFilters = React.useMemo(() => {
+    const search = searchParams?.get("search");
+    return search ? [{ id: searchKey, value: search }] : [];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const table = useReactTable({
     data: filteredData,
     columns,
     pageCount: pageCount ?? -1,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    initialState: {
+      columnFilters: initialColumnFilters,
+    },
     state: {
       sorting,
       pagination: { pageIndex, pageSize },
@@ -306,36 +319,30 @@ export function DataTable<TData, TValue>({
 
   const searchValue = table.getColumn(searchKey)?.getFilterValue() as string;
 
-  const [searchTimeout, setSearchTimeout] =
-    React.useState<NodeJS.Timeout | null>(null);
-
+  // Push the typed search value to the URL after a 300 ms debounce.
+  // No-op when the input already matches `?search=` — without this guard
+  // every list page issued a redundant `?page=1&limit=N` round-trip
+  // 300 ms after hydration, re-fetching the first page on every clean
+  // visit. Page-size changes flow through the pagination effect above,
+  // so they are intentionally not part of this effect.
   React.useEffect(() => {
     if (!isInitialized) return;
-    if (searchTimeout) clearTimeout(searchTimeout);
 
-    const newTimeout = setTimeout(() => {
-      if (searchValue?.length > 0) {
-        const queryString = createQueryString({
-          page: 1,
-          limit: pageSize,
-          search: searchValue,
-        });
-        router.replace(`${pathname}?${queryString}`, { scroll: false });
-      } else if (searchValue?.length === 0 || searchValue === undefined) {
-        const queryString = createQueryString({
-          page: 1,
-          limit: pageSize,
-          search: null,
-        });
-        router.replace(`${pathname}?${queryString}`, { scroll: false });
-      }
+    const urlSearch = searchParams?.get("search") ?? "";
+    const inputSearch = (searchValue ?? "").toString();
+
+    if (urlSearch === inputSearch) return;
+
+    const handle = setTimeout(() => {
+      const queryString = createQueryString({
+        page: 1,
+        search: inputSearch.length > 0 ? inputSearch : null,
+      });
+      router.replace(`${pathname}?${queryString}`, { scroll: false });
     }, 300);
 
-    setSearchTimeout(newTimeout);
-    return () => {
-      if (newTimeout) clearTimeout(newTimeout);
-    };
-  }, [searchValue, pageSize, isInitialized]);
+    return () => clearTimeout(handle);
+  }, [searchValue, isInitialized, searchParams, pathname, router, createQueryString]);
 
   const selectedRowIds = table
     .getFilteredSelectedRowModel()

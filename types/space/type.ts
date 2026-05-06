@@ -26,6 +26,22 @@ export declare interface Space {
   version: number;
 }
 
+export declare interface TableStats {
+  total: number;
+  active: number;
+  inactive: number;
+  reservable: number;
+  totalCapacity: number;
+}
+
+export declare interface SpaceStats {
+  total: number;
+  active: number;
+  inactive: number;
+  floorPlansUsed: number;
+  tablesInZones: number;
+}
+
 export declare interface FloorPlan {
   id: UUID;
   name: string;
