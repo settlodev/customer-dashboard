@@ -2,7 +2,6 @@
 
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
@@ -32,7 +31,6 @@ export const searchStockIntakes = async (
   page: number,
   pageLimit: number,
 ): Promise<ApiResponse<StockIntake>> => {
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();

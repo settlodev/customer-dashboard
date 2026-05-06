@@ -118,7 +118,7 @@ const CombinationDialog = ({
   const submitData = (values: CombinationFormValues) => {
     startTransition(async () => {
       const action = editingCombination
-        ? updateTableCombination(editingCombination.id, values)
+        ? updateTableCombination(editingCombination.id, values, editingCombination.version)
         : createTableCombination(values);
 
       const data = await action;
@@ -423,21 +423,19 @@ const TableCombinationManager = ({
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    {combo.canDelete && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(combo.id)}
-                        disabled={deletingId === combo.id}
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                      >
-                        {deletingId === combo.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(combo.id)}
+                      disabled={deletingId === combo.id}
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                    >
+                      {deletingId === combo.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
                   </div>
                 </div>
               ))}

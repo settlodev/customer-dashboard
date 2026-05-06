@@ -78,7 +78,7 @@ export default function AcceptedPaymentMethodsPage() {
           <Skeleton className="h-7 w-32" />
           <Skeleton className="h-4 w-64 mt-2" />
         </div>
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 px-4">
+        <div className="bg-card rounded-lg border border-border px-4">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
@@ -124,7 +124,7 @@ export default function AcceptedPaymentMethodsPage() {
         </p>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 px-4">
+      <div className="bg-card rounded-lg border border-border px-4">
         {methods
           .sort((a, b) => a.sortOrder - b.sortOrder)
           .map((method) => (

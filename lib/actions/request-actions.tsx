@@ -2,7 +2,6 @@
 
 import { UUID } from "node:crypto";
 import { ApiResponse, FormResponse} from "@/types/types";
-import {getAuthenticatedUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { StockRequests } from "@/types/stock-request/type";
@@ -17,7 +16,6 @@ export const searchStockRequests = async (
     page: number,
     pageLimit: number,
 ): Promise<ApiResponse<StockRequests>> => {
-    await getAuthenticatedUser();
 
 
     try {

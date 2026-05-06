@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
 
-import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { ApiResponse, FormResponse } from "@/types/types";
@@ -168,7 +167,6 @@ export const getSingleBusiness = async (id: UUID): Promise<Business> => {
 
 export const deleteBusiness = async (id: UUID): Promise<void> => {
   if (!id) throw new Error("Business ID is required to perform this request");
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient();
 

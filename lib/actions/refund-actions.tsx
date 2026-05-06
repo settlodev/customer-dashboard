@@ -1,7 +1,6 @@
 "use server";
 
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse} from "@/types/types";
 import {UUID} from "node:crypto";
@@ -9,7 +8,6 @@ import {getCurrentLocation } from "./business/get-current-business";
 import { OrderItemRefunds, RefundReport } from "@/types/refunds/type";
 
 export const fetchRefunds = async () : Promise<OrderItemRefunds[]> => {
-    await  getAuthenticatedUser();
 
     const location = await getCurrentLocation();
 
@@ -32,7 +30,6 @@ export const searchOrderItemRefunds = async (
     page:number,
     pageLimit:number
 ): Promise<ApiResponse<OrderItemRefunds>> =>{
-    await getAuthenticatedUser();
 
 
     try {
@@ -97,7 +94,6 @@ export const GetRefundReport = async (
     endDate?: string
 ): Promise<RefundReport> => {
 
-    await getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient("reports");

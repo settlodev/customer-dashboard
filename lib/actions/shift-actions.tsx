@@ -2,17 +2,16 @@
 
 import {z} from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthenticatedUser} from "@/lib/auth-utils";
+import {getAuthToken} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {UUID} from "node:crypto";
-import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
+import { getCurrentLocation } from "./business/get-current-business";
 import { Shift } from "@/types/shift/type";
 import { ShiftSchema } from "@/types/shift/schema";
 
 export const fectchAllShifts = async () : Promise<Shift[]> => {
-    await  getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
@@ -35,7 +34,6 @@ export const searchShift = async (
     page:number,
     pageLimit:number
 ): Promise<ApiResponse<Shift>> =>{
-    await getAuthenticatedUser();
 
 
     try {
@@ -76,12 +74,12 @@ export const  createShift= async (
     }
 
     const location = await getCurrentLocation();
-    const business = await getCurrentBusiness();
+    const businessId = (await getAuthToken())?.businessId;
 
     const payload = {
         ...validShiftData.data,
         location: location?.id,
-        business: business?.id
+        business: businessId
     }
 
     console.log("The payload to create shift", payload);
@@ -143,12 +141,12 @@ export const updateShift = async (
     }
 
     const location = await getCurrentLocation();
-    const business = await getCurrentBusiness();
+    const businessId = (await getAuthToken())?.businessId;
 
     const payload = {
         ...validShiftData.data,
         location: location?.id,
-        business: business?.id
+        business: businessId
     };
 
     try {
@@ -181,7 +179,6 @@ export const updateShift = async (
 export const deleteShift = async (id: UUID): Promise<void> => {
     if (!id) throw new Error("Shift ID is required to perform this request");
 
-    await getAuthenticatedUser();
 
    try{
     const apiClient = new ApiClient();

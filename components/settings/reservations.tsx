@@ -70,7 +70,7 @@ const ReservationSettings = ({ defaultTab }: { defaultTab?: string }) => {
         </div>
         <div className="max-w-2xl overflow-hidden">
           <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-            <div className="flex-1 h-9 bg-white dark:bg-gray-900 rounded-md shadow-sm animate-pulse" />
+            <div className="flex-1 h-9 bg-card rounded-md shadow-sm animate-pulse" />
             <div className="flex-1 h-9 rounded-md animate-pulse" />
             <div className="flex-1 h-9 rounded-md animate-pulse" />
             <div className="flex-1 h-9 rounded-md animate-pulse" />

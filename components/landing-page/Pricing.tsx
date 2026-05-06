@@ -31,7 +31,7 @@ const PricingCard: React.FC<PricingCardProps> = ({ plan, isPopular = false }) =>
       className={`relative flex flex-col rounded-2xl p-6 transition-all duration-300 ${
         isPopular
           ? "bg-gray-900 text-white shadow-2xl scale-[1.03]"
-          : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:shadow-lg"
+          : "bg-card border border-border hover:shadow-lg"
       }`}
     >
       {isPopular && (
@@ -107,7 +107,7 @@ export const Pricing: React.FC = () => {
 
   return (
     <section id="pricing" className="relative z-20 w-full overflow-hidden py-28 md:py-32">
-      <div className="absolute inset-0 bg-white dark:bg-gray-950" />
+      <div className="absolute inset-0 bg-background" />
 
       <div className="relative max-w-[85rem] mx-auto px-4">
         <div className="max-w-2xl mx-auto text-center mb-14 md:mb-20">

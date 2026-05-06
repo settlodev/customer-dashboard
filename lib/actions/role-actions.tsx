@@ -5,13 +5,10 @@ import * as z from "zod";
 import { Role, RoleScope } from "@/types/roles/type";
 import { RoleSchema } from "@/types/roles/schema";
 import { FormResponse } from "@/types/types";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { getAuthToken } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import {
-  getCurrentBusiness,
-  getCurrentLocation,
-} from "@/lib/actions/business/get-current-business";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 
 // ---------------------------------------------------------------------------
 // Scope resolution
@@ -35,9 +32,9 @@ async function resolveScopeId(
   }
 
   if (scope === RoleScope.BUSINESS) {
-    const business = await getCurrentBusiness();
-    if (!business?.id) throw new Error("No current business selected for BUSINESS-scoped role");
-    return business.id;
+    const businessId = (await getAuthToken())?.businessId;
+    if (!businessId) throw new Error("No current business selected for BUSINESS-scoped role");
+    return businessId;
   }
 
   throw new Error(`scopeId is required for ${scope}-scoped role`);
@@ -51,7 +48,6 @@ export const fetchAllRoles = async (
   scope?: RoleScope,
   scopeId?: string,
 ): Promise<Role[]> => {
-  await getAuthenticatedUser();
   const apiClient = new ApiClient();
   const params = new URLSearchParams();
   if (scope) params.append("scope", scope);
@@ -65,7 +61,6 @@ export const getRolesByScope = async (
   scope: RoleScope,
   scopeId?: string,
 ): Promise<Role[]> => {
-  await getAuthenticatedUser();
   const apiClient = new ApiClient();
   const query = scopeId ? `?scopeId=${scopeId}` : "";
   const data = await apiClient.get(`/api/v1/roles/by-scope/${scope}${query}`);
@@ -167,7 +162,6 @@ export const updateRole = async (
 // ---------------------------------------------------------------------------
 
 export const deleteRole = async (id: string): Promise<void> => {
-  await getAuthenticatedUser();
   const apiClient = new ApiClient();
   await apiClient.delete(`/api/v1/roles/${id}`);
   revalidatePath("/roles");

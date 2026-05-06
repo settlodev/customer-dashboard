@@ -61,7 +61,6 @@ export interface Staff {
   departmentName: string | null;
   departments: DepartmentInfo[];
   roles: RoleInfo[];
-  loyaltyPoints: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -179,13 +178,24 @@ export interface StaffReportItem {
 export const StaffSchema = object({
   firstName: string({ required_error: "First name is required" }).min(1, "Enter a valid first name"),
   lastName: string({ required_error: "Last name is required" }).min(1, "Enter a valid last name"),
-  phoneNumber: string().optional().nullable(),
-  email: string().email("Enter a valid email").optional().nullable(),
+  // Required on the dashboard for reachability — backend keeps it
+  // optional, so the dashboard tightens the contract without breaking
+  // any service-to-service caller. Validated against libphonenumber so
+  // emergency calls and SMS reminders actually work.
+  phoneNumber: string({ required_error: "Phone number is required" })
+    .min(1, "Phone number is required")
+    .refine(isValidPhoneNumber, { message: "Enter a valid phone number" }),
+  // Optional everywhere except when dashboardAccess is on — that
+  // conditional rule is enforced in the superRefine block below.
+  email: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().email("Enter a valid email").optional(),
+  ),
   gender: nativeEnum(Gender, { required_error: "Gender is required" }),
   jobTitle: string({ required_error: "Job title is required" }).min(1, "Enter a job title"),
   departmentId: string({ required_error: "Department is required" }).uuid("Select a department"),
   departmentIds: array(string().uuid()).optional(),
-  roleIds: array(string().uuid()).optional(),
+  roleIds: array(string().uuid()).min(1, "Select at least one role"),
   color: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
   employeeNumber: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
   dateOfBirth: preprocess((val) => {
@@ -208,6 +218,7 @@ export const StaffSchema = object({
   dashboardAccess: boolean().optional(),
   pin: preprocess((val) => (val === null || val === "" ? undefined : val), string().regex(/^\d{4,6}$/, "PIN must be 4-6 digits").optional()),
   password: preprocess((val) => (val === null || val === "" ? undefined : val), string().min(8, "Password must be at least 8 characters").optional()),
+  referredByCode: preprocess((val) => (val === null || val === "" ? undefined : val), string().max(16, "Referral code cannot exceed 16 characters").optional()),
 }).superRefine((data, ctx: RefinementCtx) => {
   if (data.dashboardAccess) {
     if (!data.email) {

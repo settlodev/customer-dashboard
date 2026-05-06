@@ -129,7 +129,7 @@ const BusinessForm = ({
                       <FormLabel>Business name</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-500 dark:text-muted-foreground" />
                           <Input
                             className="pl-10"
                             {...field}
@@ -151,7 +151,7 @@ const BusinessForm = ({
                       <FormLabel>Phone number</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-500 dark:text-muted-foreground" />
                           <Input
                             className="pl-10"
                             {...field}
@@ -174,7 +174,7 @@ const BusinessForm = ({
                       <FormLabel>Email</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500 dark:text-muted-foreground" />
                           <Input
                             className="pl-10"
                             {...field}
@@ -197,7 +197,7 @@ const BusinessForm = ({
                       <FormLabel>Website</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Globe className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Globe className="absolute left-3 top-2.5 h-4 w-4 text-gray-500 dark:text-muted-foreground" />
                           <Input
                             className="pl-10"
                             {...field}
@@ -354,7 +354,7 @@ const BusinessForm = ({
                       <FormLabel>Street address</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500 dark:text-muted-foreground" />
                           <Input
                             className="pl-10"
                             {...field}

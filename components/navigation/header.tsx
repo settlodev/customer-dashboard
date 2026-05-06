@@ -37,7 +37,7 @@ const Header = ({ session, authToken, onMenuClick, businessData }: HeaderProps) 
     theme: authToken.theme,
   } as ExtendedUser : null);
   return (
-    <header className="z-50 w-full rounded-xl bg-white dark:bg-gray-900">
+    <header className="z-50 w-full rounded-xl bg-card">
       <div className="flex h-16 items-center">
         {/* Left: hamburger (mobile) + logo + location switcher */}
         <div className="flex items-center gap-3 pl-4">

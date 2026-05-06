@@ -6,18 +6,14 @@ import { revalidatePath } from "next/cache";
 import * as z from "zod";
 
 import { ApiResponse, FormResponse } from "@/types/types";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { getAuthToken } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import {
-  getCurrentBusiness,
-  getCurrentLocation,
-} from "@/lib/actions/business/get-current-business";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { Expense, ExpenseReport } from "@/types/expense/type";
 import { ExpenseSchema } from "@/types/expense/schema";
 
 export const fetchAllExpenses = async (): Promise<Expense[]> => {
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
@@ -37,7 +33,6 @@ export const searchExpenses = async (
   page: number,
   pageLimit: number,
 ): Promise<ApiResponse<Expense>> => {
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
@@ -92,12 +87,12 @@ export const createExpense = async (
   }
 
   const location = await getCurrentLocation();
-  const business = await getCurrentBusiness();
+  const businessId = (await getAuthToken())?.businessId;
 
   const payload = {
     ...validatedExpenseData.data,
     location: location?.id,
-    business: business?.id,
+    business: businessId,
   };
 
   try {
@@ -140,11 +135,11 @@ export const updateExpense = async (
   }
 
   const location = await getCurrentLocation();
-  const business = await getCurrentBusiness();
+  const businessId = (await getAuthToken())?.businessId;
   const payload = {
     ...validatedExpenseData.data,
     location: location?.id,
-    business: business?.id,
+    business: businessId,
   };
 
   try {
@@ -199,7 +194,6 @@ export const getExpense = async (id: UUID): Promise<ApiResponse<Expense>> => {
 
 export const deleteExpense = async (id: UUID): Promise<void> => {
   if (!id) throw new Error("Expense ID is required to perform this request");
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
@@ -216,7 +210,6 @@ export const GetExpenseReport = async (
   startDate?: string,
   endDate?: string,
 ): Promise<ExpenseReport> => {
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient("reports");
@@ -242,11 +235,6 @@ export const payExpense = async (
   paymentDate: string,
 ): Promise<ApiResponse<Expense>> => {
   let formResponse: FormResponse | null = null;
-  const authenticatedUser = await getAuthenticatedUser();
-
-  if ("responseType" in authenticatedUser) {
-    return parseStringify(authenticatedUser);
-  }
 
   const payload = {
     amount: amount,

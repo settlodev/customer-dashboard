@@ -63,8 +63,14 @@ export function isSessionExpiredError(error: unknown): boolean {
 
   const SESSION_CODES = ["SESSION_EXPIRED", "UNAUTHORIZED", "REFRESH_TOKEN_INVALID", "REFRESH_TOKEN_EXPIRED"];
 
-  // Direct structured error (ErrorResponseType)
   const err = error as Record<string, unknown>;
+
+  // Primary: digest survives the RSC boundary — set by SettloApiError to err.code.
+  if (typeof err.digest === "string" && SESSION_CODES.includes(err.digest)) {
+    return true;
+  }
+
+  // Direct structured error (ErrorResponseType)
   if (typeof err.code === "string" && SESSION_CODES.includes(err.code)) {
     return true;
   }

@@ -1,55 +1,62 @@
-import { notFound } from "next/navigation";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import { notFound, redirect } from "next/navigation";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import StaffForm from "@/components/forms/staff_form";
 import { getStaff } from "@/lib/actions/staff-actions";
+import { fetchDepartmentsForCurrentLocation } from "@/lib/actions/department-actions";
 import { Staff } from "@/types/staff";
+import type { Department } from "@/types/department/type";
 
 type Params = Promise<{ id: string }>;
 
 export default async function StaffEditPage({ params }: { params: Params }) {
-  const resolvedParams = await params;
-  const isNewItem = resolvedParams.id === "new";
-  let staff: Staff | null = null;
+  const { id } = await params;
 
-  if (!isNewItem) {
-    try {
-      staff = await getStaff(resolvedParams.id);
-      if (!staff) notFound();
-    } catch {
-      throw new Error("Failed to load staff data");
-    }
+  // /staff/new is now a sibling route — bounce there if someone hits
+  // the edit URL with a literal "new" id.
+  if (id === "new") redirect("/staff/new");
+
+  let staff: Staff | null = null;
+  try {
+    staff = await getStaff(id);
+    if (!staff) notFound();
+  } catch {
+    throw new Error("Failed to load staff data");
   }
 
-  const breadcrumbItems = isNewItem
-    ? [
-        { title: "Staff", link: "/staff" },
-        { title: "New", link: "" },
-      ]
-    : [
-        { title: "Staff", link: "/staff" },
-        { title: `${staff!.firstName} ${staff!.lastName}`, link: `/staff/${staff!.id}` },
-        { title: "Edit", link: "" },
-      ];
+  const departments: Department[] = await fetchDepartmentsForCurrentLocation(
+    true,
+  ).catch(() => []);
+  const defaultDepartmentId =
+    departments.find((d) => d.isDefault)?.id ??
+    (departments.length === 1 ? departments[0].id : undefined);
+
+  const fullName = `${staff.firstName} ${staff.lastName}`;
 
   return (
-    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 mt-12">
-      <div className="space-y-6">
-        <div>
-          <div className="hidden sm:block mb-2">
-            <BreadcrumbsNav items={breadcrumbItems} />
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            {isNewItem ? "Add Staff" : "Edit Staff"}
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {isNewItem
-              ? "Add a new staff member to your business"
-              : `Update details for ${staff!.firstName} ${staff!.lastName}`}
-          </p>
-        </div>
-
-        <StaffForm item={staff ?? null} />
-      </div>
-    </div>
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Staff", href: "/staff" },
+          { title: fullName, href: `/staff/${staff.id}` },
+          { title: "Edit" },
+        ]}
+      />
+      <PageHeader
+        title={`Edit ${fullName}`}
+        subtitle="Update profile details. Manage POS / dashboard access from the detail page menu."
+      />
+      <PageBody>
+        <StaffForm
+          item={staff}
+          departments={departments}
+          defaultDepartmentId={defaultDepartmentId}
+        />
+      </PageBody>
+    </PageShell>
   );
 }

@@ -1,6 +1,55 @@
 import { AxiosError } from "axios";
 import {ErrorResponseType} from "@/types/types";
 
+/**
+ * Real Error subclass for API failures. Throwing a plain ErrorResponseType
+ * object across the Next.js Server → Client boundary loses every property
+ * except `message` and `digest`, and Next auto-generates the digest unless
+ * one is set. We set `digest = code` so client error.tsx can detect the
+ * error type reliably in both dev and prod.
+ */
+export class SettloApiError extends Error {
+    public readonly status: number;
+    public readonly code: string;
+    public readonly details?: unknown;
+    public readonly metadata?: Record<string, unknown>;
+    public readonly timestamp: string;
+    public readonly path?: string;
+    public readonly correlationId?: string;
+    public readonly serverError?: ErrorResponseType['serverError'];
+    // Picked up by Next.js — preserved into client error boundaries.
+    public digest?: string;
+
+    constructor(err: ErrorResponseType) {
+        super(err.message);
+        this.name = "SettloApiError";
+        this.status = err.status;
+        this.code = err.code;
+        this.details = err.details;
+        this.metadata = err.metadata;
+        this.timestamp = err.timestamp;
+        this.path = err.path;
+        this.correlationId = err.correlationId;
+        this.serverError = err.serverError;
+        this.digest = err.code;
+    }
+
+    /** Returns the structured ErrorResponseType this Error wraps. */
+    toResponse(): ErrorResponseType {
+        return {
+            status: this.status,
+            code: this.code,
+            message: this.message,
+            details: this.details,
+            metadata: this.metadata,
+            timestamp: this.timestamp,
+            path: this.path,
+            correlationId: this.correlationId,
+            serverError: this.serverError,
+        };
+    }
+}
+
 export const ErrorCodes = {
     UNAUTHORIZED: 'UNAUTHORIZED',
     FORBIDDEN: 'FORBIDDEN',
@@ -201,6 +250,9 @@ export async function parseApiError(response: Response): Promise<ApiErrorBody> {
 
 export const handleSettloApiError = async (error: unknown): Promise<ErrorResponseType> => {
     // Pass through already-structured errors (e.g., SESSION_EXPIRED from the interceptor)
+    if (error instanceof SettloApiError) {
+        return error.toResponse();
+    }
     if (error && typeof error === "object" && "code" in error && "status" in error && "timestamp" in error) {
         return error as ErrorResponseType;
     }

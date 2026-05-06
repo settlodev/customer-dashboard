@@ -51,6 +51,6 @@ export const BATCH_STATUS_CONFIG: Record<
   DEPLETED: {
     label: "Depleted",
     color: "text-gray-500 dark:text-gray-400",
-    bgColor: "bg-gray-50 dark:bg-gray-900",
+    bgColor: "bg-muted/50",
   },
 };

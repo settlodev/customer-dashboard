@@ -3,7 +3,6 @@
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
 import {
-  getAuthenticatedUser,
   deleteActiveBusinessCookie,
   deleteActiveLocationCookie,
 } from "@/lib/auth-utils";
@@ -626,7 +625,6 @@ export async function bulkPriceUpdate(
 // ── Reports (kept — these hit a different service) ──────────────────
 
 export const productSummary = async (): Promise<any> => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();
@@ -644,7 +642,6 @@ export const topSellingProduct = async (
   endDate?: Date,
   limit?: number,
 ): Promise<TopSellingProduct | null> => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();
@@ -662,7 +659,6 @@ export const SoldItemsReports = async (
   startDate?: Date,
   endDate?: Date,
 ): Promise<SoldItemsReport | null> => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();

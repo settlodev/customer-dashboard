@@ -141,7 +141,7 @@ export default function ContactUsForm() {
             </div>
 
             {/* Form */}
-            <div className="md:col-span-2 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8">
+            <div className="md:col-span-2 bg-card rounded-2xl border border-border p-6 md:p-8">
                 <div className="mb-6">
                     <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
                         Send us a message

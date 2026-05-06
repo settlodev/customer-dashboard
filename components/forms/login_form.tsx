@@ -38,6 +38,7 @@ import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
 import { motion } from "framer-motion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { deleteAuthCookie } from "@/lib/auth-utils";
+import { executeRecaptcha } from "@/lib/recaptcha";
 import SocialAuthButtons from "@/components/widgets/social-auth-buttons";
 import {
   InputOTP,
@@ -70,10 +71,22 @@ function LoginForm() {
       setError("");
       startTransition(async () => {
         try {
+          let recaptchaToken: string | undefined;
+          try {
+            recaptchaToken = await executeRecaptcha("login");
+          } catch (recaptchaErr) {
+            console.error("[LOGIN] reCAPTCHA failed:", recaptchaErr);
+            setError(
+              "Security verification failed. Please refresh the page and try again.",
+            );
+            return;
+          }
+
           const data: FormResponse = await login(
             values,
             rememberMe,
             mfaRequired ? mfaCode : undefined,
+            recaptchaToken,
           );
           if (!data) return;
           if (data.responseType === "needs_verification") {
@@ -109,12 +122,12 @@ function LoginForm() {
         transition={{ duration: 0.4 }}
         className="w-full max-w-[440px]"
       >
-        <Card className="border-0 shadow-2xl bg-white/90 backdrop-blur-sm overflow-hidden">
+        <Card className="border-0 shadow-2xl bg-white/90 dark:bg-card/90 backdrop-blur-sm overflow-hidden">
           <CardHeader className="pb-4 pt-8 px-8">
-            <CardTitle className="text-2xl font-bold text-center text-gray-900">
+            <CardTitle className="text-2xl font-bold text-center text-gray-900 dark:text-foreground">
               Welcome Back
             </CardTitle>
-            <CardDescription className="text-center text-gray-500">
+            <CardDescription className="text-center text-gray-500 dark:text-muted-foreground">
               Sign in to your account to continue
             </CardDescription>
           </CardHeader>
@@ -143,7 +156,7 @@ function LoginForm() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-gray-700 text-sm">
+                      <FormLabel className="text-gray-700 dark:text-foreground text-sm">
                         Email
                       </FormLabel>
                       <FormControl>
@@ -166,7 +179,7 @@ function LoginForm() {
                   render={({ field }) => (
                     <FormItem>
                       <div className="flex items-center justify-between">
-                        <FormLabel className="text-gray-700 text-sm">
+                        <FormLabel className="text-gray-700 dark:text-foreground text-sm">
                           Password
                         </FormLabel>
                         <Link
@@ -191,7 +204,7 @@ function LoginForm() {
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             disabled={isPending}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground hover:text-gray-600 dark:hover:text-foreground/80 transition-colors"
                             tabIndex={-1}
                           >
                             {showPassword ? (
@@ -213,7 +226,7 @@ function LoginForm() {
                     animate={{ opacity: 1, height: "auto" }}
                     className="space-y-3"
                   >
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                    <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-foreground">
                       <KeyRound className="w-4 h-4 text-primary" />
                       <span>Enter the code from your authenticator app</span>
                     </div>
@@ -245,11 +258,11 @@ function LoginForm() {
                       setRememberMe(checked as boolean)
                     }
                     disabled={isPending}
-                    className="border-gray-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                    className="border-gray-300 dark:border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                   />
                   <label
                     htmlFor="remember"
-                    className="text-sm text-gray-600 cursor-pointer select-none"
+                    className="text-sm text-gray-600 dark:text-foreground/80 cursor-pointer select-none"
                   >
                     Remember me for 30 days
                   </label>
@@ -277,10 +290,10 @@ function LoginForm() {
 
             <div className="relative pt-1">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-gray-200" />
+                <span className="w-full border-t border-gray-200 dark:border-border" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-3 text-gray-400 font-medium">
+                <span className="bg-white dark:bg-card px-3 text-gray-400 dark:text-muted-foreground font-medium">
                   or
                 </span>
               </div>
@@ -293,8 +306,8 @@ function LoginForm() {
             />
           </CardContent>
 
-          <div className="border-t border-gray-100 bg-gray-50/50 px-8 py-5 text-center">
-            <p className="text-sm text-gray-600">
+          <div className="border-t border-gray-100 dark:border-border bg-gray-50/50 dark:bg-muted/30 px-8 py-5 text-center">
+            <p className="text-sm text-gray-600 dark:text-foreground/80">
               Don&#39;t have an account?{" "}
               <Link
                 href="/register"
@@ -306,7 +319,7 @@ function LoginForm() {
           </div>
         </Card>
 
-        <p className="mt-6 text-center text-xs text-gray-400 flex items-center justify-center gap-1.5">
+        <p className="mt-6 text-center text-xs text-gray-400 dark:text-muted-foreground flex items-center justify-center gap-1.5">
           <Shield className="w-3 h-3" />
           Secured with end-to-end encryption
         </p>

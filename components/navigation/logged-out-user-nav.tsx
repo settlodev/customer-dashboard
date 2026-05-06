@@ -3,6 +3,7 @@ import Image from "next/image";
 import { MenuIcon, ShieldQuestion, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserDropdown } from "@/components/navigation/user-menu-button";
+import { ThemeToggleButton } from "@/components/navigation/theme-toggle-button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { getAuthToken } from "@/lib/auth-utils";
 import { ExtendedUser } from "@/types/types";
@@ -48,7 +49,7 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
             alt="Settlo"
             width={100}
             height={32}
-            className="h-8 w-auto object-contain"
+            className="h-8 w-auto object-contain dark:brightness-0 dark:invert"
           />
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
@@ -72,6 +73,11 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
             <span>Help & Support</span>
           </Link>
 
+          <div className="flex items-center justify-between gap-2 px-3 py-2.5 text-sm text-gray-600 dark:text-gray-400">
+            <span>Theme</span>
+            <ThemeToggleButton />
+          </div>
+
           {!hideLogin && !user && (
             <Button
               className="w-full bg-primary hover:bg-primary/90 text-white rounded-lg"
@@ -90,7 +96,7 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full">
-      <div className="bg-white/60 dark:bg-gray-950/60 backdrop-blur-lg">
+      <div className="bg-background/60 backdrop-blur-lg">
         <div className="w-full px-4 md:px-6 lg:container lg:mx-auto">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-2">
@@ -110,7 +116,7 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
                   alt="Settlo"
                   width={120}
                   height={40}
-                  className="h-10 w-auto object-contain"
+                  className="h-10 w-auto object-contain dark:brightness-0 dark:invert"
                   priority
                 />
               </Link>
@@ -138,6 +144,8 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
                 <ShieldQuestion className="h-4 w-4" />
                 <span className="font-medium">Help</span>
               </Link>
+
+              <ThemeToggleButton />
 
               {!user && !hideLogin && (
                 <>

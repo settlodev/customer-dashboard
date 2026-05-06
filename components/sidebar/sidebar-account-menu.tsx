@@ -455,7 +455,7 @@ export function SidebarAccountMenu({
   return (
     <>
       {loggingOut && (
-        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-3 bg-white/80 backdrop-blur-sm dark:bg-gray-950/80">
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
             Logging out...

@@ -57,7 +57,7 @@ export default async function RootLayout({children}: {
 
     return (
         <SessionProvider session={session}>
-            <div className="flex h-screen overflow-hidden bg-gray-200 dark:bg-gray-950">
+            <div className="flex h-screen overflow-hidden bg-canvas">
                 <SidebarWrapper data={businessData} menuType="warehouse"/>
 
                 <main className="flex h-screen flex-1 min-w-0 flex-col overflow-hidden">

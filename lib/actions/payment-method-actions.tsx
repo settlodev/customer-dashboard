@@ -3,12 +3,9 @@
 import { revalidatePath } from "next/cache";
 
 import ApiClient from "@/lib/settlo-api-client";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { getAuthToken } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
-import {
-  getCurrentBusiness,
-  getCurrentLocation,
-} from "./business/get-current-business";
+import { getCurrentLocation } from "./business/get-current-business";
 import type {
   BusinessProviderConfig,
   ConfigureProviderRequest,
@@ -26,7 +23,6 @@ import type {
 // ──────────────────────────────────────────────────────────────────────
 
 export const fetchAllPaymentMethods = async (): Promise<PaymentMethod[]> => {
-  await getAuthenticatedUser();
   const apiClient = new ApiClient("payments");
   const data = await apiClient.get("/api/v1/payment-methods");
   return parseStringify(data);
@@ -35,12 +31,11 @@ export const fetchAllPaymentMethods = async (): Promise<PaymentMethod[]> => {
 export const fetchBusinessPaymentMethods = async (): Promise<
   PaymentMethod[]
 > => {
-  await getAuthenticatedUser();
-  const business = await getCurrentBusiness();
-  if (!business?.id) return [];
+  const businessId = (await getAuthToken())?.businessId;
+  if (!businessId) return [];
   const apiClient = new ApiClient("payments");
   const data = await apiClient.get(
-    `/api/v1/payment-methods/business/${business.id}`,
+    `/api/v1/payment-methods/business/${businessId}`,
   );
   return parseStringify(data);
 };
@@ -48,15 +43,15 @@ export const fetchBusinessPaymentMethods = async (): Promise<
 export const fetchLocationPaymentMethods = async (): Promise<
   PaymentMethod[]
 > => {
-  await getAuthenticatedUser();
-  const [business, location] = await Promise.all([
-    getCurrentBusiness(),
+  const [token, location] = await Promise.all([
+    getAuthToken(),
     getCurrentLocation(),
   ]);
-  if (!business?.id || !location?.id) return [];
+  const businessId = token?.businessId;
+  if (!businessId || !location?.id) return [];
   const apiClient = new ApiClient("payments");
   const data = await apiClient.get(
-    `/api/v1/payment-methods/location/${location.id}/business/${business.id}`,
+    `/api/v1/payment-methods/location/${location.id}/business/${businessId}`,
   );
   return parseStringify(data);
 };
@@ -65,7 +60,6 @@ export const toggleLocationPaymentMethod = async (
   paymentMethodId: string,
   enabled: boolean,
 ): Promise<void> => {
-  await getAuthenticatedUser();
   const location = await getCurrentLocation();
   if (!location?.id) throw new Error("No active location");
   const apiClient = new ApiClient("payments");
@@ -77,7 +71,6 @@ export const toggleLocationPaymentMethod = async (
 };
 
 export const initializeLocationPaymentMethods = async (): Promise<void> => {
-  await getAuthenticatedUser();
   const location = await getCurrentLocation();
   if (!location?.id) throw new Error("No active location");
   const apiClient = new ApiClient("payments");
@@ -93,14 +86,12 @@ export const initializeLocationPaymentMethods = async (): Promise<void> => {
 // ──────────────────────────────────────────────────────────────────────
 
 export const fetchProviders = async (): Promise<Provider[]> => {
-  await getAuthenticatedUser();
   const apiClient = new ApiClient("payments");
   const data = await apiClient.get("/api/v1/admin/providers");
   return parseStringify(data);
 };
 
 export const fetchProvider = async (slug: string): Promise<Provider> => {
-  await getAuthenticatedUser();
   const apiClient = new ApiClient("payments");
   const data = await apiClient.get(`/api/v1/admin/providers/${slug}`);
   return parseStringify(data);
@@ -109,12 +100,11 @@ export const fetchProvider = async (slug: string): Promise<Provider> => {
 export const fetchBusinessProviderConfigs = async (): Promise<
   BusinessProviderConfig[]
 > => {
-  await getAuthenticatedUser();
-  const business = await getCurrentBusiness();
-  if (!business?.id) return [];
+  const businessId = (await getAuthToken())?.businessId;
+  if (!businessId) return [];
   const apiClient = new ApiClient("payments");
   const data = await apiClient.get(
-    `/api/v1/admin/providers/business/${business.id}`,
+    `/api/v1/admin/providers/business/${businessId}`,
   );
   return parseStringify(data);
 };
@@ -122,13 +112,12 @@ export const fetchBusinessProviderConfigs = async (): Promise<
 export const configureBusinessProvider = async (
   config: ConfigureProviderRequest,
 ): Promise<BusinessProviderConfig> => {
-  await getAuthenticatedUser();
-  const business = await getCurrentBusiness();
-  if (!business?.id) throw new Error("No active business");
+  const businessId = (await getAuthToken())?.businessId;
+  if (!businessId) throw new Error("No active business");
   const apiClient = new ApiClient("payments");
   const data = await apiClient.post(
-    `/api/v1/admin/providers/business/${business.id}`,
-    { ...config, businessId: business.id },
+    `/api/v1/admin/providers/business/${businessId}`,
+    { ...config, businessId },
   );
   revalidatePath("/settings");
   return parseStringify(data);
@@ -138,39 +127,37 @@ export const updateBusinessProvider = async (
   slug: string,
   config: ConfigureProviderRequest,
 ): Promise<BusinessProviderConfig> => {
-  await getAuthenticatedUser();
-  const business = await getCurrentBusiness();
-  if (!business?.id) throw new Error("No active business");
+  const businessId = (await getAuthToken())?.businessId;
+  if (!businessId) throw new Error("No active business");
   const apiClient = new ApiClient("payments");
   const data = await apiClient.put(
-    `/api/v1/admin/providers/business/${business.id}/${slug}`,
-    { ...config, businessId: business.id },
+    `/api/v1/admin/providers/business/${businessId}/${slug}`,
+    { ...config, businessId },
   );
   revalidatePath("/settings");
   return parseStringify(data);
 };
 
 export const removeBusinessProvider = async (slug: string): Promise<void> => {
-  await getAuthenticatedUser();
-  const business = await getCurrentBusiness();
-  if (!business?.id) throw new Error("No active business");
+  const businessId = (await getAuthToken())?.businessId;
+  if (!businessId) throw new Error("No active business");
   const apiClient = new ApiClient("payments");
   await apiClient.delete(
-    `/api/v1/admin/providers/business/${business.id}/${slug}`,
+    `/api/v1/admin/providers/business/${businessId}/${slug}`,
   );
   revalidatePath("/settings");
 };
 
 export const fetchLocationOverrides = async (): Promise<LocationOverride[]> => {
-  await getAuthenticatedUser();
-  const [business, location] = await Promise.all([
-    getCurrentBusiness(),
+  const [token, location] = await Promise.all([
+    getAuthToken(),
     getCurrentLocation(),
   ]);
-  if (!business?.id || !location?.id) return [];
+  const businessId = token?.businessId;
+  if (!businessId || !location?.id) return [];
   const apiClient = new ApiClient("payments");
   const data = await apiClient.get(
-    `/api/v1/admin/providers/business/${business.id}/location/${location.id}`,
+    `/api/v1/admin/providers/business/${businessId}/location/${location.id}`,
   );
   return parseStringify(data);
 };
@@ -179,32 +166,32 @@ export const setLocationOverride = async (
   slug: string,
   override: LocationOverride,
 ): Promise<void> => {
-  await getAuthenticatedUser();
-  const [business, location] = await Promise.all([
-    getCurrentBusiness(),
+  const [token, location] = await Promise.all([
+    getAuthToken(),
     getCurrentLocation(),
   ]);
-  if (!business?.id || !location?.id)
+  const businessId = token?.businessId;
+  if (!businessId || !location?.id)
     throw new Error("No active business or location");
   const apiClient = new ApiClient("payments");
   await apiClient.post(
-    `/api/v1/admin/providers/business/${business.id}/location/${location.id}/${slug}/override`,
+    `/api/v1/admin/providers/business/${businessId}/location/${location.id}/${slug}/override`,
     override,
   );
   revalidatePath("/settings");
 };
 
 export const removeLocationOverride = async (slug: string): Promise<void> => {
-  await getAuthenticatedUser();
-  const [business, location] = await Promise.all([
-    getCurrentBusiness(),
+  const [token, location] = await Promise.all([
+    getAuthToken(),
     getCurrentLocation(),
   ]);
-  if (!business?.id || !location?.id)
+  const businessId = token?.businessId;
+  if (!businessId || !location?.id)
     throw new Error("No active business or location");
   const apiClient = new ApiClient("payments");
   await apiClient.delete(
-    `/api/v1/admin/providers/business/${business.id}/location/${location.id}/${slug}/override`,
+    `/api/v1/admin/providers/business/${businessId}/location/${location.id}/${slug}/override`,
   );
   revalidatePath("/settings");
 };

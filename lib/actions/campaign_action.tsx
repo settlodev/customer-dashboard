@@ -2,18 +2,17 @@
 
 import {z} from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthenticatedUser} from "@/lib/auth-utils";
+import {getAuthToken} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
-import {getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
+import {getCurrentLocation } from "./business/get-current-business";
 import { Campaign} from "@/types/campaign/type";
 import { CampaignSchema } from "@/types/campaign/schema";
 
 export const fectchCampaign = async () : Promise<Campaign[]> => {
-    await  getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
@@ -36,7 +35,6 @@ export const searchCampaign = async (
     page:number,
     pageLimit:number
 ): Promise<ApiResponse<Campaign>> =>{
-    await getAuthenticatedUser();
 
 
     try {
@@ -92,13 +90,13 @@ export const  sendCampaign= async (
     }
 
     const location = await getCurrentLocation();
-    const business = await getCurrentBusiness();
-     
+    const businessId = (await getAuthToken())?.businessId;
+
 
     const payload = {
         ...ValidCampaignData.data,
         location: location?.id,
-        business: business?.id
+        business: businessId
     }
 
     console.log("The payload sending campaign", payload);

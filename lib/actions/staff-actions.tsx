@@ -11,30 +11,26 @@ import {
   StaffSummaryReport,
 } from "@/types/staff";
 import { ApiResponse, FormResponse } from "@/types/types";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import {
-  getCurrentBusiness,
-  getCurrentLocation,
-} from "./business/get-current-business";
-import { inviteStaffToBusiness } from "./emails/send";
+import { getCurrentLocation } from "./business/get-current-business";
 
-// ---------------------------------------------------------------------------
-// List / Search
-// ---------------------------------------------------------------------------
-
+/**
+ * Paginated list of staff.
+ */
 export const fetchStaffPage = async (
-  page: number = 0,
-  size: number = 20,
+  page: number,
+  size: number,
+  options: { scope?: "location" | "account" } = {},
 ): Promise<ApiResponse<Staff>> => {
-  await getAuthenticatedUser();
   const apiClient = new ApiClient();
-  const location = await getCurrentLocation();
   const params = new URLSearchParams();
-  if (location?.id) params.append("locationId", location.id);
-  params.append("page", String(page));
-  params.append("size", String(size));
+  if (options.scope !== "account") {
+    const location = await getCurrentLocation();
+    if (location?.id) params.append("locationId", location.id);
+  }
+  params.append("page", String(page ? page - 1 : 0));
+  params.append("size", String(size || 10));
   params.append("sort", "firstName,asc");
   const data = await apiClient.get(`/api/v1/staff?${params.toString()}`);
   return parseStringify(data);
@@ -45,17 +41,7 @@ export const fetchAllStaff = async (): Promise<Staff[]> => {
   return response.content ?? [];
 };
 
-export const getActiveStaff = async (): Promise<Staff[]> => {
-  await getAuthenticatedUser();
-  const apiClient = new ApiClient();
-  const location = await getCurrentLocation();
-  if (!location?.id) return [];
-  const data = await apiClient.get(`/api/v1/staff/active?locationId=${location.id}`);
-  return parseStringify(data);
-};
-
 export const searchStaffByName = async (query: string): Promise<Staff[]> => {
-  await getAuthenticatedUser();
   const apiClient = new ApiClient();
   const location = await getCurrentLocation();
   const params = new URLSearchParams({ query });
@@ -67,23 +53,10 @@ export const searchStaffByName = async (query: string): Promise<Staff[]> => {
 // ---------------------------------------------------------------------------
 // Get
 // ---------------------------------------------------------------------------
-
-/**
- * Resolve the current user's own staff record, if they have one.
- *
- * Returns null when the authenticated user is a dashboard-only
- * principal without a linked StaffEntity — e.g. an external auditor
- * invited as an AccountMember, or an internal platform operator. The
- * profile page uses this to decide whether to show staff-only self-service
- * controls (like the POS PIN card).
- */
 export const getMyStaff = async (): Promise<Staff | null> => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(`/api/v1/staff/me`);
-    // Backend returns 204 No Content when the user has no staff record.
-    // ApiClient surfaces that as an empty/undefined body — treat as null.
     if (!data || typeof data !== "object") return null;
     return parseStringify(data) as Staff;
   } catch {
@@ -106,33 +79,53 @@ export const getStaffDetail = async (id: string): Promise<StaffDetail> => {
 };
 
 export const getEnrichedStaff = async (
-  page: number = 0,
-  size: number = 20,
+  page: number,
+  size: number,
+  options: { scope?: "location" | "account" } = {},
 ): Promise<ApiResponse<StaffListEnriched>> => {
-  await getAuthenticatedUser();
   const apiClient = new ApiClient();
-  const location = await getCurrentLocation();
   const params = new URLSearchParams();
-  if (location?.id) params.append("locationId", location.id);
-  params.append("page", String(page));
-  params.append("size", String(size));
+  if (options.scope !== "account") {
+    const location = await getCurrentLocation();
+    if (location?.id) params.append("locationId", location.id);
+  }
+  params.append("page", String(page ? page - 1 : 0));
+  params.append("size", String(size || 10));
   const data = await apiClient.get(`/api/v1/staff/enriched?${params.toString()}`);
   return parseStringify(data);
 };
 
-// ---------------------------------------------------------------------------
-// Count
-// ---------------------------------------------------------------------------
+export const getStaffAtLocation = async (
+  page: number,
+  size: number,
+  activeFilter?: boolean,
+): Promise<ApiResponse<StaffListEnriched>> => {
+  const location = await getCurrentLocation();
+  if (!location?.id) {
+    return {
+      content: [],
+      totalElements: 0,
+      totalPages: 0,
+    } as unknown as ApiResponse<StaffListEnriched>;
+  }
+  const apiClient = new ApiClient();
+  const params = new URLSearchParams();
+  params.append("page", String(page ? page - 1 : 0));
+  params.append("size", String(size || 10));
+  if (activeFilter !== undefined) {
+    params.append("active", String(activeFilter));
+  }
+  const data = await apiClient.get(
+    `/api/v1/staff/by-location/${location.id}?${params.toString()}`,
+  );
+  return parseStringify(data);
+};
 
 export const getStaffCount = async (): Promise<StaffCount> => {
   const apiClient = new ApiClient();
   const data = await apiClient.get(`/api/v1/staff/count`);
   return parseStringify(data);
 };
-
-// ---------------------------------------------------------------------------
-// Create
-// ---------------------------------------------------------------------------
 
 export const createStaff = async (
   staff: z.infer<typeof StaffSchema>,
@@ -149,7 +142,6 @@ export const createStaff = async (
   try {
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
-    const business = await getCurrentBusiness();
 
     if (!location?.id) {
       return parseStringify({
@@ -166,18 +158,10 @@ export const createStaff = async (
     };
     if (fields.dateOfBirth) payload.dateOfBirth = fields.dateOfBirth.toISOString().split("T")[0];
     if (fields.joiningDate) payload.joiningDate = fields.joiningDate.toISOString().split("T")[0];
-    if (pin) payload.pin = pin;
+    if (pin && fields.posAccess) payload.pin = pin;
     if (fields.dashboardAccess && password) payload.password = password;
 
-    const created = (await apiClient.post(`/api/v1/staff`, payload)) as Staff;
-
-    if (created.dashboardAccess && created.email && business?.id) {
-      try {
-        await sendInvitation(created.id, business.id);
-      } catch {
-        // Staff created but invitation email failed — not fatal
-      }
-    }
+    await apiClient.post(`/api/v1/staff`, payload);
 
     revalidatePath("/staff");
     return parseStringify({ responseType: "success", message: "Staff created successfully" });
@@ -189,10 +173,6 @@ export const createStaff = async (
     });
   }
 };
-
-// ---------------------------------------------------------------------------
-// Update
-// ---------------------------------------------------------------------------
 
 export const updateStaff = async (
   id: string,
@@ -210,8 +190,7 @@ export const updateStaff = async (
   try {
     const apiClient = new ApiClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { pin, password, posAccess, dashboardAccess, ...fields } = validatedData.data;
+    const { pin, password, posAccess, dashboardAccess, email, referredByCode, ...fields } = validatedData.data;
     const payload: Record<string, unknown> = { ...fields };
     if (fields.dateOfBirth) payload.dateOfBirth = fields.dateOfBirth.toISOString().split("T")[0];
     if (fields.joiningDate) payload.joiningDate = fields.joiningDate.toISOString().split("T")[0];
@@ -275,24 +254,13 @@ export const grantDashboardAccess = async (
 ): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient();
-    const result = await apiClient.post(`/api/v1/staff/${staffId}/dashboard-access`, {
+    await apiClient.post(`/api/v1/staff/${staffId}/dashboard-access`, {
       email,
       password,
     });
 
-    const business = await getCurrentBusiness();
-    if (business?.id) {
-      try {
-        const staffData = result as any;
-        if (staffData?.passwordResetToken && email) {
-          await inviteStaffToBusiness(staffData.passwordResetToken, email);
-        }
-      } catch {
-        // Invitation email failed — not fatal
-      }
-    }
-
     revalidatePath("/staff");
+    revalidatePath(`/staff/${staffId}`);
     return { responseType: "success", message: "Dashboard access granted" };
   } catch (error: any) {
     return {
@@ -355,19 +323,6 @@ export const revokePosAccess = async (staffId: string): Promise<FormResponse> =>
 // ---------------------------------------------------------------------------
 // POS PIN Management
 // ---------------------------------------------------------------------------
-//
-// Staff POS PINs live on the Accounts Service (not Auth) now — the paired
-// device pulls the hash via the internal staff-sync endpoint and verifies
-// PINs locally so staff switches don't need a server round-trip.
-//
-// Three entry points below:
-//   - setStaffPin(staffId, pin)   — admin sets/rotates another staff's PIN
-//   - clearStaffPin(staffId)      — admin clears a PIN (e.g. staff left)
-//   - setMyPin(pin)               — authenticated staff rotates their own PIN
-//
-// PIN is 4-6 digits; client-side validation mirrors the server so we fail
-// fast without a round-trip on obvious input errors.
-
 const PIN_PATTERN = /^\d{4,6}$/;
 
 const validatePin = (pin: string): string | null => {
@@ -464,7 +419,6 @@ export const staffReport = async (
   startDate?: Date,
   endDate?: Date,
 ): Promise<StaffSummaryReport | null> => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();
@@ -478,17 +432,3 @@ export const staffReport = async (
   }
 };
 
-// ---------------------------------------------------------------------------
-// Internal: invitation email
-// ---------------------------------------------------------------------------
-
-const sendInvitation = async (staffId: string, businessId: string): Promise<void> => {
-  const apiClient = new ApiClient();
-  const result: any = await apiClient.post(`/api/v1/staff/${staffId}/dashboard-access`, {
-    staff: staffId,
-    business: businessId,
-  });
-  if (result?.passwordResetToken && result?.staffEmail) {
-    await inviteStaffToBusiness(result.passwordResetToken, result.staffEmail);
-  }
-};

@@ -6,7 +6,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import BomAnalyticsDashboard from "@/components/widgets/bom/bom-analytics-dashboard";
-import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
+import { getAuthToken } from "@/lib/auth-utils";
 import {
   getCostCascades,
   getDeductionFailures,
@@ -17,8 +17,7 @@ import {
 } from "@/lib/actions/bom-analytics-actions";
 
 export default async function BomAnalyticsPage() {
-  const business = await getCurrentBusiness();
-  const businessId = business?.id;
+  const businessId = (await getAuthToken())?.businessId;
   const today = new Date();
   const thirtyDaysAgo = new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000);
   const startDate = thirtyDaysAgo.toISOString().slice(0, 10);

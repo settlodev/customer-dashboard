@@ -366,6 +366,12 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "users",
         },
+        {
+          title: "Customer Groups",
+          link: "/customer-groups",
+          current: args?.isCurrentItem,
+          icon: "users",
+        },
       ],
     },
 

@@ -85,7 +85,7 @@ export default async function RootLayout({
     return (
       <SessionProvider refetchInterval={0} refetchOnWindowFocus={false}>
         <EntitlementProvider initialEntitlements={entitlements}>
-          <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-950">
+          <div className="flex h-screen flex-col bg-canvas">
             <ExpiredTopBar
               businessName={currentBusiness?.name}
               locationName={currentLocation?.name}
@@ -135,7 +135,7 @@ export default async function RootLayout({
       <EntitlementProvider initialEntitlements={entitlements}>
         <LoadingBarProvider>
           <SidebarProvider>
-            <div className="flex h-screen flex-col overflow-hidden bg-canvas dark:bg-gray-950">
+            <div className="flex h-screen flex-col overflow-hidden bg-canvas">
               <SubscriptionBanner />
               <div className="flex flex-1 min-h-0 overflow-hidden">
                 <DashboardSidebarShell data={businessData} user={user} />

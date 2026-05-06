@@ -1,13 +1,30 @@
 import Link from "next/link";
+import {
+  Store as StoreIcon,
+  CheckCircle2,
+  Plus,
+  AlertTriangle,
+  Clock,
+  PowerOff,
+} from "lucide-react";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
 import { columns } from "@/components/tables/store/column";
 import { fetchAllStores } from "@/lib/actions/store-actions";
-import { getCurrentSubscription, getPendingInvoice } from "@/lib/actions/billing-actions";
-import { Plus } from "lucide-react";
+import {
+  getCurrentSubscription,
+  getPendingInvoice,
+} from "@/lib/actions/billing-actions";
 import type { Store } from "@/types/store/type";
 
 export type EnrichedStore = Store & {
@@ -15,29 +32,26 @@ export type EnrichedStore = Store & {
   hasPendingInvoice: boolean;
 };
 
-const breadcrumbItems = [{ title: "Stores", link: "/stores" }];
-
 export default async function Page() {
   const [stores, subscription] = await Promise.all([
     fetchAllStores(),
-    getCurrentSubscription(),
+    getCurrentSubscription().catch(() => null),
   ]);
 
-  // Check for pending invoice on the subscription
   let hasPendingInvoice = false;
   if (subscription) {
-    const pending = await getPendingInvoice(subscription.id);
+    const pending = await getPendingInvoice(subscription.id).catch(() => null);
     hasPendingInvoice = !!pending;
   }
 
-  // Build a set of store IDs that have active subscription items
   const activeStoreIds = new Set(
     subscription?.items
-      ?.filter((item) => item.entityType === "STORE" && item.status === "ACTIVE")
+      ?.filter(
+        (item) => item.entityType === "STORE" && item.status === "ACTIVE",
+      )
       .map((item) => item.entityId) ?? [],
   );
 
-  // Enrich stores with subscription status
   const enrichedStores: EnrichedStore[] = stores.map((store) => ({
     ...store,
     subscriptionActive: activeStoreIds.has(store.id),
@@ -45,28 +59,88 @@ export default async function Page() {
   }));
 
   const total = enrichedStores.length;
+  const activeCount = enrichedStores.filter(
+    (s) => s.active && s.subscriptionActive,
+  ).length;
+  const pendingActivation = enrichedStores.filter(
+    (s) => !s.subscriptionActive,
+  ).length;
+  const paymentDue = enrichedStores.filter((s) => s.hasPendingInvoice).length;
+  const inactiveCount = enrichedStores.filter((s) => !s.active).length;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <BreadcrumbsNav items={breadcrumbItems} />
-        <Button asChild>
-          <Link href="/stores/new">
-            <Plus className="mr-1.5 h-4 w-4" />
-            Add Store
-          </Link>
-        </Button>
-      </div>
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Stores" }]} />
+      <PageHeader
+        title="Stores"
+        subtitle="Online and physical storefronts associated with this location."
+        actions={
+          <Button asChild size="sm">
+            <Link href="/stores/new">
+              <Plus className="mr-1.5 h-4 w-4" />
+              Add store
+            </Link>
+          </Button>
+        }
+      />
 
-      {total > 0 ? (
-        <Card>
-          <CardContent className="px-2 sm:px-6 pt-6">
-            <DataTable columns={columns} data={enrichedStores} searchKey="name" pageNo={0} total={total} pageCount={1} />
-          </CardContent>
-        </Card>
-      ) : (
-        <NoItems newItemUrl="/stores/new" itemName="stores" />
-      )}
-    </div>
+      <PageBody>
+        {total > 0 ? (
+          <>
+            <KpiStrip cols={5}>
+              <KpiCard
+                icon={<StoreIcon className="h-3 w-3" />}
+                label="Total"
+                value={total.toLocaleString()}
+              />
+              <KpiCard
+                icon={<CheckCircle2 className="h-3 w-3" />}
+                label="Active"
+                value={activeCount.toLocaleString()}
+                deltaTone="pos"
+              />
+              <KpiCard
+                icon={<Clock className="h-3 w-3" />}
+                label="Pending activation"
+                value={
+                  pendingActivation > 0
+                    ? pendingActivation.toLocaleString()
+                    : "—"
+                }
+                deltaTone={pendingActivation > 0 ? "neg" : "neutral"}
+              />
+              <KpiCard
+                icon={<AlertTriangle className="h-3 w-3" />}
+                label="Payment due"
+                value={paymentDue > 0 ? paymentDue.toLocaleString() : "—"}
+                deltaTone={paymentDue > 0 ? "neg" : "neutral"}
+              />
+              <KpiCard
+                icon={<PowerOff className="h-3 w-3" />}
+                label="Inactive"
+                value={inactiveCount > 0 ? inactiveCount.toLocaleString() : "—"}
+                deltaTone={inactiveCount > 0 ? "neg" : "neutral"}
+              />
+            </KpiStrip>
+
+            <Card>
+              <CardContent className="px-2 pt-6 sm:px-6">
+                <DataTable
+                  columns={columns}
+                  data={enrichedStores}
+                  searchKey="name"
+                  pageNo={0}
+                  total={total}
+                  pageCount={1}
+                  rowClickBasePath="/stores"
+                />
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <NoItems newItemUrl="/stores/new" itemName="stores" />
+        )}
+      </PageBody>
+    </PageShell>
   );
 }

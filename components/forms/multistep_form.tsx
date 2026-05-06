@@ -135,13 +135,13 @@ const MultiStepBusinessForm = ({
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div
-              className={`h-2 w-2 rounded-full ${step >= 1 ? "bg-primary" : "bg-gray-200"}`}
+              className={`h-2 w-2 rounded-full ${step >= 1 ? "bg-primary" : "bg-gray-200 dark:bg-muted"}`}
             />
             <div
-              className={`h-2 w-2 rounded-full ${step >= 2 ? "bg-primary" : "bg-gray-200"}`}
+              className={`h-2 w-2 rounded-full ${step >= 2 ? "bg-primary" : "bg-gray-200 dark:bg-muted"}`}
             />
           </div>
-          <p className="text-sm text-gray-500">Step {step} of 2</p>
+          <p className="text-sm text-gray-500 dark:text-muted-foreground">Step {step} of 2</p>
         </div>
       )}
     </div>

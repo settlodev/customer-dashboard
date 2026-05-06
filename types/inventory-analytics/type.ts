@@ -91,7 +91,7 @@ export const RISK_LEVEL_CONFIG: Record<
   NO_CONSUMPTION: {
     label: "No Usage",
     color: "text-gray-500 dark:text-gray-400",
-    bgColor: "bg-gray-50 dark:bg-gray-900",
+    bgColor: "bg-muted/50",
   },
 };
 
@@ -139,6 +139,6 @@ export const ABC_CONFIG: Record<
     label: "C",
     description: "Low value — bottom 5%",
     color: "text-gray-600 dark:text-gray-400",
-    bgColor: "bg-gray-50 dark:bg-gray-900",
+    bgColor: "bg-muted/50",
   },
 };

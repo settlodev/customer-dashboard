@@ -82,6 +82,7 @@ export declare interface AuthToken {
     theme: string | null;
     verificationResendToken?: string;
     subscriptionStatus?: SubscriptionStatus;
+    businessId?: string | null;
 }
 
 export declare interface activeBusiness {

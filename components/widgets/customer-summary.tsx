@@ -2,59 +2,49 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  ShoppingCart,
   Star,
-  Wallet,
   CalendarDays,
-  ClipboardList,
-  Clock,
-  CheckCircle,
+  CreditCard,
+  AlertTriangle,
 } from "lucide-react";
 import { Customer } from "@/types/customer/type";
 
 function CustomerSummary({ customer }: { customer: Customer }) {
   const stats = [
     {
-      label: "Total Orders",
-      value: customer.totalOrders ?? 0,
-      icon: ShoppingCart,
-    },
-    {
-      label: "Order Requests",
-      value: customer.orderRequests ?? 0,
-      icon: ClipboardList,
-    },
-    {
-      label: "Pending Orders",
-      value: customer.pendingOrders ?? 0,
-      icon: Clock,
-    },
-    {
-      label: "Closed Orders",
-      value: customer.closedOrders ?? 0,
-      icon: CheckCircle,
-    },
-    {
       label: "Loyalty Points",
-      value: customer.loyaltyPoints ?? 0,
+      value: customer.loyaltyPoints.toLocaleString(),
       icon: Star,
     },
     {
-      label: "Total Spend",
-      value: customer.totalSpend?.toLocaleString() ?? "0",
-      icon: Wallet,
+      label: "Loyalty Carry-over",
+      value: customer.loyaltyPointsCarryOver.toLocaleString(),
+      icon: Star,
     },
     {
-      label: "Last Visit",
-      value: customer.lastVisit
-        ? new Date(customer.lastVisit).toLocaleDateString()
+      label: "Credit Limit",
+      value:
+        customer.creditLimit != null
+          ? customer.creditLimit.toLocaleString()
+          : "—",
+      icon: CreditCard,
+    },
+    {
+      label: "No-Show Count",
+      value: customer.noShowCount.toString(),
+      icon: AlertTriangle,
+    },
+    {
+      label: "Member Since",
+      value: customer.createdAt
+        ? new Date(customer.createdAt).toLocaleDateString()
         : "—",
       icon: CalendarDays,
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (

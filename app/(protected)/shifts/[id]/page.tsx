@@ -3,70 +3,51 @@ import { UUID } from "node:crypto";
 import { notFound } from "next/navigation";
 
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {ApiResponse} from "@/types/types";
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { ApiResponse } from "@/types/types";
 import { Shift } from "@/types/shift/type";
 import { getShift } from "@/lib/actions/shift-actions";
 import ShiftForm from "@/components/forms/shift_form";
 
-type Params = Promise<{ id: string}>
-export default async function ShiftPage({params}: {params: Params}) {
+type Params = Promise<{ id: string }>;
 
-    const resolvedParams = await params;
-    const isNewItem = resolvedParams.id === "new";
-    let item: ApiResponse<Shift> | null = null;
+export default async function ShiftPage({ params }: { params: Params }) {
+  const resolvedParams = await params;
+  const isNewItem = resolvedParams.id === "new";
+  let item: ApiResponse<Shift> | null = null;
 
-    if (!isNewItem) {
-        try {
-            item = await getShift(resolvedParams.id as UUID);
-            if (item.totalElements == 0) notFound();
-        } catch (error) {
-            
-            console.log(error)
-            throw new Error("Failed to load shift data");
-        }
+  if (!isNewItem) {
+    try {
+      item = await getShift(resolvedParams.id as UUID);
+      if (item.totalElements == 0) notFound();
+    } catch (error) {
+      console.log(error);
+      throw new Error("Failed to load shift data");
     }
+  }
 
-    const breadcrumbItems = [
-        { title: "Shifts", link: "/shifts" },
-        {
-            title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
-            link: "",
-        },
-    ];
+  const shift = item?.content[0];
+  const titleLabel = isNewItem ? "Add shift" : `Edit ${shift?.name ?? "shift"}`;
+  const subtitleLabel = isNewItem
+    ? "Define a recurring shift template that staff can be scheduled into."
+    : `Update the schedule and details for ${shift?.name ?? "this shift"}.`;
 
-    return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <div className="flex items-center justify-between mb-2">
-                <div className="relative flex-1 md:max-w-md">
-                    <BreadcrumbsNav items={breadcrumbItems} />
-                </div>
-            </div>
-
-            <ShiftCard isNewItem={isNewItem} item={item?.content[0]} />
-        </div>
-    );
+  return (
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Shifts", href: "/shifts" },
+          { title: isNewItem ? "New" : shift?.name || "Edit" },
+        ]}
+      />
+      <PageHeader title={titleLabel} subtitle={subtitleLabel} />
+      <PageBody>
+        <ShiftForm item={shift} />
+      </PageBody>
+    </PageShell>
+  );
 }
-
-const ShiftCard = ({isNewItem, item}: {
-    isNewItem: boolean;
-    item: Shift | null | undefined;
-}) => (
-    <Card>
-        <CardHeader>
-            <CardTitle>{isNewItem ? "Add shift" : "Edit shift details"}</CardTitle>
-            <CardDescription>
-                {isNewItem ? "Add shift to your business" : "Edit shift details"}
-            </CardDescription>
-        </CardHeader>
-        <CardContent>
-            <ShiftForm item={item} />
-        </CardContent>
-    </Card>
-);

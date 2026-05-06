@@ -12,11 +12,11 @@ export const Hero = () => {
   return (
     <section className="relative w-full overflow-hidden -mt-16">
       {/* Background — extends behind the navbar */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary-light via-white to-white dark:from-gray-900 dark:via-gray-950 dark:to-gray-950" />
+      <div className="absolute inset-0 bg-gradient-to-b from-primary-light via-white to-white dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-950" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(235,127,68,0.08),transparent_50%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(235,127,68,0.06),transparent_50%)]" />
       {/* Bottom fade to white */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white dark:from-gray-950 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white dark:from-neutral-950 to-transparent" />
 
       <div className="relative pt-36 pb-16 md:pt-44 md:pb-24 px-4">
         <div className="mx-auto max-w-[85rem] w-full">

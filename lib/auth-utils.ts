@@ -23,7 +23,7 @@ const MAX_CHUNKS = 10;
 const AUTH_TOKEN_COOKIE = "authToken";
 
 // Import for internal use — callers should import from "@/lib/jwt-utils" directly
-import { extractSubscriptionStatus } from "@/lib/jwt-utils";
+import { extractBusinessId, extractSubscriptionStatus } from "@/lib/jwt-utils";
 
 function getCookieOptions() {
   const isProduction = process.env.NODE_ENV === "production";
@@ -112,7 +112,13 @@ export const getAuthToken = async (): Promise<AuthToken | null> => {
 };
 
 export const updateAuthToken = async (token: AuthToken) => {
-  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(token));
+  // businessId is derived from the JWT on every save so it stays in sync
+  // with the access token (the canonical source after a destination switch).
+  const synced: AuthToken = {
+    ...token,
+    businessId: token.accessToken ? extractBusinessId(token.accessToken) : null,
+  };
+  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(synced));
 };
 
 export const createAuthTokenFromLogin = async (
@@ -149,6 +155,7 @@ export const createAuthTokenFromLogin = async (
     theme: profileData?.theme ?? null,
     verificationResendToken: loginResponse.verificationResendToken,
     subscriptionStatus: extractSubscriptionStatus(loginResponse.accessToken),
+    businessId: extractBusinessId(loginResponse.accessToken),
   };
 
   await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData));
@@ -174,6 +181,7 @@ export const createAuthToken = async (user: any) => {
     countryId: user.countryId ?? user.country ?? "",
     countryCode: user.countryCode ?? "",
     theme: user.theme ?? null,
+    businessId: user.accessToken ? extractBusinessId(user.accessToken) : null,
   };
 
   await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData));

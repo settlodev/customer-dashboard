@@ -8,8 +8,8 @@ import axios, {
   AxiosResponse,
 } from "axios";
 import https from "https";
-import { handleSettloApiError } from "@/lib/settlo-api-error-handler";
-import { getAuthToken, updateAuthToken } from "@/lib/auth-utils";
+import { handleSettloApiError, SettloApiError } from "@/lib/settlo-api-error-handler";
+import { getAuthToken, updateAuthToken, deleteAuthCookie } from "@/lib/auth-utils";
 import { extractSubscriptionStatus } from "@/lib/jwt-utils";
 import { ErrorResponseType } from "@/types/types";
 import { cookies } from "next/headers";
@@ -304,8 +304,36 @@ class ApiClient {
               refreshToken: refreshed.refreshToken,
             };
           } catch {
-            // Proactive refresh failed — proceed with the old token
-            // and let the 401 interceptor handle it reactively.
+            // Proactive refresh failed. If the access token is also fully
+            // expired, the session is unrecoverable — wipe cookies and
+            // reject now rather than fall through to a second doomed
+            // refresh via the 401 interceptor. If the access token is
+            // still valid (just expiring soon), the failure may be
+            // transient; continue with the current token and let the
+            // reactive path handle it only if the request actually 401s.
+            if (isTokenExpiringSoon(token.accessToken, 0)) {
+              try {
+                await deleteAuthCookie();
+              } catch {
+                // Cookie deletion silently fails outside Server Action context.
+              }
+
+              if (IS_DEV) {
+                console.log(
+                  `${ANSI.red}${ANSI.bold}✕ SESSION EXPIRED${ANSI.reset} ${ANSI.dim}proactive refresh failed and access token is dead — cookies cleared${ANSI.reset}`,
+                );
+              }
+
+              const sessionError: ErrorResponseType = {
+                status: 401,
+                code: "SESSION_EXPIRED",
+                message: "Your session has expired. Please log in again.",
+                timestamp: new Date().toISOString(),
+                path: config.url,
+                correlationId: crypto.randomUUID(),
+              };
+              throw new SettloApiError(sessionError);
+            }
           }
         }
 
@@ -431,7 +459,16 @@ class ApiClient {
               `Bearer ${refreshed.accessToken}`;
             return this.instance(originalRequest);
           } catch {
-            // Refresh failed — session is unrecoverable
+            // Refresh failed — session is unrecoverable. Wipe local cookies
+            // so subsequent requests don't keep retrying with a dead token.
+            // Public routes bypass middleware, so without this the stale
+            // cookie would survive until the browser expires it.
+            try {
+              await deleteAuthCookie();
+            } catch {
+              // Cookie deletion silently fails outside Server Action context.
+            }
+
             const sessionError: ErrorResponseType = {
               status: 401,
               code: "SESSION_EXPIRED",
@@ -443,11 +480,11 @@ class ApiClient {
 
             if (IS_DEV) {
               console.log(
-                `${ANSI.red}${ANSI.bold}✕ SESSION EXPIRED${ANSI.reset} ${ANSI.dim}refresh token rejected — session is dead${ANSI.reset}`,
+                `${ANSI.red}${ANSI.bold}✕ SESSION EXPIRED${ANSI.reset} ${ANSI.dim}refresh token rejected — cookies cleared${ANSI.reset}`,
               );
             }
 
-            return Promise.reject(sessionError);
+            return Promise.reject(new SettloApiError(sessionError));
           }
         }
 
@@ -464,7 +501,7 @@ class ApiClient {
       }
       return response.data;
     } catch (error) {
-      throw await handleSettloApiError(error);
+      throw new SettloApiError(await handleSettloApiError(error));
     }
   }
 
@@ -497,7 +534,7 @@ class ApiClient {
 
       return { data: response.data, filename, contentType };
     } catch (error) {
-      throw await handleSettloApiError(error);
+      throw new SettloApiError(await handleSettloApiError(error));
     }
   }
 
@@ -510,7 +547,7 @@ class ApiClient {
       const response = await this.instance.post<T>(url, data, config);
       return response.data;
     } catch (error) {
-      throw await handleSettloApiError(error);
+      throw new SettloApiError(await handleSettloApiError(error));
     }
   }
 
@@ -523,7 +560,7 @@ class ApiClient {
       const response = await this.instance.put<T>(url, data, config);
       return response.data;
     } catch (error) {
-      throw await handleSettloApiError(error);
+      throw new SettloApiError(await handleSettloApiError(error));
     }
   }
 
@@ -536,7 +573,7 @@ class ApiClient {
       const response = await this.instance.patch<T>(url, data, config);
       return response.data;
     } catch (error) {
-      throw await handleSettloApiError(error);
+      throw new SettloApiError(await handleSettloApiError(error));
     }
   }
 
@@ -545,7 +582,7 @@ class ApiClient {
       const response = await this.instance.delete<T>(url, config);
       return response.data;
     } catch (error) {
-      throw await handleSettloApiError(error);
+      throw new SettloApiError(await handleSettloApiError(error));
     }
   }
 }

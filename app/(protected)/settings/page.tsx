@@ -11,7 +11,8 @@ import Loading from "@/components/ui/loading";
 import SessionExpired, { isSessionExpiredError } from "@/components/auth/session-expired";
 
 import { getLocationSettings } from "@/lib/actions/location-settings-actions";
-import { getCurrentBusiness, getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getAuthToken } from "@/lib/auth-utils";
 import { getSingleBusiness } from "@/lib/actions/business-actions";
 import { getBusinessSettings } from "@/lib/actions/business-settings-actions";
 import { getLocationById } from "@/lib/actions/location-actions";
@@ -107,9 +108,9 @@ export default function SettingsPage() {
       try {
         setIsBusinessLoading(true);
         setIsBusinessSettingsLoading(true);
-        const current = await getCurrentBusiness();
-        if (current?.id) {
-          const businessId = current.id as UUID;
+        const token = await getAuthToken();
+        if (token?.businessId) {
+          const businessId = token.businessId as UUID;
           const [full, settingsData] = await Promise.all([
             getSingleBusiness(businessId),
             getBusinessSettings(businessId).catch((err) => {
@@ -340,7 +341,7 @@ function SettingsLayout({
       <div className="lg:hidden">
         <button
           onClick={() => setIsMobileMenuOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-900 border rounded-xl shadow-sm"
+          className="w-full flex items-center justify-between px-4 py-3 bg-card border rounded-xl shadow-sm"
         >
           <span className="font-medium">{currentLabel}</span>
           {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -372,7 +373,7 @@ function SettingsLayout({
 
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
         <nav className="hidden lg:block lg:w-64 flex-shrink-0">
-          <div className="bg-white dark:bg-gray-900 border rounded-xl p-2 space-y-1 sticky top-24 shadow-sm">
+          <div className="bg-card border rounded-xl p-2 space-y-1 sticky top-24 shadow-sm">
             {settingsNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;

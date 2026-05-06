@@ -80,6 +80,7 @@ import {
 import SocialAuthButtons from "@/components/widgets/social-auth-buttons";
 import Link from "next/link";
 import { safeRandomUUID } from "@/lib/utils";
+import { executeRecaptcha } from "@/lib/recaptcha";
 
 // Fallback country ISO code when no DEFAULT_COUNTRY env UUID is configured.
 // CountrySelector resolves this ISO to the matching country's UUID once the
@@ -177,8 +178,8 @@ function OperatingHoursTable({
   };
 
   return (
-    <div className="rounded-lg border border-gray-200 overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+    <div className="rounded-lg border border-gray-200 dark:border-border overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 dark:bg-muted/50 text-[10px] font-semibold text-gray-400 dark:text-muted-foreground uppercase tracking-wider">
         <span className="w-24 shrink-0">Day</span>
         <span className="w-10 shrink-0">Open</span>
         <span className="flex-1">From</span>
@@ -187,9 +188,9 @@ function OperatingHoursTable({
       {hours.map((entry) => (
         <div
           key={entry.dayOfWeek}
-          className={`flex items-center gap-3 px-4 py-2 border-t border-gray-100 ${entry.closed ? "bg-gray-50/60" : ""}`}
+          className={`flex items-center gap-3 px-4 py-2 border-t border-gray-100 dark:border-border ${entry.closed ? "bg-gray-50/60 dark:bg-muted/40" : ""}`}
         >
-          <span className="w-24 shrink-0 text-sm font-medium text-gray-700">{DAY_LABELS[entry.dayOfWeek]}</span>
+          <span className="w-24 shrink-0 text-sm font-medium text-gray-700 dark:text-foreground">{DAY_LABELS[entry.dayOfWeek]}</span>
           <div className="w-10 shrink-0">
             <Switch
               checked={!entry.closed}
@@ -351,7 +352,18 @@ function RegisterForm({ step }: { step: string }) {
     setError(""); setSuccess("");
     startTransition(async () => {
       try {
-        const data = await register(values);
+        let recaptchaToken: string | undefined;
+        try {
+          recaptchaToken = await executeRecaptcha("register");
+        } catch (recaptchaErr) {
+          console.error("[REGISTER] reCAPTCHA failed:", recaptchaErr);
+          setError(
+            "Security verification failed. Please refresh the page and try again.",
+          );
+          return;
+        }
+
+        const data = await register(values, recaptchaToken);
         if (data.responseType === "error") { setError(data.message); return; }
         if (data.responseType === "success") advanceStep();
       } catch (err: any) {
@@ -512,15 +524,15 @@ function RegisterForm({ step }: { step: string }) {
             return (
               <React.Fragment key={item.id}>
                 <div className="flex items-center gap-2.5">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${isDone ? "bg-primary text-white" : isCurrent ? "bg-primary/10 text-primary border-2 border-primary" : "bg-gray-100 text-gray-400"}`}>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${isDone ? "bg-primary text-white" : isCurrent ? "bg-primary/10 text-primary border-2 border-primary" : "bg-gray-100 dark:bg-muted text-gray-400 dark:text-muted-foreground"}`}>
                     {isDone ? <CheckIcon size={16} /> : item.icon}
                   </div>
-                  <span className={`text-sm font-medium hidden sm:inline transition-colors ${isCurrent ? "text-gray-900" : isDone ? "text-primary" : "text-gray-400"}`}>
+                  <span className={`text-sm font-medium hidden sm:inline transition-colors ${isCurrent ? "text-gray-900 dark:text-foreground" : isDone ? "text-primary" : "text-gray-400 dark:text-muted-foreground"}`}>
                     {item.title}
                   </span>
                 </div>
                 {index < signUpSteps.length - 1 && (
-                  <div className={`flex-1 h-px mx-4 transition-colors duration-300 ${index < stepIndex ? "bg-primary" : "bg-gray-200"}`} />
+                  <div className={`flex-1 h-px mx-4 transition-colors duration-300 ${index < stepIndex ? "bg-primary" : "bg-gray-200 dark:bg-muted"}`} />
                 )}
               </React.Fragment>
             );
@@ -539,10 +551,10 @@ function RegisterForm({ step }: { step: string }) {
         >
           {/* ═══════ STEP 1: Account ═══════ */}
           {currentStep.id === "step1" && (
-            <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm overflow-hidden">
+            <Card className="border-0 shadow-xl bg-white/90 dark:bg-card/90 backdrop-blur-sm overflow-hidden">
               <CardHeader className="pb-4 pt-8 px-8">
-                <CardTitle className="text-2xl font-bold text-gray-900">Create your account</CardTitle>
-                <CardDescription className="text-gray-500">Get started in under 2 minutes</CardDescription>
+                <CardTitle className="text-2xl font-bold text-gray-900 dark:text-foreground">Create your account</CardTitle>
+                <CardDescription className="text-gray-500 dark:text-muted-foreground">Get started in under 2 minutes</CardDescription>
               </CardHeader>
               <CardContent className="px-8 pb-6 space-y-5">
                 {error && <FormError message={error} />}
@@ -551,24 +563,24 @@ function RegisterForm({ step }: { step: string }) {
                   <form onSubmit={form.handleSubmit(submitData)} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <FormField control={form.control} name="firstName" render={({ field }) => (
-                        <FormItem><FormLabel className="text-sm text-gray-700">First name</FormLabel><FormControl><Input disabled={isPending} placeholder="John" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">First name</FormLabel><FormControl><Input disabled={isPending} placeholder="John" {...field} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={form.control} name="lastName" render={({ field }) => (
-                        <FormItem><FormLabel className="text-sm text-gray-700">Last name</FormLabel><FormControl><Input disabled={isPending} placeholder="Doe" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">Last name</FormLabel><FormControl><Input disabled={isPending} placeholder="Doe" {...field} /></FormControl><FormMessage /></FormItem>
                       )} />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField control={form.control} name="email" render={({ field }) => (
-                        <FormItem><FormLabel className="text-sm text-gray-700">Email address</FormLabel><FormControl><Input placeholder="you@example.com" type="email" disabled={isPending} {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">Email address</FormLabel><FormControl><Input placeholder="you@example.com" type="email" disabled={isPending} {...field} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={form.control} name="phoneNumber" render={({ field }) => (
-                        <FormItem><FormLabel className="text-sm text-gray-700">Phone number</FormLabel><FormControl><PhoneInput placeholder="Enter phone number" {...field} disabled={isPending} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">Phone number</FormLabel><FormControl><PhoneInput placeholder="Enter phone number" {...field} disabled={isPending} /></FormControl><FormMessage /></FormItem>
                       )} />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField control={form.control} name="gender" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm text-gray-700">Gender</FormLabel>
+                          <FormLabel className="text-sm text-gray-700 dark:text-foreground">Gender</FormLabel>
                           <Select
                             onValueChange={field.onChange}
                             value={field.value ?? ""}
@@ -589,17 +601,17 @@ function RegisterForm({ step }: { step: string }) {
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="countryId" render={({ field }) => (
-                        <FormItem><FormLabel className="text-sm text-gray-700">Country</FormLabel><FormControl><CountrySelector {...field} defaultCode={DEFAULT_COUNTRY_CODE} isDisabled={isPending} placeholder="Select country" /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">Country</FormLabel><FormControl><CountrySelector {...field} defaultCode={DEFAULT_COUNTRY_CODE} isDisabled={isPending} placeholder="Select country" /></FormControl><FormMessage /></FormItem>
                       )} />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField control={form.control} name="password" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm text-gray-700">Password</FormLabel>
+                          <FormLabel className="text-sm text-gray-700 dark:text-foreground">Password</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Input disabled={isPending} type={showPassword ? "text" : "password"} placeholder="Min. 8 characters" className="pr-10" {...field} />
-                              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" tabIndex={-1}>
+                              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground hover:text-gray-600 dark:hover:text-foreground/80" tabIndex={-1}>
                                 {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
                               </button>
                             </div>
@@ -608,12 +620,12 @@ function RegisterForm({ step }: { step: string }) {
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="confirmPassword" render={({ field }) => (
-                        <FormItem><FormLabel className="text-sm text-gray-700">Confirm password</FormLabel><FormControl><Input disabled={isPending} type={showPassword ? "text" : "password"} placeholder="Re-enter password" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">Confirm password</FormLabel><FormControl><Input disabled={isPending} type={showPassword ? "text" : "password"} placeholder="Re-enter password" {...field} /></FormControl><FormMessage /></FormItem>
                       )} />
                     </div>
                     <FormField control={form.control} name="referredByCode" render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm text-gray-700">Referral code <span className="text-gray-400 font-normal">(optional)</span></FormLabel>
+                        <FormLabel className="text-sm text-gray-700 dark:text-foreground">Referral code <span className="text-gray-400 dark:text-muted-foreground font-normal">(optional)</span></FormLabel>
                         <FormControl><Input {...field} disabled={isPending} value={field.value || ""} placeholder="Enter referral code" /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -623,20 +635,20 @@ function RegisterForm({ step }: { step: string }) {
                     </Button>
                   </form>
                 </Form>
-                <div className="relative pt-1"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-200" /></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-3 text-gray-400 font-medium">or</span></div></div>
+                <div className="relative pt-1"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-200 dark:border-border" /></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-white dark:bg-card px-3 text-gray-400 dark:text-muted-foreground font-medium">or</span></div></div>
                 <SocialAuthButtons mode="register" onError={(msg) => setError(msg)} disabled={isPending} />
-                <p className="text-center text-sm text-gray-500">Already have an account?{" "}<Link href="/login" className="font-semibold text-primary hover:text-orange-700 transition-colors">Sign in</Link></p>
+                <p className="text-center text-sm text-gray-500 dark:text-muted-foreground">Already have an account?{" "}<Link href="/login" className="font-semibold text-primary hover:text-orange-700 transition-colors">Sign in</Link></p>
               </CardContent>
             </Card>
           )}
 
           {/* ═══════ STEP 2: Email Verification ═══════ */}
           {(currentStep.id === "step2" || step === "step2") && (
-            <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm overflow-hidden">
+            <Card className="border-0 shadow-xl bg-white/90 dark:bg-card/90 backdrop-blur-sm overflow-hidden">
               <CardHeader className="pb-2 pt-8 px-8 text-center">
                 <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4"><KeyRound className="w-7 h-7 text-primary" /></div>
-                <CardTitle className="text-2xl font-bold text-gray-900">Check your email</CardTitle>
-                <CardDescription className="text-gray-500 mt-1">We sent a 6-digit verification code to your inbox</CardDescription>
+                <CardTitle className="text-2xl font-bold text-gray-900 dark:text-foreground">Check your email</CardTitle>
+                <CardDescription className="text-gray-500 dark:text-muted-foreground mt-1">We sent a 6-digit verification code to your inbox</CardDescription>
               </CardHeader>
               <CardContent className="px-8 pb-8 space-y-6">
                 {error && <FormError message={error} />}
@@ -649,9 +661,9 @@ function RegisterForm({ step }: { step: string }) {
                     {isPending ? <Loader2Icon className="w-4 h-4 animate-spin" /> : <span className="flex items-center gap-2">Verify & Continue<ArrowRight className="w-4 h-4" /></span>}
                   </Button>
                 </div>
-                <p className="text-center text-sm text-gray-500">
+                <p className="text-center text-sm text-gray-500 dark:text-muted-foreground">
                   Didn&#39;t receive the code?{" "}
-                  {resendCooldown > 0 ? <span className="text-gray-400">Resend in {resendCooldown}s</span> : (
+                  {resendCooldown > 0 ? <span className="text-gray-400 dark:text-muted-foreground">Resend in {resendCooldown}s</span> : (
                     <button type="button" onClick={handleResendCode} disabled={isPending} className="font-semibold text-primary hover:text-orange-700 transition-colors disabled:opacity-50">Resend code</button>
                   )}
                 </p>
@@ -661,10 +673,10 @@ function RegisterForm({ step }: { step: string }) {
 
           {/* ═══════ STEP 3: Business Setup ═══════ */}
           {(currentStep.id === "step3" || step === "step3") && (
-            <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm overflow-hidden">
+            <Card className="border-0 shadow-xl bg-white/90 dark:bg-card/90 backdrop-blur-sm overflow-hidden">
               <CardHeader className="pb-2 pt-8 px-8">
-                <CardTitle className="text-2xl font-bold text-gray-900">Set up your business</CardTitle>
-                <CardDescription className="text-gray-500">Almost done! Tell us about your business so we can get you started.</CardDescription>
+                <CardTitle className="text-2xl font-bold text-gray-900 dark:text-foreground">Set up your business</CardTitle>
+                <CardDescription className="text-gray-500 dark:text-muted-foreground">Almost done! Tell us about your business so we can get you started.</CardDescription>
               </CardHeader>
               <CardContent className="px-8 pb-8">
                 {error && <FormError message={error} />}
@@ -676,14 +688,14 @@ function RegisterForm({ step }: { step: string }) {
                     {/* ── Required fields: name, type, country ─────────────────── */}
                     <div className="flex flex-col sm:flex-row gap-5">
                       <div className="shrink-0">
-                        <div className="w-24 h-24 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-center overflow-hidden">
+                        <div className="w-24 h-24 bg-gray-50 dark:bg-muted/50 rounded-xl border border-gray-200 dark:border-border flex items-center justify-center overflow-hidden">
                           <UploadImageWidget imagePath="business" displayStyle="default" displayImage setImage={setBusinessImageUrl} label="Logo" />
                         </div>
                       </div>
                       <div className="flex-1 space-y-4">
                         <FormField control={businessForm.control} name="name" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-sm text-gray-700">Business name <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel className="text-sm text-gray-700 dark:text-foreground">Business name <span className="text-red-500">*</span></FormLabel>
                             <FormControl><Input placeholder={`e.g. ${session?.data?.user?.firstName || "Your"}'s Business`} {...field} disabled={isPending} /></FormControl>
                             <FormMessage />
                           </FormItem>
@@ -691,14 +703,14 @@ function RegisterForm({ step }: { step: string }) {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <FormField control={businessForm.control} name="businessTypeId" render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-sm text-gray-700">Business type <span className="text-red-500">*</span></FormLabel>
+                              <FormLabel className="text-sm text-gray-700 dark:text-foreground">Business type <span className="text-red-500">*</span></FormLabel>
                               <FormControl><BusinessTypeSelector value={field.value} onChange={field.onChange} onBlur={field.onBlur} isRequired isDisabled={isPending} label="Business Type" placeholder="Select type" /></FormControl>
                               <FormMessage />
                             </FormItem>
                           )} />
                           <FormField control={businessForm.control} name="countryId" render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-sm text-gray-700">Country <span className="text-red-500">*</span></FormLabel>
+                              <FormLabel className="text-sm text-gray-700 dark:text-foreground">Country <span className="text-red-500">*</span></FormLabel>
                               <FormControl><CountrySelector {...field} defaultCode={DEFAULT_COUNTRY_CODE} isDisabled={isPending} placeholder="Select country" /></FormControl>
                               <FormMessage />
                             </FormItem>
@@ -708,31 +720,31 @@ function RegisterForm({ step }: { step: string }) {
                     </div>
 
                     {/* ── Optional contact details (collapsible) ─────────── */}
-                    <div className="rounded-lg border border-gray-200 overflow-hidden">
+                    <div className="rounded-lg border border-gray-200 dark:border-border overflow-hidden">
                       <button
                         type="button"
                         onClick={() => setContactDetailsExpanded((v) => !v)}
-                        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-muted/50 hover:bg-gray-100 dark:hover:bg-muted transition-colors"
                       >
                         <div className="text-left">
-                          <p className="text-sm font-medium text-gray-700">Add contact details</p>
-                          <p className="text-xs text-gray-400">Phone, email, address, description (optional — you can fill these later)</p>
+                          <p className="text-sm font-medium text-gray-700 dark:text-foreground">Add contact details</p>
+                          <p className="text-xs text-gray-400 dark:text-muted-foreground">Phone, email, address, description (optional — you can fill these later)</p>
                         </div>
-                        {contactDetailsExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                        {contactDetailsExpanded ? <ChevronUp size={16} className="text-gray-400 dark:text-muted-foreground" /> : <ChevronDown size={16} className="text-gray-400 dark:text-muted-foreground" />}
                       </button>
                       {contactDetailsExpanded && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 space-y-4 border-t border-gray-100">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 space-y-4 border-t border-gray-100 dark:border-border">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField control={businessForm.control} name="phoneNumber" render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-sm text-gray-700">Phone</FormLabel>
+                                <FormLabel className="text-sm text-gray-700 dark:text-foreground">Phone</FormLabel>
                                 <FormControl><PhoneInput placeholder="Phone number" {...field} disabled={isPending} value={field.value || ""} onChange={(v) => field.onChange(v)} /></FormControl>
                                 <FormMessage />
                               </FormItem>
                             )} />
                             <FormField control={businessForm.control} name="email" render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-sm text-gray-700">Email</FormLabel>
+                                <FormLabel className="text-sm text-gray-700 dark:text-foreground">Email</FormLabel>
                                 <FormControl><Input {...field} disabled={isPending} type="email" value={field.value || ""} placeholder="info@yourbusiness.com" /></FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -740,24 +752,24 @@ function RegisterForm({ step }: { step: string }) {
                           </div>
                           <FormField control={businessForm.control} name="website" render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-sm text-gray-700">Website</FormLabel>
+                              <FormLabel className="text-sm text-gray-700 dark:text-foreground">Website</FormLabel>
                               <FormControl><Input {...field} disabled={isPending} value={field.value || ""} placeholder="https://yourbusiness.com" /></FormControl>
                               <FormMessage />
                             </FormItem>
                           )} />
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField control={businessForm.control} name="region" render={({ field }) => (
-                              <FormItem><FormLabel className="text-sm text-gray-700">City / Region</FormLabel><FormControl><Input {...field} disabled={isPending} placeholder="e.g. Dar es Salaam" value={field.value || ""} /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">City / Region</FormLabel><FormControl><Input {...field} disabled={isPending} placeholder="e.g. Dar es Salaam" value={field.value || ""} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={businessForm.control} name="address" render={({ field }) => (
-                              <FormItem><FormLabel className="text-sm text-gray-700">Street address</FormLabel><FormControl><Input {...field} disabled={isPending} placeholder="e.g. 123 Uhuru Street" value={field.value || ""} /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">Street address</FormLabel><FormControl><Input {...field} disabled={isPending} placeholder="e.g. 123 Uhuru Street" value={field.value || ""} /></FormControl><FormMessage /></FormItem>
                             )} />
                           </div>
                           <FormField control={businessForm.control} name="description" render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-sm text-gray-700">Description</FormLabel>
+                              <FormLabel className="text-sm text-gray-700 dark:text-foreground">Description</FormLabel>
                               <FormControl><Textarea placeholder="Briefly describe what your business does..." {...field} disabled={isPending} className="min-h-[80px] resize-none" maxLength={200} value={field.value || ""} /></FormControl>
-                              <FormDescription className="text-xs text-gray-400">{field.value?.length || 0}/200</FormDescription>
+                              <FormDescription className="text-xs text-gray-400 dark:text-muted-foreground">{field.value?.length || 0}/200</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )} />
@@ -766,10 +778,10 @@ function RegisterForm({ step }: { step: string }) {
                     </div>
 
                     {/* ── Location mode toggle ─────────── */}
-                    <div className="flex items-center justify-between rounded-lg bg-gray-50 border border-gray-200 px-4 py-3">
+                    <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-muted/50 border border-gray-200 dark:border-border px-4 py-3">
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Multiple locations?</p>
-                        <p className="text-xs text-gray-400">Toggle on if your business has more than one branch</p>
+                        <p className="text-sm font-medium text-gray-700 dark:text-foreground">Multiple locations?</p>
+                        <p className="text-xs text-gray-400 dark:text-muted-foreground">Toggle on if your business has more than one branch</p>
                       </div>
                       <Switch
                         checked={multipleLocations}
@@ -784,14 +796,14 @@ function RegisterForm({ step }: { step: string }) {
                         <div className="pt-1">
                           <div className="flex items-center gap-2 mb-3">
                             <Clock className="w-4 h-4 text-primary" />
-                            <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Operating Hours</span>
+                            <span className="text-sm font-semibold text-gray-900 dark:text-foreground uppercase tracking-wide">Operating Hours</span>
                           </div>
 
                           {/* 24-hour switch */}
-                          <div className="flex items-center justify-between rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 mb-3">
+                          <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-muted/50 border border-gray-200 dark:border-border px-4 py-3 mb-3">
                             <div>
-                              <p className="text-sm font-medium text-gray-700">This location is open 24 hours</p>
-                              <p className="text-xs text-gray-400">Toggle on for round-the-clock operations</p>
+                              <p className="text-sm font-medium text-gray-700 dark:text-foreground">This location is open 24 hours</p>
+                              <p className="text-xs text-gray-400 dark:text-muted-foreground">Toggle on for round-the-clock operations</p>
                             </div>
                             <Switch
                               checked={singleContinuous}
@@ -801,13 +813,13 @@ function RegisterForm({ step }: { step: string }) {
                           </div>
 
                           {singleContinuous ? (
-                            <div className="rounded-lg border border-gray-200 p-4">
-                              <label className="text-xs font-medium text-gray-600 mb-1 block">Daily cutoff time <span className="text-red-500">*</span></label>
+                            <div className="rounded-lg border border-gray-200 dark:border-border p-4">
+                              <label className="text-xs font-medium text-gray-600 dark:text-foreground/80 mb-1 block">Daily cutoff time <span className="text-red-500">*</span></label>
                               <Select value={singleCutoffTime} onValueChange={setSingleCutoffTime} disabled={isPending}>
                                 <SelectTrigger><SelectValue placeholder="e.g. 04:00 — quiet hour when we roll over the business day" /></SelectTrigger>
                                 <SelectContent>{businessTimes.map((t: BusinessTimeType, i: number) => (<SelectItem key={i} value={t.name}>{t.label}</SelectItem>))}</SelectContent>
                               </Select>
-                              <p className="text-xs text-gray-400 mt-2">e.g. 04:00 — quiet hour when we roll over the business day</p>
+                              <p className="text-xs text-gray-400 dark:text-muted-foreground mt-2">e.g. 04:00 — quiet hour when we roll over the business day</p>
                             </div>
                           ) : (
                             <OperatingHoursTable hours={singleLocationHours} onChange={setSingleLocationHours} disabled={isPending} />
@@ -821,23 +833,23 @@ function RegisterForm({ step }: { step: string }) {
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-4">
                         <div className="flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-primary" />
-                          <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Locations</span>
-                          <span className="ml-auto text-xs text-gray-400">{locations.length} location{locations.length !== 1 ? "s" : ""}</span>
+                          <span className="text-sm font-semibold text-gray-900 dark:text-foreground uppercase tracking-wide">Locations</span>
+                          <span className="ml-auto text-xs text-gray-400 dark:text-muted-foreground">{locations.length} location{locations.length !== 1 ? "s" : ""}</span>
                         </div>
-                        <p className="text-xs text-gray-400 -mt-2">
+                        <p className="text-xs text-gray-400 dark:text-muted-foreground -mt-2">
                           Empty contact fields on a location will inherit from the business above.
                         </p>
 
                         {locations.map((loc, idx) => (
-                          <div key={loc.id} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                            <div className="flex items-center justify-between bg-gray-50 px-4 py-2.5 border-b border-gray-100">
-                              <span className="text-sm font-medium text-gray-700">Location {idx + 1}</span>
+                          <div key={loc.id} className="rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card overflow-hidden">
+                            <div className="flex items-center justify-between bg-gray-50 dark:bg-muted/50 px-4 py-2.5 border-b border-gray-100 dark:border-border">
+                              <span className="text-sm font-medium text-gray-700 dark:text-foreground">Location {idx + 1}</span>
                               <div className="flex items-center gap-1">
-                                <button type="button" onClick={() => updateLocation(loc.id, "hoursExpanded", !loc.hoursExpanded)} className="p-1 text-gray-400 hover:text-gray-600 transition-colors" title="Toggle hours">
+                                <button type="button" onClick={() => updateLocation(loc.id, "hoursExpanded", !loc.hoursExpanded)} className="p-1 text-gray-400 dark:text-muted-foreground hover:text-gray-600 dark:hover:text-foreground/80 transition-colors" title="Toggle hours">
                                   {loc.hoursExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                 </button>
                                 {locations.length > 1 && (
-                                  <button type="button" onClick={() => removeLocation(loc.id)} className="p-1 text-gray-400 hover:text-red-500 transition-colors" title="Remove location">
+                                  <button type="button" onClick={() => removeLocation(loc.id)} className="p-1 text-gray-400 dark:text-muted-foreground hover:text-red-500 transition-colors" title="Remove location">
                                     <Trash2 size={16} />
                                   </button>
                                 )}
@@ -846,33 +858,33 @@ function RegisterForm({ step }: { step: string }) {
                             <div className="p-4 space-y-3">
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                  <label className="text-xs font-medium text-gray-600 mb-1 block">Location name *</label>
+                                  <label className="text-xs font-medium text-gray-600 dark:text-foreground/80 mb-1 block">Location name *</label>
                                   <Input value={loc.name} onChange={(e) => updateLocation(loc.id, "name", e.target.value)} placeholder="e.g. Main Branch" disabled={isPending} />
                                 </div>
                                 <div>
-                                  <label className="text-xs font-medium text-gray-600 mb-1 block">City / Region</label>
+                                  <label className="text-xs font-medium text-gray-600 dark:text-foreground/80 mb-1 block">City / Region</label>
                                   <Input value={loc.city} onChange={(e) => updateLocation(loc.id, "city", e.target.value)} placeholder="e.g. Dar es Salaam" disabled={isPending} />
                                 </div>
                               </div>
                               <div>
-                                <label className="text-xs font-medium text-gray-600 mb-1 block">Street address</label>
+                                <label className="text-xs font-medium text-gray-600 dark:text-foreground/80 mb-1 block">Street address</label>
                                 <Input value={loc.address} onChange={(e) => updateLocation(loc.id, "address", e.target.value)} placeholder="e.g. 123 Uhuru Street" disabled={isPending} />
                               </div>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                  <label className="text-xs font-medium text-gray-600 mb-1 block">Phone <span className="text-gray-400">(inherits from business)</span></label>
+                                  <label className="text-xs font-medium text-gray-600 dark:text-foreground/80 mb-1 block">Phone <span className="text-gray-400 dark:text-muted-foreground">(inherits from business)</span></label>
                                   <PhoneInput placeholder="Leave empty to inherit" value={loc.phone || ""} onChange={(v) => updateLocation(loc.id, "phone", v || "")} disabled={isPending} />
                                 </div>
                                 <div>
-                                  <label className="text-xs font-medium text-gray-600 mb-1 block">Email <span className="text-gray-400">(inherits from business)</span></label>
+                                  <label className="text-xs font-medium text-gray-600 dark:text-foreground/80 mb-1 block">Email <span className="text-gray-400 dark:text-muted-foreground">(inherits from business)</span></label>
                                   <Input type="email" value={loc.email} onChange={(e) => updateLocation(loc.id, "email", e.target.value)} placeholder="Leave empty to inherit" disabled={isPending} />
                                 </div>
                               </div>
 
                               {/* 24-hour toggle per location */}
-                              <div className="flex items-center justify-between rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
+                              <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-muted/50 border border-gray-100 dark:border-border px-3 py-2">
                                 <div>
-                                  <p className="text-xs font-medium text-gray-700">Open 24 hours</p>
+                                  <p className="text-xs font-medium text-gray-700 dark:text-foreground">Open 24 hours</p>
                                 </div>
                                 <Switch
                                   checked={loc.continuousOperation}
@@ -882,8 +894,8 @@ function RegisterForm({ step }: { step: string }) {
                               </div>
 
                               {loc.continuousOperation ? (
-                                <div className="rounded-lg border border-gray-200 p-3">
-                                  <label className="text-xs font-medium text-gray-600 mb-1 block">Daily cutoff time *</label>
+                                <div className="rounded-lg border border-gray-200 dark:border-border p-3">
+                                  <label className="text-xs font-medium text-gray-600 dark:text-foreground/80 mb-1 block">Daily cutoff time *</label>
                                   <Select
                                     value={loc.dailyCutoffTime}
                                     onValueChange={(v) => updateLocation(loc.id, "dailyCutoffTime", v)}
@@ -892,7 +904,7 @@ function RegisterForm({ step }: { step: string }) {
                                     <SelectTrigger><SelectValue placeholder="e.g. 04:00" /></SelectTrigger>
                                     <SelectContent>{businessTimes.map((t: BusinessTimeType, i: number) => (<SelectItem key={i} value={t.name}>{t.label}</SelectItem>))}</SelectContent>
                                   </Select>
-                                  <p className="text-xs text-gray-400 mt-2">Quiet hour when we roll over the business day</p>
+                                  <p className="text-xs text-gray-400 dark:text-muted-foreground mt-2">Quiet hour when we roll over the business day</p>
                                 </div>
                               ) : (
                                 <>
@@ -906,7 +918,7 @@ function RegisterForm({ step }: { step: string }) {
                                     </motion.div>
                                   )}
                                   {!loc.hoursExpanded && (
-                                    <p className="text-xs text-gray-400 flex items-center gap-1">
+                                    <p className="text-xs text-gray-400 dark:text-muted-foreground flex items-center gap-1">
                                       <Clock size={12} /> Monday-Saturday 8:00 AM - 9:00 PM, Sunday Closed
                                       <button type="button" onClick={() => updateLocation(loc.id, "hoursExpanded", true)} className="ml-1 text-primary hover:underline">Edit</button>
                                     </p>
@@ -921,7 +933,7 @@ function RegisterForm({ step }: { step: string }) {
                           type="button"
                           onClick={addLocation}
                           disabled={isPending}
-                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 border-dashed border-gray-200 text-sm font-medium text-gray-500 hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 border-dashed border-gray-200 dark:border-border text-sm font-medium text-gray-500 dark:text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
                         >
                           <Plus size={16} /> Add another location
                         </button>
@@ -942,7 +954,7 @@ function RegisterForm({ step }: { step: string }) {
         </motion.div>
       </AnimatePresence>
 
-      <p className="mt-6 text-center text-xs text-gray-400 flex items-center justify-center gap-1.5">
+      <p className="mt-6 text-center text-xs text-gray-400 dark:text-muted-foreground flex items-center justify-center gap-1.5">
         <Shield className="w-3 h-3" /> Secured with end-to-end encryption
       </p>
     </div>

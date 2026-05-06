@@ -29,3 +29,13 @@ export function extractSubscriptionStatus(accessToken: string): SubscriptionStat
   const valid: SubscriptionStatus[] = ["TRIAL", "ACTIVE", "PAST_DUE", "EXPIRED", "SUSPENDED", "CANCELLED"];
   return valid.includes(status as SubscriptionStatus) ? (status as SubscriptionStatus) : null;
 }
+
+/**
+ * Extract business_id from a JWT access token.
+ */
+export function extractBusinessId(accessToken: string): string | null {
+  const claims = decodeJwtClaims(accessToken);
+  if (!claims) return null;
+  const businessId = claims.business_id;
+  return typeof businessId === "string" && businessId.length > 0 ? businessId : null;
+}

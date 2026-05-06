@@ -261,7 +261,7 @@ const LocationList = ({
 
       <div className="relative w-full max-w-md mx-auto">
         {isRedirecting && (
-          <div className="absolute inset-0 bg-white/60 dark:bg-gray-950/60 backdrop-blur-sm z-30 rounded-xl flex items-center justify-center flex-col gap-3">
+          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm z-30 rounded-xl flex items-center justify-center flex-col gap-3">
             <Loader2Icon className="w-6 h-6 text-primary animate-spin" />
             <p className="text-sm text-primary font-medium">Redirecting...</p>
           </div>
@@ -341,7 +341,7 @@ const LocationList = ({
                   "w-full flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 text-left",
                   pendingIndex === index
                     ? "border-primary/30 bg-primary/5"
-                    : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-primary/30 hover:shadow-sm",
+                    : "border-border bg-card hover:border-primary/30 hover:shadow-sm",
                 )}
               >
                 <div

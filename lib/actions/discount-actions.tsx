@@ -2,15 +2,12 @@
 
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { getAuthToken } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { UUID } from "node:crypto";
-import {
-  getCurrentBusiness,
-  getCurrentLocation,
-} from "./business/get-current-business";
+import { getCurrentLocation } from "./business/get-current-business";
 import { Discount } from "@/types/discount/type";
 import { DiscountSchema } from "@/types/discount/schema";
 
@@ -19,7 +16,6 @@ export const searchDiscount = async (
   page: number,
   pageLimit: number,
 ): Promise<ApiResponse<Discount>> => {
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
@@ -69,12 +65,12 @@ export const createDiscount = async (
   }
 
   const location = await getCurrentLocation();
-  const business = await getCurrentBusiness();
+  const businessId = (await getAuthToken())?.businessId;
 
   const payload = {
     ...discountValidData.data,
     location: location?.id,
-    business: business?.id,
+    business: businessId,
   };
   try {
     const apiClient = new ApiClient();
@@ -169,7 +165,6 @@ export const getDiscount = async (id: UUID): Promise<ApiResponse<Discount>> => {
 export const deleteDiscount = async (id: UUID): Promise<void> => {
   if (!id) throw new Error("Discount ID is required to perform this request");
 
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();

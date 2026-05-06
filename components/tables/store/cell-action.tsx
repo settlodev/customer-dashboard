@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import React from "react";
-import { MoreVertical, Pencil, Power, PowerOff, Trash2 } from "lucide-react";
+import { Eye, MoreVertical, Pencil, Power, PowerOff, Trash2 } from "lucide-react";
 import { useDisclosure } from "@/hooks/use-disclosure";
 import DeleteModal from "@/components/tables/delete-modal";
 import { toast } from "@/hooks/use-toast";
@@ -68,6 +68,10 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => router.push(`/stores/${data.id}`)}>
+            <Eye className="mr-2 h-4 w-4" />
+            View
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push(`/stores/${data.id}/edit`)}>
             <Pencil className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>

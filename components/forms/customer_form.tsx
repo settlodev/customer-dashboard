@@ -1,17 +1,55 @@
 "use client";
 
+import React, {
+  useCallback,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
+import { useRouter } from "next/navigation";
+import { useForm, type FieldErrors } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
+  AlertTriangle,
+  Bell,
+  BellOff,
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  CreditCard,
+  FileText,
+  IdCard,
+  Mail,
+  Phone as PhoneIcon,
+  Sparkles,
+  Star,
+  Tag,
+  Trash2,
+  User,
+  Users,
+} from "lucide-react";
+import { format } from "date-fns";
+
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FieldErrors, useForm } from "react-hook-form";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Select,
   SelectContent,
@@ -19,118 +57,136 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import React, { useCallback, useEffect, useState, useTransition } from "react";
-import { CustomerSchema } from "@/types/customer/schema";
+import GenderSelector from "@/components/widgets/gender-selector";
 import {
-  createCustomer,
-  updateCustomer,
-  fetchCustomerGroups,
-} from "@/lib/actions/customer-actions";
+  Alert,
+  AlertIcon,
+  AlertBody,
+  AlertTitle,
+  AlertDescription,
+} from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogIcon,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+
+import { CustomerSchema } from "@/types/customer/schema";
 import {
   Customer,
   CustomerGroup,
-  CUSTOMER_SOURCE_LABELS,
   CUSTOMER_CREATED_FROM_LABELS,
+  CUSTOMER_SOURCE_LABELS,
 } from "@/types/customer/type";
-import { useToast } from "@/hooks/use-toast";
 import { FormResponse } from "@/types/types";
-import GenderSelector from "@/components/widgets/gender-selector";
-import CancelButton from "../widgets/cancel-button";
-import { SubmitButton } from "../widgets/submit-button";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "../ui/switch";
-import { PhoneInput } from "../ui/phone-input";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Info, Building2 } from "lucide-react";
-import { CustomerPreference } from "@/types/customer/type";
+import {
+  createCustomer,
+  updateCustomer,
+} from "@/lib/actions/customer-actions";
 
-function getPreferenceValue(
-  preferences: CustomerPreference[],
-  key: string,
-): string | undefined {
-  const pref = preferences.find((p) => p.preferenceKey === key);
-  return pref?.preferenceValue ?? undefined;
+import { initialsFor, thumbColor } from "@/components/tables/shared/table-avatar";
+import styles from "./styles/form-shell.module.css";
+
+interface CustomerFormProps {
+  item: Customer | null | undefined;
+  /**
+   * Customer groups available at the current location. Server-fetched so
+   * the picker is mounted with options ready and the form's
+   * `customerGroupId` defaultValue lands on a valid id without a
+   * client-side waterfall.
+   */
+  groups: CustomerGroup[];
 }
 
-function CustomerForm({
-  item,
-  preferences = [],
-}: {
-  item: Customer | null | undefined;
-  preferences?: CustomerPreference[];
-}) {
+type CustomerFormValues = z.infer<typeof CustomerSchema>;
+
+export default function CustomerForm({ item, groups }: CustomerFormProps) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const today = useMemo(() => new Date(), []);
   const [isPending, startTransition] = useTransition();
-  const [, setResponse] = useState<FormResponse | undefined>();
-  const [groups, setGroups] = useState<CustomerGroup[]>([]);
-  const [showCreditLimitHelp, setShowCreditLimitHelp] = useState(false);
+  const [response, setResponse] = useState<FormResponse | undefined>();
+  const [activeTab, setActiveTab] = useState<
+    "contact" | "identification" | "loyalty" | "notes"
+  >("contact");
+  // Display string for credit-limit. Kept in component state so we can
+  // show grouped digits (e.g. "1,200,000") while the form holds the
+  // numeric primitive — the schema rejects string for this field.
   const [creditLimitDisplay, setCreditLimitDisplay] = useState<string>(
-    item?.creditLimit?.toLocaleString() ?? "",
+    item?.creditLimit != null ? item.creditLimit.toLocaleString() : "",
   );
 
-  const { toast } = useToast();
-  const router = useRouter();
+  const isEditMode = !!item;
 
-  useEffect(() => {
-    const loadGroups = async () => {
-      try {
-        const data = await fetchCustomerGroups();
-        setGroups(data);
-      } catch (error) {
-        console.error("Failed to load customer groups:", error);
-      }
-    };
-    loadGroups();
-  }, []);
-
-  const form = useForm<z.infer<typeof CustomerSchema>>({
+  const form = useForm<CustomerFormValues>({
     resolver: zodResolver(CustomerSchema),
     defaultValues: {
-      // Personal
       firstName: item?.firstName ?? "",
       lastName: item?.lastName ?? "",
-      gender: item?.gender ?? undefined,
+      gender: item?.gender,
       email: item?.email ?? "",
       phoneNumber: item?.phoneNumber ?? "",
       dateOfBirth: item?.dateOfBirth ?? undefined,
-      // Identification
       idType: item?.idType ?? undefined,
       idNumber: item?.idNumber ?? undefined,
       tinNumber: item?.tinNumber ?? undefined,
       vrn: item?.vrn ?? undefined,
-      // Financial
       creditLimit: item?.creditLimit ?? undefined,
-      loyaltyPoints: item?.loyaltyPoints ?? undefined,
-      noShowCount: item?.noShowCount ?? 0,
-      // Preferences
-      seatingPreference:
-        item?.seatingPreference ??
-        getPreferenceValue(preferences, "seatingPreference"),
-      source:
-        (item?.source as any) ??
-        getPreferenceValue(preferences, "source") ??
-        undefined,
-      createdFrom:
-        (item?.createdFrom as any) ??
-        getPreferenceValue(preferences, "createdFrom") ??
-        undefined,
-      customerGroup: (item?.customerGroup as string) ?? undefined,
-      // Misc
+      source: item?.source ?? undefined,
+      createdFrom: item?.createdFrom ?? undefined,
+      customerGroupId:
+        (item?.customerGroupId as string | undefined) ?? undefined,
       notes: item?.notes ?? undefined,
       allowNotifications: item?.allowNotifications ?? true,
-      status: item?.status ?? true,
-      // Company
-      isCompanyAssociated: item?.isCompanyAssociated ?? false,
-      companyName: item?.companyName ?? "",
-      companyRegistrationNumber: item?.companyRegistrationNumber ?? "",
-      companyEmailAddress: item?.companyEmailAddress ?? "",
-      companyPhysicalAddress: item?.companyPhysicalAddress ?? "",
+      active: item?.active ?? true,
     },
   });
 
-  const isCompanyAssociated = form.watch("isCompanyAssociated");
+  // Watched values feed both the live preview card and the per-section
+  // completion checklist.
+  const firstName = form.watch("firstName");
+  const lastName = form.watch("lastName");
+  const phoneNumber = form.watch("phoneNumber");
+  const gender = form.watch("gender");
+  const email = form.watch("email");
+  const customerGroupId = form.watch("customerGroupId");
+  const allowNotifications = form.watch("allowNotifications");
+  const creditLimit = form.watch("creditLimit");
+
+  const fullName = useMemo(
+    () => `${firstName ?? ""} ${lastName ?? ""}`.trim(),
+    [firstName, lastName],
+  );
+
+  const groupName = useMemo(() => {
+    if (!customerGroupId) return undefined;
+    return groups.find((g) => g.id === customerGroupId)?.name;
+  }, [customerGroupId, groups]);
+
+  // Required-field checklist mirrors the Zod schema's required fields.
+  const requiredFlags = useMemo(
+    () => [
+      !!firstName?.trim(),
+      !!lastName?.trim(),
+      !!phoneNumber?.trim(),
+      !!gender,
+    ],
+    [firstName, lastName, phoneNumber, gender],
+  );
+  const completion = Math.round(
+    (requiredFlags.filter(Boolean).length / requiredFlags.length) * 100,
+  );
+  const isValid = requiredFlags.every(Boolean);
+  const remainingFields = requiredFlags.filter((v) => !v).length;
 
   const formatCreditLimit = (value: string): string => {
     const numericValue = value.replace(/[^\d.]/g, "");
@@ -160,719 +216,983 @@ function CustomerForm({
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
-      console.log("Form Errors:", errors);
+      const firstError =
+        Object.values(errors)[0]?.message ??
+        "Please check the highlighted fields and try again.";
       toast({
         variant: "destructive",
-        title: "Validation Error",
-        description:
-          typeof errors.message === "string" && errors.message
-            ? errors.message
-            : "Please check the form for errors and try again",
+        title: "Form validation failed",
+        description: typeof firstError === "string" ? firstError : undefined,
       });
     },
     [toast],
   );
 
-  const submitData = (values: z.infer<typeof CustomerSchema>) => {
-    startTransition(() => {
-      const handleResponse = (data: FormResponse | void) => {
-        if (!data) return;
-        setResponse(data);
-        if (data.responseType === "success") {
-          toast({ variant: "success", title: "Success", description: data.message });
-          router.push("/customers");
-        } else {
+  const submit = useCallback(
+    (values: CustomerFormValues) => {
+      setResponse(undefined);
+      startTransition(async () => {
+        try {
+          const result = isEditMode
+            ? await updateCustomer(item!.id, values)
+            : await createCustomer(values);
+          if (!result) return;
+          setResponse(result);
+          if (result.responseType === "success") {
+            toast({
+              variant: "success",
+              title: isEditMode ? "Customer updated" : "Customer created",
+              description: result.message,
+            });
+            router.push("/customers");
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Couldn't save customer",
+              description: result.message,
+            });
+          }
+        } catch (error) {
           toast({
             variant: "destructive",
-            title: "Error",
-            description: data.message,
+            title: "Something went wrong",
+            description:
+              (error as Error)?.message ?? "Please try again later.",
           });
         }
-      };
+      });
+    },
+    [isEditMode, item, router, toast],
+  );
 
-      if (item) {
-        updateCustomer(item.id, values).then(handleResponse);
-      } else {
-        createCustomer(values).then(handleResponse);
-      }
-    });
-  };
+  const handleDiscard = useCallback(() => {
+    router.back();
+  }, [router]);
 
   return (
     <Form {...form}>
+      {response?.responseType === "error" && response?.message ? (
+        <Alert tone="danger" className="mb-3">
+          <AlertIcon>
+            <AlertTriangle className="h-3.5 w-3.5" />
+          </AlertIcon>
+          <AlertBody>
+            <AlertTitle>We couldn&apos;t save this customer</AlertTitle>
+            <AlertDescription>{response.message}</AlertDescription>
+          </AlertBody>
+        </Alert>
+      ) : null}
+
       <form
-        onSubmit={form.handleSubmit(submitData, onInvalid)}
-        className="space-y-6"
+        onSubmit={form.handleSubmit(submit, onInvalid)}
+        className={styles.formRoot}
       >
-        {/* ── Personal Information ─────────────────────────────── */}
-        <div>
-          <h3 className="text-lg font-medium mb-4">Personal Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <FormField
-              control={form.control}
-              name="firstName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>First Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Enter first name"
-                      {...field}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="lastName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Last Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Enter last name"
-                      {...field}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="gender"
-              render={({ field }) => {
-                const { ref: _ref, ...customSelectRef } = field;
-                return (
-                  <FormItem>
-                    <FormLabel>Gender</FormLabel>
-                    <FormControl>
-                      <GenderSelector
-                        {...customSelectRef}
-                        isRequired
-                        isDisabled={isPending}
-                        label="Gender"
-                        placeholder="Select gender"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-
-            <FormField
-              control={form.control}
-              name="phoneNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Phone Number</FormLabel>
-                  <FormControl>
-                    <PhoneInput
-                      placeholder="Enter phone number"
-                      {...field}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      value={field.value ?? ""}
-                      placeholder="Enter email address"
-                      disabled={isPending}
-                      type="email"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="dateOfBirth"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Date of Birth</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="date"
-                      {...field}
-                      value={field.value ?? ""}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* ── Company Association ──────────────────────────────── */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-muted-foreground" />
-              <h3 className="text-lg font-medium">Company Association</h3>
-            </div>
-            <FormField
-              control={form.control}
-              name="isCompanyAssociated"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={(checked) => {
-                        field.onChange(checked);
-                        if (!checked) {
-                          form.setValue("companyName", "");
-                          form.setValue("companyRegistrationNumber", "");
-                          form.setValue("companyEmailAddress", "");
-                          form.setValue("companyPhysicalAddress", "");
-                        }
-                      }}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </div>
-          <p className="text-sm text-muted-foreground mb-4">
-            {isCompanyAssociated
-              ? "Fill in the company details this customer is associated with."
-              : "Toggle on if this customer belongs to or represents a company."}
-          </p>
-
-          {isCompanyAssociated && (
-            <div className="p-4  space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="companyName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Company Name <span className="text-red-500">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter company name"
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="companyRegistrationNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Registration Number</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g., RC123456"
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="companyEmailAddress"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Company Email Address</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="e.g., tech@settlo.co.tz"
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="companyPhoneNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Company Phone Number</FormLabel>
-                      <FormControl>
-                        <PhoneInput
-                          placeholder="company phone number"
-                          {...field}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="companyPhysicalAddress"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Physical Address</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Company phyiscal address"
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        <Separator />
-
-        {/* ── Identification ───────────────────────────────────── */}
-        <div>
-          <h3 className="text-lg font-medium mb-4">Identification</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <FormField
-              control={form.control}
-              name="idType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>ID Type</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g., Passport, National ID"
-                      {...field}
-                      value={field.value ?? ""}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="idNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>ID Number</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Enter ID number"
-                      {...field}
-                      value={field.value ?? ""}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="tinNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>TIN Number</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Tax ID number"
-                      {...field}
-                      value={field.value ?? ""}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="vrn"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>VRN</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="VAT registration number"
-                      {...field}
-                      value={field.value ?? ""}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* ── Financial & Loyalty ──────────────────────────────── */}
-        <div>
-          <h3 className="text-lg font-medium mb-4">Financial & Loyalty</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="relative">
-              <FormField
-                control={form.control}
-                name="creditLimit"
-                render={() => (
-                  <FormItem>
-                    <div className="flex items-center gap-2">
-                      <FormLabel>Credit Limit</FormLabel>
-                      <button
-                        type="button"
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                        onClick={() =>
-                          setShowCreditLimitHelp(!showCreditLimitHelp)
-                        }
-                      >
-                        <Info size={14} />
-                      </button>
-                    </div>
-                    <FormControl>
-                      <Input
-                        placeholder="e.g., 500,000"
-                        value={creditLimitDisplay}
-                        onChange={handleCreditLimitChange}
-                        disabled={isPending}
-                        inputMode="numeric"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {showCreditLimitHelp && (
-                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800">
-                  <p className="text-xs leading-relaxed">
-                    Maximum amount available for customer orders across all
-                    transactions.
+        <div className={styles.formGrid}>
+          {/* ── LEFT — form column ─────────────────────────────── */}
+          <div className={styles.formStack}>
+            {/* Identity card — always visible */}
+            <section className={styles.formCard}>
+              <header className={styles.formCardHead}>
+                <div className={styles.icoBox}>
+                  <User className="h-3.5 w-3.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3>Identity</h3>
+                  <p className={styles.formCardHeadDesc}>
+                    The basics that identify this customer at the till and on
+                    receipts.
                   </p>
                 </div>
-              )}
-            </div>
-
-            <FormField
-              control={form.control}
-              name="loyaltyPoints"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Loyalty Points</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      min={0}
-                      {...field}
-                      value={field.value ?? ""}
-                      disabled={isPending}
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value === ""
-                            ? undefined
-                            : parseInt(e.target.value),
-                        )
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {item && (
-              <FormField
-                control={form.control}
-                name="noShowCount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>No-Show Count</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        {...field}
-                        value={field.value ?? 0}
-                        disabled={isPending}
-                        onChange={(e) =>
-                          field.onChange(parseInt(e.target.value) || 0)
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* ── Preferences & Group ──────────────────────────────── */}
-        <div>
-          <h3 className="text-lg font-medium mb-4">Preferences & Group</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <FormField
-              control={form.control}
-              name="seatingPreference"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Seating Preference</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g., Window, Outdoor, Bar"
-                      {...field}
-                      value={field.value ?? ""}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="customerGroup"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Customer Group</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value ?? ""}
-                    disabled={isPending}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="No group" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {groups.map((group) => (
-                        <SelectItem key={group.id} value={group.id as string}>
-                          {group.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="source"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Source</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value ?? ""}
-                    disabled={isPending}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="How acquired" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {Object.entries(CUSTOMER_SOURCE_LABELS).map(
-                        ([value, label]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        ),
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="createdFrom"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Created From</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value ?? ""}
-                    disabled={isPending}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Origin system" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {Object.entries(CUSTOMER_CREATED_FROM_LABELS).map(
-                        ([value, label]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        ),
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* ── Notes ────────────────────────────────────────────── */}
-        <FormField
-          control={form.control}
-          name="notes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Staff Notes</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Internal notes about this customer..."
-                  {...field}
-                  value={field.value ?? ""}
-                  disabled={isPending}
-                  rows={3}
-                />
-              </FormControl>
-              <FormDescription className="text-xs">
-                Only visible to staff, not the customer
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Separator />
-
-        {/* ── Toggles ──────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FormField
-            control={form.control}
-            name="allowNotifications"
-            render={({ field }) => (
-              <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="cursor-pointer">
-                    Allow Notifications
-                  </FormLabel>
-                  <FormDescription className="text-xs">
-                    Opt-in for marketing & reminders
-                  </FormDescription>
+                <div className={styles.formCardActions}>
+                  <span className={styles.stepBadge}>STEP 01</span>
                 </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    disabled={isPending}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+              </header>
 
-          {item && (
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="cursor-pointer">
-                      Customer Status
-                    </FormLabel>
-                    <FormDescription className="text-xs">
-                      <span
-                        className={cn(
-                          "font-medium",
-                          field.value ? "text-green-600" : "text-red-600",
+              <div className={styles.formBody}>
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3">
+                  <FormField
+                    control={form.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0">
+                        <FormLabel className={styles.fieldLabel}>
+                          First name <span className="req">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g. Amani"
+                            disabled={isPending}
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0">
+                        <FormLabel className={styles.fieldLabel}>
+                          Last name <span className="req">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g. Mushi"
+                            disabled={isPending}
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="gender"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0">
+                        <FormLabel className={styles.fieldLabel}>
+                          Gender <span className="req">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <GenderSelector
+                            {...field}
+                            isDisabled={isPending}
+                            label="Select gender"
+                            placeholder="Select gender"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0">
+                        <FormLabel className={styles.fieldLabel}>
+                          Phone number <span className="req">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <PhoneInput
+                            placeholder="Enter phone number"
+                            disabled={isPending}
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0">
+                        <FormLabel className={styles.fieldLabel}>
+                          Email
+                          <span className="opt">OPTIONAL</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder="customer@example.com"
+                            disabled={isPending}
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Allow-notifications toggle — sits inline as the sixth
+                      grid cell so it shares the same vertical rhythm as
+                      the input fields. Visual minimal: same h-10 chrome
+                      as the inputs but with a Switch instead of a value. */}
+                  <FormField
+                    control={form.control}
+                    name="allowNotifications"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0">
+                        <FormLabel className={styles.fieldLabel}>
+                          Notifications
+                        </FormLabel>
+                        <div className="flex h-10 items-center justify-between gap-3 rounded-md border border-input bg-background px-3">
+                          <span className="truncate text-xs text-muted-foreground">
+                            Marketing &amp; reminders
+                          </span>
+                          <FormControl>
+                            <Switch
+                              checked={!!field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={isPending}
+                            />
+                          </FormControl>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Tabs section */}
+            <section className={styles.formCard}>
+              <div className={styles.formTabs} role="tablist">
+                {(
+                  [
+                    {
+                      id: "contact",
+                      label: "Contact",
+                      icon: <PhoneIcon className="h-3.5 w-3.5" />,
+                    },
+                    {
+                      id: "identification",
+                      label: "Identification",
+                      icon: <FileText className="h-3.5 w-3.5" />,
+                    },
+                    {
+                      id: "loyalty",
+                      label: "Loyalty & Group",
+                      icon: <Star className="h-3.5 w-3.5" />,
+                    },
+                    {
+                      id: "notes",
+                      label: "Notes",
+                      icon: <Sparkles className="h-3.5 w-3.5" />,
+                    },
+                  ] as const
+                ).map((t) => (
+                  <button
+                    type="button"
+                    key={t.id}
+                    role="tab"
+                    aria-selected={activeTab === t.id}
+                    onClick={() => setActiveTab(t.id)}
+                    className={`${styles.formTab} ${
+                      activeTab === t.id ? styles.formTabOn : ""
+                    }`}
+                  >
+                    {t.icon} {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Contact — DOB, source / how acquired, notifications */}
+              {activeTab === "contact" && (
+                <>
+                  <header
+                    className={styles.formCardHead}
+                    style={{ borderTop: "1px solid var(--pf-line)" }}
+                  >
+                    <div className={styles.icoBox}>
+                      <PhoneIcon className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3>Contact details</h3>
+                      <p className={styles.formCardHeadDesc}>
+                        Birth date, where they came from, and whether they
+                        accept marketing.
+                      </p>
+                    </div>
+                  </header>
+                  <div className={styles.formBody}>
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3">
+                      <FormField
+                        control={form.control}
+                        name="dateOfBirth"
+                        render={({ field }) => {
+                          const selected = field.value
+                            ? new Date(field.value)
+                            : undefined;
+                          return (
+                            <FormItem>
+                              <FormLabel className={styles.fieldLabel}>
+                                Date of birth
+                              </FormLabel>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      disabled={isPending}
+                                      className={cn(
+                                        "h-10 w-full justify-start text-left font-normal",
+                                        !selected && "text-muted-foreground",
+                                      )}
+                                    >
+                                      <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                      {selected
+                                        ? format(selected, "PPP")
+                                        : "Pick a date"}
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="w-[300px] p-0"
+                                  align="start"
+                                >
+                                  <Calendar
+                                    mode="single"
+                                    selected={selected}
+                                    onSelect={(d) =>
+                                      // Schema stores an ISO date string —
+                                      // strip the time so the value matches
+                                      // the backend's @Past LocalDate field.
+                                      field.onChange(
+                                        d
+                                          ? d.toISOString().split("T")[0]
+                                          : undefined,
+                                      )
+                                    }
+                                    // Backend has @Past — disallow today and
+                                    // any future date so the request
+                                    // round-trips cleanly.
+                                    disabled={(date) => date >= today}
+                                    captionLayout="dropdown"
+                                    fromYear={1900}
+                                    toYear={today.getFullYear()}
+                                    defaultMonth={selected ?? undefined}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="source"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              How acquired
+                            </FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value ?? ""}
+                              disabled={isPending}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a source" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {Object.entries(CUSTOMER_SOURCE_LABELS).map(
+                                  ([value, label]) => (
+                                    <SelectItem key={value} value={value}>
+                                      {label}
+                                    </SelectItem>
+                                  ),
+                                )}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
                         )}
-                      >
-                        {field.value ? "Active" : "Inactive"}
-                      </span>
-                    </FormDescription>
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="createdFrom"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              Created from
+                            </FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value ?? ""}
+                              disabled={isPending}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Origin system" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {Object.entries(
+                                  CUSTOMER_CREATED_FROM_LABELS,
+                                ).map(([value, label]) => (
+                                  <SelectItem key={value} value={value}>
+                                    {label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                </FormItem>
+                </>
               )}
+
+              {/* Identification — id type/number, TIN, VRN */}
+              {activeTab === "identification" && (
+                <>
+                  <header
+                    className={styles.formCardHead}
+                    style={{ borderTop: "1px solid var(--pf-line)" }}
+                  >
+                    <div className={styles.icoBox}>
+                      <FileText className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3>Identification</h3>
+                      <p className={styles.formCardHeadDesc}>
+                        Optional — capture government ID and tax IDs needed
+                        for credit terms or VAT-compliant receipts.
+                      </p>
+                    </div>
+                  </header>
+                  <div className={styles.formBody}>
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-4">
+                      <FormField
+                        control={form.control}
+                        name="idType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              ID type
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="e.g. Passport, NID"
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="idNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              ID number
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="ID document number"
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="tinNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              TIN number
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Tax identification number"
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="vrn"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              VRN
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="VAT registration number"
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Loyalty & Group — credit limit, customer group */}
+              {activeTab === "loyalty" && (
+                <>
+                  <header
+                    className={styles.formCardHead}
+                    style={{ borderTop: "1px solid var(--pf-line)" }}
+                  >
+                    <div className={styles.icoBox}>
+                      <Star className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3>Loyalty &amp; group</h3>
+                      <p className={styles.formCardHeadDesc}>
+                        Set a credit ceiling for credit-sale orders and place
+                        this customer in a group for targeted campaigns.
+                      </p>
+                    </div>
+                  </header>
+                  <div className={styles.formBody}>
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="creditLimit"
+                        render={() => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              <span className="inline-flex items-center gap-1">
+                                <CreditCard className="h-3 w-3" /> Credit limit
+                              </span>
+                              <span className="opt">TZS</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="e.g. 500,000"
+                                value={creditLimitDisplay}
+                                onChange={handleCreditLimitChange}
+                                disabled={isPending}
+                                inputMode="numeric"
+                              />
+                            </FormControl>
+                            <p className={styles.fieldHint}>
+                              Maximum balance allowed across all credit-sale
+                              orders. Leave blank for cash-only.
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="customerGroupId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              <span className="inline-flex items-center gap-1">
+                                <Tag className="h-3 w-3" /> Customer group
+                              </span>
+                            </FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value ?? ""}
+                              disabled={isPending || groups.length === 0}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue
+                                    placeholder={
+                                      groups.length === 0
+                                        ? "No groups available"
+                                        : "Select a group"
+                                    }
+                                  />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {groups.map((group) => (
+                                  <SelectItem
+                                    key={group.id}
+                                    value={group.id as string}
+                                  >
+                                    {group.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Notes — staff notes + active toggle on edit */}
+              {activeTab === "notes" && (
+                <>
+                  <header
+                    className={styles.formCardHead}
+                    style={{ borderTop: "1px solid var(--pf-line)" }}
+                  >
+                    <div className={styles.icoBox}>
+                      <Sparkles className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3>Notes</h3>
+                      <p className={styles.formCardHeadDesc}>
+                        Internal notes for staff — never shown to the
+                        customer.
+                      </p>
+                    </div>
+                  </header>
+                  <div className={styles.formBody}>
+                    <div
+                      className={styles.fieldRow}
+                      style={
+                        {
+                          ["--cols" as never]: 1,
+                        } as React.CSSProperties
+                      }
+                    >
+                      <FormField
+                        control={form.control}
+                        name="notes"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              Staff notes
+                              <span className="opt">
+                                {(field.value ?? "").length}/1000
+                              </span>
+                            </FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Allergies, seating preferences, anything teammates should know."
+                                rows={4}
+                                maxLength={1000}
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {isEditMode && (
+                      <div
+                        className={styles.fieldRow}
+                        style={
+                          {
+                            ["--cols" as never]: 1,
+                            marginTop: 14,
+                          } as React.CSSProperties
+                        }
+                      >
+                        <FormField
+                          control={form.control}
+                          name="active"
+                          render={({ field }) => (
+                            <FormItem className={styles.toggleRow}>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium">
+                                  Customer status
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  Inactive customers are hidden from the
+                                  default list view but remain in reports.
+                                </p>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={!!field.value}
+                                  onCheckedChange={field.onChange}
+                                  disabled={isPending}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </section>
+          </div>
+
+          {/* ── RIGHT — preview + readiness ───────────────────── */}
+          <aside className={styles.formStack}>
+            <LivePreviewCard
+              fullName={fullName || "New customer"}
+              phoneNumber={phoneNumber}
+              email={email}
+              gender={gender}
+              groupName={groupName}
+              creditLimit={creditLimit}
+              allowNotifications={!!allowNotifications}
+              checklist={[
+                { label: "First name", done: requiredFlags[0] },
+                { label: "Last name", done: requiredFlags[1] },
+                { label: "Phone number", done: requiredFlags[2] },
+                { label: "Gender", done: requiredFlags[3] },
+              ]}
+              completion={completion}
             />
-          )}
+
+            <TipsCard isEdit={isEditMode} />
+          </aside>
         </div>
 
-        {/* ── Actions ──────────────────────────────────────────── */}
-        <div className="flex h-5 items-center space-x-4 mt-10">
-          <CancelButton />
-          <Separator orientation="vertical" />
-          <SubmitButton
-            isPending={isPending}
-            label={item ? "Update Customer" : "Add Customer"}
-          />
+        {/* Sticky footer */}
+        <div className={styles.formFoot}>
+          <div className={styles.formFootSpacer} />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isPending}
+                title="Discard changes and go back"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Discard
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent tone="danger">
+              <AlertDialogIcon>
+                <Trash2 className="h-5 w-5" />
+              </AlertDialogIcon>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Anything you typed since opening the form will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDiscard}>
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button
+            type="submit"
+            disabled={isPending || !isValid}
+            title={
+              isValid
+                ? isEditMode
+                  ? "Save changes"
+                  : "Create customer"
+                : `Complete required fields (${remainingFields} remaining)`
+            }
+          >
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+            {isEditMode ? "Save changes" : "Create customer"}
+          </Button>
         </div>
       </form>
     </Form>
   );
 }
 
-export default CustomerForm;
+// ─────────────────────────────────────────────────────────────────────
+// Right-rail: live preview card mirroring the staff live preview
+// ─────────────────────────────────────────────────────────────────────
+
+interface LivePreviewProps {
+  fullName: string;
+  phoneNumber: string | undefined;
+  email: string | undefined;
+  gender: string | undefined;
+  groupName: string | undefined;
+  creditLimit: number | undefined;
+  allowNotifications: boolean;
+  checklist: Array<{ label: string; done: boolean }>;
+  completion: number;
+}
+
+function LivePreviewCard({
+  fullName,
+  phoneNumber,
+  email,
+  gender,
+  groupName,
+  creditLimit,
+  allowNotifications,
+  checklist,
+  completion,
+}: LivePreviewProps) {
+  const initials = initialsFor(fullName || "?");
+  const swatch = thumbColor(fullName);
+
+  return (
+    <div className={styles.previewCard}>
+      <div className={styles.previewHead}>
+        <span className={styles.liveDot} />
+        Live preview
+      </div>
+      <div className={styles.previewBody}>
+        <div
+          className={styles.previewThumb}
+          style={{
+            background: `linear-gradient(135deg, ${swatch}, ${swatch}cc)`,
+          }}
+        >
+          {initials}
+        </div>
+        <div className={styles.previewName}>{fullName}</div>
+        <div className={styles.previewMeta}>
+          {phoneNumber || "no phone"}
+          {gender ? ` · ${gender}` : ""}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {groupName && (
+            <Badge variant="soft" className="text-[10.5px]">
+              <Tag className="mr-1 h-2.5 w-2.5" /> {groupName}
+            </Badge>
+          )}
+          {creditLimit != null && creditLimit > 0 && (
+            <Badge variant="soft" className="text-[10.5px]">
+              <CreditCard className="mr-1 h-2.5 w-2.5" />{" "}
+              {creditLimit.toLocaleString()} TZS
+            </Badge>
+          )}
+          {email && (
+            <Badge variant="soft" className="text-[10.5px]">
+              <Mail className="mr-1 h-2.5 w-2.5" /> Email
+            </Badge>
+          )}
+          {allowNotifications ? (
+            <Badge variant="pos" className="text-[10.5px]">
+              <Bell className="mr-1 h-2.5 w-2.5" /> Notifications
+            </Badge>
+          ) : (
+            <Badge variant="warn" className="text-[10.5px]">
+              <BellOff className="mr-1 h-2.5 w-2.5" /> Muted
+            </Badge>
+          )}
+        </div>
+
+        <div className={styles.checklist}>
+          {checklist.map((c) => (
+            <div
+              key={c.label}
+              className={`${styles.checklistItem} ${
+                c.done ? styles.checklistItemDone : ""
+              }`}
+            >
+              <span className={styles.checklistMark}>
+                {c.done ? <CheckCircle2 className="h-2.5 w-2.5" /> : null}
+              </span>
+              {c.label}
+            </div>
+          ))}
+        </div>
+
+        <div className={styles.readiness}>
+          <div className={styles.readinessHead}>
+            <span className={styles.readinessLabel}>Readiness</span>
+            <span
+              className={`${styles.readinessPct} ${
+                completion === 100 ? styles.readinessPctDone : ""
+              }`}
+            >
+              {completion}%
+            </span>
+          </div>
+          <div className={styles.readinessBar}>
+            <div
+              className={`${styles.readinessBarFill} ${
+                completion === 100 ? styles.readinessBarFillDone : ""
+              }`}
+              style={{ width: `${completion}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Right-rail: contextual tips card
+// ─────────────────────────────────────────────────────────────────────
+
+function TipsCard({ isEdit }: { isEdit: boolean }) {
+  const tips = isEdit
+    ? [
+        {
+          icon: IdCard,
+          text: "ID and tax fields are optional, but VRN is needed for VAT-compliant credit invoices.",
+        },
+        {
+          icon: CreditCard,
+          text: "Lower the credit limit to reduce exposure — open credit balances above the new ceiling stay attached but block new credit sales.",
+        },
+        {
+          icon: Users,
+          text: "Customers in the same group inherit campaigns and price lists — moving someone takes effect immediately.",
+        },
+      ]
+    : [
+        {
+          icon: Sparkles,
+          text: "First name, last name, phone, and gender are all that's required to create a customer.",
+        },
+        {
+          icon: Bell,
+          text: "Leave notifications on so reservation reminders and loyalty updates can reach this customer.",
+        },
+        {
+          icon: CreditCard,
+          text: "Set a credit limit only if this customer will have a credit-sale tab — otherwise leave blank.",
+        },
+        {
+          icon: Tag,
+          text: "Groups are optional. They're useful for targeted campaigns, group discounts, or VIP price lists.",
+        },
+      ];
+
+  return (
+    <div className={styles.previewCard}>
+      <div className={styles.previewHead}>Tips</div>
+      <div className="space-y-2.5 px-4 py-4">
+        {tips.map(({ icon: Icon, text }, i) => (
+          <div
+            key={i}
+            className="flex items-start gap-2 text-[12px] text-ink-3"
+          >
+            <Icon className="h-3.5 w-3.5 flex-shrink-0 text-primary mt-0.5" />
+            <span>{text}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

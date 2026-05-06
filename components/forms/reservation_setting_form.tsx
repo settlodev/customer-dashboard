@@ -2,10 +2,10 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useCallback, useEffect, useState, useTransition } from "react";
-import { FieldErrors, useForm } from "react-hook-form";
+import { Control, FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -18,7 +18,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Loader2Icon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -28,8 +27,6 @@ import {
   ReservationSetting,
   ReservationSettingField,
   RESERVATION_SETTINGS_CONFIG,
-  RESERVATION_SETTING_CATEGORY_TITLES,
-  ReservationSettingCategory,
 } from "@/types/reservation-setting/type";
 import { ReservationSettingSchema } from "@/types/reservation-setting/schema";
 import { upsertReservationSettings } from "@/lib/actions/reservation-setting-actions";
@@ -61,23 +58,17 @@ const DEFAULTS = {
   allowGuestTablePreference: false,
 } satisfies Partial<z.input<typeof ReservationSettingSchema>>;
 
-const groupByCategory = (fields: ReservationSettingField[]) =>
-  fields.reduce(
-    (acc, field) => {
-      if (!acc[field.category]) acc[field.category] = [];
-      acc[field.category].push(field);
-      return acc;
-    },
-    {} as Record<string, ReservationSettingField[]>,
-  );
+type FieldKey = keyof ReservationSetting;
+type FormValues = z.infer<typeof ReservationSettingSchema>;
 
-const getGridClass = (fields: ReservationSettingField[]): string => {
-  const hasInputFields = fields.some((f) =>
-    ["number", "text", "textarea"].includes(f.type),
-  );
-  return hasInputFields
-    ? "grid grid-cols-1 md:grid-cols-2 gap-4"
-    : "grid grid-cols-1 md:grid-cols-2 gap-4";
+const FIELD_BY_KEY: Record<string, ReservationSettingField> = Object.fromEntries(
+  RESERVATION_SETTINGS_CONFIG.map((f) => [f.key as string, f]),
+);
+
+const fieldOf = (key: FieldKey): ReservationSettingField => {
+  const f = FIELD_BY_KEY[key as string];
+  if (!f) throw new Error(`Missing config entry for ${String(key)}`);
+  return f;
 };
 
 const ReservationSettingForm = ({
@@ -90,15 +81,13 @@ const ReservationSettingForm = ({
   const [, setResponse] = useState<FormResponse | undefined>();
   const isNew = !item?.id;
 
-  const form = useForm<z.infer<typeof ReservationSettingSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(ReservationSettingSchema),
-    defaultValues: item ? { ...DEFAULTS, ...item } as any : DEFAULTS,
+    defaultValues: item ? ({ ...DEFAULTS, ...item } as any) : DEFAULTS,
   });
 
   useEffect(() => {
-    if (item) {
-      form.reset({ ...DEFAULTS, ...item } as any);
-    }
+    if (item) form.reset({ ...DEFAULTS, ...item } as any);
     setIsLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item]);
@@ -117,9 +106,9 @@ const ReservationSettingForm = ({
     });
   }, []);
 
-  const submitData = (values: z.infer<typeof ReservationSettingSchema>) => {
+  const submitData = (values: FormValues) => {
     setResponse(undefined);
-    void isNew; // legacy distinction — OMS uses a single PUT upsert endpoint
+    void isNew;
     startTransition(() => {
       upsertReservationSettings(values).then((data: FormResponse | void) => {
         if (data) {
@@ -135,208 +124,42 @@ const ReservationSettingForm = ({
     });
   };
 
-  const getFilteredSettings = () => {
-    const currentValues = form.watch();
-    return RESERVATION_SETTINGS_CONFIG.filter((setting) => {
-      if (setting.dependsOn) {
-        return !!currentValues[setting.dependsOn as keyof typeof currentValues];
-      }
-      return true;
-    });
-  };
-
-  const renderFormControl = (field: ReservationSettingField) => {
-    const { key, type, placeholder, helperText, min, max, step } = field;
-
-    switch (type) {
-      case "switch":
-        return (
-          <FormField
-            key={key}
-            control={form.control}
-            name={key as any}
-            render={({ field: formField }) => (
-              <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-sm font-medium cursor-pointer">
-                    {field.label}
-                  </FormLabel>
-                  {helperText && (
-                    <FormDescription className="text-xs">
-                      {helperText}
-                    </FormDescription>
-                  )}
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={formField.value}
-                    onCheckedChange={formField.onChange}
-                    disabled={isPending}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-        );
-
-      case "textarea":
-        return (
-          <FormField
-            key={key}
-            control={form.control}
-            name={key as any}
-            render={({ field: formField }) => (
-              <FormItem className="col-span-full">
-                <FormLabel>{field.label}</FormLabel>
-                <FormControl>
-                  <Textarea
-                    {...formField}
-                    placeholder={placeholder}
-                    disabled={isPending}
-                    value={formField.value ?? ""}
-                    rows={3}
-                  />
-                </FormControl>
-                {helperText && (
-                  <FormDescription className="text-xs">
-                    {helperText}
-                  </FormDescription>
-                )}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        );
-
-      case "number":
-      case "text":
-        return (
-          <FormField
-            key={key}
-            control={form.control}
-            name={key as any}
-            render={({ field: formField }) => (
-              <FormItem>
-                <FormLabel>{field.label}</FormLabel>
-                <FormControl>
-                  <Input
-                    {...formField}
-                    type={type === "number" ? "number" : "text"}
-                    placeholder={placeholder}
-                    disabled={isPending}
-                    value={formField.value ?? ""}
-                    min={min}
-                    max={max}
-                    step={step}
-                    onChange={(e) => {
-                      if (type === "number") {
-                        const value =
-                          e.target.value === ""
-                            ? undefined
-                            : parseFloat(e.target.value);
-                        formField.onChange(
-                          value !== undefined && isNaN(value)
-                            ? undefined
-                            : value,
-                        );
-                      } else {
-                        formField.onChange(e.target.value);
-                      }
-                    }}
-                  />
-                </FormControl>
-                {helperText && (
-                  <FormDescription className="text-xs">
-                    {helperText}
-                  </FormDescription>
-                )}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="space-y-6 pt-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="space-y-4">
-              <div className="animate-pulse">
-                <div className="h-6 bg-gray-200 rounded w-1/4 mb-4" />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[1, 2].map((j) => (
-                  <div key={j} className="animate-pulse border rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-2">
-                        <div className="h-4 bg-gray-200 rounded w-3/4" />
-                        <div className="h-3 bg-gray-200 rounded w-1/2" />
-                      </div>
-                      <div className="h-6 bg-gray-200 rounded-full w-12" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <Separator />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    );
-  }
+  if (isLoading) return <FormSkeleton />;
 
   const isOnlineBookingEnabled = form.watch("enableOnlineBooking");
-
-  const filteredSettings = getFilteredSettings().filter(
-    (f) => f.key !== "enableOnlineBooking",
-  );
-  const settingsGroups = groupByCategory(filteredSettings);
-
-  const categoryOrder: ReservationSettingCategory[] = [
-    "booking_rules",
-    "confirmation",
-    "cancellation",
-    "notifications",
-    "pacing",
-    "waitlist",
-    "deposit_collection",
-    "table_assignment",
-    "messages",
-  ];
-
-  const orderedGroups = categoryOrder
-    .filter((cat) => settingsGroups[cat])
-    .map((cat) => [cat, settingsGroups[cat]] as [string, ReservationSettingField[]]);
+  const autoConfirm = form.watch("autoConfirm");
+  const chargeNoShowFee = form.watch("chargeNoShowFee");
+  const sendReminderNotification = form.watch("sendReminderNotification");
+  const enableWaitlist = form.watch("enableWaitlist");
+  const isDirty = form.formState.isDirty;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Reservation Settings</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(submitData, onInvalid)}
-            className="space-y-6"
-          >
-            {/* Master toggle */}
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(submitData, onInvalid)}
+        className="space-y-6"
+      >
+        {/* Master toggle */}
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="pt-5 pb-5">
             <FormField
               control={form.control}
               name="enableOnlineBooking"
               render={({ field: formField }) => (
-                <FormItem className={`flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4 transition-colors ${formField.value ? "border-[#EB7F44]/30 bg-[#EB7F44]/5" : ""}`}>
+                <FormItem
+                  className={`flex items-center justify-between gap-4 space-y-0 rounded-lg border p-4 transition-colors ${
+                    formField.value
+                      ? "border-[#EB7F44]/30 bg-[#EB7F44]/5"
+                      : ""
+                  }`}
+                >
                   <div className="space-y-0.5">
                     <FormLabel className="text-sm font-medium cursor-pointer">
                       Enable Online Booking
                     </FormLabel>
                     <FormDescription className="text-xs">
-                      Allow guests to book online
+                      Master switch — turn off to hide the public booking page
+                      and pause every section below.
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -345,9 +168,12 @@ const ReservationSettingForm = ({
                       onCheckedChange={(checked) => {
                         formField.onChange(checked);
                         if (!checked) {
-                          // Merge defaults with current values so required fields are always populated
                           const currentValues = form.getValues();
-                          const payload = { ...DEFAULTS, ...currentValues, enableOnlineBooking: false };
+                          const payload = {
+                            ...DEFAULTS,
+                            ...currentValues,
+                            enableOnlineBooking: false,
+                          };
                           submitData(payload as any);
                         }
                       }}
@@ -357,54 +183,341 @@ const ReservationSettingForm = ({
                 </FormItem>
               )}
             />
+          </CardContent>
+        </Card>
 
-            {!isOnlineBookingEnabled && (
-              <div className="rounded-lg border border-dashed border-[#EB7F44]/30 bg-[#EB7F44]/5 p-6 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Online booking is disabled. Enable it to configure booking rules, policies, and more.
-                </p>
+        {!isOnlineBookingEnabled && (
+          <div className="rounded-xl border border-dashed border-[#EB7F44]/30 bg-[#EB7F44]/5 p-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Online booking is disabled. Enable it above to configure booking
+              rules, policies, notifications, and more.
+            </p>
+          </div>
+        )}
+
+        {isOnlineBookingEnabled && (
+          <>
+            {/* 1 — Booking rules */}
+            <SectionCard
+              title="Booking rules"
+              description="Party-size limits, how far ahead guests can book, and what's required from them."
+            >
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
+                <NumberField control={form.control} name="minPartySize" disabled={isPending} />
+                <NumberField control={form.control} name="maxPartySize" disabled={isPending} />
+                <NumberField control={form.control} name="bookingWindowDays" disabled={isPending} />
+                <NumberField control={form.control} name="minAdvanceBookingHours" disabled={isPending} />
+                <NumberField control={form.control} name="defaultDurationMinutes" disabled={isPending} />
+                <NumberField control={form.control} name="slotIntervalMinutes" disabled={isPending} />
               </div>
-            )}
+              <div className="space-y-0.5 pt-2">
+                <SwitchRow control={form.control} name="requireGuestEmail" disabled={isPending} />
+                <SwitchRow control={form.control} name="requireGuestPhone" disabled={isPending} />
+                <SwitchRow control={form.control} name="allowSpecialRequests" disabled={isPending} />
+              </div>
+            </SectionCard>
 
+            {/* 2 — Confirmation & cancellation */}
+            <SectionCard
+              title="Confirmation & cancellation"
+              description="Auto-confirmation, no-show charges, and the cancellation policy shown to guests."
+            >
+              <div className="space-y-0.5">
+                <SwitchRow control={form.control} name="autoConfirm" disabled={isPending} />
+                <SwitchRow control={form.control} name="allowOnlineCancellation" disabled={isPending} />
+                <SwitchRow control={form.control} name="chargeNoShowFee" disabled={isPending} />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pt-2">
+                {autoConfirm && (
+                  <NumberField control={form.control} name="autoConfirmMaxPartySize" disabled={isPending} />
+                )}
+                <NumberField control={form.control} name="cancellationPolicyHours" disabled={isPending} />
+                {chargeNoShowFee && (
+                  <NumberField control={form.control} name="noShowFeeAmount" disabled={isPending} />
+                )}
+                <NumberField control={form.control} name="noShowGraceMinutes" disabled={isPending} />
+              </div>
+              <TextareaField control={form.control} name="cancellationPolicyText" rows={3} disabled={isPending} />
+            </SectionCard>
+
+            {/* 3 — Notifications & reminders */}
+            <SectionCard
+              title="Notifications & reminders"
+              description="Confirmation channels and how far in advance to remind guests."
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 items-start">
+                <div className="space-y-0.5">
+                  <SwitchRow control={form.control} name="sendConfirmationEmail" disabled={isPending} />
+                  <SwitchRow control={form.control} name="sendConfirmationSms" disabled={isPending} />
+                  <SwitchRow control={form.control} name="sendReminderNotification" disabled={isPending} />
+                </div>
+                {sendReminderNotification && (
+                  <div className="lg:w-56">
+                    <NumberField
+                      control={form.control}
+                      name="reminderHoursBeforeReservation"
+                      disabled={isPending}
+                    />
+                  </div>
+                )}
+              </div>
+            </SectionCard>
+
+            {/* 4 — Pacing, tables & waitlist (combined) */}
+            <SectionCard
+              title="Pacing, tables & waitlist"
+              description="Daily caps, turn time between seatings, table assignment and waitlist behaviour."
+            >
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                <NumberField control={form.control} name="defaultTurnTimeMinutes" disabled={isPending} />
+                <NumberField control={form.control} name="bufferMinutesBetweenSeatings" disabled={isPending} />
+                <NumberField control={form.control} name="maxDailyReservations" disabled={isPending} />
+                <NumberField control={form.control} name="maxDailyGuests" disabled={isPending} />
+                {enableWaitlist && (
+                  <NumberField control={form.control} name="maxWaitlistSize" disabled={isPending} />
+                )}
+              </div>
+              <div className="space-y-0.5 pt-2">
+                <SwitchRow control={form.control} name="enableWaitlist" disabled={isPending} />
+                <SwitchRow control={form.control} name="autoAssignTable" disabled={isPending} />
+                <SwitchRow control={form.control} name="allowGuestTablePreference" disabled={isPending} />
+                <SwitchRow control={form.control} name="enableOnlineDepositPayment" disabled={isPending} />
+              </div>
+            </SectionCard>
+
+            {/* 5 — Guest-facing messages */}
+            <SectionCard
+              title="Guest-facing messages"
+              description="Welcome copy, confirmation message and terms shown on the public booking page."
+            >
+              <div className="space-y-4">
+                <TextareaField control={form.control} name="bookingPageWelcomeMessage" rows={3} disabled={isPending} />
+                <TextareaField control={form.control} name="confirmationMessage" rows={3} disabled={isPending} />
+                <TextareaField control={form.control} name="termsAndConditions" rows={4} disabled={isPending} />
+              </div>
+            </SectionCard>
+          </>
+        )}
+
+        {/* Sticky save bar */}
+        <div className="sticky bottom-0 z-10 bg-gradient-to-t from-background via-background/95 to-background/0 pt-4 pb-2 -mx-4 px-4 md:-mx-0 md:px-0">
+          <div className="flex items-center justify-end gap-3">
             {isOnlineBookingEnabled && (
-              <>
-                <Separator />
-                {orderedGroups.map(([category, settings], index) => (
-                  <React.Fragment key={category}>
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium flex items-center gap-2">
-                        <span className="w-1 h-5 rounded-full bg-[#EB7F44]"></span>
-                        {RESERVATION_SETTING_CATEGORY_TITLES[
-                          category as ReservationSettingCategory
-                        ] || category}
-                      </h3>
-                      <div className={getGridClass(settings)}>
-                        {settings.map((field) => renderFormControl(field))}
-                      </div>
-                    </div>
-                    {index < orderedGroups.length - 1 && <Separator />}
-                  </React.Fragment>
-                ))}
-              </>
+              <span className="text-xs text-muted-foreground">
+                {isDirty ? "Unsaved changes" : "All changes saved"}
+              </span>
             )}
+            {isPending ? (
+              <Button disabled className="w-full md:w-auto">
+                <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+                {isNew ? "Creating settings…" : "Updating settings…"}
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                className="w-full md:w-auto hover:opacity-90"
+                disabled={!isOnlineBookingEnabled || (!isNew && !isDirty)}
+              >
+                {isNew ? "Create settings" : "Save changes"}
+              </Button>
+            )}
+          </div>
+        </div>
+      </form>
+    </Form>
+  );
+};
 
-            <div className="flex justify-end pt-6">
-              {isPending ? (
-                <Button disabled className="w-full md:w-auto">
-                  <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
-                  {isNew ? "Creating Settings..." : "Updating Settings..."}
-                </Button>
-              ) : (
-                <Button type="submit" className="w-full md:w-auto hover:opacity-90">
-                  {isNew ? "Create Settings" : "Update Settings"}
-                </Button>
-              )}
-            </div>
-          </form>
-        </Form>
+// ──────────────────────────────────────────────────────────────────────
+// Layout primitives — match SettingsSection / SettingsSwitchRow density
+// ──────────────────────────────────────────────────────────────────────
+
+function SectionCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="rounded-xl shadow-sm">
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            {title}
+          </h3>
+          {description && (
+            <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+          )}
+        </div>
+        {children}
       </CardContent>
     </Card>
   );
-};
+}
+
+function SwitchRow({
+  control,
+  name,
+  disabled,
+}: {
+  control: Control<FormValues>;
+  name: FieldKey;
+  disabled?: boolean;
+}) {
+  const f = fieldOf(name);
+  return (
+    <FormField
+      control={control}
+      name={name as any}
+      render={({ field: formField }) => (
+        <FormItem className="flex items-start justify-between gap-4 py-2 border-b last:border-b-0 space-y-0">
+          <div className="min-w-0 flex-1">
+            <FormLabel className="text-sm font-medium leading-tight cursor-pointer">
+              {f.label}
+            </FormLabel>
+            {f.helperText && (
+              <FormDescription className="text-xs mt-0.5">
+                {f.helperText}
+              </FormDescription>
+            )}
+          </div>
+          <FormControl>
+            <Switch
+              checked={!!formField.value}
+              onCheckedChange={formField.onChange}
+              disabled={disabled}
+            />
+          </FormControl>
+        </FormItem>
+      )}
+    />
+  );
+}
+
+function NumberField({
+  control,
+  name,
+  disabled,
+}: {
+  control: Control<FormValues>;
+  name: FieldKey;
+  disabled?: boolean;
+}) {
+  const f = fieldOf(name);
+  return (
+    <FormField
+      control={control}
+      name={name as any}
+      render={({ field: formField }) => (
+        <FormItem className="space-y-1">
+          <FormLabel className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            {f.label}
+          </FormLabel>
+          <FormControl>
+            <Input
+              type="number"
+              placeholder={f.placeholder}
+              min={f.min}
+              max={f.max}
+              step={f.step}
+              disabled={disabled}
+              value={formField.value ?? ""}
+              onChange={(e) => {
+                const value =
+                  e.target.value === "" ? undefined : parseFloat(e.target.value);
+                formField.onChange(
+                  value !== undefined && isNaN(value) ? undefined : value,
+                );
+              }}
+              onBlur={formField.onBlur}
+              name={formField.name}
+              ref={formField.ref}
+            />
+          </FormControl>
+          {f.helperText && (
+            <FormDescription className="text-[11px] leading-tight">
+              {f.helperText}
+            </FormDescription>
+          )}
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
+
+function TextareaField({
+  control,
+  name,
+  rows = 3,
+  disabled,
+}: {
+  control: Control<FormValues>;
+  name: FieldKey;
+  rows?: number;
+  disabled?: boolean;
+}) {
+  const f = fieldOf(name);
+  return (
+    <FormField
+      control={control}
+      name={name as any}
+      render={({ field: formField }) => (
+        <FormItem className="space-y-1">
+          <FormLabel className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            {f.label}
+          </FormLabel>
+          <FormControl>
+            <Textarea
+              placeholder={f.placeholder}
+              disabled={disabled}
+              rows={rows}
+              className="resize-y"
+              value={formField.value ?? ""}
+              onChange={formField.onChange}
+              onBlur={formField.onBlur}
+              name={formField.name}
+              ref={formField.ref}
+            />
+          </FormControl>
+          {f.helperText && (
+            <FormDescription className="text-[11px] leading-tight">
+              {f.helperText}
+            </FormDescription>
+          )}
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
+
+function FormSkeleton() {
+  return (
+    <div className="space-y-6">
+      {[1, 2, 3].map((i) => (
+        <Card key={i} className="rounded-xl shadow-sm">
+          <CardContent className="pt-5 pb-5 space-y-4">
+            <div className="space-y-2">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 animate-pulse" />
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 animate-pulse" />
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {[1, 2, 3].map((j) => (
+                <div key={j} className="space-y-2">
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 animate-pulse" />
+                  <div className="h-9 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
 
 export default ReservationSettingForm;

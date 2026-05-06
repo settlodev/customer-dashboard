@@ -1,10 +1,36 @@
 "use client";
 
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
+import { useRouter } from "next/navigation";
+import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useCallback, useEffect, useState, useTransition } from "react";
-import { FieldErrors, useForm } from "react-hook-form";
 import { z } from "zod";
+import {
+  AlertTriangle,
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  Mail,
+  MapPin,
+  Phone as PhoneIcon,
+  Sparkles,
+  StickyNote,
+  Table2,
+  Trash2,
+  User,
+  Users,
+} from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Form,
   FormControl,
@@ -20,12 +46,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Alert,
+  AlertIcon,
+  AlertBody,
+  AlertTitle,
+  AlertDescription,
+} from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogIcon,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import CustomerSelector from "../widgets/customer-selector";
 
-import { FormResponse } from "@/types/types";
 import {
   Reservation,
   RESERVATION_SOURCE_LABELS,
@@ -38,24 +80,42 @@ import {
   updateReservation,
 } from "@/lib/actions/reservation-actions";
 import { fetchAllSpaces } from "@/lib/actions/space-actions";
-import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
-import CustomerSelector from "../widgets/customer-selector";
-import CancelButton from "../widgets/cancel-button";
-import { SubmitButton } from "../widgets/submit-button";
+import { FormResponse } from "@/types/types";
 import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 
-const ReservationForm = ({
-  item,
-}: {
-  item: Reservation | null | undefined;
-}) => {
-  const [isPending, startTransition] = useTransition();
-  const [, setResponse] = useState<FormResponse | undefined>();
-  const [spaces, setSpaces] = useState<Space[]>([]);
+import styles from "./styles/form-shell.module.css";
 
-  const { toast } = useToast();
+type ReservationFormValues = z.infer<typeof ReservationSchema>;
+
+interface ReservationFormProps {
+  item: Reservation | null | undefined;
+}
+
+export default function ReservationForm({ item }: ReservationFormProps) {
   const router = useRouter();
+  const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
+  const [response, setResponse] = useState<FormResponse | undefined>();
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [activeTab, setActiveTab] = useState<
+    "guest" | "table" | "details"
+  >("guest");
+
+  const isEditMode = !!item;
+
+  const form = useForm<ReservationFormValues>({
+    resolver: zodResolver(ReservationSchema),
+    defaultValues: {
+      reservationDate: item?.reservationDate ?? "",
+      reservationTime: item?.reservationTime ?? "",
+      reservationEndTime: item?.reservationEndTime ?? undefined,
+      peopleCount: item?.peopleCount ?? undefined,
+      specialRequests: item?.specialRequests ?? undefined,
+      source: (item?.source as never) ?? "POS",
+      customerId: (item?.customer as string) ?? undefined,
+      tableSpaceId: (item?.tableAndSpace as string) ?? undefined,
+    },
+  });
 
   useEffect(() => {
     const loadSpaces = async () => {
@@ -75,290 +135,807 @@ const ReservationForm = ({
     loadSpaces();
   }, []);
 
-  const form = useForm<z.infer<typeof ReservationSchema>>({
-    resolver: zodResolver(ReservationSchema),
-    defaultValues: {
-      reservationDate: item?.reservationDate ?? "",
-      reservationTime: item?.reservationTime ?? "",
-      reservationEndTime: item?.reservationEndTime ?? undefined,
-      peopleCount: item?.peopleCount ?? undefined,
-      specialRequests: item?.specialRequests ?? undefined,
-      source: (item?.source as never) ?? "POS",
-      customerId: (item?.customer as string) ?? undefined,
-      tableSpaceId: (item?.tableAndSpace as string) ?? undefined,
-    },
-  });
+  const reservationDate = form.watch("reservationDate");
+  const reservationTime = form.watch("reservationTime");
+  const reservationEndTime = form.watch("reservationEndTime");
+  const peopleCount = form.watch("peopleCount");
+  const customerId = form.watch("customerId");
+  const tableSpaceId = form.watch("tableSpaceId");
+  const source = form.watch("source");
+  const specialRequests = form.watch("specialRequests");
+
+  const tableLabel = useMemo(() => {
+    if (!tableSpaceId) return undefined;
+    const t = spaces.find((s) => s.id === tableSpaceId);
+    return t ? t.name : undefined;
+  }, [tableSpaceId, spaces]);
+
+  const requiredFlags = useMemo(
+    () => [
+      !!reservationDate?.trim(),
+      !!reservationTime?.trim(),
+      peopleCount != null && peopleCount > 0,
+      !!source,
+    ],
+    [reservationDate, reservationTime, peopleCount, source],
+  );
+  const completion = Math.round(
+    (requiredFlags.filter(Boolean).length / requiredFlags.length) * 100,
+  );
+  const isValid = requiredFlags.every(Boolean);
+  const remainingFields = requiredFlags.filter((v) => !v).length;
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
+      const firstError =
+        Object.values(errors)[0]?.message ??
+        "Please check the highlighted fields and try again.";
       toast({
         variant: "destructive",
         title: "Form validation failed",
-        description:
-          typeof errors.message === "string"
-            ? errors.message
-            : "Please check your inputs and try again.",
+        description: typeof firstError === "string" ? firstError : undefined,
       });
     },
     [toast],
   );
 
-  const submitData = (values: z.infer<typeof ReservationSchema>) => {
-    startTransition(() => {
-      const handleResponse = (data: FormResponse | void) => {
-        if (!data) return;
-        setResponse(data);
-        const msg = SettloErrorHandler.safeMessage(data.message);
-        if (data.responseType === "success") {
-          toast({ variant: "success", title: "Success", description: msg });
-          router.push("/reservations");
-        } else {
-          toast({ variant: "destructive", title: "Error", description: msg });
+  const submit = useCallback(
+    (values: ReservationFormValues) => {
+      setResponse(undefined);
+      startTransition(async () => {
+        try {
+          const result = isEditMode
+            ? await updateReservation(item!.id, values)
+            : await createReservation(values);
+          if (!result) return;
+          setResponse(result);
+          if (result.responseType === "success") {
+            toast({
+              variant: "success",
+              title: isEditMode ? "Reservation updated" : "Reservation created",
+              description: SettloErrorHandler.safeMessage(result.message),
+            });
+            router.push("/reservations");
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Couldn't save reservation",
+              description: SettloErrorHandler.safeMessage(result.message),
+            });
+          }
+        } catch (error) {
+          toast({
+            variant: "destructive",
+            title: "Something went wrong",
+            description:
+              (error as Error)?.message ?? "Please try again later.",
+          });
         }
-      };
+      });
+    },
+    [isEditMode, item, router, toast],
+  );
 
-      if (item) {
-        updateReservation(item.id, values).then(handleResponse);
-      } else {
-        createReservation(values).then(handleResponse);
-      }
-    });
-  };
+  const handleDiscard = useCallback(() => {
+    router.back();
+  }, [router]);
 
   return (
     <Form {...form}>
+      {response?.responseType === "error" && response?.message ? (
+        <Alert tone="danger" className="mb-3">
+          <AlertIcon>
+            <AlertTriangle className="h-3.5 w-3.5" />
+          </AlertIcon>
+          <AlertBody>
+            <AlertTitle>We couldn&apos;t save this reservation</AlertTitle>
+            <AlertDescription>{response.message}</AlertDescription>
+          </AlertBody>
+        </Alert>
+      ) : null}
+
       <form
-        onSubmit={form.handleSubmit(submitData, onInvalid)}
-        className="space-y-6"
+        onSubmit={form.handleSubmit(submit, onInvalid)}
+        className={styles.formRoot}
       >
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-6">
-            {/* Date & Time */}
-            <div>
-              <h3 className="text-lg font-medium mb-4">Date & Time</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="reservationDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Reservation Date{" "}
-                        <span className="text-red-500">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          {...field}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+        <div className={styles.formGrid}>
+          {/* ── LEFT — form column ─────────────────────────────── */}
+          <div className={styles.formStack}>
+            {/* Identity card — date / time / guests */}
+            <section className={styles.formCard}>
+              <header className={styles.formCardHead}>
+                <div className={styles.icoBox}>
+                  <CalendarDays className="h-3.5 w-3.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3>When &amp; how many</h3>
+                  <p className={styles.formCardHeadDesc}>
+                    Pick the date, time, and party size — the rest is
+                    optional.
+                  </p>
+                </div>
+                <div className={styles.formCardActions}>
+                  <span className={styles.stepBadge}>STEP 01</span>
+                </div>
+              </header>
 
-                <FormField
-                  control={form.control}
-                  name="reservationTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Start Time <span className="text-red-500">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="time"
-                          {...field}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="reservationEndTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>End Time</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="time"
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Guest & Table */}
-            <div>
-              <h3 className="text-lg font-medium mb-4">Guest & Table</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="peopleCount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Number of Guests</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={1}
-                          placeholder="Party size"
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isPending}
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value === ""
-                                ? undefined
-                                : parseInt(e.target.value),
-                            )
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="customerId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Customer</FormLabel>
-                      <FormControl>
-                        <CustomerSelector
-                          value={field.value}
-                          onChange={(id) => field.onChange(id)}
-                          placeholder="Select customer"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="tableSpaceId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Table</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value ?? ""}
-                        disabled={isPending}
-                      >
+              <div className={styles.formBody}>
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-4">
+                  <FormField
+                    control={form.control}
+                    name="reservationDate"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0">
+                        <FormLabel className={styles.fieldLabel}>
+                          Date <span className="req">*</span>
+                        </FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Auto-assign or select" />
-                          </SelectTrigger>
+                          <Input
+                            type="date"
+                            disabled={isPending}
+                            {...field}
+                            value={field.value ?? ""}
+                          />
                         </FormControl>
-                        <SelectContent>
-                          {spaces.map((space) => (
-                            <SelectItem
-                              key={space.id}
-                              value={space.id as string}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="reservationTime"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0">
+                        <FormLabel className={styles.fieldLabel}>
+                          Start time <span className="req">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="time"
+                            disabled={isPending}
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="reservationEndTime"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0">
+                        <FormLabel className={styles.fieldLabel}>
+                          End time
+                          <span className="opt">OPTIONAL</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="time"
+                            disabled={isPending}
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="peopleCount"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0">
+                        <FormLabel className={styles.fieldLabel}>
+                          Guests <span className="req">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={1}
+                            placeholder="Party size"
+                            disabled={isPending}
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) =>
+                              field.onChange(
+                                e.target.value === ""
+                                  ? undefined
+                                  : parseInt(e.target.value, 10),
+                              )
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Tabs section */}
+            <section className={styles.formCard}>
+              <div className={styles.formTabs} role="tablist">
+                {(
+                  [
+                    {
+                      id: "guest",
+                      label: "Guest",
+                      icon: <User className="h-3.5 w-3.5" />,
+                    },
+                    {
+                      id: "table",
+                      label: "Table",
+                      icon: <Table2 className="h-3.5 w-3.5" />,
+                    },
+                    {
+                      id: "details",
+                      label: "Details",
+                      icon: <StickyNote className="h-3.5 w-3.5" />,
+                    },
+                  ] as const
+                ).map((t) => (
+                  <button
+                    type="button"
+                    key={t.id}
+                    role="tab"
+                    aria-selected={activeTab === t.id}
+                    onClick={() => setActiveTab(t.id)}
+                    className={`${styles.formTab} ${
+                      activeTab === t.id ? styles.formTabOn : ""
+                    }`}
+                  >
+                    {t.icon} {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Guest */}
+              {activeTab === "guest" && (
+                <>
+                  <header
+                    className={styles.formCardHead}
+                    style={{ borderTop: "1px solid var(--pf-line)" }}
+                  >
+                    <div className={styles.icoBox}>
+                      <User className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3>Guest</h3>
+                      <p className={styles.formCardHeadDesc}>
+                        Link an existing customer or capture details for a new
+                        guest.
+                      </p>
+                    </div>
+                  </header>
+                  <div className={styles.formBody}>
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5">
+                      <FormField
+                        control={form.control}
+                        name="customerId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              Existing customer
+                              <span className="opt">OPTIONAL</span>
+                            </FormLabel>
+                            <FormControl>
+                              <CustomerSelector
+                                value={field.value}
+                                onChange={(id) => field.onChange(id)}
+                                placeholder="Search by name or phone"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3">
+                      <FormField
+                        control={form.control}
+                        name="customerFirstName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              First name
+                              <span className="opt">WALK-IN</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="e.g. Amani"
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="customerLastName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              Last name
+                              <span className="opt">WALK-IN</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="e.g. Mushi"
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="customerPhone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              Phone
+                              <span className="opt">WALK-IN</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="+255 ..."
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="customerEmail"
+                        render={({ field }) => (
+                          <FormItem className="sm:col-span-2 xl:col-span-3">
+                            <FormLabel className={styles.fieldLabel}>
+                              Email
+                              <span className="opt">OPTIONAL</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="email"
+                                placeholder="guest@example.com"
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Table */}
+              {activeTab === "table" && (
+                <>
+                  <header
+                    className={styles.formCardHead}
+                    style={{ borderTop: "1px solid var(--pf-line)" }}
+                  >
+                    <div className={styles.icoBox}>
+                      <Table2 className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3>Table assignment</h3>
+                      <p className={styles.formCardHeadDesc}>
+                        Pick a table now or leave blank for staff to assign on
+                        arrival.
+                      </p>
+                    </div>
+                  </header>
+                  <div className={styles.formBody}>
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5">
+                      <FormField
+                        control={form.control}
+                        name="tableSpaceId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              Table
+                              <span className="opt">OPTIONAL</span>
+                            </FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value ?? ""}
+                              disabled={isPending}
                             >
-                              {space.name}
-                              {space.capacity
-                                ? ` (${space.capacity} seats)`
-                                : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Auto-assign or pick a table" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {spaces.map((s) => (
+                                  <SelectItem
+                                    key={s.id}
+                                    value={s.id as string}
+                                  >
+                                    {s.name}
+                                    {s.capacity ? ` · ${s.capacity} seats` : ""}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
-            <Separator />
+              {/* Details */}
+              {activeTab === "details" && (
+                <>
+                  <header
+                    className={styles.formCardHead}
+                    style={{ borderTop: "1px solid var(--pf-line)" }}
+                  >
+                    <div className={styles.icoBox}>
+                      <StickyNote className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3>Source &amp; notes</h3>
+                      <p className={styles.formCardHeadDesc}>
+                        Where did this booking come from and what should staff
+                        know?
+                      </p>
+                    </div>
+                  </header>
+                  <div className={styles.formBody}>
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="source"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={styles.fieldLabel}>
+                              Booking source <span className="req">*</span>
+                            </FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value ?? ""}
+                              disabled={isPending}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select source" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {RESERVATION_SOURCES.map((src) => (
+                                  <SelectItem key={src} value={src}>
+                                    {RESERVATION_SOURCE_LABELS[src]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-            {/* Details */}
-            <div>
-              <h3 className="text-lg font-medium mb-4">Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="source"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Booking Source</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value ?? ""}
-                        disabled={isPending}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select source" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {RESERVATION_SOURCES.map((src) => (
-                            <SelectItem key={src} value={src}>
-                              {RESERVATION_SOURCE_LABELS[src]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      <FormField
+                        control={form.control}
+                        name="specialRequests"
+                        render={({ field }) => (
+                          <FormItem className="sm:col-span-2">
+                            <FormLabel className={styles.fieldLabel}>
+                              Special requests
+                              <span className="opt">OPTIONAL</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="e.g. Birthday — please prepare a candle. Allergies: shellfish."
+                                rows={4}
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </section>
+          </div>
 
-                <FormField
-                  control={form.control}
-                  name="specialRequests"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Special Requests</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Any special requests or notes"
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isPending}
-                          rows={3}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          {/* ── RIGHT — preview + tips ─────────────────────────── */}
+          <aside className={styles.formStack}>
+            <ReservationLivePreviewCard
+              reservationDate={reservationDate}
+              reservationTime={reservationTime}
+              reservationEndTime={reservationEndTime}
+              peopleCount={peopleCount}
+              tableLabel={tableLabel}
+              hasCustomer={!!customerId}
+              source={source}
+              specialRequests={specialRequests}
+              checklist={[
+                { label: "Date", done: requiredFlags[0] },
+                { label: "Start time", done: requiredFlags[1] },
+                { label: "Guests", done: requiredFlags[2] },
+                { label: "Source", done: requiredFlags[3] },
+              ]}
+              completion={completion}
+            />
+            <ReservationTipsCard isEdit={isEditMode} />
+          </aside>
+        </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
-          <CancelButton />
-          <Separator orientation="vertical" className="h-5" />
-          <SubmitButton
-            isPending={isPending}
-            label={item ? "Update Reservation" : "Create Reservation"}
-          />
+        {/* Sticky footer */}
+        <div className={styles.formFoot}>
+          <div className={styles.formFootSpacer} />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isPending}
+                title="Discard changes and go back"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Discard
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent tone="danger">
+              <AlertDialogIcon>
+                <Trash2 className="h-5 w-5" />
+              </AlertDialogIcon>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Anything you typed since opening the form will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDiscard}>
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button
+            type="submit"
+            disabled={isPending || !isValid}
+            title={
+              isValid
+                ? isEditMode
+                  ? "Save changes"
+                  : "Create reservation"
+                : `Complete required fields (${remainingFields} remaining)`
+            }
+          >
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+            {isEditMode ? "Save changes" : "Create reservation"}
+          </Button>
         </div>
       </form>
     </Form>
   );
-};
+}
 
-export default ReservationForm;
+// ─────────────────────────────────────────────────────────────────────
+// Right-rail: live preview card
+// ─────────────────────────────────────────────────────────────────────
+
+interface ReservationLivePreviewProps {
+  reservationDate: string | undefined;
+  reservationTime: string | undefined;
+  reservationEndTime: string | undefined;
+  peopleCount: number | undefined;
+  tableLabel: string | undefined;
+  hasCustomer: boolean;
+  source: string | undefined;
+  specialRequests: string | undefined;
+  checklist: Array<{ label: string; done: boolean }>;
+  completion: number;
+}
+
+function ReservationLivePreviewCard({
+  reservationDate,
+  reservationTime,
+  reservationEndTime,
+  peopleCount,
+  tableLabel,
+  hasCustomer,
+  source,
+  specialRequests,
+  checklist,
+  completion,
+}: ReservationLivePreviewProps) {
+  const dateLabel = reservationDate
+    ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(
+        new Date(reservationDate),
+      )
+    : "Pick a date";
+  const timeLabel = reservationTime
+    ? reservationEndTime
+      ? `${reservationTime.substring(0, 5)} – ${reservationEndTime.substring(0, 5)}`
+      : reservationTime.substring(0, 5)
+    : "Pick a time";
+
+  return (
+    <div className={styles.previewCard}>
+      <div className={styles.previewHead}>
+        <span className={styles.liveDot} />
+        Live preview
+      </div>
+      <div className={styles.previewBody}>
+        <div
+          className={styles.previewThumb}
+          style={{
+            background:
+              "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.6))",
+          }}
+        >
+          <CalendarDays className="h-10 w-10 text-white opacity-90" />
+        </div>
+        <div className={styles.previewName}>{dateLabel}</div>
+        <div className={styles.previewMeta}>
+          {timeLabel}
+          {peopleCount
+            ? ` · ${peopleCount} guest${peopleCount === 1 ? "" : "s"}`
+            : ""}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {tableLabel ? (
+            <Badge variant="soft" className="text-[10.5px]">
+              <Table2 className="mr-1 h-2.5 w-2.5" /> {tableLabel}
+            </Badge>
+          ) : (
+            <Badge variant="warn" className="text-[10.5px]">
+              <Table2 className="mr-1 h-2.5 w-2.5" /> Auto-assign
+            </Badge>
+          )}
+          {hasCustomer ? (
+            <Badge variant="pos" className="text-[10.5px]">
+              <User className="mr-1 h-2.5 w-2.5" /> Linked customer
+            </Badge>
+          ) : (
+            <Badge variant="soft" className="text-[10.5px]">
+              <User className="mr-1 h-2.5 w-2.5" /> Walk-in
+            </Badge>
+          )}
+          {source && (
+            <Badge variant="soft" className="text-[10.5px]">
+              <Sparkles className="mr-1 h-2.5 w-2.5" />{" "}
+              {RESERVATION_SOURCE_LABELS[source as never] ?? source}
+            </Badge>
+          )}
+          {specialRequests && (
+            <Badge variant="soft" className="text-[10.5px]">
+              <StickyNote className="mr-1 h-2.5 w-2.5" /> Notes
+            </Badge>
+          )}
+        </div>
+
+        <div className={styles.checklist}>
+          {checklist.map((c) => (
+            <div
+              key={c.label}
+              className={`${styles.checklistItem} ${
+                c.done ? styles.checklistItemDone : ""
+              }`}
+            >
+              <span className={styles.checklistMark}>
+                {c.done ? <CheckCircle2 className="h-2.5 w-2.5" /> : null}
+              </span>
+              {c.label}
+            </div>
+          ))}
+        </div>
+
+        <div className={styles.readiness}>
+          <div className={styles.readinessHead}>
+            <span className={styles.readinessLabel}>Readiness</span>
+            <span
+              className={`${styles.readinessPct} ${
+                completion === 100 ? styles.readinessPctDone : ""
+              }`}
+            >
+              {completion}%
+            </span>
+          </div>
+          <div className={styles.readinessBar}>
+            <div
+              className={`${styles.readinessBarFill} ${
+                completion === 100 ? styles.readinessBarFillDone : ""
+              }`}
+              style={{ width: `${completion}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Right-rail: contextual tips card
+// ─────────────────────────────────────────────────────────────────────
+
+function ReservationTipsCard({ isEdit }: { isEdit: boolean }) {
+  const tips = isEdit
+    ? [
+        {
+          icon: Clock,
+          text: "Moving the time will trigger a re-allocation if the original table isn't free at the new slot.",
+        },
+        {
+          icon: Users,
+          text: "Bumping the guest count past the assigned table's capacity unassigns it — staff will need to pick again.",
+        },
+        {
+          icon: PhoneIcon,
+          text: "Updating customer details on a linked customer also updates the customer record everywhere else.",
+        },
+      ]
+    : [
+        {
+          icon: Sparkles,
+          text: "Date, start time, party size, and source are all that's required to create a booking.",
+        },
+        {
+          icon: User,
+          text: "Pick an existing customer to attach loyalty and history — or just type a name and phone for walk-ins.",
+        },
+        {
+          icon: MapPin,
+          text: "Leave the table blank to let staff seat the guests on arrival based on what's free.",
+        },
+        {
+          icon: Mail,
+          text: "Add an email if you want the booking confirmation and reminders to reach the customer.",
+        },
+      ];
+
+  return (
+    <div className={styles.previewCard}>
+      <div className={styles.previewHead}>Tips</div>
+      <div className="space-y-2.5 px-4 py-4">
+        {tips.map(({ icon: Icon, text }, i) => (
+          <div
+            key={i}
+            className="flex items-start gap-2 text-[12px] text-ink-3"
+          >
+            <Icon className="h-3.5 w-3.5 flex-shrink-0 text-primary mt-0.5" />
+            <span>{text}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

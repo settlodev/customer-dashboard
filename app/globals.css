@@ -77,24 +77,24 @@
     --warn-tint: 36 64% 47% / 0.12;
   }
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 240 4% 5%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    --card: 240 3% 12%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 240 3% 14%;
     --popover-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
     --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
+    --secondary: 240 3% 17%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
+    --muted: 240 3% 17%;
     --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
+    --accent: 240 3% 17%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    --border: 240 3% 18%;
+    --input: 240 3% 18%;
     --ring: 240 4.9% 83.9%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -103,14 +103,14 @@
     --chart-5: 340 75% 55%;
 
     /* Dashboard tokens (dark) */
-    --canvas: 240 6% 7%;
-    --surface: 240 5% 10%;
+    --canvas: 240 4% 5%;
+    --surface: 240 3% 14%;
     --ink: 0 0% 96%;
     --ink-2: 0 0% 88%;
     --ink-3: 0 0% 70%;
     --muted-2: 240 4% 40%;
-    --line: 240 4% 16%;
-    --line-2: 240 4% 22%;
+    --line: 240 3% 18%;
+    --line-2: 240 3% 24%;
     --pos: 156 60% 50%;
     --pos-tint: 156 60% 50% / 0.18;
     --neg: 11 65% 60%;

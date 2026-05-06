@@ -139,12 +139,12 @@ export const columns: ColumnDef<Space>[] = [
     },
   },
   {
-    id: "status",
-    accessorKey: "status",
-    header: "Status",
+    id: "active",
+    accessorKey: "active",
+    header: "Active",
     enableHiding: true,
     cell: ({ row }) => {
-      const isActive = row.original.status;
+      const isActive = row.original.active;
       return (
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${

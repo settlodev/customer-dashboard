@@ -426,7 +426,7 @@ export default function StockModificationForm() {
                   return (
                     <div
                       key={field.id}
-                      className="border rounded-lg p-4 space-y-3 bg-gray-50/40 dark:bg-gray-900/30"
+                      className="border rounded-lg p-4 space-y-3 bg-muted/40"
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-600 dark:text-gray-400">

@@ -11,7 +11,6 @@ import type {
   CsvImportJobResponse,
 } from "@/types/stock/type";
 import { getCurrentLocation } from "./business/get-current-business";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { StockSchema } from "@/types/stock/schema";
 import { inventoryUrl } from "./inventory-client";
 

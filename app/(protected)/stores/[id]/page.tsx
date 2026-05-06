@@ -1,59 +1,83 @@
-import { notFound } from "next/navigation";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { Pencil } from "lucide-react";
+
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { Button } from "@/components/ui/button";
 import { getStore } from "@/lib/actions/store-actions";
-import StoreForm from "@/components/forms/store_form";
-import StoreSubscriptionSetup from "@/components/subscription/StoreSubscriptionSetup";
+import { Store } from "@/types/store/type";
+import { StoreDetailView } from "./store-detail-view";
 
 type Params = Promise<{ id: string }>;
 
 export default async function StorePage({ params }: { params: Params }) {
-  const resolvedParams = await params;
-  const isNewItem = resolvedParams.id === "new";
-  let item = null;
+  const { id } = await params;
 
-  if (!isNewItem) {
-    try {
-      item = await getStore(resolvedParams.id);
-      if (!item) notFound();
-    } catch {
-      notFound();
-    }
+  if (id === "new") redirect("/stores/new");
+
+  let store: Store | null = null;
+  try {
+    store = await getStore(id);
+    if (!store) notFound();
+  } catch {
+    notFound();
   }
 
-  const breadcrumbItems = [
-    { title: "Stores", link: "/stores" },
-    { title: isNewItem ? "New" : item?.name || "Edit", link: "" },
-  ];
+  const statusLabel = store.active ? "Active" : "Inactive";
+  const statusClass = store.active
+    ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
+    : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+
+  const subtitleParts: string[] = [];
+  if (store.storeType) subtitleParts.push(store.storeType);
+  if (store.region) subtitleParts.push(store.region);
+  if (store.district) subtitleParts.push(store.district);
 
   return (
-    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 mt-12">
-      <div className="space-y-6">
-        <div>
-          <div className="hidden sm:block mb-2">
-            <BreadcrumbsNav items={breadcrumbItems} />
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            {isNewItem ? "Add Store" : item?.name || "Edit Store"}
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {isNewItem
-              ? "Create a new store for your business"
-              : "Manage store details and subscription"}
-          </p>
-        </div>
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Stores", href: "/stores" },
+          { title: store.name },
+        ]}
+      />
+      <PageHeader
+        title={store.name}
+        titleAccessory={
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClass}`}
+            >
+              {statusLabel}
+            </span>
+            {store.identifier && (
+              <span className="inline-flex items-center rounded-full border border-line bg-canvas px-2 py-0.5 font-mono text-[11px] tracking-[0.02em] text-muted-foreground">
+                {store.identifier}
+              </span>
+            )}
+          </span>
+        }
+        subtitle={
+          subtitleParts.length > 0 ? subtitleParts.join(" · ") : undefined
+        }
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/stores/${store.id}/edit`}>
+              <Pencil className="mr-1.5 h-4 w-4" />
+              Edit
+            </Link>
+          </Button>
+        }
+      />
 
-        {/* Show pending invoice / subscription setup for existing stores */}
-        {!isNewItem && item && (
-          <StoreSubscriptionSetup
-            storeId={item.id}
-            storeName={item.name}
-            businessId={item.businessId}
-            locationId={item.locationId}
-          />
-        )}
-
-        <StoreForm item={isNewItem ? null : item} />
-      </div>
-    </div>
+      <PageBody>
+        <StoreDetailView store={store} />
+      </PageBody>
+    </PageShell>
   );
 }

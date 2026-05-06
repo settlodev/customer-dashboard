@@ -6,7 +6,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import { FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
-import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
+import { getAuthToken } from "@/lib/auth-utils";
 import { getCurrentWarehouse } from "./current-warehouse-action";
 
 // ── Queries ─────────────────────────────────────────────────────────
@@ -14,7 +14,7 @@ import { getCurrentWarehouse } from "./current-warehouse-action";
 export async function getWarehouses(businessId?: string): Promise<Warehouses[]> {
   try {
     const apiClient = new ApiClient();
-    const biz = businessId || (await getCurrentBusiness())?.id;
+    const biz = businessId || (await getAuthToken())?.businessId;
     const params = biz ? `?businessId=${biz}` : "";
     const data = await apiClient.get(`/api/v1/warehouses${params}`);
     return parseStringify(data) as Warehouses[];
@@ -66,14 +66,14 @@ export async function createWarehouse(data: {
   capacity?: number;
 }): Promise<FormResponse | void> {
   try {
-    const business = await getCurrentBusiness();
-    if (!business?.id) {
+    const businessId = (await getAuthToken())?.businessId;
+    if (!businessId) {
       return parseStringify({ responseType: "error", message: "No business selected" });
     }
 
     const apiClient = new ApiClient();
     await apiClient.post("/api/v1/warehouses", {
-      businessId: business.id,
+      businessId,
       ...data,
     });
 

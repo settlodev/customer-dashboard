@@ -1331,7 +1331,7 @@ function SettingsFieldRow({
         <select
           value={(value as string) || ""}
           onChange={(e) => onChange(e.target.value)}
-          className="text-sm border rounded-md px-3 py-1.5 bg-white dark:bg-gray-900 dark:border-gray-700"
+          className="text-sm border rounded-md px-3 py-1.5 bg-card"
         >
           {field.options?.map((opt) => (
             <option key={opt.value} value={opt.value}>

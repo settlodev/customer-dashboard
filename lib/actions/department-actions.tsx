@@ -2,7 +2,6 @@
 
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
@@ -19,7 +18,6 @@ import { getCurrentDestination } from "@/lib/actions/context";
 // ---------------------------------------------------------------------------
 
 export const fetchAllDepartments = async (): Promise<Department[]> => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(`/api/v1/departments/list`);
@@ -34,7 +32,6 @@ export const searchDepartment = async (
   page: number,
   pageLimit: number,
 ): Promise<ApiResponse<Department>> => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient();
     const params = new URLSearchParams({
@@ -54,7 +51,6 @@ export const searchDepartment = async (
 export const searchDepartmentByName = async (
   query: string,
 ): Promise<Department[]> => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(
@@ -75,7 +71,6 @@ export const searchDepartmentByName = async (
 export const fetchDepartmentsForCurrentLocation = async (
   activeOnly: boolean = true,
 ): Promise<Department[]> => {
-  await getAuthenticatedUser();
   const destination = await getCurrentDestination();
   if (!destination) return [];
   try {
@@ -97,7 +92,6 @@ export const getDepartmentList = async (
   activeOnly?: boolean,
   ordered?: boolean,
 ): Promise<Department[]> => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient();
     const params = new URLSearchParams();
@@ -212,7 +206,6 @@ export const updateDepartment = async (
 // ---------------------------------------------------------------------------
 
 export const deleteDepartment = async (id: string): Promise<void> => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient();
     await apiClient.delete(`/api/v1/departments/${id}`);
@@ -269,7 +262,6 @@ export const departmentReport = async (
   startDate?: string,
   endDate?: string,
 ): Promise<DepartmentReport> => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient("reports");
     const params = new URLSearchParams();

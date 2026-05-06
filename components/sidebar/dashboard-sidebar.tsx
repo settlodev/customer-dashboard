@@ -1,28 +1,5 @@
 "use client";
 
-/**
- * Dashboard sidebar — the single floating chrome for `(protected)` pages.
- *
- * Replaces the old `SidebarWrapper` + `NavbarWrapper` combo from the
- * pre-redesign layout. Everything that used to live in the topbar
- * (Settlo logo, search trigger, notifications bell, location switcher,
- * user dropdown) now lives inside this sidebar, so the canvas around
- * the page content has nothing else floating on it.
- *
- * Layout (top → bottom):
- *   1. Logo row + search + bell
- *   2. SidebarLocationSwitcher — destination toggle (location/warehouse/store)
- *   3. Workspace nav (accordion, derived from `menuItems()`)
- *   4. Footer: Billing, Settings, divider, SidebarAccountMenu (which
- *      absorbs business-switching + user account into one popover),
- *      copyright
- *
- * Mobile: the desktop aside is hidden below `lg`. A separate
- * `MobileSidebarTrigger` (rendered by the protected layout in a
- * sticky bar at the top of <main>) opens the same content inside a
- * Sheet, coordinated through `SidebarContext`.
- */
-
 import React, {
   createContext,
   useContext,
@@ -59,12 +36,6 @@ import { menuItems } from "@/types/menu_items";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { ExtendedUser } from "@/types/types";
 
-// Shared open/close state for the mobile sidebar Sheet. The trigger
-// button lives in the page chrome (a sticky bar at the top of <main>)
-// while the Sheet itself is rendered by DashboardSidebarShell, so they
-// need a context to coordinate. This avoids the old approach of a
-// fixed-positioned trigger button that forced every page to add
-// `max-lg:pl-14` padding to clear it.
 interface SidebarContextValue {
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
@@ -82,11 +53,7 @@ function useSidebar(): SidebarContextValue {
   return ctx;
 }
 
-export function SidebarProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   return (
     <SidebarContext.Provider value={{ mobileOpen, setMobileOpen }}>
@@ -95,10 +62,6 @@ export function SidebarProvider({
   );
 }
 
-/**
- * Hamburger trigger that opens the mobile sidebar Sheet. Place inside
- * the mobile-only top bar in <main>. Hidden on desktop via `lg:hidden`.
- */
 export function MobileSidebarTrigger({ className }: { className?: string }) {
   const { setMobileOpen } = useSidebar();
   return (
@@ -116,12 +79,6 @@ export function MobileSidebarTrigger({ className }: { className?: string }) {
   );
 }
 
-/**
- * Mobile-only top bar that sits at the top of <main>. Hosts the
- * hamburger trigger and a Settlo logo so there's still branding when
- * the sidebar Sheet is closed (the only other place the logo lives).
- * Hidden on desktop via `lg:hidden`.
- */
 export function MobileTopBar() {
   return (
     <div className="flex h-12 flex-shrink-0 items-center gap-3 border-b border-line bg-canvas/95 px-3 backdrop-blur lg:hidden">
@@ -178,6 +135,23 @@ function getSectionIcon(name: string) {
   }
 }
 
+const linkMatchesPath = (link: string, pathname: string) =>
+  pathname === link || pathname.startsWith(link + "/");
+
+const isItemActiveAmong = (
+  itemLink: string,
+  pathname: string,
+  siblings: { link: string }[],
+) => {
+  if (!linkMatchesPath(itemLink, pathname)) return false;
+  return !siblings.some(
+    (other) =>
+      other.link !== itemLink &&
+      other.link.length > itemLink.length &&
+      linkMatchesPath(other.link, pathname),
+  );
+};
+
 function DashboardSidebarContent({
   data,
   user,
@@ -191,9 +165,6 @@ function DashboardSidebarContent({
     hasMultipleDestinations: data.hasMultipleDestinations,
   });
 
-  // Auto-expand the section that owns the current route. Only fires on
-  // navigation, so manually collapsing a section while the URL stays the
-  // same does not snap it back open.
   const [openIndex, setOpenIndex] = useState<number>(-1);
   const prevPathRef = useRef(pathname);
   useEffect(() => {
@@ -209,9 +180,6 @@ function DashboardSidebarContent({
     prevPathRef.current = pathname;
     const idx = findActive();
     if (idx !== -1) setOpenIndex(idx);
-    // sections is derived from a stable input; re-running on every
-    // pathname tick is enough.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   if (!data.business) return null;
@@ -235,32 +203,32 @@ function DashboardSidebarContent({
           />
         </Link>
 
-        <button
-          type="button"
-          aria-label="Search"
-          title="Search (⌘K)"
-          className="grid h-8 w-8 place-items-center rounded-md text-ink-3 hover:bg-canvas hover:text-ink"
-          onClick={() => {
-            // TODO: open command-palette overlay. The handler is a stub
-            // until the search backend lands.
-          }}
-        >
-          <Search className="h-4 w-4" />
-        </button>
+        {/*<button*/}
+        {/*  type="button"*/}
+        {/*  aria-label="Search"*/}
+        {/*  title="Search (⌘K)"*/}
+        {/*  className="grid h-8 w-8 place-items-center rounded-md text-ink-3 hover:bg-canvas hover:text-ink"*/}
+        {/*  onClick={() => {*/}
+        {/*    // TODO: open command-palette overlay. The handler is a stub*/}
+        {/*    // until the search backend lands.*/}
+        {/*  }}*/}
+        {/*>*/}
+        {/*  <Search className="h-4 w-4" />*/}
+        {/*</button>*/}
 
-        <button
-          type="button"
-          aria-label="Notifications"
-          title="Notifications"
-          className="relative grid h-8 w-8 place-items-center rounded-md text-ink-3 hover:bg-canvas hover:text-ink"
-          onClick={() => {
-            // TODO: open notifications drawer. The orange dot below is
-            // a static signal until the feed is wired up.
-          }}
-        >
-          <Bell className="h-4 w-4" />
-          <span className="pointer-events-none absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full border border-card bg-primary" />
-        </button>
+        {/*<button*/}
+        {/*  type="button"*/}
+        {/*  aria-label="Notifications"*/}
+        {/*  title="Notifications"*/}
+        {/*  className="relative grid h-8 w-8 place-items-center rounded-md text-ink-3 hover:bg-canvas hover:text-ink"*/}
+        {/*  onClick={() => {*/}
+        {/*    // TODO: open notifications drawer. The orange dot below is*/}
+        {/*    // a static signal until the feed is wired up.*/}
+        {/*  }}*/}
+        {/*>*/}
+        {/*  <Bell className="h-4 w-4" />*/}
+        {/*  <span className="pointer-events-none absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full border border-card bg-primary" />*/}
+        {/*</button>*/}
 
         {isMobile && (
           <Button
@@ -275,11 +243,6 @@ function DashboardSidebarContent({
         )}
       </div>
 
-      {/* ── Top toggle: location / warehouse / store ─────────────────
-          Single segmented popover. Replaces the old separate
-          BusinessSwitcher card + thin LocationSwitcher button — the
-          business-switching responsibility now lives in the bottom
-          AccountMenu instead. */}
       <div className="px-3 pb-2">
         <SidebarLocationSwitcher
           locationList={data.locationList}
@@ -294,11 +257,11 @@ function DashboardSidebarContent({
       {/* ── Workspace nav (accordion sections) ───────────────────── */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
         {sections.map((section, sectionIndex) => {
-          // Leaf section: top-level direct link, no submenu.
           const sectionLink = (section as { link?: string }).link;
           if (sectionLink && (!section.items || section.items.length === 0)) {
             const isActive =
-              pathname === sectionLink || pathname.startsWith(sectionLink + "/");
+              pathname === sectionLink ||
+              pathname.startsWith(sectionLink + "/");
             return (
               <div key={section.label} className="py-0.5">
                 <Link
@@ -359,9 +322,11 @@ function DashboardSidebarContent({
               {isOpen && (
                 <div className="mt-1 ml-2 space-y-0.5 border-l border-line pl-3">
                   {section.items.map((item: MenuItemShape) => {
-                    const isItemActive =
-                      pathname === item.link ||
-                      pathname.startsWith(item.link + "/");
+                    const isItemActive = isItemActiveAmong(
+                      item.link,
+                      pathname,
+                      section.items,
+                    );
                     return (
                       <Link
                         key={item.title}
@@ -404,15 +369,6 @@ interface DashboardSidebarShellProps {
   user: ExtendedUser | null;
 }
 
-/**
- * Renders the desktop floating sidebar and the mobile Sheet, wired to
- * the shared `SidebarContext` so the trigger lives elsewhere (a sticky
- * top bar in <main>). Drop this once inside the protected layout.
- *
- * The mobile Sheet uses `hideClose` so the auto-X from SheetContent
- * doesn't double-up with the custom X rendered inside the sidebar's
- * own top header row.
- */
 export function DashboardSidebarShell({
   data,
   user,
@@ -426,12 +382,6 @@ export function DashboardSidebarShell({
         <DashboardSidebarContent data={data} user={user} />
       </aside>
 
-      {/* Mobile sheet. The inline `top` / `height` overrides reserve
-          space for the SubscriptionBanner — the banner is `relative
-          z-[60]` while the Sheet is `fixed z-50`, so without this
-          override the banner would clip the Sheet's logo row. The
-          `--banner-h` variable is set by `<SubscriptionBanner />`
-          (defaults to 0px when no banner is showing). */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent
           side="left"

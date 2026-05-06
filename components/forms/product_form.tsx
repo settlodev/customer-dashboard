@@ -1591,7 +1591,7 @@ function VariantEditor({
     <div
       className={
         showHeader
-          ? "border rounded-lg p-4 space-y-4 bg-gray-50/50 dark:bg-gray-900/30"
+          ? "border rounded-lg p-4 space-y-4 bg-muted/40"
           : "space-y-4"
       }
     >

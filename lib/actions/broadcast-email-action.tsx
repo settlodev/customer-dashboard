@@ -2,7 +2,6 @@
 
 import {z} from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
@@ -13,7 +12,6 @@ import { Email } from "@/types/email/type";
 import { EmailSchema } from "@/types/email/schema";
 
 export const fectchEmails = async () : Promise<Email[]> => {
-    await  getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
@@ -36,7 +34,6 @@ export const searchEmail = async (
     page:number,
     pageLimit:number
 ): Promise<ApiResponse<Email>> =>{
-    await getAuthenticatedUser();
 
 
     try {

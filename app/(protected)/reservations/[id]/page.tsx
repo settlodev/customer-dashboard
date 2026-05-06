@@ -1,84 +1,111 @@
 import { UUID } from "node:crypto";
-import { notFound } from "next/navigation";
-import { Pencil, History } from "lucide-react";
+import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { Pencil } from "lucide-react";
 
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import { Reservation } from "@/types/reservation/type";
-import ReservationForm from "@/components/forms/reservation_form";
-import ReservationTimeline from "@/components/reservation/reservation-timeline";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { Button } from "@/components/ui/button";
+import {
+  Reservation,
+  RESERVATION_STATUS_LABELS,
+} from "@/types/reservation/type";
 import { getReservationById } from "@/lib/actions/reservation-actions";
+import { ReservationDetailView } from "./reservation-detail-view";
+import { ReservationStatus } from "@/types/enums";
 
 type Params = Promise<{ id: string }>;
+
+const STATUS_PILL: Record<ReservationStatus, string> = {
+  [ReservationStatus.PENDING]:
+    "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  [ReservationStatus.CONFIRMED]:
+    "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  [ReservationStatus.SEATED]:
+    "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+  [ReservationStatus.COMPLETED]:
+    "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  [ReservationStatus.CANCELLED]:
+    "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  [ReservationStatus.NO_SHOW]:
+    "bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400",
+};
+
 export default async function ReservationPage({
   params,
 }: {
   params: Params;
 }) {
-  const resolvedParams = await params;
-  const isNewItem = resolvedParams.id === "new";
-  let item: Reservation | null = null;
+  const { id } = await params;
 
-  if (!isNewItem) {
-    try {
-      item = await getReservationById(resolvedParams.id as UUID);
-    } catch (error) {
-      console.log(error);
-      throw new Error("Failed to load reservation data");
-    }
-    if (!item) notFound();
+  if (id === "new") redirect("/reservations/new");
+
+  let reservation: Reservation | null = null;
+  try {
+    reservation = await getReservationById(id as UUID);
+  } catch {
+    throw new Error("Failed to load reservation data");
   }
+  if (!reservation) notFound();
 
-  const breadcrumbItems = [
-    { title: "Reservations", link: "/reservations" },
-    {
-      title: isNewItem ? "New" : item?.customerName || "Edit",
-      link: "",
-    },
-  ];
+  const headerName = reservation.customerName || "Walk-in reservation";
+  const status = reservation.reservationStatus;
+  const statusClass =
+    STATUS_PILL[status] ??
+    "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+
+  const formattedDate = reservation.reservationDate
+    ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(
+        new Date(reservation.reservationDate),
+      )
+    : null;
+  const time = reservation.reservationTime?.substring(0, 5);
+
+  const subtitleParts: string[] = [];
+  if (formattedDate) subtitleParts.push(formattedDate);
+  if (time) subtitleParts.push(time);
+  if (reservation.peopleCount)
+    subtitleParts.push(
+      `${reservation.peopleCount} guest${reservation.peopleCount === 1 ? "" : "s"}`,
+    );
+  if (reservation.tableAndSpaceName)
+    subtitleParts.push(reservation.tableAndSpaceName);
 
   return (
-    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 mt-12">
-      <div className="space-y-6">
-        <div>
-          <div className="hidden sm:block mb-2">
-            <BreadcrumbsNav items={breadcrumbItems} />
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            {isNewItem ? "Create Reservation" : "Edit Reservation"}
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {isNewItem
-              ? "Add a new reservation to your business location"
-              : "Update reservation details or review the activity timeline"}
-          </p>
-        </div>
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Reservations", href: "/reservations" },
+          { title: headerName },
+        ]}
+      />
+      <PageHeader
+        title={headerName}
+        titleAccessory={
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClass}`}
+          >
+            {RESERVATION_STATUS_LABELS[status] ?? String(status)}
+          </span>
+        }
+        subtitle={subtitleParts.join(" · ")}
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/reservations/${reservation.id}/edit`}>
+              <Pencil className="mr-1.5 h-4 w-4" />
+              Edit
+            </Link>
+          </Button>
+        }
+      />
 
-        {isNewItem || !item ? (
-          <ReservationForm item={item} />
-        ) : (
-          <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 max-w-md">
-              <TabsTrigger value="details" className="gap-2">
-                <Pencil className="h-4 w-4" />
-                Details
-              </TabsTrigger>
-              <TabsTrigger value="timeline" className="gap-2">
-                <History className="h-4 w-4" />
-                Timeline
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="details" className="mt-6">
-              <ReservationForm item={item} />
-            </TabsContent>
-
-            <TabsContent value="timeline" className="mt-6">
-              <ReservationTimeline reservationId={item.id} />
-            </TabsContent>
-          </Tabs>
-        )}
-      </div>
-    </div>
+      <PageBody>
+        <ReservationDetailView reservation={reservation} />
+      </PageBody>
+    </PageShell>
   );
 }

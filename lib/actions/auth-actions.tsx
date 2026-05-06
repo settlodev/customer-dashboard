@@ -100,6 +100,7 @@ export const login = async (
   credentials: z.infer<typeof LoginSchema>,
   rememberMe: boolean = false,
   mfaCode?: string,
+  recaptchaToken?: string,
 ): Promise<FormResponse> => {
   const validatedData = LoginSchema.safeParse(credentials);
   if (!validatedData.success) {
@@ -123,6 +124,10 @@ export const login = async (
     };
     if (mfaCode) {
       loginBody.mfaCode = mfaCode;
+    }
+    if (recaptchaToken) {
+      loginBody.recaptchaToken = recaptchaToken;
+      loginBody.recaptchaAction = "login";
     }
 
     const response = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
@@ -542,6 +547,7 @@ export const getUserById = async (
 
 export const register = async (
   credentials: z.infer<typeof RegisterSchema>,
+  recaptchaToken?: string,
 ): Promise<FormResponse> => {
   const validatedData = RegisterSchema.safeParse(credentials);
 
@@ -564,7 +570,7 @@ export const register = async (
       // Fall back to TZ if parsing fails
     }
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       firstName: validatedData.data.firstName,
       lastName: validatedData.data.lastName,
       email: validatedData.data.email,
@@ -576,6 +582,10 @@ export const register = async (
       accountType: "OWNER",
       referredByCode: validatedData.data.referredByCode || undefined,
     };
+    if (recaptchaToken) {
+      payload.recaptchaToken = recaptchaToken;
+      payload.recaptchaAction = "register";
+    }
 
     const regResponse = await fetch(
       `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/register`,

@@ -45,6 +45,27 @@ interface MenuItem {
     id?: string;
 }
 
+// Sibling-aware active match. When two links in the same section share a
+// prefix (e.g. `/stock` and `/stock-take`), the longer match wins so the
+// shorter one isn't highlighted as a false positive.
+const linkMatches = (link: string, pathname: string) =>
+    pathname === link || pathname.startsWith(link + "/");
+
+const isItemActiveAmong = (
+    itemLink: string,
+    pathname: string,
+    siblings: { link: string | UrlObject }[],
+) => {
+    if (!linkMatches(itemLink, pathname)) return false;
+    return !siblings.some(
+        (other) =>
+            typeof other.link === "string" &&
+            other.link !== itemLink &&
+            other.link.length > itemLink.length &&
+            linkMatches(other.link, pathname),
+    );
+};
+
 const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: SidebarProps) => {
     const pathname = usePathname();
     const [visibleIndex, setVisibleIndex] = useState<number>(-1);
@@ -66,9 +87,9 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
         if (prevPathRef.current === pathname) return;
         prevPathRef.current = pathname;
         const activeIndex = myMenuItems.findIndex((section) =>
-            section.items.some(
-                (item: MenuItem) => pathname === item.link || pathname.startsWith(item.link + "/")
-            )
+            section.items.some((item: MenuItem) =>
+                typeof item.link === "string" && linkMatches(item.link, pathname),
+            ),
         );
         if (activeIndex !== -1) {
             setVisibleIndex(activeIndex);
@@ -78,9 +99,9 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
     // Set initial open section on first load
     useEffect(() => {
         const activeIndex = myMenuItems.findIndex((section) =>
-            section.items.some(
-                (item: MenuItem) => pathname === item.link || pathname.startsWith(item.link + "/")
-            )
+            section.items.some((item: MenuItem) =>
+                typeof item.link === "string" && linkMatches(item.link, pathname),
+            ),
         );
         if (activeIndex !== -1) {
             setVisibleIndex(activeIndex);
@@ -141,7 +162,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                         const sectionLink = (section as { link?: string }).link;
                         const isLeaf = !!sectionLink && (!section.items || section.items.length === 0);
                         if (isLeaf) {
-                            const isActive = pathname === sectionLink || pathname.startsWith(sectionLink + "/");
+                            const isActive = linkMatches(sectionLink, pathname);
                             return (
                                 <div key={sectionIndex} className="py-1">
                                     <Link
@@ -162,7 +183,9 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                         }
 
                         const sectionHasActive = section.items.some(
-                            (item: MenuItem) => pathname === item.link || pathname.startsWith(item.link + "/")
+                            (item: MenuItem) =>
+                                typeof item.link === "string" &&
+                                isItemActiveAmong(item.link, pathname, section.items),
                         );
                         return (
                         <div key={sectionIndex} className="py-1">
@@ -211,7 +234,9 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                                             className="mt-1 space-y-0.5"
                                         >
                                             {section.items.map((item: MenuItem) => {
-                                                const isItemActive = pathname === item.link || pathname.startsWith(item.link + "/");
+                                                const isItemActive =
+                                                    typeof item.link === "string" &&
+                                                    isItemActiveAmong(item.link, pathname, section.items);
                                                 return (
                                                 <motion.div
                                                     key={item.title}
@@ -302,7 +327,7 @@ export const MobileSidebar = ({ data, menuType = 'normal', isOpen, onOpenChange 
 }) => {
     return (
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
-            <SheetContent side="left" className="w-64 p-0 bg-gray-50 dark:bg-gray-900">
+            <SheetContent side="left" className="w-64 p-0 bg-muted/50">
                 <SidebarContent
                     data={data}
                     isMobile={true}
@@ -316,7 +341,7 @@ export const MobileSidebar = ({ data, menuType = 'normal', isOpen, onOpenChange 
 
 export const SidebarWrapper = ({ data, menuType = 'normal' }: { data: BusinessPropsType, menuType?: MenuType }) => {
     return (
-        <aside className="hidden lg:flex lg:flex-col mt-2 mb-3 ml-3 mr-3 h-[calc(100vh-20px)] w-[18rem] flex-shrink-0 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800">
+        <aside className="hidden lg:flex lg:flex-col mt-2 mb-3 ml-3 mr-3 h-[calc(100vh-20px)] w-[18rem] flex-shrink-0 bg-muted/50 rounded-2xl border border-border">
             <SidebarContent data={data} menuType={menuType} />
         </aside>
     );

@@ -1,155 +1,277 @@
 import Link from "next/link";
 import { format, parse } from "date-fns";
-
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+  CalendarDays,
+  CalendarOff,
+  Clock,
+  List,
+  Plus,
+  CalendarCheck,
+  CalendarClock,
+  CalendarX,
+  Users,
+} from "lucide-react";
+
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, CalendarOff, List, CalendarDays } from "lucide-react";
 import { DataTable } from "@/components/tables/data-table";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
 import { columns } from "@/components/tables/reservation/columns";
 import { ReservationCalendarView } from "@/components/tables/reservation/reservation-calendar";
-import { searchReservation, searchReservationsByMonth } from "@/lib/actions/reservation-actions";
-
-const breadcrumbItems = [{ title: "Reservations", link: "/reservations" }];
+import {
+  searchReservation,
+  searchReservationsByMonth,
+  fetchAllReservations,
+} from "@/lib/actions/reservation-actions";
+import { Reservation } from "@/types/reservation/type";
+import { ReservationStatus } from "@/types/enums";
 
 type Params = {
-    searchParams: Promise<{
-        search?: string;
-        page?: string;
-        limit?: string;
-        view?: string;
-        month?: string;
-    }>
+  searchParams: Promise<{
+    search?: string;
+    page?: string;
+    limit?: string;
+    view?: string;
+    month?: string;
+  }>;
 };
 
+const TODAY = () => new Date().toISOString().slice(0, 10);
+
+function isUpcoming(r: Reservation): boolean {
+  const today = TODAY();
+  return (
+    r.reservationDate >= today &&
+    (r.reservationStatus === ReservationStatus.PENDING ||
+      r.reservationStatus === ReservationStatus.CONFIRMED)
+  );
+}
+
+function isToday(r: Reservation): boolean {
+  return r.reservationDate === TODAY();
+}
+
 export default async function Page({ searchParams }: Params) {
-    const resolvedSearchParams = await searchParams;
+  const resolvedSearchParams = await searchParams;
 
-    const view = resolvedSearchParams.view || "list";
-    const q = resolvedSearchParams.search || "";
-    const page = Number(resolvedSearchParams.page) || 0;
-    const pageLimit = Number(resolvedSearchParams.limit);
+  const view = resolvedSearchParams.view || "list";
+  const q = resolvedSearchParams.search || "";
+  const page = Number(resolvedSearchParams.page) || 0;
+  const pageLimit = Number(resolvedSearchParams.limit);
 
-    // For calendar view, determine the month and fetch data
-    const now = new Date();
-    const monthParam = resolvedSearchParams.month;
-    const currentMonth = monthParam
-        ? parse(monthParam, "yyyy-MM", new Date())
-        : now;
-    const calendarYear = currentMonth.getFullYear();
-    const calendarMonth = currentMonth.getMonth() + 1; // 1-indexed
+  const now = new Date();
+  const monthParam = resolvedSearchParams.month;
+  const currentMonth = monthParam
+    ? parse(monthParam, "yyyy-MM", new Date())
+    : now;
+  const calendarYear = currentMonth.getFullYear();
+  const calendarMonth = currentMonth.getMonth() + 1;
+  const currentMonthStr = format(currentMonth, "yyyy-MM");
 
-    // Fetch data based on view
-    let data: any[] = [];
-    let total = 0;
-    let pageCount = 0;
-    let calendarReservations: any[] = [];
+  // Pull a 30-day window so the KPI strip reflects an "active" picture
+  // regardless of whether the user is on the list or calendar view.
+  const today = new Date();
+  const windowStart = new Date(today);
+  windowStart.setDate(windowStart.getDate() - 30);
+  const windowEnd = new Date(today);
+  windowEnd.setDate(windowEnd.getDate() + 30);
+  const fmtIso = (d: Date) => d.toISOString().slice(0, 10);
 
-    if (view === "calendar") {
-        calendarReservations = await searchReservationsByMonth(calendarYear, calendarMonth);
-    } else {
-        const responseData = await searchReservation(q, page, pageLimit);
-        data = responseData.content;
-        total = responseData.totalElements;
-        pageCount = responseData.totalPages;
-    }
+  const allRecent: Reservation[] = await fetchAllReservations({
+    from: fmtIso(windowStart),
+    to: fmtIso(windowEnd),
+  }).catch(() => []);
 
-    const currentMonthStr = format(currentMonth, "yyyy-MM");
+  const totalRecent = allRecent.length;
+  const todayCount = allRecent.filter(isToday).length;
+  const upcomingCount = allRecent.filter(isUpcoming).length;
+  const completedCount = allRecent.filter(
+    (r) => r.reservationStatus === ReservationStatus.COMPLETED,
+  ).length;
+  const noShowCount = allRecent.filter(
+    (r) => r.reservationStatus === ReservationStatus.NO_SHOW,
+  ).length;
+  const guestsCount = allRecent.reduce(
+    (sum, r) => sum + (r.peopleCount ?? 0),
+    0,
+  );
 
-    return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 mt-10">
-            <div className="flex items-center justify-between mb-2">
-                <div className="relative flex-1 md:max-w-md">
-                    <BreadcrumbsNav items={breadcrumbItems} />
-                </div>
+  let data: Reservation[] = [];
+  let total = 0;
+  let pageCount = 0;
+  let calendarReservations: Reservation[] = [];
 
-                <div className="flex items-center space-x-2">
-                    {/* View Toggle */}
-                    <div className="flex items-center border rounded-md">
-                        <Button
-                            variant={view === "list" ? "default" : "ghost"}
-                            size="sm"
-                            className="rounded-r-none h-9"
-                            asChild
-                        >
-                            <Link href="/reservations?view=list">
-                                <List className="h-4 w-4 mr-1.5" />
-                                List
-                            </Link>
-                        </Button>
-                        <Button
-                            variant={view === "calendar" ? "default" : "ghost"}
-                            size="sm"
-                            className="rounded-l-none h-9"
-                            asChild
-                        >
-                            <Link href={`/reservations?view=calendar&month=${currentMonthStr}`}>
-                                <CalendarDays className="h-4 w-4 mr-1.5" />
-                                Calendar
-                            </Link>
-                        </Button>
-                    </div>
+  if (view === "calendar") {
+    calendarReservations = await searchReservationsByMonth(
+      calendarYear,
+      calendarMonth,
+    );
+  } else {
+    const responseData = await searchReservation(q, page, pageLimit);
+    data = responseData.content;
+    total = responseData.totalElements;
+    pageCount = responseData.totalPages;
+  }
 
-                    <Button variant="outline" asChild>
-                        <Link href="/settings?tab=reservations&subtab=schedule">
-                            <Clock className="h-4 w-4 mr-2" />
-                            Schedule
-                        </Link>
-                    </Button>
-                    <Button variant="outline" asChild>
-                        <Link href="/settings?tab=reservations&subtab=exceptions">
-                            <CalendarOff className="h-4 w-4 mr-2" />
-                            Exceptions
-                        </Link>
-                    </Button>
-                    <Button asChild>
-                        <Link href="/reservations/new">Add Reservation</Link>
-                    </Button>
-                </div>
+  const hasAny = totalRecent > 0 || total > 0;
+  const hasFilters = q !== "";
+
+  return (
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Reservations" }]} />
+      <PageHeader
+        title="Reservations"
+        subtitle="Bookings, walk-ins, and seating across this location."
+        actions={
+          <>
+            <div className="inline-flex items-center rounded-md border border-line bg-card p-[3px]">
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className={`h-8 rounded-[5px] px-3 text-[12.5px] ${
+                  view === "list"
+                    ? "bg-canvas text-ink"
+                    : "text-ink-3 hover:text-ink"
+                }`}
+              >
+                <Link href="/reservations?view=list">
+                  <List className="mr-1.5 h-3.5 w-3.5" />
+                  List
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className={`h-8 rounded-[5px] px-3 text-[12.5px] ${
+                  view === "calendar"
+                    ? "bg-canvas text-ink"
+                    : "text-ink-3 hover:text-ink"
+                }`}
+              >
+                <Link
+                  href={`/reservations?view=calendar&month=${currentMonthStr}`}
+                >
+                  <CalendarDays className="mr-1.5 h-3.5 w-3.5" />
+                  Calendar
+                </Link>
+              </Button>
             </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/settings?tab=reservations&subtab=schedule">
+                <Clock className="mr-1.5 h-4 w-4" />
+                Schedule
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/settings?tab=reservations&subtab=exceptions">
+                <CalendarOff className="mr-1.5 h-4 w-4" />
+                Exceptions
+              </Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link href="/reservations/new">
+                <Plus className="mr-1.5 h-4 w-4" />
+                Add reservation
+              </Link>
+            </Button>
+          </>
+        }
+      />
+
+      <PageBody>
+        {hasAny || hasFilters ? (
+          <>
+            <KpiStrip cols={5}>
+              <KpiCard
+                icon={<CalendarDays className="h-3 w-3" />}
+                label="Last 30d"
+                value={totalRecent.toLocaleString()}
+                delta="±15 day window"
+                deltaTone="neutral"
+              />
+              <KpiCard
+                icon={<CalendarCheck className="h-3 w-3" />}
+                label="Today"
+                value={todayCount > 0 ? todayCount.toLocaleString() : "—"}
+                deltaTone="pos"
+              />
+              <KpiCard
+                icon={<CalendarClock className="h-3 w-3" />}
+                label="Upcoming"
+                value={upcomingCount > 0 ? upcomingCount.toLocaleString() : "—"}
+                delta={
+                  upcomingCount > 0
+                    ? "Pending or confirmed"
+                    : undefined
+                }
+                deltaTone="neutral"
+              />
+              <KpiCard
+                icon={<Users className="h-3 w-3" />}
+                label="Guests"
+                value={guestsCount > 0 ? guestsCount.toLocaleString() : "—"}
+                delta={
+                  completedCount > 0
+                    ? `${completedCount.toLocaleString()} completed`
+                    : undefined
+                }
+                deltaTone="neutral"
+              />
+              <KpiCard
+                icon={<CalendarX className="h-3 w-3" />}
+                label="No-shows"
+                value={noShowCount > 0 ? noShowCount.toLocaleString() : "—"}
+                deltaTone={noShowCount > 0 ? "neg" : "neutral"}
+              />
+            </KpiStrip>
 
             {view === "calendar" ? (
-                <Card x-chunk="calendar-view">
-                    <CardHeader>
-                        <CardTitle>Reservations</CardTitle>
-                        <CardDescription>
-                            Calendar view of reservations for {format(currentMonth, "MMMM yyyy")}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ReservationCalendarView
-                            reservations={calendarReservations}
-                            currentMonth={currentMonth}
-                        />
-                    </CardContent>
-                </Card>
-            ) : total > 0 || q != "" ? (
-                <Card x-chunk="data-table">
-                    <CardHeader>
-                        <CardTitle>Reservations</CardTitle>
-                        <CardDescription>Manage reservations in your business location</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <DataTable
-                            columns={columns}
-                            data={data}
-                            pageCount={pageCount}
-                            pageNo={page}
-                            searchKey="customerName"
-                            total={total}
-                        />
-                    </CardContent>
-                </Card>
+              <Card>
+                <CardContent className="space-y-1 px-2 pt-6 sm:px-6">
+                  <h2 className="text-sm font-semibold text-ink">
+                    {format(currentMonth, "MMMM yyyy")}
+                  </h2>
+                  <p className="mb-4 text-[12.5px] text-muted-foreground">
+                    Calendar view — click any day to see its bookings.
+                  </p>
+                  <ReservationCalendarView
+                    reservations={calendarReservations}
+                    currentMonth={currentMonth}
+                  />
+                </CardContent>
+              </Card>
             ) : (
-                <NoItems itemName="reservations" newItemUrl="/reservations/new" />
+              <Card>
+                <CardContent className="px-2 pt-6 sm:px-6">
+                  <DataTable
+                    columns={columns}
+                    data={data}
+                    pageCount={pageCount}
+                    pageNo={page}
+                    searchKey="customerName"
+                    total={total}
+                    rowClickBasePath="/reservations"
+                  />
+                </CardContent>
+              </Card>
             )}
-        </div>
-    );
+          </>
+        ) : (
+          <NoItems
+            itemName="reservations"
+            newItemUrl="/reservations/new"
+          />
+        )}
+      </PageBody>
+    </PageShell>
+  );
 }

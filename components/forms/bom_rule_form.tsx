@@ -620,7 +620,7 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
   const [anchorUnitId, setAnchorUnitId] = useState<string | undefined>(undefined);
 
   return (
-    <div className="border rounded-lg p-4 bg-gray-50/50 dark:bg-gray-900/30 space-y-3">
+    <div className="border rounded-lg p-4 bg-muted/40 space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
           Item {index + 1}
@@ -981,7 +981,7 @@ function OutputRow({ form, index, isPending, onRemove }: OutputRowProps) {
   const [anchorUnitId, setAnchorUnitId] = useState<string | undefined>(undefined);
 
   return (
-    <div className="border rounded-lg p-4 bg-gray-50/50 dark:bg-gray-900/30 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
+    <div className="border rounded-lg p-4 bg-muted/40 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
       <FormField
         control={form.control}
         name={`outputs.${index}.stockVariantId`}

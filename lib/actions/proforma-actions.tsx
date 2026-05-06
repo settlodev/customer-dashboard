@@ -6,7 +6,6 @@ import ApiClient from "@/lib/settlo-api-client";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { parseStringify } from "@/lib/utils";
 import { Proforma } from "@/types/proforma/type";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
@@ -20,7 +19,6 @@ export const searchProformaInvoices = async (
   page: number,
   pageLimit: number,
 ): Promise<ApiResponse<Proforma>> => {
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();

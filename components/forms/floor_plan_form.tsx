@@ -97,7 +97,7 @@ const FloorPlanDialog = ({
   const submitData = (values: FloorPlanFormValues) => {
     startTransition(async () => {
       const action = editingPlan
-        ? updateFloorPlan(editingPlan.id, values)
+        ? updateFloorPlan(editingPlan.id, values, editingPlan.version)
         : createFloorPlan(values);
 
       const data = await action;
@@ -389,21 +389,19 @@ const FloorPlanManager = ({
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    {plan.canDelete && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(plan.id)}
-                        disabled={deletingId === plan.id}
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                      >
-                        {deletingId === plan.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(plan.id)}
+                      disabled={deletingId === plan.id}
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                    >
+                      {deletingId === plan.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
                   </div>
                 </div>
               ))}

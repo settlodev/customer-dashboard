@@ -6,6 +6,10 @@ import { startTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Home, RotateCcw, Mail } from "lucide-react";
 import SessionExpired, { isSessionExpiredError } from "@/components/auth/session-expired";
+import PermissionDenied, {
+  extractPermissionDeniedDetails,
+  isPermissionDeniedError,
+} from "@/components/auth/permission-denied";
 
 export default function Error({
   error,
@@ -18,6 +22,11 @@ export default function Error({
 
   if (isSessionExpiredError(error)) {
     return <SessionExpired />;
+  }
+
+  if (isPermissionDeniedError(error)) {
+    const { message, correlationId } = extractPermissionDeniedDetails(error);
+    return <PermissionDenied message={message} correlationId={correlationId} />;
   }
 
   const handleReset = () => {

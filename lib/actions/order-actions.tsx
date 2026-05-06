@@ -1,7 +1,6 @@
 "use server";
 
 import ApiClient from "@/lib/settlo-api-client";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { UUID } from "node:crypto";
@@ -29,7 +28,6 @@ export const searchOrder = async (
   page: number,
   pageLimit: number,
 ): Promise<ApiResponse<Orders>> => {
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
@@ -140,7 +138,6 @@ export const generateEfd = async (
 };
 
 export const getOrderLogs = async (id: UUID) => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient();
     const query = {
@@ -158,7 +155,6 @@ export const cashFlowReport = async (
   startDate?: Date,
   endDate?: Date,
 ): Promise<CashFlow | null> => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();
@@ -184,7 +180,6 @@ export const creditReport = async (
   startDate?: Date,
   endDate?: Date,
 ): Promise<Credit | null> => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();

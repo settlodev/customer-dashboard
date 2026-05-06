@@ -249,7 +249,7 @@ export function DaySessionWidget({ locationId }: DaySessionWidgetProps) {
               animate="animate"
               exit="exit"
               style={{ transformOrigin: "right center" }}
-              className="flex items-center justify-center h-10 w-10 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+              className="flex items-center justify-center h-10 w-10 rounded-full shadow-lg border border-border bg-card"
               aria-label="Checking day session status"
             >
               <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" />
@@ -261,7 +261,7 @@ export function DaySessionWidget({ locationId }: DaySessionWidgetProps) {
               initial="initial"
               animate="animate"
               exit="exit"
-              className="flex items-center justify-end gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-lg pl-4 pr-2 py-2 overflow-hidden whitespace-nowrap"
+              className="flex items-center justify-end gap-3 bg-card border border-border rounded-full shadow-lg pl-4 pr-2 py-2 overflow-hidden whitespace-nowrap"
             >
               <LoadingPillContent onMinimize={() => persistMinimized(true)} />
             </motion.div>
@@ -279,7 +279,7 @@ export function DaySessionWidget({ locationId }: DaySessionWidgetProps) {
             aria-label={summary.session ? "Show day session summary" : "Business day is closed"}
             style={{ transformOrigin: "right center" }}
             className={cn(
-              "flex items-center justify-center h-10 w-10 rounded-full shadow-lg border bg-white dark:bg-gray-900",
+              "flex items-center justify-center h-10 w-10 rounded-full shadow-lg border bg-card",
               summary.session ? "border-green-300" : "border-amber-300",
             )}
           >
@@ -292,7 +292,7 @@ export function DaySessionWidget({ locationId }: DaySessionWidgetProps) {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="flex items-center justify-end gap-3 bg-white dark:bg-gray-900 border border-amber-300 rounded-full shadow-lg pl-4 pr-2 py-2 overflow-hidden whitespace-nowrap"
+            className="flex items-center justify-end gap-3 bg-card border border-amber-300 rounded-full shadow-lg pl-4 pr-2 py-2 overflow-hidden whitespace-nowrap"
           >
             <ClosedPillContent
               onStart={handleStart}
@@ -307,7 +307,7 @@ export function DaySessionWidget({ locationId }: DaySessionWidgetProps) {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="flex justify-end bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
+            className="flex justify-end bg-card border border-border rounded-xl shadow-xl overflow-hidden"
           >
             <div className="w-80 shrink-0">
               <OpenCardContent
@@ -331,7 +331,7 @@ export function DaySessionWidget({ locationId }: DaySessionWidgetProps) {
             animate="animate"
             exit="exit"
             whileHover={{ y: -3 }}
-            className="flex items-center justify-end gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-lg pl-4 pr-2 py-2 overflow-hidden whitespace-nowrap hover:shadow-xl"
+            className="flex items-center justify-end gap-3 bg-card border border-border rounded-full shadow-lg pl-4 pr-2 py-2 overflow-hidden whitespace-nowrap hover:shadow-xl"
           >
             <OpenPillContent
               summary={summary}
@@ -619,7 +619,7 @@ function OpenCardContent({
         </div>
       )}
 
-      <div className="flex gap-2 px-4 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+      <div className="flex gap-2 px-4 py-3 border-t border-gray-100 dark:border-gray-800 bg-muted/50">
         {extensionAllowed && (
           <Button
             size="sm"

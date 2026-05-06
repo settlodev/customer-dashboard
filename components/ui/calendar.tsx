@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import { DayPicker } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
@@ -23,7 +23,16 @@ function Calendar({
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0 w-full",
         month: "space-y-4 w-full",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
+        caption_label:
+          "inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium",
+        caption_dropdowns: "flex justify-center gap-1",
+        dropdown:
+          "absolute inset-0 z-20 w-full cursor-pointer appearance-none bg-transparent opacity-0",
+        dropdown_month:
+          "relative inline-flex items-center whitespace-nowrap rounded px-2 py-1 hover:bg-accent",
+        dropdown_year:
+          "relative inline-flex items-center whitespace-nowrap rounded px-2 py-1 hover:bg-accent",
+        vhidden: "sr-only",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
@@ -56,6 +65,13 @@ function Calendar({
       components={{
         IconLeft: ({ }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ }) => <ChevronRight className="h-4 w-4" />,
+        // Default IconDropdown ships an 8px SVG that doesn't pick up the
+        // surrounding font color and can wrap below the label depending
+        // on width. Replace it with a Lucide chevron so it inherits
+        // currentColor and stays inline with the month / year text.
+        IconDropdown: ({ }) => (
+          <ChevronDown className="ml-0.5 h-3.5 w-3.5 opacity-60" />
+        ),
       }}
       {...props}
     />

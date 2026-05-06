@@ -20,10 +20,14 @@ function billingUrl(path: string): string {
 }
 
 // ── Packages ────────────────────────────────────────────────────────
+// Package catalog reads are public (used on the landing page Pricing
+// section by anonymous visitors). isPlain skips auth headers so a stale
+// session cookie can't trigger a 401 on what should be a public call.
 
 export async function getPackages(entityType?: string): Promise<Package[]> {
   if (!BILLING_SERVICE_URL) return [];
   const apiClient = new ApiClient();
+  apiClient.isPlain = true;
   const params = entityType ? `?entityType=${entityType}` : "";
   return apiClient.get<Package[]>(billingUrl(`/api/v1/packages${params}`));
 }
@@ -31,6 +35,7 @@ export async function getPackages(entityType?: string): Promise<Package[]> {
 export async function getPackageBreakdown(packageId: string): Promise<PackageBreakdown | null> {
   if (!BILLING_SERVICE_URL) return null;
   const apiClient = new ApiClient();
+  apiClient.isPlain = true;
   return apiClient.get<PackageBreakdown>(billingUrl(`/api/v1/packages/${packageId}/breakdown`));
 }
 

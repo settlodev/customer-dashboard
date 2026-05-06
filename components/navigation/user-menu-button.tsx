@@ -110,7 +110,7 @@ export const UserDropdown = ({ user }: UserDropdownProps) => {
     <>
       {/* Full-screen logout overlay */}
       {loggingOut && (
-        <div className="fixed inset-0 z-[9999] bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+        <div className="fixed inset-0 z-[9999] bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
           <Loader2 className="h-6 w-6 text-primary animate-spin" />
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
             Logging out...

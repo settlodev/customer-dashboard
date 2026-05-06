@@ -265,7 +265,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
               <div className="space-y-4">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
-                    <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b">
+                    <div className="px-4 py-3 bg-muted/50 border-b">
                       <Skeleton className="h-4 w-32" />
                     </div>
                     <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -287,7 +287,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
 
                     return (
                       <div key={category} className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
-                        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                        <div className="px-4 py-3 bg-muted/50 border-b border-border flex items-center justify-between">
                           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 capitalize">
                             {category}
                           </h4>

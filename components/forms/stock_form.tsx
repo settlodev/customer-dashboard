@@ -749,8 +749,8 @@ export default function StockForm({ item, balances }: StockFormProps) {
                           key={field.id}
                           className={`border rounded-lg p-4 space-y-3 transition-opacity ${
                             isArchived
-                              ? "bg-gray-100/80 dark:bg-gray-900/60 opacity-70"
-                              : "bg-gray-50/40 dark:bg-gray-900/30"
+                              ? "bg-muted/60 opacity-70"
+                              : "bg-muted/40"
                           }`}
                         >
                           <div className="flex items-center justify-between">

@@ -6,12 +6,38 @@ import {
 } from "@/types/enums";
 import { UUID } from "node:crypto";
 
+export declare interface CustomerAddress {
+  id: UUID;
+  accountId: UUID;
+  customerId: UUID;
+  addressType: AddressType;
+  addressLine: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export declare interface CustomerPreference {
+  id: UUID;
+  accountId: UUID;
+  customerId: UUID;
+  preferenceKey: string;
+  preferenceValue: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export declare interface Customer {
   id: UUID;
+  accountId: UUID;
+  businessId: UUID;
+  businessName: string | null;
+  locationId: UUID;
+  locationName: string | null;
+  identifier: string;
+  customerAccountNumber: string;
   firstName: string;
   lastName: string;
-  name: string;
-  customerAccountNumber: string;
+  fullName: string;
   gender: Gender;
   phoneNumber: string;
   email: string | null;
@@ -19,57 +45,37 @@ export declare interface Customer {
   idType: string | null;
   idNumber: string | null;
   tinNumber: string | null;
-  creditLimit: number | null;
   vrn: string | null;
+  creditLimit: number | null;
   allowNotifications: boolean;
-  totalSpend: number | null;
-  noShowCount: number;
   notes: string | null;
-  seatingPreference: string | null;
-  loyaltyPoints: number | null;
+  loyaltyPoints: number;
+  loyaltyPointsCarryOver: number;
   source: CustomerSource | null;
   createdFrom: CustomerCreatedFrom | null;
-  lastReservationDate: string | null;
-  customerGroup: UUID | null;
+  noShowCount: number;
+  active: boolean;
+  customerGroupId: UUID | null;
   customerGroupName: string | null;
-  totalOrders: number | null;
-  pendingOrders: number | null;
-  closedOrders: number | null;
-  orderRequests: number | null;
-  lastVisit: string | null;
   addresses: CustomerAddress[];
   preferences: CustomerPreference[];
-  isCompanyAssociated: boolean;
-  companyName: string | null;
-  companyRegistrationNumber: string | null;
-  companyEmailAddress: string | null;
-  companyPhysicalAddress: string | null;
-  location: UUID;
-  status: boolean;
-  canDelete: boolean;
-  isArchived: boolean;
-}
-
-export declare interface CustomerAddress {
-  id: UUID;
-  addressType: AddressType;
-  addressLine: string;
-}
-
-export declare interface CustomerPreference {
-  id: UUID;
-  preferenceKey: string;
-  preferenceValue: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export declare interface CustomerGroup {
   id: UUID;
+  accountId: UUID;
+  businessId: UUID;
+  locationId: UUID;
+  identifier: string;
+  slug: string;
   name: string;
-  totalCustomers: number;
-  location: UUID;
-  status: boolean;
-  canDelete: boolean;
-  isArchived: boolean;
+  description: string | null;
+  active: boolean;
+  customerCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const CUSTOMER_SOURCE_LABELS: Record<CustomerSource, string> = {

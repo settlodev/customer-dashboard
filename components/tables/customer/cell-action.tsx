@@ -3,10 +3,11 @@
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import {
+  ArchiveRestore,
+  Eye,
   MoreVertical,
   Pencil as EditIcon,
-  Archive as ArchiveIcon,
-  ArchiveRestore,
+  UserMinus,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,10 @@ import {
 import DeleteModal from "@/components/tables/delete-modal";
 import { toast } from "@/hooks/use-toast";
 import { Customer } from "@/types/customer/type";
-import { deactivateCustomer, reactivateCustomer } from "@/lib/actions/customer-actions";
+import {
+  deactivateCustomer,
+  reactivateCustomer,
+} from "@/lib/actions/customer-actions";
 
 interface CellActionProps {
   data: Customer;
@@ -28,49 +32,51 @@ interface CellActionProps {
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
-  const [isArchiveModalOpen, setArchiveModalOpen] = useState(false);
-  const [isUnarchiving, setIsUnarchiving] = useState(false);
+  const [isDeactivateOpen, setDeactivateOpen] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
 
   const fullName = `${data.firstName} ${data.lastName}`;
 
-  const handleArchive = async () => {
+  const handleDeactivate = async () => {
     try {
       await deactivateCustomer(data.id);
       toast({
-        title: "Archived",
-        description: `${fullName} has been archived successfully.`,
+        title: "Deactivated",
+        description: `${fullName} has been deactivated.`,
       });
+      router.refresh();
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Uh oh! Something went wrong.",
+        title: "Couldn't deactivate",
         description:
           (error as Error).message ||
-          "There was an issue with your request, please try again later",
+          "There was an issue with your request, please try again later.",
       });
     } finally {
-      setArchiveModalOpen(false);
+      setDeactivateOpen(false);
     }
   };
 
-  const handleUnarchive = async () => {
-    setIsUnarchiving(true);
+  const handleReactivate = async () => {
+    setIsReactivating(true);
     try {
       await reactivateCustomer(data.id);
       toast({
-        title: "Restored",
-        description: `${fullName} has been restored successfully.`,
+        title: "Reactivated",
+        description: `${fullName} is back to active.`,
       });
+      router.refresh();
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Uh oh! Something went wrong.",
+        title: "Couldn't reactivate",
         description:
           (error as Error).message ||
-          "There was an issue with your request, please try again later",
+          "There was an issue with your request, please try again later.",
       });
     } finally {
-      setIsUnarchiving(false);
+      setIsReactivating(false);
     }
   };
 
@@ -83,6 +89,10 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => router.push(`/customers/${data.id}`)}>
+            <Eye className="mr-2 h-4 w-4" />
+            View
+          </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => router.push(`/customers/${data.id}/edit`)}
           >
@@ -90,33 +100,32 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             Edit
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          {data.isArchived ? (
+          {data.active ? (
             <DropdownMenuItem
-              onClick={handleUnarchive}
-              disabled={isUnarchiving}
-              className="text-green-600 focus:text-green-600"
+              onClick={() => setDeactivateOpen(true)}
+              className="text-amber-600 focus:text-amber-600"
             >
-              <ArchiveRestore className="mr-2 h-4 w-4" />
-              {isUnarchiving ? "Restoring..." : "Unarchive"}
+              <UserMinus className="mr-2 h-4 w-4" />
+              Deactivate
             </DropdownMenuItem>
           ) : (
             <DropdownMenuItem
-              onClick={() => setArchiveModalOpen(true)}
-              className="text-red-600 focus:text-red-600"
+              onClick={handleReactivate}
+              disabled={isReactivating}
+              className="text-emerald-600 focus:text-emerald-600"
             >
-              <ArchiveIcon className="mr-2 h-4 w-4" />
-              Archive
+              <ArchiveRestore className="mr-2 h-4 w-4" />
+              {isReactivating ? "Reactivating…" : "Reactivate"}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Archive Confirmation Modal */}
       <DeleteModal
-        isOpen={isArchiveModalOpen}
+        isOpen={isDeactivateOpen}
         itemName={fullName}
-        onDelete={handleArchive}
-        onOpenChange={() => setArchiveModalOpen(false)}
+        onDelete={handleDeactivate}
+        onOpenChange={() => setDeactivateOpen(false)}
       />
     </>
   );

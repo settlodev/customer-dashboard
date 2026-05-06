@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,11 +38,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const breadcrumbItems = [
-  { title: "Shifts", link: "/shifts" },
-  { title: "Schedules", link: "/shifts/schedules" },
-];
 
 export default function SchedulesPage() {
   const [schedules, setSchedules] = useState<StaffSchedule[]>([]);
@@ -109,16 +109,25 @@ export default function SchedulesPage() {
   };
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <div className="flex items-center justify-between">
-        <BreadcrumbsNav items={breadcrumbItems} />
-        <Button size="sm" onClick={() => setShowCreate(true)}>
-          <PlusIcon className="h-4 w-4 mr-1.5" />
-          New Schedule
-        </Button>
-      </div>
-
-      {isLoading ? (
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Shifts", href: "/shifts" },
+          { title: "Schedules" },
+        ]}
+      />
+      <PageHeader
+        title="Staff schedules"
+        subtitle="Assign shift templates to staff for specific dates."
+        actions={
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <PlusIcon className="h-4 w-4 mr-1.5" />
+            New Schedule
+          </Button>
+        }
+      />
+      <PageBody>
+        {isLoading ? (
         <Card>
           <CardContent className="py-12 flex items-center justify-center gap-2 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -167,6 +176,7 @@ export default function SchedulesPage() {
           </CardContent>
         </Card>
       )}
+      </PageBody>
 
       {/* Create Schedule Modal */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
@@ -217,6 +227,6 @@ export default function SchedulesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

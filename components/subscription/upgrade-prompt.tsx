@@ -41,7 +41,7 @@ export function UpgradePagePrompt({
 
         {/* Benefits */}
         {benefits && benefits.length > 0 && (
-          <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-5 text-left space-y-3">
+          <div className="bg-muted/50 rounded-xl p-5 text-left space-y-3">
             {benefits.map((benefit, i) => (
               <div key={i} className="flex items-start gap-3">
                 <Zap className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />

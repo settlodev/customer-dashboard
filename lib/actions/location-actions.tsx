@@ -6,30 +6,27 @@ import { revalidatePath } from "next/cache";
 
 import * as z from "zod";
 
-import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { getAuthToken } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { ApiResponse, FormResponse } from "@/types/types";
-import {
-  getCurrentBusiness,
-  getCurrentLocation,
-} from "@/lib/actions/business/get-current-business";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { Location } from "@/types/location/type";
 import { LocationSchema } from "@/types/location/schema";
 import { switchToLocation } from "./destination";
 
 export const fetchAllLocations = async (): Promise<Location[] | null> => {
   try {
-    const business = await getCurrentBusiness();
+    const businessId = (await getAuthToken())?.businessId;
 
-    if (!business) {
+    if (!businessId) {
       return null;
     }
 
     const apiClient = new ApiClient();
 
     const locationsData = await apiClient.get(
-      `/api/v1/locations?businessId=${business.id}`,
+      `/api/v1/locations?businessId=${businessId}`,
     );
 
     return parseStringify(locationsData);
@@ -47,10 +44,9 @@ export const searchLocations = async (
   page: number,
   pageLimit: number,
 ): Promise<ApiResponse<Location>> => {
-  await getAuthenticatedUser();
 
   try {
-    const business = await getCurrentBusiness();
+    const businessId = (await getAuthToken())?.businessId;
     const apiClient = new ApiClient();
 
     const query = {
@@ -83,7 +79,7 @@ export const searchLocations = async (
     params.append("page", String(page ? page - 1 : 0));
     params.append("size", String(pageLimit || 10));
     params.append("sort", "name,asc");
-    if (business?.id) params.append("businessId", business.id);
+    if (businessId) params.append("businessId", businessId);
 
     const data = await apiClient.get(`/api/v1/locations?${params.toString()}`);
 
@@ -101,15 +97,6 @@ export const createLocation = async (
   let formResponse: FormResponse | null = null;
 
   try {
-    const authenticatedUser = await getAuthenticatedUser();
-    if ("responseType" in authenticatedUser) {
-      return parseStringify({
-        responseType: "error",
-        message: "Authentication failed",
-        error: new Error("User not authenticated"),
-      });
-    }
-
     const validatedData = LocationSchema.safeParse(location);
 
     if (!validatedData.success) {
@@ -124,13 +111,11 @@ export const createLocation = async (
     let targetBusinessId = businessId;
 
     if (!targetBusinessId) {
-      const currentBusiness = await getCurrentBusiness();
-      targetBusinessId = currentBusiness?.id;
+      targetBusinessId = (await getAuthToken())?.businessId ?? undefined;
     }
 
     if (!targetBusinessId) {
       console.error("Business not found", {
-        authenticatedUser,
         location,
         businessId,
       });
@@ -204,10 +189,10 @@ export const updateLocation = async (
 
   try {
     const apiClient = new ApiClient();
-    const business = await getCurrentBusiness();
+    const businessId = (await getAuthToken())?.businessId;
     const currentLocation = await getCurrentLocation();
 
-    if (!business?.id) {
+    if (!businessId) {
       return parseStringify({
         responseType: "error",
         message: "Business information not found",
@@ -217,7 +202,7 @@ export const updateLocation = async (
 
     const payload = {
       ...validatedData.data,
-      business: business.id,
+      business: businessId,
     };
     // Make the API call to update location
     await apiClient.put(`/api/v1/locations/${id}`, payload);
@@ -315,11 +300,9 @@ export const updateLocationBasics = async (
 };
 
 export const getLocationById = async (): Promise<Location> => {
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
-    const business = await getCurrentBusiness();
     const currentLocation = await getCurrentLocation();
 
     const data = await apiClient.get(
@@ -334,7 +317,6 @@ export const getLocationById = async (): Promise<Location> => {
 };
 
 export const generateLocationCode = async (): Promise<any> => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
@@ -350,12 +332,9 @@ export const generateLocationCode = async (): Promise<any> => {
 
 export const deleteLocation = async (id: UUID): Promise<void> => {
   if (!id) throw new Error("Location ID is required to perform this request");
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
-
-    const business = await getCurrentBusiness();
 
     await apiClient.delete(`/api/v1/locations/${id}`);
     revalidatePath("/locations");

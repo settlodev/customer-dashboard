@@ -13,7 +13,7 @@ export default async function RootLayout({children}: {
             <GoogleOAuthWrapper>
                 <div className="relative flex flex-col min-h-screen">
                     {/* Background gradient */}
-                    <div className="fixed inset-0 bg-gradient-to-b from-primary-light via-white to-primary-light dark:from-gray-900 dark:via-gray-950 dark:to-gray-900" />
+                    <div className="fixed inset-0 bg-gradient-to-b from-primary-light via-white to-primary-light dark:from-card dark:via-background dark:to-card" />
                     <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(235,127,68,0.08),transparent_50%)]" />
                     <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(235,127,68,0.06),transparent_50%)]" />
 

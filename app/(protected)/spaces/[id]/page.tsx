@@ -1,61 +1,89 @@
-import {ApiResponse} from "@/types/types";
-import {UUID} from "node:crypto";
-import {notFound} from "next/navigation";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import { Space } from "@/types/space/type";
+import { UUID } from "node:crypto";
+import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { Pencil } from "lucide-react";
+
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { Button } from "@/components/ui/button";
+import { Space, TABLE_SPACE_TYPE_LABELS } from "@/types/space/type";
 import { getSpace } from "@/lib/actions/space-actions";
-import SpaceForm from "@/components/forms/space_form";
+import { SpaceDetailView } from "./space-detail-view";
 
+type Params = Promise<{ id: string }>;
 
-type Params = Promise<{id:string}>
-export default async function SpacePage({params}: {params: Params}){
+export default async function SpacePage({ params }: { params: Params }) {
+  const { id } = await params;
 
-    const resolvedParams = await params;
-    const isNewItem = resolvedParams.id === "new";
-    let item: ApiResponse<Space> | null = null;
+  if (id === "new") redirect("/spaces/new");
 
-    if(!isNewItem){
-        try{
-            item = await  getSpace(resolvedParams.id as UUID);
-            if(item.totalElements == 0) notFound();
+  let space: Space | null = null;
+  try {
+    space = await getSpace(id as UUID);
+    if (!space) notFound();
+  } catch {
+    notFound();
+  }
+
+  const statusLabel = space.active ? "Active" : "Inactive";
+  const statusClass = space.active
+    ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
+    : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+
+  const subtitleParts: string[] = [];
+  subtitleParts.push(
+    TABLE_SPACE_TYPE_LABELS[space.type] ?? String(space.type),
+  );
+  subtitleParts.push(
+    space.minCapacity != null
+      ? `${space.minCapacity}–${space.capacity} seats`
+      : `${space.capacity} seats`,
+  );
+  if (space.parentSpaceName) subtitleParts.push(space.parentSpaceName);
+  if (space.floorPlanName) subtitleParts.push(space.floorPlanName);
+
+  return (
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Tables & Spaces", href: "/spaces" },
+          { title: space.name },
+        ]}
+      />
+      <PageHeader
+        title={space.name}
+        titleAccessory={
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClass}`}
+            >
+              {statusLabel}
+            </span>
+            {space.code && (
+              <span className="inline-flex items-center rounded-full border border-line bg-canvas px-2 py-0.5 font-mono text-[11px] tracking-[0.02em] text-muted-foreground">
+                {space.code}
+              </span>
+            )}
+          </span>
         }
-        catch (error){
-            console.log(error)
-            throw new Error("Failed to load space details");
+        subtitle={subtitleParts.join(" · ")}
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/spaces/${space.id}/edit`}>
+              <Pencil className="mr-1.5 h-4 w-4" />
+              Edit
+            </Link>
+          </Button>
         }
-    }
+      />
 
-    const breadCrumbItems=[{title:"Spaces",link:"/spaces"},
-        {title: isNewItem ? "New":item?.content[0].name || "Edit",link:""}]
-
-    return(
-        <div className={`flex-1 space-y-4 p-4 md:p-8 pt-6`}>
-            <div className={`flex items-center justify-between mb-2`}>
-                <div className={`relative flex-1 `}>
-                    <BreadcrumbsNav items={breadCrumbItems}/>
-                </div>
-            </div>
-            <SpaceCard isNewItem={isNewItem} item={item?.content[0]}/>
-        </div>
-    )
+      <PageBody>
+        <SpaceDetailView space={space} />
+      </PageBody>
+    </PageShell>
+  );
 }
-
-const SpaceCard =({isNewItem,item}:{
-    isNewItem:boolean,
-    item: Space | null | undefined
-}) =>(
-    <Card>
-       <CardHeader>
-           <CardTitle>
-               {isNewItem ? "Add Table / Space" : "Edit table / space details"}
-           </CardTitle>
-           <CardDescription>
-               {isNewItem ? "Add Table / Space to your business": "Edit table / space details"}
-           </CardDescription>
-       </CardHeader>
-        <CardContent>
-            <SpaceForm item={item}/>
-        </CardContent>
-    </Card>
-)

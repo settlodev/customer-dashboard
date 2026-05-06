@@ -1,9 +1,9 @@
 "use server";
 
+import { cache } from "react";
 import { parseStringify } from "@/lib/utils";
 import { cookies } from "next/headers";
 import { Business } from "@/types/business/type";
-import { getAuthToken } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { Location } from "@/types/location/type";
 import { getBusiness } from "@/lib/actions/business/get";
@@ -12,7 +12,9 @@ import { fetchAllBusinesses } from "@/lib/actions/business-actions";
 import { refreshBusiness } from "@/lib/actions/business/refresh";
 import { redirect } from "next/navigation";
 
-export const getCurrentBusiness = async (): Promise<Business | undefined> => {
+// Deduped per request — multiple parallel callers in a single render share
+// one cookie parse / one fallback fetch.
+const _getCurrentBusiness = cache(async (): Promise<Business | undefined> => {
   try {
     // Check for existing business cookie
     const cookieStore = await cookies();
@@ -20,7 +22,6 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
 
     // If cookie exists, try to parse it
     if (businessCookie) {
-      console.warn("Business cookie found, parsing...");
       try {
         return JSON.parse(businessCookie.value) as Business;
       } catch (error) {
@@ -91,6 +92,10 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
 
     await signOut();
   }
+});
+
+export const getCurrentBusiness = async (): Promise<Business | undefined> => {
+  return _getCurrentBusiness();
 };
 
 export const getCurrentLocation = async (): Promise<Location | undefined> => {
