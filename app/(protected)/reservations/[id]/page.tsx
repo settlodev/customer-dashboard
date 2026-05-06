@@ -1,8 +1,12 @@
 import { UUID } from "node:crypto";
 import { notFound } from "next/navigation";
+import { Pencil, History } from "lucide-react";
+
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { Reservation } from "@/types/reservation/type";
 import ReservationForm from "@/components/forms/reservation_form";
+import ReservationTimeline from "@/components/reservation/reservation-timeline";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getReservationById } from "@/lib/actions/reservation-actions";
 
 type Params = Promise<{ id: string }>;
@@ -46,11 +50,34 @@ export default async function ReservationPage({
           <p className="text-muted-foreground mt-1 text-sm">
             {isNewItem
               ? "Add a new reservation to your business location"
-              : "Update reservation details"}
+              : "Update reservation details or review the activity timeline"}
           </p>
         </div>
 
-        <ReservationForm item={item} />
+        {isNewItem || !item ? (
+          <ReservationForm item={item} />
+        ) : (
+          <Tabs defaultValue="details" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 max-w-md">
+              <TabsTrigger value="details" className="gap-2">
+                <Pencil className="h-4 w-4" />
+                Details
+              </TabsTrigger>
+              <TabsTrigger value="timeline" className="gap-2">
+                <History className="h-4 w-4" />
+                Timeline
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="details" className="mt-6">
+              <ReservationForm item={item} />
+            </TabsContent>
+
+            <TabsContent value="timeline" className="mt-6">
+              <ReservationTimeline reservationId={item.id} />
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
     </div>
   );
