@@ -19,14 +19,7 @@ import { FormResponse } from "@/types/types";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "../ui/button";
-import {
-  Building2,
-  Globe,
-  Loader2Icon,
-  Mail,
-  MapPin,
-  Phone,
-} from "lucide-react";
+import { Loader2Icon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card, CardContent } from "../ui/card";
 import {
@@ -108,315 +101,268 @@ const BusinessForm = ({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(submitData, onInvalid)}
-        className="mx-auto space-y-8"
+        className="space-y-6"
       >
-        <Card>
-          <CardContent className="pt-6 space-y-6">
-            {/* ─── Business profile ─── */}
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-medium">Business profile</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Identity, contact details, and where the business is based
+        {/* 1 — Business profile */}
+        <SectionCard
+          title="Business profile"
+          description="Identity, contact details and logo for the parent business."
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem className="space-y-1 sm:col-span-2 lg:col-span-2">
+                  <FieldLabel>Business name</FieldLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      disabled={isPending}
+                      placeholder="Enter business name"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <FormItem className="space-y-1">
+                  <FieldLabel>Phone number</FieldLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      disabled={isPending}
+                      value={field.value || ""}
+                      placeholder="+255712345678"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem className="space-y-1">
+                  <FieldLabel>Email</FieldLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="email"
+                      disabled={isPending}
+                      value={field.value || ""}
+                      placeholder="info@business.com"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="website"
+              render={({ field }) => (
+                <FormItem className="space-y-1 sm:col-span-2 lg:col-span-2">
+                  <FieldLabel>Website</FieldLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      disabled={isPending}
+                      value={field.value || ""}
+                      placeholder="https://yourbusiness.com"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormItem className="space-y-1 sm:col-span-2 lg:col-span-2">
+              <FieldLabel>Logo</FieldLabel>
+              <FormControl>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  disabled={isPending}
+                  className="cursor-pointer file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const { uploadImage } = await import("@/lib/utils");
+                      uploadImage(file, "business/logos", (res) => {
+                        if (res.success) setLogoImage(res.data);
+                      });
+                    }
+                  }}
+                />
+              </FormControl>
+              {logoImage && (
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {logoImage}
                 </p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Business name</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-500 dark:text-muted-foreground" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            placeholder="Enter business name"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              )}
+            </FormItem>
+          </div>
 
-                <FormField
-                  control={form.control}
-                  name="phoneNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone number</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-500 dark:text-muted-foreground" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            value={field.value || ""}
-                            placeholder="+255712345678"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500 dark:text-muted-foreground" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            value={field.value || ""}
-                            placeholder="info@business.com"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="website"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Website</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Globe className="absolute left-3 top-2.5 h-4 w-4 text-gray-500 dark:text-muted-foreground" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            value={field.value || ""}
-                            placeholder="https://yourbusiness.com"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-              </div>
-
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        disabled={isPending}
-                        value={field.value || ""}
-                        placeholder="Describe your business"
-                        className="min-h-[100px]"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormItem>
-                <FormLabel>Logo</FormLabel>
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem className="space-y-1">
+                <FieldLabel>Description</FieldLabel>
                 <FormControl>
-                  <Input
-                    type="file"
-                    accept="image/*"
+                  <Textarea
+                    {...field}
                     disabled={isPending}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const { uploadImage } = await import("@/lib/utils");
-                        uploadImage(file, "business/logos", (res) => {
-                          if (res.success) setLogoImage(res.data);
-                        });
-                      }
-                    }}
+                    value={field.value || ""}
+                    placeholder="Describe your business"
+                    rows={3}
+                    className="resize-y"
                   />
                 </FormControl>
-                {logoImage && (
-                  <p className="text-xs text-muted-foreground truncate">
-                    {logoImage}
-                  </p>
-                )}
+                <FormMessage />
               </FormItem>
-            </div>
+            )}
+          />
+        </SectionCard>
 
-            {/* ─── Address ─── */}
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-medium">Headquarters address</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Where this business is registered
-                </p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="countryId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Country</FormLabel>
-                      <FormControl>
-                        <CountrySelector
-                          {...field}
-                          defaultCode="TZ"
-                          isDisabled={isPending}
-                          label="Select business country"
-                          placeholder="Select country"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="region"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Region</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          value={field.value ?? ""}
-                          placeholder="e.g. Dar es Salaam"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="district"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>District</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          value={field.value ?? ""}
-                          placeholder="District"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="ward"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Ward</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          value={field.value ?? ""}
-                          placeholder="Ward"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Street address</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500 dark:text-muted-foreground" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            value={field.value ?? ""}
-                            placeholder="Street address"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="postalCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Postal code</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          value={field.value ?? ""}
-                          placeholder="Postal code"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-6">
-              {isPending ? (
-                <Button disabled className="w-full md:w-auto">
-                  <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
-                  {item ? "Updating..." : "Processing..."}
-                </Button>
-              ) : (
-                <Button type="submit" className="w-full md:w-auto">
-                  {item ? "Update business" : submitButtonText}
-                </Button>
+        {/* 2 — Headquarters address */}
+        <SectionCard
+          title="Headquarters address"
+          description="Where this business is registered."
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <FormField
+              control={form.control}
+              name="countryId"
+              render={({ field }) => (
+                <FormItem className="space-y-1">
+                  <FieldLabel>Country</FieldLabel>
+                  <FormControl>
+                    <CountrySelector
+                      {...field}
+                      defaultCode="TZ"
+                      isDisabled={isPending}
+                      label="Select business country"
+                      placeholder="Select country"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </div>
-          </CardContent>
-        </Card>
+            />
+            <FormField
+              control={form.control}
+              name="region"
+              render={({ field }) => (
+                <FormItem className="space-y-1">
+                  <FieldLabel>Region</FieldLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      disabled={isPending}
+                      value={field.value ?? ""}
+                      placeholder="e.g. Dar es Salaam"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="district"
+              render={({ field }) => (
+                <FormItem className="space-y-1">
+                  <FieldLabel>District</FieldLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      disabled={isPending}
+                      value={field.value ?? ""}
+                      placeholder="District"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="ward"
+              render={({ field }) => (
+                <FormItem className="space-y-1">
+                  <FieldLabel>Ward</FieldLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      disabled={isPending}
+                      value={field.value ?? ""}
+                      placeholder="Ward"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem className="space-y-1">
+                  <FieldLabel>Street address</FieldLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      disabled={isPending}
+                      value={field.value ?? ""}
+                      placeholder="Street address"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="postalCode"
+              render={({ field }) => (
+                <FormItem className="space-y-1">
+                  <FieldLabel>Postal code</FieldLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      disabled={isPending}
+                      value={field.value ?? ""}
+                      placeholder="Postal code"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </SectionCard>
 
+        {/* Status toggle (only when editing) */}
         {item && (
-          <Card className="rounded-xl border border-red-200 shadow-sm">
-            <CardContent className="p-6">
+          <Card className="rounded-xl border border-red-200 dark:border-red-900/40 shadow-sm">
+            <CardContent className="pt-5 pb-5">
               <FormField
                 control={form.control}
                 name="active"
                 render={({ field }) => (
                   <>
-                    <FormItem className="flex flex-row items-center justify-between">
-                      <div>
-                        <FormLabel className="text-base">Business status</FormLabel>
-                        <FormDescription>
+                    <FormItem className="flex flex-row items-center justify-between gap-4 space-y-0">
+                      <div className="min-w-0 flex-1">
+                        <FormLabel className="text-sm font-medium">
+                          Business status
+                        </FormLabel>
+                        <FormDescription className="text-xs mt-0.5">
                           This business is currently{" "}
                           <span
                             className={
@@ -480,9 +426,63 @@ const BusinessForm = ({
             </CardContent>
           </Card>
         )}
+
+        {/* Sticky save bar */}
+        <div className="sticky bottom-0 z-10 bg-gradient-to-t from-background via-background/95 to-background/0 pt-4 pb-2 -mx-4 px-4 md:-mx-0 md:px-0">
+          <div className="flex items-center justify-end gap-3">
+            {isPending ? (
+              <Button disabled className="w-full md:w-auto">
+                <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+                {item ? "Updating…" : "Processing…"}
+              </Button>
+            ) : (
+              <Button type="submit" className="w-full md:w-auto">
+                {item ? "Update business" : submitButtonText}
+              </Button>
+            )}
+          </div>
+        </div>
       </form>
     </Form>
   );
 };
+
+// ──────────────────────────────────────────────────────────────────────
+// Layout primitives — match SettingsSection density
+// ──────────────────────────────────────────────────────────────────────
+
+function SectionCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="rounded-xl shadow-sm">
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            {title}
+          </h3>
+          {description && (
+            <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+          )}
+        </div>
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <FormLabel className="text-xs font-medium text-gray-700 dark:text-gray-300">
+      {children}
+    </FormLabel>
+  );
+}
 
 export default BusinessForm;

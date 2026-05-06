@@ -68,7 +68,7 @@ export function LocationProfilePanel({
         isPending={panel.isPending}
         isDirty={panel.isDirty}
       >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <LabeledField label="Currency">
             <CurrencySelector
               value={panel.values.currency ?? undefined}
@@ -311,137 +311,138 @@ function LocationDetailsCard({
       />
 
       <SettingsSection onSave={save} isDirty={isDirty} isPending={isPending}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <LabeledField label="Location name" hint="Max 255 characters.">
-          <Input
-            maxLength={255}
-            value={form.name}
-            onChange={(e) => setField("name", e.target.value)}
-            disabled={isPending}
-            placeholder="e.g. Pizza Inn Masaki"
-          />
-        </LabeledField>
-        <LabeledField label="Phone number" hint="Max 20 characters.">
-          <Input
-            maxLength={20}
-            value={form.phoneNumber}
-            onChange={(e) => setField("phoneNumber", e.target.value)}
-            disabled={isPending}
-            placeholder="+255712345678"
-          />
-        </LabeledField>
-        <LabeledField label="Email">
-          <Input
-            type="email"
-            value={form.email}
-            onChange={(e) => setField("email", e.target.value)}
-            disabled={isPending}
-            placeholder="branch@business.com"
-          />
-        </LabeledField>
-        <LabeledField label="Timezone" hint="IANA TZ (e.g. Africa/Dar_es_Salaam).">
-          <Input
-            value={form.timezone}
-            onChange={(e) => setField("timezone", e.target.value)}
-            disabled={isPending}
-            placeholder="Africa/Dar_es_Salaam"
-          />
-        </LabeledField>
-      </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <LabeledField label="Location name" hint="Max 255 characters.">
+            <Input
+              maxLength={255}
+              value={form.name}
+              onChange={(e) => setField("name", e.target.value)}
+              disabled={isPending}
+              placeholder="e.g. Pizza Inn Masaki"
+            />
+          </LabeledField>
+          <LabeledField label="Phone number" hint="Max 20 characters.">
+            <Input
+              maxLength={20}
+              value={form.phoneNumber}
+              onChange={(e) => setField("phoneNumber", e.target.value)}
+              disabled={isPending}
+              placeholder="+255712345678"
+            />
+          </LabeledField>
+          <LabeledField label="Email">
+            <Input
+              type="email"
+              value={form.email}
+              onChange={(e) => setField("email", e.target.value)}
+              disabled={isPending}
+              placeholder="branch@business.com"
+            />
+          </LabeledField>
+          <LabeledField label="Timezone" hint="IANA TZ (e.g. Africa/Dar_es_Salaam).">
+            <Input
+              value={form.timezone}
+              onChange={(e) => setField("timezone", e.target.value)}
+              disabled={isPending}
+              placeholder="Africa/Dar_es_Salaam"
+            />
+          </LabeledField>
+        </div>
 
-      <div className="space-y-2 pt-2">
-        <label className="text-xs font-medium text-gray-700">Description</label>
-        <Textarea
-          value={form.description}
-          onChange={(e) => setField("description", e.target.value)}
-          disabled={isPending}
-          placeholder="A short description of this location"
-          className="min-h-[80px]"
-        />
-      </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <LabeledField label="Country">
+            <CountrySelector
+              value={form.countryId}
+              onChange={(v: string) => setField("countryId", v)}
+              isDisabled={isPending}
+              label="Select country"
+              placeholder="Select country"
+            />
+          </LabeledField>
+          <LabeledField label="Business type">
+            <BusinessTypeSelector
+              value={form.businessTypeId}
+              onChange={(v: string) => setField("businessTypeId", v)}
+              onBlur={() => {}}
+              isDisabled={isPending}
+              label="Select business type"
+              placeholder="Select business type"
+            />
+          </LabeledField>
+          <LabeledField label="Region">
+            <Input
+              value={form.region}
+              onChange={(e) => setField("region", e.target.value)}
+              disabled={isPending}
+              placeholder="e.g. Dar es Salaam"
+            />
+          </LabeledField>
+          <LabeledField label="District">
+            <Input
+              value={form.district}
+              onChange={(e) => setField("district", e.target.value)}
+              disabled={isPending}
+              placeholder="District"
+            />
+          </LabeledField>
+          <LabeledField label="Ward">
+            <Input
+              value={form.ward}
+              onChange={(e) => setField("ward", e.target.value)}
+              disabled={isPending}
+              placeholder="Ward"
+            />
+          </LabeledField>
+          <LabeledField label="Street address">
+            <Input
+              value={form.address}
+              onChange={(e) => setField("address", e.target.value)}
+              disabled={isPending}
+              placeholder="Street address"
+            />
+          </LabeledField>
+          <LabeledField label="Postal code" hint="Max 10 characters.">
+            <Input
+              maxLength={10}
+              value={form.postalCode}
+              onChange={(e) => setField("postalCode", e.target.value)}
+              disabled={isPending}
+              placeholder="Postal code"
+            />
+          </LabeledField>
+          <LabeledField label="Latitude">
+            <Input
+              type="number"
+              inputMode="decimal"
+              value={form.latitude}
+              onChange={(e) => setField("latitude", e.target.value)}
+              disabled={isPending}
+              placeholder="-6.776"
+            />
+          </LabeledField>
+          <LabeledField label="Longitude">
+            <Input
+              type="number"
+              inputMode="decimal"
+              value={form.longitude}
+              onChange={(e) => setField("longitude", e.target.value)}
+              disabled={isPending}
+              placeholder="39.278"
+            />
+          </LabeledField>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-        <LabeledField label="Country">
-          <CountrySelector
-            value={form.countryId}
-            onChange={(v: string) => setField("countryId", v)}
-            isDisabled={isPending}
-            label="Select country"
-            placeholder="Select country"
-          />
-        </LabeledField>
-        <LabeledField label="Business type">
-          <BusinessTypeSelector
-            value={form.businessTypeId}
-            onChange={(v: string) => setField("businessTypeId", v)}
-            onBlur={() => {}}
-            isDisabled={isPending}
-            label="Select business type"
-            placeholder="Select business type"
-          />
-        </LabeledField>
-        <LabeledField label="Region">
-          <Input
-            value={form.region}
-            onChange={(e) => setField("region", e.target.value)}
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Description</label>
+          <Textarea
+            value={form.description}
+            onChange={(e) => setField("description", e.target.value)}
             disabled={isPending}
-            placeholder="e.g. Dar es Salaam"
+            placeholder="A short description of this location"
+            rows={3}
+            className="resize-y"
           />
-        </LabeledField>
-        <LabeledField label="District">
-          <Input
-            value={form.district}
-            onChange={(e) => setField("district", e.target.value)}
-            disabled={isPending}
-            placeholder="District"
-          />
-        </LabeledField>
-        <LabeledField label="Ward">
-          <Input
-            value={form.ward}
-            onChange={(e) => setField("ward", e.target.value)}
-            disabled={isPending}
-            placeholder="Ward"
-          />
-        </LabeledField>
-        <LabeledField label="Street address">
-          <Input
-            value={form.address}
-            onChange={(e) => setField("address", e.target.value)}
-            disabled={isPending}
-            placeholder="Street address"
-          />
-        </LabeledField>
-        <LabeledField label="Postal code" hint="Max 10 characters.">
-          <Input
-            maxLength={10}
-            value={form.postalCode}
-            onChange={(e) => setField("postalCode", e.target.value)}
-            disabled={isPending}
-            placeholder="Postal code"
-          />
-        </LabeledField>
-        <LabeledField label="Latitude">
-          <Input
-            type="number"
-            inputMode="decimal"
-            value={form.latitude}
-            onChange={(e) => setField("latitude", e.target.value)}
-            disabled={isPending}
-            placeholder="-6.776"
-          />
-        </LabeledField>
-        <LabeledField label="Longitude">
-          <Input
-            type="number"
-            inputMode="decimal"
-            value={form.longitude}
-            onChange={(e) => setField("longitude", e.target.value)}
-            disabled={isPending}
-            placeholder="39.278"
-          />
-        </LabeledField>
-      </div>
+        </div>
       </SettingsSection>
     </div>
   );
@@ -458,7 +459,7 @@ function LabeledField({
 }) {
   return (
     <div className="space-y-1">
-      <label className="text-xs font-medium text-gray-700">{label}</label>
+      <label className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</label>
       {children}
       {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>

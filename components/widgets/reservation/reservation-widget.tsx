@@ -865,7 +865,7 @@ export default function ReservationWidget({
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
               <p className="font-medium">A deposit may be required</p>
               <p className="text-blue-600 text-xs mt-1">
-                If a deposit applies to your booking you'll be prompted to pay
+                If a deposit applies to your booking you&apos;ll be prompted to pay
                 online after submitting this form.
               </p>
             </div>

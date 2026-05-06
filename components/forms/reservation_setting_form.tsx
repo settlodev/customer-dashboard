@@ -202,7 +202,7 @@ const ReservationSettingForm = ({
               title="Booking rules"
               description="Party-size limits, how far ahead guests can book, and what's required from them."
             >
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <NumberField control={form.control} name="minPartySize" disabled={isPending} />
                 <NumberField control={form.control} name="maxPartySize" disabled={isPending} />
                 <NumberField control={form.control} name="bookingWindowDays" disabled={isPending} />
@@ -227,7 +227,7 @@ const ReservationSettingForm = ({
                 <SwitchRow control={form.control} name="allowOnlineCancellation" disabled={isPending} />
                 <SwitchRow control={form.control} name="chargeNoShowFee" disabled={isPending} />
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
                 {autoConfirm && (
                   <NumberField control={form.control} name="autoConfirmMaxPartySize" disabled={isPending} />
                 )}
@@ -268,7 +268,7 @@ const ReservationSettingForm = ({
               title="Pacing, tables & waitlist"
               description="Daily caps, turn time between seatings, table assignment and waitlist behaviour."
             >
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <NumberField control={form.control} name="defaultTurnTimeMinutes" disabled={isPending} />
                 <NumberField control={form.control} name="bufferMinutesBetweenSeatings" disabled={isPending} />
                 <NumberField control={form.control} name="maxDailyReservations" disabled={isPending} />
@@ -505,7 +505,7 @@ function FormSkeleton() {
               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 animate-pulse" />
               <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 animate-pulse" />
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {[1, 2, 3].map((j) => (
                 <div key={j} className="space-y-2">
                   <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 animate-pulse" />
