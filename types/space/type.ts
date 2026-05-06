@@ -23,10 +23,7 @@ export declare interface Space {
   floorPlanId: UUID | null;
   floorPlanName: string | null;
   location: UUID;
-  business: string;
-  status: boolean;
-  canDelete: boolean;
-  isArchived: boolean;
+  version: number;
 }
 
 export declare interface FloorPlan {
@@ -37,20 +34,17 @@ export declare interface FloorPlan {
   height: number | null;
   isDefault: boolean;
   location: UUID;
-  status: boolean;
-  canDelete: boolean;
-  isArchived: boolean;
+  version: number;
 }
 
 export declare interface TableCombination {
   id: UUID;
   name: string;
   capacity: number;
-  tables: Space[];
+  tableIds: UUID[];
+  tables: Space[]; // hydrated client-side from spaces list
   location: UUID;
-  status: boolean;
-  canDelete: boolean;
-  isArchived: boolean;
+  version: number;
 }
 
 export declare interface SpaceDTO {
@@ -71,10 +65,7 @@ export declare interface SpaceDTO {
   sortOrder: number | null;
   parentSpaceId: string | null;
   floorPlanId: string | null;
-  status: boolean;
-  canDelete: boolean;
-  isArchived: boolean;
-  location: UUID;
+  expectedVersion?: number;
 }
 
 export const SPACE_TYPES: TableSpaceType[] = [
