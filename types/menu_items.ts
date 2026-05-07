@@ -198,6 +198,12 @@ const getNormalMenuItems = (
           icon: "cart",
         },
         {
+          title: "Stock usage",
+          link: "/stock-usages",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
           title: "Stock take",
           link: "/stock-takes",
           current: args?.isCurrentItem,

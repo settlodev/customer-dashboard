@@ -426,15 +426,15 @@ class ApiClient {
       if (clientId) config.headers["X-Client-Id"] = clientId;
 
       // Remove these for now since they are causing issues with the services
-      // const method = config.method?.toUpperCase();
-      // if (method === "POST" || method === "PUT" || method === "PATCH") {
-      //   if (config.headers["Idempotency-Key"] === undefined) {
-      //     config.headers["Idempotency-Key"] = crypto.randomUUID();
-      //   }
-      //   if (config.headers["X-Trace-Id"] === undefined) {
-      //     config.headers["X-Trace-Id"] = crypto.randomUUID();
-      //   }
-      // }
+      const method = config.method?.toUpperCase();
+      if (method === "POST" || method === "PUT" || method === "PATCH") {
+        if (config.headers["Idempotency-Key"] === undefined) {
+          config.headers["Idempotency-Key"] = crypto.randomUUID();
+        }
+        if (config.headers["X-Trace-Id"] === undefined) {
+          config.headers["X-Trace-Id"] = crypto.randomUUID();
+        }
+      }
 
       if (IS_DEV) logRequest(config);
 

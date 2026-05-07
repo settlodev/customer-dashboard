@@ -1,5 +1,4 @@
 {
-  "disableAllHooks": true,
   "permissions": {
     "allow": [
       "Bash(npx next build --no-lint)",
@@ -58,7 +57,11 @@
       "Bash(xargs ls:*)",
       "Bash(grep -r \"TODO\\\\|STUB\\\\|FIXME\\\\|WIP\" /Users/Peter/Settlo/Customer-Dashboard/lib/actions/*location* /Users/Peter/Settlo/Customer-Dashboard/lib/actions/*store* /Users/Peter/Settlo/Customer-Dashboard/lib/actions/*staff* /Users/Peter/Settlo/Customer-Dashboard/lib/actions/warehouse/)",
       "Bash(grep -E \"\\\\.tsx?$\")",
-      "Bash(awk '{print $NF}')"
+      "Bash(awk '{print $NF}')",
+      "Bash(mkdir -p /Users/Peter/Settlo/Customer-Dashboard/types/stock-usage /Users/Peter/Settlo/Customer-Dashboard/app/\\\\\\(protected\\\\\\)/stock-usages /Users/Peter/Settlo/Customer-Dashboard/app/\\\\\\(protected\\\\\\)/stock-usages/\\\\[id\\\\] /Users/Peter/Settlo/Customer-Dashboard/components/tables/stock-usage)",
+      "Bash(yarn tsc *)",
+      "Bash(yarn lint *)"
     ]
-  }
+  },
+  "disableAllHooks": true
 }

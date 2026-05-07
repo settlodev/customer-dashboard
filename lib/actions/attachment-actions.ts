@@ -25,6 +25,8 @@ function pathFor(entityType: AttachmentEntityType): string {
       return "/stock-modifications";
     case "STOCK_TRANSFER":
       return "/stock-transfers";
+    case "STOCK_USAGE":
+      return "/stock-usages";
     case "SUPPLIER_RETURN":
       return "/supplier-returns";
     case "OPENING_STOCK":

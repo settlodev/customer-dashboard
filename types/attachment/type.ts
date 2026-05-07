@@ -6,6 +6,7 @@ export type AttachmentEntityType =
   | "LPO"
   | "STOCK_MODIFICATION"
   | "STOCK_TRANSFER"
+  | "STOCK_USAGE"
   | "SUPPLIER_RETURN"
   | "OPENING_STOCK"
   | "STOCK_TAKE"
@@ -31,6 +32,7 @@ export const ATTACHMENT_ENTITY_LABELS: Record<AttachmentEntityType, string> = {
   LPO: "Local Purchase Order",
   STOCK_MODIFICATION: "Stock Modification",
   STOCK_TRANSFER: "Stock Transfer",
+  STOCK_USAGE: "Stock Usage",
   SUPPLIER_RETURN: "Supplier Return",
   OPENING_STOCK: "Opening Stock",
   STOCK_TAKE: "Stock Take",
