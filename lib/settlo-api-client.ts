@@ -195,9 +195,41 @@ function logResponseError(error: AxiosError, durationMs: number) {
     `${ANSI.dim}◀──${ANSI.reset} ${ANSI.red}${ANSI.bold}${status || "ERR"}${ANSI.reset} ${ANSI.dim}${method} ${shortUrl}${ANSI.reset} ${ANSI.blue}${durationMs}ms${ANSI.reset}`,
   );
 
-  if (error.response?.data) {
-    const preview = truncate(error.response.data, 400);
-    console.log(`${ANSI.red}    error: ${preview}${ANSI.reset}`);
+  // Echo back the response headers — `Server` and `X-*` reveal whether the
+  // response came from the upstream (OMS Tomcat) or from a proxy / gateway
+  // in front of it. Useful when the body is a generic HTML error page that
+  // doesn't say where it originated.
+  const responseHeaders = error.response?.headers as
+    | Record<string, string | string[] | undefined>
+    | undefined;
+  if (responseHeaders) {
+    const interesting = ["server", "x-trace-id", "x-request-id", "via", "content-type"];
+    const echoed = interesting
+      .map((k) => {
+        const v = responseHeaders[k];
+        return v ? `${k}: ${Array.isArray(v) ? v.join(", ") : v}` : null;
+      })
+      .filter(Boolean)
+      .join("  ");
+    if (echoed) {
+      console.log(`${ANSI.red}    response headers: ${echoed}${ANSI.reset}`);
+    }
+  }
+
+  const data = error.response?.data;
+  if (data) {
+    // For HTML bodies (Tomcat / whitelabel error pages) print the raw page
+    // instead of a 400-char preview — the rejection reason is buried mid-page
+    // and the truncated preview hides it.
+    const isHtml =
+      typeof data === "string" && data.trimStart().toLowerCase().startsWith("<");
+    if (isHtml) {
+      console.log(`${ANSI.red}    error (html, ${data.length} bytes):${ANSI.reset}`);
+      console.log(`${ANSI.red}${data}${ANSI.reset}`);
+    } else {
+      const preview = truncate(data, 400);
+      console.log(`${ANSI.red}    error: ${preview}${ANSI.reset}`);
+    }
   } else if (error.message) {
     console.log(
       `${ANSI.red}    ${error.code || "NETWORK"}: ${error.message}${ANSI.reset}`,
@@ -364,12 +396,19 @@ class ApiClient {
       if (locationId) config.headers["X-Location-Id"] = locationId;
 
       // Content-Type — JSON by default, but skip when the body is FormData
-      // so axios can set multipart/form-data with the correct boundary.
+      // so axios can set multipart/form-data with the correct boundary, and
+      // skip when there's no body (Tomcat 11 in strict mode rejects an
+      // `application/json` content-type on a PUT that carries no body).
       const isFormData =
         typeof FormData !== "undefined" && config.data instanceof FormData;
+      const hasBody =
+        config.data !== undefined &&
+        config.data !== null &&
+        config.data !== "";
       if (
         (!config.responseType || config.responseType !== "blob") &&
-        !isFormData
+        !isFormData &&
+        hasBody
       ) {
         config.headers["Content-Type"] = "application/json";
       }
@@ -377,16 +416,44 @@ class ApiClient {
         // Delete any inherited content-type so axios auto-detects the boundary.
         delete config.headers["Content-Type"];
       }
+      if (!hasBody) {
+        // Strip any inherited Content-Type when there's no body to describe.
+        delete config.headers["Content-Type"];
+      }
+
+      // Force JSON in the response — axios' default
+      // (`application/json, text/plain, */*`) lets Spring's BasicErrorController
+      // win content negotiation and reply with the Whitelabel HTML error
+      // page when an exception escapes a filter to `/error`. Always pinning
+      // Accept to JSON (rather than checking if it's already set, which it
+      // is — axios populates the default first) makes the same error come
+      // back as the structured ErrorResponse the frontend knows how to
+      // surface. Skipped for blob responses (file downloads) where the
+      // caller controls Accept itself.
+      if (!config.responseType || config.responseType !== "blob") {
+        config.headers["Accept"] = "application/json";
+      }
 
       // Whitelabel
       const clientId = process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID;
       if (clientId) config.headers["X-Client-Id"] = clientId;
 
-      // Idempotency + trace on mutations
+      // Idempotency + trace on mutations. With the dashboard's
+      // Authorization JWT (permissions can push it to several KB) + all
+      // identity headers, the combined header bundle was overflowing the
+      // OMS Tomcat default `maxHttpHeaderSize` of 8KB and the request was
+      // being 400'd at the connector level. The OMS now configures
+      // `server.max-http-request-header-size=64KB`, so it's safe to send
+      // these on every mutation again — the OMS @Idempotent aspect uses
+      // them for de-duplication on create endpoints.
       const method = config.method?.toUpperCase();
       if (method === "POST" || method === "PUT" || method === "PATCH") {
-        config.headers["Idempotency-Key"] = crypto.randomUUID();
-        config.headers["X-Trace-Id"] = crypto.randomUUID();
+        if (config.headers["Idempotency-Key"] === undefined) {
+          config.headers["Idempotency-Key"] = crypto.randomUUID();
+        }
+        if (config.headers["X-Trace-Id"] === undefined) {
+          config.headers["X-Trace-Id"] = crypto.randomUUID();
+        }
       }
 
       if (IS_DEV) logRequest(config);

@@ -93,6 +93,49 @@ export const getReservationById = async (id: UUID): Promise<Reservation> => {
   return parseStringify(data);
 };
 
+/**
+ * Strips empty / blank optional fields from the validated form data so the
+ * outgoing JSON body matches the OMS {@code ReservationCreateRequest}
+ * shape exactly. Without this, fields like {@code customerEmail: ""} or
+ * {@code reservationEndTime: ""} land on the server as empty strings and
+ * Jackson can either reject them (LocalTime-typed fields) or pass them
+ * through as blanks that downstream validators don't expect.
+ */
+function buildReservationCreateBody(
+  data: z.infer<typeof ReservationSchema>,
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    reservationDate: data.reservationDate,
+    reservationTime: data.reservationTime,
+    peopleCount: data.peopleCount,
+    source: data.source,
+  };
+  if (data.reservationEndTime?.trim()) body.reservationEndTime = data.reservationEndTime;
+  if (data.specialRequests?.trim()) body.specialRequests = data.specialRequests;
+  if (data.tableSpaceId) body.tableSpaceId = data.tableSpaceId;
+  body.customerId = data.customerId;
+  if (data.answers && data.answers.length > 0) body.answers = data.answers;
+  return body;
+}
+
+/**
+ * Same idea as {@link buildReservationCreateBody}, but for the update DTO,
+ * which is a strict subset (date/time/end-time/peopleCount/specialRequests/
+ * tableSpaceId only).
+ */
+function buildReservationUpdateBody(
+  data: z.infer<typeof ReservationUpdateSchema>,
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  if (data.reservationDate?.trim()) body.reservationDate = data.reservationDate;
+  if (data.reservationTime?.trim()) body.reservationTime = data.reservationTime;
+  if (data.reservationEndTime?.trim()) body.reservationEndTime = data.reservationEndTime;
+  if (data.peopleCount != null) body.peopleCount = data.peopleCount;
+  if (data.specialRequests?.trim()) body.specialRequests = data.specialRequests;
+  if (data.tableSpaceId) body.tableSpaceId = data.tableSpaceId;
+  return body;
+}
+
 export const createReservation = async (
   reservation: z.infer<typeof ReservationSchema>,
 ): Promise<FormResponse | void> => {
@@ -105,9 +148,15 @@ export const createReservation = async (
   }
 
   const location = await getCurrentLocation();
+  if (!location?.id) {
+    return SettloErrorHandler.createErrorResponse(
+      new Error("No active location"),
+      "Pick a location before creating a reservation",
+    );
+  }
 
   try {
-    await oms().post(`${base(location?.id as string)}`, validated.data);
+    await oms().post(base(location.id), buildReservationCreateBody(validated.data));
   } catch (error: unknown) {
     return SettloErrorHandler.createErrorResponse(
       error,
@@ -140,9 +189,18 @@ export const createWalkInReservation = async (
   }
 
   const location = await getCurrentLocation();
+  if (!location?.id) {
+    return SettloErrorHandler.createErrorResponse(
+      new Error("No active location"),
+      "Pick a location before creating a reservation",
+    );
+  }
 
   try {
-    await oms().post(`${base(location?.id as string)}/walk-in`, validated.data);
+    await oms().post(
+      `${base(location.id)}/walk-in`,
+      buildReservationCreateBody(validated.data),
+    );
   } catch (error: unknown) {
     return SettloErrorHandler.createErrorResponse(
       error,
@@ -169,9 +227,18 @@ export const updateReservation = async (
   }
 
   const location = await getCurrentLocation();
+  if (!location?.id) {
+    return SettloErrorHandler.createErrorResponse(
+      new Error("No active location"),
+      "Pick a location before updating a reservation",
+    );
+  }
 
   try {
-    await oms().put(`${base(location?.id as string)}/${id}`, validated.data);
+    await oms().put(
+      `${base(location.id)}/${id}`,
+      buildReservationUpdateBody(validated.data),
+    );
   } catch (error: unknown) {
     return SettloErrorHandler.createErrorResponse(
       error,
@@ -190,15 +257,20 @@ export const updateReservationStatus = async (
   status: string,
 ): Promise<FormResponse | void> => {
   const location = await getCurrentLocation();
-  try {
-    await oms().put<unknown, Record<string, never>>(
-      `${base(location?.id as string)}/${id}/status`,
-      {},
-      {
-        params: { status },
-        headers: { Accept: "application/json" },
-      },
+  if (!location?.id) {
+    return SettloErrorHandler.createErrorResponse(
+      new Error("No active location"),
+      "Pick a location before updating a reservation",
     );
+  }
+  // Inline the query string rather than relying on axios's `params`
+  // serialiser — when the request goes through a proxy/gateway, surfacing
+  // the param in `config.url` makes it visible in the request log and
+  // sidesteps any quirky params-merging behaviour. Status enum values are
+  // already URL-safe (uppercase ASCII + underscore).
+  const url = `${base(location.id)}/${id}/status?status=${encodeURIComponent(status)}`;
+  try {
+    await oms().put<unknown, null>(url, null);
   } catch (error: unknown) {
     revalidatePath("/reservations");
     return SettloErrorHandler.createErrorResponse(

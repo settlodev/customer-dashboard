@@ -143,6 +143,38 @@ const UI_ERROR_MESSAGES: Record<string, string> = {
 };
 
 /**
+ * Pulls a useful message out of an HTML error page. Two cases we hit in
+ * practice:
+ *
+ *   - Tomcat's default page (Spring Boot defers to it when the request is
+ *     rejected at the servlet container level — header validation,
+ *     multipart limits, etc.). Format: `<p><b>Message</b> ...</p>`.
+ *   - Spring Boot's Whitelabel page (when an unhandled exception escapes
+ *     into BasicErrorController's HTML branch). Format:
+ *     `<div>...</div>` with a `Whitelabel Error Page` heading.
+ *
+ * Returns null if the body doesn't look like one of these — the caller
+ * should then fall back to the generic message.
+ */
+function extractHtmlErrorMessage(html: string): string | null {
+    // Tomcat: <p><b>Message</b> X</p>
+    const tomcatMessage = html.match(
+        /<p><b>Message<\/b>\s*([^<]+?)\s*<\/p>/i,
+    );
+    if (tomcatMessage?.[1]) {
+        return tomcatMessage[1].trim();
+    }
+    // Tomcat title fallback: <title>HTTP Status 400 – Bad Request</title>
+    const tomcatTitle = html.match(
+        /<title>\s*HTTP Status\s+\d+\s+[–-]\s*([^<]+?)\s*<\/title>/i,
+    );
+    if (tomcatTitle?.[1]) {
+        return `Server rejected the request: ${tomcatTitle[1].trim()}`;
+    }
+    return null;
+}
+
+/**
  * Attempts to extract a nested error code and message from a server message
  * that contains embedded JSON (e.g., "Auth Service request failed: {\"code\":\"INVALID_PHONE_NUMBER\",...}").
  */
@@ -309,11 +341,29 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
 
         if (error.response) {
             const { status } = error.response;
-            let serverMessage = (error.response.data as { message?: string })?.message;
+            const rawData = error.response.data;
+
+            // When the response body is an HTML error page (Tomcat default
+            // or Spring Boot whitelabel), `data` arrives as a string and the
+            // usual `data.message` / `data.code` accessors return undefined.
+            // Pull the human-readable reason out of the markup so the toast
+            // surfaces "Invalid character in header" instead of the generic
+            // "Invalid request parameters".
+            const isHtmlBody =
+                typeof rawData === "string" &&
+                rawData.trimStart().toLowerCase().startsWith("<");
+
+            let serverMessage: string | undefined = isHtmlBody
+                ? extractHtmlErrorMessage(rawData) ?? undefined
+                : (rawData as { message?: string } | undefined)?.message;
+
             // Inventory Service returns `errorCode`; Accounts/Auth return `code`.
             // Accept both so UI branches on service-specific codes work uniformly.
-            let serverCode = (error.response.data as { code?: string; errorCode?: string })?.code
-                ?? (error.response.data as { errorCode?: string })?.errorCode;
+            let serverCode = isHtmlBody
+                ? undefined
+                : (rawData as { code?: string; errorCode?: string } | undefined)
+                      ?.code
+                  ?? (rawData as { errorCode?: string } | undefined)?.errorCode;
 
             // Unwrap nested service-to-service error messages
             if (serverMessage) {

@@ -1,12 +1,23 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  ArrowRight,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Users,
   Clock,
+  CreditCard,
+  Mail,
+  MapPin,
+  Pencil,
+  Phone,
+  Sparkles,
+  StickyNote,
+  Table2,
+  Users,
 } from "lucide-react";
 import {
   startOfMonth,
@@ -16,7 +27,6 @@ import {
   eachDayOfInterval,
   format,
   isSameMonth,
-  isSameDay,
   isToday,
   addMonths,
   subMonths,
@@ -30,13 +40,27 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
   Reservation,
   RESERVATION_STATUS_LABELS,
-  RESERVATION_STATUS_COLORS,
+  RESERVATION_SOURCE_LABELS,
+  DEPOSIT_STATUS_LABELS,
 } from "@/types/reservation/type";
-import { ReservationStatus } from "@/types/enums";
+import {
+  DepositPaymentStatus,
+  ReservationSource,
+  ReservationStatus,
+} from "@/types/enums";
 
 interface ReservationCalendarViewProps {
   reservations: Reservation[];
@@ -47,12 +71,29 @@ const MAX_VISIBLE_PER_DAY = 3;
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+const STATUS_TONE: Record<
+  ReservationStatus,
+  { variant: "pos" | "neg" | "warn" | "soft"; label: string }
+> = {
+  [ReservationStatus.PENDING]: { variant: "warn", label: "Pending" },
+  [ReservationStatus.CONFIRMED]: { variant: "pos", label: "Confirmed" },
+  [ReservationStatus.SEATED]: { variant: "pos", label: "Seated" },
+  [ReservationStatus.COMPLETED]: { variant: "soft", label: "Completed" },
+  [ReservationStatus.CANCELLED]: { variant: "neg", label: "Cancelled" },
+  [ReservationStatus.NO_SHOW]: { variant: "neg", label: "No-show" },
+};
+
 export function ReservationCalendarView({
   reservations,
   currentMonth,
 }: ReservationCalendarViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [selected, setSelected] = React.useState<Reservation | null>(null);
+  const [dayContext, setDayContext] = React.useState<{
+    date: Date;
+    items: Reservation[];
+  } | null>(null);
 
   // Group reservations by date
   const reservationsByDate = React.useMemo(() => {
@@ -129,10 +170,18 @@ export function ReservationCalendarView({
         {/* Calendar Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => navigateMonth("prev")}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigateMonth("prev")}
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon" onClick={() => navigateMonth("next")}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigateMonth("next")}
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
             <h2 className="text-lg font-semibold ml-2">
@@ -195,9 +244,16 @@ export function ReservationCalendarView({
                         {format(day, "d")}
                       </span>
                       {dayReservations.length > 0 && (
-                        <span className="text-xs text-muted-foreground">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDayContext({ date: day, items: dayReservations })
+                          }
+                          className="text-xs text-muted-foreground hover:text-ink transition-colors"
+                          title={`Show all ${dayReservations.length} bookings`}
+                        >
                           {dayReservations.length}
-                        </span>
+                        </button>
                       )}
                     </div>
 
@@ -207,11 +263,8 @@ export function ReservationCalendarView({
                         <Tooltip key={reservation.id}>
                           <TooltipTrigger asChild>
                             <button
-                              onClick={() =>
-                                router.push(
-                                  `/reservations/${reservation.id}`,
-                                )
-                              }
+                              type="button"
+                              onClick={() => setSelected(reservation)}
                               className={cn(
                                 "w-full text-left rounded px-1.5 py-0.5 text-xs truncate cursor-pointer",
                                 "hover:opacity-80 transition-opacity",
@@ -261,32 +314,23 @@ export function ReservationCalendarView({
                                   Table: {reservation.tableAndSpaceName}
                                 </div>
                               )}
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "text-xs",
-                                  RESERVATION_STATUS_COLORS[
-                                    reservation.reservationStatus as ReservationStatus
-                                  ],
-                                )}
-                              >
-                                {RESERVATION_STATUS_LABELS[
-                                  reservation.reservationStatus as ReservationStatus
-                                ] || reservation.reservationStatus}
-                              </Badge>
-                              {reservation.specialRequests && (
-                                <div className="text-xs text-muted-foreground italic">
-                                  {reservation.specialRequests}
-                                </div>
-                              )}
+                              <div className="text-[10.5px] text-muted-foreground italic">
+                                Click for details
+                              </div>
                             </div>
                           </TooltipContent>
                         </Tooltip>
                       ))}
                       {hiddenCount > 0 && (
-                        <div className="text-xs text-muted-foreground px-1.5 py-0.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDayContext({ date: day, items: dayReservations })
+                          }
+                          className="w-full text-left text-xs text-muted-foreground hover:text-ink px-1.5 py-0.5 rounded hover:bg-accent transition-colors"
+                        >
                           +{hiddenCount} more
-                        </div>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -310,6 +354,22 @@ export function ReservationCalendarView({
             </div>
           ))}
         </div>
+
+        {/* Day reservations dialog (when user clicks day count or +N more) */}
+        <DayReservationsDialog
+          context={dayContext}
+          onClose={() => setDayContext(null)}
+          onSelect={(r) => {
+            setDayContext(null);
+            setSelected(r);
+          }}
+        />
+
+        {/* Single reservation detail dialog */}
+        <ReservationQuickViewDialog
+          reservation={selected}
+          onClose={() => setSelected(null)}
+        />
       </div>
     </TooltipProvider>
   );
@@ -332,4 +392,279 @@ function getCardBgColor(status: ReservationStatus): string {
     default:
       return "bg-gray-100 text-gray-700";
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Quick-view dialog — single reservation summary with deep-link CTA.
+// ─────────────────────────────────────────────────────────────────────
+
+function ReservationQuickViewDialog({
+  reservation,
+  onClose,
+}: {
+  reservation: Reservation | null;
+  onClose: () => void;
+}) {
+  const open = reservation !== null;
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
+      <DialogContent className="sm:max-w-[520px]">
+        {reservation ? (
+          <ReservationQuickViewBody reservation={reservation} />
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ReservationQuickViewBody({
+  reservation,
+}: {
+  reservation: Reservation;
+}) {
+  const tone = STATUS_TONE[reservation.reservationStatus as ReservationStatus];
+  const dateLabel = reservation.reservationDate
+    ? new Intl.DateTimeFormat("en", { dateStyle: "full" }).format(
+        new Date(reservation.reservationDate + "T00:00:00"),
+      )
+    : "—";
+  const timeLabel = reservation.reservationTime
+    ? reservation.reservationEndTime
+      ? `${reservation.reservationTime.substring(0, 5)} – ${reservation.reservationEndTime.substring(0, 5)}`
+      : reservation.reservationTime.substring(0, 5)
+    : "—";
+  const sourceLabel = reservation.source
+    ? RESERVATION_SOURCE_LABELS[reservation.source as ReservationSource] ??
+      String(reservation.source)
+    : null;
+  const depositVisible =
+    reservation.depositPaymentStatus &&
+    reservation.depositPaymentStatus !== DepositPaymentStatus.NOT_REQUIRED;
+
+  return (
+    <>
+      <DialogHeader className="text-left">
+        <div className="flex items-start justify-between gap-3 pr-6">
+          <div className="min-w-0">
+            <DialogTitle className="truncate text-base">
+              {reservation.customerName || "Walk-in"}
+            </DialogTitle>
+            <DialogDescription className="text-xs mt-0.5">
+              {dateLabel} · {timeLabel}
+            </DialogDescription>
+          </div>
+          {tone ? (
+            <Badge variant={tone.variant} className="text-[10.5px] shrink-0">
+              {tone.label}
+            </Badge>
+          ) : null}
+        </div>
+      </DialogHeader>
+
+      <div className="grid grid-cols-2 gap-2.5">
+        <QuickField
+          icon={CalendarDays}
+          label="Date"
+          value={
+            reservation.reservationDate
+              ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(
+                  new Date(reservation.reservationDate + "T00:00:00"),
+                )
+              : "—"
+          }
+        />
+        <QuickField icon={Clock} label="Time" value={timeLabel} />
+        <QuickField
+          icon={Users}
+          label="Guests"
+          value={
+            reservation.peopleCount != null
+              ? `${reservation.peopleCount} guest${reservation.peopleCount === 1 ? "" : "s"}`
+              : "—"
+          }
+        />
+        <QuickField
+          icon={Table2}
+          label="Table"
+          value={reservation.tableAndSpaceName ?? "Unassigned"}
+        />
+        {reservation.sectionName ? (
+          <QuickField
+            icon={MapPin}
+            label="Section"
+            value={reservation.sectionName}
+          />
+        ) : null}
+        {sourceLabel ? (
+          <QuickField icon={Sparkles} label="Source" value={sourceLabel} />
+        ) : null}
+        {reservation.customerPhone ? (
+          <QuickField
+            icon={Phone}
+            label="Phone"
+            value={reservation.customerPhone}
+          />
+        ) : null}
+        {reservation.customerEmail ? (
+          <QuickField
+            icon={Mail}
+            label="Email"
+            value={reservation.customerEmail}
+          />
+        ) : null}
+        {depositVisible ? (
+          <QuickField
+            icon={CreditCard}
+            label="Deposit"
+            value={
+              DEPOSIT_STATUS_LABELS[
+                reservation.depositPaymentStatus as DepositPaymentStatus
+              ] ?? String(reservation.depositPaymentStatus)
+            }
+          />
+        ) : null}
+      </div>
+
+      {reservation.specialRequests ? (
+        <div className="rounded-md border border-line bg-canvas px-3 py-2.5">
+          <p className="flex items-center gap-1.5 text-[10.5px] font-medium uppercase tracking-wide text-muted-foreground">
+            <StickyNote className="h-3 w-3" />
+            Special requests
+          </p>
+          <p className="mt-1 whitespace-pre-wrap text-[12.5px] text-ink-2">
+            {reservation.specialRequests}
+          </p>
+        </div>
+      ) : null}
+
+      <DialogFooter className="gap-2 sm:gap-2">
+        <Button asChild variant="outline" size="sm">
+          <Link href={`/reservations/${reservation.id}/edit`}>
+            <Pencil className="mr-1.5 h-3.5 w-3.5" />
+            Edit
+          </Link>
+        </Button>
+        <Button asChild size="sm">
+          <Link href={`/reservations/${reservation.id}`}>
+            View full details
+            <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+          </Link>
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+function QuickField({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-md border border-line bg-canvas px-2.5 py-2">
+      <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <Icon className="h-2.5 w-2.5" />
+        {label}
+      </div>
+      <p className="mt-0.5 truncate text-[12.5px] text-ink-2">{value}</p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Day-level dialog — list every reservation for a single day.
+// ─────────────────────────────────────────────────────────────────────
+
+function DayReservationsDialog({
+  context,
+  onClose,
+  onSelect,
+}: {
+  context: { date: Date; items: Reservation[] } | null;
+  onClose: () => void;
+  onSelect: (r: Reservation) => void;
+}) {
+  const open = context !== null;
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
+      <DialogContent className="sm:max-w-[480px]">
+        {context ? (
+          <>
+            <DialogHeader className="text-left">
+              <DialogTitle className="text-base">
+                {format(context.date, "EEEE, MMMM d")}
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                {context.items.length} reservation
+                {context.items.length === 1 ? "" : "s"} on this day
+              </DialogDescription>
+            </DialogHeader>
+
+            <ScrollArea className="max-h-[60vh] pr-2">
+              <div className="space-y-1.5">
+                {context.items.map((r) => {
+                  const tone =
+                    STATUS_TONE[r.reservationStatus as ReservationStatus];
+                  const time = r.reservationTime
+                    ? r.reservationTime.substring(0, 5)
+                    : "—";
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => onSelect(r)}
+                      className={cn(
+                        "w-full text-left rounded-md border border-line bg-canvas px-3 py-2.5",
+                        "hover:bg-accent transition-colors",
+                        "flex items-center gap-3",
+                      )}
+                    >
+                      <div className="text-[12.5px] font-mono font-medium text-ink-2 w-12 shrink-0">
+                        {time}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[12.5px] font-medium text-ink truncate">
+                          {r.customerName || "Walk-in"}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground truncate">
+                          {r.peopleCount} guest{r.peopleCount === 1 ? "" : "s"}
+                          {r.tableAndSpaceName
+                            ? ` · ${r.tableAndSpaceName}`
+                            : ""}
+                        </div>
+                      </div>
+                      {tone ? (
+                        <Badge
+                          variant={tone.variant}
+                          className="text-[10px] shrink-0"
+                        >
+                          {tone.label}
+                        </Badge>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
 }

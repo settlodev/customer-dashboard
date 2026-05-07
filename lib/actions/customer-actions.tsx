@@ -220,9 +220,13 @@ export const createCustomer = async (
     locationId: location.id,
   };
 
+  let created: Customer | undefined;
   try {
     const apiClient = new ApiClient();
-    await apiClient.post(`/api/v1/customers`, payload);
+    created = await apiClient.post<Customer, typeof payload>(
+      `/api/v1/customers`,
+      payload,
+    );
   } catch (error) {
     console.error("Error creating customer", error);
     return parseStringify(buildErrorResponse("Failed to create customer", error));
@@ -232,7 +236,8 @@ export const createCustomer = async (
   return parseStringify({
     responseType: "success",
     message: "Customer created successfully",
-  } satisfies FormResponse);
+    data: created,
+  } satisfies FormResponse<Customer>);
 };
 
 export const updateCustomer = async (
