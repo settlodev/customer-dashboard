@@ -8,8 +8,15 @@ import axios, {
   AxiosResponse,
 } from "axios";
 import https from "https";
-import { handleSettloApiError, SettloApiError } from "@/lib/settlo-api-error-handler";
-import { getAuthToken, updateAuthToken, deleteAuthCookie } from "@/lib/auth-utils";
+import {
+  handleSettloApiError,
+  SettloApiError,
+} from "@/lib/settlo-api-error-handler";
+import {
+  getAuthToken,
+  updateAuthToken,
+  deleteAuthCookie,
+} from "@/lib/auth-utils";
 import { extractSubscriptionStatus } from "@/lib/jwt-utils";
 import { ErrorResponseType } from "@/types/types";
 import { cookies } from "next/headers";
@@ -236,7 +243,13 @@ class ApiClient {
   public isPlain: boolean;
 
   constructor(
-    service: "accounts" | "auth" | "reports" | "payments" | "orders" | boolean = "accounts",
+    service:
+      | "accounts"
+      | "auth"
+      | "reports"
+      | "payments"
+      | "orders"
+      | boolean = "accounts",
   ) {
     if (typeof service === "boolean") {
       this.baseURL = service ? AUTH_SERVICE_URL : ACCOUNTS_SERVICE_URL;
@@ -547,6 +560,7 @@ class ApiClient {
       const response = await this.instance.post<T>(url, data, config);
       return response.data;
     } catch (error) {
+      console.log("Error posting post", url, error);
       throw new SettloApiError(await handleSettloApiError(error));
     }
   }

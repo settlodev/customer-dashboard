@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import { FieldErrors, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -76,7 +82,11 @@ const formatMoney = (amount: number, currency: string) => {
   }
 };
 
-function ProductCollectionForm({ item }: { item: ProductCollection | null | undefined }) {
+function ProductCollectionForm({
+  item,
+}: {
+  item: ProductCollection | null | undefined;
+}) {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const [imageUrl, setImageUrl] = useState(item?.imageUrl || "");
@@ -144,7 +154,9 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
   });
 
   const watchedItems = form.watch("items");
-  const watchedNativeCurrency = (form.watch("nativeCurrency") || "TZS").toUpperCase();
+  const watchedNativeCurrency = (
+    form.watch("nativeCurrency") || "TZS"
+  ).toUpperCase();
   const watchedCustomPrice = form.watch("customPrice");
 
   // Live default-sum preview using the merchant's current item list.
@@ -180,7 +192,12 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
       }
     }
     return { defaultPrice: total, mixedCurrency };
-  }, [watchedItems, variantLookup, watchedNativeCurrency, fallbackTotalsByVariant]);
+  }, [
+    watchedItems,
+    variantLookup,
+    watchedNativeCurrency,
+    fallbackTotalsByVariant,
+  ]);
 
   const effectivePreview = watchedCustomPrice ?? livePreview.defaultPrice;
   const overrideDelta =
@@ -220,7 +237,11 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
         .then((data) => {
           if (data) setResponse(data);
           if (data && data.responseType === "success") {
-            toast({ variant: "success", title: "Success", description: data.message });
+            toast({
+              variant: "success",
+              title: "Success",
+              description: data.message,
+            });
             router.push("/product-collections");
           }
         })
@@ -236,7 +257,9 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
 
   // Variants already added are disabled in the picker so the merchant
   // can't add the same one twice (server enforces uniqueness too).
-  const disabledVariantIds = (watchedItems ?? []).map((i) => i.variantId).filter(Boolean);
+  const disabledVariantIds = (watchedItems ?? [])
+    .map((i) => i.variantId)
+    .filter(Boolean);
 
   const handleAddVariant = () => {
     if (!pendingVariantId) {
@@ -263,7 +286,10 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
       });
       return;
     }
-    itemsField.append({ variantId: pendingVariantId, quantity: pendingVariantQty });
+    itemsField.append({
+      variantId: pendingVariantId,
+      quantity: pendingVariantQty,
+    });
     setPendingVariantId("");
     setPendingVariantQty(1);
   };
@@ -271,7 +297,10 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
   return (
     <Form {...form}>
       <FormError message={response?.message} />
-      <form onSubmit={form.handleSubmit(submitData, onInvalid)} className={styles.formRoot}>
+      <form
+        onSubmit={form.handleSubmit(submitData, onInvalid)}
+        className={styles.formRoot}
+      >
         <div className={styles.formStack}>
           {/* ── Bundle details ───────────────────────────────────────────────── */}
           <section className={styles.formCard}>
@@ -316,7 +345,11 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
                           Bundle name <span className="req">*</span>
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. Family Combo" {...field} disabled={isPending} />
+                          <Input
+                            placeholder="e.g. Family Combo"
+                            {...field}
+                            disabled={isPending}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -352,7 +385,9 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
                       render={({ field }) => (
                         <FormItem className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
                           <div className="space-y-0.5">
-                            <FormLabel className={styles.fieldLabel}>Active</FormLabel>
+                            <FormLabel className={styles.fieldLabel}>
+                              Active
+                            </FormLabel>
                             <p className="text-[11px] text-muted-foreground">
                               Inactive bundles are hidden from the POS catalog.
                             </p>
@@ -382,7 +417,8 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
               <div className="flex-1 min-w-0">
                 <h3>Bundle items</h3>
                 <p className={styles.formCardHeadDesc}>
-                  Pick the variants and how many of each ship in one bundle sale.
+                  Pick the variants and how many of each ship in one bundle
+                  sale.
                 </p>
               </div>
               <div className={styles.formCardActions}>
@@ -391,7 +427,7 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
             </header>
 
             <div className={styles.formBody}>
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_140px_auto] gap-3 items-end rounded-md border bg-muted/30 p-3">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_140px_auto] gap-3 items-end rounded-md border bg-muted/30 p-3 mb-3">
                 <div>
                   <label className={`${styles.fieldLabel} text-xs`}>
                     Variant to add
@@ -405,7 +441,9 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
                   />
                 </div>
                 <div>
-                  <label className={`${styles.fieldLabel} text-xs`}>Quantity</label>
+                  <label className={`${styles.fieldLabel} text-xs`}>
+                    Quantity
+                  </label>
                   <NumericFormat
                     className="flex h-10 w-full rounded-md border-0 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                     value={pendingVariantQty}
@@ -441,52 +479,75 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
 
               {itemsField.fields.length === 0 ? (
                 <p className="rounded-md border border-dashed bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
-                  No variants yet — add at least one for the bundle to be sellable.
+                  No variants yet — add at least one for the bundle to be
+                  sellable.
                 </p>
               ) : (
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/40 text-[11px] uppercase tracking-wide text-muted-foreground">
                       <tr>
-                        <th className="px-3 py-2 text-left font-medium">Variant</th>
-                        <th className="px-3 py-2 text-right font-medium">Unit price</th>
-                        <th className="px-3 py-2 text-left font-medium w-[140px]">Quantity</th>
-                        <th className="px-3 py-2 text-right font-medium">Line total</th>
+                        <th className="px-3 py-2 text-left font-medium">
+                          Variant
+                        </th>
+                        <th className="px-3 py-2 text-right font-medium">
+                          Unit price
+                        </th>
+                        <th className="px-3 py-2 text-left font-medium w-[140px]">
+                          Quantity
+                        </th>
+                        <th className="px-3 py-2 text-right font-medium">
+                          Line total
+                        </th>
                         <th className="px-3 py-2 w-[40px]"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {itemsField.fields.map((field, index) => {
                         const lineValue = watchedItems?.[index];
-                        const lookup = variantLookup.get(lineValue?.variantId ?? field.variantId);
+                        const lookup = variantLookup.get(
+                          lineValue?.variantId ?? field.variantId,
+                        );
                         const fallback =
-                          fallbackTotalsByVariant.get(lineValue?.variantId ?? field.variantId) ?? 0;
+                          fallbackTotalsByVariant.get(
+                            lineValue?.variantId ?? field.variantId,
+                          ) ?? 0;
                         const unitPrice = lookup
                           ? Number(lookup.variant.price ?? 0)
                           : null;
                         const qty = Number(lineValue?.quantity ?? 0);
                         const lineTotal =
                           unitPrice != null ? unitPrice * qty : fallback;
-                        const variantCcy = lookup?.variant.nativeCurrency?.toUpperCase();
+                        const variantCcy =
+                          lookup?.variant.nativeCurrency?.toUpperCase();
                         const cur = variantCcy ?? watchedNativeCurrency;
                         const label = lookup
                           ? `${lookup.product.name} — ${lookup.variant.name}`
-                          : item?.items?.find((i) => i.variantId === lineValue?.variantId)
-                              ?.variantDisplayName ?? "Variant";
+                          : (item?.items?.find(
+                              (i) => i.variantId === lineValue?.variantId,
+                            )?.variantDisplayName ?? "Variant");
                         return (
                           <tr key={field.id} className="border-t">
                             <td className="px-3 py-2">
                               <div className="flex items-center gap-2">
-                                <span className="font-medium text-ink">{label}</span>
-                                {variantCcy && variantCcy !== watchedNativeCurrency && (
-                                  <Badge variant="soft" className="text-[10px]">
-                                    {variantCcy}
-                                  </Badge>
-                                )}
+                                <span className="font-medium text-ink">
+                                  {label}
+                                </span>
+                                {variantCcy &&
+                                  variantCcy !== watchedNativeCurrency && (
+                                    <Badge
+                                      variant="soft"
+                                      className="text-[10px]"
+                                    >
+                                      {variantCcy}
+                                    </Badge>
+                                  )}
                               </div>
                             </td>
                             <td className="px-3 py-2 text-right tabular-nums">
-                              {unitPrice != null ? formatMoney(unitPrice, cur) : "—"}
+                              {unitPrice != null
+                                ? formatMoney(unitPrice, cur)
+                                : "—"}
                             </td>
                             <td className="px-3 py-2">
                               <FormField
@@ -499,7 +560,9 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
                                         className="flex h-9 w-full rounded-md border-0 bg-muted px-3 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                                         value={qtyField.value ?? 1}
                                         onValueChange={(v) =>
-                                          qtyField.onChange(v.value ? Number(v.value) : 0)
+                                          qtyField.onChange(
+                                            v.value ? Number(v.value) : 0,
+                                          )
                                         }
                                         decimalScale={6}
                                         allowNegative={false}
@@ -563,13 +626,15 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
             </header>
 
             <div className={styles.formBody}>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 space-y-2">
                 <FormField
                   control={form.control}
                   name="nativeCurrency"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className={styles.fieldLabel}>Native currency</FormLabel>
+                      <FormLabel className={styles.fieldLabel}>
+                        Native currency
+                      </FormLabel>
                       <FormControl>
                         <Input
                           placeholder="TZS"
@@ -602,7 +667,9 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
                           // null/undefined renders as blank → backend default-sum.
                           value={field.value ?? ""}
                           onValueChange={(v) =>
-                            field.onChange(v.value === "" ? null : Number(v.value))
+                            field.onChange(
+                              v.value === "" ? null : Number(v.value),
+                            )
                           }
                           placeholder={`Default ${formatMoney(livePreview.defaultPrice, watchedNativeCurrency)}`}
                           thousandSeparator=","
@@ -617,25 +684,38 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
                 />
               </div>
 
-              <div className="rounded-md border bg-muted/30 px-3 py-2 grid grid-cols-2 sm:grid-cols-4 gap-3 text-[12px]">
+              <div className="rounded-md border bg-muted/30 px-3 py-2 my-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-[12px]">
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Items</div>
-                  <div className="font-medium tabular-nums">{itemsField.fields.length}</div>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Default sum</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Items
+                  </div>
                   <div className="font-medium tabular-nums">
-                    {formatMoney(livePreview.defaultPrice, watchedNativeCurrency)}
+                    {itemsField.fields.length}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Effective price</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Default sum
+                  </div>
+                  <div className="font-medium tabular-nums">
+                    {formatMoney(
+                      livePreview.defaultPrice,
+                      watchedNativeCurrency,
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Effective price
+                  </div>
                   <div className="font-medium tabular-nums">
                     {formatMoney(effectivePreview, watchedNativeCurrency)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Override</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Override
+                  </div>
                   <div
                     className={`font-medium tabular-nums ${
                       watchedCustomPrice == null
@@ -661,7 +741,9 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => form.setValue("customPrice", null, { shouldDirty: true })}
+                  onClick={() =>
+                    form.setValue("customPrice", null, { shouldDirty: true })
+                  }
                   disabled={isPending}
                 >
                   Clear override (use default sum)
@@ -692,7 +774,8 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
             <div className={styles.formBody}>
               {overridesField.fields.length === 0 ? (
                 <p className="rounded-md border border-dashed bg-muted/20 px-4 py-4 text-center text-sm text-muted-foreground">
-                  No currency overrides — bundle is FX-converted from {watchedNativeCurrency} at sale time.
+                  No currency overrides — bundle is FX-converted from{" "}
+                  {watchedNativeCurrency} at sale time.
                 </p>
               ) : (
                 <div className="space-y-3">
@@ -714,7 +797,9 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
                                 {...ccyField}
                                 value={(ccyField.value ?? "").toUpperCase()}
                                 onChange={(e) =>
-                                  ccyField.onChange(e.target.value.toUpperCase())
+                                  ccyField.onChange(
+                                    e.target.value.toUpperCase(),
+                                  )
                                 }
                                 disabled={isPending}
                               />
@@ -734,7 +819,9 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
                                 className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                                 value={priceField.value ?? ""}
                                 onValueChange={(v) =>
-                                  priceField.onChange(v.value ? Number(v.value) : 0)
+                                  priceField.onChange(
+                                    v.value ? Number(v.value) : 0,
+                                  )
                                 }
                                 thousandSeparator=","
                                 decimalScale={2}
@@ -772,6 +859,7 @@ function ProductCollectionForm({ item }: { item: ProductCollection | null | unde
                     active: true,
                   })
                 }
+                className="mt-3"
                 disabled={isPending}
               >
                 <Plus className="h-3.5 w-3.5 mr-1.5" /> Add currency override
