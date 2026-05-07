@@ -8,8 +8,15 @@ import axios, {
   AxiosResponse,
 } from "axios";
 import https from "https";
-import { handleSettloApiError, SettloApiError } from "@/lib/settlo-api-error-handler";
-import { getAuthToken, updateAuthToken, deleteAuthCookie } from "@/lib/auth-utils";
+import {
+  handleSettloApiError,
+  SettloApiError,
+} from "@/lib/settlo-api-error-handler";
+import {
+  getAuthToken,
+  updateAuthToken,
+  deleteAuthCookie,
+} from "@/lib/auth-utils";
 import { extractSubscriptionStatus } from "@/lib/jwt-utils";
 import { ErrorResponseType } from "@/types/types";
 import { cookies } from "next/headers";
@@ -203,7 +210,13 @@ function logResponseError(error: AxiosError, durationMs: number) {
     | Record<string, string | string[] | undefined>
     | undefined;
   if (responseHeaders) {
-    const interesting = ["server", "x-trace-id", "x-request-id", "via", "content-type"];
+    const interesting = [
+      "server",
+      "x-trace-id",
+      "x-request-id",
+      "via",
+      "content-type",
+    ];
     const echoed = interesting
       .map((k) => {
         const v = responseHeaders[k];
@@ -222,9 +235,12 @@ function logResponseError(error: AxiosError, durationMs: number) {
     // instead of a 400-char preview — the rejection reason is buried mid-page
     // and the truncated preview hides it.
     const isHtml =
-      typeof data === "string" && data.trimStart().toLowerCase().startsWith("<");
+      typeof data === "string" &&
+      data.trimStart().toLowerCase().startsWith("<");
     if (isHtml) {
-      console.log(`${ANSI.red}    error (html, ${data.length} bytes):${ANSI.reset}`);
+      console.log(
+        `${ANSI.red}    error (html, ${data.length} bytes):${ANSI.reset}`,
+      );
       console.log(`${ANSI.red}${data}${ANSI.reset}`);
     } else {
       const preview = truncate(data, 400);
@@ -250,12 +266,6 @@ async function getBusinessId(): Promise<string | null> {
   }
 }
 
-/**
- * The ID to send as `X-Location-Id` depends on the user's active workspace.
- * Priority: currentWarehouse → currentStore → currentLocation. This is the
- * same resolver that mutation actions use to set `locationType` in bodies,
- * so the header and body always agree.
- */
 async function getScopedLocationId(): Promise<string | null> {
   const dest = await getCurrentDestination();
   return dest?.id ?? null;
@@ -268,7 +278,13 @@ class ApiClient {
   public isPlain: boolean;
 
   constructor(
-    service: "accounts" | "auth" | "reports" | "payments" | "orders" | boolean = "accounts",
+    service:
+      | "accounts"
+      | "auth"
+      | "reports"
+      | "payments"
+      | "orders"
+      | boolean = "accounts",
   ) {
     if (typeof service === "boolean") {
       this.baseURL = service ? AUTH_SERVICE_URL : ACCOUNTS_SERVICE_URL;
@@ -336,13 +352,6 @@ class ApiClient {
               refreshToken: refreshed.refreshToken,
             };
           } catch {
-            // Proactive refresh failed. If the access token is also fully
-            // expired, the session is unrecoverable — wipe cookies and
-            // reject now rather than fall through to a second doomed
-            // refresh via the 401 interceptor. If the access token is
-            // still valid (just expiring soon), the failure may be
-            // transient; continue with the current token and let the
-            // reactive path handle it only if the request actually 401s.
             if (isTokenExpiringSoon(token.accessToken, 0)) {
               try {
                 await deleteAuthCookie();
@@ -373,9 +382,6 @@ class ApiClient {
           config.headers["Authorization"] = `Bearer ${token.accessToken}`;
         }
 
-        // Identity headers — always sent when authenticated so the backend
-        // can populate audit fields (createdBy/approvedBy/etc.) and apply
-        // account-level rate limits.
         if (token?.accountId) {
           config.headers["X-Account-Id"] = token.accountId;
         }
@@ -384,10 +390,6 @@ class ApiClient {
         }
       }
 
-      // Business / location headers from cookies (regardless of plain mode,
-      // these provide request scoping for downstream services). The
-      // location ID resolves to the active warehouse/store/location the
-      // user currently has selected — see getCurrentDestination.
       const [businessId, locationId] = await Promise.all([
         getBusinessId(),
         getScopedLocationId(),
@@ -395,16 +397,10 @@ class ApiClient {
       if (businessId) config.headers["X-Business-Id"] = businessId;
       if (locationId) config.headers["X-Location-Id"] = locationId;
 
-      // Content-Type — JSON by default, but skip when the body is FormData
-      // so axios can set multipart/form-data with the correct boundary, and
-      // skip when there's no body (Tomcat 11 in strict mode rejects an
-      // `application/json` content-type on a PUT that carries no body).
       const isFormData =
         typeof FormData !== "undefined" && config.data instanceof FormData;
       const hasBody =
-        config.data !== undefined &&
-        config.data !== null &&
-        config.data !== "";
+        config.data !== undefined && config.data !== null && config.data !== "";
       if (
         (!config.responseType || config.responseType !== "blob") &&
         !isFormData &&
@@ -421,15 +417,6 @@ class ApiClient {
         delete config.headers["Content-Type"];
       }
 
-      // Force JSON in the response — axios' default
-      // (`application/json, text/plain, */*`) lets Spring's BasicErrorController
-      // win content negotiation and reply with the Whitelabel HTML error
-      // page when an exception escapes a filter to `/error`. Always pinning
-      // Accept to JSON (rather than checking if it's already set, which it
-      // is — axios populates the default first) makes the same error come
-      // back as the structured ErrorResponse the frontend knows how to
-      // surface. Skipped for blob responses (file downloads) where the
-      // caller controls Accept itself.
       if (!config.responseType || config.responseType !== "blob") {
         config.headers["Accept"] = "application/json";
       }
@@ -438,23 +425,16 @@ class ApiClient {
       const clientId = process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID;
       if (clientId) config.headers["X-Client-Id"] = clientId;
 
-      // Idempotency + trace on mutations. With the dashboard's
-      // Authorization JWT (permissions can push it to several KB) + all
-      // identity headers, the combined header bundle was overflowing the
-      // OMS Tomcat default `maxHttpHeaderSize` of 8KB and the request was
-      // being 400'd at the connector level. The OMS now configures
-      // `server.max-http-request-header-size=64KB`, so it's safe to send
-      // these on every mutation again — the OMS @Idempotent aspect uses
-      // them for de-duplication on create endpoints.
-      const method = config.method?.toUpperCase();
-      if (method === "POST" || method === "PUT" || method === "PATCH") {
-        if (config.headers["Idempotency-Key"] === undefined) {
-          config.headers["Idempotency-Key"] = crypto.randomUUID();
-        }
-        if (config.headers["X-Trace-Id"] === undefined) {
-          config.headers["X-Trace-Id"] = crypto.randomUUID();
-        }
-      }
+      // Remove these for now since they are causing issues with the services
+      // const method = config.method?.toUpperCase();
+      // if (method === "POST" || method === "PUT" || method === "PATCH") {
+      //   if (config.headers["Idempotency-Key"] === undefined) {
+      //     config.headers["Idempotency-Key"] = crypto.randomUUID();
+      //   }
+      //   if (config.headers["X-Trace-Id"] === undefined) {
+      //     config.headers["X-Trace-Id"] = crypto.randomUUID();
+      //   }
+      // }
 
       if (IS_DEV) logRequest(config);
 
