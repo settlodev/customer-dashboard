@@ -20,8 +20,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import DeleteModal from "@/components/tables/delete-modal";
 import { useToast } from "@/hooks/use-toast";
-import { Reservation } from "@/types/reservation/type";
+import {
+  Reservation,
+  canHardDeleteReservation,
+  canEditReservation,
+} from "@/types/reservation/type";
 import { deleteReservation } from "@/lib/actions/reservation-actions";
+import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 
 interface CellActionProps {
   data: Reservation;
@@ -31,6 +36,8 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { toast } = useToast();
+  const canDelete = canHardDeleteReservation(data);
+  const canEdit = canEditReservation(data);
 
   const onDelete = async () => {
     try {
@@ -44,9 +51,10 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       toast({
         variant: "destructive",
         title: "Couldn't delete",
-        description:
-          (error as Error).message ||
+        description: SettloErrorHandler.extractMessage(
+          error,
           "There was an issue with your request, please try again later.",
+        ),
       });
     } finally {
       onOpenChange();
@@ -69,13 +77,15 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             <Eye className="mr-2 h-4 w-4" />
             View
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => router.push(`/reservations/${data.id}/edit`)}
-          >
-            <EditIcon className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
-          {data.canDelete && (
+          {canEdit && (
+            <DropdownMenuItem
+              onClick={() => router.push(`/reservations/${data.id}/edit`)}
+            >
+              <EditIcon className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+          )}
+          {canDelete && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -90,7 +100,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {data.canDelete && (
+      {canDelete && (
         <DeleteModal
           isOpen={isOpen}
           itemName={data.customerName || "this reservation"}

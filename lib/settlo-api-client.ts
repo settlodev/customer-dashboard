@@ -202,9 +202,50 @@ function logResponseError(error: AxiosError, durationMs: number) {
     `${ANSI.dim}◀──${ANSI.reset} ${ANSI.red}${ANSI.bold}${status || "ERR"}${ANSI.reset} ${ANSI.dim}${method} ${shortUrl}${ANSI.reset} ${ANSI.blue}${durationMs}ms${ANSI.reset}`,
   );
 
-  if (error.response?.data) {
-    const preview = truncate(error.response.data, 400);
-    console.log(`${ANSI.red}    error: ${preview}${ANSI.reset}`);
+  // Echo back the response headers — `Server` and `X-*` reveal whether the
+  // response came from the upstream (OMS Tomcat) or from a proxy / gateway
+  // in front of it. Useful when the body is a generic HTML error page that
+  // doesn't say where it originated.
+  const responseHeaders = error.response?.headers as
+    | Record<string, string | string[] | undefined>
+    | undefined;
+  if (responseHeaders) {
+    const interesting = [
+      "server",
+      "x-trace-id",
+      "x-request-id",
+      "via",
+      "content-type",
+    ];
+    const echoed = interesting
+      .map((k) => {
+        const v = responseHeaders[k];
+        return v ? `${k}: ${Array.isArray(v) ? v.join(", ") : v}` : null;
+      })
+      .filter(Boolean)
+      .join("  ");
+    if (echoed) {
+      console.log(`${ANSI.red}    response headers: ${echoed}${ANSI.reset}`);
+    }
+  }
+
+  const data = error.response?.data;
+  if (data) {
+    // For HTML bodies (Tomcat / whitelabel error pages) print the raw page
+    // instead of a 400-char preview — the rejection reason is buried mid-page
+    // and the truncated preview hides it.
+    const isHtml =
+      typeof data === "string" &&
+      data.trimStart().toLowerCase().startsWith("<");
+    if (isHtml) {
+      console.log(
+        `${ANSI.red}    error (html, ${data.length} bytes):${ANSI.reset}`,
+      );
+      console.log(`${ANSI.red}${data}${ANSI.reset}`);
+    } else {
+      const preview = truncate(data, 400);
+      console.log(`${ANSI.red}    error: ${preview}${ANSI.reset}`);
+    }
   } else if (error.message) {
     console.log(
       `${ANSI.red}    ${error.code || "NETWORK"}: ${error.message}${ANSI.reset}`,
@@ -225,12 +266,6 @@ async function getBusinessId(): Promise<string | null> {
   }
 }
 
-/**
- * The ID to send as `X-Location-Id` depends on the user's active workspace.
- * Priority: currentWarehouse → currentStore → currentLocation. This is the
- * same resolver that mutation actions use to set `locationType` in bodies,
- * so the header and body always agree.
- */
 async function getScopedLocationId(): Promise<string | null> {
   const dest = await getCurrentDestination();
   return dest?.id ?? null;
@@ -317,13 +352,6 @@ class ApiClient {
               refreshToken: refreshed.refreshToken,
             };
           } catch {
-            // Proactive refresh failed. If the access token is also fully
-            // expired, the session is unrecoverable — wipe cookies and
-            // reject now rather than fall through to a second doomed
-            // refresh via the 401 interceptor. If the access token is
-            // still valid (just expiring soon), the failure may be
-            // transient; continue with the current token and let the
-            // reactive path handle it only if the request actually 401s.
             if (isTokenExpiringSoon(token.accessToken, 0)) {
               try {
                 await deleteAuthCookie();
@@ -354,9 +382,6 @@ class ApiClient {
           config.headers["Authorization"] = `Bearer ${token.accessToken}`;
         }
 
-        // Identity headers — always sent when authenticated so the backend
-        // can populate audit fields (createdBy/approvedBy/etc.) and apply
-        // account-level rate limits.
         if (token?.accountId) {
           config.headers["X-Account-Id"] = token.accountId;
         }
@@ -365,10 +390,6 @@ class ApiClient {
         }
       }
 
-      // Business / location headers from cookies (regardless of plain mode,
-      // these provide request scoping for downstream services). The
-      // location ID resolves to the active warehouse/store/location the
-      // user currently has selected — see getCurrentDestination.
       const [businessId, locationId] = await Promise.all([
         getBusinessId(),
         getScopedLocationId(),
@@ -376,13 +397,14 @@ class ApiClient {
       if (businessId) config.headers["X-Business-Id"] = businessId;
       if (locationId) config.headers["X-Location-Id"] = locationId;
 
-      // Content-Type — JSON by default, but skip when the body is FormData
-      // so axios can set multipart/form-data with the correct boundary.
       const isFormData =
         typeof FormData !== "undefined" && config.data instanceof FormData;
+      const hasBody =
+        config.data !== undefined && config.data !== null && config.data !== "";
       if (
         (!config.responseType || config.responseType !== "blob") &&
-        !isFormData
+        !isFormData &&
+        hasBody
       ) {
         config.headers["Content-Type"] = "application/json";
       }
@@ -390,17 +412,29 @@ class ApiClient {
         // Delete any inherited content-type so axios auto-detects the boundary.
         delete config.headers["Content-Type"];
       }
+      if (!hasBody) {
+        // Strip any inherited Content-Type when there's no body to describe.
+        delete config.headers["Content-Type"];
+      }
+
+      if (!config.responseType || config.responseType !== "blob") {
+        config.headers["Accept"] = "application/json";
+      }
 
       // Whitelabel
       const clientId = process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID;
       if (clientId) config.headers["X-Client-Id"] = clientId;
 
-      // Idempotency + trace on mutations
-      const method = config.method?.toUpperCase();
-      if (method === "POST" || method === "PUT" || method === "PATCH") {
-        config.headers["Idempotency-Key"] = crypto.randomUUID();
-        config.headers["X-Trace-Id"] = crypto.randomUUID();
-      }
+      // Remove these for now since they are causing issues with the services
+      // const method = config.method?.toUpperCase();
+      // if (method === "POST" || method === "PUT" || method === "PATCH") {
+      //   if (config.headers["Idempotency-Key"] === undefined) {
+      //     config.headers["Idempotency-Key"] = crypto.randomUUID();
+      //   }
+      //   if (config.headers["X-Trace-Id"] === undefined) {
+      //     config.headers["X-Trace-Id"] = crypto.randomUUID();
+      //   }
+      // }
 
       if (IS_DEV) logRequest(config);
 

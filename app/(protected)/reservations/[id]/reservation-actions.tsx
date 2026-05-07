@@ -59,7 +59,7 @@ import {
 import { fetchLocationPaymentMethods } from "@/lib/actions/payment-method-actions";
 import { fetchAllTables } from "@/lib/actions/space-actions";
 
-import { Reservation } from "@/types/reservation/type";
+import { Reservation, canHardDeleteReservation } from "@/types/reservation/type";
 import {
   DepositPaymentStatus,
   ReservationStatus,
@@ -102,6 +102,7 @@ export function ReservationActions({
   const depositRequired =
     reservation.depositAmount != null && reservation.depositAmount > 0;
   const canRecordDeposit = depositRequired && depositPending;
+  const canDelete = canHardDeleteReservation(reservation);
 
   const close = () => setActiveDialog(null);
 
@@ -141,8 +142,10 @@ export function ReservationActions({
         toast({
           variant: "destructive",
           title: "Couldn't delete reservation",
-          description:
-            (error as Error)?.message ?? "Please try again later.",
+          description: SettloErrorHandler.extractMessage(
+            error,
+            "Please try again later.",
+          ),
         });
       }
     });
@@ -169,12 +172,14 @@ export function ReservationActions({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel>Manage reservation</DropdownMenuLabel>
-          <DropdownMenuItem asChild>
-            <Link href={`/reservations/${reservation.id}/edit`}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit details
-            </Link>
-          </DropdownMenuItem>
+          {!isTerminal && (
+            <DropdownMenuItem asChild>
+              <Link href={`/reservations/${reservation.id}/edit`}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit details
+              </Link>
+            </DropdownMenuItem>
+          )}
 
           {!isTerminal && (
             <DropdownMenuItem onClick={() => setActiveDialog("assignTable")}>
@@ -203,7 +208,7 @@ export function ReservationActions({
             </>
           )}
 
-          {reservation.canDelete && (
+          {canDelete && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -307,7 +312,7 @@ export function ReservationActions({
         icon={<Trash className="h-6 w-6 text-red-600 dark:text-red-400" />}
         iconBg="bg-red-50 dark:bg-red-950/30"
         title="Delete this reservation?"
-        description="This permanently archives the reservation. Past records and event timeline are preserved."
+        description="This is for unconfirmed bookings or already-cancelled rows with no payment history. Anything that has been confirmed, seated, or touched a deposit must be cancelled instead — that preserves the audit trail."
         confirmLabel="Delete"
         confirmVariant="destructive"
         isPending={isPending}

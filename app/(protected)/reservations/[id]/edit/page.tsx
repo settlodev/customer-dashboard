@@ -9,7 +9,7 @@ import {
 } from "@/components/layouts/page-shell";
 import ReservationForm from "@/components/forms/reservation_form";
 import { getReservationById } from "@/lib/actions/reservation-actions";
-import { Reservation } from "@/types/reservation/type";
+import { Reservation, canEditReservation } from "@/types/reservation/type";
 
 type Params = Promise<{ id: string }>;
 
@@ -29,6 +29,13 @@ export default async function ReservationEditPage({
     throw new Error("Failed to load reservation data");
   }
   if (!reservation) notFound();
+
+  // The API rejects edits for terminal-status reservations; bounce direct
+  // URL access back to the detail view rather than letting the user fill
+  // out a form that will 409 on save.
+  if (!canEditReservation(reservation)) {
+    redirect(`/reservations/${reservation.id}`);
+  }
 
   const headerName = reservation.customerName || "Walk-in reservation";
 

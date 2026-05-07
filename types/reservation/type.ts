@@ -173,6 +173,51 @@ export declare interface ReservationEvent {
   createdAt: string;
 }
 
+// ─── Policy helpers ─────────────────────────────────────────────────
+
+/**
+ * Mirrors the OMS `ReservationService.canHardDelete` rule. Use this when
+ * deciding whether to render a "Delete" affordance — relying solely on the
+ * server's `canDelete` flag means older API responses (where it was always
+ * `true`) would still expose the button on rows the API now rejects with
+ * `RESERVATION_NOT_DELETABLE`.
+ *
+ * Rule: status must be PENDING or CANCELLED, and the deposit must not have
+ * touched a terminal financial state (PAID / FAILED / REFUNDED).
+ */
+export function canHardDeleteReservation(
+  reservation: Pick<Reservation, "reservationStatus" | "depositPaymentStatus" | "canDelete">,
+): boolean {
+  if (reservation.canDelete === false) return false;
+  const status = reservation.reservationStatus;
+  if (status !== ReservationStatus.PENDING && status !== ReservationStatus.CANCELLED) {
+    return false;
+  }
+  const deposit = reservation.depositPaymentStatus;
+  return (
+    deposit !== DepositPaymentStatus.PAID &&
+    deposit !== DepositPaymentStatus.FAILED &&
+    deposit !== DepositPaymentStatus.REFUNDED
+  );
+}
+
+/**
+ * Mirrors the OMS `ReservationService.update` guard: a reservation in a
+ * terminal status (COMPLETED, CANCELLED, NO_SHOW) cannot be edited — the
+ * API rejects the PATCH with InvalidReservationStatusTransitionException.
+ * Hiding the Edit affordance prevents wasted clicks and form fills.
+ */
+export function canEditReservation(
+  reservation: Pick<Reservation, "reservationStatus">,
+): boolean {
+  const status = reservation.reservationStatus;
+  return (
+    status !== ReservationStatus.COMPLETED &&
+    status !== ReservationStatus.CANCELLED &&
+    status !== ReservationStatus.NO_SHOW
+  );
+}
+
 // ─── Display helpers ────────────────────────────────────────────────
 
 export const RESERVATION_STATUS_LABELS: Record<ReservationStatus, string> = {

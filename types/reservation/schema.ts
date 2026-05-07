@@ -37,10 +37,17 @@ const requiredNumber = (message: string) =>
  * <p>Customer can be supplied either by {@code customer} (UUID) when
  * already registered, or via {@code customerFirstName/LastName/Phone/Email}
  * for the find-or-create flow that the OMS forwards to Accounts Service.
+ *
+ * <p>For staff-created reservations the dashboard treats this form as
+ * "filling on the customer's behalf" — when no existing customerId is
+ * picked, first name, last name, and phone are all required so the booking
+ * carries enough contact detail to confirm and remind the guest.
  */
 export const ReservationSchema = object({
-  reservationDate: string({ required_error: "Reservation date is required" }),
-  reservationTime: string({ required_error: "Reservation time is required" }),
+  reservationDate: string({ required_error: "Reservation date is required" })
+    .min(1, "Reservation date is required"),
+  reservationTime: string({ required_error: "Reservation time is required" })
+    .min(1, "Reservation time is required"),
   reservationEndTime: string().optional(),
   peopleCount: requiredNumber("Number of guests is required"),
   specialRequests: string().optional(),
@@ -51,11 +58,8 @@ export const ReservationSchema = object({
     "POS",
     "THIRD_PARTY",
   ], { required_error: "Source is required" }),
-  customerId: string().uuid("Please select a valid customer").optional(),
-  customerFirstName: string().optional(),
-  customerLastName: string().optional(),
-  customerPhone: string().optional(),
-  customerEmail: string().email("Please enter a valid email").optional().or(string().length(0)),
+  customerId: string({ required_error: "Customer is required" })
+    .uuid("Please select a valid customer"),
   tableSpaceId: string().uuid("Please select a valid table").optional(),
   answers: array(
     object({
