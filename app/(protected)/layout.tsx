@@ -24,6 +24,7 @@ import { fetchAllStores, getCurrentStore } from "@/lib/actions/store-actions";
 import WhatsAppButton from "@/components/whatsapp-button";
 import { DaySessionWidget } from "@/components/widgets/day-session-widget";
 import { BuildPill } from "@/components/widgets/build-pill";
+import { SettloRealtimeListener } from "@/components/realtime/settlo-realtime-listener";
 import type { ExtendedUser } from "@/types/types";
 
 export default async function RootLayout({
@@ -178,6 +179,11 @@ export default async function RootLayout({
       />
       {currentLocation?.id && (
         <DaySessionWidget locationId={currentLocation.id} />
+      )}
+      {currentLocation?.id && (
+        <SettloRealtimeListener
+          channels={[`location:${currentLocation.id}:inventory`]}
+        />
       )}
       <BuildPill />
     </>

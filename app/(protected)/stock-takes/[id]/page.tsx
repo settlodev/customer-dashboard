@@ -79,7 +79,11 @@ export default async function StockTakeDetailPage({ params }: { params: Params }
             )}
           </span>
         }
-        actions={<StockTakeStatusActions stockTake={stockTake} />}
+        actions={
+          <>
+            <StockTakeStatusActions stockTake={stockTake} />
+          </>
+        }
       />
       <PageBody>
 

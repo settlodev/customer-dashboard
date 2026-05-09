@@ -62,6 +62,13 @@ export const ProductVariantSchema = object({
   // form; only meaningful for tracked variants — UNLIMITED variants
   // ignore the setting since there's nothing to "sell out."
   autoRetireOnSellout: boolean().default(false),
+
+  // FK to a TaxType in the Accounting Service. The form auto-picks the
+  // business's "A" (Standard Rate) row when the merchant doesn't set one
+  // explicitly, so a freshly-created variant always carries a rate.
+  // Optional + nullable so legacy variants saved before this field
+  // existed can still be loaded into the form for editing.
+  taxTypeId: string().uuid().optional().nullish(),
 }).superRefine((val, ctx) => {
   // Pricing strategy ⇒ required field per branch
   if (val.pricingStrategy === "PERCENTAGE_MARKUP" && val.markupPercentage == null) {

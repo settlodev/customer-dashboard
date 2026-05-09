@@ -26,7 +26,6 @@ import type { UUID } from "node:crypto";
 import BusinessDetailsSettings from "@/components/settings/business-details";
 import BusinessSettingsPanel from "@/components/settings/business-settings-panel";
 import DigitalMenuSettings from "@/components/settings/digital-menu-settings";
-import AcceptedPaymentMethodsPage from "@/components/settings/acceptedPaymentMethods";
 import IntegrationsSettings from "@/components/settings/integrations";
 import DeviceSettings from "@/components/settings/device-settings";
 import ReservationSettings from "@/components/settings/reservations";
@@ -36,6 +35,7 @@ import { LocationProfilePanel } from "@/components/settings/panels/location-prof
 import { OrdersPosPanel } from "@/components/settings/panels/orders-pos-panel";
 import { OrderChannelsPanel } from "@/components/settings/panels/order-channels-panel";
 import { PaymentOpsPanel } from "@/components/settings/panels/payment-ops-panel";
+import { PaymentMethodsPanel } from "@/components/settings/panels/payment-methods-panel";
 import { DocketsPanel } from "@/components/settings/panels/dockets-panel";
 import { ReceiptsInvoicingPanel } from "@/components/settings/panels/receipts-panel";
 import { NotificationsPanel } from "@/components/settings/panels/notifications-panel";
@@ -304,7 +304,12 @@ function SettingsLayout({
       case "digital-menu":
         return <DigitalMenuSettings />;
       case "payments":
-        return <AcceptedPaymentMethodsPage />;
+        return (
+          <PaymentMethodsPanel
+            location={location}
+            onNavigateToIntegrations={() => setActiveTab("integrations")}
+          />
+        );
       case "devices":
         return <DeviceSettings />;
       case "integrations":

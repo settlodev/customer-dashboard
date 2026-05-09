@@ -58,10 +58,12 @@ export default async function StockModificationPage({ params }: { params: Params
           title={item.modificationNumber}
           subtitle={`${categoryLabel} — ${item.reason}`}
           actions={
-            <span className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.02em] text-muted-foreground">
-              Settlement currency:{" "}
-              <span className="rounded bg-canvas px-2 py-0.5 font-semibold text-ink">
-                {currency}
+            <span className="flex items-center gap-3">
+              <span className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.02em] text-muted-foreground">
+                Settlement currency:{" "}
+                <span className="rounded bg-canvas px-2 py-0.5 font-semibold text-ink">
+                  {currency}
+                </span>
               </span>
             </span>
           }

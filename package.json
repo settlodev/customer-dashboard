@@ -44,7 +44,6 @@
     "@react-oauth/google": "^0.13.4",
     "@sentry/nextjs": "^8",
     "@stomp/stompjs": "^7.3.0",
-    "@supabase/supabase-js": "^2.45.6",
     "@swc/helpers": "^0.5.13",
     "@tanstack/react-table": "^8.20.5",
     "@types/uuid": "^10.0.0",

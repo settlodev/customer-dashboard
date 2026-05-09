@@ -89,7 +89,11 @@ export default async function Page({ searchParams }: Props) {
       <PageHeader
         title="Stock Items"
         subtitle="Inventory across this location · last sync moments ago"
-        actions={<StockVariantsHeaderActions />}
+        actions={
+          <div className="flex items-center gap-2">
+            <StockVariantsHeaderActions />
+          </div>
+        }
       />
 
       <PageBody>

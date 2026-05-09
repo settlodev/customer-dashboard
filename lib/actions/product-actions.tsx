@@ -59,6 +59,10 @@ type VariantPayload = {
   // Only meaningful for tracked variants — the order consumer reads it
   // when a DIRECT-link deduction empties the stock.
   autoRetireOnSellout?: boolean;
+  // FK to a TaxType in the Accounting Service. Backend treats null as
+  // exempt; on update, omitting the field leaves the existing value
+  // unchanged (PATCH semantics).
+  taxTypeId?: string | null;
 };
 
 function mapVariant(v: ProductVariantInput): VariantPayload {
@@ -77,6 +81,7 @@ function mapVariant(v: ProductVariantInput): VariantPayload {
       v.pricingStrategy === "FIXED_MARKUP" ? v.markupAmount ?? undefined : undefined,
     unlimited: false,
     autoRetireOnSellout: v.autoRetireOnSellout ?? false,
+    taxTypeId: v.taxTypeId ?? undefined,
   };
 
   switch (v.sellabilityMode) {

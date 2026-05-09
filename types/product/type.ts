@@ -115,6 +115,17 @@ export interface ProductVariant {
    */
   qtyAvailable: number | null;
   currencyPriceOverrides: Record<string, number>;
+  /**
+   * FK to a TaxType in the Accounting Service. Null means the order
+   * calculator treats the line as exempt (zero-rate).
+   */
+  taxTypeId: string | null;
+  /** Snapshot of the linked tax type's TRA code at read time, e.g. "A". */
+  taxTypeCode: string | null;
+  /** Snapshot of the display name, e.g. "Standard Rate (VAT 18%)". */
+  taxTypeName: string | null;
+  /** Snapshot of the rate, e.g. 18.0000. */
+  taxRatePercent: number | null;
   createdAt: string;
   updatedAt: string;
 }

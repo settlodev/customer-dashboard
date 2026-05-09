@@ -71,17 +71,19 @@ export default async function Page({ searchParams }: Params) {
         title="Stock Takes"
         subtitle="Cycle counts and physical inventory reconciliation."
         actions={
-          cycleCountingEnabled ? (
-            <>
-              <CycleCountTypeFilter />
-              <Button asChild size="sm">
-                <Link href="/stock-takes/new">
-                  <Plus className="mr-1.5 h-4 w-4" />
-                  New Stock Take
-                </Link>
-              </Button>
-            </>
-          ) : undefined
+          <>
+            {cycleCountingEnabled && (
+              <>
+                <CycleCountTypeFilter />
+                <Button asChild size="sm">
+                  <Link href="/stock-takes/new">
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    New Stock Take
+                  </Link>
+                </Button>
+              </>
+            )}
+          </>
         }
       />
 

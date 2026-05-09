@@ -2,7 +2,6 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { format } from "date-fns";
 import { uploadCallBackType } from "@/types/types";
-import { createClient } from "@supabase/supabase-js";
 import { v4 } from "uuid";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -66,34 +65,11 @@ export const formatDateTime = (
 };
 
 export async function uploadImage(
-  file: File,
-  path: string,
+  _file: File,
+  _path: string,
   callback: (response: uploadCallBackType) => void,
 ) {
-  const url = "https://fhuvexerkaysoazmmlal.supabase.co";
-  const secret =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZodXZleGVya2F5c29hem1tbGFsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyNjcyNzI5MiwiZXhwIjoyMDQyMzAzMjkyfQ.Lzt4PidEk8jvtdV2O1cXfefCe1_LzMbc2zwCYGtZPWk";
-  const supabase = createClient(url, secret);
-
-  let extension = "jpg";
-  if (file.type === "image/png") {
-    extension = "png";
-  }
-
-  //await supabase.storage.createBucket("Images", {public: true});
-  const sbObject = supabase.storage.from("Images");
-  const imageName = `${path}/${v4()}.${extension}`;
-  const { error } = await sbObject.upload(imageName, file, {
-    cacheControl: "3600",
-    upsert: false,
-  });
-
-  const { data } = sbObject.getPublicUrl(imageName);
-
-  if (error) {
-    return callback({ success: false, data: "Error uploading image" });
-  }
-  return callback({ success: true, data: data.publicUrl });
+  callback({ success: false, data: "Image upload is not configured" });
 }
 
 export const getBuildInfo = () => {

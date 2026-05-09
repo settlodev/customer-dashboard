@@ -45,12 +45,14 @@ export default async function Page({ searchParams }: Params) {
         title="Stock Transfers"
         subtitle="Move stock between locations, stores, and warehouses."
         actions={
-          <Button asChild size="sm">
-            <Link href="/stock-transfers/new">
-              <Plus className="mr-1.5 h-4 w-4" />
-              New Transfer
-            </Link>
-          </Button>
+          <>
+            <Button asChild size="sm">
+              <Link href="/stock-transfers/new">
+                <Plus className="mr-1.5 h-4 w-4" />
+                New Transfer
+              </Link>
+            </Button>
+          </>
         }
       />
       <PageBody>

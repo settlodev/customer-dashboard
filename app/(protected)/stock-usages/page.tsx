@@ -51,12 +51,14 @@ export default async function Page({ searchParams }: Params) {
         title="Stock Usage"
         subtitle="Record internal stock consumption — staff meals, samples, training, marketing, and maintenance."
         actions={
-          <Button asChild size="sm">
-            <Link href="/stock-usages/new">
-              <Plus className="mr-1.5 h-4 w-4" />
-              Record Usage
-            </Link>
-          </Button>
+          <>
+            <Button asChild size="sm">
+              <Link href="/stock-usages/new">
+                <Plus className="mr-1.5 h-4 w-4" />
+                Record Usage
+              </Link>
+            </Button>
+          </>
         }
       />
       <PageBody>

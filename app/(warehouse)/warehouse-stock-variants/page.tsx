@@ -43,7 +43,9 @@ export default async function Page() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      <BreadcrumbsNav items={breadcrumbItems} />
+      <div className="flex items-center justify-between gap-2">
+        <BreadcrumbsNav items={breadcrumbItems} />
+      </div>
       {active.length > 0 ? (
         <Card><CardContent className="px-2 sm:px-6 pt-6">
           <DataTable columns={columns} data={active} searchKey="name" pageNo={0} total={active.length} pageCount={1} />

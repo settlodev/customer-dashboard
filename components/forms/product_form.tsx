@@ -159,6 +159,8 @@ import { fetchAllCategories } from "@/lib/actions/category-actions";
 import { getStocks } from "@/lib/actions/stock-actions";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { fetchAllTaxTypes } from "@/lib/actions/tax-type-actions";
+import type { TaxType } from "@/types/tax-type/type";
 import type { FormResponse } from "@/types/types";
 
 interface ProductFormProps {
@@ -228,6 +230,7 @@ function variantToInput(
     // the field when the variant first renders. Default undefined here.
     bomRuleId: undefined,
     autoRetireOnSellout: v.autoRetireOnSellout ?? false,
+    taxTypeId: v.taxTypeId ?? undefined,
   };
 }
 
@@ -246,6 +249,7 @@ export default function ProductForm({ item }: ProductFormProps) {
   );
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [stockVariants, setStockVariants] = useState<StockVariantOption[]>([]);
+  const [taxTypes, setTaxTypes] = useState<TaxType[]>([]);
   // Map of stockVariantId → weighted-average cost at the current location.
   // Used by the variant editor to derive a variant's cost when DIRECT mode
   // picks a stock item. The cost in inventory uses the same weighted average
@@ -271,11 +275,23 @@ export default function ProductForm({ item }: ProductFormProps) {
       fetchAllCategories().catch(() => []),
       getStocks().catch(() => []),
       getCurrentLocation().catch(() => null),
-    ]).then(async ([b, c, s, loc]) => {
+      fetchAllTaxTypes().catch(() => []),
+    ]).then(async ([b, c, s, loc, tx]) => {
       if (cancelled) return;
       setBrands((b ?? []).map((x: any) => ({ id: x.id, name: x.name })));
       setCategories((c ?? []).map((x: any) => ({ id: x.id, name: x.name })));
       setCategoriesLoading(false);
+      // Tax types — only the active rows are pickable. Stash sorted by
+      // sortOrder/code so the dropdown matches the ordering in the
+      // accounting service's own list page.
+      const activeTaxTypes = ((tx ?? []) as TaxType[])
+        .filter((t) => t.active)
+        .sort(
+          (a, b) =>
+            (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+            a.code.localeCompare(b.code),
+        );
+      setTaxTypes(activeTaxTypes);
       const sv: StockVariantOption[] = [];
       for (const stock of s ?? []) {
         for (const v of stock.variants ?? []) {
@@ -366,6 +382,34 @@ export default function ProductForm({ item }: ProductFormProps) {
 
   const isMultiVariant = variantsArray.fields.length > 1;
 
+  // Resolve the business's default tax type — code "A" (Standard Rate)
+  // by spec; fall back to the row flagged isDefault, then the first row.
+  // Memoed so the backfill effect below only refires when tax types
+  // actually change.
+  const defaultTaxTypeId = useMemo(() => {
+    if (!taxTypes.length) return undefined;
+    const a = taxTypes.find((t) => t.code === "A");
+    if (a) return a.id;
+    const seeded = taxTypes.find((t) => t.isDefault);
+    return seeded?.id ?? taxTypes[0]?.id;
+  }, [taxTypes]);
+
+  // Backfill: once tax types load, set the default on any variant the
+  // merchant hasn't explicitly picked one for. Covers both first-mount
+  // (DEFAULT_VARIANT has taxTypeId undefined) and edit-mode legacy
+  // variants saved before this field existed.
+  useEffect(() => {
+    if (!defaultTaxTypeId) return;
+    const variants = form.getValues("variants") ?? [];
+    variants.forEach((v, i) => {
+      if (!v?.taxTypeId) {
+        form.setValue(`variants.${i}.taxTypeId`, defaultTaxTypeId, {
+          shouldDirty: false,
+        });
+      }
+    });
+  }, [defaultTaxTypeId, variantsArray.fields.length, form]);
+
   const onInvalid = useCallback((errors: FieldErrors) => {
     console.warn("Product form validation errors", errors);
     if (errors.variants) {
@@ -449,7 +493,11 @@ export default function ProductForm({ item }: ProductFormProps) {
         form.setValue("variants.0.name", "Variant 1");
       }
     }
-    variantsArray.append({ ...DEFAULT_VARIANT, name: `Variant ${next}` });
+    variantsArray.append({
+      ...DEFAULT_VARIANT,
+      name: `Variant ${next}`,
+      taxTypeId: defaultTaxTypeId,
+    });
   };
 
   const handleGenerateDescription = useCallback(async () => {
@@ -1119,6 +1167,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                             onRemove={() => removeVariant(index)}
                             stockVariants={stockVariants}
                             stockVariantCosts={stockVariantCosts}
+                            taxTypes={taxTypes}
                             disabled={isPending}
                             showHeader
                             canRemove
@@ -1133,6 +1182,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                         onRemove={() => {}}
                         stockVariants={stockVariants}
                         stockVariantCosts={stockVariantCosts}
+                        taxTypes={taxTypes}
                         disabled={isPending}
                         showHeader={false}
                         canRemove={false}
@@ -1471,6 +1521,7 @@ interface VariantEditorProps {
   onRemove: () => void;
   stockVariants: StockVariantOption[];
   stockVariantCosts: Record<string, number>;
+  taxTypes: TaxType[];
   disabled: boolean;
   showHeader: boolean;
   canRemove: boolean;
@@ -1489,6 +1540,7 @@ function VariantEditor({
   onRemove,
   stockVariants,
   stockVariantCosts,
+  taxTypes,
   disabled,
   showHeader,
   canRemove,
@@ -1844,6 +1896,45 @@ function VariantEditor({
           />
         )}
       </div>
+
+      {/* Tax type — links the variant to a TaxType row owned by the
+          Accounting Service. Defaults to "A" (Standard Rate) at form
+          mount; merchants can override per variant. Hidden until the
+          accounting service has at least one active row to pick from. */}
+      {taxTypes.length > 0 && (
+        <FormField
+          control={form.control}
+          name={`variants.${index}.taxTypeId`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tax type</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value ?? ""}
+                disabled={disabled}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pick a tax type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {taxTypes.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.code} — {t.name} ({t.ratePercent}%)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Drives the VAT rate applied at sale. Manage rates in
+                Accounting → Tax types.
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
 
       {/* Track stock toggle (per variant) — default OFF.
           Hidden in auto-create-stock mode: the parent form's master

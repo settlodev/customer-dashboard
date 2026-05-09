@@ -52,12 +52,14 @@ export default async function Page({ searchParams }: Params) {
         title="Stock Intakes"
         subtitle="Record received goods and confirm batches into inventory."
         actions={
-          <Button asChild size="sm">
-            <Link href="/stock-intakes/new">
-              <Plus className="mr-1.5 h-4 w-4" />
-              Record intake
-            </Link>
-          </Button>
+          <>
+            <Button asChild size="sm">
+              <Link href="/stock-intakes/new">
+                <Plus className="mr-1.5 h-4 w-4" />
+                Record intake
+              </Link>
+            </Button>
+          </>
         }
       />
       <PageBody>

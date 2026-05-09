@@ -55,12 +55,14 @@ export default async function Page({ searchParams }: Params) {
         title="Stock Modifications"
         subtitle="Adjust stock for damages, losses, write-offs, and reclassifications."
         actions={
-          <Button asChild size="sm">
-            <Link href="/stock-modifications/new">
-              <Plus className="mr-1.5 h-4 w-4" />
-              Modify Stock
-            </Link>
-          </Button>
+          <>
+            <Button asChild size="sm">
+              <Link href="/stock-modifications/new">
+                <Plus className="mr-1.5 h-4 w-4" />
+                Modify Stock
+              </Link>
+            </Button>
+          </>
         }
       />
       <PageBody>

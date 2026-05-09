@@ -10,6 +10,7 @@ import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-a
 import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { fetchAllStores, getCurrentStore } from "@/lib/actions/store-actions";
+import { SettloRealtimeListener } from "@/components/realtime/settlo-realtime-listener";
 import type { BusinessPropsType } from "@/types/business/business-props-type";
 
 export default async function RootLayout({children}: {
@@ -80,6 +81,11 @@ export default async function RootLayout({children}: {
                 locationName={currentLocation?.name}
                 hideOnReserve
             />
+            {currentLocation?.id && (
+                <SettloRealtimeListener
+                    channels={[`location:${currentLocation.id}:inventory`]}
+                />
+            )}
         </SessionProvider>
     );
 }
