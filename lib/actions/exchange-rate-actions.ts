@@ -74,20 +74,47 @@ export async function fetchSupportedCurrencies(): Promise<SupportedCurrency[]> {
   }
 }
 
-async function fetchRate(
+/**
+ * Fetch a single source→target exchange rate. Returns null when the
+ * accounts service can't resolve the pair (rare currency, no manual
+ * override, no system feed) so the caller can fall back to manual entry.
+ *
+ * Symmetric with the merchant's bookkeeping — when source == target, we
+ * short-circuit to a 1.0 rate without round-tripping the network.
+ */
+export async function fetchExchangeRate(
   source: string,
   target: string,
 ): Promise<SystemExchangeRate | null> {
+  if (!source || !target) return null;
+  const src = source.toUpperCase();
+  const tgt = target.toUpperCase();
+  if (src === tgt) {
+    return {
+      sourceCurrency: src,
+      targetCurrency: tgt,
+      rate: 1,
+      inverseRate: 1,
+      source: "SYSTEM",
+      fetchedAt: new Date().toISOString(),
+      expiresAt: new Date().toISOString(),
+      effectiveDate: new Date().toISOString().split("T")[0],
+      stale: false,
+    } as SystemExchangeRate;
+  }
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(
-      `/api/v1/public/currencies/rate?source=${source}&target=${target}`,
+      `/api/v1/public/currencies/rate?source=${src}&target=${tgt}`,
     );
     return parseStringify(data) as SystemExchangeRate;
   } catch {
     return null;
   }
 }
+
+// Internal alias kept for the existing batch helper below.
+const fetchRate = fetchExchangeRate;
 
 /**
  * Resolve a rate for every supported currency against `base`, in parallel.

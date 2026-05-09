@@ -1,71 +1,119 @@
-import { UUID } from "node:crypto";
-
 import { notFound } from "next/navigation";
 
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {ApiResponse} from "@/types/types";
-import { Expense } from "@/types/expense/type";
-import { getExpense } from "@/lib/actions/expense-actions";
+  PageBody,
+  PageBreadcrumbs,
+  PageHeader,
+  PageShell,
+} from "@/components/layouts/page-shell";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { getExpense, getExpenseTimeline } from "@/lib/actions/expense-actions";
+import { listExpensePayments } from "@/lib/actions/expense-payment-actions";
+import { listExpenseAttachments } from "@/lib/actions/expense-attachment-actions";
+import { getAccountingLocationSettings } from "@/lib/actions/accounting-location-settings-actions";
+import {
+  EXPENSE_STATUS_LABELS,
+  EXPENSE_STATUS_TONES,
+  PAYMENT_STATUS_LABELS,
+  PAYMENT_STATUS_TONES,
+} from "@/types/expense/type";
+
 import ExpenseForm from "@/components/forms/expense_form";
+import { ExpenseDetailClient } from "./expense-detail-client";
 
-type Params = Promise<{id:string}>
-export default async function ExpensesPage({params}: {params: Params}) {
+type Params = Promise<{ id: string }>;
 
-    const resolvedParams = await params;
-    const isNewItem = resolvedParams.id === "new";
-    let item: ApiResponse<Expense> | null = null;
+export default async function ExpensesDetailPage({
+  params,
+}: {
+  params: Params;
+}) {
+  const { id } = await params;
+  const isNew = id === "new";
 
-    if (!isNewItem) {
-        try {
-            item = await getExpense(resolvedParams.id as UUID);
-            if (item.totalElements == 0) notFound();
-        } catch (error) {
-            console.log(error)
-            throw new Error("Failed to load role data");
-        }
-    }
+  // Pull merchant defaults from the accounting service's settings cache.
+  // The cache is hydrated by Kafka events from the Accounts Service —
+  // see LocationSettingsConsumer in the accounting service.
+  const settings = await getAccountingLocationSettings();
+  const defaultCurrency = settings.currency || settings.defaultCurrency || "TZS";
+  const defaultDueDays = settings.defaultInvoiceDueDays ?? null;
 
-    const breadcrumbItems = [
-        { title: "Expenses", link: "/expenses" },
-        {
-            title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
-            link: "",
-        },
-    ];
-
+  if (isNew) {
     return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <div className="flex items-center justify-between mb-2">
-                <div className="relative flex-1 md:max-w-md">
-                    <BreadcrumbsNav items={breadcrumbItems} />
-                </div>
-            </div>
-
-            <ExpenseCard isNewItem={isNewItem} item={item?.content[0]} />
-        </div>
+      <PageShell>
+        <PageBreadcrumbs
+          items={[
+            { title: "Expenses", href: "/expenses" },
+            { title: "New" },
+          ]}
+        />
+        <PageHeader
+          title="Record expense"
+          subtitle="Capture a vendor bill — saved as DRAFT until you submit it for approval."
+        />
+        <PageBody>
+          <ExpenseForm
+            item={null}
+            defaultCurrency={defaultCurrency}
+            defaultDueDays={defaultDueDays}
+          />
+        </PageBody>
+      </PageShell>
     );
-}
+  }
 
-const ExpenseCard = ({isNewItem, item}: {
-    isNewItem: boolean;
-    item: Expense | null | undefined;
-}) => (
-    <Card>
-        <CardHeader>
-            <CardTitle>{isNewItem ? "Record New expense" : "Update Expense"}</CardTitle>
-            <CardDescription>
-                {isNewItem ? "Fill in the details to record a new expense" :  "Modify the expense details below"}
-            </CardDescription>
-        </CardHeader>
-        <CardContent>
-            <ExpenseForm item={item} />
-        </CardContent>
-    </Card>
-);
+  const expense = await getExpense(id);
+  if (!expense) notFound();
+
+  const [payments, attachments, timeline] = await Promise.all([
+    listExpensePayments(expense.id),
+    listExpenseAttachments(expense.id),
+    getExpenseTimeline(expense.id),
+  ]);
+
+  return (
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Expenses", href: "/expenses" },
+          { title: expense.expenseNumber },
+        ]}
+      />
+      <PageHeader
+        title={expense.expenseNumber}
+        subtitle={expense.description ?? undefined}
+        titleAccessory={
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${EXPENSE_STATUS_TONES[expense.status]}`}
+            >
+              {EXPENSE_STATUS_LABELS[expense.status]}
+            </span>
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${PAYMENT_STATUS_TONES[expense.paymentStatus]}`}
+            >
+              {PAYMENT_STATUS_LABELS[expense.paymentStatus]}
+            </span>
+          </div>
+        }
+      />
+
+      <PageBody>
+        <ExpenseDetailClient
+          expense={expense}
+          payments={payments}
+          attachments={attachments}
+          timeline={timeline}
+          defaultCurrency={defaultCurrency}
+          defaultDueDays={defaultDueDays}
+        />
+      </PageBody>
+    </PageShell>
+  );
+}

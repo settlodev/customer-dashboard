@@ -1,13 +1,129 @@
 "use server";
 
+import { UUID } from "node:crypto";
+
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import { ApiResponse, FormResponse } from "@/types/types";
-import { UUID } from "node:crypto";
-import { getCurrentLocation } from "./business/get-current-business";
-import { CashFlow, Credit, Orders } from "@/types/orders/type";
-import { orderRequestSchema } from "@/types/orders/schema";
+import { SettloErrorHandler } from "@/lib/settlo-error-handler";
+import { FormResponse } from "@/types/types";
 import { CartState } from "@/context/cartContext";
+import {
+  CashFlow,
+  Credit,
+  Order,
+  OrderDetail,
+  OrderEvent,
+  OrderStatus,
+} from "@/types/orders/type";
+import { orderRequestSchema } from "@/types/orders/schema";
+
+import { getCurrentLocation } from "./business/get-current-business";
+
+// ─── Service clients ────────────────────────────────────────────────
+// Orders + their detail/timeline live on the OMS. Receipts, EFD, cart
+// submission, and reports each still target their own legacy services.
+
+const oms = () => new ApiClient("orders");
+const ordersBase = "/api/v1/orders";
+
+// ─── Order list / detail (OMS) ──────────────────────────────────────
+
+export interface ListOrdersParams {
+  /** ISO date (yyyy-MM-dd). Filters to orders opened on this business date. */
+  businessDate?: string;
+  status?: OrderStatus | "";
+}
+
+/**
+ * Fetches orders from OMS for the active location. The endpoint is
+ * unpaginated server-side and scoped to the location pulled from
+ * cookies. Filtering by business date and status is server-driven.
+ */
+export const listOrders = async (
+  params?: ListOrdersParams,
+): Promise<Order[]> => {
+  const location = await getCurrentLocation();
+  if (!location?.id) return [];
+
+  const qs = new URLSearchParams();
+  if (params?.businessDate) qs.set("businessDate", params.businessDate);
+  if (params?.status) qs.set("status", params.status);
+  const query = qs.toString();
+
+  const data = await oms().get<Order[]>(
+    `${ordersBase}${query ? `?${query}` : ""}`,
+  );
+  return parseStringify(data ?? []);
+};
+
+export const getOrder = async (id: UUID): Promise<Order | null> => {
+  if (!id) return null;
+  const data = await oms().get<Order>(`${ordersBase}/${id}`);
+  return parseStringify(data);
+};
+
+export const getOrderDetail = async (id: UUID): Promise<OrderDetail | null> => {
+  if (!id) return null;
+  const data = await oms().get<OrderDetail>(`${ordersBase}/${id}/detail`);
+  return parseStringify(data);
+};
+
+export const getOrderTimeline = async (
+  id: UUID,
+): Promise<OrderEvent[]> => {
+  if (!id) return [];
+  const data = await oms().get<OrderEvent[]>(`${ordersBase}/${id}/timeline`);
+  return parseStringify(data ?? []);
+};
+
+export const closeOrder = async (
+  id: UUID,
+): Promise<FormResponse | void> => {
+  try {
+    await oms().post(`${ordersBase}/${id}/close`, {});
+    return SettloErrorHandler.createSuccessResponse("Order closed");
+  } catch (error: unknown) {
+    return SettloErrorHandler.createErrorResponse(
+      error,
+      "Failed to close order",
+    );
+  }
+};
+
+export const reopenOrder = async (
+  id: UUID,
+): Promise<FormResponse | void> => {
+  try {
+    await oms().post(`${ordersBase}/${id}/reopen`, {});
+    return SettloErrorHandler.createSuccessResponse("Order reopened");
+  } catch (error: unknown) {
+    return SettloErrorHandler.createErrorResponse(
+      error,
+      "Failed to reopen order",
+    );
+  }
+};
+
+export const cancelOrder = async (
+  id: UUID,
+  reason: string,
+  reasonType?: string,
+): Promise<FormResponse | void> => {
+  try {
+    await oms().post(`${ordersBase}/${id}/cancel`, {
+      reason,
+      reasonType,
+    });
+    return SettloErrorHandler.createSuccessResponse("Order cancelled");
+  } catch (error: unknown) {
+    return SettloErrorHandler.createErrorResponse(
+      error,
+      "Failed to cancel order",
+    );
+  }
+};
+
+// ─── Receipts (legacy receipts service) ─────────────────────────────
 
 type DigitalReceiptPaymentDetail = {
   id: string;
@@ -18,106 +134,34 @@ type DigitalReceiptPaymentDetail = {
 };
 
 type OrderReceiptResponse = {
-  order: Record<string, any>;
-  locationDetails: Record<string, any>;
+  order: Record<string, unknown>;
+  locationDetails: Record<string, unknown> | null;
   digitalReceiptPaymentDetails: DigitalReceiptPaymentDetail[];
   physicalReceiptPaymentDetails: DigitalReceiptPaymentDetail[];
-};
-export const searchOrder = async (
-  q: string,
-  page: number,
-  pageLimit: number,
-): Promise<ApiResponse<Orders>> => {
-
-  try {
-    const apiClient = new ApiClient();
-    const query = {
-      filters: [
-        {
-          key: "orderNumber",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-      ],
-      sorts: [
-        {
-          key: "dateCreated",
-          direction: "DESC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-    const location = await getCurrentLocation();
-
-    const orderData = await apiClient.post(
-      `/api/orders/${location?.id}?dashboard=true`,
-      query,
-    );
-
-    return parseStringify(orderData);
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const getOrder = async (id: UUID): Promise<ApiResponse<Orders>> => {
-  const apiClient = new ApiClient();
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
-  const location = await getCurrentLocation();
-  const order = await apiClient.post(
-    `/api/orders/${location?.id}?dashboard=true`,
-    query,
-  );
-  return parseStringify(order);
 };
 
 export const getOrderReceipt = async (identifier: string | UUID) => {
   const apiClient = new ApiClient();
+  const response = (await apiClient.get(
+    `/api/order-receipts/with-additional-details/${identifier}`,
+  )) as OrderReceiptResponse;
 
-  try {
-    const response = (await apiClient.get(
-      `/api/order-receipts/with-additional-details/${identifier}`,
-    )) as OrderReceiptResponse;
-
-    return parseStringify({
-      ...response.order,
-      locationDetails: response.locationDetails ?? null,
-      digitalReceiptPaymentDetails: response.digitalReceiptPaymentDetails ?? [],
-    });
-  } catch (error) {
-    throw error;
-  }
+  return parseStringify({
+    ...response.order,
+    locationDetails: response.locationDetails ?? null,
+    digitalReceiptPaymentDetails: response.digitalReceiptPaymentDetails ?? [],
+  });
 };
+
+// ─── EFD (legacy VFD endpoints) ─────────────────────────────────────
 
 export const isEfdPrinted = async (
   orderId: string | UUID,
   location: string | UUID,
 ) => {
   const apiClient = new ApiClient();
-
-  try {
-    const order = await apiClient.get(
-      `/api/vfd/${location}/receipt/${orderId}`,
-    );
-
-    return parseStringify(order);
-  } catch (error) {
-    throw error;
-  }
+  const order = await apiClient.get(`/api/vfd/${location}/receipt/${orderId}`);
+  return parseStringify(order);
 };
 
 export const generateEfd = async (
@@ -125,87 +169,51 @@ export const generateEfd = async (
   location: string | UUID,
 ) => {
   const apiClient = new ApiClient();
-
   try {
     const order = await apiClient.get(
       `/api/vfd/${location}/receipt/${orderId}`,
     );
-
     return parseStringify(order);
   } catch (error) {
     return parseStringify(error);
   }
 };
 
-export const getOrderLogs = async (id: UUID) => {
-  try {
-    const apiClient = new ApiClient();
-    const query = {
-      page: 0,
-      size: 100,
-    };
-    const orderLogs = await apiClient.post(`/api/order-logs/${id}`, query);
-    return parseStringify(orderLogs);
-  } catch (error) {
-    throw error;
-  }
-};
+// ─── Reports (reports service) ──────────────────────────────────────
 
 export const cashFlowReport = async (
   startDate?: Date,
   endDate?: Date,
 ): Promise<CashFlow | null> => {
-  try {
-    const apiClient = new ApiClient("reports");
-    const location = await getCurrentLocation();
-    const params = {
-      startDate,
-      endDate,
-    };
-    const report = await apiClient.get(
-      `/api/reports/${location?.id}/cash-flow/summary`,
-      {
-        params,
-      },
-    );
-
-    return parseStringify(report);
-  } catch (error) {
-    console.error("Error fetching transactions report:", error);
-    throw error;
-  }
+  const apiClient = new ApiClient("reports");
+  const location = await getCurrentLocation();
+  const params = { startDate, endDate };
+  const report = await apiClient.get(
+    `/api/reports/${location?.id}/cash-flow/summary`,
+    { params },
+  );
+  return parseStringify(report);
 };
 
 export const creditReport = async (
   startDate?: Date,
   endDate?: Date,
 ): Promise<Credit | null> => {
-  try {
-    const apiClient = new ApiClient("reports");
-    const location = await getCurrentLocation();
-    const params = {
-      startDate,
-      endDate,
-    };
-    const report = await apiClient.get(
-      `/api/reports/${location?.id}/credit/unpaid-orders`,
-      {
-        params,
-      },
-    );
-
-    return parseStringify(report);
-  } catch (error) {
-    console.error("Error fetching cashFlow report:", error);
-    throw error;
-  }
+  const apiClient = new ApiClient("reports");
+  const location = await getCurrentLocation();
+  const params = { startDate, endDate };
+  const report = await apiClient.get(
+    `/api/reports/${location?.id}/credit/unpaid-orders`,
+    { params },
+  );
+  return parseStringify(report);
 };
 
-export const submitOrderRequest = async (cartState: CartState) => {
-  let formResponse: FormResponse | null = null;
+// ─── Cart submission (legacy order-request service) ─────────────────
 
+export const submitOrderRequest = async (cartState: CartState) => {
   if (!cartState.locationId) {
-    formResponse = {
+    const formResponse: FormResponse = {
       responseType: "error",
       message: "Location information is missing. Please refresh and try again.",
       error: new Error("Missing locationId in cart state"),
@@ -214,7 +222,6 @@ export const submitOrderRequest = async (cartState: CartState) => {
     return parseStringify(formResponse);
   }
 
-  // Transform cart state to API payload format
   const payload = {
     comment: cartState.globalComment || "",
     customerFirstName: cartState.customerDetails.firstName,
@@ -245,11 +252,10 @@ export const submitOrderRequest = async (cartState: CartState) => {
     }),
   };
 
-  // console.log("The payload is", payload)
   const validRequestData = orderRequestSchema.safeParse(payload);
 
   if (!validRequestData.success) {
-    formResponse = {
+    const formResponse: FormResponse = {
       responseType: "error",
       message: "Please fill all the required fields",
       error: new Error(validRequestData.error.message),
@@ -259,18 +265,13 @@ export const submitOrderRequest = async (cartState: CartState) => {
   }
 
   const location = cartState.locationId;
-  console.log("The location Id is", location);
-
   const finalPayload = {
     ...validRequestData.data,
     orderRequestServingType: "DINE_IN",
   };
 
-  // console.log("The final payload is", finalPayload);
-
   try {
     const apiClient = new ApiClient();
-
     const requestedOrder = await apiClient.post(
       `/api/order-request/${location}/create`,
       finalPayload,
@@ -281,25 +282,23 @@ export const submitOrderRequest = async (cartState: CartState) => {
       },
     );
 
-    // console.log("The requested order is", requestedOrder);
-
-    formResponse = {
+    const formResponse: FormResponse = {
       responseType: "success",
       message: "Order has been requested successfully",
-      data: requestedOrder, // Include the order data
+      data: requestedOrder,
     };
-
     return parseStringify(formResponse);
-  } catch (error: any) {
-    console.error("Order submission error:", error.message);
-    formResponse = {
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Something went wrong while processing your request, please try again";
+    console.error("Order submission error:", message);
+    const formResponse: FormResponse = {
       responseType: "error",
-      message:
-        error.message ??
-        "Something went wrong while processing your request, please try again",
+      message,
       error: error instanceof Error ? error : new Error(String(error)),
     };
-
     return parseStringify(formResponse);
   }
 };

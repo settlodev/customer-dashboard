@@ -1,275 +1,183 @@
+"use client";
 
-"use client"
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 
-import React, { useEffect, useState } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Plus, Tag } from "lucide-react";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { createCategory } from "@/lib/actions/category-actions";
-import { fetchDepartmentsForCurrentLocation } from "@/lib/actions/department-actions";
-import type { Department } from "@/types/department/type";
-import { FormError } from "@/components/widgets/form-error";
-import { usePathname } from 'next/navigation';
-import UploadImageWidget from "@/components/widgets/UploadImageWidget";
-import { Card, CardContent } from "../ui/card";
-import { ExpenseCategory } from "@/types/expenseCategories/type";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { fetchExpenseCategories } from "@/lib/actions/expense-categories-actions";
+import type { ExpenseCategory } from "@/types/expense-category/type";
 
-interface CategorySelectorProps {
-    placeholder: string;
-    value?: string;
-    isDisabled?: boolean;
-    onChange: (value: string) => void;
-    onBlur?: () => void;
-    
+interface Props {
+  value?: string | null;
+  placeholder?: string;
+  onChange: (value: string, category: ExpenseCategory | null) => void;
+  isDisabled?: boolean;
+  clearable?: boolean;
 }
 
-const ExpenseCategorySelector = ({
-    placeholder,
-    value,
-    isDisabled,
-    onChange,
-    onBlur,
-   
-}: CategorySelectorProps) => {
-    
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [newCategoryName, setNewCategoryName] = useState("");
-    const [, setStatus] = useState("true");
-    const [imageUrl, setImageUrl] = useState("");
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState<string | undefined>("");
-    const [selectedValue, setSelectedValue] = useState<string | undefined>(value);
-    const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>(
-        []
-      );
-    // Department is mandatory on categories. The inline create modal here
-    // resolves to the location's default (or the only available department)
-    // since it has no UI for picking one.
-    const [defaultDepartmentId, setDefaultDepartmentId] = useState<string | null>(null);
-    const pathname = usePathname();
+export function ExpenseCategorySelector({
+  value,
+  placeholder,
+  onChange,
+  isDisabled,
+  clearable = true,
+}: Props) {
+  const [open, setOpen] = useState(false);
+  const [categories, setCategories] = useState<ExpenseCategory[]>([]);
+  const [loading, setLoading] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [triggerWidth, setTriggerWidth] = useState(0);
 
-    useEffect(() => {
-        let cancelled = false;
-        fetchDepartmentsForCurrentLocation(true)
-            .then((depts: Department[]) => {
-                if (cancelled) return;
-                const preferred =
-                    depts.find((d) => d.isDefault) ??
-                    (depts.length === 1 ? depts[0] : null);
-                setDefaultDepartmentId(preferred ? preferred.id : null);
-            })
-            .catch(() => setDefaultDepartmentId(null));
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
-    useEffect(() => {
-        setSelectedValue(value);
-    }, [value]);
-
-  
-        const getExpenseCategories = async () => {
-          try {
-            setIsLoading(true)
-            const response = await fetchExpenseCategories();
-            setExpenseCategories(response);
-          } catch (error) {
-            console.error("Error fetching countries", error);
-          }
-        };
-      
-        useEffect(() => {
-            getExpenseCategories()
-        }, []);
-
-    const resetForm = () => {
-        setNewCategoryName("");
-        setStatus("true");
-        setImageUrl("");
-        setError("");
+  useEffect(() => {
+    const measure = () => {
+      if (triggerRef.current) setTriggerWidth(triggerRef.current.offsetWidth);
     };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (triggerRef.current) ro.observe(triggerRef.current);
+    return () => ro.disconnect();
+  }, []);
 
-    const handleAddCategory = async (e: React.FormEvent) => {
-       e.preventDefault();
-        if (!newCategoryName.trim()) return;
-        setError("");
-
-        if (!defaultDepartmentId) {
-            setError(
-                "This location has multiple departments — please use the full category form to choose one.",
-            );
-            return;
-        }
-
-        setIsSubmitting(true);
-        try {
-            const response = await createCategory(
-                {
-                    name: newCategoryName,
-                    active: true,
-                    imageUrl: imageUrl,
-                    departmentId: defaultDepartmentId,
-                },
-                pathname,
-            );
-
-            if (response.responseType === "success" && response.data) {
-                await getExpenseCategories()
-                const newCategoryId = response.data.id;
-                setSelectedValue(newCategoryId);
-                onChange(newCategoryId);
-                resetForm();
-                setIsModalOpen(false);
-            } else {
-                setError(response.message ?? "Failed to create category");
-            }
-        } catch (error: any) {
-            console.error("Error creating category:", error);
-            setError(error.message ?? "Failed to create category");
-        } finally {
-            setIsSubmitting(false);
-        }
+  useEffect(() => {
+    let cancelled = false;
+    if (open && categories.length === 0) {
+      setLoading(true);
+      fetchExpenseCategories()
+        .then((all) => {
+          if (cancelled) return;
+          setCategories(all.filter((c) => c.active));
+        })
+        .catch(() => !cancelled && setCategories([]))
+        .finally(() => !cancelled && setLoading(false));
+    }
+    return () => {
+      cancelled = true;
     };
+  }, [open, categories.length]);
 
-    const handleSelectChange = (newValue: string) => {
-        setSelectedValue(newValue);
-        onChange(newValue);
-    };
+  const { roots, byParent } = useMemo(() => {
+    const r: ExpenseCategory[] = [];
+    const m = new Map<string, ExpenseCategory[]>();
+    for (const c of categories) {
+      if (!c.parentId) {
+        r.push(c);
+      } else {
+        const list = m.get(c.parentId) ?? [];
+        list.push(c);
+        m.set(c.parentId, list);
+      }
+    }
+    r.sort((a, b) => a.name.localeCompare(b.name));
+    return { roots: r, byParent: m };
+  }, [categories]);
 
-    // Helper function to render category options with subcategories
-    const renderCategoryOptions = () => {
-        const options: React.ReactNode[] = [];
+  const selected = categories.find((c) => c.id === value) ?? null;
+  const popoverWidth = Math.max(triggerWidth, 280);
 
-        expenseCategories.forEach((category) => {
-            // Add the main category
-            options.push(
-                <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                </SelectItem>
-            );
-        });
-
-        return options;
-    };
-
-    // Helper function to get display name for selected value
-    const getDisplayName = (selectedId: string) => {
-        for (const category of expenseCategories) {
-            if (category.id === selectedId) {
-                return category.name;
-            }
-            
-        }
-        return "";
-    };
-
-    return (
-        <div className="flex gap-2 items-start">
-            <div className="flex-1">
-                <Select
-                    value={selectedValue}
-                    disabled={isDisabled || isLoading}
-                    onValueChange={handleSelectChange}
-                    onOpenChange={onBlur}
-                >
-                    <SelectTrigger className="w-full">
-                        <SelectValue placeholder={placeholder}>
-                            {selectedValue ? getDisplayName(selectedValue) : placeholder}
-                        </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        {renderCategoryOptions()}
-                    </SelectContent>
-                </Select>
-            </div>
-
-            <Dialog open={isModalOpen} onOpenChange={(open) => {
-                setIsModalOpen(open);
-                if (!open) resetForm();
-            }}>
-                <DialogTrigger asChild>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        disabled={isDisabled}
-                        className="flex-shrink-0"
-                        type="button"
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          ref={triggerRef}
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between overflow-hidden"
+          disabled={isDisabled}
+          type="button"
+        >
+          <span className="truncate text-left flex-1">
+            {selected ? selected.name : placeholder ?? "Select category"}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0" style={{ width: popoverWidth }} align="start">
+        <Command>
+          <CommandInput placeholder="Search categories…" />
+          <CommandList className="max-h-[320px]">
+            {loading ? (
+              <div className="py-6 text-center">
+                <Loader2 className="mx-auto h-5 w-5 animate-spin opacity-50" />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Loading categories…
+                </p>
+              </div>
+            ) : (
+              <>
+                <CommandEmpty>No categories found.</CommandEmpty>
+                {clearable && value && (
+                  <CommandGroup>
+                    <CommandItem
+                      value="__clear__"
+                      onSelect={() => {
+                        onChange("", null);
+                        setOpen(false);
+                      }}
                     >
-                        <Plus className="h-4 w-4" />
-                    </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-[350px] lg:max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Add New Category</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleAddCategory} className="space-y-6">
-                        <FormError message={error} />
-
-                        <Card className=" ">
-                            <CardContent className="pt-6 space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-[110px_1fr] gap-6 items-start">
-                                    <div className="space-y-4">
-                                        <Label>Category Image</Label>
-                                        <div className="bg-gray-50 rounded-lg p-4 content-center">
-                                            <UploadImageWidget
-                                                imagePath="categories"
-                                                displayStyle="default"
-                                                displayImage={true}
-                                                showLabel={false}
-                                                label="Image"
-                                                setImage={setImageUrl}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-6">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="categoryName">Category Name</Label>
-                                            <div className="relative">
-                                                <Tag className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                                                <Input
-                                                    id="categoryName"
-                                                    value={newCategoryName}
-                                                    onChange={(e) => setNewCategoryName(e.target.value)}
-                                                    placeholder="Enter category name"
-                                                    className="pl-10"
-                                                    disabled={isSubmitting}
-                                                />
-                                            </div>
-                                            
-                                        </div>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <div className="flex justify-end gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setIsModalOpen(false)}
-                                disabled={isSubmitting}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="submit"
-                                disabled={isSubmitting || !newCategoryName.trim()}
-                            >
-                                {isSubmitting ? "Processing..." : "Create Category"}
-                            </Button>
-                        </div>
-                    </form>
-                </DialogContent>
-            </Dialog>
-        </div>
-    );
-};
-
-export default ExpenseCategorySelector;
+                      <span className="text-muted-foreground">— Clear selection —</span>
+                    </CommandItem>
+                  </CommandGroup>
+                )}
+                {roots.map((root) => {
+                  const children = byParent.get(root.id) ?? [];
+                  return (
+                    <CommandGroup key={root.id} heading={root.name}>
+                      <CommandItem
+                        value={`${root.name} ${root.code ?? ""}`}
+                        onSelect={() => {
+                          onChange(root.id, root);
+                          setOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            value === root.id ? "opacity-100" : "opacity-0",
+                          )}
+                        />
+                        <span className="text-sm font-medium">{root.name}</span>
+                      </CommandItem>
+                      {children.map((c) => (
+                        <CommandItem
+                          key={c.id}
+                          value={`${root.name} ${c.name} ${c.code ?? ""}`}
+                          onSelect={() => {
+                            onChange(c.id, c);
+                            setOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              value === c.id ? "opacity-100" : "opacity-0",
+                            )}
+                          />
+                          <span className="ml-3 text-sm">{c.name}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  );
+                })}
+              </>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}

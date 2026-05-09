@@ -96,6 +96,10 @@ export const settingsNavItems = [
     { id: 'digital-menu-config', label: 'Digital menu config', icon: Search, description: 'Domain, ordering, pricing display' },
     { id: 'closure-dates', label: 'Closure dates', icon: CalendarOff, description: 'Scheduled closures & holidays' },
     { id: 'accounting', label: 'Accounting mappings', icon: Calculator, description: 'Payment methods → GL & product revenue routing' },
+    { id: 'chart-of-accounts', label: 'Chart of accounts', icon: Calculator, description: 'GL account hierarchy and types' },
+    { id: 'expense-categories', label: 'Expense categories', icon: Calculator, description: 'Categorize expenses; map each to a GL account' },
+    { id: 'tax-types', label: 'Tax types', icon: Calculator, description: 'VAT classes and other tax rates' },
+    { id: 'accounting-periods', label: 'Accounting periods', icon: Calculator, description: 'Close month-end / reopen for adjustments' },
     { id: 'exchange-rates', label: 'Exchange rates', icon: ArrowLeftRight, description: 'Manual rate overrides for multi-currency' },
 
     // Not in scope of this rebuild but still accessible

@@ -44,6 +44,10 @@ import { StockInventoryPanel } from "@/components/settings/panels/stock-inventor
 import { DaySessionsPanel } from "@/components/settings/panels/day-sessions-panel";
 import { ClosureDatesPanel } from "@/components/settings/panels/closure-dates-panel";
 import { AccountingMappingsPanel } from "@/components/settings/panels/accounting-mappings-panel";
+import { ChartOfAccountsPanel } from "@/components/settings/panels/chart-of-accounts-panel";
+import { ExpenseCategoriesPanel } from "@/components/settings/panels/expense-categories-panel";
+import { TaxTypesPanel } from "@/components/settings/panels/tax-types-panel";
+import { AccountingPeriodsPanel } from "@/components/settings/panels/accounting-periods-panel";
 import { ExchangeRatesPanel } from "@/components/settings/panels/exchange-rates-panel";
 import { BrandSocialPanel } from "@/components/settings/panels/brand-social-panel";
 import { StaffHrPanel } from "@/components/settings/panels/staff-hr-panel";
@@ -67,6 +71,10 @@ type TabId =
   | "digital-menu-config"
   | "closure-dates"
   | "accounting"
+  | "chart-of-accounts"
+  | "expense-categories"
+  | "tax-types"
+  | "accounting-periods"
   | "exchange-rates"
   | "reservations"
   | "digital-menu"
@@ -87,6 +95,7 @@ export default function SettingsPage() {
   const [isLocationLoading, setIsLocationLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSessionDead, setIsSessionDead] = useState(false);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
 
   const loadSettings = useCallback(async () => {
     try {
@@ -109,6 +118,7 @@ export default function SettingsPage() {
         setIsBusinessLoading(true);
         setIsBusinessSettingsLoading(true);
         const token = await getAuthToken();
+        if (token?.userId) setAuthUserId(token.userId as string);
         if (token?.businessId) {
           const businessId = token.businessId as UUID;
           const [full, settingsData] = await Promise.all([
@@ -188,6 +198,7 @@ export default function SettingsPage() {
         location={location}
         setLocation={setLocation}
         isLocationLoading={isLocationLoading}
+        authUserId={authUserId}
       />
     </div>
   );
@@ -211,6 +222,7 @@ function SettingsLayout({
   location,
   setLocation,
   isLocationLoading,
+  authUserId,
 }: {
   settings: LocationSettings | null;
   setSettings: React.Dispatch<React.SetStateAction<LocationSettings | null>>;
@@ -222,6 +234,7 @@ function SettingsLayout({
   location: Location | null;
   setLocation: React.Dispatch<React.SetStateAction<Location | null>>;
   isLocationLoading: boolean;
+  authUserId: string | null;
 }) {
   const { tab: initialTab, subtab } = useSettingsParams();
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
@@ -297,6 +310,22 @@ function SettingsLayout({
       case "accounting":
         if (!location?.id) return <EmptyState label="No active location" />;
         return <AccountingMappingsPanel locationId={location.id} />;
+      case "chart-of-accounts":
+        return <ChartOfAccountsPanel />;
+      case "expense-categories":
+        return <ExpenseCategoriesPanel />;
+      case "tax-types":
+        return <TaxTypesPanel />;
+      case "accounting-periods":
+        if (!business?.id || !location?.id || !authUserId)
+          return <EmptyState label="No active business / location" />;
+        return (
+          <AccountingPeriodsPanel
+            businessId={business.id as string}
+            locationId={location.id}
+            userId={authUserId}
+          />
+        );
       case "exchange-rates":
         return <ExchangeRatesPanel base={settings?.currency ?? "TZS"} />;
       case "reservations":

@@ -27,6 +27,11 @@ export const Features = {
 
   // Reports
   REPORTS: "reports",
+
+  // Accounting (full double-entry suite — JE, P&L, trial balance,
+  // balance sheet, GL, AP aging, period close). Seeded as `accounting`
+  // in V3__accounting_feature_seed.sql on the billing service.
+  ACCOUNTING: "accounting",
 } as const;
 
 export type FeatureKey = (typeof Features)[keyof typeof Features];
@@ -65,7 +70,24 @@ export const ROUTE_FEATURE_MAP: Record<string, FeatureKey> = {
   "/report/staff": Features.REPORTS,
   "/report/department": Features.REPORTS,
   "/report/expense": Features.REPORTS,
-  "/report/profit-loss": Features.REPORTS,
+
+  // Accounting suite — gated behind the dedicated `accounting`
+  // entitlement so basic/standard plans don't pay for the heavy
+  // double-entry surface they don't need.
+  "/accounting/profit-loss": Features.ACCOUNTING,
+  "/accounting/trial-balance": Features.ACCOUNTING,
+  "/accounting/balance-sheet": Features.ACCOUNTING,
+  "/accounting/general-ledger": Features.ACCOUNTING,
+  "/accounting/ap-aging": Features.ACCOUNTING,
+  "/accounting/journal-entries": Features.ACCOUNTING,
+  "/accounting/fund-transfers": Features.ACCOUNTING,
+  "/accounting/till": Features.ACCOUNTING,
+  "/accounting/cash-movements": Features.ACCOUNTING,
+  "/accounting/suspense": Features.ACCOUNTING,
+  "/expenses": Features.ACCOUNTING,
+  "/vendors": Features.ACCOUNTING,
+  "/creditors": Features.ACCOUNTING,
+  "/debtors": Features.ACCOUNTING,
 };
 
 // ── Feature metadata (for upgrade prompts) ──────────────────────────
@@ -138,6 +160,16 @@ export const FEATURE_META: Record<string, FeatureMeta> = {
       "Cash flow and profit/loss reports",
       "Top-selling and slow-moving product analysis",
       "Staff performance and department breakdowns",
+    ],
+  },
+  [Features.ACCOUNTING]: {
+    title: "Accounting Suite",
+    description:
+      "Full double-entry accounting — track expenses, vendors, AP/AR, journal entries, and produce real financial statements.",
+    benefits: [
+      "Trial balance, balance sheet, profit & loss, general ledger drill-down",
+      "Vendor + expense workflow with approval, payments, and AP aging",
+      "Journal entries, fund transfers, till reconciliation, and month-end close",
     ],
   },
   [Limits.STAFF]: {

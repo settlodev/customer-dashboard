@@ -105,12 +105,6 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
-        {
-          title: "Profit & loss report",
-          link: "/report/profit-loss",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
       ],
     },
 
@@ -267,12 +261,6 @@ const getNormalMenuItems = (
           icon: "truck",
         },
         {
-          title: "Vendors (coming soon)",
-          link: "/vendors",
-          current: args?.isCurrentItem,
-          icon: "truck",
-        },
-        {
           title: "Purchase requisitions",
           link: "/purchase-requisitions",
           current: args?.isCurrentItem,
@@ -381,7 +369,7 @@ const getNormalMenuItems = (
       ],
     },
 
-    // Accounting — ledger views: expenses, invoices, AP, AR
+    // Accounting — ledger views: expenses, vendors, AP, AR, JE, transfers
     {
       label: "Accounting",
       showSeparator: true,
@@ -396,20 +384,86 @@ const getNormalMenuItems = (
           icon: "cart",
         },
         {
+          title: "Vendors",
+          link: "/vendors",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
           title: "Invoices",
           link: "/proforma-invoice",
           current: args?.isCurrentItem,
           icon: "rotate-ccw",
         },
         {
-          title: "Creditors (coming soon)",
+          title: "Creditors",
           link: "/creditors",
           current: args?.isCurrentItem,
           icon: "cart",
         },
         {
-          title: "Debtors (coming soon)",
+          title: "Debtors",
           link: "/debtors",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Journal entries",
+          link: "/accounting/journal-entries",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Fund transfers",
+          link: "/accounting/fund-transfers",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Till reconciliation",
+          link: "/accounting/till",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Cash movements",
+          link: "/accounting/cash-movements",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Suspense reconciliation",
+          link: "/accounting/suspense",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Profit & loss",
+          link: "/accounting/profit-loss",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Trial balance",
+          link: "/accounting/trial-balance",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Balance sheet",
+          link: "/accounting/balance-sheet",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "General ledger",
+          link: "/accounting/general-ledger",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "AP aging",
+          link: "/accounting/ap-aging",
           current: args?.isCurrentItem,
           icon: "cart",
         },

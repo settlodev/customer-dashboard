@@ -1,7 +1,24 @@
 "use client";
 
+import React, { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  CalendarDays,
+  CheckCircle2,
+  CreditCard,
+  FileText,
+  Loader2,
+  Receipt,
+  Trash2,
+} from "lucide-react";
+import { z } from "zod";
+import { format } from "date-fns";
+
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FieldErrors, useForm } from "react-hook-form";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -10,348 +27,644 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import React, { useCallback, useEffect, useState, useTransition } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { FormResponse } from "@/types/types";
-import CancelButton from "../widgets/cancel-button";
-import { SubmitButton } from "../widgets/submit-button";
-import { Separator } from "@/components/ui/separator";
-import { FormError } from "../widgets/form-error";
-import { FormSuccess } from "../widgets/form-success";
-import { Expense } from "@/types/expense/type";
+import { cn } from "@/lib/utils";
+
+import { VendorSelector } from "@/components/widgets/vendor-selector";
+import { ExpenseCategorySelector } from "@/components/widgets/expense-category-selector";
+import { ChartOfAccountSelector } from "@/components/widgets/chart-of-account-selector";
+import CurrencySelector from "@/components/widgets/currency-selector";
+import { useLocationCurrency } from "@/hooks/use-location-currency";
+import {
+  createExpense,
+  updateExpense,
+} from "@/lib/actions/expense-actions";
+import { fetchExchangeRate } from "@/lib/actions/exchange-rate-actions";
 import { ExpenseSchema } from "@/types/expense/schema";
-import { createExpense, updateExpense } from "@/lib/actions/expense-actions";
-import { fetchExpenseCategories } from "@/lib/actions/expense-categories-actions";
-import { ExpenseCategory } from "@/types/expenseCategories/type";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import DateTimePicker from "../widgets/datetimepicker";
-import { useRouter } from "next/navigation";
-import StaffSelectorWidget from "@/components/widgets/staff_selector_widget";
-import { CalendarDays, Receipt, Tags, User2, DollarSign, CreditCard } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { NumericFormat } from "react-number-format";
+import type { Expense } from "@/types/expense/type";
 
+import styles from "./styles/form-shell.module.css";
 
-function ExpenseForm({ item }: { item: Expense | null | undefined }) {
-  const [isPending, startTransition] = useTransition();
-  const [, setResponse] = useState<FormResponse | undefined>();
-  const [error, ] = useState<string | undefined>("");
-  const [success, ] = useState<string | undefined>("");
-  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>(
-    []
-  );
-  const [date, setDate] = useState<Date | undefined>(
-    item?.date ? new Date(item.date) : undefined
-  );
-  const { toast } = useToast();
+interface Props {
+  item: Expense | null;
+  defaultCurrency: string;
+  /**
+   * Default offset (in days) for the expense due-date when creating a
+   * new expense. Sourced from the location's invoicing settings via
+   * the accounting service's location-settings cache. Null = leave
+   * the due date blank.
+   */
+  defaultDueDays?: number | null;
+}
+
+type FormValues = z.infer<typeof ExpenseSchema>;
+
+export default function ExpenseForm({ item, defaultCurrency, defaultDueDays }: Props) {
   const router = useRouter();
+  const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
+  // Resolve the location's base currency on the client so it stays in
+  // sync if the merchant switches locations without a full reload.
+  // Falls back to the SSR-provided default until the cache warms.
+  const locationCurrency =
+    useLocationCurrency() || defaultCurrency || "TZS";
 
-  useEffect(() => {
-    const getExpenseCategories = async () => {
-      try {
-        const response = await fetchExpenseCategories();
-        setExpenseCategories(response);
-      } catch (error) {
-        console.error("Error fetching countries", error);
-      }
-    };
-    getExpenseCategories();
-  }, []);
+  const isEdit = !!item;
+  const today = format(new Date(), "yyyy-MM-dd");
+  // Pre-fill due-date with merchant's configured invoice term when
+  // present. Edit mode keeps whatever the expense has.
+  const seedDueDate = (() => {
+    if (item?.dueDate) return item.dueDate;
+    if (item) return "";
+    if (defaultDueDays && defaultDueDays > 0) {
+      const d = new Date();
+      d.setDate(d.getDate() + defaultDueDays);
+      return format(d, "yyyy-MM-dd");
+    }
+    return "";
+  })();
 
-  const form = useForm<z.infer<typeof ExpenseSchema>>({
+  // FX state — populated whenever the merchant picks a foreign
+  // currency. Stored separately from the form value so we can show the
+  // live "1 USD = 2,500 TZS" hint without polluting field state.
+  const [fxLoading, setFxLoading] = useState(false);
+  const [fxError, setFxError] = useState<string | null>(null);
+  const [fxStale, setFxStale] = useState(false);
+  // Track whether the operator has manually overridden the auto rate —
+  // once they have, currency-change effects stop overwriting their
+  // entry until they pick a new currency.
+  const manualFxRef = useRef(false);
+
+  const form = useForm<FormValues>({
     resolver: zodResolver(ExpenseSchema),
-    defaultValues: item ? item : { status: true },
+    defaultValues: {
+      vendorId: item?.vendorId ?? "",
+      expenseCategoryId: item?.expenseCategoryId ?? "",
+      chartOfAccountId: item?.chartOfAccountId ?? "",
+      description: item?.description ?? "",
+      reference: item?.reference ?? "",
+      amount: item?.amount ?? undefined,
+      taxAmount: item?.taxAmount ?? undefined,
+      currencyCode: item?.currencyCode ?? defaultCurrency,
+      exchangeRate: item?.exchangeRate ?? undefined,
+      expenseDate: item?.expenseDate ?? today,
+      dueDate: seedDueDate,
+    },
   });
 
+  // Auto-resolve FX whenever the picked currency changes. Same-
+  // currency: lock at 1.0 and clear FX UI noise. Foreign currency:
+  // fetch the system rate via the accounts service and pre-fill the
+  // exchange-rate field. Operator can still override.
+  const watchedCurrency = form.watch("currencyCode");
+  useEffect(() => {
+    const code = (watchedCurrency || "").toUpperCase();
+    if (!code || !locationCurrency) return;
 
-  const onInvalid = useCallback(
-    (errors: FieldErrors) => {
-      toast({
-        variant: "destructive",
-        title: "Uh oh! something went wrong",
-        description: typeof errors.message === 'string' ? errors.message : "There was an issue submitting your form, please try later",
-      });
-    },
-    [toast]
-  );
+    if (code === locationCurrency.toUpperCase()) {
+      manualFxRef.current = false;
+      form.setValue("exchangeRate", 1, { shouldDirty: false });
+      setFxError(null);
+      setFxStale(false);
+      setFxLoading(false);
+      return;
+    }
 
-  const submitData = (values: z.infer<typeof ExpenseSchema>) => {
-    startTransition(() => {
-      if (item) {
-        updateExpense(item.id, values).then((data) => {
-          if (data) {
-            setResponse(data);
-            if (data.responseType === "success") {
-              toast({
-                variant: "success",
-                title: "Success",
-                description: data.message,
-              });
-              router.push("/expenses");
-            }
-          }
+    if (manualFxRef.current) return;
+
+    let cancelled = false;
+    setFxLoading(true);
+    setFxError(null);
+    fetchExchangeRate(code, locationCurrency)
+      .then((rate) => {
+        if (cancelled) return;
+        if (!rate) {
+          setFxError(
+            `No rate for ${code} → ${locationCurrency}. Enter the rate manually.`,
+          );
+          setFxStale(false);
+          return;
+        }
+        form.setValue("exchangeRate", Number(rate.rate), {
+          shouldDirty: false,
         });
+        setFxStale(!!rate.stale);
+      })
+      .catch(() => {
+        if (!cancelled) setFxError("Couldn't fetch rate. Enter manually.");
+      })
+      .finally(() => {
+        if (!cancelled) setFxLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [watchedCurrency, locationCurrency, form]);
+
+  const watchedRate = form.watch("exchangeRate");
+  const watchedAmount = form.watch("amount");
+  const watchedTax = form.watch("taxAmount");
+  const isForeignCurrency =
+    !!watchedCurrency &&
+    !!locationCurrency &&
+    watchedCurrency.toUpperCase() !== locationCurrency.toUpperCase();
+  const convertedTotal =
+    watchedRate && (watchedAmount || watchedTax)
+      ? (Number(watchedAmount || 0) + Number(watchedTax || 0)) *
+        Number(watchedRate)
+      : null;
+
+  const submit = (values: FormValues) => {
+    startTransition(async () => {
+      const result = isEdit
+        ? await updateExpense(item!.id, values)
+        : await createExpense(values);
+      if (result?.responseType === "success") {
+        toast({
+          variant: "success",
+          title: "Success",
+          description: result.message,
+        });
+        router.push(isEdit ? `/expenses/${item!.id}` : "/expenses");
       } else {
-        createExpense(values)
-          .then((data) => {
-            if (data) {
-              setResponse(data);
-              if (data.responseType === "success") {
-                toast({
-                  variant: "success",
-                  title: "Success",
-                  description: data.message,
-                });
-                router.push("/expenses");
-              }
-            }
-          })
-          .catch((err) => {
-            console.error(err);
-          });
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result?.message ?? "Could not save expense",
+        });
       }
     });
   };
 
-  const handleTimeChange = (type: "hour" | "minutes", value: string) => {
-    if (!date) return;
-
-    const newDate = new Date(date);
-
-    if (type === "hour") {
-      newDate.setHours(Number(value));
-    } else if (type === "minutes") {
-      newDate.setMinutes(Number(value));
-    }
-
-    setDate(newDate);
-  };
-
-  const handleDateSelect = (date: Date) => {
-    setDate(date);
-  };
+  const isLocked =
+    isEdit && item!.status !== "DRAFT" && item!.status !== "REJECTED";
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-8">
-          <FormError message={error}/>
-          <FormSuccess message={success}/>
-
-          {/* Main Form Card */}
-          <Card className="shadow-sm border-0 ring-1 ring-gray-200">
-            <CardHeader className="pb-6">
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Receipt className="h-5 w-5"/>
-                Expense Information
-              </CardTitle>
-              <CardDescription>
-                Enter the basic details about this expense
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(submit)}
+        className={styles.formRoot}
+      >
+        <div className={styles.formStack}>
+          {/* ── 01. Vendor & Description ─────────────────────────── */}
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <FileText className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Vendor &amp; description</h3>
+                <p className={styles.formCardHeadDesc}>
+                  What was bought, and who did the business pay (or owe)?
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 01</span>
+              </div>
+            </header>
+            <div className={styles.formBody}>
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="name"
-                  render={({field}) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <Receipt className="h-4 w-4"/>
-                        Expense Name
+                  name="vendorId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={styles.fieldLabel}>
+                        Vendor <span className="opt">OPTIONAL</span>
+                      </FormLabel>
+                      <FormControl>
+                        <VendorSelector
+                          value={field.value ?? ""}
+                          onChange={(v) => field.onChange(v)}
+                          isDisabled={isPending || isLocked}
+                          placeholder="Pick vendor"
+                        />
+                      </FormControl>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="expenseCategoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={styles.fieldLabel}>
+                        Category <span className="opt">OPTIONAL</span>
+                      </FormLabel>
+                      <FormControl>
+                        <ExpenseCategorySelector
+                          value={field.value ?? ""}
+                          onChange={(v) => field.onChange(v)}
+                          isDisabled={isPending || isLocked}
+                          placeholder="Pick category"
+                        />
+                      </FormControl>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 mt-3.5">
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={styles.fieldLabel}>
+                        Description <span className="req">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          rows={2}
+                          disabled={isPending || isLocked}
+                          placeholder="What is this expense for?"
+                        />
+                      </FormControl>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 mt-3.5">
+                <FormField
+                  control={form.control}
+                  name="reference"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={styles.fieldLabel}>
+                        Reference / Invoice #{" "}
+                        <span className="opt">OPTIONAL</span>
                       </FormLabel>
                       <FormControl>
                         <Input
                           {...field}
-                          placeholder="Enter expense name"
-                          disabled={isPending}
-                          className="h-11 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                          disabled={isPending || isLocked}
+                          placeholder="INV-2026-0001"
                         />
                       </FormControl>
-                      <FormMessage/>
+                      <FormMessage className="text-xs" />
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={form.control}
-                  name="expenseCategory"
-                  render={({field}) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <Tags className="h-4 w-4"/>
-                        Category
-                      </FormLabel>
-                      <Select
-                        disabled={isPending || expenseCategories.length === 0}
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-11 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                            <SelectValue placeholder="Select category"/>
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {expenseCategories.map((category, index) => (
-                            <SelectItem key={index} value={category.id}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage/>
-                    </FormItem>
-                  )}
-                />
-
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-              <FormField
-                  control={form.control}
-                  name="date"
-                  render={({field}) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <CalendarDays className="h-4 w-4"/>
-                        Expense Date
-                      </FormLabel>
-                      <DateTimePicker
-                        field={field}
-                        date={date}
-                        setDate={setDate}
-                        handleTimeChange={handleTimeChange}
-                        onDateSelect={handleDateSelect}
-                        maxDate={new Date()}
-                      />
-                      <FormMessage/>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="staff"
-                  render={({field}) => (
+                  name="chartOfAccountId"
+                  render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <User2 className="h-4 w-4"/>
-                        Processed by
+                      <FormLabel className={styles.fieldLabel}>
+                        Expense account <span className="opt">OVERRIDE</span>
                       </FormLabel>
                       <FormControl>
-                        <StaffSelectorWidget
-                          {...field}
-                          isRequired
-                          isDisabled={isPending}
-                          placeholder="Select staff member"
-                          label="Select staff member"
+                        <ChartOfAccountSelector
+                          accountType="EXPENSE"
+                          value={field.value ?? ""}
+                          onChange={(v) => field.onChange(v)}
+                          isDisabled={isPending || isLocked}
+                          placeholder="Default from category"
                         />
                       </FormControl>
-                      <FormMessage/>
+                      <FormMessage className="text-xs" />
                     </FormItem>
                   )}
                 />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
-          {/* Payment Information Card */}
-          <Card className="shadow-sm border-0 ring-1 ring-gray-200">
-            <CardHeader className="pb-6">
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <CreditCard className="h-5 w-5"/>
-                Payment Information
-              </CardTitle>
-              <CardDescription>
-                Track the total amount and payment status
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* ── 02. Amounts ─────────────────────────────────────── */}
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <Receipt className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Amounts</h3>
+                <p className={styles.formCardHeadDesc}>
+                  Net amount + tax. Payments are recorded separately
+                  after approval.
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 02</span>
+              </div>
+            </header>
+            <div className={styles.formBody}>
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-3">
                 <FormField
                   control={form.control}
                   name="amount"
-                  render={({field}) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <DollarSign className="h-4 w-4"/>
-                        Total Amount
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={styles.fieldLabel}>
+                        Net amount <span className="req">*</span>
                       </FormLabel>
                       <FormControl>
-                        <div className="relative">
-                        <NumericFormat
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                          value={field.value ?? ''}
-                          onValueChange={(values) => {
-                          field.onChange(Number(values.value));
-                          }}
-                          thousandSeparator={true}
-                          placeholder="Enter total expense amount"
-                          disabled={isPending}
-                          />
-                        </div>
+                        <Input
+                          type="number"
+                          step="0.0001"
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending || isLocked}
+                          placeholder="0.00"
+                        />
                       </FormControl>
-                      <FormMessage/>
+                      <FormMessage className="text-xs" />
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={form.control}
-                  name="paidAmount"
-                  render={({field}) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <CreditCard className="h-4 w-4"/>
-                        Paid Amount
+                  name="taxAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={styles.fieldLabel}>
+                        Tax amount <span className="opt">OPTIONAL</span>
                       </FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          
-                        <NumericFormat
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                          value={field.value ?? ''}
-                          onValueChange={(values) => {
-                          field.onChange(Number(values.value));
-                          }}
-                          thousandSeparator={true}
-                          placeholder="Enter paid expense amount"
-                          disabled={isPending}
-                          />
-                        </div>
+                        <Input
+                          type="number"
+                          step="0.0001"
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending || isLocked}
+                          placeholder="0.00"
+                        />
                       </FormControl>
-                      <FormMessage/>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="currencyCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={styles.fieldLabel}>
+                        Currency <span className="req">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <CurrencySelector
+                          value={field.value}
+                          onChange={(code) => {
+                            // Operator picked a different currency — clear
+                            // any prior manual override so the auto-fetch
+                            // effect can populate the new pair's rate.
+                            manualFxRef.current = false;
+                            field.onChange(code);
+                          }}
+                          isDisabled={isPending || isLocked}
+                          placeholder={`Default ${locationCurrency}`}
+                        />
+                      </FormControl>
+                      <FormMessage className="text-xs" />
                     </FormItem>
                   )}
                 />
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Action Buttons */}
-          <Card className="shadow-sm border-0 ring-1 ring-gray-200">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-600">
-                  {item ? "Update this expense record" : "Record this expense for tracking"}
-                </div>
-                <div className="flex items-center space-x-4">
-                  <CancelButton/>
-                  <Separator orientation="vertical" className="h-6"/>
-                  <SubmitButton 
-                    label={item ? "Update Expense" : "Record Expense"} 
-                    isPending={isPending}
+              {isForeignCurrency && (
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-3 mt-3.5">
+                  <FormField
+                    control={form.control}
+                    name="exchangeRate"
+                    render={({ field }) => (
+                      <FormItem className="sm:col-span-3">
+                        <FormLabel className={styles.fieldLabel}>
+                          Exchange rate to {locationCurrency}
+                          {fxLoading ? (
+                            <span className="opt inline-flex items-center gap-1">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              FETCHING…
+                            </span>
+                          ) : fxStale ? (
+                            <span className="opt text-amber-600">STALE — VERIFY</span>
+                          ) : (
+                            <span className="opt">AUTO-FETCHED · OVERRIDE OK</span>
+                          )}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.000001"
+                            {...field}
+                            value={field.value ?? ""}
+                            disabled={isPending || isLocked || fxLoading}
+                            placeholder="0.000000"
+                            onChange={(e) => {
+                              manualFxRef.current = true;
+                              field.onChange(e);
+                            }}
+                          />
+                        </FormControl>
+                        <p className="mt-1 font-mono text-[11px] text-muted-foreground tabular-nums">
+                          {fxError ? (
+                            <span className="text-red-600">{fxError}</span>
+                          ) : watchedRate ? (
+                            <>
+                              1 {watchedCurrency?.toUpperCase()} ={" "}
+                              {Number(watchedRate).toLocaleString(undefined, {
+                                maximumFractionDigits: 6,
+                              })}{" "}
+                              {locationCurrency}
+                              {convertedTotal ? (
+                                <>
+                                  {" · total "}
+                                  <span className="font-medium">
+                                    {convertedTotal.toLocaleString(undefined, {
+                                      maximumFractionDigits: 0,
+                                    })}{" "}
+                                    {locationCurrency}
+                                  </span>
+                                </>
+                              ) : null}
+                            </>
+                          ) : (
+                            "Pick a non-base currency to fetch a rate."
+                          )}
+                        </p>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
                   />
                 </div>
+              )}
+            </div>
+          </section>
+
+          {/* ── 03. Dates ───────────────────────────────────────── */}
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <CalendarDays className="h-3.5 w-3.5" />
               </div>
-            </CardContent>
-          </Card>
-        </form>
-      </Form>
+              <div className="flex-1 min-w-0">
+                <h3>Dates</h3>
+                <p className={styles.formCardHeadDesc}>
+                  When the expense was incurred, and when payment is due.
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 03</span>
+              </div>
+            </header>
+            <div className={styles.formBody}>
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="expenseDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={styles.fieldLabel}>
+                        Expense date <span className="req">*</span>
+                      </FormLabel>
+                      <DatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        disabled={isPending || isLocked}
+                      />
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={styles.fieldLabel}>
+                        Due date <span className="opt">DRIVES AP AGING</span>
+                      </FormLabel>
+                      <DatePicker
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        disabled={isPending || isLocked}
+                        clearable
+                      />
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* Sticky footer */}
+        <div className={styles.formFoot}>
+          <span className={styles.formFootSaveState}>
+            <CreditCard className="h-3 w-3" />
+            {isEdit
+              ? `Editing ${item!.expenseNumber}`
+              : "Saved as DRAFT — submit for approval after creating"}
+          </span>
+          <div className={styles.formFootSpacer} />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button type="button" variant="ghost" disabled={isPending}>
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Discard
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Anything you typed will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction onClick={() => router.back()}>
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button type="submit" disabled={isPending || isLocked}>
+            {isPending ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+            )}
+            {isEdit ? "Save changes" : "Create expense"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Inline date picker — wraps shadcn Calendar in a Popover and emits
+// the canonical YYYY-MM-DD string the schema expects.
+// ─────────────────────────────────────────────────────────────────────
+
+interface DatePickerProps {
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  clearable?: boolean;
+}
+
+function DatePicker({ value, onChange, disabled, clearable }: DatePickerProps) {
+  const date = value ? new Date(value) : undefined;
+  return (
+    <div className="flex gap-2">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={disabled}
+            className={cn(
+              "h-10 w-full justify-start text-left font-normal",
+              !date && "text-muted-foreground",
+            )}
+          >
+            <CalendarDays className="mr-2 h-4 w-4 opacity-50" />
+            {date ? format(date, "PPP") : "Pick a date"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[300px] p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={(d) => {
+              if (d) onChange(format(d, "yyyy-MM-dd"));
+            }}
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
+      {clearable && value && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          disabled={disabled}
+          onClick={() => onChange("")}
+          className="h-10 w-10 flex-shrink-0"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      )}
     </div>
   );
-};
-
-export default ExpenseForm;
+}
