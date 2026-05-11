@@ -53,30 +53,44 @@ export interface TopItems {
   latestSoldDate: Date;
   earliestSoldDate: Date;
 }
+
 export interface SoldItemsReport {
   locationName: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: string | Date;
+  endDate: string | Date;
   items: SoldItem[];
   totalQuantity: number;
+  netQuantity: number;
   totalRevenue: number;
+  totalGrossRevenue: number;
   totalCost: number | null;
+  netCost: number | null;
   totalProfit: number;
+  totalDiscount: number;
+  totalRefundedAmount: number;
   averageMargin: number;
-  netProfit: number;
+  // legacy / optional
+  netProfit?: number;
 }
+
 export interface SoldItem {
+  productId?: string;
+  variantId?: string;
+  name?: string;
   productName: string;
   variantName: string;
   categoryName: string;
-  staffName: string;
-  imageUrl: string;
+  staffName: string | null;
+  imageUrl: string | null;
   quantity: number;
   price: number;
   cost: number;
   profit: number;
   netProfit: number;
   margin: number;
+  averageSellingPrice?: number;
+  orderCount?: number;
+  grossRevenue?: number;
   refundedQuantity: number;
   refundedPrice: number;
   netPrice: number;
