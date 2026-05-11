@@ -23,29 +23,57 @@ export async function listChartOfAccounts(
     const apiClient = new ApiClient();
     const params = new URLSearchParams();
     if (accountType) params.set("accountType", accountType);
+    // The `/all` endpoint is unpaginated — the accountType filter is
+    // applied client-side after the fetch. We still pass it through so
+    // future server-side filtering Just Works without a callsite change.
     const url = params.toString()
       ? accountingUrl(`/api/v1/chart-of-accounts/all?${params.toString()}`)
       : accountingUrl("/api/v1/chart-of-accounts/all");
     const data = await apiClient.get(url);
-    return parseStringify(data) ?? [];
-  } catch {
+    const rows = (parseStringify(data) ?? []) as ChartOfAccount[];
+    if (accountType) {
+      return rows.filter((r) => r.accountType === accountType);
+    }
+    return rows;
+  } catch (error) {
+    // Surface the real failure — silent fallback to [] hides
+    // permission errors and 5xxs that left users staring at empty
+    // dropdowns. Server-action logs end up in the next.js process
+    // output, which is visible in the dashboard's runtime logs.
+    console.error("listChartOfAccounts failed", error);
     return [];
   }
 }
 
 // ── Payment method → account mappings ──────────────────────────────
 
+export type MappingListResult<T> = {
+  data: T[];
+  forbidden?: boolean;
+  errorMessage?: string;
+};
+
 export async function listPaymentMethodMappings(
   locationId: string,
-): Promise<PaymentMethodAccountMapping[]> {
+): Promise<MappingListResult<PaymentMethodAccountMapping>> {
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(
       accountingUrl(`/api/v1/payment-method-mappings/location/${locationId}`),
     );
-    return parseStringify(data) ?? [];
-  } catch {
-    return [];
+    return { data: parseStringify(data) ?? [] };
+  } catch (error: any) {
+    if (error?.code === "FORBIDDEN" || error?.status === 403) {
+      return {
+        data: [],
+        forbidden: true,
+        errorMessage:
+          error?.message ||
+          "You do not have permission to view payment method mappings.",
+      };
+    }
+    console.error("listPaymentMethodMappings failed", error);
+    return { data: [], errorMessage: error?.message };
   }
 }
 
@@ -99,15 +127,25 @@ export async function deletePaymentMethodMapping(
 
 export async function listProductRevenueMappings(
   locationId: string,
-): Promise<ProductRevenueMapping[]> {
+): Promise<MappingListResult<ProductRevenueMapping>> {
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(
       accountingUrl(`/api/v1/product-revenue-mappings/location/${locationId}`),
     );
-    return parseStringify(data) ?? [];
-  } catch {
-    return [];
+    return { data: parseStringify(data) ?? [] };
+  } catch (error: any) {
+    if (error?.code === "FORBIDDEN" || error?.status === 403) {
+      return {
+        data: [],
+        forbidden: true,
+        errorMessage:
+          error?.message ||
+          "You do not have permission to view product revenue mappings.",
+      };
+    }
+    console.error("listProductRevenueMappings failed", error);
+    return { data: [], errorMessage: error?.message };
   }
 }
 

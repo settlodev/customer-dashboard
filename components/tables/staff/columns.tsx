@@ -64,16 +64,16 @@ export const columns: ColumnDef<StaffListEnriched>[] = [
                 </Badge>
               )}
             </div>
-            {staff.jobTitle && (
+            {(staff.jobTitle || staff.identifier) && (
               <div className="mt-0.5 truncate text-[11.5px] text-muted-foreground">
                 {staff.jobTitle}
-                {staff.employeeNumber && (
-                  <>
-                    <span className="mx-1.5 text-muted-2">·</span>
-                    <span className="font-mono tracking-[0.02em]">
-                      {staff.employeeNumber}
-                    </span>
-                  </>
+                {staff.jobTitle && staff.identifier && (
+                  <span className="mx-1.5 text-muted-2">·</span>
+                )}
+                {staff.identifier && (
+                  <span className="font-mono tracking-[0.02em]">
+                    {staff.identifier}
+                  </span>
                 )}
               </div>
             )}
@@ -186,27 +186,6 @@ export const columns: ColumnDef<StaffListEnriched>[] = [
             <Badge variant="soft" className="text-[10.5px]">
               Dashboard
             </Badge>
-          )}
-        </div>
-      );
-    },
-  },
-  {
-    id: "loyalty",
-    enableHiding: true,
-    header: () => <span className="hidden xl:inline">Points</span>,
-    cell: ({ row }) => {
-      const points = row.original.loyaltyPoints ?? 0;
-      const level = row.original.gamificationSummary?.currentLevel;
-      return (
-        <div className="hidden xl:block">
-          <div className="font-mono text-[12px] tabular-nums text-ink">
-            {points.toLocaleString()}
-          </div>
-          {level !== undefined && level > 0 && (
-            <div className="font-mono text-[10.5px] text-muted-foreground">
-              Lv {level}
-            </div>
           )}
         </div>
       );

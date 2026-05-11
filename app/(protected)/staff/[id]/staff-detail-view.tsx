@@ -9,7 +9,6 @@ import {
   Flame,
   History as HistoryIcon,
   IdCard,
-  KeyRound,
   Layers,
   Mail,
   MapPin,
@@ -34,7 +33,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TableAvatar } from "@/components/tables/shared/table-avatar";
 import type { Staff, StaffDetail, StaffXpTransaction } from "@/types/staff";
 
 interface Props {
@@ -221,7 +219,6 @@ export function StaffDetailView({ staff, detail }: Props) {
 // ── Overview ────────────────────────────────────────────────────────
 
 function OverviewTab({ staff }: { staff: Staff }) {
-  const fullName = `${staff.firstName} ${staff.lastName}`;
   const departmentNames =
     staff.departments && staff.departments.length > 0
       ? staff.departments.map((d) => d.name).join(", ")
@@ -232,49 +229,9 @@ function OverviewTab({ staff }: { staff: Staff }) {
       : null;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      {/* Identity panel */}
-      <Card className="lg:col-span-1">
-        <CardContent className="space-y-4 pt-6">
-          <div className="flex items-center gap-3">
-            <TableAvatar name={fullName} seed={staff.id} />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-ink">
-                {fullName}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {staff.jobTitle || "—"}
-              </p>
-            </div>
-          </div>
-
-          {staff.color && (
-            <div className="flex items-center gap-2 rounded-md border border-line bg-canvas px-3 py-2">
-              <span
-                className="h-3 w-3 rounded-full border border-line"
-                style={{ backgroundColor: staff.color }}
-              />
-              <span className="font-mono text-[11px] tracking-[0.02em] text-muted-foreground">
-                {staff.color}
-              </span>
-            </div>
-          )}
-
-          {staff.notes && (
-            <div className="space-y-1">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Notes
-              </p>
-              <p className="whitespace-pre-wrap text-sm text-ink-2">
-                {staff.notes}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
+    <div className="space-y-6">
       {/* Personal + work info */}
-      <Card className="lg:col-span-2">
+      <Card>
         <CardContent className="space-y-4 pt-6">
           <h3 className="flex items-center gap-2 text-sm font-semibold">
             <User className="h-4 w-4 text-muted-foreground" />
@@ -470,23 +427,6 @@ function AccessTab({ staff }: { staff: Staff }) {
         );
       })}
 
-      {staff.posAccess && (
-        <Card className="lg:col-span-2">
-          <CardContent className="space-y-2 pt-6">
-            <h4 className="flex items-center gap-2 text-sm font-semibold">
-              <KeyRound className="h-4 w-4 text-muted-foreground" />
-              About POS PINs
-            </h4>
-            <p className="text-xs text-muted-foreground">
-              Paired POS devices fetch the PIN hash through the secure
-              staff-sync channel and verify locally so staff switches don&apos;t
-              need a server round-trip. New / rotated PINs roll out on each
-              device&apos;s next sync — usually instant when online, otherwise
-              when the device next reconnects.
-            </p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

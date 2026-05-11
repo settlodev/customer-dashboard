@@ -145,7 +145,7 @@ export function ExpenseCellAction({ data }: Props) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this draft expense?</AlertDialogTitle>
             <AlertDialogDescription>
-              {data.expenseNumber} will be soft-deleted. You can't undo from
+              {data.expenseNumber} will be soft-deleted. You can&apos;t undo from
               here — only support can recover it.
             </AlertDialogDescription>
           </AlertDialogHeader>

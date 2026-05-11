@@ -1,8 +1,15 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Loader2, Trash2, Plus } from "lucide-react";
+import { Loader2, Trash2, Plus, ShieldOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Alert,
+  AlertBody,
+  AlertDescription,
+  AlertIcon,
+  AlertTitle,
+} from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -56,6 +63,7 @@ function PaymentMethodMappings({ locationId }: { locationId: string }) {
   const [mappings, setMappings] = useState<PaymentMethodAccountMapping[]>([]);
   const [methods, setMethods] = useState<{ id: string; code: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accessError, setAccessError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const refresh = async () => {
@@ -64,7 +72,13 @@ function PaymentMethodMappings({ locationId }: { locationId: string }) {
       listPaymentMethodMappings(locationId),
       fetchLocationPaymentMethods().catch(() => [] as PaymentMethod[]),
     ]);
-    setMappings(m);
+    if (m.forbidden) {
+      setMappings([]);
+      setAccessError(m.errorMessage ?? null);
+    } else {
+      setMappings(m.data);
+      setAccessError(null);
+    }
     setMethods(flattenPaymentMethods(pms));
     setLoading(false);
   };
@@ -79,19 +93,23 @@ function PaymentMethodMappings({ locationId }: { locationId: string }) {
       title="Payment method accounts"
       description="Each POS payment posts a journal entry to the chart-of-account mapped here. Unmapped methods fall back to a suspense account."
     >
-      <div className="flex justify-end">
-        <MappingDialog
-          locationId={locationId}
-          methods={methods}
-          mappings={mappings}
-          onSaved={refresh}
-        />
-      </div>
+      {!accessError && (
+        <div className="flex justify-end">
+          <MappingDialog
+            locationId={locationId}
+            methods={methods}
+            mappings={mappings}
+            onSaved={refresh}
+          />
+        </div>
+      )}
 
       {loading ? (
         <div className="py-6 flex justify-center">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
+      ) : accessError ? (
+        <PermissionDeniedNotice message={accessError} />
       ) : mappings.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground italic">
@@ -293,11 +311,19 @@ function MappingDialog({
 function ProductRevenueMappings({ locationId }: { locationId: string }) {
   const [mappings, setMappings] = useState<ProductRevenueMapping[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accessError, setAccessError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const refresh = async () => {
     setLoading(true);
-    setMappings(await listProductRevenueMappings(locationId));
+    const result = await listProductRevenueMappings(locationId);
+    if (result.forbidden) {
+      setMappings([]);
+      setAccessError(result.errorMessage ?? null);
+    } else {
+      setMappings(result.data);
+      setAccessError(null);
+    }
     setLoading(false);
   };
 
@@ -311,14 +337,18 @@ function ProductRevenueMappings({ locationId }: { locationId: string }) {
       title="Product revenue routing"
       description="Route specific products to their own revenue account for per-product P&L. Unmapped products land in the default Sales Revenue bucket."
     >
-      <div className="flex justify-end">
-        <ProductRevenueDialog locationId={locationId} onSaved={refresh} />
-      </div>
+      {!accessError && (
+        <div className="flex justify-end">
+          <ProductRevenueDialog locationId={locationId} onSaved={refresh} />
+        </div>
+      )}
 
       {loading ? (
         <div className="py-6 flex justify-center">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
+      ) : accessError ? (
+        <PermissionDeniedNotice message={accessError} />
       ) : mappings.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground italic">
@@ -507,6 +537,23 @@ function ProductRevenueDialog({
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
+
+function PermissionDeniedNotice({ message }: { message?: string | null }) {
+  return (
+    <Alert tone="danger" variant="soft">
+      <AlertIcon>
+        <ShieldOff className="h-3.5 w-3.5" />
+      </AlertIcon>
+      <AlertBody>
+        <AlertTitle>Permission denied</AlertTitle>
+        <AlertDescription>
+          {message ||
+            "You don't have permission to view these mappings. Contact your administrator if you think this is a mistake."}
+        </AlertDescription>
+      </AlertBody>
+    </Alert>
+  );
+}
 
 function flattenPaymentMethods(methods: PaymentMethod[]): { id: string; code: string; name: string }[] {
   const out: { id: string; code: string; name: string }[] = [];
