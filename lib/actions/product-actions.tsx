@@ -465,15 +465,26 @@ export const SoldItemsReports = async (
   try {
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
-    const params = {
-      startDate,
-      endDate,
+
+    if (!location?.id) {
+      throw new Error("No location found");
+    }
+
+    // Build ISO strings — backend expects full ISO 8601 with timezone
+    const params: Record<string, string> = {
+      locationId: location.id as string,
     };
+
+    if (startDate) {
+      params.startDate = startDate.toISOString();
+    }
+    if (endDate) {
+      params.endDate = endDate.toISOString();
+    }
+
     const soldItems = await apiClient.get(
-      `/api/reports/${location?.id}/products/sold-items`,
-      {
-        params,
-      },
+      `/reports/api/v1/reports/sold-items/summary`,
+      { params },
     );
 
     return parseStringify(soldItems);
