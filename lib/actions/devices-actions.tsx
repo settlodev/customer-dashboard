@@ -105,8 +105,8 @@ export const updateDevice = async (
 ): Promise<DeviceActionResponse<Device>> => {
   try {
     const apiClient = new ApiClient();
-    const updated = await apiClient.patch<Device, UpdateDevicePatch>(
-      `/api/v1/devices/${id}`,
+    const updated = await apiClient.post<Device, UpdateDevicePatch>(
+      `/api/v1/devices/${id}/update`,
       patch,
     );
     revalidatePath("/settings");
@@ -126,7 +126,7 @@ export const updateDevicePinRequired = async (
 ): Promise<DeviceActionResponse<Device>> => {
   try {
     const apiClient = new ApiClient();
-    const updated = await apiClient.patch<Device, { pinRequired: boolean }>(
+    const updated = await apiClient.post<Device, { pinRequired: boolean }>(
       `/api/v1/devices/${id}/pin-required`,
       { pinRequired },
     );
@@ -177,54 +177,24 @@ export const unsuspendDevice = lifecycleTransition(
   "Failed to unsuspend device",
 );
 
-export const activateDevice = lifecycleTransition(
-  "activate",
-  "Device activated",
-  "Failed to activate device",
+export const logoutDevice = lifecycleTransition(
+  "logout",
+  "Device logged out",
+  "Failed to log out device",
 );
-
-export const deactivateDevice = lifecycleTransition(
-  "deactivate",
-  "Device deactivated",
-  "Failed to deactivate device",
-);
-
-export const archiveDevice = lifecycleTransition(
-  "archive",
-  "Device archived",
-  "Failed to archive device",
-);
-
-export const retireDevice = lifecycleTransition(
-  "retire",
-  "Device retired",
-  "Failed to retire device",
-);
-
-export const logoutDevice = async (
-  id: string,
-): Promise<DeviceActionResponse<null>> => {
-  try {
-    const apiClient = new ApiClient();
-    await apiClient.post<void, Record<string, never>>(
-      `/api/v1/devices/${id}/logout`,
-      {},
-    );
-    revalidatePath("/settings");
-    return okVoid("Device logged out");
-  } catch (e) {
-    return err("Failed to log out device", e);
-  }
-};
 
 export const deleteDevice = async (
   id: string,
-): Promise<DeviceActionResponse<null>> => {
+): Promise<DeviceActionResponse<Device>> => {
   try {
     const apiClient = new ApiClient();
-    await apiClient.delete(`/api/v1/devices/${id}`);
+    const updated = await apiClient.delete<Device>(`/api/v1/devices/${id}`);
     revalidatePath("/settings");
-    return okVoid("Device deleted");
+    return {
+      responseType: "success",
+      message: "Device deleted",
+      data: parseStringify(updated),
+    };
   } catch (e) {
     return err("Failed to delete device", e);
   }

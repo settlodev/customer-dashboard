@@ -357,13 +357,16 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
                 ? extractHtmlErrorMessage(rawData) ?? undefined
                 : (rawData as { message?: string } | undefined)?.message;
 
-            // Inventory Service returns `errorCode`; Accounts/Auth return `code`.
-            // Accept both so UI branches on service-specific codes work uniformly.
+            // Inventory Service returns `errorCode`; Accounts/Auth return `code`
+            // on some paths and `error` on others (Spring GlobalExceptionHandler
+            // emits `{ "error": "INVALID_STATE" | "BUSINESS_NAME_TAKEN" | ... }`).
+            // Accept all three so UI branches on service-specific codes work uniformly.
             let serverCode = isHtmlBody
                 ? undefined
-                : (rawData as { code?: string; errorCode?: string } | undefined)
+                : (rawData as { code?: string; errorCode?: string; error?: string } | undefined)
                       ?.code
-                  ?? (rawData as { errorCode?: string } | undefined)?.errorCode;
+                  ?? (rawData as { errorCode?: string } | undefined)?.errorCode
+                  ?? (rawData as { error?: string } | undefined)?.error;
 
             // Unwrap nested service-to-service error messages
             if (serverMessage) {

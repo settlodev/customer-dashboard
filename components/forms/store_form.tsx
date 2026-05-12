@@ -65,8 +65,20 @@ import { StoreSchema } from "@/types/store/schema";
 import { FormResponse } from "@/types/types";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getAuthToken } from "@/lib/auth-utils";
+import StoreUpgradeDialog from "@/components/forms/store-upgrade-dialog";
 
 import styles from "./styles/form-shell.module.css";
+
+/**
+ * Detects the per-location store-cap 409 from the accounts service.
+ * Server emits `{ error: "INVALID_STATE", message: "Store limit reached..." }`,
+ * surfaced via the error handler as `errorCode: "INVALID_STATE"`.
+ */
+function isStoreLimitError(result: FormResponse | undefined): boolean {
+  if (!result || result.responseType !== "error") return false;
+  if (result.errorCode !== "INVALID_STATE") return false;
+  return /store limit reached/i.test(result.message || "");
+}
 
 type StoreFormValues = z.infer<typeof StoreSchema>;
 
@@ -84,6 +96,11 @@ export default function StoreForm({ item }: StoreFormProps) {
   const [activeTab, setActiveTab] = useState<
     "profile" | "address" | "coordinates"
   >("profile");
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+  const [upgradeMessage, setUpgradeMessage] = useState<string | null>(null);
+  // Holds the form values across the upgrade flow so we can auto-create
+  // the store the moment payment confirms.
+  const heldValuesRef = React.useRef<StoreFormValues | null>(null);
 
   const isEditMode = !!item;
 
@@ -161,44 +178,70 @@ export default function StoreForm({ item }: StoreFormProps) {
     [toast],
   );
 
-  const submit = useCallback(
-    (values: StoreFormValues) => {
+  const runCreateOrUpdate = useCallback(
+    async (values: StoreFormValues) => {
       setResponse(undefined);
-      startTransition(async () => {
-        try {
-          const result = isEditMode
-            ? await updateStore(item!.id, values)
-            : await createStore(values);
-          if (!result) return;
-          setResponse(result);
-          if (result.responseType === "success") {
-            toast({
-              variant: "success",
-              title: isEditMode ? "Store updated" : "Store created",
-              description: isEditMode
-                ? result.message
-                : "Complete the subscription setup on the store page.",
-            });
-            router.push("/stores");
-          } else {
-            toast({
-              variant: "destructive",
-              title: "Couldn't save store",
-              description: result.message,
-            });
-          }
-        } catch (error) {
+      try {
+        const result = isEditMode
+          ? await updateStore(item!.id, values)
+          : await createStore(values);
+        if (!result) return;
+        setResponse(result);
+        if (result.responseType === "success") {
+          heldValuesRef.current = null;
           toast({
-            variant: "destructive",
-            title: "Something went wrong",
-            description:
-              (error as Error)?.message ?? "Please try again later.",
+            variant: "success",
+            title: isEditMode ? "Store updated" : "Store created",
+            description: isEditMode
+              ? result.message
+              : "Complete the subscription setup on the store page.",
           });
+          router.push("/stores");
+          return;
         }
-      });
+
+        // 409 store-limit: open the upgrade dialog, hold values for auto-resume.
+        if (!isEditMode && isStoreLimitError(result)) {
+          heldValuesRef.current = values;
+          setUpgradeMessage(result.message);
+          setUpgradeDialogOpen(true);
+          return;
+        }
+
+        toast({
+          variant: "destructive",
+          title: "Couldn't save store",
+          description: result.message,
+        });
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Something went wrong",
+          description:
+            (error as Error)?.message ?? "Please try again later.",
+        });
+      }
     },
     [isEditMode, item, router, toast],
   );
+
+  const submit = useCallback(
+    (values: StoreFormValues) => {
+      startTransition(() => {
+        void runCreateOrUpdate(values);
+      });
+    },
+    [runCreateOrUpdate],
+  );
+
+  /** Called by the upgrade dialog after payment succeeds — auto-create from held state. */
+  const handleUpgradeResolved = useCallback(() => {
+    const heldValues = heldValuesRef.current;
+    if (!heldValues) return;
+    startTransition(() => {
+      void runCreateOrUpdate(heldValues);
+    });
+  }, [runCreateOrUpdate]);
 
   const handleDiscard = useCallback(() => {
     router.back();
@@ -206,6 +249,16 @@ export default function StoreForm({ item }: StoreFormProps) {
 
   return (
     <Form {...form}>
+      {locationId && businessId && (
+        <StoreUpgradeDialog
+          open={upgradeDialogOpen}
+          onOpenChange={setUpgradeDialogOpen}
+          onResolved={handleUpgradeResolved}
+          locationId={locationId}
+          businessId={businessId}
+          triggerMessage={upgradeMessage}
+        />
+      )}
       {response?.responseType === "error" && response?.message ? (
         <Alert tone="danger" className="mb-3">
           <AlertIcon>
@@ -685,8 +738,6 @@ export default function StoreForm({ item }: StoreFormProps) {
               hasCoords={latitude != null && longitude != null}
               checklist={[
                 { label: "Store name", done: requiredFlags[0] },
-                { label: "Business context", done: requiredFlags[1] },
-                { label: "Location context", done: requiredFlags[2] },
               ]}
               completion={completion}
             />
@@ -905,10 +956,6 @@ function StoreTipsCard({ isEdit }: { isEdit: boolean }) {
         {
           icon: MapPin,
           text: "Add address and coordinates if customers will use the storefront for pickup, delivery, or directions.",
-        },
-        {
-          icon: StoreIcon,
-          text: "After creation you'll be prompted to confirm subscription billing — that's how this store starts ringing up sales.",
         },
       ];
 

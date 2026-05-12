@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import ApiClient from "@/lib/settlo-api-client";
+import { SettloApiError } from "@/lib/settlo-api-error-handler";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { Store } from "@/types/store/type";
@@ -89,6 +90,15 @@ export const createStore = async (
     revalidatePath("/stores");
     return { responseType: "success", message: "Store created successfully", data: response };
   } catch (error) {
+    if (error instanceof SettloApiError) {
+      return {
+        responseType: "error",
+        message: error.message || "Failed to create store",
+        errorCode: error.code,
+        metadata: { ...(error.metadata ?? {}), status: error.status },
+        error,
+      };
+    }
     return {
       responseType: "error",
       message: "Failed to create store",

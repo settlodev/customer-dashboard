@@ -41,14 +41,10 @@ import { useToast } from "@/hooks/use-toast";
 
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import {
-  activateDevice,
-  archiveDevice,
-  deactivateDevice,
   deleteDevice,
   generatePairingCode,
   listDevices,
   logoutDevice,
-  retireDevice,
   suspendDevice,
   unsuspendDevice,
   updateDevice,
@@ -57,7 +53,10 @@ import {
   type PairingCode,
 } from "@/lib/actions/devices-actions";
 import type { Device, DeviceStatus } from "@/types/device/type";
-import { DEVICE_STATUS_LABELS } from "@/types/device/type";
+import {
+  DEVICE_STATUS_DESCRIPTIONS,
+  DEVICE_STATUS_LABELS,
+} from "@/types/device/type";
 
 // ──────────────────────────────────────────────────────────────────────
 // Helpers
@@ -86,16 +85,12 @@ function statusClass(status: DeviceStatus | null): string {
   switch (status) {
     case "ACTIVE":
       return "bg-emerald-100 text-emerald-800 border-emerald-200";
-    case "INACTIVE":
+    case "LOGGED_OUT":
       return "bg-amber-100 text-amber-800 border-amber-200";
-    case "ARCHIVED":
-      return "bg-gray-100 text-gray-700 border-gray-200";
-    case "RETIRED":
-      return "bg-purple-100 text-purple-800 border-purple-200";
-    case "REVOKED":
-      return "bg-red-100 text-red-800 border-red-200";
-    case "PENDING_PAIRING":
+    case "PENDING_PAIR":
       return "bg-blue-100 text-blue-800 border-blue-200";
+    case "DELETED":
+      return "bg-gray-100 text-gray-500 border-gray-200";
     default:
       return "bg-gray-100 text-gray-700 border-gray-200";
   }
@@ -112,6 +107,7 @@ function deviceDisplayName(d: Device): string {
 type DialogMode =
   | { type: "idle" }
   | { type: "pair" }
+  | { type: "regenerate"; device: Device }
   | { type: "edit"; device: Device }
   | { type: "delete"; device: Device };
 
@@ -186,10 +182,10 @@ const DeviceSettings = () => {
     setDialog({ type: "idle" });
   };
 
-  const handleLogout = async (id: string) => {
-    const res = await logoutDevice(id);
-    applyResult(res);
-  };
+  // Returned to the row so logout flows through the row's useTransition,
+  // matching suspend / unsuspend / PIN — without this the dropdown closes
+  // and the user sees no feedback until the toast lands.
+  const runLogout = (id: string) => logoutDevice(id);
 
   return (
     <div className="space-y-6">
@@ -230,7 +226,8 @@ const DeviceSettings = () => {
               device={d}
               onEdit={() => setDialog({ type: "edit", device: d })}
               onDeleteRequest={() => setDialog({ type: "delete", device: d })}
-              onLogout={() => handleLogout(d.id)}
+              onLogout={() => runLogout(d.id)}
+              onRegenerate={() => setDialog({ type: "regenerate", device: d })}
               onAction={applyResult}
             />
           ))}
@@ -241,6 +238,19 @@ const DeviceSettings = () => {
         <PairDeviceDialog
           locationId={locationId}
           knownIds={new Set((devices ?? []).map((d) => d.id))}
+          onClose={() => setDialog({ type: "idle" })}
+          onPaired={(fresh) => {
+            setDevices(fresh);
+            setDialog({ type: "idle" });
+          }}
+        />
+      )}
+
+      {dialog.type === "regenerate" && locationId && (
+        <PairDeviceDialog
+          locationId={locationId}
+          knownIds={new Set((devices ?? []).map((d) => d.id))}
+          existingDevice={dialog.device}
           onClose={() => setDialog({ type: "idle" })}
           onPaired={(fresh) => {
             setDevices(fresh);
@@ -286,12 +296,14 @@ function DeviceRow({
   onEdit,
   onDeleteRequest,
   onLogout,
+  onRegenerate,
   onAction,
 }: {
   device: Device;
   onEdit: () => void;
   onDeleteRequest: () => void;
-  onLogout: () => void;
+  onLogout: () => Promise<DeviceActionResponse<Device>>;
+  onRegenerate: () => void;
   onAction: (res: DeviceActionResponse<Device>) => boolean;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -304,7 +316,11 @@ function DeviceRow({
       onAction(res);
     });
 
-  const isActive = device.status === "ACTIVE";
+  const status = device.status;
+  const isActive = status === "ACTIVE";
+  const isLoggedOut = status === "LOGGED_OUT";
+  const isPendingPair = status === "PENDING_PAIR";
+  const isDeleted = status === "DELETED";
   const hardware = [device.manufacturer || device.brand, device.model]
     .filter(Boolean)
     .join(" · ");
@@ -312,7 +328,7 @@ function DeviceRow({
   const appLine = device.appVersion ? `App v${device.appVersion}` : null;
 
   return (
-    <Card>
+    <Card className={isDeleted ? "opacity-60" : undefined}>
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
           <div className="h-11 w-11 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
@@ -322,20 +338,25 @@ function DeviceRow({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-medium truncate">{name}</p>
-              {device.status && (
-                <Badge variant="outline" className={statusClass(device.status)}>
-                  {DEVICE_STATUS_LABELS[device.status] ?? device.status}
+              {status && (
+                <Badge
+                  variant="outline"
+                  className={statusClass(status)}
+                  title={DEVICE_STATUS_DESCRIPTIONS[status]}
+                >
+                  {DEVICE_STATUS_LABELS[status] ?? status}
                 </Badge>
               )}
               {device.suspended && (
                 <Badge
                   variant="outline"
                   className="bg-red-50 text-red-700 border-red-200"
+                  title="Admin has paused this device. Tokens are rejected until unsuspended."
                 >
                   Suspended
                 </Badge>
               )}
-              {device.pinRequired && (
+              {device.pinRequired && !isDeleted && (
                 <Badge variant="outline" className="text-muted-foreground">
                   PIN required
                 </Badge>
@@ -369,7 +390,12 @@ function DeviceRow({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" disabled={isPending}>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={isPending || isDeleted}
+                aria-label="Manage device"
+              >
                 {isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
@@ -377,8 +403,9 @@ function DeviceRow({
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-60">
               <DropdownMenuLabel>Manage device</DropdownMenuLabel>
+
               <DropdownMenuItem onClick={onEdit}>
                 Edit name & department
               </DropdownMenuItem>
@@ -394,52 +421,51 @@ function DeviceRow({
                   : "Require PIN to unlock"}
               </DropdownMenuItem>
 
-              <DropdownMenuSeparator />
-              {isActive ? (
-                <DropdownMenuItem
-                  onClick={() => runAction(() => deactivateDevice(device.id))}
-                >
-                  Deactivate
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem
-                  onClick={() => runAction(() => activateDevice(device.id))}
-                >
-                  Activate
+              {(isLoggedOut || isPendingPair) && (
+                <DropdownMenuItem onClick={onRegenerate}>
+                  Regenerate pairing code
                 </DropdownMenuItem>
               )}
+
               {device.suspended ? (
                 <DropdownMenuItem
                   onClick={() => runAction(() => unsuspendDevice(device.id))}
                 >
-                  Unsuspend
+                  Unsuspend · restore access
                 </DropdownMenuItem>
               ) : (
-                <DropdownMenuItem
-                  onClick={() => runAction(() => suspendDevice(device.id))}
-                >
-                  Suspend
-                </DropdownMenuItem>
+                !isLoggedOut && (
+                  <DropdownMenuItem
+                    onClick={() => runAction(() => suspendDevice(device.id))}
+                  >
+                    Suspend · pause access
+                  </DropdownMenuItem>
+                )
               )}
-              <DropdownMenuItem
-                onClick={() => runAction(() => archiveDevice(device.id))}
-              >
-                Archive
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => runAction(() => retireDevice(device.id))}
-              >
-                Retire
-              </DropdownMenuItem>
 
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onLogout}>Log out</DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-red-600 focus:text-red-700"
-                onClick={onDeleteRequest}
-              >
-                Delete
-              </DropdownMenuItem>
+              {isActive && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-red-600 focus:text-red-700"
+                    onClick={() => runAction(onLogout)}
+                  >
+                    Log out · force re-sign-in
+                  </DropdownMenuItem>
+                </>
+              )}
+
+              {isLoggedOut && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-red-600 focus:text-red-700"
+                    onClick={onDeleteRequest}
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -458,24 +484,35 @@ const POLL_INTERVAL_MS = 4000;
 function PairDeviceDialog({
   locationId,
   knownIds,
+  existingDevice,
   onClose,
   onPaired,
 }: {
   locationId: string;
   knownIds: Set<string>;
+  existingDevice?: Device;
   onClose: () => void;
   onPaired: (fresh: Device[]) => void;
 }) {
   const { toast } = useToast();
-  const [step, setStep] = useState<"configure" | "waiting">("configure");
-  const [deviceName, setDeviceName] = useState("");
-  const [pinRequired, setPinRequired] = useState(true);
+  const isRegenerate = !!existingDevice;
+  const [step, setStep] = useState<"configure" | "waiting">(
+    isRegenerate ? "waiting" : "configure",
+  );
+  const [deviceName, setDeviceName] = useState(
+    existingDevice?.customName ?? existingDevice?.name ?? "",
+  );
+  const [pinRequired, setPinRequired] = useState(
+    existingDevice?.pinRequired ?? true,
+  );
   const [code, setCode] = useState<PairingCode | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [isGenerating, startGenerating] = useTransition();
   const [copied, setCopied] = useState(false);
   const knownIdsRef = useRef(knownIds);
   knownIdsRef.current = knownIds;
+  const existingDeviceId = existingDevice?.id ?? null;
+  const targetName = existingDevice ? deviceDisplayName(existingDevice) : null;
 
   // Countdown
   useEffect(() => {
@@ -484,22 +521,65 @@ function PairDeviceDialog({
     return () => clearInterval(id);
   }, [step, remaining]);
 
-  // Poll for the new device to appear in the list
+  const generate = useCallback(
+    () =>
+      startGenerating(async () => {
+        const res = await generatePairingCode({
+          deviceName: deviceName.trim() || undefined,
+          pinRequired,
+        });
+        if (res.responseType === "error") {
+          toast({
+            variant: "destructive",
+            title: "Couldn't generate code",
+            description: res.message,
+          });
+          return;
+        }
+        setCode(res.data);
+        setRemaining(res.data.expiresInSeconds ?? 600);
+        setStep("waiting");
+      }),
+    [deviceName, pinRequired, toast],
+  );
+
+  // Auto-generate on open when regenerating an existing device's code.
+  const autoGenRef = useRef(false);
   useEffect(() => {
-    if (step !== "waiting" || remaining <= 0) return;
+    if (!isRegenerate || autoGenRef.current) return;
+    autoGenRef.current = true;
+    generate();
+  }, [isRegenerate, generate]);
+
+  // Poll for the device to land — either a brand-new row (pair flow) or the
+  // target device flipping back to ACTIVE (regenerate flow).
+  useEffect(() => {
+    if (step !== "waiting" || remaining <= 0 || !code) return;
     let cancelled = false;
     const id = setInterval(async () => {
       try {
         const res = await listDevices(locationId, "LOCATION");
         if (cancelled) return;
         const fresh = res.content ?? [];
-        const newDevice = fresh.find((d) => !knownIdsRef.current.has(d.id));
-        if (newDevice) {
-          toast({
-            title: "Device paired",
-            description: `${deviceDisplayName(newDevice)} is now linked to this location.`,
-          });
-          onPaired(fresh);
+
+        if (existingDeviceId) {
+          const updated = fresh.find((d) => d.id === existingDeviceId);
+          if (updated && updated.status === "ACTIVE") {
+            toast({
+              title: "Device re-paired",
+              description: `${deviceDisplayName(updated)} is back online.`,
+            });
+            onPaired(fresh);
+          }
+        } else {
+          const newDevice = fresh.find((d) => !knownIdsRef.current.has(d.id));
+          if (newDevice) {
+            toast({
+              title: "Device paired",
+              description: `${deviceDisplayName(newDevice)} is now linked to this location.`,
+            });
+            onPaired(fresh);
+          }
         }
       } catch {
         // Silent — transient errors shouldn't spam toasts during polling.
@@ -509,26 +589,7 @@ function PairDeviceDialog({
       cancelled = true;
       clearInterval(id);
     };
-  }, [step, remaining, locationId, onPaired, toast]);
-
-  const generate = () =>
-    startGenerating(async () => {
-      const res = await generatePairingCode({
-        deviceName: deviceName.trim() || undefined,
-        pinRequired,
-      });
-      if (res.responseType === "error") {
-        toast({
-          variant: "destructive",
-          title: "Couldn't generate code",
-          description: res.message,
-        });
-        return;
-      }
-      setCode(res.data);
-      setRemaining(res.data.expiresInSeconds ?? 600);
-      setStep("waiting");
-    });
+  }, [step, remaining, code, locationId, existingDeviceId, onPaired, toast]);
 
   const handleCopy = () => {
     if (!code?.code) return;
@@ -537,7 +598,24 @@ function PairDeviceDialog({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const expired = step === "waiting" && remaining <= 0;
+  const expired = step === "waiting" && code !== null && remaining <= 0;
+  const preparing = step === "waiting" && code === null;
+
+  const waitingTitle = expired
+    ? "Code expired"
+    : preparing
+      ? "Generating pairing code…"
+      : isRegenerate
+        ? `Re-pair ${targetName ?? "device"}`
+        : "Enter this code on the device";
+
+  const waitingDescription = expired
+    ? "Pairing codes are valid for a limited time. Issue a new one to continue."
+    : preparing
+      ? "Hang tight — this only takes a moment."
+      : isRegenerate
+        ? `Open the Settlo app on ${targetName ?? "the device"} and enter the code below to bring it back online.`
+        : "Open the Settlo app on the new device and enter the code below.";
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -599,50 +677,52 @@ function PairDeviceDialog({
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>
-                {expired ? "Code expired" : "Enter this code on the device"}
-              </DialogTitle>
-              <DialogDescription>
-                {expired
-                  ? "Pairing codes are valid for a limited time. Generate a new one to continue."
-                  : "Open the Settlo app on the new device and enter the code below."}
-              </DialogDescription>
+              <DialogTitle>{waitingTitle}</DialogTitle>
+              <DialogDescription>{waitingDescription}</DialogDescription>
             </DialogHeader>
 
             <div className="py-4 flex flex-col items-center gap-3">
-              <div className="flex items-stretch gap-2 w-full">
-                {(code?.code ?? "").split("").map((ch, i) => (
-                  <span
-                    key={i}
-                    className="flex-1 aspect-square flex items-center justify-center text-4xl font-mono font-bold rounded-xl border-2 bg-gray-50 dark:bg-gray-800 select-all"
-                  >
-                    {ch}
-                  </span>
-                ))}
-              </div>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCopy}
-                disabled={!code?.code}
-              >
-                {copied ? (
-                  <Check className="h-4 w-4 mr-2 text-green-600" />
-                ) : (
-                  <Copy className="h-4 w-4 mr-2" />
-                )}
-                {copied ? "Copied" : "Copy code"}
-              </Button>
-
-              {expired ? (
-                <p className="text-xs text-red-600">Code expired</p>
+              {preparing ? (
+                <div className="flex items-center justify-center h-24 w-full">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
               ) : (
-                <p className="text-xs text-muted-foreground inline-flex items-center gap-2">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Waiting for the device to connect · expires in{" "}
-                  {formatCountdown(remaining)}
-                </p>
+                <>
+                  <div className="flex items-stretch gap-2 w-full">
+                    {(code?.code ?? "").split("").map((ch, i) => (
+                      <span
+                        key={i}
+                        className="flex-1 aspect-square flex items-center justify-center text-4xl font-mono font-bold rounded-xl border-2 bg-gray-50 dark:bg-gray-800 select-all"
+                      >
+                        {ch}
+                      </span>
+                    ))}
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopy}
+                    disabled={!code?.code}
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4 mr-2 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4 mr-2" />
+                    )}
+                    {copied ? "Copied" : "Copy code"}
+                  </Button>
+
+                  {expired ? (
+                    <p className="text-xs text-red-600">Code expired</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground inline-flex items-center gap-2">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Waiting for the device to connect · expires in{" "}
+                      {formatCountdown(remaining)}
+                    </p>
+                  )}
+                </>
               )}
             </div>
 
@@ -798,8 +878,9 @@ function ConfirmDeleteDialog({
           <DialogTitle>Delete device?</DialogTitle>
           <DialogDescription>
             Deleting <span className="font-medium">{name}</span> revokes its
-            access immediately and removes it from this list. The device will
-            need to be paired again from scratch.
+            tokens immediately and removes it from this list. The device&apos;s
+            history is preserved — pairing the same hardware again brings the
+            row back rather than starting fresh.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

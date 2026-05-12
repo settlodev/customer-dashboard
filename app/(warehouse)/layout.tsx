@@ -81,9 +81,16 @@ export default async function RootLayout({children}: {
                 locationName={currentLocation?.name}
                 hideOnReserve
             />
-            {currentLocation?.id && (
+            {(currentLocation?.id || currentBusiness?.id) && (
                 <SettloRealtimeListener
-                    channels={[`location:${currentLocation.id}:inventory`]}
+                    channels={[
+                        ...(currentLocation?.id
+                            ? [`location:${currentLocation.id}:inventory`]
+                            : []),
+                        ...(currentBusiness?.id
+                            ? [`business:${currentBusiness.id}:customers`]
+                            : []),
+                    ]}
                 />
             )}
         </SessionProvider>
