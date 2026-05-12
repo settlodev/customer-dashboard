@@ -55,6 +55,7 @@ export declare interface Customer {
   createdFrom: CustomerCreatedFrom | null;
   noShowCount: number;
   active: boolean;
+  isArchived: boolean;
   customerGroupId: UUID | null;
   customerGroupName: string | null;
   addresses: CustomerAddress[];

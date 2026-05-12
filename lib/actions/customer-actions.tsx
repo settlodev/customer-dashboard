@@ -287,6 +287,12 @@ export const reactivateCustomer = async (id: UUID | string): Promise<void> => {
   revalidatePath("/customers");
 };
 
+export const restoreCustomer = async (id: UUID | string): Promise<void> => {
+  const apiClient = new ApiClient();
+  await apiClient.post(`/api/v1/customers/${id}/restore`, {});
+  revalidatePath("/customers");
+};
+
 // ─── Customer Groups ─────────────────────────────────────────────────
 
 export const fetchCustomerGroups = async (

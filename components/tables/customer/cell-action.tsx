@@ -24,6 +24,7 @@ import { Customer } from "@/types/customer/type";
 import {
   deactivateCustomer,
   reactivateCustomer,
+  restoreCustomer,
 } from "@/lib/actions/customer-actions";
 
 interface CellActionProps {
@@ -34,6 +35,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
   const [isDeactivateOpen, setDeactivateOpen] = useState(false);
   const [isReactivating, setIsReactivating] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const fullName = `${data.firstName} ${data.lastName}`;
 
@@ -80,6 +82,28 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     }
   };
 
+  const handleRestore = async () => {
+    setIsRestoring(true);
+    try {
+      await restoreCustomer(data.id);
+      toast({
+        title: "Restored",
+        description: `${fullName} has been restored.`,
+      });
+      router.refresh();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Couldn't restore",
+        description:
+          (error as Error).message ||
+          "There was an issue with your request, please try again later.",
+      });
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
   return (
     <>
       <DropdownMenu modal={false}>
@@ -100,7 +124,16 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             Edit
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          {data.active ? (
+          {data.isArchived ? (
+            <DropdownMenuItem
+              onClick={handleRestore}
+              disabled={isRestoring}
+              className="text-emerald-600 focus:text-emerald-600"
+            >
+              <ArchiveRestore className="mr-2 h-4 w-4" />
+              {isRestoring ? "Restoring…" : "Restore"}
+            </DropdownMenuItem>
+          ) : data.active ? (
             <DropdownMenuItem
               onClick={() => setDeactivateOpen(true)}
               className="text-amber-600 focus:text-amber-600"
