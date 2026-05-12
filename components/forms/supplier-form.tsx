@@ -49,10 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { FormResponse } from "@/types/types";
 import type { Supplier, SettloSupplier } from "@/types/supplier/type";
 import { SupplierSchema } from "@/types/supplier/schema";
-import {
-  createSupplier,
-  updateSupplier,
-} from "@/lib/actions/supplier-actions";
+import { createSupplier, updateSupplier } from "@/lib/actions/supplier-actions";
 import { fetchSettloSupplierCatalog } from "@/lib/actions/settlo-supplier-actions";
 
 import styles from "./styles/form-shell.module.css";
@@ -127,8 +124,10 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
     if (!picked) return;
     form.setValue("settloSupplierId", picked.id);
     if (!form.getValues("name")) form.setValue("name", picked.name);
-    if (!form.getValues("email") && picked.email) form.setValue("email", picked.email);
-    if (!form.getValues("phone") && picked.phone) form.setValue("phone", picked.phone);
+    if (!form.getValues("email") && picked.email)
+      form.setValue("email", picked.email);
+    if (!form.getValues("phone") && picked.phone)
+      form.setValue("phone", picked.phone);
     if (!form.getValues("address") && picked.address) {
       form.setValue("address", picked.address);
     }
@@ -166,14 +165,15 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
 
   return (
     <Form {...form}>
-      <FormError message={response?.message} />
       <form
         onSubmit={form.handleSubmit(submit, onInvalid)}
         className={styles.formRoot}
       >
         <div className={styles.formStack}>
           {catalog.length > 0 && (
-            <section className={`${styles.formCard} ${styles.formCardOptional}`}>
+            <section
+              className={`${styles.formCard} ${styles.formCardOptional}`}
+            >
               <header className={styles.formCardHead}>
                 <div className={styles.icoBox}>
                   <ShieldCheck className="h-3.5 w-3.5" />
@@ -310,7 +310,9 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className={styles.fieldLabel}>Address</FormLabel>
+                      <FormLabel className={styles.fieldLabel}>
+                        Address
+                      </FormLabel>
                       <FormControl>
                         <Textarea
                           rows={2}
@@ -333,7 +335,9 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                     <FormItem>
                       <FormLabel className={styles.fieldLabel}>
                         Notes
-                        <span className={styles.optionalTag}>OPTIONAL · INTERNAL</span>
+                        <span className={styles.optionalTag}>
+                          OPTIONAL · INTERNAL
+                        </span>
                       </FormLabel>
                       <FormControl>
                         <Textarea
