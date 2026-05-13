@@ -29,15 +29,18 @@ const ordersBase = "/api/v1/orders";
 // ─── Order list / detail (OMS) ──────────────────────────────────────
 
 export interface ListOrdersParams {
-  /** ISO date (yyyy-MM-dd). Filters to orders opened on this business date. */
-  businessDate?: string;
+  /** ISO date (yyyy-MM-dd). Lower bound (inclusive) on businessDate. */
+  fromDate?: string;
+  /** ISO date (yyyy-MM-dd). Upper bound (inclusive) on businessDate. */
+  toDate?: string;
   status?: OrderStatus | "";
 }
 
 /**
  * Fetches orders from OMS for the active location. The endpoint is
  * unpaginated server-side and scoped to the location pulled from
- * cookies. Filtering by business date and status is server-driven.
+ * cookies. Filtering by business-date range and status is server-driven;
+ * results come back sorted by openedDate DESC.
  */
 export const listOrders = async (
   params?: ListOrdersParams,
@@ -46,7 +49,8 @@ export const listOrders = async (
   if (!location?.id) return [];
 
   const qs = new URLSearchParams();
-  if (params?.businessDate) qs.set("businessDate", params.businessDate);
+  if (params?.fromDate) qs.set("fromDate", params.fromDate);
+  if (params?.toDate) qs.set("toDate", params.toDate);
   if (params?.status) qs.set("status", params.status);
   const query = qs.toString();
 

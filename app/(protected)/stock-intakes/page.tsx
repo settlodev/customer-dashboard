@@ -15,11 +15,14 @@ import { getCurrentLocation } from "@/lib/actions/business/get-current-business"
 import { getStockIntakeKpi } from "@/lib/actions/reports-analytics-actions";
 import { StockIntakeKpiStrip } from "@/components/widgets/inventory/stock-intake-kpi-strip";
 import {
+  INTAKE_PAYMENT_TERMS_LABELS,
+  IntakePaymentTerms,
   STOCK_INTAKE_RECORD_STATUS_LABELS,
   StockIntakeRecordStatus,
 } from "@/types/stock-intake-record/type";
 
 const STATUS_VALUES: StockIntakeRecordStatus[] = ["DRAFT", "CONFIRMED", "CANCELLED"];
+const PAYMENT_TERMS_VALUES: IntakePaymentTerms[] = ["CREDIT", "CASH", "BANK"];
 
 type Params = {
   searchParams: Promise<{
@@ -79,6 +82,16 @@ export default async function Page({ searchParams }: Params) {
                 value: s,
                 label: STOCK_INTAKE_RECORD_STATUS_LABELS[s],
               }))}
+              extraFilters={[
+                {
+                  key: "paymentTerms",
+                  label: "Payment terms",
+                  options: PAYMENT_TERMS_VALUES.map((v) => ({
+                    value: v,
+                    label: INTAKE_PAYMENT_TERMS_LABELS[v],
+                  })),
+                },
+              ]}
             />
           </>
         ) : (

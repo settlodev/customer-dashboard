@@ -97,7 +97,7 @@ export const DEVICE_STATUS_DESCRIPTIONS: Record<DeviceStatus, string> = {
     "A pairing code was issued. The hardware hasn't completed pairing yet.",
   ACTIVE: "Paired and authenticated. Tokens are valid.",
   LOGGED_OUT:
-    "Tokens revoked. The device can sign back in without a new pairing code.",
+    "Tokens revoked. This seat no longer counts against your device cap. Generate a new pairing code from this row to bring a device back here.",
   DELETED:
-    "Removed from active use. Past activity is preserved. Re-pairing the same hardware brings this row back.",
+    "Hidden from the device list. Past activity is preserved in audit. Re-pairing the same hardware creates a new entry rather than resurrecting this one.",
 };

@@ -10,7 +10,20 @@ import {
   StockIntakeRecord,
   STOCK_INTAKE_RECORD_STATUS_LABELS,
   StockIntakeRecordStatus,
+  IntakePaymentTerms,
 } from "@/types/stock-intake-record/type";
+
+const TERMS_LABEL: Record<IntakePaymentTerms, string> = {
+  CREDIT: "Credit",
+  CASH: "Cash",
+  BANK: "Bank",
+};
+
+const TERMS_TONES: Record<IntakePaymentTerms, string> = {
+  CREDIT: "bg-blue-50 text-blue-700",
+  CASH: "bg-emerald-50 text-emerald-700",
+  BANK: "bg-violet-50 text-violet-700",
+};
 
 const STATUS_TONES: Record<StockIntakeRecordStatus, string> = {
   DRAFT: "bg-amber-50 text-amber-700",
@@ -67,6 +80,21 @@ export const columns: ColumnDef<StockIntakeRecord>[] = [
         )}
       </div>
     ),
+  },
+  {
+    accessorKey: "paymentTerms",
+    header: "Terms",
+    cell: ({ row }) => {
+      const terms = row.original.paymentTerms;
+      if (!terms) return <span className="text-gray-400">—</span>;
+      return (
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${TERMS_TONES[terms]}`}
+        >
+          {TERMS_LABEL[terms]}
+        </span>
+      );
+    },
   },
   {
     id: "totalQuantity",

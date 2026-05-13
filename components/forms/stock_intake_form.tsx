@@ -41,6 +41,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { NumericFormat } from "react-number-format";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -52,6 +59,7 @@ import {
 } from "@/components/ui/alert";
 import { createStockIntakeRecord } from "@/lib/actions/stock-intake-record-actions";
 import { StockIntakeRecordSchema } from "@/types/stock-intake-record/schema";
+import { INTAKE_PAYMENT_TERMS_LABELS } from "@/types/stock-intake-record/type";
 import { FormResponse } from "@/types/types";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 import type { VariantMeta } from "@/components/widgets/stock-variant-selector";
@@ -88,6 +96,7 @@ export default function StockIntakeForm() {
       receivedDate: "",
       supplierId: "",
       supplierReference: "",
+      paymentTerms: "CREDIT",
       items: [{ stockVariantId: "", quantity: 0, unitCost: 0, currency: locationCurrency }],
     },
   });
@@ -364,6 +373,39 @@ export default function StockIntakeForm() {
                             maxLength={100}
                           />
                         </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className={styles.fieldRow} style={{ marginTop: 14 }}>
+                  <FormField
+                    control={form.control}
+                    name="paymentTerms"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className={styles.fieldLabel}>
+                          Payment terms
+                        </FormLabel>
+                        <Select
+                          value={field.value ?? "CREDIT"}
+                          onValueChange={field.onChange}
+                          disabled={isPending}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select terms" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {Object.entries(INTAKE_PAYMENT_TERMS_LABELS).map(([val, label]) => (
+                              <SelectItem key={val} value={val}>
+                                {label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage className="text-xs" />
                       </FormItem>
                     )}

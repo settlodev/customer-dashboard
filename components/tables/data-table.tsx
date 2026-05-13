@@ -137,6 +137,16 @@ interface DataTableProps<TData, TValue> {
   };
   filterKey?: string;
   filterOptions?: { label: string; value: string }[];
+  /**
+   * Additional client-side filters that compose with `filterKey`. Each
+   * renders its own dropdown next to the primary filter; all active
+   * filters AND together. Click the same option again to clear it.
+   */
+  extraFilters?: {
+    key: string;
+    label: string;
+    options: { label: string; value: string }[];
+  }[];
   disableArchive?: boolean;
   onRowClick?: (row: TData) => void;
   rowClickBasePath?: string;
@@ -150,6 +160,7 @@ export function DataTable<TData, TValue>({
   pageSizeOptions = [10, 20, 30, 40, 50, 100],
   filterKey,
   filterOptions,
+  extraFilters,
   disableArchive = false,
   onRowClick,
   rowClickBasePath,
@@ -172,6 +183,11 @@ export function DataTable<TData, TValue>({
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [statusFilter, setStatusFilter] = React.useState<string>("");
+  // Per-key selection state for the optional extraFilters. Click the
+  // same option to clear it; empty string means "no filter on this key".
+  const [extraFilterValues, setExtraFilterValues] = React.useState<
+    Record<string, string>
+  >({});
   const [loading, setLoading] = React.useState<boolean>(false);
   const [isInitialized, setIsInitialized] = React.useState(false);
 
@@ -237,13 +253,38 @@ export function DataTable<TData, TValue>({
   }, [pendingPagination, isInitialized, pathname, router]);
 
   const handleStatusFilterChange = (newStatus: string) => {
-    setStatusFilter(newStatus);
+    // Toggle: re-selecting the active option clears the filter so the
+    // user can get back to "all" without leaving the page.
+    setStatusFilter((prev) => (prev === newStatus ? "" : newStatus));
+  };
+
+  const handleExtraFilterChange = (key: string, newValue: string) => {
+    setExtraFilterValues((prev) => ({
+      ...prev,
+      [key]: prev[key] === newValue ? "" : newValue,
+    }));
   };
 
   const filteredData = React.useMemo(() => {
-    if (!filterKey || !statusFilter) return data;
-    return data.filter((item) => (item as any)[filterKey] === statusFilter);
-  }, [data, statusFilter, filterKey]);
+    let result = data;
+    if (filterKey && statusFilter) {
+      result = result.filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (item) => (item as any)[filterKey] === statusFilter,
+      );
+    }
+    if (extraFilters) {
+      for (const f of extraFilters) {
+        const v = extraFilterValues[f.key];
+        if (!v) continue;
+        result = result.filter(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (item) => (item as any)[f.key] === v,
+        );
+      }
+    }
+    return result;
+  }, [data, statusFilter, filterKey, extraFilters, extraFilterValues]);
 
   const createQueryString = React.useCallback(
     (params: Record<string, string | number | null>) => {
@@ -466,6 +507,42 @@ export function DataTable<TData, TValue>({
             </DropdownMenu>
           )}
 
+          {extraFilters?.map((f) => {
+            const active = extraFilterValues[f.key];
+            const activeLabel = active
+              ? f.options.find((o) => o.value === active)?.label
+              : null;
+            return (
+              <DropdownMenu key={f.key}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-dashed border-line-2 text-ink-3 hover:text-ink"
+                  >
+                    <ListFilter className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                      {activeLabel ?? f.label}
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>{f.label}</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {f.options.map((option) => (
+                    <DropdownMenuCheckboxItem
+                      key={option.value}
+                      checked={active === option.value}
+                      onSelect={() => handleExtraFilterChange(f.key, option.value)}
+                    >
+                      {option.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            );
+          })}
+
           {pageConfig.importComponent}
           {pageConfig.exportComponent}
         </div>
@@ -497,10 +574,35 @@ export function DataTable<TData, TValue>({
                       {option.label}
                     </DropdownMenuCheckboxItem>
                   ))}
-                  {(pageConfig.importComponent ||
+                  {((extraFilters && extraFilters.length > 0) ||
+                    pageConfig.importComponent ||
                     pageConfig.exportComponent) && <DropdownMenuSeparator />}
                 </>
               )}
+
+              {extraFilters?.map((f, fIdx) => {
+                const active = extraFilterValues[f.key];
+                return (
+                  <React.Fragment key={f.key}>
+                    <DropdownMenuLabel>{f.label}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {f.options.map((option) => (
+                      <DropdownMenuCheckboxItem
+                        key={option.value}
+                        checked={active === option.value}
+                        onSelect={() =>
+                          handleExtraFilterChange(f.key, option.value)
+                        }
+                      >
+                        {option.label}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                    {(fIdx < extraFilters.length - 1 ||
+                      pageConfig.importComponent ||
+                      pageConfig.exportComponent) && <DropdownMenuSeparator />}
+                  </React.Fragment>
+                );
+              })}
 
               {(pageConfig.importComponent || pageConfig.exportComponent) && (
                 <>

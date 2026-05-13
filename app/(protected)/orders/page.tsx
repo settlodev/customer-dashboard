@@ -1,3 +1,4 @@
+import { endOfMonth, format, startOfMonth } from "date-fns";
 import {
   Banknote,
   CircleDollarSign,
@@ -16,6 +17,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
+import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { OrdersRealtimeBridge } from "@/components/realtime/orders-realtime-bridge";
 import { columns } from "@/components/tables/orders/columns";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
@@ -33,7 +35,8 @@ type Params = {
     page?: string;
     limit?: string;
     status?: string;
-    businessDate?: string;
+    from?: string;
+    to?: string;
   }>;
 };
 
@@ -56,18 +59,26 @@ export default async function Page({ searchParams }: Params) {
   const page = Number(resolved.page) || 1;
   const limit = Number(resolved.limit) || 10;
   const statusParam = (resolved.status ?? "") as OrderStatus | "";
-  const businessDate = resolved.businessDate;
+
+  // Default to current month when no explicit range is supplied — keeps
+  // the initial load bounded instead of pulling every order ever made
+  // at this location.
+  const now = new Date();
+  const from = resolved.from ?? format(startOfMonth(now), "yyyy-MM-dd");
+  const to = resolved.to ?? format(endOfMonth(now), "yyyy-MM-dd");
 
   const [orders, currentLocation] = await Promise.all([
     listOrders({
-      businessDate,
+      fromDate: from,
+      toDate: to,
       status: statusParam || undefined,
     }).catch((): Order[] => []),
     getCurrentLocation(),
   ]);
 
-  // Server returns the entire matching list; we filter free-text and
-  // page in-memory because OMS list endpoint isn't paginated yet.
+  // Server returns the entire matching list sorted by openedDate desc;
+  // we filter free-text and page in-memory because OMS list endpoint
+  // isn't paginated yet.
   const filtered = orders.filter((o) => matchesSearch(o, q));
   const total = filtered.length;
   const pageCount = Math.max(1, Math.ceil(total / limit));
@@ -94,26 +105,27 @@ export default async function Page({ searchParams }: Params) {
   const currency = orders.find((o) => o.settlementCurrency)?.settlementCurrency ?? "TZS";
 
   const hasAny = totalOrders > 0;
-  const hasFilters = q !== "" || !!statusParam || !!businessDate;
+  // The default current-month range shouldn't count as a "user filter" —
+  // we want first-time locations to land on the empty state, not on a
+  // populated table-shell with no rows. A URL-supplied from/to does.
+  const isDefaultRange = !resolved.from && !resolved.to;
+  const hasFilters = q !== "" || !!statusParam || !isDefaultRange;
+
+  const subtitle =
+    from === to
+      ? `Activity for ${format(new Date(from), "MMM d, yyyy")}`
+      : `Activity ${format(new Date(from), "MMM d")} – ${format(new Date(to), "MMM d, yyyy")}`;
 
   return (
     <PageShell>
       <PageBreadcrumbs items={[{ title: "Orders" }]} />
-      <PageHeader
-        title="Orders"
-        subtitle={
-          businessDate
-            ? `Activity for ${new Intl.DateTimeFormat("en", {
-                dateStyle: "medium",
-              }).format(new Date(businessDate))}`
-            : "All orders for this location."
-        }
-      />
+      <PageHeader title="Orders" subtitle={subtitle} />
       {currentLocation?.id && (
         <OrdersRealtimeBridge locationId={currentLocation.id} />
       )}
 
       <PageBody>
+        <OrdersDateFilter from={from} to={to} />
         {hasAny || hasFilters ? (
           <>
             <KpiStrip cols={5}>

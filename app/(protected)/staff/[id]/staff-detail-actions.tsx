@@ -42,6 +42,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 
 /**
  * Header action menu for the staff detail page. Surfaces every
@@ -62,6 +67,14 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
 
   const [pin, setPin] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
+  const [pinStep, setPinStep] = useState<1 | 2>(1);
+
+  const openPinDialog = () => {
+    setPin("");
+    setPinConfirm("");
+    setPinStep(1);
+    setPinOpen(true);
+  };
 
   const fullName = `${staff.firstName} ${staff.lastName}`;
 
@@ -144,11 +157,7 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
             <>
               <DropdownMenuItem
                 disabled={loading !== null}
-                onClick={() => {
-                  setPin("");
-                  setPinConfirm("");
-                  setPinOpen(true);
-                }}
+                onClick={openPinDialog}
               >
                 <KeyRound className="mr-2 h-4 w-4" />
                 {staff.hasPin ? "Reset PIN…" : "Set PIN…"}
@@ -342,69 +351,118 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
               {staff.hasPin ? "Reset POS PIN" : "Set POS PIN"}
             </DialogTitle>
             <DialogDescription>
-              Choose a 4–6 digit PIN. Paired POS devices pick up the new value
-              on their next sync.
+              {pinStep === 1
+                ? "Step 1 of 2 — Enter a 4 digit PIN. Paired POS devices pick up the new value on their next sync."
+                : "Step 2 of 2 — Re-enter the same 4 digit PIN to confirm."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">New PIN</label>
-              <Input
-                type="password"
+          <div className="flex flex-col items-center space-y-4 py-6">
+            <label className="text-sm font-medium text-muted-foreground">
+              {pinStep === 1 ? "New PIN" : "Confirm PIN"}
+            </label>
+            {pinStep === 1 ? (
+              <InputOTP
+                key="pin-step-1"
+                maxLength={4}
+                pattern="^[0-9]*$"
                 inputMode="numeric"
-                placeholder="4–6 digits"
-                maxLength={6}
                 value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Confirm PIN</label>
-              <Input
-                type="password"
+                onChange={(value) => setPin(value.replace(/\D/g, ""))}
+                autoFocus
+              >
+                <InputOTPGroup className="gap-4">
+                  {[0, 1, 2, 3].map((i) => (
+                    <InputOTPSlot
+                      key={i}
+                      index={i}
+                      className="h-20 w-16 text-3xl font-bold"
+                    />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
+            ) : (
+              <InputOTP
+                key="pin-step-2"
+                maxLength={4}
+                pattern="^[0-9]*$"
                 inputMode="numeric"
-                placeholder="Re-enter the PIN"
-                maxLength={6}
                 value={pinConfirm}
-                onChange={(e) =>
-                  setPinConfirm(e.target.value.replace(/\D/g, ""))
+                onChange={(value) =>
+                  setPinConfirm(value.replace(/\D/g, ""))
                 }
-              />
-              {pinConfirm && pin !== pinConfirm && (
-                <p className="text-xs text-destructive">PINs don&apos;t match</p>
+                autoFocus
+              >
+                <InputOTPGroup className="gap-4">
+                  {[0, 1, 2, 3].map((i) => (
+                    <InputOTPSlot
+                      key={i}
+                      index={i}
+                      className="h-20 w-16 text-3xl font-bold"
+                    />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
+            )}
+            {pinStep === 2 &&
+              pinConfirm.length === 4 &&
+              pin !== pinConfirm && (
+                <p className="text-xs text-destructive">
+                  PINs don&apos;t match
+                </p>
               )}
-            </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setPinOpen(false)}
-              disabled={loading === "pin-set"}
-            >
-              Cancel
-            </Button>
-            <Button
-              disabled={
-                pin.length < 4 ||
-                pin.length > 6 ||
-                pin !== pinConfirm ||
-                loading === "pin-set"
-              }
-              onClick={() =>
-                run(
-                  "pin-set",
-                  () => setStaffPin(staff.id, pin),
-                  staff.hasPin ? "PIN reset" : "PIN set",
-                  () => setPinOpen(false),
-                )
-              }
-            >
-              {loading === "pin-set"
-                ? "Saving…"
-                : staff.hasPin
-                  ? "Reset PIN"
-                  : "Set PIN"}
-            </Button>
+            {pinStep === 1 ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setPinOpen(false)}
+                  disabled={loading === "pin-set"}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  disabled={pin.length !== 4}
+                  onClick={() => {
+                    setPinConfirm("");
+                    setPinStep(2);
+                  }}
+                >
+                  Next
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setPinStep(1)}
+                  disabled={loading === "pin-set"}
+                >
+                  Back
+                </Button>
+                <Button
+                  disabled={
+                    pin.length !== 4 ||
+                    pin !== pinConfirm ||
+                    loading === "pin-set"
+                  }
+                  onClick={() =>
+                    run(
+                      "pin-set",
+                      () => setStaffPin(staff.id, pin),
+                      staff.hasPin ? "PIN reset" : "PIN set",
+                      () => setPinOpen(false),
+                    )
+                  }
+                >
+                  {loading === "pin-set"
+                    ? "Saving…"
+                    : staff.hasPin
+                      ? "Reset PIN"
+                      : "Set PIN"}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

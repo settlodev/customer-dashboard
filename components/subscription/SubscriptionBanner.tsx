@@ -47,14 +47,17 @@ function formatTimeRemaining(dateStr: string): string {
 
   if (diff <= 0) return "now";
 
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const dayMs = 1000 * 60 * 60 * 24;
 
-  if (days > 1) return `${days} days`;
-  if (days === 1) return `1 day, ${hours}h`;
-  if (hours > 0) return `${hours} hours`;
+  if (diff >= dayMs) {
+    const days = Math.ceil(diff / dayMs);
+    return days === 1 ? "1 day" : `${days} days`;
+  }
 
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  if (hours > 0) return hours === 1 ? "1 hour" : `${hours} hours`;
+
+  const minutes = Math.floor(diff / (1000 * 60));
   return `${minutes} min`;
 }
 

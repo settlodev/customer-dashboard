@@ -6,6 +6,7 @@ import {
   BatteryCharging,
   Check,
   Copy,
+  Info,
   Loader2,
   MoreHorizontal,
   Plus,
@@ -16,6 +17,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useEntitlements } from "@/context/entitlementContext";
 import {
   Dialog,
   DialogContent,
@@ -112,13 +120,72 @@ type DialogMode =
   | { type: "pair" }
   | { type: "regenerate"; device: Device }
   | { type: "edit"; device: Device }
+  | { type: "logout"; device: Device }
   | { type: "delete"; device: Device };
+
+// Mirror of the backend's seat-counting rule in
+// DeviceRepository.countOccupiedSeatsAtAssignment — devices in these states
+// do not count against MAX_DEVICES, so the operator can pair a replacement
+// without first hard-deleting the old row.
+const occupiesSeat = (d: Device): boolean =>
+  !d.suspended && d.status !== "LOGGED_OUT" && d.status !== "DELETED";
+
+// Active rows first (suspended last within the active group), then
+// PENDING_PAIR, then LOGGED_OUT, then DELETED. Within each group, most
+// recently active first so live devices stay near the top.
+const STATUS_ORDER: Record<DeviceStatus | "UNKNOWN", number> = {
+  ACTIVE: 0,
+  PENDING_PAIR: 1,
+  LOGGED_OUT: 2,
+  DELETED: 3,
+  UNKNOWN: 4,
+};
+const sortDevices = (list: Device[]): Device[] =>
+  [...list].sort((a, b) => {
+    const aGroup = STATUS_ORDER[a.status ?? "UNKNOWN"] ?? STATUS_ORDER.UNKNOWN;
+    const bGroup = STATUS_ORDER[b.status ?? "UNKNOWN"] ?? STATUS_ORDER.UNKNOWN;
+    if (aGroup !== bGroup) return aGroup - bGroup;
+    // Within ACTIVE, push suspended rows below.
+    if (a.status === "ACTIVE" && b.status === "ACTIVE") {
+      if (a.suspended !== b.suspended) return a.suspended ? 1 : -1;
+    }
+    const aSeen = a.lastActiveAt ? Date.parse(a.lastActiveAt) : 0;
+    const bSeen = b.lastActiveAt ? Date.parse(b.lastActiveAt) : 0;
+    return bSeen - aSeen;
+  });
 
 const DeviceSettings = () => {
   const { toast } = useToast();
+  const { getEntityItem, loading: entitlementsLoading } = useEntitlements();
   const [locationId, setLocationId] = useState<string | null>(null);
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [dialog, setDialog] = useState<DialogMode>({ type: "idle" });
+
+  // Resolve the MAX_DEVICES cap for this location. -1 / undefined means
+  // unlimited or unknown — both render as "no cap shown".
+  const maxDevices = useMemo(() => {
+    if (!locationId) return undefined;
+    const item = getEntityItem(locationId);
+    return item?.limits["MAX_DEVICES"];
+  }, [locationId, getEntityItem]);
+
+  const sortedDevices = useMemo(
+    () => (devices ? sortDevices(devices) : null),
+    [devices],
+  );
+
+  const occupiedSeats = useMemo(
+    () => devices?.filter(occupiesSeat).length ?? 0,
+    [devices],
+  );
+  const loggedOutCount = useMemo(
+    () => devices?.filter((d) => d.status === "LOGGED_OUT").length ?? 0,
+    [devices],
+  );
+  const isUnlimited =
+    maxDevices === undefined || maxDevices === -1 || entitlementsLoading;
+  const atCapacity =
+    !isUnlimited && typeof maxDevices === "number" && occupiedSeats >= maxDevices;
 
   const refresh = useCallback(
     async (locId: string) => {
@@ -352,6 +419,27 @@ const DeviceSettings = () => {
   // and the user sees no feedback until the toast lands.
   const runLogout = (id: string) => logoutDevice(id);
 
+  const seatSummary = (() => {
+    if (entitlementsLoading || devices === null) return null;
+    if (isUnlimited) {
+      return `${occupiedSeats} ${occupiedSeats === 1 ? "device" : "devices"} in use · plan has no device cap`;
+    }
+    const cap = maxDevices as number;
+    return `${occupiedSeats} of ${cap} ${cap === 1 ? "seat" : "seats"} in use`;
+  })();
+
+  const pairButtonDisabled = !locationId || atCapacity;
+  const pairButton = (
+    <Button
+      size="sm"
+      onClick={() => setDialog({ type: "pair" })}
+      disabled={pairButtonDisabled}
+    >
+      <Plus className="h-4 w-4 mr-2" />
+      Pair new device
+    </Button>
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -362,22 +450,58 @@ const DeviceSettings = () => {
             </h2>
             <p className="text-muted-foreground mt-1 text-sm">
               Devices linked to this location.
+              {seatSummary && (
+                <>
+                  {" · "}
+                  <span className={atCapacity ? "text-amber-700 font-medium" : ""}>
+                    {seatSummary}
+                  </span>
+                </>
+              )}
+              {loggedOutCount > 0 && !isUnlimited && (
+                <>
+                  {" · "}
+                  <span className="text-muted-foreground">
+                    {loggedOutCount} logged-out{" "}
+                    {loggedOutCount === 1 ? "device doesn't" : "devices don't"} count
+                  </span>
+                </>
+              )}
             </p>
           </div>
-          <Button
-            size="sm"
-            onClick={() => setDialog({ type: "pair" })}
-            disabled={!locationId}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Pair new device
-          </Button>
+          {atCapacity ? (
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {/* span wrapper so the disabled button still fires hover */}
+                  <span tabIndex={0}>{pairButton}</span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="end" className="max-w-xs">
+                  You&apos;re at the device cap for this location. Log out an
+                  active device to free a seat — its row stays in the list.
+                  Or upgrade the plan.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            pairButton
+          )}
         </div>
+        {atCapacity && (
+          <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200">
+            <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span>
+              Device cap reached. Logging out an unused device frees its seat
+              without losing its row in the list — then pair a replacement (or
+              re-pair the same device) with a new pairing code.
+            </span>
+          </div>
+        )}
       </div>
 
-      {devices === null ? (
+      {sortedDevices === null ? (
         <DevicesSkeleton />
-      ) : devices.length === 0 ? (
+      ) : sortedDevices.length === 0 ? (
         <Card>
           <CardContent className="p-10 text-center text-sm text-muted-foreground">
             No devices paired to this location yet.
@@ -385,13 +509,13 @@ const DeviceSettings = () => {
         </Card>
       ) : (
         <div className="space-y-3">
-          {devices.map((d) => (
+          {sortedDevices.map((d) => (
             <DeviceRow
               key={d.id}
               device={d}
               onEdit={() => setDialog({ type: "edit", device: d })}
               onDeleteRequest={() => setDialog({ type: "delete", device: d })}
-              onLogout={() => runLogout(d.id)}
+              onLogoutRequest={() => setDialog({ type: "logout", device: d })}
               onRegenerate={() => setDialog({ type: "regenerate", device: d })}
               onAction={applyResult}
             />
@@ -400,12 +524,16 @@ const DeviceSettings = () => {
       )}
 
       {dialog.type === "pair" && locationId && (
-        <PairDeviceDialog onClose={() => setDialog({ type: "idle" })} />
+        <PairDeviceDialog
+          seatSummary={seatSummary}
+          onClose={() => setDialog({ type: "idle" })}
+        />
       )}
 
       {dialog.type === "regenerate" && locationId && (
         <PairDeviceDialog
           existingDevice={dialog.device}
+          seatSummary={seatSummary}
           onClose={() => setDialog({ type: "idle" })}
         />
       )}
@@ -420,6 +548,18 @@ const DeviceSettings = () => {
               message: "Device updated",
               data: fresh,
             });
+            setDialog({ type: "idle" });
+          }}
+        />
+      )}
+
+      {dialog.type === "logout" && (
+        <ConfirmLogoutDialog
+          device={dialog.device}
+          onClose={() => setDialog({ type: "idle" })}
+          onConfirm={async () => {
+            const res = await runLogout(dialog.device.id);
+            applyResult(res);
             setDialog({ type: "idle" });
           }}
         />
@@ -446,14 +586,14 @@ function DeviceRow({
   device,
   onEdit,
   onDeleteRequest,
-  onLogout,
+  onLogoutRequest,
   onRegenerate,
   onAction,
 }: {
   device: Device;
   onEdit: () => void;
   onDeleteRequest: () => void;
-  onLogout: () => Promise<DeviceActionResponse<Device>>;
+  onLogoutRequest: () => void;
   onRegenerate: () => void;
   onAction: (res: DeviceActionResponse<Device>) => boolean;
 }) {
@@ -478,8 +618,16 @@ function DeviceRow({
   const osLine = [device.os, device.osVersion].filter(Boolean).join(" ");
   const appLine = device.appVersion ? `App v${device.appVersion}` : null;
 
+  // Logged-out rows are visually de-emphasised — they're a free seat the
+  // operator might either let the same device return to, or replace.
+  const cardClass = isDeleted
+    ? "opacity-60"
+    : isLoggedOut
+      ? "border-dashed bg-muted/30"
+      : undefined;
+
   return (
-    <Card className={isDeleted ? "opacity-60" : undefined}>
+    <Card className={cardClass}>
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
           <div className="h-11 w-11 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
@@ -496,6 +644,15 @@ function DeviceRow({
                   title={DEVICE_STATUS_DESCRIPTIONS[status]}
                 >
                   {DEVICE_STATUS_LABELS[status] ?? status}
+                </Badge>
+              )}
+              {isLoggedOut && (
+                <Badge
+                  variant="outline"
+                  className="bg-emerald-50 text-emerald-700 border-emerald-200"
+                  title="This row no longer counts against your MAX_DEVICES cap."
+                >
+                  Seat free
                 </Badge>
               )}
               {device.suspended && (
@@ -537,6 +694,13 @@ function DeviceRow({
                 </span>
               )}
             </div>
+
+            {isLoggedOut && (
+              <p className="mt-2 text-[11px] text-muted-foreground italic">
+                Free seat. Generate a new pairing code to bring this device —
+                or a different one — back online here.
+              </p>
+            )}
           </div>
 
           <DropdownMenu>
@@ -574,7 +738,7 @@ function DeviceRow({
 
               {(isLoggedOut || isPendingPair) && (
                 <DropdownMenuItem onClick={onRegenerate}>
-                  Regenerate pairing code
+                  Generate pairing code
                 </DropdownMenuItem>
               )}
 
@@ -599,9 +763,9 @@ function DeviceRow({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-red-600 focus:text-red-700"
-                    onClick={() => runAction(onLogout)}
+                    onClick={onLogoutRequest}
                   >
-                    Log out · force re-sign-in
+                    Log out · free this seat
                   </DropdownMenuItem>
                 </>
               )}
@@ -613,7 +777,7 @@ function DeviceRow({
                     className="text-red-600 focus:text-red-700"
                     onClick={onDeleteRequest}
                   >
-                    Delete
+                    Delete from list
                   </DropdownMenuItem>
                 </>
               )}
@@ -634,9 +798,11 @@ function DeviceRow({
 
 function PairDeviceDialog({
   existingDevice,
+  seatSummary,
   onClose,
 }: {
   existingDevice?: Device;
+  seatSummary?: string | null;
   onClose: () => void;
 }) {
   const { toast } = useToast();
@@ -732,6 +898,11 @@ function PairDeviceDialog({
               <DialogTitle>Pair a new device</DialogTitle>
               <DialogDescription>
                 Generate a pairing code to enter on the device during setup.
+                {seatSummary && (
+                  <span className="block mt-1 text-xs text-muted-foreground">
+                    {seatSummary}.
+                  </span>
+                )}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
@@ -958,6 +1129,59 @@ function EditDeviceDialog({
 }
 
 // ──────────────────────────────────────────────────────────────────────
+// Logout confirmation
+// ──────────────────────────────────────────────────────────────────────
+//
+// Logout was a single dropdown click in the previous version, but with the
+// new seat-counting rule it carries a deliberate side-effect — the seat
+// frees, which is usually what the operator wants but worth confirming.
+// Mirrors the existing delete-confirmation pattern.
+
+function ConfirmLogoutDialog({
+  device,
+  onClose,
+  onConfirm,
+}: {
+  device: Device;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const name = deviceDisplayName(device);
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Log out {name}?</DialogTitle>
+          <DialogDescription>
+            Tokens are revoked immediately and the device stops syncing.
+            <span className="block mt-2">
+              The seat frees up right away. The row stays in the list — to
+              bring this device back online (or pair a replacement on the same
+              seat), generate a new pairing code.
+            </span>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isPending}>
+            Keep signed in
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={isPending}
+            onClick={() => startTransition(async () => { await onConfirm(); })}
+          >
+            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Log out
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
 // Delete dialog
 // ──────────────────────────────────────────────────────────────────────
 
@@ -977,17 +1201,21 @@ function ConfirmDeleteDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Delete device?</DialogTitle>
+          <DialogTitle>Delete {name} from the list?</DialogTitle>
           <DialogDescription>
-            Deleting <span className="font-medium">{name}</span> revokes its
-            tokens immediately and removes it from this list. The device&apos;s
-            history is preserved — pairing the same hardware again brings the
-            row back rather than starting fresh.
+            This hides the row from the device list. The seat is already free
+            because the device is logged out — delete only if you don&apos;t want
+            this entry around anymore.
+            <span className="block mt-2 text-xs">
+              Audit history is preserved either way. Re-pairing the same
+              hardware after this will create a brand new entry rather than
+              bringing this row back.
+            </span>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isPending}>
-            Keep device
+            Keep in list
           </Button>
           <Button
             variant="destructive"
@@ -995,7 +1223,7 @@ function ConfirmDeleteDialog({
             onClick={() => startTransition(() => onConfirm())}
           >
             {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Delete device
+            Delete from list
           </Button>
         </DialogFooter>
       </DialogContent>

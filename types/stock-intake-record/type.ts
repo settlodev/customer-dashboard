@@ -2,6 +2,14 @@ import type { DestinationType } from "@/types/catalogue/enums";
 
 export type StockIntakeRecordStatus = "DRAFT" | "CONFIRMED" | "CANCELLED";
 
+export type IntakePaymentTerms = "CREDIT" | "CASH" | "BANK";
+
+export const INTAKE_PAYMENT_TERMS_LABELS: Record<IntakePaymentTerms, string> = {
+  CREDIT: "On credit (A/P)",
+  CASH: "Cash on receipt",
+  BANK: "Bank transfer / card",
+};
+
 export interface StockIntakeRecord {
   id: string;
   referenceNumber: string;
@@ -28,6 +36,12 @@ export interface StockIntakeRecord {
   supplierName: string | null;
   /** Supplier's own reference (delivery note, invoice number, etc). */
   supplierReference: string | null;
+  /**
+   * How this intake was paid for — drives the credit side of the
+   * accounting journal: CREDIT → A/P, CASH → Cash on Hand, BANK →
+   * Bank Primary.
+   */
+  paymentTerms: IntakePaymentTerms;
   /** Location's base currency (settlement currency for this intake). */
   currency: string | null;
   items: StockIntakeRecordItem[];

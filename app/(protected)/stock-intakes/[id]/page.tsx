@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Building2, Boxes, DollarSign, MapPin } from "lucide-react";
 import { getStockIntakeRecord } from "@/lib/actions/stock-intake-record-actions";
 import {
+  INTAKE_PAYMENT_TERMS_LABELS,
   STOCK_INTAKE_RECORD_STATUS_LABELS,
   StockIntakeRecordStatus,
 } from "@/types/stock-intake-record/type";
@@ -121,9 +122,9 @@ export default async function StockIntakePage({ params }: { params: Params }) {
           />
         </KpiStrip>
 
-      {/* Dates panel */}
+      {/* Dates + terms panel */}
       <Card>
-        <CardContent className="pt-6 grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+        <CardContent className="pt-6 grid grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
           <div>
             <p className="text-xs font-medium text-gray-400 uppercase">Ordered</p>
             <p className="mt-1">{formatDate(item.orderedDate) || "—"}</p>
@@ -140,6 +141,14 @@ export default async function StockIntakePage({ params }: { params: Params }) {
             <p className="text-xs font-medium text-gray-400 uppercase">Confirmed</p>
             <p className="mt-1">
               {item.confirmedAt ? formatDateTime(item.confirmedAt) : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-gray-400 uppercase">Payment</p>
+            <p className="mt-1">
+              {item.paymentTerms
+                ? INTAKE_PAYMENT_TERMS_LABELS[item.paymentTerms]
+                : "—"}
             </p>
           </div>
         </CardContent>

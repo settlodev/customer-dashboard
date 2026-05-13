@@ -1,4 +1,7 @@
-import { array, number, object, preprocess, string } from "zod";
+import { array, enum as zEnum, number, object, preprocess, string } from "zod";
+
+export const INTAKE_PAYMENT_TERMS = ["CREDIT", "CASH", "BANK"] as const;
+export type IntakePaymentTerms = (typeof INTAKE_PAYMENT_TERMS)[number];
 
 const toNumber = (val: unknown) => {
   if (typeof val === "string" && val.trim() !== "") return parseFloat(val);
@@ -38,5 +41,11 @@ export const StockIntakeRecordSchema = object({
     string().uuid().optional().nullish(),
   ),
   supplierReference: string().max(100, "Max 100 characters").optional().nullish(),
+  /**
+   * How this intake was paid for. Drives the credit side of the
+   * inventory-receipt journal in accounting: CREDIT → A/P, CASH →
+   * Cash on Hand, BANK → Bank Primary.
+   */
+  paymentTerms: zEnum(INTAKE_PAYMENT_TERMS).default("CREDIT"),
   items: array(StockIntakeRecordItemSchema).min(1, "At least one item is required"),
 });
