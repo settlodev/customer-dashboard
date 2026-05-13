@@ -37,7 +37,10 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import DepartmentSelector from "@/components/widgets/department-selector";
+import { useRealtimeChannel } from "@/hooks/use-realtime-channel";
+import { useRealtimeStatus } from "@/hooks/use-realtime-status";
 import { useToast } from "@/hooks/use-toast";
+import type { WsMessage } from "@/lib/realtime/types";
 
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import {
@@ -148,6 +151,168 @@ const DeviceSettings = () => {
     })();
   }, [refresh]);
 
+  // ── Realtime: subscribe to this location's :devices channel ─────────
+  // The WS gateway fans LOCATION_DEVICE_CREATED + DEVICE_TELEMETRY (and
+  // the existing logout / suspend / unsuspend events) here. We patch
+  // heartbeats in-place to keep battery / IP / app-version live without
+  // a round-trip, and refetch on lifecycle events that change shape.
+  // Refs let the WS callback read the latest list + dialog state
+  // without re-binding (which would tear down the subscription on every
+  // render).
+  const devicesRef = useRef<Device[] | null>(devices);
+  const dialogRef = useRef<DialogMode>(dialog);
+  useEffect(() => {
+    devicesRef.current = devices;
+  }, [devices]);
+  useEffect(() => {
+    dialogRef.current = dialog;
+  }, [dialog]);
+
+  const maybeClosePairDialog = useCallback(
+    (fresh: Device[], previous: Device[]) => {
+      const current = dialogRef.current;
+      if (current.type === "pair") {
+        const known = new Set(previous.map((d) => d.id));
+        const newDevice = fresh.find((d) => !known.has(d.id));
+        if (newDevice) {
+          toast({
+            title: "Device paired",
+            description: `${deviceDisplayName(newDevice)} is now linked to this location.`,
+          });
+          setDialog({ type: "idle" });
+        }
+      } else if (current.type === "regenerate") {
+        const updated = fresh.find((d) => d.id === current.device.id);
+        if (updated && updated.status === "ACTIVE") {
+          toast({
+            title: "Device re-paired",
+            description: `${deviceDisplayName(updated)} is back online.`,
+          });
+          setDialog({ type: "idle" });
+        }
+      }
+    },
+    [toast],
+  );
+
+  const handleRealtimeEvent = useCallback(
+    (msg: WsMessage<Record<string, unknown>>) => {
+      if (!locationId) return;
+      const type = msg.type;
+      const payload = (msg.payload ?? {}) as Record<string, unknown>;
+      const deviceId =
+        typeof payload.deviceId === "string" ? payload.deviceId : null;
+
+      // The gateway client fans every frame to every handler — filter to
+      // device events for this location and ignore the rest.
+      if (msg.locationId && msg.locationId !== locationId) return;
+
+      switch (type) {
+        case "DEVICE_HEARTBEAT": {
+          if (!deviceId) return;
+          const target = devicesRef.current?.find((d) => d.id === deviceId);
+          if (!target) {
+            // Heartbeat for a device we don't know about yet (race between
+            // pair-completion and the API committing the new row). Refetch.
+            const previous = devicesRef.current ?? [];
+            void refresh(locationId).then((fresh) => {
+              maybeClosePairDialog(fresh, previous);
+            });
+            return;
+          }
+
+          setDevices((prev) =>
+            prev
+              ? prev.map((d) =>
+                  d.id === deviceId
+                    ? {
+                        ...d,
+                        batteryLevel:
+                          typeof payload.batteryLevel === "number"
+                            ? payload.batteryLevel
+                            : d.batteryLevel,
+                        isCharging:
+                          typeof payload.isCharging === "boolean"
+                            ? payload.isCharging
+                            : d.isCharging,
+                        lastIp:
+                          typeof payload.ipAddress === "string"
+                            ? payload.ipAddress
+                            : d.lastIp,
+                        availableStorage:
+                          typeof payload.availableStorageMB === "number"
+                            ? payload.availableStorageMB
+                            : d.availableStorage,
+                        appVersion:
+                          typeof payload.appVersion === "string"
+                            ? payload.appVersion
+                            : d.appVersion,
+                        lastActiveAt:
+                          typeof payload.timestamp === "string"
+                            ? payload.timestamp
+                            : new Date().toISOString(),
+                      }
+                    : d,
+                )
+              : prev,
+          );
+
+          // A heartbeat from a non-ACTIVE device means it just came back
+          // online (e.g., a regenerate flow's target finished re-pairing).
+          // Refetch so the status flips and any open dialog closes.
+          if (target.status !== "ACTIVE") {
+            const previous = devicesRef.current ?? [];
+            void refresh(locationId).then((fresh) => {
+              maybeClosePairDialog(fresh, previous);
+            });
+          }
+          return;
+        }
+
+        case "DEVICE_CREATED":
+        case "DEVICE_LOGGED_OUT":
+        case "DEVICE_SUSPENDED":
+        case "DEVICE_UNSUSPENDED": {
+          const previous = devicesRef.current ?? [];
+          void refresh(locationId).then((fresh) => {
+            if (type === "DEVICE_CREATED") {
+              maybeClosePairDialog(fresh, previous);
+            }
+          });
+          return;
+        }
+
+        default:
+          // Other events arrive over the shared singleton (orders,
+          // inventory, etc.). Not ours — ignore.
+          return;
+      }
+    },
+    [locationId, refresh, maybeClosePairDialog],
+  );
+
+  useRealtimeChannel(
+    locationId ? `location:${locationId}:devices` : null,
+    handleRealtimeEvent,
+  );
+
+  // Fallback polling if the socket gives up. Keeps the panel self-healing
+  // even when WS is unreachable. 15 s mirrors the orders bridge.
+  const realtimeStatus = useRealtimeStatus();
+  useEffect(() => {
+    if (!locationId) return;
+    if (realtimeStatus !== "fallback" && realtimeStatus !== "disconnected") {
+      return;
+    }
+    const id = setInterval(() => {
+      const previous = devicesRef.current ?? [];
+      void refresh(locationId).then((fresh) => {
+        maybeClosePairDialog(fresh, previous);
+      });
+    }, 15_000);
+    return () => clearInterval(id);
+  }, [locationId, realtimeStatus, refresh, maybeClosePairDialog]);
+
   // Any mutation action returns the updated device; patch it in-place so the
   // list doesn't need a full re-fetch on every action.
   const applyResult = (res: DeviceActionResponse<Device | null>): boolean => {
@@ -235,27 +400,13 @@ const DeviceSettings = () => {
       )}
 
       {dialog.type === "pair" && locationId && (
-        <PairDeviceDialog
-          locationId={locationId}
-          knownIds={new Set((devices ?? []).map((d) => d.id))}
-          onClose={() => setDialog({ type: "idle" })}
-          onPaired={(fresh) => {
-            setDevices(fresh);
-            setDialog({ type: "idle" });
-          }}
-        />
+        <PairDeviceDialog onClose={() => setDialog({ type: "idle" })} />
       )}
 
       {dialog.type === "regenerate" && locationId && (
         <PairDeviceDialog
-          locationId={locationId}
-          knownIds={new Set((devices ?? []).map((d) => d.id))}
           existingDevice={dialog.device}
           onClose={() => setDialog({ type: "idle" })}
-          onPaired={(fresh) => {
-            setDevices(fresh);
-            setDialog({ type: "idle" });
-          }}
         />
       )}
 
@@ -475,24 +626,18 @@ function DeviceRow({
 }
 
 // ──────────────────────────────────────────────────────────────────────
-// Pair dialog — generate a code + poll the accounts service until the
-// mobile device finishes pairing (it pops into the list via Kafka sync).
+// Pair dialog — generate a code and wait for the device to authenticate.
+// Detection runs in the parent over the location's :devices WS channel:
+// on LOCATION_DEVICE_CREATED (new pair) or DEVICE_TELEMETRY for the
+// regenerate target, the parent refetches and closes this dialog.
 // ──────────────────────────────────────────────────────────────────────
 
-const POLL_INTERVAL_MS = 4000;
-
 function PairDeviceDialog({
-  locationId,
-  knownIds,
   existingDevice,
   onClose,
-  onPaired,
 }: {
-  locationId: string;
-  knownIds: Set<string>;
   existingDevice?: Device;
   onClose: () => void;
-  onPaired: (fresh: Device[]) => void;
 }) {
   const { toast } = useToast();
   const isRegenerate = !!existingDevice;
@@ -509,9 +654,6 @@ function PairDeviceDialog({
   const [remaining, setRemaining] = useState(0);
   const [isGenerating, startGenerating] = useTransition();
   const [copied, setCopied] = useState(false);
-  const knownIdsRef = useRef(knownIds);
-  knownIdsRef.current = knownIds;
-  const existingDeviceId = existingDevice?.id ?? null;
   const targetName = existingDevice ? deviceDisplayName(existingDevice) : null;
 
   // Countdown
@@ -550,46 +692,6 @@ function PairDeviceDialog({
     autoGenRef.current = true;
     generate();
   }, [isRegenerate, generate]);
-
-  // Poll for the device to land — either a brand-new row (pair flow) or the
-  // target device flipping back to ACTIVE (regenerate flow).
-  useEffect(() => {
-    if (step !== "waiting" || remaining <= 0 || !code) return;
-    let cancelled = false;
-    const id = setInterval(async () => {
-      try {
-        const res = await listDevices(locationId, "LOCATION");
-        if (cancelled) return;
-        const fresh = res.content ?? [];
-
-        if (existingDeviceId) {
-          const updated = fresh.find((d) => d.id === existingDeviceId);
-          if (updated && updated.status === "ACTIVE") {
-            toast({
-              title: "Device re-paired",
-              description: `${deviceDisplayName(updated)} is back online.`,
-            });
-            onPaired(fresh);
-          }
-        } else {
-          const newDevice = fresh.find((d) => !knownIdsRef.current.has(d.id));
-          if (newDevice) {
-            toast({
-              title: "Device paired",
-              description: `${deviceDisplayName(newDevice)} is now linked to this location.`,
-            });
-            onPaired(fresh);
-          }
-        }
-      } catch {
-        // Silent — transient errors shouldn't spam toasts during polling.
-      }
-    }, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [step, remaining, code, locationId, existingDeviceId, onPaired, toast]);
 
   const handleCopy = () => {
     if (!code?.code) return;

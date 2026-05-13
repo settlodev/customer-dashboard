@@ -16,7 +16,9 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
+import { OrdersRealtimeBridge } from "@/components/realtime/orders-realtime-bridge";
 import { columns } from "@/components/tables/orders/columns";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { listOrders } from "@/lib/actions/order-actions";
 import {
   Order,
@@ -56,15 +58,13 @@ export default async function Page({ searchParams }: Params) {
   const statusParam = (resolved.status ?? "") as OrderStatus | "";
   const businessDate = resolved.businessDate;
 
-  let orders: Order[] = [];
-  try {
-    orders = await listOrders({
+  const [orders, currentLocation] = await Promise.all([
+    listOrders({
       businessDate,
       status: statusParam || undefined,
-    });
-  } catch {
-    orders = [];
-  }
+    }).catch((): Order[] => []),
+    getCurrentLocation(),
+  ]);
 
   // Server returns the entire matching list; we filter free-text and
   // page in-memory because OMS list endpoint isn't paginated yet.
@@ -109,6 +109,9 @@ export default async function Page({ searchParams }: Params) {
             : "All orders for this location."
         }
       />
+      {currentLocation?.id && (
+        <OrdersRealtimeBridge locationId={currentLocation.id} />
+      )}
 
       <PageBody>
         {hasAny || hasFilters ? (

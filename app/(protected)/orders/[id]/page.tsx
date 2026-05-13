@@ -7,6 +7,8 @@ import {
   PageHeader,
   PageShell,
 } from "@/components/layouts/page-shell";
+import { OrdersRealtimeBridge } from "@/components/realtime/orders-realtime-bridge";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getOrderDetail } from "@/lib/actions/order-actions";
 import {
   ORDER_STATUS_LABELS,
@@ -27,6 +29,8 @@ export default async function OrderPage({ params }: { params: Params }) {
     throw new Error("Failed to load order data");
   }
   if (!detail) notFound();
+
+  const currentLocation = await getCurrentLocation();
 
   const status = detail.orderStatus as OrderStatus;
   const statusClass = ORDER_STATUS_PILL[status] ?? "bg-gray-100 text-gray-600";
@@ -76,6 +80,12 @@ export default async function OrderPage({ params }: { params: Params }) {
         }
         subtitle={subtitleParts.join(" · ")}
       />
+      {currentLocation?.id && (
+        <OrdersRealtimeBridge
+          locationId={currentLocation.id}
+          orderId={detail.id as string}
+        />
+      )}
 
       <PageBody>
         <OrderDetailView order={detail} />

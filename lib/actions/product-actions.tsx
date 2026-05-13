@@ -65,7 +65,13 @@ type VariantPayload = {
   taxTypeId?: string | null;
 };
 
-function mapVariant(v: ProductVariantInput): VariantPayload {
+// taxTypeId now lives at the product level. The backend still stores it
+// per-variant, so callers thread the product's tax type through here
+// and we stamp the same id onto every variant payload.
+function mapVariant(
+  v: ProductVariantInput,
+  taxTypeId: string | null | undefined,
+): VariantPayload {
   const base: VariantPayload = {
     name: v.name,
     sku: v.sku || undefined,
@@ -81,7 +87,7 @@ function mapVariant(v: ProductVariantInput): VariantPayload {
       v.pricingStrategy === "FIXED_MARKUP" ? v.markupAmount ?? undefined : undefined,
     unlimited: false,
     autoRetireOnSellout: v.autoRetireOnSellout ?? false,
-    taxTypeId: v.taxTypeId ?? undefined,
+    taxTypeId: taxTypeId ?? undefined,
   };
 
   switch (v.sellabilityMode) {
@@ -260,9 +266,10 @@ export async function createProduct(
       sellOnline: validData.data.sellOnline,
       trackStock: deriveTrackStock(validData.data.variants),
       taxInclusive: validData.data.taxInclusive,
-      taxClass: validData.data.taxClass || undefined,
       tags: validData.data.tags,
-      variants: validData.data.variants.map(mapVariant),
+      variants: validData.data.variants.map((v) =>
+        mapVariant(v, validData.data.taxTypeId),
+      ),
       modifierGroupIds: validData.data.modifierGroupIds?.length
         ? validData.data.modifierGroupIds
         : undefined,
@@ -340,13 +347,12 @@ export async function createProductWithStock(
       // Auto-tracking always tracks stock — every variant gets a 1:1 link.
       trackStock: true,
       taxInclusive: validData.data.taxInclusive,
-      taxClass: validData.data.taxClass || undefined,
       tags: validData.data.tags,
       // Force every variant into DIRECT mode without a stockVariantId — the
       // backend creates the matching stock variant on the fly and links
       // them by index. directQuantity defaults to 1 if not set.
       variants: validData.data.variants.map((v) => ({
-        ...mapVariant(v),
+        ...mapVariant(v, validData.data.taxTypeId),
         unlimited: false,
         stockLinkType: "DIRECT" as const,
         stockVariantId: undefined,
@@ -425,7 +431,6 @@ export async function updateProduct(
       sellOnline: validData.data.sellOnline,
       trackStock: deriveTrackStock(validData.data.variants),
       taxInclusive: validData.data.taxInclusive,
-      taxClass: validData.data.taxClass || undefined,
       tags: validData.data.tags,
       active: validData.data.active,
       lifecycleStatus: validData.data.lifecycleStatus,
@@ -485,11 +490,12 @@ export async function unarchiveProduct(id: string): Promise<void> {
 export async function createVariant(
   productId: string,
   variant: ProductVariantInput,
+  taxTypeId: string | null | undefined,
 ): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post(
     inventoryUrl(`/api/v1/products/${productId}/variants`),
-    mapVariant(variant),
+    mapVariant(variant, taxTypeId),
   );
   revalidatePath("/products");
   revalidatePath(`/products/${productId}/edit`);
@@ -499,11 +505,12 @@ export async function updateVariant(
   productId: string,
   variantId: string,
   variant: ProductVariantInput,
+  taxTypeId: string | null | undefined,
 ): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.put(
     inventoryUrl(`/api/v1/products/${productId}/variants/${variantId}`),
-    mapVariant(variant),
+    mapVariant(variant, taxTypeId),
   );
   revalidatePath("/products");
   revalidatePath(`/products/${productId}/edit`);
@@ -855,7 +862,10 @@ export async function uploadProductImages(
 // id and switch into edit mode without a full reload.
 type DraftProductInput = Partial<z.infer<typeof ProductSchema>>;
 
-function mapVariantPartial(v: Partial<ProductVariantInput>) {
+function mapVariantPartial(
+  v: Partial<ProductVariantInput>,
+  taxTypeId: string | null | undefined,
+) {
   // Drafts may have wholly empty rows; skip those upstream. Anything else
   // we forward as-is, letting the backend's draft path apply placeholders.
   const sellMode = v.sellabilityMode ?? "UNLIMITED";
@@ -882,6 +892,7 @@ function mapVariantPartial(v: Partial<ProductVariantInput>) {
     // it on the backend, no point sending it.
     autoRetireOnSellout:
       sellMode !== "UNLIMITED" ? v.autoRetireOnSellout ?? undefined : undefined,
+    taxTypeId: taxTypeId ?? undefined,
   };
 }
 
@@ -897,7 +908,7 @@ export async function saveProductDraft(
     const meaningfulVariants = variantsArray
       .map((v) => v as Partial<ProductVariantInput>)
       .filter((v) => v && (v.name?.trim() || v.sku || v.price != null))
-      .map(mapVariantPartial);
+      .map((v) => mapVariantPartial(v, values.taxTypeId));
 
     const imageUrls = values.imageUrl ? [values.imageUrl] : undefined;
     const categoryIds = Array.isArray(values.categoryIds) && values.categoryIds.length
@@ -917,7 +928,6 @@ export async function saveProductDraft(
         imageUrls,
         sellOnline: values.sellOnline,
         taxInclusive: values.taxInclusive,
-        taxClass: values.taxClass || undefined,
         tags,
         variants: meaningfulVariants.length ? meaningfulVariants : undefined,
         modifierGroupIds: values.modifierGroupIds?.length
@@ -952,7 +962,6 @@ export async function saveProductDraft(
       imageUrls,
       sellOnline: values.sellOnline,
       taxInclusive: values.taxInclusive,
-      taxClass: values.taxClass || undefined,
       tags,
       replacementProductId: values.replacementProductId || undefined,
     });

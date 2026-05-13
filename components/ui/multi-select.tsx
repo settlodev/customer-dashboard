@@ -116,6 +116,18 @@ interface MultiSelectProps
    * Optional, can be used to add custom styles.
    */
   className?: string;
+
+  /**
+   * When provided, replaces the default badge styling used for selected
+   * items. Lets callers render selected pills with their own chip aesthetic
+   * (e.g. matching a tag-chip look) instead of the built-in animated Badge.
+   */
+  badgeClassName?: string;
+
+  /**
+   * Optional class for the close icon shown inside each selected badge.
+   */
+  badgeIconClassName?: string;
 }
 
 export const MultiSelect = React.forwardRef<
@@ -134,6 +146,8 @@ export const MultiSelect = React.forwardRef<
       modalPopover = false,
       asChild = false,
       className,
+      badgeClassName,
+      badgeIconClassName,
       ...props
     },
     ref
@@ -219,7 +233,7 @@ export const MultiSelect = React.forwardRef<
                           key={value}
                           className={cn(
                             isAnimating ? "animate-bounce" : "",
-                            multiSelectVariants({ variant })
+                            badgeClassName ?? multiSelectVariants({ variant })
                           )}
                           style={{ animationDuration: `${animation}s` }}
                         >
@@ -228,7 +242,10 @@ export const MultiSelect = React.forwardRef<
                           )}
                           {option?.label}
                           <XCircle
-                            className="ml-2 h-4 w-4 cursor-pointer"
+                            className={cn(
+                              "ml-2 h-4 w-4 cursor-pointer",
+                              badgeIconClassName,
+                            )}
                             onClick={(event) => {
                               event.stopPropagation();
                               toggleOption(value);
@@ -242,7 +259,7 @@ export const MultiSelect = React.forwardRef<
                         className={cn(
                           "bg-transparent text-foreground border-foreground/1 hover:bg-transparent",
                           isAnimating ? "animate-bounce" : "",
-                          multiSelectVariants({ variant })
+                          badgeClassName ?? multiSelectVariants({ variant })
                         )}
                         style={{ animationDuration: `${animation}s` }}
                       >

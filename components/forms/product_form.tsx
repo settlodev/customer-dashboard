@@ -119,10 +119,7 @@ import {
   type ProductInput,
   type ProductVariantInput,
 } from "@/types/product/schema";
-import {
-  TAX_CLASS_OPTIONS,
-  PRICING_STRATEGY_OPTIONS,
-} from "@/types/catalogue/enums";
+import { PRICING_STRATEGY_OPTIONS } from "@/types/catalogue/enums";
 
 import {
   createProduct,
@@ -230,7 +227,6 @@ function variantToInput(
     // the field when the variant first renders. Default undefined here.
     bomRuleId: undefined,
     autoRetireOnSellout: v.autoRetireOnSellout ?? false,
-    taxTypeId: v.taxTypeId ?? undefined,
   };
 }
 
@@ -346,7 +342,10 @@ export default function ProductForm({ item }: ProductFormProps) {
           tags: item.tags ?? [],
           sellOnline: item.sellOnline,
           taxInclusive: item.taxInclusive,
-          taxClass: item.taxClass ?? undefined,
+          // Lift the first variant's stored taxTypeId up to the product
+          // level — the backend keeps it per-variant, but the form owns
+          // it once at the product level and fans it out on submit.
+          taxTypeId: item.variants?.find((v) => v.taxTypeId)?.taxTypeId ?? "",
           active: item.active,
           lifecycleStatus: item.lifecycleStatus,
           replacementProductId: item.replacementProductId ?? undefined,
@@ -364,7 +363,7 @@ export default function ProductForm({ item }: ProductFormProps) {
           tags: [],
           sellOnline: true,
           taxInclusive: false,
-          taxClass: undefined,
+          taxTypeId: "",
           active: true,
           lifecycleStatus: "ACTIVE",
           replacementProductId: undefined,
@@ -394,21 +393,16 @@ export default function ProductForm({ item }: ProductFormProps) {
     return seeded?.id ?? taxTypes[0]?.id;
   }, [taxTypes]);
 
-  // Backfill: once tax types load, set the default on any variant the
-  // merchant hasn't explicitly picked one for. Covers both first-mount
-  // (DEFAULT_VARIANT has taxTypeId undefined) and edit-mode legacy
-  // variants saved before this field existed.
+  // Backfill: once tax types load, seed the product-level taxTypeId if
+  // the merchant hasn't picked one yet. Covers both first-mount (blank
+  // default) and edit-mode legacy products created before tax types
+  // were assignable.
   useEffect(() => {
     if (!defaultTaxTypeId) return;
-    const variants = form.getValues("variants") ?? [];
-    variants.forEach((v, i) => {
-      if (!v?.taxTypeId) {
-        form.setValue(`variants.${i}.taxTypeId`, defaultTaxTypeId, {
-          shouldDirty: false,
-        });
-      }
-    });
-  }, [defaultTaxTypeId, variantsArray.fields.length, form]);
+    if (!form.getValues("taxTypeId")) {
+      form.setValue("taxTypeId", defaultTaxTypeId, { shouldDirty: false });
+    }
+  }, [defaultTaxTypeId, form]);
 
   const onInvalid = useCallback((errors: FieldErrors) => {
     console.warn("Product form validation errors", errors);
@@ -417,7 +411,7 @@ export default function ProductForm({ item }: ProductFormProps) {
       return;
     }
     const taxFields = [
-      "taxClass",
+      "taxTypeId",
       "taxInclusive",
       "sellOnline",
       "lifecycleStatus",
@@ -451,9 +445,9 @@ export default function ProductForm({ item }: ProductFormProps) {
 
         for (const v of values.variants) {
           if (v.id) {
-            await updateVariant(item!.id, v.id, v);
+            await updateVariant(item!.id, v.id, v, values.taxTypeId);
           } else {
-            await createVariant(item!.id, v);
+            await createVariant(item!.id, v, values.taxTypeId);
           }
         }
         for (const removedId of removedVariantIds) {
@@ -496,7 +490,6 @@ export default function ProductForm({ item }: ProductFormProps) {
     variantsArray.append({
       ...DEFAULT_VARIANT,
       name: `Variant ${next}`,
-      taxTypeId: defaultTaxTypeId,
     });
   };
 
@@ -846,16 +839,9 @@ export default function ProductForm({ item }: ProductFormProps) {
                   />
                 </div>
 
-                {/* Categories (full row) */}
-                <div
-                  className={styles.fieldRow}
-                  style={
-                    {
-                      ["--cols" as never]: 1,
-                      marginTop: 14,
-                    } as React.CSSProperties
-                  }
-                >
+                {/* Categories + Tags: stacked on small screens,
+                    side-by-side from lg up. */}
+                <div className="mt-3.5 grid grid-cols-1 gap-x-4 gap-y-3.5 lg:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="categoryIds"
@@ -896,6 +882,8 @@ export default function ProductForm({ item }: ProductFormProps) {
                                   }
                                   maxCount={5}
                                   disabled={categoriesLoading}
+                                  badgeClassName="m-0.5 rounded border border-line bg-canvas px-2 py-0.5 text-[11.5px] font-mono text-ink-2 hover:bg-canvas"
+                                  badgeIconClassName="ml-1 h-3 w-3 rounded-sm text-muted-foreground hover:text-foreground"
                                 />
                               </FormControl>
                             </div>
@@ -940,18 +928,8 @@ export default function ProductForm({ item }: ProductFormProps) {
                       );
                     }}
                   />
-                </div>
 
-                {/* Tags */}
-                <div
-                  className={styles.fieldRow}
-                  style={
-                    {
-                      ["--cols" as never]: 1,
-                      marginTop: 14,
-                    } as React.CSSProperties
-                  }
-                >
+                  {/* Tags */}
                   <FormField
                     control={form.control}
                     name="tags"
@@ -1167,7 +1145,6 @@ export default function ProductForm({ item }: ProductFormProps) {
                             onRemove={() => removeVariant(index)}
                             stockVariants={stockVariants}
                             stockVariantCosts={stockVariantCosts}
-                            taxTypes={taxTypes}
                             disabled={isPending}
                             showHeader
                             canRemove
@@ -1182,7 +1159,6 @@ export default function ProductForm({ item }: ProductFormProps) {
                         onRemove={() => {}}
                         stockVariants={stockVariants}
                         stockVariantCosts={stockVariantCosts}
-                        taxTypes={taxTypes}
                         disabled={isPending}
                         showHeader={false}
                         canRemove={false}
@@ -1280,35 +1256,39 @@ export default function ProductForm({ item }: ProductFormProps) {
                     </div>
                   </header>
                   <div className={styles.formBody}>
-                    {/* Tax class + Tax inclusive + Sell online: 3-col
-                        on lg+, 2-col on sm/md (third wraps), 1 col on
-                        phones. Same pattern as the Product details row. */}
+                    {/* Tax type + Tax inclusive + Sell online — single
+                        row on lg+, two columns on sm, stacked on phones.
+                        Tax type spans all columns of the wider rows so
+                        the Select keeps breathing room. */}
                     <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
                       <FormField
                         control={form.control}
-                        name="taxClass"
+                        name="taxTypeId"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className={styles.fieldLabel}>
-                              Tax class
+                              Tax type <span className="req">*</span>
                             </FormLabel>
                             <Select
-                              onValueChange={(v) =>
-                                field.onChange(v === "__none__" ? undefined : v)
-                              }
-                              value={field.value ?? "__none__"}
-                              disabled={isPending}
+                              onValueChange={field.onChange}
+                              value={field.value ?? ""}
+                              disabled={isPending || taxTypes.length === 0}
                             >
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="None" />
+                                  <SelectValue
+                                    placeholder={
+                                      taxTypes.length === 0
+                                        ? "Loading tax types…"
+                                        : "Pick a tax type"
+                                    }
+                                  />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="__none__">None</SelectItem>
-                                {TAX_CLASS_OPTIONS.map((o) => (
-                                  <SelectItem key={o.value} value={o.value}>
-                                    {o.label}
+                                {taxTypes.map((t) => (
+                                  <SelectItem key={t.id} value={t.id}>
+                                    {t.code} — {t.name} ({t.ratePercent}%)
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -1521,7 +1501,6 @@ interface VariantEditorProps {
   onRemove: () => void;
   stockVariants: StockVariantOption[];
   stockVariantCosts: Record<string, number>;
-  taxTypes: TaxType[];
   disabled: boolean;
   showHeader: boolean;
   canRemove: boolean;
@@ -1540,7 +1519,6 @@ function VariantEditor({
   onRemove,
   stockVariants,
   stockVariantCosts,
-  taxTypes,
   disabled,
   showHeader,
   canRemove,
@@ -1896,45 +1874,6 @@ function VariantEditor({
           />
         )}
       </div>
-
-      {/* Tax type — links the variant to a TaxType row owned by the
-          Accounting Service. Defaults to "A" (Standard Rate) at form
-          mount; merchants can override per variant. Hidden until the
-          accounting service has at least one active row to pick from. */}
-      {taxTypes.length > 0 && (
-        <FormField
-          control={form.control}
-          name={`variants.${index}.taxTypeId`}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tax type</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                value={field.value ?? ""}
-                disabled={disabled}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pick a tax type" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {taxTypes.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.code} — {t.name} ({t.ratePercent}%)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Drives the VAT rate applied at sale. Manage rates in
-                Accounting → Tax types.
-              </p>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
 
       {/* Track stock toggle (per variant) — default OFF.
           Hidden in auto-create-stock mode: the parent form's master

@@ -6,7 +6,6 @@ import { ArrowUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CellAction } from "@/components/tables/orders/cell-action";
 import {
   Order,
   ORDER_STATUS_LABELS,
@@ -188,9 +187,5 @@ export const columns: ColumnDef<Order>[] = [
         </Badge>
       );
     },
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => <CellAction data={row.original} />,
   },
 ];

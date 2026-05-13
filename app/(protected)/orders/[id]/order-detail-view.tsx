@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Activity,
   Banknote,
@@ -133,11 +133,12 @@ export function OrderDetailView({ order }: { order: OrderDetail }) {
             icon={<Timer className="h-3 w-3" />}
             label="Duration"
             value={
-              order.durationMinutes != null
-                ? `${order.durationMinutes} min`
-                : closed ?? "—"
+              <LiveDuration
+                startedAt={order.openedDate}
+                endedAt={order.closedDate}
+              />
             }
-            sub={closed ? `Closed ${closed}` : undefined}
+            sub={closed ? `Closed ${closed}` : "Live"}
           />
         </div>
       </div>
@@ -193,221 +194,220 @@ function OverviewTab({
 }) {
   const paymentKey = (order.paymentStatus ?? "").toUpperCase();
   const paymentTone = PAYMENT_TONE[paymentKey];
+  const customerLabel = order.customer?.name ?? "Walk-in";
+  const orderStatusLabel =
+    statusTone?.label ??
+    ORDER_STATUS_LABELS[order.orderStatus as OrderStatus] ??
+    order.orderStatus;
+  const paymentStatusLabel =
+    paymentTone?.label ?? order.paymentStatus ?? "—";
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <Card className="lg:col-span-1">
-        <CardContent className="space-y-4 pt-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <User className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-ink">
-                {order.customer?.name ?? "Walk-in"}
-              </p>
-              {order.customer?.phone && (
-                <p className="truncate text-xs text-muted-foreground">
-                  {order.customer.phone}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <StatusChip
-              label="Order"
-              tone={statusTone?.variant}
+    <Card>
+      <CardContent className="space-y-4 pt-6">
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <Receipt className="h-4 w-4 text-muted-foreground" />
+          Order
+        </h3>
+        <div className="overflow-hidden rounded-lg border border-line bg-line">
+          <dl className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2 lg:grid-cols-3">
+            <DetailRow
+              icon={ClipboardList}
+              label="Order #"
+              value={order.orderNumber}
+            />
+            <DetailRow
+              icon={User}
+              label="Customer"
+              value={customerLabel}
+            />
+            <DetailRow
+              icon={Activity}
+              label="Status"
               value={
-                statusTone?.label ??
-                ORDER_STATUS_LABELS[order.orderStatus as OrderStatus] ??
-                order.orderStatus
+                <Badge
+                  variant={statusTone?.variant ?? "soft"}
+                  className="text-[10.5px]"
+                >
+                  {orderStatusLabel}
+                </Badge>
               }
             />
-            <StatusChip
+            <DetailRow
+              icon={CreditCard}
               label="Payment"
-              tone={paymentTone?.variant}
-              value={paymentTone?.label ?? order.paymentStatus ?? "—"}
+              value={
+                <Badge
+                  variant={paymentTone?.variant ?? "soft"}
+                  className="text-[10.5px]"
+                >
+                  {paymentStatusLabel}
+                </Badge>
+              }
             />
-          </div>
+            <DetailRow
+              icon={Sparkles}
+              label="Type"
+              value={order.orderType ?? order.servingType}
+            />
+            <DetailRow
+              icon={MapPin}
+              label="Source"
+              value={order.orderSource ?? order.platformType}
+            />
+            <DetailRow
+              icon={Activity}
+              label="Fulfillment"
+              value={order.fulfillmentStatus}
+            />
+            <DetailRow
+              icon={CalendarDays}
+              label="Business date"
+              value={
+                order.businessDate
+                  ? new Intl.DateTimeFormat("en", {
+                      dateStyle: "medium",
+                    }).format(new Date(order.businessDate))
+                  : null
+              }
+            />
+            <DetailRow
+              icon={Tag}
+              label="Slug"
+              value={order.slug}
+            />
+          </dl>
+        </div>
 
-          {order.notes && (
-            <div className="space-y-1">
-              <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                <StickyNote className="h-3 w-3" />
-                Notes
-              </p>
+        <h3 className="mt-2 flex items-center gap-2 text-sm font-semibold">
+          <Coins className="h-4 w-4 text-muted-foreground" />
+          Totals
+        </h3>
+        <div className="overflow-hidden rounded-lg border border-line bg-line">
+          <dl className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2 lg:grid-cols-3">
+            <DetailRow
+              label="Gross"
+              value={formatNumber(order.grossAmount)}
+              emphasize
+            />
+            <DetailRow
+              label="Discount"
+              value={
+                order.discountAmount && order.discountAmount > 0
+                  ? `−${formatNumber(order.discountAmount)}`
+                  : "—"
+              }
+            />
+            <DetailRow
+              label="Customer charges"
+              value={formatNumber(order.customerChargesTotal)}
+            />
+            <DetailRow
+              label="Tip"
+              value={formatNumber(order.totalTipAmount)}
+            />
+            <DetailRow
+              label="Net"
+              value={formatNumber(order.netAmount)}
+              emphasize
+            />
+            <DetailRow
+              label="Paid"
+              value={formatNumber(order.paidAmount)}
+            />
+            <DetailRow
+              label="Unpaid"
+              value={
+                order.unpaidAmount && order.unpaidAmount > 0
+                  ? formatNumber(order.unpaidAmount)
+                  : "—"
+              }
+            />
+            <DetailRow
+              label="Cost"
+              value={formatNumber(order.totalCostPrice)}
+            />
+            <DetailRow
+              label="Gross profit"
+              value={formatNumber(order.grossProfit)}
+              tone={
+                (order.grossProfit ?? 0) >= 0
+                  ? "pos"
+                  : "neg"
+              }
+            />
+            <DetailRow
+              label="Margin"
+              value={
+                order.profitMargin != null
+                  ? `${formatNumber(order.profitMargin, 1)}%`
+                  : null
+              }
+              tone={
+                order.profitMargin != null && order.profitMargin >= 0
+                  ? "pos"
+                  : order.profitMargin != null
+                    ? "neg"
+                    : undefined
+              }
+            />
+          </dl>
+        </div>
+
+        <h3 className="mt-2 flex items-center gap-2 text-sm font-semibold">
+          <User className="h-4 w-4 text-muted-foreground" />
+          People
+        </h3>
+        <div className="overflow-hidden rounded-lg border border-line bg-line">
+          <dl className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2 lg:grid-cols-3">
+            <DetailRow
+              icon={User}
+              label="Started by"
+              value={order.startedBy?.name}
+            />
+            <DetailRow
+              icon={User}
+              label="Assigned to"
+              value={order.assignedTo?.name}
+            />
+            <DetailRow
+              icon={User}
+              label="Closed by"
+              value={order.finishedBy?.name}
+            />
+            <DetailRow
+              icon={Users}
+              label="Customer"
+              value={customerLabel}
+            />
+            <DetailRow
+              icon={Phone}
+              label="Phone"
+              value={order.customer?.phone}
+            />
+            <DetailRow
+              icon={Mail}
+              label="Email"
+              value={order.customer?.email}
+            />
+          </dl>
+        </div>
+
+        {order.notes && (
+          <>
+            <h3 className="mt-2 flex items-center gap-2 text-sm font-semibold">
+              <StickyNote className="h-4 w-4 text-muted-foreground" />
+              Notes
+            </h3>
+            <div className="rounded-lg border border-line bg-card px-4 py-3">
               <p className="whitespace-pre-wrap text-sm text-ink-2">
                 {order.notes}
               </p>
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="lg:col-span-2">
-        <CardContent className="space-y-4 pt-6">
-          <h3 className="flex items-center gap-2 text-sm font-semibold">
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-            Order
-          </h3>
-          <div className="overflow-hidden rounded-lg border border-line bg-line">
-            <dl className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2">
-              <DetailRow
-                icon={ClipboardList}
-                label="Order #"
-                value={order.orderNumber}
-              />
-              <DetailRow
-                icon={Sparkles}
-                label="Type"
-                value={order.orderType ?? order.servingType}
-              />
-              <DetailRow
-                icon={MapPin}
-                label="Source"
-                value={order.orderSource ?? order.platformType}
-              />
-              <DetailRow
-                icon={Activity}
-                label="Fulfillment"
-                value={order.fulfillmentStatus}
-              />
-              <DetailRow
-                icon={CalendarDays}
-                label="Business date"
-                value={
-                  order.businessDate
-                    ? new Intl.DateTimeFormat("en", {
-                        dateStyle: "medium",
-                      }).format(new Date(order.businessDate))
-                    : null
-                }
-              />
-              <DetailRow
-                icon={Tag}
-                label="Slug"
-                value={order.slug}
-              />
-            </dl>
-          </div>
-
-          <h3 className="mt-2 flex items-center gap-2 text-sm font-semibold">
-            <Coins className="h-4 w-4 text-muted-foreground" />
-            Totals
-          </h3>
-          <div className="overflow-hidden rounded-lg border border-line bg-line">
-            <dl className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2">
-              <DetailRow
-                label="Gross"
-                value={formatNumber(order.grossAmount)}
-                emphasize
-              />
-              <DetailRow
-                label="Discount"
-                value={
-                  order.discountAmount && order.discountAmount > 0
-                    ? `−${formatNumber(order.discountAmount)}`
-                    : "—"
-                }
-              />
-              <DetailRow
-                label="Customer charges"
-                value={formatNumber(order.customerChargesTotal)}
-              />
-              <DetailRow
-                label="Tip"
-                value={formatNumber(order.totalTipAmount)}
-              />
-              <DetailRow
-                label="Net"
-                value={formatNumber(order.netAmount)}
-                emphasize
-              />
-              <DetailRow
-                label="Paid"
-                value={formatNumber(order.paidAmount)}
-              />
-              <DetailRow
-                label="Unpaid"
-                value={
-                  order.unpaidAmount && order.unpaidAmount > 0
-                    ? formatNumber(order.unpaidAmount)
-                    : "—"
-                }
-              />
-              <DetailRow
-                label="Cost"
-                value={formatNumber(order.totalCostPrice)}
-              />
-              <DetailRow
-                label="Gross profit"
-                value={formatNumber(order.grossProfit)}
-                tone={
-                  (order.grossProfit ?? 0) >= 0
-                    ? "pos"
-                    : "neg"
-                }
-              />
-              <DetailRow
-                label="Margin"
-                value={
-                  order.profitMargin != null
-                    ? `${formatNumber(order.profitMargin, 1)}%`
-                    : null
-                }
-                tone={
-                  order.profitMargin != null && order.profitMargin >= 0
-                    ? "pos"
-                    : order.profitMargin != null
-                      ? "neg"
-                      : undefined
-                }
-              />
-            </dl>
-          </div>
-
-          <h3 className="mt-2 flex items-center gap-2 text-sm font-semibold">
-            <User className="h-4 w-4 text-muted-foreground" />
-            People
-          </h3>
-          <div className="overflow-hidden rounded-lg border border-line bg-line">
-            <dl className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2">
-              <DetailRow
-                icon={User}
-                label="Started by"
-                value={order.startedBy?.name}
-              />
-              <DetailRow
-                icon={User}
-                label="Assigned to"
-                value={order.assignedTo?.name}
-              />
-              <DetailRow
-                icon={User}
-                label="Closed by"
-                value={order.finishedBy?.name}
-              />
-              <DetailRow
-                icon={Users}
-                label="Customer"
-                value={order.customer?.name}
-              />
-              <DetailRow
-                icon={Phone}
-                label="Phone"
-                value={order.customer?.phone}
-              />
-              <DetailRow
-                icon={Mail}
-                label="Email"
-                value={order.customer?.email}
-              />
-            </dl>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -828,27 +828,6 @@ function SummaryTile({
   );
 }
 
-function StatusChip({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: React.ReactNode;
-  tone?: "pos" | "neg" | "warn" | "soft";
-}) {
-  return (
-    <div className="rounded-md border border-line bg-canvas px-3 py-2">
-      <p className="text-[10.5px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <Badge variant={tone ?? "soft"} className="mt-1 text-[10.5px]">
-        {value}
-      </Badge>
-    </div>
-  );
-}
-
 function DetailRow({
   label,
   value,
@@ -951,4 +930,44 @@ function humanizeEvent(event: string): string {
     HUMANIZED_EVENTS[event] ??
     event.replace(/_/g, " ").toLowerCase().replace(/^./, (c) => c.toUpperCase())
   );
+}
+
+function LiveDuration({
+  startedAt,
+  endedAt,
+}: {
+  startedAt: string;
+  endedAt?: string | null;
+}) {
+  const startMs = new Date(startedAt).getTime();
+  const endMs = endedAt ? new Date(endedAt).getTime() : null;
+  const frozen = endMs != null && !Number.isNaN(endMs);
+
+  const compute = () => {
+    if (Number.isNaN(startMs)) return 0;
+    const now = frozen ? (endMs as number) : Date.now();
+    return Math.max(0, Math.floor((now - startMs) / 1000));
+  };
+
+  const [elapsed, setElapsed] = useState(compute);
+
+  useEffect(() => {
+    setElapsed(compute());
+    if (frozen) return;
+    const id = setInterval(() => setElapsed(compute()), 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startMs, endMs, frozen]);
+
+  if (Number.isNaN(startMs)) return <>—</>;
+  return <span className="tabular-nums">{formatElapsed(elapsed)}</span>;
+}
+
+function formatElapsed(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  if (h > 0) return `${h}hr ${m}m ${s}s`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
 }

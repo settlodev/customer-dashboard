@@ -62,13 +62,6 @@ export const ProductVariantSchema = object({
   // form; only meaningful for tracked variants — UNLIMITED variants
   // ignore the setting since there's nothing to "sell out."
   autoRetireOnSellout: boolean().default(false),
-
-  // FK to a TaxType in the Accounting Service. The form auto-picks the
-  // business's "A" (Standard Rate) row when the merchant doesn't set one
-  // explicitly, so a freshly-created variant always carries a rate.
-  // Optional + nullable so legacy variants saved before this field
-  // existed can still be loaded into the form for editing.
-  taxTypeId: string().uuid().optional().nullish(),
 }).superRefine((val, ctx) => {
   // Pricing strategy ⇒ required field per branch
   if (val.pricingStrategy === "PERCENTAGE_MARKUP" && val.markupPercentage == null) {
@@ -154,7 +147,12 @@ export const ProductSchema = object({
 
   sellOnline: boolean().default(true),
   taxInclusive: boolean().default(false),
-  taxClass: z.enum(["A", "B", "C", "D", "E", "ZANZIBAR"]).optional().nullish(),
+  // FK to a TaxType in the Accounting Service. Owned at the product
+  // level: the form fans the same value out to every variant on
+  // submit (the inventory service still stores it per-variant). The
+  // form auto-picks the business's "A" (Standard Rate) row at mount
+  // so merchants always see a sensible default.
+  taxTypeId: string({ required_error: "Pick a tax type" }).uuid("Pick a tax type"),
   active: boolean().default(true),
   // DRAFT included so the form can round-trip a draft product without
   // tripping the schema parser. The Save-as-Draft / Publish flow is what
