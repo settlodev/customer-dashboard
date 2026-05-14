@@ -123,6 +123,7 @@ import {
   createCustomer,
   fetchCustomerGroups,
 } from "@/lib/actions/customer-actions";
+import { invalidateCustomersCache } from "@/lib/cache/reference-data";
 import { FormResponse } from "@/types/types";
 import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 
@@ -1662,6 +1663,7 @@ function QuickCustomerSheet({
         active: true,
       });
       if (result?.responseType === "success" && result.data) {
+        invalidateCustomersCache();
         toast({
           variant: "success",
           title: "Customer created",

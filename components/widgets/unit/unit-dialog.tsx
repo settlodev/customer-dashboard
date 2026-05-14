@@ -39,6 +39,7 @@ import {
   type UnitOfMeasurePayload,
 } from "@/types/unit/type";
 import { createUnit, updateUnit } from "@/lib/actions/unit-actions";
+import { invalidateUnitsCache } from "@/lib/cache/reference-data";
 
 interface Props {
   /** Pass an existing unit to open in edit mode. */
@@ -76,6 +77,7 @@ export function UnitDialog({
         ? await updateUnit(unit.id, values)
         : await createUnit(values);
       if (res.responseType === "success") {
+        invalidateUnitsCache();
         toast({ variant: "success", title: "Saved", description: res.message });
         onOpenChange(false);
         router.refresh();

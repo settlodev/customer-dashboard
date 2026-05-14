@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { getUnits } from "@/lib/actions/unit-actions";
+import { useCachedUnits } from "@/lib/cache/reference-data";
 import type { UnitOfMeasure } from "@/types/unit/type";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -38,20 +38,7 @@ interface UnitSelectorProps {
   onBlur?: () => void;
 }
 
-// Module-level cache so all instances share the same fetch
-let unitCache: UnitOfMeasure[] | null = null;
-let unitFetchPromise: Promise<UnitOfMeasure[]> | null = null;
-
-function fetchUnitsCached(): Promise<UnitOfMeasure[]> {
-  if (unitCache) return Promise.resolve(unitCache);
-  if (!unitFetchPromise) {
-    unitFetchPromise = getUnits().then((data) => {
-      unitCache = data;
-      return data;
-    });
-  }
-  return unitFetchPromise;
-}
+const EMPTY_UNITS: UnitOfMeasure[] = [];
 
 const UnitSelector = ({
   placeholder = "Select unit",
@@ -61,8 +48,8 @@ const UnitSelector = ({
   onBlur,
 }: UnitSelectorProps) => {
   const [open, setOpen] = useState(false);
-  const [units, setUnits] = useState<UnitOfMeasure[]>(unitCache ?? []);
-  const [isLoading, setIsLoading] = useState(!unitCache);
+  const { data: unitsData, loading: isLoading } = useCachedUnits();
+  const units = unitsData ?? EMPTY_UNITS;
   const [search, setSearch] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [triggerWidth, setTriggerWidth] = useState(0);
@@ -76,14 +63,6 @@ const UnitSelector = ({
     if (triggerRef.current) ro.observe(triggerRef.current);
     return () => ro.disconnect();
   }, []);
-
-  useEffect(() => {
-    if (units.length > 0) return;
-    setIsLoading(true);
-    fetchUnitsCached()
-      .then(setUnits)
-      .finally(() => setIsLoading(false));
-  }, [units.length]);
 
   const grouped = useMemo(() => {
     const term = search.toLowerCase();

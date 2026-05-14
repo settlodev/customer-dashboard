@@ -18,6 +18,7 @@ import {
   unarchiveBrand,
   deleteBrand,
 } from "@/lib/actions/brand-actions";
+import { invalidateBrandsCache } from "@/lib/cache/reference-data";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -51,6 +52,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     try {
       const result = await archiveBrand(data.id);
       if (result.responseType === "success") {
+        invalidateBrandsCache();
         toast({ variant: "success", title: "Archived", description: `${data.name} has been archived.` });
         router.refresh();
       } else {
@@ -69,6 +71,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     try {
       const result = await unarchiveBrand(data.id);
       if (result.responseType === "success") {
+        invalidateBrandsCache();
         toast({ variant: "success", title: "Restored", description: `${data.name} has been restored.` });
         router.refresh();
       } else {
@@ -85,6 +88,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     setIsDeleting(true);
     try {
       await deleteBrand(data.id);
+      invalidateBrandsCache();
       toast({ variant: "warning", title: "Deleted", description: `${data.name} has been permanently deleted.` });
       router.refresh();
     } catch (error) {

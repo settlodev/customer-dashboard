@@ -9,9 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Department } from "@/types/department/type";
-import {
-  fetchAllDepartments,
-} from "@/lib/actions/department-actions";
+import { getCachedDepartments } from "@/lib/cache/reference-data";
 
 interface LocationDepartmentSelectorProps {
   label?: string;
@@ -34,29 +32,30 @@ const LocationDepartmentSelector: React.FC<LocationDepartmentSelectorProps> = ({
   onChange,
 }) => {
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const loadDepartments = async () => {
+  const [isLoading, setIsLoading] = useState<boolean>(!!locationId);
+
+  useEffect(() => {
     if (!locationId) {
       setDepartments([]);
       setIsLoading(false);
       return;
     }
-
-    try {
-      setIsLoading(true);
-      const fetchedDepartments = await fetchAllDepartments();
-      setDepartments(fetchedDepartments ?? []);
-    } catch (error: any) {
-      console.log("Error fetching departments:", error);
-      setDepartments([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadDepartments();
-  }, [locationId]); // Reload when locationId changes
+    let cancelled = false;
+    setIsLoading(true);
+    getCachedDepartments()
+      .then((list) => {
+        if (!cancelled) setDepartments(list ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setDepartments([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [locationId]);
 
   return (
     <div className="flex gap-2 items-start">

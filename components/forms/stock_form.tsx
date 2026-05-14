@@ -13,6 +13,7 @@ import {
   useFieldArray,
   useWatch,
   type FieldErrors,
+  type UseFormReturn,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -89,8 +90,11 @@ import {
   publishStock,
 } from "@/lib/actions/stock-actions";
 import { assignBarcode } from "@/lib/actions/barcode-actions";
-import { getUnits } from "@/lib/actions/unit-actions";
-import { fetchAllCategories } from "@/lib/actions/category-actions";
+import {
+  getCachedCategories,
+  invalidateStocksCache,
+  useCachedUnits,
+} from "@/lib/cache/reference-data";
 import type { Stock } from "@/types/stock/type";
 import type { UnitOfMeasure } from "@/types/unit/type";
 import type { Category } from "@/types/category/type";
@@ -144,7 +148,8 @@ export default function StockForm({ item, balances }: StockFormProps) {
   const [archivingIndex, setArchivingIndex] = useState<number | null>(null);
   const [generatingBarcode, setGeneratingBarcode] = useState<number | null>(null);
   const [reorderOpen, setReorderOpen] = useState<Record<number, boolean>>({});
-  const [units, setUnits] = useState<UnitOfMeasure[]>([]);
+  const { data: cachedUnitsData } = useCachedUnits();
+  const units: UnitOfMeasure[] = cachedUnitsData ?? [];
   const { toast } = useToast();
 
   // ── Auto-create matching product (create-mode only) ───────────────
@@ -165,15 +170,11 @@ export default function StockForm({ item, balances }: StockFormProps) {
   const isEditing = !!item;
   const lastSyncedNameRef = useRef("");
 
-  useEffect(() => {
-    getUnits().then(setUnits);
-  }, []);
-
   // Lazy-load categories the first time the merchant flips on
   // autoCreateProduct, so create-only-stock flows skip the round-trip.
   useEffect(() => {
     if (!autoCreateProduct || categories.length > 0) return;
-    fetchAllCategories()
+    getCachedCategories()
       .then((c) => setCategories(c ?? []))
       .catch(() => setCategories([]));
   }, [autoCreateProduct, categories.length]);
@@ -239,51 +240,63 @@ export default function StockForm({ item, balances }: StockFormProps) {
     }
   }, [stockName, isEditing, fields.length, form]);
 
-  const handleVariantArchive = async (index: number, shouldArchive: boolean) => {
-    const variantId = form.getValues(`variants.${index}.id`);
-    if (!variantId || !item) return;
-    setArchivingIndex(index);
-    try {
-      if (shouldArchive) {
-        await archiveStockVariant(item.id, variantId);
-        form.setValue(`variants.${index}.archived`, true);
-        toast({ title: "Archived", description: "Variant has been archived." });
-      } else {
-        await unarchiveStockVariant(item.id, variantId);
-        form.setValue(`variants.${index}.archived`, false);
-        toast({ title: "Restored", description: "Variant has been restored." });
+  // Stable callback so the memoised VariantRow doesn't re-render on every
+  // parent tick — the row's archive button captures this through props,
+  // and a fresh reference here would invalidate React.memo's shallow
+  // comparison.
+  const handleVariantArchive = useCallback(
+    async (index: number, shouldArchive: boolean) => {
+      const variantId = form.getValues(`variants.${index}.id`);
+      if (!variantId || !item) return;
+      setArchivingIndex(index);
+      try {
+        if (shouldArchive) {
+          await archiveStockVariant(item.id, variantId);
+          invalidateStocksCache();
+          form.setValue(`variants.${index}.archived`, true);
+          toast({ title: "Archived", description: "Variant has been archived." });
+        } else {
+          await unarchiveStockVariant(item.id, variantId);
+          invalidateStocksCache();
+          form.setValue(`variants.${index}.archived`, false);
+          toast({ title: "Restored", description: "Variant has been restored." });
+        }
+      } catch {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `Failed to ${shouldArchive ? "archive" : "restore"} variant.`,
+        });
+      } finally {
+        setArchivingIndex(null);
       }
-    } catch {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: `Failed to ${shouldArchive ? "archive" : "restore"} variant.`,
-      });
-    } finally {
-      setArchivingIndex(null);
-    }
-  };
+    },
+    [form, item, toast],
+  );
 
-  const handleGenerateBarcode = async (index: number) => {
-    const variantId = form.getValues(`variants.${index}.id`);
-    if (!variantId) return;
-    setGeneratingBarcode(index);
-    try {
-      const updated = await assignBarcode(variantId);
-      if (updated?.barcode) {
-        form.setValue(`variants.${index}.barcode`, updated.barcode);
-        toast({ title: "Barcode generated", description: updated.barcode });
+  const handleGenerateBarcode = useCallback(
+    async (index: number) => {
+      const variantId = form.getValues(`variants.${index}.id`);
+      if (!variantId) return;
+      setGeneratingBarcode(index);
+      try {
+        const updated = await assignBarcode(variantId);
+        if (updated?.barcode) {
+          form.setValue(`variants.${index}.barcode`, updated.barcode);
+          toast({ title: "Barcode generated", description: updated.barcode });
+        }
+      } catch {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to generate barcode.",
+        });
+      } finally {
+        setGeneratingBarcode(null);
       }
-    } catch {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to generate barcode.",
-      });
-    } finally {
-      setGeneratingBarcode(null);
-    }
-  };
+    },
+    [form, toast],
+  );
 
   const onInvalid = useCallback(
     (_errors: FieldErrors) => {
@@ -312,17 +325,26 @@ export default function StockForm({ item, balances }: StockFormProps) {
           .filter((vid) => !currentIds.has(vid));
         updateStock(item.id, values, removed).then((d) => {
           if (businessDayGuard.catch(d, () => runSubmit(values))) return;
-          if (d) setResponse(d);
+          if (d) {
+            setResponse(d);
+            if (d.responseType === "success") invalidateStocksCache();
+          }
         });
       } else if (autoCreateProduct) {
         createStockWithProduct(values, { categoryIds }).then((d) => {
           if (businessDayGuard.catch(d, () => runSubmit(values))) return;
-          if (d) setResponse(d);
+          if (d) {
+            setResponse(d);
+            if (d.responseType === "success") invalidateStocksCache();
+          }
         });
       } else {
         createStock(values).then((d) => {
           if (businessDayGuard.catch(d, () => runSubmit(values))) return;
-          if (d) setResponse(d);
+          if (d) {
+            setResponse(d);
+            if (d.responseType === "success") invalidateStocksCache();
+          }
         });
       }
     });
@@ -472,6 +494,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
         });
         return;
       }
+      invalidateStocksCache();
       toast({ title: "Draft saved" });
       // First save returns the freshly-created stock so we can pin its id
       // on the URL — subsequent saves PUT against /stocks/{id}.
@@ -494,6 +517,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
         });
         return;
       }
+      invalidateStocksCache();
       toast({ title: "Stock published" });
       router.push("/stock-variants");
     });
@@ -734,626 +758,28 @@ export default function StockForm({ item, balances }: StockFormProps) {
 
                 <div className={styles.formBody}>
                   <div className="space-y-3">
-                    {fields.map((field, index) => {
-                      const variantId = watchedVariants?.[index]?.id;
-                      const isArchived = !!watchedVariants?.[index]?.archived;
-                      const isExisting = !!variantId;
-                      const isDisabled = isPending || isArchived;
-                      const bal = variantId && balances ? balances[variantId] : null;
-                      const origVariant = item?.variants?.find(
-                        (v) => v.id === variantId,
-                      );
-
-                      return (
-                        <div
-                          key={field.id}
-                          className={`border rounded-lg p-4 space-y-3 transition-opacity ${
-                            isArchived
-                              ? "bg-muted/60 opacity-70"
-                              : "bg-muted/40"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                Variant {index + 1}
-                              </span>
-                              {index === 0 &&
-                                fields.length === 1 &&
-                                !isEditing && (
-                                  <span className="text-xs font-normal text-muted-foreground">
-                                    (default)
-                                  </span>
-                                )}
-                              {origVariant?.isDefault && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 font-medium">
-                                  Default
-                                </span>
-                              )}
-                              {isArchived && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                                  Archived
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              {isEditing && isExisting && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleVariantArchive(index, !isArchived)
-                                  }
-                                  disabled={
-                                    isPending || archivingIndex !== null
-                                  }
-                                  className={`p-1.5 rounded text-xs flex items-center gap-1 transition-colors ${
-                                    isArchived
-                                      ? "text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
-                                      : "text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-                                  }`}
-                                >
-                                  {archivingIndex === index ? (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  ) : isArchived ? (
-                                    <ArchiveRestore className="w-3.5 h-3.5" />
-                                  ) : (
-                                    <Archive className="w-3.5 h-3.5" />
-                                  )}
-                                  <span>
-                                    {isArchived ? "Unarchive" : "Archive"}
-                                  </span>
-                                </button>
-                              )}
-                              {fields.length > 1 && !isArchived && (
-                                <button
-                                  type="button"
-                                  onClick={() => remove(index)}
-                                  disabled={isPending}
-                                  className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-400 hover:text-red-500 transition-colors"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {isEditing && bal && (
-                            <div className="flex gap-4 text-xs bg-blue-50/50 dark:bg-blue-950/20 rounded px-3 py-2">
-                              <span className="text-muted-foreground">
-                                Qty:{" "}
-                                <strong className="text-foreground">
-                                  {bal.quantityOnHand.toLocaleString()}
-                                </strong>
-                              </span>
-                              {bal.averageCost != null && bal.averageCost > 0 && (
-                                <span className="text-muted-foreground">
-                                  Avg Cost:{" "}
-                                  <strong className="text-foreground">
-                                    {formatMoney(
-                                      bal.averageCost,
-                                      locationCurrency,
-                                    )}
-                                  </strong>
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                            <FormField
-                              control={form.control}
-                              name={`variants.${index}.name`}
-                              render={({ field: f }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs">
-                                    Name <span className="text-red-500">*</span>
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="e.g. 50kg Bag, 1L Bottle"
-                                      {...f}
-                                      disabled={isDisabled}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`variants.${index}.barcode`}
-                              render={({ field: f }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs">Barcode</FormLabel>
-                                  <FormControl>
-                                    <div className="relative">
-                                      <BarcodeIcon className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                                      <Input
-                                        className="pl-10 pr-10"
-                                        placeholder="Optional"
-                                        {...f}
-                                        value={f.value ?? ""}
-                                        disabled={isDisabled}
-                                      />
-                                      {isEditing && isExisting && !f.value && (
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            handleGenerateBarcode(index)
-                                          }
-                                          disabled={
-                                            isPending ||
-                                            generatingBarcode !== null
-                                          }
-                                          className="absolute right-2 top-2 p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                                          title="Generate barcode"
-                                        >
-                                          {generatingBarcode === index ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                          ) : (
-                                            <Wand2 className="w-4 h-4" />
-                                          )}
-                                        </button>
-                                      )}
-                                    </div>
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`variants.${index}.sku`}
-                              render={({ field: f }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs">SKU</FormLabel>
-                                  <FormControl>
-                                    <div className="relative">
-                                      <Hash className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                                      <Input
-                                        className="pl-10"
-                                        placeholder="Optional"
-                                        {...f}
-                                        value={f.value ?? ""}
-                                        disabled={isDisabled}
-                                      />
-                                    </div>
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-
-                          {!isEditing && (
-                            <div
-                              className={`grid grid-cols-1 gap-3 ${
-                                autoCreateProduct
-                                  ? "sm:grid-cols-3"
-                                  : "sm:grid-cols-2"
-                              }`}
-                            >
-                              <FormField
-                                control={form.control}
-                                name={`variants.${index}.initialQuantity`}
-                                render={({ field: f }) => (
-                                  <FormItem>
-                                    <FormLabel className="text-xs">
-                                      Initial quantity
-                                    </FormLabel>
-                                    <FormControl>
-                                      <NumericFormat
-                                        className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
-                                        value={f.value}
-                                        onValueChange={(v) =>
-                                          f.onChange(v.floatValue ?? 0)
-                                        }
-                                        thousandSeparator
-                                        placeholder="0"
-                                        disabled={isPending}
-                                        decimalScale={
-                                          watchedVariants?.[index]?.serialTracked
-                                            ? 0
-                                            : 6
-                                        }
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name={`variants.${index}.initialUnitCost`}
-                                render={({ field: f }) => {
-                                  const variant = watchedVariants?.[index];
-                                  const qty = Number(variant?.initialQuantity);
-                                  const cost = Number(f.value);
-                                  const showQtyNoCost =
-                                    Number.isFinite(qty) &&
-                                    qty > 0 &&
-                                    !(Number.isFinite(cost) && cost > 0);
-                                  return (
-                                    <FormItem>
-                                      <FormLabel className="text-xs">
-                                        Initial unit cost ({locationCurrency})
-                                      </FormLabel>
-                                      <FormControl>
-                                        <NumericFormat
-                                          className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
-                                          value={f.value}
-                                          onValueChange={(v) =>
-                                            f.onChange(v.floatValue ?? 0)
-                                          }
-                                          thousandSeparator
-                                          placeholder="0"
-                                          disabled={isPending}
-                                          decimalScale={4}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                      {showQtyNoCost && (
-                                        <p className="mt-1 flex items-center gap-1 text-[11px] text-amber-600">
-                                          <AlertTriangle className="h-3 w-3 shrink-0" />
-                                          Stock has quantity but no cost.
-                                        </p>
-                                      )}
-                                    </FormItem>
-                                  );
-                                }}
-                              />
-                              {autoCreateProduct && (
-                                <FormField
-                                  control={form.control}
-                                  name={`variants.${index}.sellingPrice`}
-                                  render={({ field: f }) => {
-                                    const variant = watchedVariants?.[index];
-                                    const cost = Number(variant?.initialUnitCost);
-                                    const price = Number(f.value);
-                                    const hasPrice =
-                                      Number.isFinite(price) && price > 0;
-                                    const hasCost =
-                                      Number.isFinite(cost) && cost > 0;
-                                    const showBelowCost =
-                                      hasPrice && hasCost && price < cost;
-                                    return (
-                                      <FormItem>
-                                        <FormLabel className="text-xs">
-                                          Selling price ({locationCurrency})
-                                        </FormLabel>
-                                        <FormControl>
-                                          <NumericFormat
-                                            className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
-                                            value={f.value ?? ""}
-                                            onValueChange={(v) =>
-                                              f.onChange(v.floatValue)
-                                            }
-                                            thousandSeparator
-                                            decimalScale={2}
-                                            allowNegative={false}
-                                            placeholder="0.00"
-                                            disabled={isPending}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                        {showBelowCost && (
-                                          <p className="mt-1 flex items-center gap-1 text-[11px] text-amber-600">
-                                            <AlertTriangle className="h-3 w-3 shrink-0" />
-                                            Below unit cost (
-                                            {formatMoney(cost, locationCurrency)}
-                                            ) — selling at a loss.
-                                          </p>
-                                        )}
-                                      </FormItem>
-                                    );
-                                  }}
-                                />
-                              )}
-                            </div>
-                          )}
-
-                          <FormField
-                            control={form.control}
-                            name={`variants.${index}.serialTracked`}
-                            render={({ field: f }) => (
-                              <FormItem className="flex items-center gap-2 space-y-0">
-                                <FormControl>
-                                  <Switch
-                                    checked={f.value}
-                                    onCheckedChange={f.onChange}
-                                    disabled={isDisabled}
-                                  />
-                                </FormControl>
-                                <FormLabel className="text-xs cursor-pointer">
-                                  Serial number tracking
-                                </FormLabel>
-                              </FormItem>
-                            )}
-                          />
-
-                          {!isEditing &&
-                            watchedVariants?.[index]?.serialTracked &&
-                            (watchedVariants?.[index]?.initialQuantity ?? 0) >
-                              0 &&
-                            (() => {
-                              const qty = Math.floor(
-                                watchedVariants[index].initialQuantity ?? 0,
-                              );
-                              const serials =
-                                watchedVariants?.[index]?.serialNumbers ?? [];
-                              const count = serials.filter((s) => s.trim()).length;
-                              const isValidCount = count === qty;
-
-                              return (
-                                <FormField
-                                  control={form.control}
-                                  name={`variants.${index}.serialNumbers`}
-                                  render={({ field: f }) => (
-                                    <FormItem>
-                                      <FormLabel className="text-xs">
-                                        Serial numbers
-                                        <span
-                                          className={`ml-2 text-[10px] font-normal ${
-                                            isValidCount
-                                              ? "text-green-600"
-                                              : "text-amber-600"
-                                          }`}
-                                        >
-                                          {count}/{qty} entered
-                                        </span>
-                                      </FormLabel>
-                                      <FormControl>
-                                        <Textarea
-                                          placeholder={`Enter ${qty} serial number${qty > 1 ? "s" : ""}, one per line`}
-                                          rows={Math.min(qty + 1, 8)}
-                                          value={(f.value ?? []).join("\n")}
-                                          onChange={(e) => {
-                                            const lines = e.target.value.split("\n");
-                                            f.onChange(lines);
-                                          }}
-                                          disabled={isPending}
-                                          className="font-mono text-sm"
-                                        />
-                                      </FormControl>
-                                      {!isValidCount && count > 0 && (
-                                        <p className="text-[11px] text-amber-600">
-                                          {count < qty
-                                            ? `${qty - count} more needed`
-                                            : `Too many — remove ${count - qty}`}
-                                        </p>
-                                      )}
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              );
-                            })()}
-
-                          {!isEditing &&
-                            (() => {
-                              const isOpen = reorderOpen[index] ?? false;
-                              const row = watchedVariants?.[index];
-                              const hasAnyValue =
-                                row?.reorderPoint != null ||
-                                row?.reorderQuantity != null ||
-                                (row?.preferredSupplierId &&
-                                  row.preferredSupplierId.length > 0) ||
-                                row?.lowStockThreshold != null ||
-                                row?.overstockThreshold != null;
-                              const baseUnit = unitMap.get(baseUnitId ?? "");
-                              const unitAbbr = baseUnit?.abbreviation ?? "";
-
-                              return (
-                                <div className="border-t pt-3 mt-2">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setReorderOpen((prev) => ({
-                                        ...prev,
-                                        [index]: !isOpen,
-                                      }))
-                                    }
-                                    className="flex items-center gap-2 text-xs font-medium text-gray-700 hover:text-gray-900"
-                                  >
-                                    {isOpen ? (
-                                      <ChevronDown className="h-3 w-3" />
-                                    ) : (
-                                      <ChevronRight className="h-3 w-3" />
-                                    )}
-                                    <SlidersHorizontal className="h-3 w-3" />
-                                    Reorder &amp; alert config
-                                    <span className="font-normal text-muted-foreground">
-                                      ({hasAnyValue ? "set" : "optional"})
-                                    </span>
-                                  </button>
-
-                                  {isOpen && (
-                                    <div className="mt-3 space-y-3 rounded-md border bg-gray-50/50 p-3">
-                                      <p className="text-[11px] text-muted-foreground">
-                                        Tells the system when to alert and
-                                        auto-generate an LPO. Safe to leave
-                                        empty — set these any time from the
-                                        stock detail page.
-                                      </p>
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <FormField
-                                          control={form.control}
-                                          name={`variants.${index}.reorderPoint`}
-                                          render={({ field: f }) => (
-                                            <FormItem>
-                                              <FormLabel className="text-xs">
-                                                Reorder point
-                                              </FormLabel>
-                                              <FormControl>
-                                                <NumericFormat
-                                                  className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
-                                                  value={f.value ?? ""}
-                                                  onValueChange={(v) =>
-                                                    f.onChange(
-                                                      v.value === ""
-                                                        ? undefined
-                                                        : Number(v.value),
-                                                    )
-                                                  }
-                                                  thousandSeparator
-                                                  decimalScale={6}
-                                                  allowNegative={false}
-                                                  placeholder="e.g. 20"
-                                                  disabled={isPending}
-                                                  suffix={
-                                                    unitAbbr
-                                                      ? ` ${unitAbbr}`
-                                                      : undefined
-                                                  }
-                                                />
-                                              </FormControl>
-                                              <p className="text-[11px] text-muted-foreground">
-                                                Fires an LPO when available ≤ this.
-                                              </p>
-                                              <FormMessage />
-                                            </FormItem>
-                                          )}
-                                        />
-                                        <FormField
-                                          control={form.control}
-                                          name={`variants.${index}.reorderQuantity`}
-                                          render={({ field: f }) => (
-                                            <FormItem>
-                                              <FormLabel className="text-xs">
-                                                Reorder quantity
-                                              </FormLabel>
-                                              <FormControl>
-                                                <NumericFormat
-                                                  className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
-                                                  value={f.value ?? ""}
-                                                  onValueChange={(v) =>
-                                                    f.onChange(
-                                                      v.value === ""
-                                                        ? undefined
-                                                        : Number(v.value),
-                                                    )
-                                                  }
-                                                  thousandSeparator
-                                                  decimalScale={6}
-                                                  allowNegative={false}
-                                                  placeholder="e.g. 100"
-                                                  disabled={isPending}
-                                                  suffix={
-                                                    unitAbbr
-                                                      ? ` ${unitAbbr}`
-                                                      : undefined
-                                                  }
-                                                />
-                                              </FormControl>
-                                              <p className="text-[11px] text-muted-foreground">
-                                                How much the LPO orders.
-                                              </p>
-                                              <FormMessage />
-                                            </FormItem>
-                                          )}
-                                        />
-                                      </div>
-
-                                      <FormField
-                                        control={form.control}
-                                        name={`variants.${index}.preferredSupplierId`}
-                                        render={({ field: f }) => (
-                                          <FormItem>
-                                            <FormLabel className="text-xs">
-                                              Preferred supplier
-                                            </FormLabel>
-                                            <FormControl>
-                                              <SupplierSelector
-                                                label="Preferred supplier"
-                                                placeholder="Optional — drives the auto-generated LPO"
-                                                value={f.value ?? ""}
-                                                onChange={f.onChange}
-                                                onBlur={() => {}}
-                                                isDisabled={isPending}
-                                              />
-                                            </FormControl>
-                                          </FormItem>
-                                        )}
-                                      />
-
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <FormField
-                                          control={form.control}
-                                          name={`variants.${index}.lowStockThreshold`}
-                                          render={({ field: f }) => (
-                                            <FormItem>
-                                              <FormLabel className="text-xs">
-                                                Low-stock threshold
-                                              </FormLabel>
-                                              <FormControl>
-                                                <NumericFormat
-                                                  className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
-                                                  value={f.value ?? ""}
-                                                  onValueChange={(v) =>
-                                                    f.onChange(
-                                                      v.value === ""
-                                                        ? undefined
-                                                        : Number(v.value),
-                                                    )
-                                                  }
-                                                  thousandSeparator
-                                                  decimalScale={6}
-                                                  allowNegative={false}
-                                                  placeholder="e.g. 10"
-                                                  disabled={isPending}
-                                                  suffix={
-                                                    unitAbbr
-                                                      ? ` ${unitAbbr}`
-                                                      : undefined
-                                                  }
-                                                />
-                                              </FormControl>
-                                              <FormMessage />
-                                            </FormItem>
-                                          )}
-                                        />
-                                        <FormField
-                                          control={form.control}
-                                          name={`variants.${index}.overstockThreshold`}
-                                          render={({ field: f }) => (
-                                            <FormItem>
-                                              <FormLabel className="text-xs">
-                                                Overstock threshold
-                                              </FormLabel>
-                                              <FormControl>
-                                                <NumericFormat
-                                                  className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
-                                                  value={f.value ?? ""}
-                                                  onValueChange={(v) =>
-                                                    f.onChange(
-                                                      v.value === ""
-                                                        ? undefined
-                                                        : Number(v.value),
-                                                    )
-                                                  }
-                                                  thousandSeparator
-                                                  decimalScale={6}
-                                                  allowNegative={false}
-                                                  placeholder="e.g. 500"
-                                                  disabled={isPending}
-                                                  suffix={
-                                                    unitAbbr
-                                                      ? ` ${unitAbbr}`
-                                                      : undefined
-                                                  }
-                                                />
-                                              </FormControl>
-                                              <FormMessage />
-                                            </FormItem>
-                                          )}
-                                        />
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
-                        </div>
-                      );
-                    })}
+                    {fields.map((field, index) => (
+                      <VariantRow
+                        key={field.id}
+                        index={index}
+                        form={form}
+                        isEditing={isEditing}
+                        isPending={isPending}
+                        archivingIndex={archivingIndex}
+                        generatingBarcode={generatingBarcode}
+                        balances={balances}
+                        item={item}
+                        fieldsLength={fields.length}
+                        handleVariantArchive={handleVariantArchive}
+                        handleGenerateBarcode={handleGenerateBarcode}
+                        removeVariant={remove}
+                        reorderOpen={reorderOpen}
+                        setReorderOpen={setReorderOpen}
+                        autoCreateProduct={autoCreateProduct}
+                        baseUnitAbbreviation={baseUnitAbbr}
+                        locationCurrency={locationCurrency}
+                      />
+                    ))}
                   </div>
                 </div>
               </section>
@@ -1742,3 +1168,613 @@ function StockMediaCard({
     </section>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// VariantRow — memoised so each row's keystroke only re-renders itself
+// rather than the whole `fields.map()`. Subscribes to its own variant
+// subtree via `useWatch`; parent-level state (isPending, balances, etc.)
+// arrives as props.
+// ─────────────────────────────────────────────────────────────────────
+
+interface VariantRowProps {
+  index: number;
+  form: UseFormReturn<z.infer<typeof StockSchema>>;
+  isEditing: boolean;
+  isPending: boolean;
+  archivingIndex: number | null;
+  generatingBarcode: number | null;
+  balances?: Record<
+    string,
+    { quantityOnHand: number; averageCost: number | null }
+  >;
+  item: Stock | null | undefined;
+  fieldsLength: number;
+  handleVariantArchive: (
+    index: number,
+    shouldArchive: boolean,
+  ) => Promise<void> | void;
+  handleGenerateBarcode: (index: number) => Promise<void> | void;
+  removeVariant: (index: number) => void;
+  reorderOpen: Record<number, boolean>;
+  setReorderOpen: React.Dispatch<
+    React.SetStateAction<Record<number, boolean>>
+  >;
+  autoCreateProduct: boolean;
+  baseUnitAbbreviation: string;
+  locationCurrency: string;
+}
+
+function VariantRowImpl({
+  index,
+  form,
+  isEditing,
+  isPending,
+  archivingIndex,
+  generatingBarcode,
+  balances,
+  item,
+  fieldsLength,
+  handleVariantArchive,
+  handleGenerateBarcode,
+  removeVariant,
+  reorderOpen,
+  setReorderOpen,
+  autoCreateProduct,
+  baseUnitAbbreviation,
+  locationCurrency,
+}: VariantRowProps) {
+  // One subscription on the variant subtree — sibling rows changing
+  // doesn't re-render this row.
+  const variant = useWatch({
+    control: form.control,
+    name: `variants.${index}` as const,
+  });
+  const variantId = variant?.id;
+  const isArchived = !!variant?.archived;
+  const isExisting = !!variantId;
+  const isDisabled = isPending || isArchived;
+  const bal = variantId && balances ? balances[variantId] : null;
+  const origVariant = item?.variants?.find((v) => v.id === variantId);
+  const unitAbbr = baseUnitAbbreviation;
+  const serialTracked = !!variant?.serialTracked;
+  const initialQuantity = variant?.initialQuantity ?? 0;
+
+  return (
+    <div
+      className={`border rounded-lg p-4 space-y-3 transition-opacity ${
+        isArchived ? "bg-muted/60 opacity-70" : "bg-muted/40"
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            Variant {index + 1}
+          </span>
+          {index === 0 && fieldsLength === 1 && !isEditing && (
+            <span className="text-xs font-normal text-muted-foreground">
+              (default)
+            </span>
+          )}
+          {origVariant?.isDefault && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 font-medium">
+              Default
+            </span>
+          )}
+          {isArchived && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+              Archived
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {isEditing && isExisting && (
+            <button
+              type="button"
+              onClick={() => handleVariantArchive(index, !isArchived)}
+              disabled={isPending || archivingIndex !== null}
+              className={`p-1.5 rounded text-xs flex items-center gap-1 transition-colors ${
+                isArchived
+                  ? "text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                  : "text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+              }`}
+            >
+              {archivingIndex === index ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : isArchived ? (
+                <ArchiveRestore className="w-3.5 h-3.5" />
+              ) : (
+                <Archive className="w-3.5 h-3.5" />
+              )}
+              <span>{isArchived ? "Unarchive" : "Archive"}</span>
+            </button>
+          )}
+          {fieldsLength > 1 && !isArchived && (
+            <button
+              type="button"
+              onClick={() => removeVariant(index)}
+              disabled={isPending}
+              className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-400 hover:text-red-500 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {isEditing && bal && (
+        <div className="flex gap-4 text-xs bg-blue-50/50 dark:bg-blue-950/20 rounded px-3 py-2">
+          <span className="text-muted-foreground">
+            Qty:{" "}
+            <strong className="text-foreground">
+              {bal.quantityOnHand.toLocaleString()}
+            </strong>
+          </span>
+          {bal.averageCost != null && bal.averageCost > 0 && (
+            <span className="text-muted-foreground">
+              Avg Cost:{" "}
+              <strong className="text-foreground">
+                {formatMoney(bal.averageCost, locationCurrency)}
+              </strong>
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <FormField
+          control={form.control}
+          name={`variants.${index}.name`}
+          render={({ field: f }) => (
+            <FormItem>
+              <FormLabel className="text-xs">
+                Name <span className="text-red-500">*</span>
+              </FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="e.g. 50kg Bag, 1L Bottle"
+                  {...f}
+                  disabled={isDisabled}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name={`variants.${index}.barcode`}
+          render={({ field: f }) => (
+            <FormItem>
+              <FormLabel className="text-xs">Barcode</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <BarcodeIcon className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    className="pl-10 pr-10"
+                    placeholder="Optional"
+                    {...f}
+                    value={f.value ?? ""}
+                    disabled={isDisabled}
+                  />
+                  {isEditing && isExisting && !f.value && (
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateBarcode(index)}
+                      disabled={isPending || generatingBarcode !== null}
+                      className="absolute right-2 top-2 p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      title="Generate barcode"
+                    >
+                      {generatingBarcode === index ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Wand2 className="w-4 h-4" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              </FormControl>
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name={`variants.${index}.sku`}
+          render={({ field: f }) => (
+            <FormItem>
+              <FormLabel className="text-xs">SKU</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Hash className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    className="pl-10"
+                    placeholder="Optional"
+                    {...f}
+                    value={f.value ?? ""}
+                    disabled={isDisabled}
+                  />
+                </div>
+              </FormControl>
+            </FormItem>
+          )}
+        />
+      </div>
+
+      {!isEditing && (
+        <div
+          className={`grid grid-cols-1 gap-3 ${
+            autoCreateProduct ? "sm:grid-cols-3" : "sm:grid-cols-2"
+          }`}
+        >
+          <FormField
+            control={form.control}
+            name={`variants.${index}.initialQuantity`}
+            render={({ field: f }) => (
+              <FormItem>
+                <FormLabel className="text-xs">Initial quantity</FormLabel>
+                <FormControl>
+                  <NumericFormat
+                    className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
+                    value={f.value}
+                    onValueChange={(v) => f.onChange(v.floatValue ?? 0)}
+                    thousandSeparator
+                    placeholder="0"
+                    disabled={isPending}
+                    decimalScale={serialTracked ? 0 : 6}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name={`variants.${index}.initialUnitCost`}
+            render={({ field: f }) => {
+              const qty = Number(variant?.initialQuantity);
+              const cost = Number(f.value);
+              const showQtyNoCost =
+                Number.isFinite(qty) &&
+                qty > 0 &&
+                !(Number.isFinite(cost) && cost > 0);
+              return (
+                <FormItem>
+                  <FormLabel className="text-xs">
+                    Initial unit cost ({locationCurrency})
+                  </FormLabel>
+                  <FormControl>
+                    <NumericFormat
+                      className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
+                      value={f.value}
+                      onValueChange={(v) => f.onChange(v.floatValue ?? 0)}
+                      thousandSeparator
+                      placeholder="0"
+                      disabled={isPending}
+                      decimalScale={4}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                  {showQtyNoCost && (
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-amber-600">
+                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                      Stock has quantity but no cost.
+                    </p>
+                  )}
+                </FormItem>
+              );
+            }}
+          />
+          {autoCreateProduct && (
+            <FormField
+              control={form.control}
+              name={`variants.${index}.sellingPrice`}
+              render={({ field: f }) => {
+                const cost = Number(variant?.initialUnitCost);
+                const price = Number(f.value);
+                const hasPrice = Number.isFinite(price) && price > 0;
+                const hasCost = Number.isFinite(cost) && cost > 0;
+                const showBelowCost = hasPrice && hasCost && price < cost;
+                return (
+                  <FormItem>
+                    <FormLabel className="text-xs">
+                      Selling price ({locationCurrency})
+                    </FormLabel>
+                    <FormControl>
+                      <NumericFormat
+                        className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
+                        value={f.value ?? ""}
+                        onValueChange={(v) => f.onChange(v.floatValue)}
+                        thousandSeparator
+                        decimalScale={2}
+                        allowNegative={false}
+                        placeholder="0.00"
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    {showBelowCost && (
+                      <p className="mt-1 flex items-center gap-1 text-[11px] text-amber-600">
+                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                        Below unit cost ({formatMoney(cost, locationCurrency)})
+                        — selling at a loss.
+                      </p>
+                    )}
+                  </FormItem>
+                );
+              }}
+            />
+          )}
+        </div>
+      )}
+
+      <FormField
+        control={form.control}
+        name={`variants.${index}.serialTracked`}
+        render={({ field: f }) => (
+          <FormItem className="flex items-center gap-2 space-y-0">
+            <FormControl>
+              <Switch
+                checked={f.value}
+                onCheckedChange={f.onChange}
+                disabled={isDisabled}
+              />
+            </FormControl>
+            <FormLabel className="text-xs cursor-pointer">
+              Serial number tracking
+            </FormLabel>
+          </FormItem>
+        )}
+      />
+
+      {!isEditing &&
+        serialTracked &&
+        initialQuantity > 0 &&
+        (() => {
+          const qty = Math.floor(initialQuantity);
+          const serials = variant?.serialNumbers ?? [];
+          const count = serials.filter((s) => s.trim()).length;
+          const isValidCount = count === qty;
+
+          return (
+            <FormField
+              control={form.control}
+              name={`variants.${index}.serialNumbers`}
+              render={({ field: f }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">
+                    Serial numbers
+                    <span
+                      className={`ml-2 text-[10px] font-normal ${
+                        isValidCount ? "text-green-600" : "text-amber-600"
+                      }`}
+                    >
+                      {count}/{qty} entered
+                    </span>
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder={`Enter ${qty} serial number${qty > 1 ? "s" : ""}, one per line`}
+                      rows={Math.min(qty + 1, 8)}
+                      value={(f.value ?? []).join("\n")}
+                      onChange={(e) => {
+                        const lines = e.target.value.split("\n");
+                        f.onChange(lines);
+                      }}
+                      disabled={isPending}
+                      className="font-mono text-sm"
+                    />
+                  </FormControl>
+                  {!isValidCount && count > 0 && (
+                    <p className="text-[11px] text-amber-600">
+                      {count < qty
+                        ? `${qty - count} more needed`
+                        : `Too many — remove ${count - qty}`}
+                    </p>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          );
+        })()}
+
+      {!isEditing &&
+        (() => {
+          const isOpen = reorderOpen[index] ?? false;
+          const hasAnyValue =
+            variant?.reorderPoint != null ||
+            variant?.reorderQuantity != null ||
+            (variant?.preferredSupplierId &&
+              variant.preferredSupplierId.length > 0) ||
+            variant?.lowStockThreshold != null ||
+            variant?.overstockThreshold != null;
+
+          return (
+            <div className="border-t pt-3 mt-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setReorderOpen((prev) => ({
+                    ...prev,
+                    [index]: !isOpen,
+                  }))
+                }
+                className="flex items-center gap-2 text-xs font-medium text-gray-700 hover:text-gray-900"
+              >
+                {isOpen ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
+                )}
+                <SlidersHorizontal className="h-3 w-3" />
+                Reorder &amp; alert config
+                <span className="font-normal text-muted-foreground">
+                  ({hasAnyValue ? "set" : "optional"})
+                </span>
+              </button>
+
+              {isOpen && (
+                <div className="mt-3 space-y-3 rounded-md border bg-gray-50/50 p-3">
+                  <p className="text-[11px] text-muted-foreground">
+                    Tells the system when to alert and auto-generate an LPO.
+                    Safe to leave empty — set these any time from the stock
+                    detail page.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name={`variants.${index}.reorderPoint`}
+                      render={({ field: f }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            Reorder point
+                          </FormLabel>
+                          <FormControl>
+                            <NumericFormat
+                              className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
+                              value={f.value ?? ""}
+                              onValueChange={(v) =>
+                                f.onChange(
+                                  v.value === "" ? undefined : Number(v.value),
+                                )
+                              }
+                              thousandSeparator
+                              decimalScale={6}
+                              allowNegative={false}
+                              placeholder="e.g. 20"
+                              disabled={isPending}
+                              suffix={unitAbbr ? ` ${unitAbbr}` : undefined}
+                            />
+                          </FormControl>
+                          <p className="text-[11px] text-muted-foreground">
+                            Fires an LPO when available ≤ this.
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`variants.${index}.reorderQuantity`}
+                      render={({ field: f }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            Reorder quantity
+                          </FormLabel>
+                          <FormControl>
+                            <NumericFormat
+                              className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
+                              value={f.value ?? ""}
+                              onValueChange={(v) =>
+                                f.onChange(
+                                  v.value === "" ? undefined : Number(v.value),
+                                )
+                              }
+                              thousandSeparator
+                              decimalScale={6}
+                              allowNegative={false}
+                              placeholder="e.g. 100"
+                              disabled={isPending}
+                              suffix={unitAbbr ? ` ${unitAbbr}` : undefined}
+                            />
+                          </FormControl>
+                          <p className="text-[11px] text-muted-foreground">
+                            How much the LPO orders.
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name={`variants.${index}.preferredSupplierId`}
+                    render={({ field: f }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">
+                          Preferred supplier
+                        </FormLabel>
+                        <FormControl>
+                          <SupplierSelector
+                            label="Preferred supplier"
+                            placeholder="Optional — drives the auto-generated LPO"
+                            value={f.value ?? ""}
+                            onChange={f.onChange}
+                            onBlur={() => {}}
+                            isDisabled={isPending}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name={`variants.${index}.lowStockThreshold`}
+                      render={({ field: f }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            Low-stock threshold
+                          </FormLabel>
+                          <FormControl>
+                            <NumericFormat
+                              className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
+                              value={f.value ?? ""}
+                              onValueChange={(v) =>
+                                f.onChange(
+                                  v.value === "" ? undefined : Number(v.value),
+                                )
+                              }
+                              thousandSeparator
+                              decimalScale={6}
+                              allowNegative={false}
+                              placeholder="e.g. 10"
+                              disabled={isPending}
+                              suffix={unitAbbr ? ` ${unitAbbr}` : undefined}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`variants.${index}.overstockThreshold`}
+                      render={({ field: f }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            Overstock threshold
+                          </FormLabel>
+                          <FormControl>
+                            <NumericFormat
+                              className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
+                              value={f.value ?? ""}
+                              onValueChange={(v) =>
+                                f.onChange(
+                                  v.value === "" ? undefined : Number(v.value),
+                                )
+                              }
+                              thousandSeparator
+                              decimalScale={6}
+                              allowNegative={false}
+                              placeholder="e.g. 500"
+                              disabled={isPending}
+                              suffix={unitAbbr ? ` ${unitAbbr}` : undefined}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+    </div>
+  );
+}
+
+const VariantRow = React.memo(VariantRowImpl);

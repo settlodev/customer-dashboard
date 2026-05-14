@@ -40,7 +40,6 @@ function buildSpacePayload(
     posX: d.posX ?? null,
     posY: d.posY ?? null,
     color: d.color ?? "",
-    needsCleaning: d.needsCleaning,
     description: d.description ?? null,
     sortOrder: d.sortOrder ?? null,
     parentSpaceId: d.parentSpaceId ?? null,

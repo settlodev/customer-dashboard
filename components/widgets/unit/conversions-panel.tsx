@@ -46,6 +46,7 @@ import {
   deleteConversion,
   updateConversion,
 } from "@/lib/actions/unit-actions";
+import { invalidateUnitsCache } from "@/lib/cache/reference-data";
 import {
   UnitConversionSchema,
   type UnitConversion,
@@ -96,6 +97,7 @@ export function ConversionsPanel({ unit, allUnits, conversions }: Props) {
     startTransition(async () => {
       const res = await updateConversion(editing.id, parsed, unit.id);
       if (res.responseType === "success") {
+        invalidateUnitsCache();
         toast({ variant: "success", title: "Saved", description: res.message });
         setEditing(null);
         router.refresh();
@@ -110,6 +112,7 @@ export function ConversionsPanel({ unit, allUnits, conversions }: Props) {
     startTransition(async () => {
       const res = await deleteConversion(confirmDelete.id, unit.id);
       if (res.responseType === "success") {
+        invalidateUnitsCache();
         toast({ variant: "success", title: "Removed", description: res.message });
         setConfirmDelete(null);
         router.refresh();
@@ -342,6 +345,7 @@ function AddConversionDialog({
     startTransition(async () => {
       const res = await createConversion(values);
       if (res.responseType === "success") {
+        invalidateUnitsCache();
         toast({ variant: "success", title: "Saved", description: res.message });
         onOpenChange(false);
         router.refresh();

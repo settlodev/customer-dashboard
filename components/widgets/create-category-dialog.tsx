@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 
 import { createCategory } from "@/lib/actions/category-actions";
 import { fetchDepartmentsForCurrentLocation } from "@/lib/actions/department-actions";
+import { invalidateCategoriesCache } from "@/lib/cache/reference-data";
 import type { Category } from "@/types/category/type";
 import type { Department } from "@/types/department/type";
 
@@ -110,6 +111,7 @@ export default function CreateCategoryDialog({
         pathname ?? "",
       );
       if (result.responseType === "success" && result.data) {
+        invalidateCategoriesCache();
         toast({ title: "Category created", description: trimmed });
         await onCreated(result.data);
         setOpen(false);

@@ -31,6 +31,7 @@ import {
   deleteUnit,
   unarchiveUnit,
 } from "@/lib/actions/unit-actions";
+import { invalidateUnitsCache } from "@/lib/cache/reference-data";
 import type { UnitOfMeasure } from "@/types/unit/type";
 
 /**
@@ -50,6 +51,7 @@ export function UnitStatusActions({ unit }: { unit: UnitOfMeasure }) {
     startTransition(async () => {
       const res = await fn();
       if (res.responseType === "success") {
+        invalidateUnitsCache();
         toast({ variant: "success", title: "Done", description: res.message });
         router.refresh();
       } else {
@@ -62,6 +64,7 @@ export function UnitStatusActions({ unit }: { unit: UnitOfMeasure }) {
     startTransition(async () => {
       const res = await deleteUnit(unit.id);
       if (res.responseType === "success") {
+        invalidateUnitsCache();
         toast({ variant: "success", title: "Deleted", description: res.message });
         router.push("/units");
       } else {

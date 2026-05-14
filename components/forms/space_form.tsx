@@ -136,7 +136,6 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
           posX: item.posX ?? undefined,
           posY: item.posY ?? undefined,
           color: item.color ?? undefined,
-          needsCleaning: item.needsCleaning,
           description: item.description ?? undefined,
           sortOrder: item.sortOrder ?? undefined,
           parentSpaceId: item.parentSpaceId ?? undefined,
@@ -145,7 +144,6 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
       : {
           active: true,
           reservable: true,
-          needsCleaning: false,
           type: defaultType,
           capacity: mode === "table" ? 2 : 20,
         },
@@ -175,7 +173,6 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
   const color = form.watch("color");
   const active = form.watch("active");
   const reservable = form.watch("reservable");
-  const needsCleaning = form.watch("needsCleaning");
   const parentSpaceId = form.watch("parentSpaceId");
   const floorPlanId = form.watch("floorPlanId");
 
@@ -862,30 +859,6 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
                         />
                       )}
 
-                      <FormField
-                        control={form.control}
-                        name="needsCleaning"
-                        render={({ field }) => (
-                          <FormItem className={styles.toggleRow}>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium">
-                                Needs cleaning
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                Flag this table for a turnover before next
-                                seating.
-                              </p>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={!!field.value}
-                                onCheckedChange={field.onChange}
-                                disabled={isPending}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
                     </div>
                   </div>
                 </>
@@ -949,7 +922,6 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
               color={color}
               active={!!active}
               reservable={!!reservable}
-              needsCleaning={!!needsCleaning}
               parentName={parentName}
               floorPlanName={floorPlanName}
               checklist={[
@@ -1029,7 +1001,6 @@ interface SpaceLivePreviewProps {
   color: string | undefined;
   active: boolean;
   reservable: boolean;
-  needsCleaning: boolean;
   parentName: string | undefined;
   floorPlanName: string | undefined;
   checklist: Array<{ label: string; done: boolean }>;
@@ -1045,7 +1016,6 @@ function SpaceLivePreviewCard({
   color,
   active,
   reservable,
-  needsCleaning,
   parentName,
   floorPlanName,
   checklist,
@@ -1105,11 +1075,6 @@ function SpaceLivePreviewCard({
           {!active && (
             <Badge variant="warn" className="text-[10.5px]">
               <Power className="mr-1 h-2.5 w-2.5" /> Inactive
-            </Badge>
-          )}
-          {needsCleaning && (
-            <Badge variant="warn" className="text-[10.5px]">
-              <Sparkles className="mr-1 h-2.5 w-2.5" /> Needs cleaning
             </Badge>
           )}
         </div>

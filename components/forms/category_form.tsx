@@ -28,9 +28,12 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   createCategory,
-  fetchAllCategories,
   updateCategory,
 } from "@/lib/actions/category-actions";
+import {
+  invalidateCategoriesCache,
+  useCachedCategories,
+} from "@/lib/cache/reference-data";
 import type { Department } from "@/types/department/type";
 import { Category } from "@/types/category/type";
 import { CategorySchema } from "@/types/category/schema";
@@ -64,15 +67,12 @@ const CategoryForm = ({
 }: CategoryFormProps) => {
   const [isPending, startTransition] = useTransition();
   const [imageUrl, setImageUrl] = useState<string>(item?.imageUrl || "");
-  const [categories, setCategories] = useState<Category[] | null>([]);
+  const { data: cachedCategoriesData } = useCachedCategories();
+  const categories: Category[] | null = cachedCategoriesData ?? [];
 
   const { toast } = useToast();
   const router = useRouter();
   const isEditing = !!item;
-
-  useEffect(() => {
-    fetchAllCategories().then(setCategories);
-  }, []);
 
   const form = useForm<z.infer<typeof CategorySchema>>({
     resolver: zodResolver(CategorySchema),
@@ -111,6 +111,7 @@ const CategoryForm = ({
       if (item) {
         updateCategory(item.id, values, "category").then((data) => {
           if (data?.responseType === "success") {
+            invalidateCategoriesCache();
             toast({ variant: "success", title: "Success", description: data.message });
           } else if (data?.responseType === "error") {
             toast({ variant: "destructive", title: "Error", description: data.message });
@@ -119,6 +120,7 @@ const CategoryForm = ({
       } else {
         createCategory(values, "category").then((data) => {
           if (data?.responseType === "success") {
+            invalidateCategoriesCache();
             toast({ variant: "success", title: "Success", description: data.message });
             router.push("/categories");
           } else if (data?.responseType === "error") {

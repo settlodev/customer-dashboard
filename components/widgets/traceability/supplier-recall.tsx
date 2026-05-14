@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { AlertTriangle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,7 @@ import {
   fetchBatchesBySupplier,
   recallBySupplier,
 } from "@/lib/actions/traceability-actions";
-import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
+import { useCachedSuppliers } from "@/lib/cache/reference-data";
 import { Supplier } from "@/types/supplier/type";
 import { StockBatchSummary } from "@/types/traceability/type";
 
@@ -54,8 +54,8 @@ function toIsoEnd(date: string | null): string | null {
  * needs to be pulled in one action.
  */
 export function SupplierRecall() {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [suppliersLoading, setSuppliersLoading] = useState(true);
+  const { data: suppliersData, loading: suppliersLoading } = useCachedSuppliers();
+  const suppliers: Supplier[] = suppliersData ?? [];
 
   const [supplierId, setSupplierId] = useState<string>("");
   const [receivedAfter, setReceivedAfter] = useState<string>("");
@@ -72,12 +72,6 @@ export function SupplierRecall() {
 
   const { toast } = useToast();
   const router = useRouter();
-
-  useEffect(() => {
-    fetchAllSuppliers()
-      .then((list) => setSuppliers(list ?? []))
-      .finally(() => setSuppliersLoading(false));
-  }, []);
 
   const runPreview = () => {
     if (!supplierId) {

@@ -23,10 +23,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { getCompatibleUnits } from "@/lib/actions/unit-actions";
 import {
-  getCompatibleUnits,
-  getUnits,
-} from "@/lib/actions/unit-actions";
+  unitsCache,
+  useCachedUnits,
+} from "@/lib/cache/reference-data";
 import type { CompatibleUnit, UnitOfMeasure } from "@/types/unit/type";
 
 interface Props {
@@ -43,23 +44,17 @@ interface Props {
   onBlur?: () => void;
 }
 
-// Module-level caches shared across instances so each anchor / "all units"
-// fetch happens once per session.
-let allUnitsCache: UnitOfMeasure[] | null = null;
-let allUnitsPromise: Promise<UnitOfMeasure[]> | null = null;
+// Per-anchor compatibility lookups stay local — they're parameterised by
+// anchor and therefore not a fit for the shared reference cache. When the
+// shared units cache is invalidated (any unit or conversion mutation), every
+// compat entry becomes potentially stale, so we clear them in lockstep.
 const compatCache = new Map<string, CompatibleUnit[]>();
 const compatPromises = new Map<string, Promise<CompatibleUnit[]>>();
 
-function fetchAllUnits(): Promise<UnitOfMeasure[]> {
-  if (allUnitsCache) return Promise.resolve(allUnitsCache);
-  if (!allUnitsPromise) {
-    allUnitsPromise = getUnits().then((d) => {
-      allUnitsCache = d;
-      return d;
-    });
-  }
-  return allUnitsPromise;
-}
+unitsCache.subscribe(() => {
+  compatCache.clear();
+  compatPromises.clear();
+});
 
 function fetchCompat(anchorId: string): Promise<CompatibleUnit[]> {
   const cached = compatCache.get(anchorId);
@@ -74,6 +69,8 @@ function fetchCompat(anchorId: string): Promise<CompatibleUnit[]> {
   }
   return p;
 }
+
+const EMPTY_UNITS: UnitOfMeasure[] = [];
 
 /**
  * Unit picker that narrows to units reachable from `anchorUnitId` in one hop.
@@ -94,13 +91,10 @@ const CompatibleUnitSelector: React.FC<Props> = ({
   onBlur,
 }) => {
   const [open, setOpen] = useState(false);
-  const [allUnits, setAllUnits] = useState<UnitOfMeasure[]>(allUnitsCache ?? []);
-  const [compat, setCompat] = useState<CompatibleUnit[] | null>(
-    anchorUnitId ? compatCache.get(anchorUnitId) ?? null : null,
-  );
-  const [isLoading, setIsLoading] = useState(
-    anchorUnitId ? !compatCache.has(anchorUnitId) : !allUnitsCache,
-  );
+  const { data: allUnitsData, loading: allUnitsLoading } = useCachedUnits();
+  const allUnits = allUnitsData ?? EMPTY_UNITS;
+  const [compat, setCompat] = useState<CompatibleUnit[] | null>(null);
+  const [compatLoading, setCompatLoading] = useState<boolean>(!!anchorUnitId);
   const [search, setSearch] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [triggerWidth, setTriggerWidth] = useState(0);
@@ -115,32 +109,39 @@ const CompatibleUnitSelector: React.FC<Props> = ({
     return () => ro.disconnect();
   }, []);
 
-  // Always have all units available — used for the "Selected (not compatible)"
-  // fallback row and for the no-anchor path.
-  useEffect(() => {
-    if (allUnits.length > 0) return;
-    fetchAllUnits().then(setAllUnits).catch(() => setAllUnits([]));
-  }, [allUnits.length]);
-
-  // Refetch compatibility set whenever the anchor changes.
+  // Refetch compatibility set whenever the anchor changes or the units cache
+  // is invalidated (a mutation clears compatCache via the module-level
+  // subscription, so we re-fetch from scratch).
   useEffect(() => {
     if (!anchorUnitId) {
       setCompat(null);
-      setIsLoading(allUnits.length === 0);
+      setCompatLoading(false);
       return;
     }
     const cached = compatCache.get(anchorUnitId);
     if (cached) {
       setCompat(cached);
-      setIsLoading(false);
+      setCompatLoading(false);
       return;
     }
-    setIsLoading(true);
+    setCompatLoading(true);
+    let cancelled = false;
     fetchCompat(anchorUnitId)
-      .then((d) => setCompat(d))
-      .catch(() => setCompat([]))
-      .finally(() => setIsLoading(false));
-  }, [anchorUnitId, allUnits.length]);
+      .then((d) => {
+        if (!cancelled) setCompat(d);
+      })
+      .catch(() => {
+        if (!cancelled) setCompat([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCompatLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [anchorUnitId, allUnitsData]);
+
+  const isLoading = anchorUnitId ? compatLoading : allUnitsLoading;
 
   const anchorAbbr = useMemo(() => {
     if (!anchorUnitId) return null;

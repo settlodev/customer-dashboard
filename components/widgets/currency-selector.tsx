@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { fetchCountries } from "@/lib/actions/countries-actions";
+import { getCachedCountries } from "@/lib/cache/reference-data";
 
 const COMMON_CURRENCIES: { code: string; name: string }[] = [
   { code: "TZS", name: "Tanzanian Shilling" },
@@ -66,9 +66,8 @@ const CurrencySelector: React.FC<Props> = ({
   useEffect(() => {
     if (!includeAllCountries) return;
     let cancelled = false;
-    (async () => {
-      try {
-        const countries = await fetchCountries();
+    getCachedCountries()
+      .then((countries) => {
         if (cancelled || !Array.isArray(countries)) return;
         const seen = new Set(COMMON_CURRENCIES.map((c) => c.code));
         const derived: { code: string; name: string }[] = [];
@@ -79,10 +78,10 @@ const CurrencySelector: React.FC<Props> = ({
           derived.push({ code, name: country.name });
         }
         if (!cancelled) setExtra(derived);
-      } catch {
+      })
+      .catch(() => {
         if (!cancelled) setExtra([]);
-      }
-    })();
+      });
     return () => {
       cancelled = true;
     };

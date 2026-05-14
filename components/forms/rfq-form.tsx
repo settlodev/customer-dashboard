@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import React, { useCallback, useMemo, useState, useTransition } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -55,7 +55,7 @@ import StockVariantSelector from "../widgets/stock-variant-selector";
 import CurrencySelector from "@/components/widgets/currency-selector";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
 import { createRfq } from "@/lib/actions/rfq-actions";
-import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
+import { useCachedSuppliers } from "@/lib/cache/reference-data";
 import { CreateRfqSchema } from "@/types/rfq/schema";
 import type { FormResponse } from "@/types/types";
 
@@ -70,26 +70,11 @@ export default function RfqForm() {
   const { toast } = useToast();
   const locationCurrency = useLocationCurrency();
 
-  const [supplierOptions, setSupplierOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchAllSuppliers()
-      .then((suppliers) => {
-        if (cancelled) return;
-        setSupplierOptions(
-          suppliers.map((s) => ({ label: s.name, value: s.id })),
-        );
-      })
-      .catch(() => {
-        if (!cancelled) setSupplierOptions([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data: suppliersData } = useCachedSuppliers();
+  const supplierOptions = useMemo(
+    () => (suppliersData ?? []).map((s) => ({ label: s.name, value: s.id })),
+    [suppliersData],
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(CreateRfqSchema),

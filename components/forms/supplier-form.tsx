@@ -50,6 +50,7 @@ import type { FormResponse } from "@/types/types";
 import type { Supplier, SettloSupplier } from "@/types/supplier/type";
 import { SupplierSchema } from "@/types/supplier/schema";
 import { createSupplier, updateSupplier } from "@/lib/actions/supplier-actions";
+import { invalidateSuppliersCache } from "@/lib/cache/reference-data";
 import { fetchSettloSupplierCatalog } from "@/lib/actions/settlo-supplier-actions";
 
 import styles from "./styles/form-shell.module.css";
@@ -146,6 +147,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
         : await createSupplier(values);
       setResponse(res);
       if (res.responseType === "success") {
+        invalidateSuppliersCache();
         toast({ variant: "success", title: "Saved", description: res.message });
         if (item) {
           router.refresh();

@@ -26,6 +26,7 @@ import {
   reactivateCustomer,
   restoreCustomer,
 } from "@/lib/actions/customer-actions";
+import { invalidateCustomersCache } from "@/lib/cache/reference-data";
 
 interface CellActionProps {
   data: Customer;
@@ -42,6 +43,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const handleDeactivate = async () => {
     try {
       await deactivateCustomer(data.id);
+      invalidateCustomersCache();
       toast({
         title: "Deactivated",
         description: `${fullName} has been deactivated.`,
@@ -64,6 +66,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     setIsReactivating(true);
     try {
       await reactivateCustomer(data.id);
+      invalidateCustomersCache();
       toast({
         title: "Reactivated",
         description: `${fullName} is back to active.`,
@@ -86,6 +89,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     setIsRestoring(true);
     try {
       await restoreCustomer(data.id);
+      invalidateCustomersCache();
       toast({
         title: "Restored",
         description: `${fullName} has been restored.`,

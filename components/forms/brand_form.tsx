@@ -31,6 +31,7 @@ import {
 import { Brand } from "@/types/brand/type";
 import { BrandSchema } from "@/types/brand/schema";
 import { createBrand, updateBrand } from "@/lib/actions/brand-actions";
+import { invalidateBrandsCache } from "@/lib/cache/reference-data";
 import { useRouter } from "next/navigation";
 import UploadImageWidget from "../widgets/UploadImageWidget";
 import { CheckCircle2, Tag, Trash2 } from "lucide-react";
@@ -75,6 +76,7 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
       if (item) {
         updateBrand(item.id, values).then((data) => {
           if (data && data.responseType === "success") {
+            invalidateBrandsCache();
             toast({ variant: "success", title: "Success", description: data.message });
             router.push("/brands");
           }
@@ -83,6 +85,7 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
         createBrand(values)
           .then((data) => {
             if (data && data.responseType === "success") {
+              invalidateBrandsCache();
               toast({ variant: "success", title: "Success", description: data.message });
               router.push("/brands");
             }

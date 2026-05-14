@@ -66,6 +66,8 @@ import { FormResponse } from "@/types/types";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 import type { VariantMeta } from "@/components/widgets/stock-variant-selector";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
+import { useLocationConfig } from "@/hooks/use-location-config";
+import { useInventoryEventRefresh } from "@/hooks/use-inventory-event-refresh";
 
 import styles from "./styles/form-shell.module.css";
 
@@ -110,6 +112,7 @@ export default function StockModificationForm() {
   });
 
   const watchedItems = form.watch("items");
+  const { config: locationConfig } = useLocationConfig();
 
   const loadBalance = useCallback(
     async (fieldId: string, variantId: string, fallbackName?: string) => {
@@ -166,6 +169,18 @@ export default function StockModificationForm() {
     },
     [form, loadBalance],
   );
+
+  // If an intake / sale / adjustment lands elsewhere while the form is
+  // open, refresh every row's displayed balance. Cooldown protects against
+  // POS event bursts; loadBalance preserves the prior variantName so the
+  // row label doesn't flicker during the refetch.
+  useInventoryEventRefresh(locationConfig?.locationId, () => {
+    const items = form.getValues("items");
+    fields.forEach((field, index) => {
+      const variantId = items[index]?.stockVariantId;
+      if (variantId) void loadBalance(field.id, variantId);
+    });
+  });
 
   const handleVariantMeta = useCallback(
     (fieldId: string, meta: VariantMeta | null) => {

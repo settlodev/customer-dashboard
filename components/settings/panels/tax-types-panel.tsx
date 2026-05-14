@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Loader2, Plus, Star, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -21,16 +21,19 @@ import { SettingsSection } from "../shared/settings-section";
 import {
   createTaxType,
   deleteTaxType,
-  fetchAllTaxTypes,
   setDefaultTaxType,
   updateTaxType,
 } from "@/lib/actions/tax-type-actions";
+import {
+  invalidateTaxTypesCache,
+  useCachedTaxTypes,
+} from "@/lib/cache/reference-data";
 import type { TaxType } from "@/types/tax-type/type";
 
 export function TaxTypesPanel() {
   const { toast } = useToast();
-  const [items, setItems] = useState<TaxType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: itemsData, loading } = useCachedTaxTypes();
+  const items: TaxType[] = itemsData ?? [];
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState<TaxType | null>(null);
   const [open, setOpen] = useState(false);
@@ -40,17 +43,6 @@ export function TaxTypesPanel() {
     ratePercent: "0",
     sortOrder: "0",
   });
-
-  const reload = async () => {
-    setLoading(true);
-    const data = await fetchAllTaxTypes();
-    setItems(data);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    reload();
-  }, []);
 
   const openNew = () => {
     setEditing(null);
@@ -86,8 +78,8 @@ export function TaxTypesPanel() {
         description: result.message,
       });
       if (result.responseType === "success") {
+        invalidateTaxTypesCache();
         setOpen(false);
-        await reload();
       }
     });
 
@@ -107,7 +99,7 @@ export function TaxTypesPanel() {
         title: result.responseType === "success" ? "Deleted" : "Error",
         description: result.message,
       });
-      if (result.responseType === "success") await reload();
+      if (result.responseType === "success") invalidateTaxTypesCache();
     });
 
   const onSetDefault = (t: TaxType) =>
@@ -118,7 +110,7 @@ export function TaxTypesPanel() {
         title: result.responseType === "success" ? "Default updated" : "Error",
         description: result.message,
       });
-      if (result.responseType === "success") await reload();
+      if (result.responseType === "success") invalidateTaxTypesCache();
     });
 
   return (

@@ -92,6 +92,7 @@ import {
   createCustomer,
   updateCustomer,
 } from "@/lib/actions/customer-actions";
+import { invalidateCustomersCache } from "@/lib/cache/reference-data";
 
 import { initialsFor, thumbColor } from "@/components/tables/shared/table-avatar";
 import styles from "./styles/form-shell.module.css";
@@ -239,6 +240,7 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
           if (!result) return;
           setResponse(result);
           if (result.responseType === "success") {
+            invalidateCustomersCache();
             toast({
               variant: "success",
               title: isEditMode ? "Customer updated" : "Customer created",

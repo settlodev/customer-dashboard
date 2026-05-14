@@ -25,7 +25,6 @@ import { Template } from "@/types/communication-templates/types";
 // import "react-quill/dist/quill.snow.css";
 import DateTimePicker from "../widgets/datetimepicker";
 import { Customer } from "@/types/customer/type";
-import {fetchAllCustomers } from "@/lib/actions/customer-actions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Checkbox } from "../ui/checkbox";
 import { Email } from "@/types/email/type";
@@ -34,7 +33,10 @@ import { sendEmail } from "@/lib/actions/broadcast-email-action";
 import { MultiSelect } from "../ui/multi-select";
 // import ReactQuill from "react-quill";
 import { Staff } from "@/types/staff";
-import { fetchAllStaff } from "@/lib/actions/staff-actions";
+import {
+  getCachedCustomers,
+  getCachedStaff,
+} from "@/lib/cache/reference-data";
 import { fetchTemplates } from "@/lib/actions/communication-templates-actions";
 import { Textarea } from "../ui/textarea";
 
@@ -96,9 +98,9 @@ const EmailForm = ({
     const fetchData = async () => {
       try {
         const [customerResponse, templateResponse, staffResponse] = await Promise.all([
-         fetchAllCustomers(),
+         getCachedCustomers(),
          fetchTemplates(),
-          fetchAllStaff(),
+          getCachedStaff(),
         ]);
         setCustomers(customerResponse);
         setTemplates(templateResponse);

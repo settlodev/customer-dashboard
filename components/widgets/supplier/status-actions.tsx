@@ -31,6 +31,7 @@ import {
   deleteSupplier,
   unarchiveSupplier,
 } from "@/lib/actions/supplier-actions";
+import { invalidateSuppliersCache } from "@/lib/cache/reference-data";
 import type { Supplier } from "@/types/supplier/type";
 
 /**
@@ -48,6 +49,7 @@ export function SupplierStatusActions({ supplier }: { supplier: Supplier }) {
     startTransition(async () => {
       const res = await fn();
       if (res.responseType === "success") {
+        invalidateSuppliersCache();
         toast({ variant: "success", title: "Done", description: res.message });
         router.refresh();
       } else {
@@ -60,6 +62,7 @@ export function SupplierStatusActions({ supplier }: { supplier: Supplier }) {
     startTransition(async () => {
       const res = await deleteSupplier(supplier.id);
       if (res.responseType === "success") {
+        invalidateSuppliersCache();
         toast({ variant: "success", title: "Deleted", description: res.message });
         router.push("/suppliers");
       } else {

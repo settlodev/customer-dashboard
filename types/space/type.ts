@@ -15,7 +15,6 @@ export declare interface Space {
   posX: number | null;
   posY: number | null;
   color: string | null;
-  needsCleaning: boolean;
   description: string | null;
   sortOrder: number | null;
   parentSpaceId: UUID | null;
@@ -76,7 +75,6 @@ export declare interface SpaceDTO {
   posX: number | null;
   posY: number | null;
   color: string;
-  needsCleaning: boolean;
   description: string | null;
   sortOrder: number | null;
   parentSpaceId: string | null;

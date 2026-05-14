@@ -19,7 +19,7 @@ import {
   cancelSchedule,
 } from "@/lib/actions/shift-schedule-actions";
 import { fectchAllShifts } from "@/lib/actions/shift-actions";
-import { fetchAllStaff } from "@/lib/actions/staff-actions";
+import { getCachedStaff } from "@/lib/cache/reference-data";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { Staff } from "@/types/staff";
 import { Shift } from "@/types/shift/type";
@@ -67,7 +67,7 @@ export default function SchedulesPage() {
 
   useEffect(() => {
     loadSchedules();
-    fetchAllStaff().then(setStaffList).catch(() => {});
+    getCachedStaff().then(setStaffList).catch(() => {});
     fectchAllShifts().then(setShiftTemplates).catch(() => {});
   }, [loadSchedules]);
 

@@ -22,6 +22,7 @@ import { FormError } from "../widgets/form-error";
 import { Supplier } from "@/types/supplier/type";
 import { SupplierSchema } from "@/types/supplier/schema";
 import { createSupplier, updateSupplier } from "@/lib/actions/supplier-actions";
+import { invalidateSuppliersCache } from "@/lib/cache/reference-data";
 import { PhoneInput } from "../ui/phone-input";
 import { Switch } from "../ui/switch";
 import { Card, CardContent } from "../ui/card";
@@ -69,6 +70,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
         updateSupplier(item.id, values).then((data) => {
           if (data) setResponse(data);
           if (data && data.responseType === "success") {
+            invalidateSuppliersCache();
             toast({
               variant: "success",
               title: "Success",
@@ -82,6 +84,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
           .then((data) => {
             if (data) setResponse(data);
             if (data && data.responseType === "success") {
+              invalidateSuppliersCache();
               toast({
                 variant: "success",
                 title: "Success",

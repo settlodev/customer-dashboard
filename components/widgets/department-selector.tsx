@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
     Select,
     SelectContent,
@@ -13,8 +13,11 @@ import { Button } from "../ui/button";
 import { Plus, Tag } from "lucide-react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Department } from "@/types/department/type";
-import { fetchAllDepartments, createDepartment } from "@/lib/actions/department-actions";
+import { createDepartment } from "@/lib/actions/department-actions";
+import {
+    invalidateDepartmentsCache,
+    useCachedDepartments,
+} from "@/lib/cache/reference-data";
 import { FormError } from "@/components/widgets/form-error";
 import { usePathname } from 'next/navigation';
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
@@ -38,8 +41,8 @@ const DepartmentSelector: React.FC<DepartmentSelectorProps> = ({
                                                                    description,
                                                                    onChange,
                                                                }) => {
-    const [departments, setDepartments] = useState<Department[]>([]);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const { data: departmentsData, loading: isLoading } = useCachedDepartments();
+    const departments = departmentsData ?? [];
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newDepartmentName, setNewDepartmentName] = useState("");
     const [color, setColor] = useState("#000000");
@@ -47,22 +50,6 @@ const DepartmentSelector: React.FC<DepartmentSelectorProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | undefined>();
     const pathname = usePathname();
-
-    const loadDepartments = async () => {
-        try {
-            setIsLoading(true);
-            const fetchedDepartments = await fetchAllDepartments();
-            setDepartments(fetchedDepartments ?? []);
-        } catch (error: any) {
-            console.log("Error fetching departments:", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        loadDepartments();
-    }, []);
 
     const resetForm = () => {
         setNewDepartmentName("");
@@ -85,7 +72,7 @@ const DepartmentSelector: React.FC<DepartmentSelectorProps> = ({
             });
 
             if (response.responseType === "success" && response.data) {
-                await loadDepartments();
+                invalidateDepartmentsCache();
                 const newDepartmentId = response.data.id;
                 onChange(newDepartmentId);
                 resetForm();

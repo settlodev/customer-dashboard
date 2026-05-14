@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { getStocks } from "@/lib/actions/stock-actions";
+import { getCachedStocks } from "@/lib/cache/reference-data";
 import type { Stock, StockVariant } from "@/types/stock/type";
 
 export interface VariantMeta {
@@ -85,7 +85,7 @@ const StockVariantSelector: React.FC<Props> = ({
     if (!open && !value) return;
     hasFetchedRef.current = true;
     setIsLoading(true);
-    getStocks()
+    getCachedStocks()
       .then(setStocks)
       .catch(() => setStocks([]))
       .finally(() => setIsLoading(false));

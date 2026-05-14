@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
+import { useCachedSuppliers } from "@/lib/cache/reference-data";
 import type { Supplier } from "@/types/supplier/type";
 
 interface Props {
@@ -56,8 +56,8 @@ function SupplierSelector({
   onBlur,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: suppliersData, loading: isLoading } = useCachedSuppliers();
+  const suppliers: Supplier[] = suppliersData ?? [];
   const [searchTerm, setSearchTerm] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [triggerWidth, setTriggerWidth] = useState(0);
@@ -70,24 +70,6 @@ function SupplierSelector({
     const ro = new ResizeObserver(measure);
     if (triggerRef.current) ro.observe(triggerRef.current);
     return () => ro.disconnect();
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    fetchAllSuppliers()
-      .then((list) => {
-        if (!cancelled) setSuppliers(list);
-      })
-      .catch(() => {
-        if (!cancelled) setSuppliers([]);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   const { active, archived } = useMemo(() => {

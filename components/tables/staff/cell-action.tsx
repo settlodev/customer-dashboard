@@ -12,6 +12,7 @@ import {
 
 import DeleteModal from "@/components/tables/delete-modal";
 import { deactivateStaff, reactivateStaff } from "@/lib/actions/staff-actions";
+import { invalidateStaffCache } from "@/lib/cache/reference-data";
 import { Staff } from "@/types/staff";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     try {
       const result = await deactivateStaff(data.id);
       if (result.responseType === "success") {
+        invalidateStaffCache();
         toast({
           title: "Deactivated",
           description: `${fullName} has been deactivated.`,
@@ -66,6 +68,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     try {
       const result = await reactivateStaff(data.id);
       if (result.responseType === "success") {
+        invalidateStaffCache();
         toast({
           title: "Reactivated",
           description: `${fullName} is back on roster.`,

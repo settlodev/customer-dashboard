@@ -17,7 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { Money } from "@/components/widgets/money";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
 import { getOpenLposForReceiving } from "@/lib/actions/lpo-actions";
-import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
+import { getCachedSuppliers } from "@/lib/cache/reference-data";
 import type { Lpo } from "@/types/lpo/type";
 import { LPO_STATUS_LABELS } from "@/types/lpo/type";
 
@@ -42,7 +42,7 @@ export function LpoPickerDialog({ onPick, triggerLabel = "Pick from LPO" }: Prop
     try {
       const [openLpos, suppliers] = await Promise.all([
         getOpenLposForReceiving(),
-        fetchAllSuppliers(),
+        getCachedSuppliers(),
       ]);
       setLpos(openLpos);
       setSupplierMap(

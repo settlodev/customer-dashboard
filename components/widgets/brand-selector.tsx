@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import {
     Select,
     SelectContent,
@@ -9,7 +9,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Brand } from "@/types/brand/type";
-import { fetchAllBrands } from "@/lib/actions/brand-actions";
+import { useCachedBrands } from "@/lib/cache/reference-data";
 
 interface Props {
     label?: string;
@@ -31,28 +31,11 @@ const BrandSelector: React.FC<Props> = ({
                                             onChange,
                                             showArchived = false,
                                         }) => {
-    const [brands, setBrands] = useState<Brand[]>([]);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-
-    useEffect(() => {
-        async function loadBrands() {
-            try {
-                setIsLoading(true);
-                const fetchedBrands = await fetchAllBrands();
-
-                const filteredBrands = showArchived
-                    ? fetchedBrands
-                    : fetchedBrands.filter((brand: Brand) => brand.active);
-                setBrands(filteredBrands);
-            } catch (error: any) {
-                console.log("Error fetching brands:", error);
-                setBrands([]);
-            } finally {
-                setIsLoading(false);
-            }
-        }
-        loadBrands();
-    }, [showArchived]);
+    const { data: brandsData, loading: isLoading } = useCachedBrands();
+    const brands = useMemo<Brand[]>(() => {
+        const list = brandsData ?? [];
+        return showArchived ? list : list.filter((b) => b.active);
+    }, [brandsData, showArchived]);
 
     return (
         <div className="space-y-2">

@@ -50,6 +50,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { isValidPhoneNumber } from "libphonenumber-js";
 import { searchCustomer, createCustomer } from "@/lib/actions/customer-actions";
+import { invalidateCustomersCache } from "@/lib/cache/reference-data";
 import { searchProducts } from "@/lib/actions/product-actions";
 import {
   createProforma,
@@ -332,6 +333,7 @@ function CreateCustomerModal({
         setLoadingPhase("idle");
         return;
       }
+      invalidateCustomersCache();
     } catch (e: unknown) {
       setServerError(
         e instanceof Error

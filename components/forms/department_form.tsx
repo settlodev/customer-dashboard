@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DepartmentSchema } from "@/types/department/schema";
 import { createDepartment, updateDepartment } from "@/lib/actions/department-actions";
+import { invalidateDepartmentsCache } from "@/lib/cache/reference-data";
 import { Department } from "@/types/department/type";
 import { useRouter } from "next/navigation";
 import { Textarea } from "../ui/textarea";
@@ -93,6 +94,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
         }
         if (result) {
           if (result.responseType === "success") {
+            invalidateDepartmentsCache();
             toast({ variant: "success", title: "Success", description: result.message });
             router.push("/departments");
           } else {

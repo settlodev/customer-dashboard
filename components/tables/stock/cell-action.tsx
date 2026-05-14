@@ -18,6 +18,7 @@ import {
   unarchiveStock,
   deleteStock,
 } from "@/lib/actions/stock-actions";
+import { invalidateStocksCache } from "@/lib/cache/reference-data";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -48,6 +49,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     setLoading(true);
     try {
       await archiveStock(data.id);
+      invalidateStocksCache();
       toast({
         title: "Archived",
         description: `${data.name} has been archived.`,
@@ -69,6 +71,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     setLoading(true);
     try {
       await unarchiveStock(data.id);
+      invalidateStocksCache();
       toast({
         title: "Restored",
         description: `${data.name} has been restored.`,
@@ -89,6 +92,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     setLoading(true);
     try {
       await deleteStock(data.id);
+      invalidateStocksCache();
       toast({
         title: "Deleted",
         description: `${data.name} has been deleted.`,

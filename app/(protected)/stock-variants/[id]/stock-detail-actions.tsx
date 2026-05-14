@@ -17,6 +17,7 @@ import {
   unarchiveStock,
   deleteStock,
 } from "@/lib/actions/stock-actions";
+import { invalidateStocksCache } from "@/lib/cache/reference-data";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -43,6 +44,7 @@ export function StockDetailActions({ stock }: { stock: Stock }) {
     setLoading(true);
     try {
       await archiveStock(stock.id);
+      invalidateStocksCache();
       toast({ title: "Archived", description: `${stock.name} has been archived.` });
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: (error as Error).message || "Failed to archive" });
@@ -56,6 +58,7 @@ export function StockDetailActions({ stock }: { stock: Stock }) {
     setLoading(true);
     try {
       await unarchiveStock(stock.id);
+      invalidateStocksCache();
       toast({ title: "Restored", description: `${stock.name} has been restored.` });
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: (error as Error).message || "Failed to restore" });
@@ -68,6 +71,7 @@ export function StockDetailActions({ stock }: { stock: Stock }) {
     setLoading(true);
     try {
       await deleteStock(stock.id);
+      invalidateStocksCache();
       toast({ title: "Deleted", description: `${stock.name} has been deleted.` });
       router.push("/stock-variants");
     } catch (error) {

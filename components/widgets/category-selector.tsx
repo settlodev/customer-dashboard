@@ -8,8 +8,12 @@ import { Plus, Tag } from "lucide-react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Category } from "@/types/category/type";
-import { fetchAllCategories, createCategory } from "@/lib/actions/category-actions";
+import { createCategory } from "@/lib/actions/category-actions";
 import { fetchDepartmentsForCurrentLocation } from "@/lib/actions/department-actions";
+import {
+  invalidateCategoriesCache,
+  useCachedCategories,
+} from "@/lib/cache/reference-data";
 import type { Department } from "@/types/department/type";
 import { FormError } from "@/components/widgets/form-error";
 import { usePathname } from "next/navigation";
@@ -44,8 +48,9 @@ const CategorySelector = ({
   simple = false,
   categories: externalCategories,
 }: CategorySelectorProps) => {
-  const [selfCategories, setSelfCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(!simple);
+  const { data: cachedCategoriesData, loading: cachedLoading } = useCachedCategories();
+  const selfCategories: Category[] = cachedCategoriesData ?? [];
+  const isLoading = simple ? false : cachedLoading;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [parentCategory, setParentCategory] = useState("");
@@ -66,25 +71,6 @@ const CategorySelector = ({
   useEffect(() => {
     setSelectedValue(value);
   }, [value]);
-
-  const loadCategories = async () => {
-    try {
-      setIsLoading(true);
-      const fetched = await fetchAllCategories();
-      setSelfCategories(fetched ?? []);
-    } catch (err: any) {
-      setError(err.message ?? "Failed to fetch categories");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!simple) {
-      loadCategories();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [simple]);
 
   useEffect(() => {
     let cancelled = false;
@@ -135,7 +121,7 @@ const CategorySelector = ({
       );
 
       if (response.responseType === "success" && response.data) {
-        await loadCategories();
+        invalidateCategoriesCache();
         const newCategoryId = response.data.id;
         setSelectedValue(newCategoryId);
         onChange(newCategoryId);

@@ -13,8 +13,13 @@ import {
   Order,
   OrderDetail,
   OrderEvent,
+  OrderShareResponse,
   OrderStatus,
+  PublicInvoice,
+  ReceiptDto,
+  VfdPrintResponse,
 } from "@/types/orders/type";
+import { revalidatePath } from "next/cache";
 import { orderRequestSchema } from "@/types/orders/schema";
 
 import { getCurrentLocation } from "./business/get-current-business";
@@ -124,6 +129,156 @@ export const cancelOrder = async (
       error,
       "Failed to cancel order",
     );
+  }
+};
+
+// ─── Live invoice share (OMS) ───────────────────────────────────────
+//
+// The OMS endpoint POST /api/v1/orders/{id}/share is idempotent —
+// repeated calls return the same token until revoke. We expose two
+// thin wrappers so client components can mint, copy, and revoke
+// without touching the API client themselves.
+
+/**
+ * Mint (or return the existing) live-invoice share token for an
+ * unpaid, non-cancelled order. The customer-facing URL is built on
+ * the client side from the returned shareToken.
+ */
+export const shareOrderInvoice = async (
+  id: UUID,
+): Promise<{ shareToken: string; shareTokenIssuedAt: string | null } | { error: string }> => {
+  try {
+    const result = await oms().post<OrderShareResponse, Record<string, never>>(
+      `${ordersBase}/${id}/share`,
+      {},
+    );
+    revalidatePath(`/orders/${id}`);
+    if (!result?.shareToken) {
+      return { error: "Share token missing from server response" };
+    }
+    return parseStringify({
+      shareToken: result.shareToken,
+      shareTokenIssuedAt: result.shareTokenIssuedAt,
+    });
+  } catch (error: unknown) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to create invoice share link",
+    };
+  }
+};
+
+export const revokeOrderInvoiceShare = async (
+  id: UUID,
+): Promise<FormResponse> => {
+  try {
+    await oms().delete(`${ordersBase}/${id}/share`);
+    revalidatePath(`/orders/${id}`);
+    return SettloErrorHandler.createSuccessResponse(
+      "Invoice share link revoked",
+    );
+  } catch (error: unknown) {
+    return SettloErrorHandler.createErrorResponse(
+      error,
+      "Failed to revoke invoice share link",
+    );
+  }
+};
+
+/**
+ * Public lookup by share token. Unauthenticated — possession of the
+ * token IS the capability. Returns null on 404.
+ */
+export const getPublicInvoice = async (
+  token: string,
+): Promise<PublicInvoice | null> => {
+  try {
+    const apiClient = new ApiClient("orders");
+    apiClient.isPlain = true;
+    const data = await apiClient.get<PublicInvoice>(
+      `/api/v1/public/invoices/${encodeURIComponent(token)}`,
+    );
+    return parseStringify(data);
+  } catch (error: any) {
+    if (error?.status === 404) return null;
+    throw error;
+  }
+};
+
+// ─── Receipt snapshots (OMS) ────────────────────────────────────────
+//
+// Snapshots are immutable point-in-time JSON of the order state, so
+// each "Share Receipt" click creates a fresh snapshot for the current
+// totals/payments. Use listOrderReceipts to surface the history.
+
+export const createReceiptSnapshot = async (
+  id: UUID,
+): Promise<{ snapshot: ReceiptDto } | { error: string }> => {
+  try {
+    const data = await oms().post<ReceiptDto, Record<string, never>>(
+      `${ordersBase}/${id}/receipts/receipt`,
+      {},
+    );
+    revalidatePath(`/orders/${id}`);
+    return parseStringify({ snapshot: data });
+  } catch (error: unknown) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to create receipt snapshot",
+    };
+  }
+};
+
+export const listOrderReceipts = async (
+  id: UUID,
+): Promise<ReceiptDto[]> => {
+  try {
+    const data = await oms().get<ReceiptDto[]>(
+      `${ordersBase}/${id}/receipts`,
+    );
+    return parseStringify(data ?? []);
+  } catch {
+    return [];
+  }
+};
+
+export const getPublicReceiptSnapshot = async (
+  slug: string,
+): Promise<ReceiptDto | null> => {
+  try {
+    const apiClient = new ApiClient("orders");
+    apiClient.isPlain = true;
+    const data = await apiClient.get<ReceiptDto>(
+      `/api/v1/public/receipts/${encodeURIComponent(slug)}`,
+    );
+    return parseStringify(data);
+  } catch (error: any) {
+    if (error?.status === 404) return null;
+    throw error;
+  }
+};
+
+// ─── VFD print (OMS — currently stubbed; backed by Accounting later) ─
+
+export const printOrderVfd = async (
+  id: UUID,
+): Promise<{ vfd: VfdPrintResponse } | { error: string }> => {
+  try {
+    const data = await oms().post<VfdPrintResponse, Record<string, never>>(
+      `${ordersBase}/${id}/prints/vfd`,
+      {},
+    );
+    revalidatePath(`/orders/${id}`);
+    return parseStringify({ vfd: data });
+  } catch (error: unknown) {
+    return {
+      error:
+        error instanceof Error ? error.message : "Failed to print VFD receipt",
+    };
   }
 };
 

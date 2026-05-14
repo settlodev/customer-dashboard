@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Country } from "@/types/country/type";
-import { fetchCountries } from "@/lib/actions/countries-actions";
+import { useCachedCountries } from "@/lib/cache/reference-data";
 
 interface Props {
   label?: string;
@@ -37,23 +37,8 @@ const CountrySelector: React.FC<Props> = ({
   valueKey = "id",
   defaultCode,
 }) => {
-  const [countries, setCountries] = useState<Country[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    async function loadCountries() {
-      try {
-        setIsLoading(true);
-        const fetchedCountries = await fetchCountries();
-        setCountries(fetchedCountries);
-      } catch (error: any) {
-        console.log("Error fetching countries:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadCountries();
-  }, []);
+  const { data: countriesData, loading: isLoading } = useCachedCountries();
+  const countries = countriesData ?? [];
 
   // When `defaultCode` is supplied and the caller hasn't picked a value yet,
   // auto-select the matching country as soon as the list loads. Never

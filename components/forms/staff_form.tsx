@@ -86,6 +86,7 @@ import type { Department } from "@/types/department/type";
 import { FormResponse } from "@/types/types";
 import { cn } from "@/lib/utils";
 import { createStaff, updateStaff } from "@/lib/actions/staff-actions";
+import { invalidateStaffCache } from "@/lib/cache/reference-data";
 
 import { initialsFor, thumbColor } from "@/components/tables/shared/table-avatar";
 import styles from "./styles/form-shell.module.css";
@@ -241,6 +242,7 @@ export default function StaffForm({
           if (!result) return;
           setResponse(result);
           if (result.responseType === "success") {
+            invalidateStaffCache();
             toast({
               variant: "success",
               title: isEditMode ? "Staff updated" : "Staff created",

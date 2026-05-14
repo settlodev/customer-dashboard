@@ -17,6 +17,7 @@ import {
   unarchiveCategory,
   deleteCategory,
 } from "@/lib/actions/category-actions";
+import { invalidateCategoriesCache } from "@/lib/cache/reference-data";
 import { Category } from "@/types/category/type";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +52,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     try {
       const result = await archiveCategory(data.id);
       if (result.responseType === "success") {
+        invalidateCategoriesCache();
         toast({ variant: "success", title: "Archived", description: `${data.name} has been archived.` });
         router.refresh();
       } else {
@@ -69,6 +71,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     try {
       const result = await unarchiveCategory(data.id);
       if (result.responseType === "success") {
+        invalidateCategoriesCache();
         toast({ variant: "success", title: "Restored", description: `${data.name} has been restored.` });
         router.refresh();
       } else {
@@ -85,6 +88,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     setIsDeleting(true);
     try {
       await deleteCategory(data.id);
+      invalidateCategoriesCache();
       toast({ variant: "warning", title: "Deleted", description: `${data.name} has been permanently deleted.` });
       router.refresh();
     } catch (error) {

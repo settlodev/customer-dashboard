@@ -66,6 +66,8 @@ import type { Department } from "@/types/department/type";
 import { FormResponse } from "@/types/types";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
+import { useLocationConfig } from "@/hooks/use-location-config";
+import { useInventoryEventRefresh } from "@/hooks/use-inventory-event-refresh";
 
 import styles from "./styles/form-shell.module.css";
 
@@ -121,6 +123,7 @@ export default function StockUsageForm({
 
   const watchedVariantId = form.watch("stockVariantId");
   const watchedQty = Number(form.watch("quantity")) || 0;
+  const { config: locationConfig } = useLocationConfig();
 
   const loadBalance = useCallback(async (variantId: string) => {
     setBalance({ loading: true, quantityOnHand: 0, averageCost: null });
@@ -136,6 +139,14 @@ export default function StockUsageForm({
       setBalance({ loading: false, quantityOnHand: 0, averageCost: null });
     }
   }, []);
+
+  // If an intake / sale / adjustment lands elsewhere while the form is
+  // open, refresh the displayed balance so the merchant doesn't operate on
+  // a stale "on hand" figure. The hook applies a 10s cooldown so a POS
+  // burst doesn't refetch on every sale.
+  useInventoryEventRefresh(locationConfig?.locationId, () => {
+    if (watchedVariantId) void loadBalance(watchedVariantId);
+  });
 
   useEffect(() => {
     // Keep a default department selected even when the prop changes after mount

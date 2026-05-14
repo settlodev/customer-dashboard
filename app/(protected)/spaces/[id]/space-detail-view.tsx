@@ -274,17 +274,6 @@ function OperationsTab({
               }
             />
             <DetailRow
-              label="Needs cleaning"
-              value={
-                <Badge
-                  variant={space.needsCleaning ? "warn" : "soft"}
-                  className="text-[10.5px]"
-                >
-                  {space.needsCleaning ? "Yes" : "No"}
-                </Badge>
-              }
-            />
-            <DetailRow
               label="Active"
               value={
                 <Badge

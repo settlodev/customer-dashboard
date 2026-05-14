@@ -25,6 +25,8 @@ import WhatsAppButton from "@/components/whatsapp-button";
 import { DaySessionWidget } from "@/components/widgets/day-session-widget";
 import { BuildPill } from "@/components/widgets/build-pill";
 import { SettloRealtimeListener } from "@/components/realtime/settlo-realtime-listener";
+import { StockCacheRealtimeBinder } from "@/components/realtime/stock-cache-realtime-binder";
+import { CustomerCacheRealtimeBinder } from "@/components/realtime/customer-cache-realtime-binder";
 import type { ExtendedUser } from "@/types/types";
 
 export default async function RootLayout({
@@ -192,6 +194,8 @@ export default async function RootLayout({
           ]}
         />
       )}
+      <StockCacheRealtimeBinder locationId={currentLocation?.id} />
+      <CustomerCacheRealtimeBinder businessId={currentBusiness?.id} />
       <BuildPill />
     </>
   );

@@ -265,6 +265,16 @@ export function DataTable<TData, TValue>({
     }));
   };
 
+  // Callers often pass `extraFilters` as a fresh array literal each
+  // render. Depending on it directly would bust the filteredData memo
+  // every time the parent re-rendered. Reduce it to a stable signature
+  // (the ordered list of keys) so the memo only re-runs when the filter
+  // config actually changes, not when the parent ticks.
+  const extraFiltersSig = React.useMemo(
+    () => (extraFilters ?? []).map((f) => f.key).join("|"),
+    [extraFilters],
+  );
+
   const filteredData = React.useMemo(() => {
     let result = data;
     if (filterKey && statusFilter) {
@@ -284,7 +294,8 @@ export function DataTable<TData, TValue>({
       }
     }
     return result;
-  }, [data, statusFilter, filterKey, extraFilters, extraFilterValues]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, statusFilter, filterKey, extraFiltersSig, extraFilterValues]);
 
   const createQueryString = React.useCallback(
     (params: Record<string, string | number | null>) => {

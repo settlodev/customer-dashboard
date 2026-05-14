@@ -338,6 +338,133 @@ export interface OrderDetailTimelineEvent {
   metadata: Record<string, unknown> | null;
 }
 
+// ─── Share / receipt / VFD response types ───────────────────────────
+//
+// New endpoints:
+//   POST   /api/v1/orders/{id}/share              → OrderShareResponse
+//   DELETE /api/v1/orders/{id}/share              → OrderShareResponse (cleared)
+//   GET    /api/v1/public/invoices/{token}        → PublicInvoice (no auth)
+//   POST   /api/v1/orders/{id}/receipts/receipt   → ReceiptDto (snapshot)
+//   GET    /api/v1/orders/{id}/receipts           → ReceiptDto[]
+//   GET    /api/v1/public/receipts/{slug}         → ReceiptDto (no auth)
+//   POST   /api/v1/orders/{id}/prints/vfd         → VfdPrintResponse (stub)
+
+export interface OrderShareResponse {
+  orderId: UUID;
+  orderNumber: string;
+  shareToken: string | null;
+  shareTokenIssuedAt: string | null;
+}
+
+export interface PublicInvoiceLineItem {
+  name: string;
+  quantity: number;
+  unitPrice: number | null;
+  totalPrice: number | null;
+  discountAmount: number | null;
+  specialInstructions: string | null;
+  modifiers: string[];
+  addons: string[];
+}
+
+export interface PublicInvoice {
+  businessName: string;
+  locationName: string;
+  locationAddress: string;
+  locationPhone: string;
+
+  orderNumber: string;
+  orderStatus: string | null;
+  paymentStatus: string | null;
+  openedAt: string;
+  shareTokenIssuedAt: string | null;
+  viewedAt: string;
+
+  customerName: string | null;
+
+  items: PublicInvoiceLineItem[];
+
+  subtotal: number | null;
+  discountAmount: number | null;
+  taxAmount: number | null;
+  totalAmount: number | null;
+  amountPaid: number | null;
+  amountDue: number | null;
+
+  currency: string;
+}
+
+export interface ReceiptDtoLineItem {
+  name: string;
+  quantity: number;
+  unitPrice: number | null;
+  totalPrice: number | null;
+  discountAmount: number | null;
+  specialInstructions: string | null;
+  modifiers: string[];
+  addons: string[];
+}
+
+export interface ReceiptDtoPayment {
+  paymentMethod: string | null;
+  amount: number | null;
+  tipAmount: number | null;
+  currency: string | null;
+  paidAt: string | null;
+  status: string | null;
+}
+
+export interface ReceiptDto {
+  receiptType: "BILL" | "RECEIPT" | string;
+  snapshotSlug: string;
+  snapshotCreatedAt: string;
+
+  businessName: string;
+  locationName: string;
+  locationAddress: string;
+  locationPhone: string;
+
+  orderId: UUID;
+  orderNumber: string;
+  orderSlug: string | null;
+  businessDate: string | null;
+  openedAt: string | null;
+  closedAt: string | null;
+  orderStatus: string | null;
+  paymentStatus: string | null;
+  servedBy: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
+
+  items: ReceiptDtoLineItem[];
+
+  subtotal: number | null;
+  discountAmount: number | null;
+  taxAmount: number | null;
+  totalAmount: number | null;
+
+  payments: ReceiptDtoPayment[];
+  amountPaid: number | null;
+  amountDue: number | null;
+  tipAmount: number | null;
+
+  currency: string;
+  receiptUrl: string | null;
+}
+
+export interface VfdPrintResponse {
+  orderId: UUID;
+  orderNumber: string;
+  fiscalReceiptNumber: string | null;
+  fiscalDeviceSerial: string | null;
+  signedAt: string | null;
+  qrCodeData: string | null;
+  verificationUrl: string | null;
+  /** "STUBBED" while the Accounting integration is pending; "SIGNED" once live. */
+  accountingServiceStatus: string | null;
+  message: string | null;
+}
+
 export interface OrderDetail {
   id: UUID;
   slug: string | null;

@@ -16,6 +16,7 @@ import {
   deactivateDepartment,
   reactivateDepartment,
 } from "@/lib/actions/department-actions";
+import { invalidateDepartmentsCache } from "@/lib/cache/reference-data";
 import { Department } from "@/types/department/type";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +42,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     try {
       const result = await deactivateDepartment(data.id);
       if (result.responseType === "success") {
+        invalidateDepartmentsCache();
         toast({
           variant: "success",
           title: "Archived",
@@ -72,6 +74,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     try {
       const result = await reactivateDepartment(data.id);
       if (result.responseType === "success") {
+        invalidateDepartmentsCache();
         toast({
           variant: "success",
           title: "Restored",

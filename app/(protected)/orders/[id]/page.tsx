@@ -8,12 +8,16 @@ import {
   PageShell,
 } from "@/components/layouts/page-shell";
 import { OrdersRealtimeBridge } from "@/components/realtime/orders-realtime-bridge";
+import { OrderInvoiceShareButton } from "@/components/widgets/orders/invoice-share-dialog";
+import { OrderReceiptShareButton } from "@/components/widgets/orders/receipt-share-dialog";
+import { PrintVfdButton } from "@/components/widgets/orders/print-vfd-button";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getOrderDetail } from "@/lib/actions/order-actions";
 import {
   ORDER_STATUS_LABELS,
   ORDER_STATUS_PILL,
   OrderStatus,
+  PaymentStatus,
 } from "@/types/orders/type";
 import { OrderDetailView } from "./order-detail-view";
 
@@ -61,6 +65,17 @@ export default async function OrderPage({ params }: { params: Params }) {
     );
   }
 
+  // Action gating mirrors the OMS guards on the underlying endpoints
+  // — keeping them in sync avoids a button that always toasts an error.
+  const paymentStatus = (detail.paymentStatus ?? "").toUpperCase();
+  const canShareReceipt =
+    paymentStatus === PaymentStatus.PAID || paymentStatus === PaymentStatus.PARTIAL;
+  const canShareInvoice =
+    paymentStatus === PaymentStatus.NOT_PAID && status !== OrderStatus.CANCELLED;
+  const canPrintVfd = status === OrderStatus.CLOSED;
+
+  const orderId = detail.id as UUID;
+
   return (
     <PageShell>
       <PageBreadcrumbs
@@ -79,6 +94,30 @@ export default async function OrderPage({ params }: { params: Params }) {
           </span>
         }
         subtitle={subtitleParts.join(" · ")}
+        actions={
+          canShareReceipt || canShareInvoice || canPrintVfd ? (
+            <div className="flex flex-wrap gap-2">
+              {canShareInvoice && (
+                <OrderInvoiceShareButton
+                  orderId={orderId}
+                  orderNumber={detail.orderNumber}
+                />
+              )}
+              {canShareReceipt && (
+                <OrderReceiptShareButton
+                  orderId={orderId}
+                  orderNumber={detail.orderNumber}
+                />
+              )}
+              {canPrintVfd && (
+                <PrintVfdButton
+                  orderId={orderId}
+                  orderNumber={detail.orderNumber}
+                />
+              )}
+            </div>
+          ) : undefined
+        }
       />
       {currentLocation?.id && (
         <OrdersRealtimeBridge

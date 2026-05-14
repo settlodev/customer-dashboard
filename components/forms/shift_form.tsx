@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import React, { useCallback, useEffect, useState, useTransition } from "react";
+import React, { useCallback, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { BusinessTimeType, FormResponse } from "@/types/types";
 import CancelButton from "../widgets/cancel-button";
@@ -32,7 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Shift } from "@/types/shift/type";
 import { ShiftSchema } from "@/types/shift/schema";
 import { createShift, updateShift } from "@/lib/actions/shift-actions";
-import { fetchAllDepartments } from "@/lib/actions/department-actions";
+import { useCachedDepartments } from "@/lib/cache/reference-data";
 import { Department } from "@/types/department/type";
 import { businessTimes } from "@/types/constants";
 import { useRouter } from "next/navigation";
@@ -42,21 +42,10 @@ function ShiftForm({ item }: { item: Shift | null | undefined }) {
   const [, setResponse] = useState<FormResponse | undefined>();
   const [error, ] = useState<string | undefined>("");
   const [success, ] = useState<string | undefined>("");
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const { data: departmentsData } = useCachedDepartments();
+  const departments = departmentsData ?? [];
   const { toast } = useToast();
   const router = useRouter();
-
-  useEffect(() => {
-    const getDepartments = async () => {
-      try {
-        const response = await fetchAllDepartments();
-        setDepartments(response);
-      } catch (error) {
-        console.error("Error fetching departments", error);
-      }
-    };
-    getDepartments();
-  }, []);
 
   const form = useForm<z.infer<typeof ShiftSchema>>({
     resolver: zodResolver(ShiftSchema),

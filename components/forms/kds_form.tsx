@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import React, { useCallback, useEffect, useState, useTransition } from "react";
+import React, { useCallback, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { FormResponse } from "@/types/types";
 import CancelButton from "../widgets/cancel-button";
@@ -23,7 +23,7 @@ import { FormSuccess } from "../widgets/form-success";
 import { createKDS, updateKDS } from "@/lib/actions/kds-actions";
 import { KDSSchema } from "@/types/kds/schema";
 import { KDS } from "@/types/kds/type";
-import { fetchAllDepartments } from "@/lib/actions/department-actions";
+import { useCachedDepartments } from "@/lib/cache/reference-data";
 import { Department } from "@/types/department/type";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { useRouter } from "next/navigation";
@@ -34,21 +34,9 @@ function KDSForm({ item }: { item: KDS | null | undefined }) {
   const [error, ] = useState<string | undefined>("");
   const [success,] = useState<string | undefined>("");
   const { toast } = useToast();
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const { data: departmentsData } = useCachedDepartments();
+  const departments = departmentsData ?? [];
   const router = useRouter();
-
-
-  useEffect(() => {
-    const getDepartments = async () => {
-      try {
-        const response = await fetchAllDepartments();
-        setDepartments(response);
-      } catch (error) {
-        console.error("Error fetching departments", error);
-      }
-    };
-    getDepartments();
-  }, []);
 
   const form = useForm<z.infer<typeof KDSSchema>>({
     resolver: zodResolver(KDSSchema),

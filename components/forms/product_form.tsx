@@ -8,7 +8,12 @@ import React, {
   useState,
   useTransition,
 } from "react";
-import { useForm, useFieldArray, type FieldErrors } from "react-hook-form";
+import {
+  useForm,
+  useFieldArray,
+  useWatch,
+  type FieldErrors,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import {
@@ -151,12 +156,14 @@ import {
   detachAddonGroup,
   updateAttachedAddonGroup,
 } from "@/lib/actions/addon-actions";
-import { fetchAllBrands } from "@/lib/actions/brand-actions";
-import { fetchAllCategories } from "@/lib/actions/category-actions";
-import { getStocks } from "@/lib/actions/stock-actions";
+import {
+  getCachedBrands,
+  getCachedCategories,
+  getCachedStocks,
+  getCachedTaxTypes,
+} from "@/lib/cache/reference-data";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
-import { fetchAllTaxTypes } from "@/lib/actions/tax-type-actions";
 import type { TaxType } from "@/types/tax-type/type";
 import type { FormResponse } from "@/types/types";
 
@@ -266,13 +273,22 @@ export default function ProductForm({ item }: ProductFormProps) {
 
   useEffect(() => {
     let cancelled = false;
+    // Chain balances off the location promise so it fires in parallel with
+    // the other fetches instead of waiting for the entire Promise.all to
+    // resolve. On a heavy catalogue, balances are slow and used to block
+    // form interactivity behind the much cheaper brands/categories/tax
+    // fetches.
+    const locationPromise = getCurrentLocation().catch(() => null);
+    const balancesPromise = locationPromise.then((loc) =>
+      loc?.id ? getBalancesByLocation(loc.id).catch(() => []) : [],
+    );
     Promise.all([
-      fetchAllBrands().catch(() => []),
-      fetchAllCategories().catch(() => []),
-      getStocks().catch(() => []),
-      getCurrentLocation().catch(() => null),
-      fetchAllTaxTypes().catch(() => []),
-    ]).then(async ([b, c, s, loc, tx]) => {
+      getCachedBrands().catch(() => []),
+      getCachedCategories().catch(() => []),
+      locationPromise,
+      getCachedTaxTypes().catch(() => []),
+      balancesPromise,
+    ]).then(([b, c, _loc, tx, balances]) => {
       if (cancelled) return;
       setBrands((b ?? []).map((x: any) => ({ id: x.id, name: x.name })));
       setCategories((c ?? []).map((x: any) => ({ id: x.id, name: x.name })));
@@ -288,46 +304,56 @@ export default function ProductForm({ item }: ProductFormProps) {
             a.code.localeCompare(b.code),
         );
       setTaxTypes(activeTaxTypes);
-      const sv: StockVariantOption[] = [];
-      for (const stock of s ?? []) {
-        for (const v of stock.variants ?? []) {
-          if (v.archived) continue;
-          sv.push({
-            id: v.id,
-            label: `${stock.name} — ${v.name}`,
-            unitAbbreviation: v.unitAbbreviation,
-          });
-        }
-      }
-      setStockVariants(sv);
 
       // Inventory balances carry both the leading-batch cost and the
       // weighted-average. Prefer currentBatchCost — that's what the system
       // would actually charge from the next FEFO/FIFO consumption — and
       // fall back to averageCost only when no batch info is available
       // (e.g. legacy stock without batches).
-      if (loc?.id) {
-        try {
-          const balances = await getBalancesByLocation(loc.id);
-          if (cancelled) return;
-          const costMap: Record<string, number> = {};
-          for (const bal of balances ?? []) {
-            if (!bal?.stockVariantId) continue;
-            const unitCost = bal.currentBatchCost ?? bal.averageCost;
-            if (unitCost != null) {
-              costMap[bal.stockVariantId] = unitCost;
-            }
-          }
-          setStockVariantCosts(costMap);
-        } catch {
-          /* ignore — cost stays empty until merchant picks/edits manually */
+      const costMap: Record<string, number> = {};
+      for (const bal of balances ?? []) {
+        if (!bal?.stockVariantId) continue;
+        const unitCost = bal.currentBatchCost ?? bal.averageCost;
+        if (unitCost != null) {
+          costMap[bal.stockVariantId] = unitCost;
         }
       }
+      setStockVariantCosts(costMap);
     });
     return () => {
       cancelled = true;
     };
   }, [isEditMode, item]);
+
+  // Stocks load in parallel but out of the critical render path. The
+  // catalogue can run thousands of items × variants, and the form's
+  // initial render doesn't need them — only the inline variant picker
+  // does. Fetching here lets the rest of the form become interactive
+  // immediately; the picker shows an empty list until this resolves and
+  // then fills in.
+  useEffect(() => {
+    let cancelled = false;
+    getCachedStocks()
+      .catch(() => [])
+      .then((s) => {
+        if (cancelled) return;
+        const sv: StockVariantOption[] = [];
+        for (const stock of s ?? []) {
+          for (const v of stock.variants ?? []) {
+            if (v.archived) continue;
+            sv.push({
+              id: v.id,
+              label: `${stock.name} — ${v.name}`,
+              unitAbbreviation: v.unitAbbreviation,
+            });
+          }
+        }
+        setStockVariants(sv);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const form = useForm<ProductInput>({
     resolver: zodResolver(ProductSchema),
@@ -342,9 +368,6 @@ export default function ProductForm({ item }: ProductFormProps) {
           tags: item.tags ?? [],
           sellOnline: item.sellOnline,
           taxInclusive: item.taxInclusive,
-          // Lift the first variant's stored taxTypeId up to the product
-          // level — the backend keeps it per-variant, but the form owns
-          // it once at the product level and fans it out on submit.
           taxTypeId: item.variants?.find((v) => v.taxTypeId)?.taxTypeId ?? "",
           active: item.active,
           lifecycleStatus: item.lifecycleStatus,
@@ -380,11 +403,6 @@ export default function ProductForm({ item }: ProductFormProps) {
   });
 
   const isMultiVariant = variantsArray.fields.length > 1;
-
-  // Resolve the business's default tax type — code "A" (Standard Rate)
-  // by spec; fall back to the row flagged isDefault, then the first row.
-  // Memoed so the backfill effect below only refires when tax types
-  // actually change.
   const defaultTaxTypeId = useMemo(() => {
     if (!taxTypes.length) return undefined;
     const a = taxTypes.find((t) => t.code === "A");
@@ -393,10 +411,6 @@ export default function ProductForm({ item }: ProductFormProps) {
     return seeded?.id ?? taxTypes[0]?.id;
   }, [taxTypes]);
 
-  // Backfill: once tax types load, seed the product-level taxTypeId if
-  // the merchant hasn't picked one yet. Covers both first-mount (blank
-  // default) and edit-mode legacy products created before tax types
-  // were assignable.
   useEffect(() => {
     if (!defaultTaxTypeId) return;
     if (!form.getValues("taxTypeId")) {
@@ -468,18 +482,23 @@ export default function ProductForm({ item }: ProductFormProps) {
     });
   };
 
-  const removeVariant = (index: number) => {
-    const variant = form.getValues(`variants.${index}`);
-    if (variant.id) {
-      setRemovedVariantIds((prev) => [...prev, variant.id!]);
-    }
-    variantsArray.remove(index);
-  };
+  // Stable across renders so the memoised VariantEditor doesn't re-render
+  // every time the parent ticks (which it does on every keystroke).
+  // `variantsArray.remove` is itself stable per RHF, so destructuring lets
+  // the lint rule see the dep without dragging the whole array reference.
+  const { remove: removeFromVariantsArray } = variantsArray;
+  const removeVariant = useCallback(
+    (index: number) => {
+      const variant = form.getValues(`variants.${index}`);
+      if (variant.id) {
+        setRemovedVariantIds((prev) => [...prev, variant.id!]);
+      }
+      removeFromVariantsArray(index);
+    },
+    [form, removeFromVariantsArray],
+  );
 
   const handleAddVariant = () => {
-    // When promoting from single → multi, the existing "Default" name reads
-    // awkward. Rename it to "Variant 1" so the user has a sensible label to
-    // edit. The newly-appended variant takes "Variant {n}" automatically.
     const next = variantsArray.fields.length + 1;
     if (variantsArray.fields.length === 1) {
       const current = form.getValues("variants.0");
@@ -523,11 +542,6 @@ export default function ProductForm({ item }: ProductFormProps) {
     }
   }, [categories, form, toast]);
 
-  // ── Image gallery ──────────────────────────────────────────────────
-  // Up to 5 images with a primary index. Only the primary image's URL is
-  // persisted today (synced into form.imageUrl); additional images stay
-  // client-only until the backend supports a gallery — see uploadProductImages
-  // stub in lib/actions/product-actions.tsx.
   const [galleryImages, setGalleryImages] = useState<
     Array<{ name: string; size: number; type: string; dataUrl: string }>
   >([]);
@@ -535,8 +549,6 @@ export default function ProductForm({ item }: ProductFormProps) {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Seed the gallery from the product's existing imageUrl in edit mode so
-  // the merchant sees their current image rather than an empty drop zone.
   useEffect(() => {
     if (!item?.imageUrl) return;
     setGalleryImages((prev) => {
@@ -580,9 +592,6 @@ export default function ProductForm({ item }: ProductFormProps) {
         ),
       )
         .then(async (loaded) => {
-          // Pipe through the stub upload action so swapping it for a real
-          // multipart POST later only changes the action body. The stub
-          // echoes the data URLs unchanged.
           const urls = await uploadProductImages(loaded.map((l) => l.dataUrl));
           const merged = loaded.map((l, i) => ({
             ...l,
@@ -610,25 +619,18 @@ export default function ProductForm({ item }: ProductFormProps) {
     [],
   );
 
-  // Sync the primary image's URL into the form's imageUrl field. Additional
-  // gallery images stay client-only — wire them up when the backend gallery
-  // schema lands.
   useEffect(() => {
     const primary = galleryImages[primaryIdx];
     form.setValue("imageUrl", primary?.dataUrl ?? "", { shouldDirty: true });
   }, [galleryImages, primaryIdx, form]);
 
-  // ── Validation gating for the "Create product" button ──────────────
-  // Mirrors the design's 4-step readiness checklist: name + category +
-  // selling price + stock rule (where "stock rule" means UNLIMITED, RECIPE,
-  // or DIRECT-with-stock-item).
+  // Subscribe to just the first variant rather than the whole `variants`
+  // array — the readiness checklist + live preview only look at variant 0,
+  // so watching the full array used to re-render this parent (and the
+  // expensive LivePreviewCard tree) on every keystroke in any variant row.
   const watchedName = form.watch("name");
   const watchedCategoryIds = form.watch("categoryIds");
-  const watchedVariants = form.watch("variants");
-  const firstVariant = watchedVariants?.[0];
-  // When autoCreateStock is on, the backend creates a fresh stock item
-  // with a 1:1 link, so no stockVariantId is required up front. Treat
-  // the stock rule as satisfied for the readiness checklist.
+  const firstVariant = form.watch("variants.0");
   const stockRuleSatisfied =
     autoCreateStock ||
     firstVariant?.sellabilityMode === "UNLIMITED" ||
@@ -652,10 +654,6 @@ export default function ProductForm({ item }: ProductFormProps) {
   );
   const isValid = requiredFilled.every(Boolean);
   const remainingFields = requiredFilled.filter((v) => !v).length;
-
-  // Mapped category names for the live preview meta line. Resolves IDs
-  // against the loaded category list, falling back to the first selected
-  // category's UUID if the list hasn't loaded yet.
   const categoryDisplayNames = useMemo(() => {
     if (!watchedCategoryIds?.length) return [];
     const map = new Map(categories.map((c) => [c.id, c.name]));
@@ -676,16 +674,12 @@ export default function ProductForm({ item }: ProductFormProps) {
         return;
       }
       toast({ title: "Draft saved" });
-      // First save returns the freshly-created product so we can pin its
-      // id on the URL — subsequent saves PUT against /products/{id}.
-      // Skip the navigation when we're already on the edit route.
       const newId = (result?.data as { id?: string } | undefined)?.id;
       if (!item?.id && newId) {
         router.replace(`/products/${newId}/edit`);
       }
     });
   }, [form, item?.id, router, toast]);
-
 
   const handlePublish = useCallback(() => {
     if (!item?.id) return;
@@ -706,10 +700,6 @@ export default function ProductForm({ item }: ProductFormProps) {
 
   const isDraftProduct = item?.lifecycleStatus === "DRAFT";
 
-  // Discard navigation runs straight from the AlertDialog's confirm
-  // button below, so this used to be a confirm() guard — kept the
-  // handler shape simple now that the modal owns the "are you sure?"
-  // step.
   const handleDiscard = useCallback(() => {
     router.back();
   }, [router]);
@@ -752,11 +742,6 @@ export default function ProductForm({ item }: ProductFormProps) {
               </header>
 
               <div className={styles.formBody}>
-                {/* Name + Currency + Brand: 4-col on xl (Name spans 2),
-                    2-col on sm/md/lg, single column on phones. The
-                    Name keeps its 2-of-4 span only at xl; below that
-                    it goes full row width so the input doesn't get
-                    cramped. */}
                 <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-4">
                   <FormField
                     control={form.control}
@@ -862,12 +847,6 @@ export default function ProductForm({ item }: ProductFormProps) {
                             <div className="flex-1 min-w-0">
                               <FormControl>
                                 <MultiSelect
-                                  // `key` forces a remount when the
-                                  // selection changes (e.g. after the
-                                  // create-category dialog primes a new
-                                  // id) — MultiSelect is internally
-                                  // stateful and only reads defaultValue
-                                  // once on mount.
                                   key={selectedIds.join(",")}
                                   options={categories.map((c) => ({
                                     label: c.name,
@@ -1142,7 +1121,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                             key={field._key}
                             index={index}
                             form={form}
-                            onRemove={() => removeVariant(index)}
+                            onRemove={removeVariant}
                             stockVariants={stockVariants}
                             stockVariantCosts={stockVariantCosts}
                             disabled={isPending}
@@ -1156,7 +1135,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                       <VariantEditor
                         index={0}
                         form={form}
-                        onRemove={() => {}}
+                        onRemove={removeVariant}
                         stockVariants={stockVariants}
                         stockVariantCosts={stockVariantCosts}
                         disabled={isPending}
@@ -1256,10 +1235,6 @@ export default function ProductForm({ item }: ProductFormProps) {
                     </div>
                   </header>
                   <div className={styles.formBody}>
-                    {/* Tax type + Tax inclusive + Sell online — single
-                        row on lg+, two columns on sm, stacked on phones.
-                        Tax type spans all columns of the wider rows so
-                        the Select keeps breathing room. */}
                     <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
                       <FormField
                         control={form.control}
@@ -1498,7 +1473,13 @@ function SaveFirstPlaceholder({ children }: { children: React.ReactNode }) {
 interface VariantEditorProps {
   index: number;
   form: ReturnType<typeof useForm<ProductInput>>;
-  onRemove: () => void;
+  /**
+   * Receives the variant index so the parent can keep a single stable
+   * remove function and avoid an inline arrow per row — that arrow used
+   * to defeat the `React.memo` wrap below and re-render every variant on
+   * every keystroke.
+   */
+  onRemove: (index: number) => void;
   stockVariants: StockVariantOption[];
   stockVariantCosts: Record<string, number>;
   disabled: boolean;
@@ -1513,7 +1494,7 @@ interface VariantEditorProps {
   autoCreateStock?: boolean;
 }
 
-function VariantEditor({
+function VariantEditorImpl({
   index,
   form,
   onRemove,
@@ -1524,27 +1505,27 @@ function VariantEditor({
   canRemove,
   autoCreateStock = false,
 }: VariantEditorProps) {
-  const mode = form.watch(`variants.${index}.sellabilityMode`);
-  const pricingStrategy = form.watch(`variants.${index}.pricingStrategy`);
-  const costPrice = form.watch(`variants.${index}.costPrice`);
-  const markupPercentage = form.watch(`variants.${index}.markupPercentage`);
-  const markupAmount = form.watch(`variants.${index}.markupAmount`);
-  const stockVariantId = form.watch(`variants.${index}.stockVariantId`);
-  const directQuantity = form.watch(`variants.${index}.directQuantity`);
+  // One subscription on the variant subtree instead of seven separate
+  // watches — RHF's per-watch bookkeeping is cheap individually but adds
+  // up across re-renders of a multi-variant form.
+  const variant = useWatch({
+    control: form.control,
+    name: `variants.${index}`,
+  });
+  const mode = variant?.sellabilityMode;
+  const pricingStrategy = variant?.pricingStrategy;
+  const costPrice = variant?.costPrice;
+  const markupPercentage = variant?.markupPercentage;
+  const markupAmount = variant?.markupAmount;
+  const stockVariantId = variant?.stockVariantId;
+  const directQuantity = variant?.directQuantity;
   const currency = form.watch("nativeCurrency") || "TZS";
   const currencySuffix = ` ${currency}`;
-  // "Track stock" means the inventory ledger drives availability — only
-  // DIRECT (linked stock item) and RECIPE (BOM rule) qualify. UNLIMITED
-  // and QUANTITY both leave the product untracked at the catalog level.
   const tracksStock = mode === "DIRECT" || mode === "RECIPE";
   const isMarkupMode =
     pricingStrategy === "PERCENTAGE_MARKUP" ||
     pricingStrategy === "FIXED_MARKUP";
 
-  // Toggling the master "Track stock" switch flips between the OFF default
-  // (UNLIMITED — merchant can switch to QUANTITY via the inner radio) and
-  // ON (DIRECT — inner radio offers RECIPE). Inner radios live below this
-  // toggle and own the within-state transitions.
   const handleTrackToggle = (track: boolean) => {
     if (track) {
       form.setValue(`variants.${index}.sellabilityMode`, "DIRECT");
@@ -1556,11 +1537,6 @@ function VariantEditor({
     }
   };
 
-  // Default the "Quantity per sale" to 1 the moment a variant lands in
-  // DIRECT mode without one. Reading via form.getValues() means the effect
-  // doesn't refire when the user later clears or edits the field — they
-  // stay in control after the initial seed.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (mode !== "DIRECT") return;
     const current = form.getValues(`variants.${index}.directQuantity`);
@@ -1571,11 +1547,6 @@ function VariantEditor({
     }
   }, [mode, index, form]);
 
-  // DIRECT mode: derive cost from the linked stock item's weighted-average
-  // cost × direct quantity per sale. Mirrors what the backend will charge
-  // on average at sale time (BatchConsumptionResult.weightedAverageCost) —
-  // the actual cost still comes from the specific FEFO/FIFO batch consumed,
-  // which is why this is an "approximate" display value.
   useEffect(() => {
     if (mode !== "DIRECT") return;
     if (!stockVariantId || directQuantity == null || directQuantity <= 0)
@@ -1588,10 +1559,6 @@ function VariantEditor({
     });
   }, [mode, stockVariantId, directQuantity, stockVariantCosts, index, form]);
 
-  // Markup-based pricing derives the selling price from cost + markup. We
-  // recompute on every change so the disabled price field always shows the
-  // current derived value, and the form submits a number that matches what
-  // the merchant sees.
   useEffect(() => {
     if (!isMarkupMode || costPrice == null) return;
     let derived: number | null = null;
@@ -1620,9 +1587,7 @@ function VariantEditor({
   return (
     <div
       className={
-        showHeader
-          ? "border rounded-lg p-4 space-y-4 bg-muted/40"
-          : "space-y-4"
+        showHeader ? "border rounded-lg p-4 space-y-4 bg-muted/40" : "space-y-4"
       }
     >
       {showHeader && (
@@ -1635,7 +1600,7 @@ function VariantEditor({
               type="button"
               variant="ghost"
               size="sm"
-              onClick={onRemove}
+              onClick={() => onRemove(index)}
               disabled={disabled}
               className="text-red-600 hover:text-red-700 h-8"
             >
@@ -1708,9 +1673,6 @@ function VariantEditor({
         </div>
       )}
 
-      {/* Pricing — cost, price, strategy, and markup (when applicable) all on
-          one row. The markup column appears only for markup-based strategies,
-          bumping the grid from 3 to 4 columns on md+ screens. */}
       <div
         className={`grid grid-cols-1 gap-4 ${
           isMarkupMode ? "md:grid-cols-4" : "md:grid-cols-3"
@@ -1737,8 +1699,6 @@ function VariantEditor({
                   allowNegative={false}
                   thousandSeparator=","
                   suffix={currencySuffix}
-                  // When tracking, cost is sourced from the linked stock
-                  // item's weighted-average cost — not editable on the form.
                   disabled={disabled || tracksStock}
                 />
               </FormControl>
@@ -1772,9 +1732,6 @@ function VariantEditor({
                   allowNegative={false}
                   thousandSeparator=","
                   suffix={currencySuffix}
-                  // Markup strategies derive price from cost + markup, so the
-                  // field is read-only — the value is kept in sync by the
-                  // useEffect above.
                   disabled={disabled || isMarkupMode}
                 />
               </FormControl>
@@ -1874,10 +1831,6 @@ function VariantEditor({
           />
         )}
       </div>
-
-      {/* Track stock toggle (per variant) — default OFF.
-          Hidden in auto-create-stock mode: the parent form's master
-          toggle drives a backend-side 1:1 link instead. */}
       {!autoCreateStock && (
         <FormItem className="flex items-center justify-between rounded-lg border p-3">
           <div className="space-y-0.5">
@@ -1894,9 +1847,6 @@ function VariantEditor({
         </FormItem>
       )}
 
-      {/* Untracked sub-fields — Unlimited vs Set quantity.
-          QUANTITY is a self-managed counter on the variant; the order
-          consumer decrements it on sale (no stock ledger). */}
       {!autoCreateStock && !tracksStock && (
         <div className="space-y-4 rounded-lg border p-4">
           <FormField
@@ -1959,8 +1909,7 @@ function VariantEditor({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Starting quantity{" "}
-                    <span className="text-red-500">*</span>
+                    Starting quantity <span className="text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
                     <NumericFormat
@@ -1974,8 +1923,8 @@ function VariantEditor({
                     />
                   </FormControl>
                   <p className="text-xs text-muted-foreground">
-                    Deducts on every sale; sales fail once it hits zero.
-                    Adjust here at any time to refill.
+                    Deducts on every sale; sales fail once it hits zero. Adjust
+                    here at any time to refill.
                   </p>
                   <FormMessage />
                 </FormItem>
@@ -2110,7 +2059,9 @@ function VariantEditor({
             <RecipeAttachField
               control={form.control}
               variantIndex={index}
-              variantId={form.watch(`variants.${index}.id`) as string | undefined}
+              variantId={
+                form.watch(`variants.${index}.id`) as string | undefined
+              }
               disabled={disabled}
               onPrime={(ruleId) =>
                 form.setValue(`variants.${index}.bomRuleId`, ruleId, {
@@ -2146,6 +2097,13 @@ function VariantEditor({
   );
 }
 
+// Memoised wrapper — skips re-render when none of the props change. Combined
+// with a stable {@link onRemove} from the parent, this turns "every
+// keystroke re-renders every variant row" into "only the variant whose
+// fields changed re-renders" (via the per-variant `form.watch` subscriptions
+// inside).
+const VariantEditor = React.memo(VariantEditorImpl);
+
 // Inline RECIPE-mode attachment picker — shown beneath the Direct/Recipe
 // radio when Recipe is selected. Lets the operator attach an existing
 // consumption rule or author a new one in a side drawer without leaving
@@ -2168,12 +2126,8 @@ function RecipeAttachField({
 }) {
   const primedRef = useRef(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // Bumped each time a rule is created in the drawer — keys the selector
-  // so it remounts and re-fetches, picking up the brand-new rule.
   const [selectorRefreshKey, setSelectorRefreshKey] = useState(0);
 
-  // Edit-mode prime: fetch the active rule for this existing variant once
-  // and seed the form so the picker reflects what's currently attached.
   useEffect(() => {
     if (primedRef.current) return;
     if (!variantId) return;
@@ -2194,8 +2148,8 @@ function RecipeAttachField({
       <div className="flex items-start gap-2.5">
         <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
         <p className="text-sm text-muted-foreground">
-          Recipe-driven: stock is deducted via a consumption rule at sale
-          time. Pick an existing rule or create a new one.
+          Recipe-driven: stock is deducted via a consumption rule at sale time.
+          Pick an existing rule or create a new one.
         </p>
       </div>
       <div className="flex items-end gap-2">
@@ -2233,28 +2187,22 @@ function RecipeAttachField({
           </SheetTrigger>
           <SheetContent
             side="right"
-            // Wider on desktop so ingredient rows don't feel cramped, full
-            // height with an internal flex column layout (sticky header +
-            // scroll body) instead of one big scrolling block.
             className="flex w-full flex-col gap-0 p-0 sm:max-w-3xl"
-            // Soft focus scrim — keeps the product form visible behind so
-            // the merchant doesn't lose context of what they're editing.
             overlayClassName="bg-foreground/30 backdrop-blur-sm"
           >
             <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
               <SheetHeader className="space-y-1">
-                <SheetTitle className="text-base">New consumption rule</SheetTitle>
+                <SheetTitle className="text-base">
+                  New consumption rule
+                </SheetTitle>
                 <SheetDescription className="text-xs">
-                  Author the rule here — it&apos;ll attach to this variant
-                  when you save the product.
+                  Author the rule here — it&apos;ll attach to this variant when
+                  you save the product.
                 </SheetDescription>
               </SheetHeader>
             </div>
             <div className="flex-1 overflow-y-auto px-6 py-5">
-              <RecipeForm
-                hideAttachments
-                onCreated={handleRuleCreated}
-              />
+              <RecipeForm hideAttachments onCreated={handleRuleCreated} />
             </div>
           </SheetContent>
         </Sheet>
@@ -2293,12 +2241,6 @@ function SellabilityCard({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Chip-style tags input — type and press Enter to add a chip; backspace
-// on an empty input removes the last chip; click × to remove a specific
-// tag.
-// ─────────────────────────────────────────────────────────────────────
-
 function ChipTagsInput({
   tags,
   onChange,
@@ -2326,8 +2268,6 @@ function ChipTagsInput({
     <div
       className={styles.tagInput}
       onClick={(e) => {
-        // Focus the inner input when the empty area is clicked so the
-        // chip area behaves like a single composite input.
         const target = e.target as HTMLElement;
         if (target === e.currentTarget) {
           target.querySelector("input")?.focus();
@@ -2469,13 +2409,6 @@ function LivePreviewCard({
     </section>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────
-// Media card — drag-drop hero zone + 4-thumb gallery rail. Up to 5
-// images. Only the primary image's URL is persisted today (synced into
-// form.imageUrl by the parent); additional images stay client-only
-// until the gallery backend lands.
-// ─────────────────────────────────────────────────────────────────────
 
 interface GalleryImage {
   name: string;
@@ -2639,11 +2572,7 @@ function MediaCard({
 // Modifier groups (attach/detach from the business library)
 // ─────────────────────────────────────────────────────────────────────
 
-function ProductModifierGroupsSection({
-  productId,
-}: {
-  productId: string;
-}) {
+function ProductModifierGroupsSection({ productId }: { productId: string }) {
   const { toast } = useToast();
   const [attached, setAttached] = useState<ModifierGroup[]>([]);
   const [library, setLibrary] = useState<ModifierGroup[]>([]);
@@ -3276,9 +3205,9 @@ function CreateLibraryGroupButton({
 }) {
   const [open, setOpen] = useState(false);
   const [stockVariants, setStockVariants] = useState<ModifierStockOption[]>([]);
-  const [productVariants, setProductVariants] = useState<ProductVariantOption[]>(
-    [],
-  );
+  const [productVariants, setProductVariants] = useState<
+    ProductVariantOption[]
+  >([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -3286,7 +3215,7 @@ function CreateLibraryGroupButton({
     let cancelled = false;
     (async () => {
       if (kind === "modifier") {
-        const stocks = await getStocks().catch(() => [] as any[]);
+        const stocks = await getCachedStocks().catch(() => [] as any[]);
         if (cancelled) return;
         const opts: ModifierStockOption[] = [];
         for (const s of stocks ?? []) {
@@ -3347,9 +3276,7 @@ function CreateLibraryGroupButton({
       >
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <SheetHeader className="space-y-1">
-            <SheetTitle className="text-base">
-              New {noun} group
-            </SheetTitle>
+            <SheetTitle className="text-base">New {noun} group</SheetTitle>
             <SheetDescription className="text-xs">
               {kind === "modifier"
                 ? "Build a reusable group of customer-facing tweaks. It'll be added to this product when you save."
@@ -3442,11 +3369,7 @@ function OptionChips({
 // Addon groups (attach/detach from the business library)
 // ─────────────────────────────────────────────────────────────────────
 
-function ProductAddonGroupsSection({
-  productId,
-}: {
-  productId: string;
-}) {
+function ProductAddonGroupsSection({ productId }: { productId: string }) {
   const { toast } = useToast();
   const [attached, setAttached] = useState<AddonGroup[]>([]);
   const [library, setLibrary] = useState<AddonGroup[]>([]);
@@ -4464,52 +4387,5 @@ function PriceOverridesSection({
         </div>
       </div>
     </section>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────
-// Inline name form (modifier + addon group "create")
-// ─────────────────────────────────────────────────────────────────────
-
-function InlineNameForm({
-  placeholder,
-  onSubmit,
-  onCancel,
-  disabled,
-}: {
-  placeholder: string;
-  onSubmit: (name: string) => Promise<void>;
-  onCancel: () => void;
-  disabled?: boolean;
-}) {
-  const [name, setName] = useState("");
-
-  return (
-    <div className="flex items-center gap-2 rounded-md border p-2">
-      <Input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder={placeholder}
-        disabled={disabled}
-        autoFocus
-      />
-      <Button
-        type="button"
-        size="sm"
-        onClick={() => onSubmit(name.trim())}
-        disabled={disabled || !name.trim()}
-      >
-        <Save className="h-3.5 w-3.5 mr-1" /> Save
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={onCancel}
-        disabled={disabled}
-      >
-        Cancel
-      </Button>
-    </div>
   );
 }
