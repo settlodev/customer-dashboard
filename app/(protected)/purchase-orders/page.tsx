@@ -40,10 +40,19 @@ export default async function Page({ searchParams }: Params) {
   const pageLimit = Number(resolvedParams.limit) || 20;
   const status = STATUS_VALUES.find((s) => s === resolvedParams.status);
 
-  const [responseData, suppliers, location] = await Promise.all([
+  // Same shape as the products page: chain the KPI fetch off the location
+  // promise so it joins the parallel Promise.all instead of being awaited
+  // sequentially after.
+  const locationPromise = getCurrentLocation();
+  const kpiPromise = locationPromise.then((loc) =>
+    loc?.id ? getPurchaseOrderKpi(loc.id).catch(() => null) : null,
+  );
+
+  const [responseData, suppliers, location, kpi] = await Promise.all([
     getLpos(page ? page - 1 : 0, pageLimit, status),
     fetchAllSuppliers(),
-    getCurrentLocation(),
+    locationPromise,
+    kpiPromise,
   ]);
 
   const supplierMap = Object.fromEntries(suppliers.map((s) => [s.id, s.name]));
@@ -54,8 +63,6 @@ export default async function Page({ searchParams }: Params) {
   }));
   const total = responseData.totalElements ?? 0;
   const pageCount = responseData.totalPages ?? 0;
-
-  const kpi = location?.id ? await getPurchaseOrderKpi(location.id) : null;
 
   return (
     <PageShell>

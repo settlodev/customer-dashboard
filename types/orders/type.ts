@@ -8,6 +8,10 @@ export enum OrderStatus {
   OPEN = "OPEN",
   CLOSED = "CLOSED",
   CANCELLED = "CANCELLED",
+  // Terminal state for orders that were created against a table but
+  // never had any items added before being cancelled. EOD purge sweeps
+  // them so they don't pollute reports as a real cancellation.
+  ABANDONED = "ABANDONED",
 }
 
 export enum OrderType {
@@ -538,6 +542,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   [OrderStatus.OPEN]: "Open",
   [OrderStatus.CLOSED]: "Closed",
   [OrderStatus.CANCELLED]: "Cancelled",
+  [OrderStatus.ABANDONED]: "Abandoned",
 };
 
 export const ORDER_STATUS_PILL: Record<OrderStatus, string> = {
@@ -547,6 +552,8 @@ export const ORDER_STATUS_PILL: Record<OrderStatus, string> = {
     "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
   [OrderStatus.CANCELLED]:
     "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  [OrderStatus.ABANDONED]:
+    "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
 };
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
@@ -603,6 +610,7 @@ export const ORDER_STATUS_FILTER_OPTIONS = [
   { label: "Open", value: OrderStatus.OPEN },
   { label: "Closed", value: OrderStatus.CLOSED },
   { label: "Cancelled", value: OrderStatus.CANCELLED },
+  { label: "Abandoned", value: OrderStatus.ABANDONED },
 ];
 
 // ─── Legacy types kept for receipts / reports ───────────────────────

@@ -48,10 +48,14 @@ export default async function CustomersPage({ searchParams }: Params) {
         ? "all"
         : "active";
 
+  const activeFilter = status === "all" ? undefined : status === "active";
+
   // Counts and summary stats roll up from the full list — so the KPI
   // strip and status tabs stay accurate regardless of which tab the
-  // current page is showing.
-  const [counts, stats] = await Promise.all([
+  // current page is showing. Folded into the same Promise.all as the
+  // paged search so all three fetches happen in parallel instead of
+  // counts+stats finishing before the search even starts.
+  const [counts, stats, responseData] = await Promise.all([
     getCustomerCount().catch(() => ({ total: 0, active: 0, inactive: 0 })),
     getCustomerSummaryStats().catch(() => ({
       loyaltyPointsTotal: 0,
@@ -59,10 +63,8 @@ export default async function CustomersPage({ searchParams }: Params) {
       withEmail: 0,
       noShowCustomers: 0,
     })),
+    searchCustomer(q, page, pageLimit, activeFilter),
   ]);
-
-  const activeFilter = status === "all" ? undefined : status === "active";
-  const responseData = await searchCustomer(q, page, pageLimit, activeFilter);
 
   const data: Customer[] = responseData.content;
   const total = responseData.totalElements;

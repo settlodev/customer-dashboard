@@ -11,9 +11,14 @@ import { getCurrentLocation } from "@/lib/actions/business/get-current-business"
 import { getAccountingLocationSettings } from "@/lib/actions/accounting-location-settings-actions";
 
 export default async function NewFundTransferPage() {
-  const location = await getCurrentLocation();
+  // Location and settings are independent — fire in parallel; the redirect
+  // gate still runs first against the resolved location, but we don't
+  // pay the settings fetch cost serially behind location.
+  const [location, settings] = await Promise.all([
+    getCurrentLocation(),
+    getAccountingLocationSettings(),
+  ]);
   if (!location?.id) redirect("/accounting/fund-transfers");
-  const settings = await getAccountingLocationSettings();
   const defaultCurrency = settings.currency || settings.defaultCurrency || "TZS";
 
   return (

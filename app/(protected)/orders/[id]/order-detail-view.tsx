@@ -56,6 +56,7 @@ const STATUS_TONE: Record<
   [OrderStatus.OPEN]: { variant: "warn", label: "Open" },
   [OrderStatus.CLOSED]: { variant: "pos", label: "Closed" },
   [OrderStatus.CANCELLED]: { variant: "neg", label: "Cancelled" },
+  [OrderStatus.ABANDONED]: { variant: "warn", label: "Abandoned" },
 };
 
 const PAYMENT_TONE: Record<

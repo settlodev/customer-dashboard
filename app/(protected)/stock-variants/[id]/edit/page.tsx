@@ -18,13 +18,20 @@ export default async function EditStockPage({
   params: Params;
 }) {
   const { id } = await params;
-  const stock = await getStock(id);
+  // Stock, location, and balances are all independent — parallelise so
+  // the edit page TTFB tracks the slowest of the three rather than
+  // their sum. Balances chains off the location promise (since it needs
+  // location.id), but still kicks off as soon as location resolves.
+  const locationPromise = getCurrentLocation();
+  const balancesPromise = locationPromise.then((loc) =>
+    loc?.id ? getBalancesByLocation(loc.id).catch(() => []) : [],
+  );
+  const [stock, _location, allBalances] = await Promise.all([
+    getStock(id),
+    locationPromise,
+    balancesPromise,
+  ]);
   if (!stock) notFound();
-
-  const location = await getCurrentLocation();
-  const allBalances = location?.id
-    ? await getBalancesByLocation(location.id)
-    : [];
 
   const variantIds = new Set(stock.variants.map((v) => v.id));
   const balances: Record<

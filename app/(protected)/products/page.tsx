@@ -131,10 +131,20 @@ async function Page({ searchParams }: Params) {
   // All = every non-deleted row). Live qty / cost ride along on each
   // variant — joined into the response from inventory_balance — so this
   // page no longer needs a second balances round-trip.
-  const [responseData, counts, location] = await Promise.all([
+  // Chain the KPI fetch off the location promise so it fires as soon as
+  // location resolves rather than waiting for the entire Promise.all. End
+  // time becomes max(searchProducts, location+kpi) instead of
+  // max(searchProducts, location) + kpi.
+  const locationPromise = getCurrentLocation().catch(() => null);
+  const kpiPromise = locationPromise.then((loc) =>
+    loc?.id ? getProductsKpi(loc.id, "TZS").catch(() => null) : null,
+  );
+
+  const [responseData, counts, location, kpi] = await Promise.all([
     searchProducts(q, page, pageLimit, status),
     getProductCounts(),
-    getCurrentLocation().catch(() => null),
+    locationPromise,
+    kpiPromise,
   ]);
 
   // Flatten each product into one row per variant. The display-name
@@ -152,8 +162,6 @@ async function Page({ searchParams }: Params) {
 
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;
-
-  const kpi = location?.id ? await getProductsKpi(location.id, "TZS") : null;
 
   return (
     <PageShell>
