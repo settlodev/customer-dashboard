@@ -69,7 +69,12 @@ export const StockSchema = object({
     "Select a valid unit",
   ),
   materialType: string().default("FINISHED_GOOD"),
-  imageUrl: string().optional().nullish(),
+  /**
+   * Up to 5 image URLs for the stock gallery. Element 0 is the
+   * cover/thumbnail. Matches the backend's {@code List<String>
+   * imageUrls} on Stock (cap enforced at the service layer).
+   */
+  imageUrls: array(string()).max(5, "Up to 5 images per stock item").default([]),
   variants: array(StockVariantSchema).min(
     1,
     "At least one variant is required",

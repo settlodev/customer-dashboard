@@ -55,25 +55,26 @@ export async function listAttachments(
   }
 }
 
+export interface InventoryAttachmentMetadata {
+  url: string;
+  key: string;
+  filename: string;
+  contentType: string;
+  size: number;
+}
+
 /**
- * Upload accepts a FormData (from the client) and the target entity. The
- * client sends `file` as a form field — we just pass it through. Because
- * Next.js can't serialise a File inside a normal server-action argument, the
- * wrapper takes the raw FormData.
+ * Register an attachment against an inventory entity after the browser
+ * has streamed the file directly to R2 via a presigned URL. Replaces
+ * the legacy multipart endpoint — the backing controller now persists
+ * metadata only.
  */
-export async function uploadAttachment(
+export async function registerAttachment(
   entityType: AttachmentEntityType,
   entityId: string,
-  formData: FormData,
+  metadata: InventoryAttachmentMetadata,
 ): Promise<FormResponse<Attachment>> {
-  const file = formData.get("file");
-  if (!(file instanceof File)) {
-    return { responseType: "error", message: "No file selected" };
-  }
-  if (file.size === 0) {
-    return { responseType: "error", message: "File is empty" };
-  }
-  if (file.size > ATTACHMENT_MAX_BYTES) {
+  if (metadata.size > ATTACHMENT_MAX_BYTES) {
     return {
       responseType: "error",
       message: "File exceeds the 10 MB limit",
@@ -84,7 +85,7 @@ export async function uploadAttachment(
     const apiClient = new ApiClient();
     const data = (await apiClient.post(
       inventoryUrl(`${BASE}/${entityType}/${entityId}`),
-      formData,
+      metadata,
     )) as Attachment;
     revalidatePath(pathFor(entityType));
     return {
@@ -95,7 +96,7 @@ export async function uploadAttachment(
   } catch (error: any) {
     return {
       responseType: "error",
-      message: error?.message ?? "Failed to upload file",
+      message: error?.message ?? "Failed to register attachment",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }

@@ -18,8 +18,7 @@ import {
 import { searchProducts, getProductCounts } from "@/lib/actions/product-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getProductsKpi } from "@/lib/actions/reports-analytics-actions";
-import { ProductCSVDialog } from "@/components/csv/CSVImport";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import TableExport from "@/components/widgets/export";
 import { ProductStatusTabs } from "@/components/tables/product/status-tabs";
 import { ProductsKpiStrip } from "@/components/widgets/products/products-kpi-strip";
@@ -173,7 +172,12 @@ async function Page({ searchParams }: Params) {
           <>
             <TableExport filename="products" useEndpoint />
             <BulkBarcodeGenerator scope="all" />
-            <ProductCSVDialog />
+            <Button asChild variant="outline" size="sm">
+              <Link href="/imports/products">
+                <Upload className="mr-1.5 h-4 w-4" />
+                Import CSV
+              </Link>
+            </Button>
             <Button asChild size="sm">
               <Link href="/products/new">
                 <Plus className="mr-1.5 h-4 w-4" />

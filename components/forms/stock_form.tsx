@@ -85,10 +85,10 @@ import {
   updateStock,
   archiveStockVariant,
   unarchiveStockVariant,
-  uploadStockImages,
   saveStockDraft,
   publishStock,
 } from "@/lib/actions/stock-actions";
+import { uploadService } from "@/lib/uploads/upload-service";
 import { assignBarcode } from "@/lib/actions/barcode-actions";
 import {
   getCachedCategories,
@@ -191,7 +191,11 @@ export default function StockForm({ item, balances }: StockFormProps) {
       description: item?.description ?? "",
       baseUnitId: item?.baseUnitId ?? "",
       materialType: item?.materialType ?? "FINISHED_GOOD",
-      imageUrl: item?.imageUrl ?? "",
+      imageUrls: item?.imageUrls?.length
+        ? item.imageUrls
+        : item?.imageUrl
+          ? [item.imageUrl]
+          : [],
       variants: item?.variants?.length
         ? item.variants.map((v) => ({
             id: v.id,
@@ -358,60 +362,61 @@ export default function StockForm({ item, balances }: StockFormProps) {
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [primaryIdx, setPrimaryIdx] = useState(0);
   const [dragOver, setDragOver] = useState(false);
+  const [isUploadingGallery, setIsUploadingGallery] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (!item?.imageUrl) return;
+    const initial: string[] = item?.imageUrls?.length
+      ? item.imageUrls
+      : item?.imageUrl
+        ? [item.imageUrl]
+        : [];
+    if (!initial.length) return;
     setGalleryImages((prev) => {
       if (prev.length) return prev;
-      return [
-        {
-          name: "current image",
-          size: 0,
-          type: "image/*",
-          dataUrl: item.imageUrl ?? "",
-        },
-      ];
+      return initial.map((url: string, i: number) => ({
+        name: i === 0 ? "current image" : `current image ${i + 1}`,
+        size: 0,
+        type: "image/*",
+        dataUrl: url,
+      }));
     });
   }, [item]);
 
   const handleFiles = useCallback(
-    (files: FileList | File[] | null | undefined) => {
+    async (files: FileList | File[] | null | undefined) => {
       if (!files) return;
       const arr = Array.from(files).filter((f) => f.type.startsWith("image/"));
       if (!arr.length) return;
-      Promise.all(
-        arr.map(
-          (f) =>
-            new Promise<GalleryImage>((res, rej) => {
-              const r = new FileReader();
-              r.onload = (e) =>
-                res({
-                  name: f.name,
-                  size: f.size,
-                  type: f.type,
-                  dataUrl: (e.target?.result as string) ?? "",
-                });
-              r.onerror = () => rej(r.error);
-              r.readAsDataURL(f);
-            }),
-        ),
-      )
-        .then(async (loaded) => {
-          const urls = await uploadStockImages(loaded.map((l) => l.dataUrl));
-          const merged = loaded.map((l, i) => ({
-            ...l,
-            dataUrl: urls[i] ?? l.dataUrl,
-          }));
-          setGalleryImages((prev) => [...prev, ...merged].slice(0, 5));
-        })
-        .catch(() => {
-          toast({
-            variant: "destructive",
-            title: "Couldn't read image",
-            description: "Try a different file.",
-          });
+      setIsUploadingGallery(true);
+      try {
+        const uploaded = await Promise.all(
+          arr.map(async (file) => {
+            const result = await uploadService.upload({
+              file,
+              purpose: "STOCK_IMAGE",
+            });
+            return {
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              dataUrl: result.url,
+            };
+          }),
+        );
+        setGalleryImages((prev) => [...prev, ...uploaded].slice(0, 5));
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Upload failed",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Couldn't upload one of the images.",
         });
+      } finally {
+        setIsUploadingGallery(false);
+      }
     },
     [toast],
   );
@@ -425,10 +430,16 @@ export default function StockForm({ item, balances }: StockFormProps) {
     [],
   );
 
-  // Sync primary image into form's imageUrl
+  // Sync gallery into form's imageUrls (cover first, then the rest in order).
   useEffect(() => {
-    const primary = galleryImages[primaryIdx];
-    form.setValue("imageUrl", primary?.dataUrl ?? "", { shouldDirty: true });
+    const cover = galleryImages[primaryIdx];
+    const rest = galleryImages.filter((_, idx) => idx !== primaryIdx);
+    const ordered = cover ? [cover, ...rest] : rest;
+    form.setValue(
+      "imageUrls",
+      ordered.map((g) => g.dataUrl).filter((u) => !!u),
+      { shouldDirty: true },
+    );
   }, [galleryImages, primaryIdx, form]);
 
   // Readiness checklist. The four mandatory items gate submit; "Variant
@@ -823,6 +834,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
                 dragOver={dragOver}
                 setDragOver={setDragOver}
                 fileInputRef={fileInputRef}
+                isUploading={isUploadingGallery}
               />
             </aside>
           </div>
@@ -1028,6 +1040,7 @@ interface StockMediaCardProps {
   dragOver: boolean;
   setDragOver: (v: boolean) => void;
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
+  isUploading?: boolean;
 }
 
 function StockMediaCard({
@@ -1039,6 +1052,7 @@ function StockMediaCard({
   dragOver,
   setDragOver,
   fileInputRef,
+  isUploading = false,
 }: StockMediaCardProps) {
   const primary = images[primaryIdx];
 
@@ -1057,7 +1071,9 @@ function StockMediaCard({
           </p>
         </div>
         <div className={styles.formCardActions}>
-          <span className={styles.stepBadge}>{images.length}/5</span>
+          <span className={styles.stepBadge}>
+            {isUploading ? "Uploading…" : `${images.length}/5`}
+          </span>
         </div>
       </header>
       <div className={styles.formBody}>

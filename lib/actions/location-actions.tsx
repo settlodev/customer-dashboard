@@ -154,12 +154,7 @@ export const createLocation = async (
 
   if (formResponse) {
     if (formResponse.responseType === "success") {
-      // Use businessId to determine if this is multistep
-      if (businessId) {
-        revalidatePath("/business");
-      } else {
-        revalidatePath("/select-location");
-      }
+      revalidatePath("/select-location");
     }
     return formResponse;
   }

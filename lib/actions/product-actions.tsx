@@ -262,7 +262,7 @@ export async function createProduct(
       description: validData.data.description || undefined,
       categoryIds: validData.data.categoryIds,
       brandId: validData.data.brandId || undefined,
-      imageUrl: validData.data.imageUrl || undefined,
+      imageUrls: validData.data.imageUrls,
       sellOnline: validData.data.sellOnline,
       trackStock: deriveTrackStock(validData.data.variants),
       taxInclusive: validData.data.taxInclusive,
@@ -342,7 +342,7 @@ export async function createProductWithStock(
       description: validData.data.description || undefined,
       categoryIds: validData.data.categoryIds,
       brandId: validData.data.brandId || undefined,
-      imageUrl: validData.data.imageUrl || undefined,
+      imageUrls: validData.data.imageUrls,
       sellOnline: validData.data.sellOnline,
       // Auto-tracking always tracks stock — every variant gets a 1:1 link.
       trackStock: true,
@@ -424,10 +424,9 @@ export async function updateProduct(
       description: validData.data.description || undefined,
       categoryIds: validData.data.categoryIds,
       brandId: validData.data.brandId || undefined,
-      // Wrap the form's single primary URL into the list shape the
-      // backend expects (V32). Pass `undefined` to leave the gallery
-      // alone, an empty list to clear it.
-      imageUrls: validData.data.imageUrl ? [validData.data.imageUrl] : undefined,
+      // Empty list clears the gallery on the backend; omit the field
+      // entirely (undefined) to leave it untouched.
+      imageUrls: validData.data.imageUrls,
       sellOnline: validData.data.sellOnline,
       trackStock: deriveTrackStock(validData.data.variants),
       taxInclusive: validData.data.taxInclusive,
@@ -711,62 +710,12 @@ Requirements:
   }
 };
 
-// ── CSV Upload/Download (kept — hits Rust service) ──────────────────
+// CSV upload + download were migrated off the Rust service. Upload is now
+// handled by /api/v1/imports — see lib/actions/import-actions.ts. The
+// product-CSV export is not yet re-implemented in the inventory service.
 
-export const uploadProductCSV = async ({
-  fileData,
-  fileName,
-}: {
-  fileData: string;
-  fileName: string;
-}): Promise<void> => {
-  if (!fileName.endsWith(".csv")) {
-    throw new Error("Invalid file type. Please upload a CSV file.");
-  }
-
-  const formattedCSVData = fileData.replace(/\r\n/g, "\n");
-
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    await apiClient.post(
-      `/rust/csv-uploading/upload-products-csv?location_id=${location?.id}`,
-      formattedCSVData,
-      {
-        headers: { "Content-Type": "text/csv" },
-        transformRequest: [(data: string) => data],
-      },
-    );
-  } catch (error: any) {
-    if (
-      error.code === "FORBIDDEN" &&
-      error.message?.includes("beyond the limit")
-    ) {
-      const limitMatch = error.message.match(/limit is (\d+)/);
-      const wantedMatch = error.message.match(/total of (\d+)/);
-      throw new Error(
-        `Subscription limit exceeded. Your plan allows up to ${limitMatch?.[1] ?? "?"} products, but you attempted ${wantedMatch?.[1] ?? "too many"}.`,
-      );
-    }
-    throw new Error(
-      `Failed to upload CSV: ${error?.message || "Please try again."}`,
-    );
-  }
-  revalidatePath("/products");
-};
-
-export const downloadProductsCSV = async (locationId?: string) => {
-  const location = (await getCurrentLocation()) || { id: locationId };
-  try {
-    const apiClient = new ApiClient();
-    return await apiClient.get(
-      `/rust/csv-downloading/download-products-csv?location_id=${location?.id}`,
-    );
-  } catch (error) {
-    throw new Error(
-      `Failed to download CSV: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
+export const downloadProductsCSV = async (_locationId?: string): Promise<Blob | string> => {
+  throw new Error("Product CSV export is not available yet.");
 };
 
 // ── Menu (kept — different service) ─────────────────────────────────
@@ -828,22 +777,6 @@ export const locationMenuDetails = async (
     throw error;
   }
 };
-
-// ── Multi-image upload (STUB) ───────────────────────────────────────
-// TODO(images): wire up to the real asset/CDN service. The product form
-// collects up to 5 images with a primary index; the UI feeds files in as
-// data URLs for preview. This stub echoes those data URLs back so the
-// flow works end-to-end pre-backend. Replace the body with a real upload
-// (e.g. multipart POST → S3/GCS) and return the public URLs.
-export async function uploadProductImages(
-  dataUrls: string[],
-): Promise<string[]> {
-  // eslint-disable-next-line no-console
-  console.warn(
-    "[uploadProductImages] STUB — returning input data URLs. Wire this up to the asset service.",
-  );
-  return dataUrls;
-}
 
 // ── Save as draft ───────────────────────────────────────────────────
 //
@@ -910,7 +843,9 @@ export async function saveProductDraft(
       .filter((v) => v && (v.name?.trim() || v.sku || v.price != null))
       .map((v) => mapVariantPartial(v, values.taxTypeId));
 
-    const imageUrls = values.imageUrl ? [values.imageUrl] : undefined;
+    const imageUrls = values.imageUrls && values.imageUrls.length
+      ? values.imageUrls
+      : undefined;
     const categoryIds = Array.isArray(values.categoryIds) && values.categoryIds.length
       ? values.categoryIds
       : undefined;

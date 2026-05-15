@@ -40,6 +40,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
+import { useUpload } from "@/lib/uploads/use-upload";
 import { cn } from "@/lib/utils";
 
 import { ChartOfAccountSelector } from "@/components/widgets/chart-of-account-selector";
@@ -404,17 +405,29 @@ export default function ExpensePaymentForm({
   );
 }
 
-// Wrapper for the existing attach action — surfaces an upload helper.
+// Upload trigger — streams the file directly to R2 via presigned URL,
+// then invokes onUploaded with metadata the caller registers against
+// the expense.
+export interface UploadAttachmentMetadata {
+  url: string;
+  key: string;
+  filename: string;
+  contentType: string;
+  size: number;
+}
+
 export interface UploadFormProps {
-  onUpload: (formData: FormData) => Promise<void>;
+  onUploaded: (metadata: UploadAttachmentMetadata) => Promise<void>;
   isPending: boolean;
 }
 
 export function UploadAttachmentTrigger({
-  onUpload,
+  onUploaded,
   isPending,
 }: UploadFormProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const { upload, isUploading, progress } = useUpload();
+  const busy = isPending || isUploading;
 
   return (
     <>
@@ -422,11 +435,15 @@ export function UploadAttachmentTrigger({
         type="button"
         variant="outline"
         size="sm"
-        disabled={isPending}
+        disabled={busy}
         onClick={() => inputRef.current?.click()}
       >
         <Paperclip className="h-3.5 w-3.5 mr-1.5" />
-        {isPending ? "Uploading…" : "Upload attachment"}
+        {isUploading
+          ? `Uploading ${progress?.percent ?? 0}%`
+          : isPending
+            ? "Saving…"
+            : "Upload attachment"}
       </Button>
       <input
         ref={inputRef}
@@ -435,10 +452,21 @@ export function UploadAttachmentTrigger({
         onChange={async (e) => {
           const file = e.target.files?.[0];
           if (!file) return;
-          const fd = new FormData();
-          fd.append("file", file);
-          await onUpload(fd);
-          if (inputRef.current) inputRef.current.value = "";
+          try {
+            const result = await upload({
+              file,
+              purpose: "EXPENSE_ATTACHMENT",
+            });
+            await onUploaded({
+              url: result.url,
+              key: result.key,
+              filename: result.filename,
+              contentType: result.contentType,
+              size: result.size,
+            });
+          } finally {
+            if (inputRef.current) inputRef.current.value = "";
+          }
         }}
       />
     </>

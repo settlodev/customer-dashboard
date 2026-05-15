@@ -136,7 +136,12 @@ export const ProductSchema = object({
     .default("TZS"),
 
   description: string().optional().nullish(),
-  imageUrl: string().optional().nullish(),
+  /**
+   * Up to 5 image URLs for the product gallery. Element 0 is the
+   * cover/thumbnail. Matches the backend's {@code List<String>
+   * imageUrls} on Product (cap enforced at the service layer).
+   */
+  imageUrls: array(string()).max(5, "Up to 5 images per product").default([]),
 
   brandId: string().uuid().optional().nullish(),
   // Department now lives on the category (categories optionally carry a

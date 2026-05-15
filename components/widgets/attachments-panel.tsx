@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useUpload } from "@/lib/uploads/use-upload";
 import type {
   Attachment,
   AttachmentEntityType,
@@ -29,7 +30,7 @@ import type {
 import { ATTACHMENT_MAX_BYTES } from "@/types/attachment/type";
 import {
   listAttachments,
-  uploadAttachment,
+  registerAttachment,
   deleteAttachment,
   getAttachmentDownloadHref,
   getAttachmentSaveHref,
@@ -58,12 +59,14 @@ export function AttachmentsPanel({
 }: Props) {
   const [items, setItems] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isUploading, startUpload] = useTransition();
+  const [isRegistering, startRegister] = useTransition();
   const [isDeleting, startDelete] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState<Attachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
+  const { upload, isUploading, progress } = useUpload();
+  const busy = isUploading || isRegistering;
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -77,7 +80,7 @@ export function AttachmentsPanel({
 
   const onPick = () => fileInputRef.current?.click();
 
-  const onFiles = (files: FileList | null) => {
+  const onFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const file = files[0];
     if (file.size > ATTACHMENT_MAX_BYTES) {
@@ -89,25 +92,38 @@ export function AttachmentsPanel({
       return;
     }
 
-    const formData = new FormData();
-    formData.append("file", file);
-
-    startUpload(async () => {
-      const res = await uploadAttachment(entityType, entityId, formData);
-      if (res.responseType === "error") {
-        toast({
-          variant: "destructive",
-          title: "Upload failed",
-          description: res.message,
+    try {
+      const result = await upload({ file, purpose: "INVENTORY_ATTACHMENT" });
+      startRegister(async () => {
+        const res = await registerAttachment(entityType, entityId, {
+          url: result.url,
+          key: result.key,
+          filename: result.filename,
+          contentType: result.contentType,
+          size: result.size,
         });
-        return;
-      }
-      toast({ title: "Uploaded", description: file.name });
-      refresh();
-    });
-
-    // Clear the input so picking the same file again still fires onChange.
-    if (fileInputRef.current) fileInputRef.current.value = "";
+        if (res.responseType === "error") {
+          toast({
+            variant: "destructive",
+            title: "Upload failed",
+            description: res.message,
+          });
+          return;
+        }
+        toast({ title: "Uploaded", description: file.name });
+        refresh();
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description:
+          error instanceof Error ? error.message : "Could not upload file",
+      });
+    } finally {
+      // Clear the input so picking the same file again still fires onChange.
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const onDelete = (attachment: Attachment) => {
@@ -171,14 +187,14 @@ export function AttachmentsPanel({
               variant="outline"
               size="sm"
               onClick={onPick}
-              disabled={isUploading}
+              disabled={busy}
             >
-              {isUploading ? (
+              {busy ? (
                 <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
               ) : (
                 <Upload className="h-3.5 w-3.5 mr-1.5" />
               )}
-              Upload
+              {isUploading && progress ? `${progress.percent}%` : "Upload"}
             </Button>
           )}
           <input
@@ -202,10 +218,12 @@ export function AttachmentsPanel({
                 : "border-gray-200 hover:border-gray-300 text-muted-foreground"
             }`}
           >
-            {isUploading ? (
+            {busy ? (
               <span className="inline-flex items-center gap-1.5">
                 <Loader2 className="h-3 w-3 animate-spin" />
-                Uploading…
+                {isUploading && progress
+                  ? `Uploading ${progress.percent}%`
+                  : "Saving…"}
               </span>
             ) : (
               <>

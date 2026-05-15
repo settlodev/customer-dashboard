@@ -9,6 +9,14 @@ import type { ExpenseAttachment } from "@/types/expense/type";
 
 import { accountingUrl } from "./accounting-client";
 
+export interface ExpenseAttachmentMetadata {
+  url: string;
+  key: string;
+  filename: string;
+  contentType: string;
+  size: number;
+}
+
 export async function listExpenseAttachments(
   expenseId: string,
 ): Promise<ExpenseAttachment[]> {
@@ -23,32 +31,40 @@ export async function listExpenseAttachments(
   }
 }
 
-export async function uploadExpenseAttachment(
+/**
+ * Register one or more attachments against an expense after the
+ * browser has streamed the file(s) directly to R2 via presigned URLs.
+ * Replaces the legacy multipart endpoint — the backing controller now
+ * persists metadata only.
+ */
+export async function registerExpenseAttachments(
   expenseId: string,
-  formData: FormData,
+  attachments: ExpenseAttachmentMetadata[],
 ): Promise<FormResponse<ExpenseAttachment[]>> {
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    return { responseType: "error", message: "No file selected" };
+  if (!attachments.length) {
+    return { responseType: "error", message: "No attachments to register" };
   }
   try {
     const apiClient = new ApiClient();
     const data = (await apiClient.post(
       accountingUrl(`/api/v1/expenses/${expenseId}/attachments`),
-      formData,
+      { attachments },
     )) as ExpenseAttachment[];
     revalidatePath(`/expenses/${expenseId}`);
     return {
       responseType: "success",
-      message: "Attachment uploaded",
+      message:
+        attachments.length === 1
+          ? "Attachment uploaded"
+          : `${attachments.length} attachments uploaded`,
       data: parseStringify(data),
     };
   } catch (error: unknown) {
-    console.error("uploadExpenseAttachment failed", error);
+    console.error("registerExpenseAttachments failed", error);
     return {
       responseType: "error",
       message:
-        error instanceof Error ? error.message : "Failed to upload attachment",
+        error instanceof Error ? error.message : "Failed to register attachment",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }

@@ -54,7 +54,6 @@ export const updateBusinessSettings = async (
       `/api/v1/businesses/${businessId}/settings`,
       patch,
     );
-    revalidatePath("/business");
     revalidatePath("/settings");
     return {
       responseType: "success",

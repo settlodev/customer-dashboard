@@ -14,18 +14,6 @@ import {
   StockIntakeSchema,
   UpdatedStockIntakeSchema,
 } from "@/types/stock-intake/schema";
-import { getCurrentWarehouse } from "./warehouse/current-warehouse-action";
-
-function isNextRedirect(error: any): boolean {
-  return (
-    error &&
-    typeof error === "object" &&
-    (error.digest?.startsWith("NEXT_REDIRECT") ||
-      error.__NEXT_REDIRECT_ERROR__ === true ||
-      error.message?.includes("NEXT_REDIRECT"))
-  );
-}
-
 export const searchStockIntakes = async (
   q: string,
   page: number,
@@ -188,118 +176,11 @@ export const updateStockIntake = async (
   return parseStringify(formResponse);
 };
 
-export const downloadStockIntakeCSV = async () => {
-  let uploadUrl: string;
-  const apiClient = new ApiClient();
-  const location = await getCurrentLocation();
+// CSV upload + sample download were migrated off the Rust service. Upload is
+// now handled by /api/v1/imports — see lib/actions/import-actions.ts. The
+// /imports/stock-intake page exposes its own "Download CSV template" button,
+// so the sample-download is no longer fanned out from here.
 
-  try {
-    if (location?.id) {
-      uploadUrl = `/rust/csv-downloading/download-stock-intake-upload-sample-csv?location_id=${location?.id}`;
-    } else {
-      const warehouse = await getCurrentWarehouse();
-      uploadUrl = `/rust/csv-downloading/download-warehouse-stock-intake-upload-sample-csv?warehouse_id=${warehouse?.id}`;
-    }
-    const response = await apiClient.get(uploadUrl);
-    return response;
-  } catch (error) {
-    console.error("Error downloading CSV file:", error);
-    throw new Error(
-      `Failed to download CSV file: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-};
-
-export const uploadStockIntakeCSV = async ({
-  fileData,
-  fileName,
-}: {
-  fileData: string;
-  fileName: string;
-}): Promise<void> => {
-  // console.log("Starting CSV upload");
-
-  if (!fileName.endsWith(".csv")) {
-    throw new Error(
-      "Invalid file type. Please upload a CSV file with a .csv extension.",
-    );
-  }
-
-  const lines = fileData.split("\n");
-  const isCSVContent = lines.every((line) => line.split(",").length > 1);
-
-  if (!isCSVContent) {
-    throw new Error(
-      "Invalid file content. The file does not appear to have a CSV structure.",
-    );
-  }
-  // console.log("CSV content to be sent:", fileData);
-
-  const formattedCSVData = fileData.replace(/\r\n/g, "\n");
-
-  // console.log("Formatted CSV data:", formattedCSVData);
-
-  const apiClient = new ApiClient();
-  const location = await getCurrentLocation();
-
-  let uploadUrl: string;
-  let isLocationUpload = false;
-
-  try {
-    if (location?.id) {
-      uploadUrl = `/rust/csv-uploading/upload-stock-intake-csv?location_id=${location?.id}`;
-      isLocationUpload = true;
-    } else {
-      const warehouse = await getCurrentWarehouse();
-      uploadUrl = `/rust/csv-uploading/upload-warehouse-stock-intake-csv?warehouse_id=${warehouse?.id}`;
-      isLocationUpload = false;
-    }
-
-    await apiClient.post(uploadUrl, formattedCSVData, {
-      headers: {
-        "Content-Type": "text/csv",
-      },
-      transformRequest: [(data) => data],
-      timeout: 30000,
-    });
-  } catch (error: any) {
-    if (isNextRedirect(error)) {
-      throw error;
-    }
-
-    if (error?.response?.status === 413) {
-      throw new Error(
-        "File too large. Please reduce the file size and try again.",
-      );
-    }
-
-    if (error?.response?.status === 400) {
-      throw new Error(
-        `Invalid CSV format: ${error?.response?.data?.message || "Please check your CSV file format and try again."}`,
-      );
-    }
-
-    if (error?.code === "ECONNABORTED" || error?.message?.includes("timeout")) {
-      throw new Error(
-        "Upload timeout. Please try again with a smaller file or check your connection.",
-      );
-    }
-
-    // Generic error with more context
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to upload CSV file: ${errorMessage}`);
-  }
-
-  try {
-    if (isLocationUpload) {
-      revalidatePath("/stock-intakes");
-    } else {
-      revalidatePath("/warehouse-stock-intakes");
-    }
-  } catch (revalidationError) {
-    console.warn(
-      "Failed to revalidate path after successful upload:",
-      revalidationError,
-    );
-  }
+export const downloadStockIntakeCSV = async (): Promise<Blob | string> => {
+  throw new Error("Stock intake CSV export is not available yet.");
 };

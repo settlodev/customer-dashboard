@@ -15,7 +15,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-import { FormResponse } from "@/types/types";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "../ui/button";
@@ -47,7 +46,6 @@ const BusinessForm = ({
   submitButtonText?: string;
 }) => {
   const [isPending, startTransition] = useTransition();
-  const [, setResponse] = useState<FormResponse | undefined>();
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [logoImage, setLogoImage] = useState(item?.logoUrl || "");
 
@@ -83,13 +81,20 @@ const BusinessForm = ({
   }, []);
 
   const submitData = (values: BusinessFormValues) => {
-    setResponse(undefined);
     values.logoUrl = logoImage || null;
 
     startTransition(() => {
       if (item) {
         updateBusiness(item.id, values).then((data) => {
-          if (data) setResponse(data);
+          if (data?.responseType === "success") {
+            toast({ title: "Business updated", description: data.message });
+          } else if (data?.responseType === "error") {
+            toast({
+              variant: "destructive",
+              title: "Couldn't update business",
+              description: data.message,
+            });
+          }
         });
       } else {
         onSubmit(values);

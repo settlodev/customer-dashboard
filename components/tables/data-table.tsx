@@ -57,7 +57,6 @@ import StockExport from "../widgets/export-stock";
 import StockIntakeExport from "../widgets/export-intake";
 import { BulkArchive } from "../widgets/bulk-archive";
 // WarehouseBulkArchive removed — warehouse code rebuilt
-import { CSVStockIntakeDialog } from "@/components/csv/stockIntakeImport";
 
 // Define page-specific component mappings
 const pageSpecificComponents = {
@@ -110,7 +109,7 @@ const pageSpecificComponents = {
   },
   "/warehouse-stock-intakes": {
     entityType: "stock-intake" as const,
-    importComponent: <CSVStockIntakeDialog />,
+    importComponent: null,
     exportComponent: <StockIntakeExport filename="Warehouse Stock Intake" />,
     entityNames: { singular: "Stock Intake", plural: "Stock Intakes" },
     isWarehouse: true,

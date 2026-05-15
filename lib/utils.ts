@@ -3,6 +3,8 @@ import { twMerge } from "tailwind-merge";
 import { format } from "date-fns";
 import { uploadCallBackType } from "@/types/types";
 import { v4 } from "uuid";
+import { uploadService } from "@/lib/uploads/upload-service";
+import type { UploadPurpose } from "@/lib/uploads/types";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -64,12 +66,58 @@ export const formatDateTime = (
   };
 };
 
+/**
+ * Legacy callback-style helper used by older forms (business_form,
+ * UploadImageWidget). Maps the path hint to an {@link UploadPurpose}
+ * and delegates to the shared {@link uploadService}, which handles the
+ * presigned-URL flow against R2. New callers should consume
+ * {@code useUpload()} or {@code uploadService.upload()} directly.
+ */
 export async function uploadImage(
-  _file: File,
-  _path: string,
+  file: File,
+  path: string,
   callback: (response: uploadCallBackType) => void,
 ) {
-  callback({ success: false, data: "Image upload is not configured" });
+  const purpose = inferUploadPurpose(path);
+  if (!purpose) {
+    callback({
+      success: false,
+      data: `Unknown upload destination "${path}". Use uploadService.upload() with an explicit purpose.`,
+    });
+    return;
+  }
+  try {
+    const result = await uploadService.upload({ file, purpose });
+    callback({ success: true, data: result.url });
+  } catch (error) {
+    callback({
+      success: false,
+      data: error instanceof Error ? error.message : "Upload failed",
+    });
+  }
+}
+
+/**
+ * Maps the legacy free-form `imagePath` string callers used to pass to
+ * the upload widgets onto a typed {@link UploadPurpose}. Keep this in
+ * sync with the {@code UploadImageWidget} call sites — adding a new
+ * folder name here means the corresponding purpose also has to exist
+ * on the owning backend service.
+ */
+function inferUploadPurpose(path: string): UploadPurpose | null {
+  const p = path.toLowerCase();
+  if (p.includes("business")) return "BUSINESS_LOGO";
+  if (p.includes("location")) return "LOCATION_LOGO";
+  if (p.includes("profile")) return "PROFILE_PICTURE";
+  if (p.includes("product") && p.includes("collection")) return "PRODUCT_COLLECTION_IMAGE";
+  if (p.includes("collection")) return "PRODUCT_COLLECTION_IMAGE";
+  if (p.includes("product")) return "PRODUCT_IMAGE";
+  if (p.includes("stock")) return "STOCK_IMAGE";
+  if (p.includes("brand")) return "BRAND_LOGO";
+  if (p.includes("categor")) return "CATEGORY_IMAGE";
+  if (p.includes("department")) return "DEPARTMENT_IMAGE";
+  if (p.includes("receipt")) return "RECEIPT_HEADER";
+  return null;
 }
 
 export const getBuildInfo = () => {

@@ -9,7 +9,17 @@ export interface Stock {
   baseUnitAbbreviation: string;
   archived: boolean;
   materialType: MaterialType;
+  /**
+   * Legacy single-image field. New rows return {@link imageUrls};
+   * keep this around for any callers still reading the cover via
+   * the old shape.
+   */
   imageUrl: string | null;
+  /**
+   * Up to 5 image URLs for the stock gallery. Element 0 is the
+   * cover/thumbnail.
+   */
+  imageUrls: string[];
   variants: StockVariant[];
   /**
    * True when the stock item is an in-progress form save (V35). The

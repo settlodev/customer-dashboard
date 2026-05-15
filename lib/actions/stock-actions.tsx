@@ -91,7 +91,7 @@ export async function createStock(
       description: validated.data.description,
       baseUnitId: validated.data.baseUnitId,
       materialType: validated.data.materialType,
-      imageUrl: validated.data.imageUrl || undefined,
+      imageUrls: validated.data.imageUrls,
       variants: validated.data.variants.map((v) => ({
         name: v.name,
         sku: v.sku || undefined,
@@ -155,10 +155,9 @@ export async function updateStock(
       description: validated.data.description,
       baseUnitId: validated.data.baseUnitId,
       materialType: validated.data.materialType,
-      // Wrap the form's single primary URL into the list shape the
-      // backend expects. Pass `undefined` to leave the gallery alone,
-      // an empty list to clear it.
-      imageUrls: validated.data.imageUrl ? [validated.data.imageUrl] : undefined,
+      // Empty list clears the gallery on the backend; omit the field
+      // entirely (undefined) to leave it untouched.
+      imageUrls: validated.data.imageUrls,
     });
 
     for (const variant of validated.data.variants) {
@@ -450,7 +449,7 @@ export async function createStockWithProduct(
       description: validated.data.description,
       baseUnitId: validated.data.baseUnitId,
       materialType: validated.data.materialType,
-      imageUrl: validated.data.imageUrl || undefined,
+      imageUrls: validated.data.imageUrls,
       variants: validated.data.variants.map((v) => ({
         name: v.name,
         sku: v.sku || undefined,
@@ -507,20 +506,6 @@ export async function createStockWithProduct(
 
 export { getStocks as fetchStock };
 
-// ── Multi-image upload (STUB) ───────────────────────────────────────
-// Mirrors uploadProductImages: accepts an array of data URLs and echoes
-// them back so the form can render previews end-to-end pre-backend.
-// Replace with a real multipart POST → asset/CDN service when wired up.
-export async function uploadStockImages(
-  dataUrls: string[],
-): Promise<string[]> {
-  // eslint-disable-next-line no-console
-  console.warn(
-    "[uploadStockImages] STUB — returning input data URLs. Wire this up to the asset service.",
-  );
-  return dataUrls;
-}
-
 // ── Save as draft ───────────────────────────────────────────────────
 //
 // Persists the in-progress form state without enforcing StockSchema's
@@ -575,7 +560,9 @@ export async function saveStockDraft(
       .filter((v) => v && (v.name?.trim() || v.sku || v.barcode))
       .map(mapStockVariantPartial);
 
-    const imageUrls = values.imageUrl ? [values.imageUrl] : undefined;
+    const imageUrls = values.imageUrls && values.imageUrls.length
+      ? values.imageUrls
+      : undefined;
 
     if (!stockId) {
       const payload = {

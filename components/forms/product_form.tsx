@@ -138,10 +138,10 @@ import {
   listPriceOverrides,
   upsertPriceOverride,
   removePriceOverride,
-  uploadProductImages,
   saveProductDraft,
   publishProduct,
 } from "@/lib/actions/product-actions";
+import { uploadService } from "@/lib/uploads/upload-service";
 import {
   listModifierGroups,
   listProductModifierGroups,
@@ -362,7 +362,7 @@ export default function ProductForm({ item }: ProductFormProps) {
           name: item.name,
           nativeCurrency: item.nativeCurrency ?? "TZS",
           description: item.description ?? "",
-          imageUrl: item.imageUrl ?? "",
+          imageUrls: item.imageUrls ?? (item.imageUrl ? [item.imageUrl] : []),
           brandId: item.brandId ?? undefined,
           categoryIds: item.categories?.map((c) => c.id) ?? [],
           tags: item.tags ?? [],
@@ -380,7 +380,7 @@ export default function ProductForm({ item }: ProductFormProps) {
           name: "",
           nativeCurrency: "TZS",
           description: "",
-          imageUrl: "",
+          imageUrls: [],
           brandId: undefined,
           categoryIds: [],
           tags: [],
@@ -547,65 +547,61 @@ export default function ProductForm({ item }: ProductFormProps) {
   >([]);
   const [primaryIdx, setPrimaryIdx] = useState(0);
   const [dragOver, setDragOver] = useState(false);
+  const [isUploadingGallery, setIsUploadingGallery] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (!item?.imageUrl) return;
+    const initial: string[] = item?.imageUrls?.length
+      ? item.imageUrls
+      : item?.imageUrl
+        ? [item.imageUrl]
+        : [];
+    if (!initial.length) return;
     setGalleryImages((prev) => {
       if (prev.length) return prev;
-      return [
-        {
-          name: "current image",
-          size: 0,
-          type: "image/*",
-          dataUrl: item.imageUrl ?? "",
-        },
-      ];
+      return initial.map((url: string, i: number) => ({
+        name: i === 0 ? "current image" : `current image ${i + 1}`,
+        size: 0,
+        type: "image/*",
+        dataUrl: url,
+      }));
     });
   }, [item]);
 
   const handleFiles = useCallback(
-    (files: FileList | File[] | null | undefined) => {
+    async (files: FileList | File[] | null | undefined) => {
       if (!files) return;
       const arr = Array.from(files).filter((f) => f.type.startsWith("image/"));
       if (!arr.length) return;
-      Promise.all(
-        arr.map(
-          (f) =>
-            new Promise<{
-              name: string;
-              size: number;
-              type: string;
-              dataUrl: string;
-            }>((res, rej) => {
-              const r = new FileReader();
-              r.onload = (e) =>
-                res({
-                  name: f.name,
-                  size: f.size,
-                  type: f.type,
-                  dataUrl: (e.target?.result as string) ?? "",
-                });
-              r.onerror = () => rej(r.error);
-              r.readAsDataURL(f);
-            }),
-        ),
-      )
-        .then(async (loaded) => {
-          const urls = await uploadProductImages(loaded.map((l) => l.dataUrl));
-          const merged = loaded.map((l, i) => ({
-            ...l,
-            dataUrl: urls[i] ?? l.dataUrl,
-          }));
-          setGalleryImages((prev) => [...prev, ...merged].slice(0, 5));
-        })
-        .catch(() => {
-          toast({
-            variant: "destructive",
-            title: "Couldn't read image",
-            description: "Try a different file.",
-          });
+      setIsUploadingGallery(true);
+      try {
+        const uploaded = await Promise.all(
+          arr.map(async (file) => {
+            const result = await uploadService.upload({
+              file,
+              purpose: "PRODUCT_IMAGE",
+            });
+            return {
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              dataUrl: result.url,
+            };
+          }),
+        );
+        setGalleryImages((prev) => [...prev, ...uploaded].slice(0, 5));
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Upload failed",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Couldn't upload one of the images.",
         });
+      } finally {
+        setIsUploadingGallery(false);
+      }
     },
     [toast],
   );
@@ -620,8 +616,16 @@ export default function ProductForm({ item }: ProductFormProps) {
   );
 
   useEffect(() => {
-    const primary = galleryImages[primaryIdx];
-    form.setValue("imageUrl", primary?.dataUrl ?? "", { shouldDirty: true });
+    // Cover image first, rest in current order. Backend takes the list
+    // verbatim — element 0 is what POS / lists thumbnail.
+    const cover = galleryImages[primaryIdx];
+    const rest = galleryImages.filter((_, idx) => idx !== primaryIdx);
+    const ordered = cover ? [cover, ...rest] : rest;
+    form.setValue(
+      "imageUrls",
+      ordered.map((g) => g.dataUrl).filter((u) => !!u),
+      { shouldDirty: true },
+    );
   }, [galleryImages, primaryIdx, form]);
 
   // Subscribe to just the first variant rather than the whole `variants`
@@ -1364,6 +1368,7 @@ export default function ProductForm({ item }: ProductFormProps) {
               dragOver={dragOver}
               setDragOver={setDragOver}
               fileInputRef={fileInputRef}
+              isUploading={isUploadingGallery}
             />
           </aside>
         </div>
@@ -2425,6 +2430,7 @@ interface MediaCardProps {
   dragOver: boolean;
   setDragOver: (v: boolean) => void;
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
+  isUploading?: boolean;
 }
 
 function MediaCard({
@@ -2436,6 +2442,7 @@ function MediaCard({
   dragOver,
   setDragOver,
   fileInputRef,
+  isUploading = false,
 }: MediaCardProps) {
   const primary = images[primaryIdx];
 
@@ -2454,7 +2461,9 @@ function MediaCard({
           </p>
         </div>
         <div className={styles.formCardActions}>
-          <span className={styles.stepBadge}>{images.length}/5</span>
+          <span className={styles.stepBadge}>
+            {isUploading ? "Uploading…" : `${images.length}/5`}
+          </span>
         </div>
       </header>
       <div className={styles.formBody}>

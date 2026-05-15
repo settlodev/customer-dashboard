@@ -48,8 +48,9 @@ import {
 } from "@/lib/actions/expense-payment-actions";
 import {
   deleteExpenseAttachment,
-  uploadExpenseAttachment,
+  registerExpenseAttachments,
 } from "@/lib/actions/expense-attachment-actions";
+import type { UploadAttachmentMetadata } from "@/components/forms/expense_payment_form";
 
 import ExpenseForm from "@/components/forms/expense_form";
 import ExpensePaymentForm, {
@@ -107,8 +108,8 @@ export function ExpenseDetailClient({
       if (result.responseType === "success") router.refresh();
     });
 
-  const onUpload = async (formData: FormData) => {
-    const result = await uploadExpenseAttachment(expense.id, formData);
+  const onUploaded = async (metadata: UploadAttachmentMetadata) => {
+    const result = await registerExpenseAttachments(expense.id, [metadata]);
     toast({
       variant: result.responseType === "success" ? "success" : "destructive",
       title: result.responseType === "success" ? "Uploaded" : "Error",
@@ -232,7 +233,7 @@ export function ExpenseDetailClient({
         )}
         <UploadAttachmentTrigger
           isPending={isPending}
-          onUpload={onUpload}
+          onUploaded={onUploaded}
         />
       </div>
 

@@ -33,8 +33,9 @@ import {
   deleteAttachment,
   getAttachmentDownloadHref,
   listAttachments,
-  uploadAttachment,
+  registerAttachment,
 } from "@/lib/actions/attachment-actions";
+import { useUpload } from "@/lib/uploads/use-upload";
 
 const PAGE_SIZE = 50;
 
@@ -471,9 +472,11 @@ function AffectedOrdersSection({ batchId }: { batchId: string }) {
 function AttachmentsSection({ batchId }: { batchId: string }) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isUploading, startUpload] = useTransition();
+  const [isRegistering, startUpload] = useTransition();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { upload, isUploading, progress } = useUpload();
+  const busy = isUploading || isRegistering;
 
   const refresh = () => {
     setLoading(true);
@@ -487,25 +490,39 @@ function AttachmentsSection({ batchId }: { batchId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [batchId]);
 
-  const onFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const formData = new FormData();
-    formData.append("file", file);
-    startUpload(async () => {
-      const res = await uploadAttachment("BATCH_RECALL", batchId, formData);
-      if (res.responseType === "error") {
-        toast({
-          variant: "destructive",
-          title: "Upload failed",
-          description: res.message,
+    try {
+      const result = await upload({ file, purpose: "INVENTORY_ATTACHMENT" });
+      startUpload(async () => {
+        const res = await registerAttachment("BATCH_RECALL", batchId, {
+          url: result.url,
+          key: result.key,
+          filename: result.filename,
+          contentType: result.contentType,
+          size: result.size,
         });
-      } else {
-        toast({ title: "Uploaded", description: res.message });
-        refresh();
-      }
+        if (res.responseType === "error") {
+          toast({
+            variant: "destructive",
+            title: "Upload failed",
+            description: res.message,
+          });
+        } else {
+          toast({ title: "Uploaded", description: res.message });
+          refresh();
+        }
+      });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description: err instanceof Error ? err.message : "Could not upload",
+      });
+    } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
-    });
+    }
   };
 
   const removeAttachment = async (attachment: Attachment) => {
@@ -543,14 +560,14 @@ function AttachmentsSection({ batchId }: { batchId: string }) {
             variant="outline"
             size="sm"
             onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
+            disabled={busy}
           >
-            {isUploading ? (
+            {busy ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : (
               <Upload className="h-4 w-4 mr-2" />
             )}
-            Upload
+            {isUploading && progress ? `${progress.percent}%` : "Upload"}
           </Button>
           <input
             ref={fileInputRef}

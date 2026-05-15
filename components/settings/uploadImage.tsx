@@ -1,5 +1,8 @@
 "use client";
+import { Image as ImageIcon, Upload, X } from "lucide-react";
 import React, { useState } from "react";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,11 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, X, Image as ImageIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useUpload } from "@/lib/uploads/use-upload";
 
 interface ImageUploadModalProps {
   isOpen: boolean;
@@ -27,38 +29,33 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
   onSave,
   currentImage,
 }) => {
-  const [, setSelectedFile] = useState<File | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>(currentImage || "");
-  const [isUploading, setIsUploading] = useState(false);
+  const { upload, isUploading, progress } = useUpload();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        toast({
-          variant: "destructive",
-          title: "Invalid file type",
-          description: "Please select an image file",
-        });
-        return;
-      }
-
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          variant: "destructive",
-          title: "File too large",
-          description: "Please select an image under 5MB",
-        });
-        return;
-      }
-
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({
+        variant: "destructive",
+        title: "Invalid file type",
+        description: "Please select an image file",
+      });
+      return;
     }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "File too large",
+        description: "Please select an image under 2MB",
+      });
+      return;
+    }
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setPreviewUrl(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const handleRemoveImage = () => {
@@ -67,7 +64,13 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
   };
 
   const handleSave = async () => {
-    if (!previewUrl) {
+    if (!selectedFile) {
+      if (previewUrl) {
+        // User is keeping the existing image — bail out without uploading.
+        onSave(previewUrl);
+        onClose();
+        return;
+      }
       toast({
         variant: "destructive",
         title: "No image selected",
@@ -76,27 +79,27 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
       return;
     }
 
-    setIsUploading(true);
     try {
-      // TODO: Implement your actual upload logic here
-      // For now, we'll just pass the preview URL
-      // In production, you'd upload to your storage service
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate upload
-      onSave(previewUrl);
+      const result = await upload({
+        file: selectedFile,
+        purpose: "RECEIPT_HEADER",
+      });
+      onSave(result.url);
       toast({
         variant: "success",
         title: "Success",
         description: "Receipt image uploaded successfully",
       });
       onClose();
-    } catch (_error) {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Upload failed",
-        description: "Failed to upload image. Please try again.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to upload image. Please try again.",
       });
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -119,11 +122,12 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 type="file"
                 accept="image/*"
                 onChange={handleFileChange}
+                disabled={isUploading}
                 className="cursor-pointer"
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Supported formats: JPG, PNG, GIF. Max size: 5MB
+              Supported formats: JPG, PNG, WebP. Max size: 2MB
             </p>
           </div>
 
@@ -135,6 +139,7 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 size="icon"
                 className="absolute top-2 right-2 h-6 w-6"
                 onClick={handleRemoveImage}
+                disabled={isUploading}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -163,7 +168,11 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={!previewUrl || isUploading}>
-            {isUploading ? "Uploading..." : "Save Image"}
+            {isUploading
+              ? progress
+                ? `Uploading ${progress.percent}%`
+                : "Uploading..."
+              : "Save Image"}
           </Button>
         </DialogFooter>
       </DialogContent>
