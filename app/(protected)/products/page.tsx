@@ -178,6 +178,12 @@ async function Page({ searchParams }: Params) {
                 Import CSV
               </Link>
             </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/imports/tracked-products">
+                <Upload className="mr-1.5 h-4 w-4" />
+                Import + track stock
+              </Link>
+            </Button>
             <Button asChild size="sm">
               <Link href="/products/new">
                 <Plus className="mr-1.5 h-4 w-4" />

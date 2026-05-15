@@ -593,14 +593,18 @@ function MissingLookupsAlert({
  * the name didn't match — we use that as the signal so we don't have to
  * pattern-match against error strings.
  *
- * Only PRODUCT and PRODUCT_WITH_STOCK imports carry category / brand
- * references; the STOCK / STOCK_INTAKE pipelines have nothing to auto-create.
+ * Only the product-carrying imports reference category / brand; STOCK and
+ * STOCK_INTAKE have nothing to auto-create.
  */
 function collectMissingLookups(
   rows: PreviewRow[],
   type: ImportType,
 ): { categories: string[]; brands: string[] } {
-  if (type !== "PRODUCT" && type !== "PRODUCT_WITH_STOCK") {
+  if (
+    type !== "PRODUCT" &&
+    type !== "PRODUCT_WITH_STOCK" &&
+    type !== "STOCK_WITH_PRODUCT"
+  ) {
     return { categories: [], brands: [] };
   }
   const categories = new Set<string>();
@@ -1072,13 +1076,16 @@ function PreviewTable({
       <thead className="text-left text-xs text-muted-foreground border-b">
         <tr>
           <th className="py-2 pr-3">#</th>
-          <th className="py-2 pr-3">Status</th>
           {previewColumns.map((c) => (
-            <th key={c.key} className="py-2 pr-3">
+            <th
+              key={c.key}
+              className={`py-2 pr-3 ${isNameColumn(c.key) ? "min-w-[240px]" : ""}`}
+            >
               {c.label}
             </th>
           ))}
           <th className="py-2 pr-3">Action</th>
+          <th className="py-2 pr-3">Status</th>
         </tr>
       </thead>
       <tbody>
@@ -1150,11 +1157,11 @@ function RowEditor({
         <td className="py-2 pr-3 text-xs text-muted-foreground">
           {row.rowIndex + 2}
         </td>
-        <td className="py-2 pr-3">
-          <StatusBadge status={row.status} />
-        </td>
         {previewColumns.map((c) => (
-          <td key={c.key} className="py-2 pr-3">
+          <td
+            key={c.key}
+            className={`py-2 pr-3 ${isNameColumn(c.key) ? "min-w-[240px] font-medium" : ""}`}
+          >
             {formatCell(row.parsed[c.key])}
           </td>
         ))}
@@ -1166,6 +1173,9 @@ function RowEditor({
             isBlocking={isBlocking}
             type={type}
           />
+        </td>
+        <td className="py-2 pr-3">
+          <StatusBadge status={row.status} />
         </td>
       </tr>
       {(row.errors?.length || row.warnings?.length) && (
@@ -1205,13 +1215,13 @@ function ActionControls({
   const allowed = allowedActions(row.status, type);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5">
       <Select
         value={decision.action}
         onValueChange={(v) => setDecision({ action: v as Decision })}
         disabled={isBlocking}
       >
-        <SelectTrigger className="h-8 w-[160px]">
+        <SelectTrigger className="h-8 w-[120px]">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -1228,7 +1238,7 @@ function ActionControls({
           value={decision.targetId ?? ""}
           onValueChange={(v) => setDecision({ targetId: v })}
         >
-          <SelectTrigger className="h-8 w-[220px]">
+          <SelectTrigger className="h-8 w-[160px]">
             <SelectValue placeholder="Match to…" />
           </SelectTrigger>
           <SelectContent>
@@ -1243,6 +1253,11 @@ function ActionControls({
       ) : null}
     </div>
   );
+}
+
+/** Wider, bolder columns for the product/stock + variant name fields. */
+function isNameColumn(key: string): boolean {
+  return key === "name" || key.endsWith("_name");
 }
 
 function allowedActions(status: RowStatus, type: ImportType): Decision[] {

@@ -10,7 +10,6 @@ export default function StockImportPage() {
         "stock_name",
         "description",
         "base_unit",
-        "material_type",
         "variant_name",
         "variant_sku",
         "variant_barcode",
@@ -19,7 +18,6 @@ export default function StockImportPage() {
         "Pepsi 500ml",
         "Sealed cases for the cold room",
         "Bottle",
-        "FINISHED_GOOD",
         "Bottle",
         "PEP-500-B",
         "5901234123457",
@@ -27,7 +25,6 @@ export default function StockImportPage() {
       previewColumns={[
         { key: "stock_name", label: "Stock item" },
         { key: "variant_name", label: "Variant" },
-        { key: "material_type", label: "Material" },
         { key: "variant_sku", label: "SKU" },
       ]}
     />

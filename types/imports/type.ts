@@ -7,6 +7,7 @@ export type ImportType =
   | "PRODUCT"
   | "STOCK"
   | "PRODUCT_WITH_STOCK"
+  | "STOCK_WITH_PRODUCT"
   | "STOCK_INTAKE";
 
 export type RowStatus =

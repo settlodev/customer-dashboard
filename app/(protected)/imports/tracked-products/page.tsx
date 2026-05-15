@@ -1,46 +1,46 @@
 import { ImportFlow } from "@/components/imports/import-flow";
 
-export default function ProductImportPage() {
+export default function TrackedProductsImportPage() {
   return (
     <ImportFlow
-      type="PRODUCT"
-      title="Import products"
-      description="Bulk-create products and their variants from a CSV. One row per variant; rows sharing a product_name collapse into one product."
+      type="STOCK_WITH_PRODUCT"
+      title="Import tracked products"
+      description="Create a product + stock item per row, linked 1:1 so every sale decrements stock automatically."
       templateColumns={[
-        "product_name",
+        "name",
         "description",
         "category",
         "brand",
+        "base_unit",
         "tax_class",
-        "sell_online",
         "variant_name",
         "variant_sku",
         "variant_barcode",
-        "variant_price",
-        "variant_cost",
-        "variant_quantity",
+        "quantity",
+        "price",
+        "selling_price",
       ]}
       templateSample={[
         "Pepsi 500ml",
         "Carbonated soft drink",
         "Beverages",
         "Pepsi",
+        "Bottle",
         "STANDARD",
-        "true",
         "Bottle",
         "PEP-500-B",
         "5901234123457",
-        "1500",
-        "900",
         "240",
+        "900",
+        "1500",
       ]}
       previewColumns={[
-        { key: "product_name", label: "Product" },
+        { key: "name", label: "Name" },
         { key: "variant_name", label: "Variant" },
         { key: "category", label: "Category" },
-        { key: "variant_price", label: "Price" },
-        { key: "variant_quantity", label: "Qty" },
-        { key: "variant_sku", label: "SKU" },
+        { key: "quantity", label: "Qty" },
+        { key: "price", label: "Cost" },
+        { key: "selling_price", label: "Sell price" },
       ]}
     />
   );

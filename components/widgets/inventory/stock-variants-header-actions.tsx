@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Barcode, Loader2, Plus } from "lucide-react";
+import { Barcode, Loader2, Plus, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -89,6 +89,12 @@ export function StockVariantsHeaderActions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Button asChild variant="outline" size="sm">
+        <Link href="/imports/stocks">
+          <Upload className="mr-1.5 h-4 w-4" />
+          Import CSV
+        </Link>
+      </Button>
       <Button asChild size="sm">
         <Link href="/stock-variants/new">
           <Plus className="mr-1.5 h-4 w-4" />
