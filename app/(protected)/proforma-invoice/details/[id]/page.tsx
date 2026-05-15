@@ -4,8 +4,6 @@ import { use, useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
-  Copy,
-  Check,
   FileText,
   ArrowRightLeft,
   Loader2,
@@ -193,7 +191,6 @@ const ProformaInvoiceDetails = ({ params }: { params: Params }) => {
   const printRef = useRef<HTMLDivElement | null>(null);
   const [data, setData] = useState<Proforma | null>(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -209,14 +206,6 @@ const ProformaInvoiceDetails = ({ params }: { params: Params }) => {
   useEffect(() => {
     load();
   }, [load]);
-
-  const handleCopyLink = () => {
-    const shareLink = `${window.location.origin}/proforma/shared/${id}`;
-    navigator.clipboard.writeText(shareLink);
-    setCopied(true);
-    toast({ title: "Link copied to clipboard" });
-    setTimeout(() => setCopied(false), 2500);
-  };
 
   // Re-fetch after conversion so status updates to ACCEPTED and buttons hide
   const handleConvertSuccess = useCallback(async () => {
@@ -264,22 +253,6 @@ const ProformaInvoiceDetails = ({ params }: { params: Params }) => {
                   proformaNumber={data.proformaNumber}
                   className="flex justify-center items-center gap-2 w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-black bg-[#EAEAE5] rounded-lg hover:bg-[#EAEAE5] active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
                 />
-
-                {/* Copy link — hidden when COMPLETE */}
-                {!isComplete && (
-                  <Button
-                    variant="outline"
-                    onClick={handleCopyLink}
-                    className="gap-2 w-full sm:w-auto"
-                  >
-                    {copied ? (
-                      <Check className="w-4 h-4 text-green-500 shrink-0" />
-                    ) : (
-                      <Copy className="w-4 h-4 shrink-0" />
-                    )}
-                    <span>{copied ? "Copied!" : "Copy link"}</span>
-                  </Button>
-                )}
 
                 {/* Convert button — only when COMPLETE */}
                 {isComplete && (

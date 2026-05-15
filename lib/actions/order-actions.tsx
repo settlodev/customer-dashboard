@@ -282,62 +282,6 @@ export const printOrderVfd = async (
   }
 };
 
-// ─── Receipts (legacy receipts service) ─────────────────────────────
-
-type DigitalReceiptPaymentDetail = {
-  id: string;
-  acceptedPaymentMethodType: string;
-  acceptedPaymentMethodTypeName: string;
-  accountNumber: string;
-  notes: string;
-};
-
-type OrderReceiptResponse = {
-  order: Record<string, unknown>;
-  locationDetails: Record<string, unknown> | null;
-  digitalReceiptPaymentDetails: DigitalReceiptPaymentDetail[];
-  physicalReceiptPaymentDetails: DigitalReceiptPaymentDetail[];
-};
-
-export const getOrderReceipt = async (identifier: string | UUID) => {
-  const apiClient = new ApiClient();
-  const response = (await apiClient.get(
-    `/api/order-receipts/with-additional-details/${identifier}`,
-  )) as OrderReceiptResponse;
-
-  return parseStringify({
-    ...response.order,
-    locationDetails: response.locationDetails ?? null,
-    digitalReceiptPaymentDetails: response.digitalReceiptPaymentDetails ?? [],
-  });
-};
-
-// ─── EFD (legacy VFD endpoints) ─────────────────────────────────────
-
-export const isEfdPrinted = async (
-  orderId: string | UUID,
-  location: string | UUID,
-) => {
-  const apiClient = new ApiClient();
-  const order = await apiClient.get(`/api/vfd/${location}/receipt/${orderId}`);
-  return parseStringify(order);
-};
-
-export const generateEfd = async (
-  orderId: string | UUID,
-  location: string | UUID,
-) => {
-  const apiClient = new ApiClient();
-  try {
-    const order = await apiClient.get(
-      `/api/vfd/${location}/receipt/${orderId}`,
-    );
-    return parseStringify(order);
-  } catch (error) {
-    return parseStringify(error);
-  }
-};
-
 // ─── Reports (reports service) ──────────────────────────────────────
 
 export const cashFlowReport = async (
