@@ -57,23 +57,11 @@ interface Props {
   type: ImportType;
   title: string;
   description: string;
-  /** Header order for the CSV template download. */
   templateColumns: string[];
-  /** Optional second sample row to show shape. */
   templateSample?: string[];
-  /** Which fields from `parsed` to surface as columns in the preview table. */
   previewColumns: { key: string; label: string }[];
 }
 
-/**
- * Reusable preview-then-commit flow for the four CSV imports. Each
- * entry page mounts this with a type-specific {@code templateColumns}
- * list and the columns it wants surfaced in the preview table.
- *
- * Stages: upload → preview → result. The component owns transient
- * UI state (selected file, decisions per row, last response); the
- * server actions own the network round-trips.
- */
 export function ImportFlow({
   type,
   title,
@@ -190,13 +178,6 @@ export function ImportFlow({
     });
   };
 
-  /**
-   * One-click quick actions. Only act on exact matches and new rows —
-   * SIMILAR_MATCH / AMBIGUOUS_MATCH rows are left alone because a fuzzy
-   * hit can easily be the wrong record, so we don't bulk-merge into them.
-   * Blocked rows (INVALID_SCHEMA / MISSING_LOOKUP / DUPLICATE_IN_FILE)
-   * stay on SKIP regardless.
-   */
   const applyPreset = useCallback(
     (preset: "update-existing-create-new" | "skip-existing-create-new") => {
       if (!preview) return;
@@ -216,8 +197,6 @@ export function ImportFlow({
           }
           if (r.status === "EXACT_MATCH") {
             if (preset === "update-existing-create-new") {
-              // PRODUCT_WITH_STOCK doesn't accept UPDATE_EXISTING server-side;
-              // for that type the caller hides this preset, so we won't get here.
               const targetId = r.suggestedMatches?.[0]?.id ?? null;
               if (targetId) {
                 next.set(r.rowIndex, {
@@ -255,11 +234,6 @@ export function ImportFlow({
     [preview, toast],
   );
 
-  /**
-   * Section-level bulk action: set all rows in a given status group to
-   * the same decision. Used by the per-section [Update all] / [Skip all]
-   * / [Create all] chips below each section heading.
-   */
   const applyToGroup = useCallback(
     (rowIndexes: number[], action: Decision) => {
       if (!preview) return;
@@ -273,7 +247,7 @@ export function ImportFlow({
           const row = matchById.get(idx);
           const targetId =
             action === "UPDATE_EXISTING" || action === "APPLY_INTAKE"
-              ? row?.suggestedMatches?.[0]?.id ?? null
+              ? (row?.suggestedMatches?.[0]?.id ?? null)
               : null;
           next.set(idx, { ...current, action, targetId });
         }
@@ -291,9 +265,6 @@ export function ImportFlow({
     return n;
   }, [decisions]);
 
-  // PRODUCT imports surface a row-level error when the referenced category /
-  // brand doesn't exist yet. Collect those names so the preview screen can
-  // offer a "create them all" shortcut instead of bouncing the user out.
   const missingLookups = useMemo(
     () =>
       preview
@@ -336,8 +307,6 @@ export function ImportFlow({
           description: res.errors.join("; "),
         });
       }
-      // Re-preview so the row-level lookups pick up the new IDs and the
-      // row statuses flip from MISSING_LOOKUP → READY.
       await onUpload();
     } finally {
       setCreatingLookups(false);
@@ -450,7 +419,10 @@ function UploadStep({
           </p>
         )}
         {error && (
-          <PreviewErrorAlert message={error} templateColumns={templateColumns} />
+          <PreviewErrorAlert
+            message={error}
+            templateColumns={templateColumns}
+          />
         )}
         <div className="flex justify-end">
           <Button onClick={onUpload} disabled={!file || previewing}>
@@ -499,8 +471,8 @@ function PreviewErrorAlert({
                 ))}
               </ul>
               <p className="mt-2">
-                Use the “Download CSV template” button above to grab a file
-                with the correct headers.
+                Use the “Download CSV template” button above to grab a file with
+                the correct headers.
               </p>
             </div>
           )}
@@ -510,11 +482,6 @@ function PreviewErrorAlert({
   );
 }
 
-/**
- * Banner shown above the preview table when the CSV references categories
- * or brands that don't exist yet. The "Create" button auto-creates them
- * and re-runs the preview so the rows can flip from MISSING_LOOKUP → READY.
- */
 function MissingLookupsAlert({
   categories,
   brands,
@@ -545,8 +512,8 @@ function MissingLookupsAlert({
         <AlertDescription className="space-y-2">
           <p>
             This CSV references {parts.join(" and ")} that don&apos;t exist in
-            this location yet. Create them now to keep importing, or fix the
-            CSV and re-upload.
+            this location yet. Create them now to keep importing, or fix the CSV
+            and re-upload.
           </p>
           {categories.length > 0 && (
             <p className="text-xs">
@@ -587,15 +554,6 @@ function MissingLookupsAlert({
   );
 }
 
-/**
- * Walk the preview rows and pull out distinct lookup names the inventory
- * service couldn't resolve. The processor leaves the *_id field null when
- * the name didn't match — we use that as the signal so we don't have to
- * pattern-match against error strings.
- *
- * Only the product-carrying imports reference category / brand; STOCK and
- * STOCK_INTAKE have nothing to auto-create.
- */
 function collectMissingLookups(
   rows: PreviewRow[],
   type: ImportType,
@@ -623,11 +581,6 @@ function collectMissingLookups(
   };
 }
 
-/**
- * The inventory service surfaces missing columns as a flat comma-separated
- * list inside the error message, e.g. "CSV missing required columns: a, b, c".
- * Parse it so the alert can highlight which columns the user's file lacks.
- */
 function parseMissingColumns(message: string): string[] {
   const match = message.match(/missing required columns:\s*(.+)$/i);
   if (!match) return [];
@@ -636,8 +589,6 @@ function parseMissingColumns(message: string): string[] {
     .map((c) => c.trim())
     .filter(Boolean);
 }
-
-// ── Preview stage ────────────────────────────────────────────────────
 
 function PreviewStep({
   preview,
@@ -659,7 +610,9 @@ function PreviewStep({
   preview: PreviewResponse;
   decisions: Map<number, RowDecision>;
   setDecision: (rowIndex: number, patch: Partial<RowDecision>) => void;
-  applyPreset: (preset: "update-existing-create-new" | "skip-existing-create-new") => void;
+  applyPreset: (
+    preset: "update-existing-create-new" | "skip-existing-create-new",
+  ) => void;
   applyToGroup: (rowIndexes: number[], action: Decision) => void;
   previewColumns: { key: string; label: string }[];
   importableCount: number;
@@ -801,8 +754,6 @@ function PreviewStep({
           />
         </>
       ) : (
-        // STOCK_INTAKE keeps the flat table — the new/existing split
-        // doesn't map onto matched / unmatched / ambiguous intake rows.
         <Card>
           <CardContent className="pt-4 overflow-x-auto">
             <PreviewTable
@@ -819,7 +770,10 @@ function PreviewStep({
         <Button variant="outline" onClick={onReset} disabled={committing}>
           Re-upload
         </Button>
-        <Button onClick={onCommit} disabled={committing || importableCount === 0}>
+        <Button
+          onClick={onCommit}
+          disabled={committing || importableCount === 0}
+        >
           {committing ? (
             <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
           ) : null}
@@ -876,7 +830,9 @@ function QuickActionBar({
   existingCount: number;
   newCount: number;
   similarCount: number;
-  onApply: (preset: "update-existing-create-new" | "skip-existing-create-new") => void;
+  onApply: (
+    preset: "update-existing-create-new" | "skip-existing-create-new",
+  ) => void;
   disabled: boolean;
 }) {
   const supportsUpdate = type !== "PRODUCT_WITH_STOCK";
@@ -942,9 +898,6 @@ function SummaryBar({
       </div>
     );
   }
-  // Catalogue imports: separate "already exists" from "needs review".
-  // Falls back to the locally computed groups if the backend hasn't
-  // sent `summary.existing` yet (older deploys).
   const existing = summary.existing ?? groups.existing.length;
   const review = groups.similar.length;
   return (
@@ -985,10 +938,6 @@ function RowSection({
   onBulk?: (action: Decision) => void;
   defaultOpen?: boolean;
 }) {
-  // Auto-collapse the "New" section when it's the biggest one — the
-  // operator usually skims summary + quick action and only opens it to
-  // spot-check. Everything else opens by default because the operator
-  // is likely to act on it.
   const initiallyOpen =
     defaultOpen ?? (rows.length > 0 && (id !== "new" || rows.length <= 30));
   const [open, setOpen] = useState(initiallyOpen);
@@ -1255,7 +1204,6 @@ function ActionControls({
   );
 }
 
-/** Wider, bolder columns for the product/stock + variant name fields. */
 function isNameColumn(key: string): boolean {
   return key === "name" || key.endsWith("_name");
 }
@@ -1274,9 +1222,10 @@ function allowedActions(status: RowStatus, type: ImportType): Decision[] {
     return ["APPLY_INTAKE", "SKIP"];
   }
   // Catalogue imports
-  const catalogue: Decision[] =
-    type === "PRODUCT_WITH_STOCK" ? ["CREATE", "SKIP"] : ["CREATE", "UPDATE_EXISTING", "SKIP"];
-  return catalogue;
+
+  return type === "PRODUCT_WITH_STOCK"
+    ? ["CREATE", "SKIP"]
+    : ["CREATE", "UPDATE_EXISTING", "SKIP"];
 }
 
 function needsTarget(action: Decision): boolean {
@@ -1301,10 +1250,19 @@ function StatusBadge({ status }: { status: RowStatus }) {
     READY: { label: "Ready", tone: "bg-emerald-100 text-emerald-700" },
     MATCHED: { label: "Matched", tone: "bg-emerald-100 text-emerald-700" },
     EXACT_MATCH: { label: "Exact match", tone: "bg-amber-100 text-amber-800" },
-    SIMILAR_MATCH: { label: "Similar match", tone: "bg-amber-100 text-amber-800" },
-    AMBIGUOUS_MATCH: { label: "Ambiguous", tone: "bg-amber-100 text-amber-800" },
+    SIMILAR_MATCH: {
+      label: "Similar match",
+      tone: "bg-amber-100 text-amber-800",
+    },
+    AMBIGUOUS_MATCH: {
+      label: "Ambiguous",
+      tone: "bg-amber-100 text-amber-800",
+    },
     UNMATCHED: { label: "Unmatched", tone: "bg-red-100 text-red-700" },
-    MISSING_LOOKUP: { label: "Missing lookup", tone: "bg-red-100 text-red-700" },
+    MISSING_LOOKUP: {
+      label: "Missing lookup",
+      tone: "bg-red-100 text-red-700",
+    },
     INVALID_SCHEMA: { label: "Invalid", tone: "bg-red-100 text-red-700" },
     DUPLICATE_IN_FILE: {
       label: "Duplicate in file",

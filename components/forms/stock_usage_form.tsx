@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import React, { useCallback, useMemo, useState, useTransition } from "react";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
@@ -9,11 +9,13 @@ import {
   Calendar as CalendarIcon,
   CheckCircle2,
   Loader2,
+  Plus,
   Trash2,
   ClipboardEdit,
   Boxes,
   AlertTriangle,
   Building2,
+  UserCircle2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -61,10 +63,12 @@ import {
 import { createStockUsage } from "@/lib/actions/stock-usage-actions";
 import { getCurrentLocationBalance } from "@/lib/actions/inventory-balance-actions";
 import { StockUsageSchema } from "@/types/stock-usage/schema";
-import { STOCK_USAGE_TYPE_OPTIONS } from "@/types/stock-usage/type";
+import { USAGE_CATEGORY_OPTIONS } from "@/types/stock-usage/type";
 import type { Department } from "@/types/department/type";
 import { FormResponse } from "@/types/types";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
+import type { VariantMeta } from "@/components/widgets/stock-variant-selector";
+import StaffSelectorWidget from "@/components/widgets/staff_selector_widget";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
 import { useLocationConfig } from "@/hooks/use-location-config";
 import { useInventoryEventRefresh } from "@/hooks/use-inventory-event-refresh";
@@ -76,14 +80,14 @@ type FormValues = z.infer<typeof StockUsageSchema>;
 interface BalanceSnapshot {
   loading: boolean;
   variantName?: string;
+  serialTracked: boolean;
   quantityOnHand: number;
   averageCost: number | null;
 }
 
 interface Props {
   /** Departments visible to the current location. Empty when the plan
-   *  has no DEPARTMENTS_MODULE — the form falls back to the auto-created
-   *  Default department in that case. */
+   *  has no DEPARTMENTS_MODULE — the form lets the user save without one. */
   departments: Department[];
   /** Pre-selected department: the location's default, or the only one. */
   defaultDepartmentId?: string;
@@ -101,17 +105,19 @@ export default function StockUsageForm({
   const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
   const locationCurrency = useLocationCurrency();
-  const [balance, setBalance] = useState<BalanceSnapshot | null>(null);
+
+  const [balances, setBalances] = useState<Record<string, BalanceSnapshot>>({});
 
   const form = useForm<FormValues>({
     resolver: zodResolver(StockUsageSchema),
     defaultValues: {
-      stockVariantId: "",
-      quantity: 0,
-      usageType: "INTERNAL_USE",
-      departmentId: defaultDepartmentId ?? "",
+      category: "STAFF_CONSUMPTION",
+      purpose: "",
+      recipientId: "",
+      departmentId: defaultDepartmentId ?? undefined,
       notes: "",
       usageDate: new Date().toISOString(),
+      items: [{ stockVariantId: "", quantity: 0 }],
     },
   });
 
@@ -121,68 +127,163 @@ export default function StockUsageForm({
     return d;
   }, []);
 
-  const watchedVariantId = form.watch("stockVariantId");
-  const watchedQty = Number(form.watch("quantity")) || 0;
-  const { config: locationConfig } = useLocationConfig();
-
-  const loadBalance = useCallback(async (variantId: string) => {
-    setBalance({ loading: true, quantityOnHand: 0, averageCost: null });
-    try {
-      const data = await getCurrentLocationBalance(variantId);
-      setBalance({
-        loading: false,
-        variantName: data?.variantName,
-        quantityOnHand: data ? Number(data.quantityOnHand) : 0,
-        averageCost: data?.averageCost != null ? Number(data.averageCost) : null,
-      });
-    } catch {
-      setBalance({ loading: false, quantityOnHand: 0, averageCost: null });
-    }
-  }, []);
-
-  // If an intake / sale / adjustment lands elsewhere while the form is
-  // open, refresh the displayed balance so the merchant doesn't operate on
-  // a stale "on hand" figure. The hook applies a 10s cooldown so a POS
-  // burst doesn't refetch on every sale.
-  useInventoryEventRefresh(locationConfig?.locationId, () => {
-    if (watchedVariantId) void loadBalance(watchedVariantId);
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "items",
   });
 
-  useEffect(() => {
-    // Keep a default department selected even when the prop changes after mount
-    // (e.g. departments arrive after the user has begun typing).
-    if (!form.getValues("departmentId") && defaultDepartmentId) {
-      form.setValue("departmentId", defaultDepartmentId, { shouldValidate: true });
-    }
-  }, [defaultDepartmentId, form]);
+  const watchedItems = form.watch("items");
+  const { config: locationConfig } = useLocationConfig();
+
+  const loadBalance = useCallback(
+    async (
+      fieldId: string,
+      variantId: string,
+      fallbackName?: string,
+      fallbackSerial?: boolean,
+    ) => {
+      setBalances((prev) => ({
+        ...prev,
+        [fieldId]: {
+          loading: true,
+          variantName: fallbackName ?? prev[fieldId]?.variantName,
+          serialTracked: fallbackSerial ?? prev[fieldId]?.serialTracked ?? false,
+          quantityOnHand: 0,
+          averageCost: null,
+        },
+      }));
+      try {
+        const balance = await getCurrentLocationBalance(variantId);
+        setBalances((prev) => ({
+          ...prev,
+          [fieldId]: {
+            loading: false,
+            variantName: balance?.variantName ?? fallbackName,
+            serialTracked:
+              fallbackSerial ?? prev[fieldId]?.serialTracked ?? false,
+            quantityOnHand: balance ? Number(balance.quantityOnHand) : 0,
+            averageCost:
+              balance?.averageCost != null ? Number(balance.averageCost) : null,
+          },
+        }));
+      } catch {
+        setBalances((prev) => ({
+          ...prev,
+          [fieldId]: {
+            loading: false,
+            variantName: fallbackName,
+            serialTracked:
+              fallbackSerial ?? prev[fieldId]?.serialTracked ?? false,
+            quantityOnHand: 0,
+            averageCost: null,
+          },
+        }));
+      }
+    },
+    [],
+  );
 
   const handleVariantChange = useCallback(
-    (variantId: string) => {
-      form.setValue("stockVariantId", variantId, {
+    (fieldId: string, index: number, variantId: string) => {
+      form.setValue(`items.${index}.stockVariantId`, variantId, {
         shouldDirty: true,
         shouldValidate: true,
       });
+      form.setValue(`items.${index}.serialNumbers`, undefined, {
+        shouldDirty: true,
+      });
       if (!variantId) {
-        setBalance(null);
+        setBalances((prev) => {
+          const next = { ...prev };
+          delete next[fieldId];
+          return next;
+        });
         return;
       }
-      void loadBalance(variantId);
+      void loadBalance(fieldId, variantId);
     },
     [form, loadBalance],
   );
 
-  const projected = (balance?.quantityOnHand ?? 0) - watchedQty;
-  const projectedNegative = projected < 0;
-  const showPreview = !!watchedVariantId && watchedQty > 0;
+  useInventoryEventRefresh(locationConfig?.locationId, () => {
+    const items = form.getValues("items");
+    fields.forEach((field, index) => {
+      const variantId = items[index]?.stockVariantId;
+      if (variantId) void loadBalance(field.id, variantId);
+    });
+  });
+
+  const handleVariantMeta = useCallback(
+    (fieldId: string, meta: VariantMeta | null) => {
+      if (!meta) return;
+      setBalances((prev) => ({
+        ...prev,
+        [fieldId]: {
+          loading: prev[fieldId]?.loading ?? false,
+          variantName: meta.displayName ?? prev[fieldId]?.variantName,
+          serialTracked: meta.serialTracked ?? false,
+          quantityOnHand: prev[fieldId]?.quantityOnHand ?? 0,
+          averageCost: prev[fieldId]?.averageCost ?? null,
+        },
+      }));
+    },
+    [],
+  );
+
+  const removeItem = useCallback(
+    (index: number, fieldId: string) => {
+      remove(index);
+      setBalances((prev) => {
+        const next = { ...prev };
+        delete next[fieldId];
+        return next;
+      });
+    },
+    [remove],
+  );
 
   const submitData = (values: FormValues) => {
     setResponse(undefined);
+
+    // Validate serial counts client-side so users see the issue before the
+    // round-trip; the backend re-enforces.
+    for (let i = 0; i < values.items.length; i++) {
+      const item = values.items[i];
+      const fieldId = fields[i]?.id;
+      const meta = fieldId ? balances[fieldId] : null;
+      if (meta?.serialTracked) {
+        const serials = item.serialNumbers ?? [];
+        if (!Number.isInteger(item.quantity)) {
+          toast({
+            variant: "destructive",
+            title: "Serial-tracked items need whole quantities",
+            description: `Item ${i + 1}: quantity must be a whole number.`,
+          });
+          return;
+        }
+        if (serials.length !== item.quantity) {
+          toast({
+            variant: "destructive",
+            title: "Serial count mismatch",
+            description: `Item ${i + 1}: provide ${item.quantity} serial number(s).`,
+          });
+          return;
+        }
+      }
+    }
 
     const payload: FormValues = {
       ...values,
       usageDate: values.usageDate
         ? new Date(values.usageDate).toISOString()
         : new Date().toISOString(),
+      items: values.items.map((item) => ({
+        ...item,
+        unitCost:
+          typeof item.unitCost === "number" && !Number.isNaN(item.unitCost)
+            ? item.unitCost
+            : undefined,
+      })),
     };
 
     startTransition(() => {
@@ -225,7 +326,7 @@ export default function StockUsageForm({
               <div className="flex-1 min-w-0">
                 <h3>Usage details</h3>
                 <p className={styles.formCardHeadDesc}>
-                  What was used, why, and which department absorbs the cost.
+                  What was used, why, when, and who consumed it.
                 </p>
               </div>
               <div className={styles.formCardActions}>
@@ -237,11 +338,11 @@ export default function StockUsageForm({
               <div className={styles.fieldRow}>
                 <FormField
                   control={form.control}
-                  name="usageType"
+                  name="category"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className={styles.fieldLabel}>
-                        Usage type <span className="req">*</span>
+                        Category <span className="req">*</span>
                       </FormLabel>
                       <Select
                         value={field.value}
@@ -254,7 +355,7 @@ export default function StockUsageForm({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {STOCK_USAGE_TYPE_OPTIONS.map((opt) => (
+                          {USAGE_CATEGORY_OPTIONS.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value}>
                               {opt.label}
                             </SelectItem>
@@ -269,7 +370,9 @@ export default function StockUsageForm({
                   control={form.control}
                   name="usageDate"
                   render={({ field }) => {
-                    const selected = field.value ? new Date(field.value) : undefined;
+                    const selected = field.value
+                      ? new Date(field.value)
+                      : undefined;
                     return (
                       <FormItem>
                         <FormLabel className={styles.fieldLabel}>
@@ -292,11 +395,16 @@ export default function StockUsageForm({
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
-                          <PopoverContent className="w-[300px] p-0" align="start">
+                          <PopoverContent
+                            className="w-[300px] p-0"
+                            align="start"
+                          >
                             <Calendar
                               mode="single"
                               selected={selected}
-                              onSelect={(d) => field.onChange(d ? d.toISOString() : "")}
+                              onSelect={(d) =>
+                                field.onChange(d ? d.toISOString() : "")
+                              }
                               disabled={(date) => date > today}
                               initialFocus
                             />
@@ -315,24 +423,58 @@ export default function StockUsageForm({
               <div className={styles.fieldRow} style={{ marginTop: 14 }}>
                 <FormField
                   control={form.control}
+                  name="recipientId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={styles.fieldLabel}>
+                        Recipient <span className="req">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <StaffSelectorWidget
+                          label="Recipient"
+                          placeholder="Select staff member"
+                          value={field.value}
+                          isDisabled={isPending}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          isRequired
+                        />
+                      </FormControl>
+                      <p className="text-[11px] text-muted-foreground">
+                        Staff member who used or received the stock.
+                      </p>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="departmentId"
                   render={({ field }) => (
-                    <FormItem className="col-span-2 min-w-0">
+                    <FormItem>
                       <FormLabel className={styles.fieldLabel}>
-                        Department <span className="req">*</span>
+                        Department
+                        {!canPickDepartment && (
+                          <span className="opt">OPTIONAL</span>
+                        )}
                       </FormLabel>
                       {canPickDepartment && departments.length > 1 ? (
                         <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
+                          value={field.value ?? ""}
+                          onValueChange={(v) =>
+                            field.onChange(v === "__none__" ? undefined : v)
+                          }
                           disabled={isPending}
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select department" />
+                              <SelectValue placeholder="No department" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value="__none__">
+                              No department
+                            </SelectItem>
                             {departments.map((d) => (
                               <SelectItem key={d.id} value={d.id}>
                                 {d.name}
@@ -346,7 +488,7 @@ export default function StockUsageForm({
                           <Building2 className="h-4 w-4 text-muted-foreground" />
                           <span className="font-medium text-gray-800">
                             {departments.find((d) => d.id === field.value)?.name ??
-                              "Default department"}
+                              "No department"}
                           </span>
                           <span className="ml-auto text-[11px] text-muted-foreground">
                             {canPickDepartment
@@ -360,140 +502,28 @@ export default function StockUsageForm({
                   )}
                 />
               </div>
-            </div>
-          </section>
 
-          <section className={styles.formCard}>
-            <header className={styles.formCardHead}>
-              <div className={styles.icoBox}>
-                <Boxes className="h-3.5 w-3.5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3>Stock & quantity</h3>
-                <p className={styles.formCardHeadDesc}>
-                  Pick the variant being used and the amount consumed.
-                </p>
-              </div>
-              <div className={styles.formCardActions}>
-                <span className={styles.stepBadge}>STEP 02</span>
-              </div>
-            </header>
-
-            <div className={styles.formBody}>
-              <div className="space-y-3">
-                <div className="border rounded-lg p-4 space-y-3 bg-muted/40">
-                  <div className="flex flex-col md:flex-row gap-3 items-start">
-                    <FormField
-                      control={form.control}
-                      name="stockVariantId"
-                      render={({ field }) => (
-                        <FormItem className="w-full md:flex-[5] min-w-0">
-                          <FormLabel className="text-xs">
-                            Stock variant <span className="text-red-500">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <StockVariantSelector
-                              value={field.value}
-                              onChange={(v) => handleVariantChange(v)}
-                              isDisabled={isPending}
-                            />
-                          </FormControl>
-                          <FormMessage className="text-xs" />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="quantity"
-                      render={({ field }) => (
-                        <FormItem className="w-full md:flex-[3] min-w-0">
-                          <FormLabel className="text-xs">
-                            Quantity <span className="text-red-500">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <NumericFormat
-                              customInput={Input}
-                              value={field.value}
-                              onValueChange={(v) =>
-                                field.onChange(v.value ? Number(v.value) : 0)
-                              }
-                              thousandSeparator
-                              allowNegative={false}
-                              placeholder="0"
-                              disabled={isPending}
-                            />
-                          </FormControl>
-                          <p className="text-[11px] text-muted-foreground">
-                            Amount removed from stock.
-                          </p>
-                          <FormMessage className="text-xs" />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {showPreview &&
-                    (balance?.loading ? (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground rounded-md bg-white border px-3 py-2">
-                        <Loader2 className="w-3 h-3 animate-spin" /> Reading current balance…
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="rounded-md bg-white border px-3 py-2 flex flex-col">
-                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                              Before
-                            </span>
-                            <span className="font-mono text-lg font-semibold text-gray-700">
-                              {(balance?.quantityOnHand ?? 0).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="rounded-md border px-3 py-2 flex flex-col bg-amber-50 border-amber-200">
-                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                              Used
-                            </span>
-                            <span className="font-mono text-lg font-semibold text-amber-700">
-                              −{watchedQty.toLocaleString()}
-                            </span>
-                          </div>
-                          <div
-                            className={`rounded-md border px-3 py-2 flex flex-col ${
-                              projectedNegative
-                                ? "bg-red-50 border-red-200"
-                                : "bg-white"
-                            }`}
-                          >
-                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                              After
-                            </span>
-                            <span
-                              className={`font-mono text-lg font-semibold ${
-                                projectedNegative ? "text-red-600" : "text-gray-700"
-                              }`}
-                            >
-                              {projected.toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                        {(projectedNegative || balance?.averageCost != null) && (
-                          <div className="flex items-center justify-between text-[11px]">
-                            {projectedNegative ? (
-                              <span className="text-red-600 font-medium">
-                                Would result in negative stock
-                              </span>
-                            ) : (
-                              <span />
-                            )}
-                            {balance?.averageCost != null && (
-                              <span className="text-muted-foreground">
-                                Avg cost {balance.averageCost.toLocaleString()} {locationCurrency}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                </div>
+              <div className={styles.fieldRow} style={{ marginTop: 14 }}>
+                <FormField
+                  control={form.control}
+                  name="purpose"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2 min-w-0">
+                      <FormLabel className={styles.fieldLabel}>
+                        Purpose <span className="req">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Describe why this stock was used — e.g. staff lunch for kitchen shift, demo unit for trade show, calibration of espresso machine."
+                          rows={2}
+                          {...field}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <div className={styles.fieldRow} style={{ marginTop: 14 }}>
@@ -508,19 +538,301 @@ export default function StockUsageForm({
                       </FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Reason, witnesses, event reference, etc."
-                          rows={3}
+                          placeholder="Witnesses, event references, training session id, etc."
+                          rows={2}
                           {...field}
                           value={field.value ?? ""}
                           disabled={isPending}
                         />
                       </FormControl>
-                      <p className="text-[11px] text-muted-foreground">
-                        Add attachments (photos, signed forms) on the next screen after saving.
-                      </p>
                     </FormItem>
                   )}
                 />
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <Boxes className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Items consumed</h3>
+                <p className={styles.formCardHeadDesc}>
+                  Quantities are deducted from the live on-hand balance.
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 02</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    append({ stockVariantId: "", quantity: 0 })
+                  }
+                  disabled={isPending}
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add item
+                </Button>
+              </div>
+            </header>
+
+            <div className={styles.formBody}>
+              <div className="space-y-3">
+                {fields.map((field, index) => {
+                  const balance = balances[field.id];
+                  const quantity =
+                    Number(watchedItems[index]?.quantity) || 0;
+                  const projected = (balance?.quantityOnHand ?? 0) - quantity;
+                  const projectedNegative = projected < 0;
+                  const showPreview =
+                    !!watchedItems[index]?.stockVariantId && quantity > 0;
+                  const isSerial = balance?.serialTracked === true;
+                  const serialNumbers =
+                    watchedItems[index]?.serialNumbers ?? [];
+
+                  return (
+                    <div
+                      key={field.id}
+                      className="border rounded-lg p-4 space-y-3 bg-muted/40"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                          Item {index + 1}
+                        </span>
+                        {fields.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeItem(index, field.id)}
+                            className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"
+                            aria-label={`Remove item ${index + 1}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col md:flex-row gap-3 items-start">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.stockVariantId`}
+                          render={({ field: f }) => (
+                            <FormItem className="w-full md:flex-[5] min-w-0">
+                              <FormLabel className="text-xs">
+                                Stock item <span className="text-red-500">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <StockVariantSelector
+                                  value={f.value}
+                                  onChange={(v) =>
+                                    handleVariantChange(field.id, index, v)
+                                  }
+                                  onVariantMeta={(meta) =>
+                                    handleVariantMeta(field.id, meta)
+                                  }
+                                  isDisabled={isPending}
+                                />
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.quantity`}
+                          render={({ field: f }) => (
+                            <FormItem className="w-full md:flex-[3] min-w-0">
+                              <FormLabel className="text-xs">
+                                Quantity <span className="text-red-500">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <NumericFormat
+                                  customInput={Input}
+                                  value={f.value}
+                                  onValueChange={(v) =>
+                                    f.onChange(v.value ? Number(v.value) : 0)
+                                  }
+                                  thousandSeparator
+                                  allowNegative={false}
+                                  decimalScale={isSerial ? 0 : undefined}
+                                  placeholder="0"
+                                  disabled={isPending}
+                                />
+                              </FormControl>
+                              <p className="text-[11px] text-muted-foreground">
+                                {isSerial
+                                  ? "Whole units only — list the serials below."
+                                  : "Amount removed from stock."}
+                              </p>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.unitCost`}
+                          render={({ field: f }) => (
+                            <FormItem className="w-full md:flex-[4] min-w-0">
+                              <FormLabel className="text-xs">
+                                Unit cost
+                                <span className="text-muted-foreground ml-1 font-normal">
+                                  ({locationCurrency}, optional)
+                                </span>
+                              </FormLabel>
+                              <FormControl>
+                                <NumericFormat
+                                  customInput={Input}
+                                  value={f.value ?? ""}
+                                  onValueChange={(v) =>
+                                    f.onChange(
+                                      v.value === "" ? undefined : Number(v.value),
+                                    )
+                                  }
+                                  thousandSeparator
+                                  placeholder="Defaults to average cost"
+                                  disabled={isPending}
+                                />
+                              </FormControl>
+                              <p className="text-[11px] text-muted-foreground">
+                                Leave blank to use the variant&apos;s average cost.
+                              </p>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      {isSerial && (
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.serialNumbers`}
+                          render={({ field: f }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">
+                                Serial numbers <span className="text-red-500">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Textarea
+                                  placeholder="One serial per line"
+                                  rows={Math.max(2, Math.min(quantity || 2, 6))}
+                                  value={(f.value ?? []).join("\n")}
+                                  onChange={(e) =>
+                                    f.onChange(
+                                      e.target.value
+                                        .split(/\r?\n/)
+                                        .map((s) => s.trim())
+                                        .filter((s) => s.length > 0),
+                                    )
+                                  }
+                                  disabled={isPending}
+                                />
+                              </FormControl>
+                              <p className="text-[11px] text-muted-foreground">
+                                Provide exactly {quantity || 0} serial number(s); they must
+                                be AVAILABLE at this location.
+                                {serialNumbers.length > 0 && (
+                                  <span className="ml-2">
+                                    Entered: {serialNumbers.length}
+                                  </span>
+                                )}
+                              </p>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+
+                      {showPreview &&
+                        (balance?.loading ? (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground rounded-md bg-white border px-3 py-2">
+                            <Loader2 className="w-3 h-3 animate-spin" /> Reading
+                            current balance…
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="rounded-md bg-white border px-3 py-2 flex flex-col">
+                                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                  Before
+                                </span>
+                                <span className="font-mono text-lg font-semibold text-gray-700">
+                                  {(
+                                    balance?.quantityOnHand ?? 0
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="rounded-md border px-3 py-2 flex flex-col bg-amber-50 border-amber-200">
+                                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                  Used
+                                </span>
+                                <span className="font-mono text-lg font-semibold text-amber-700">
+                                  −{quantity.toLocaleString()}
+                                </span>
+                              </div>
+                              <div
+                                className={`rounded-md border px-3 py-2 flex flex-col ${
+                                  projectedNegative
+                                    ? "bg-red-50 border-red-200"
+                                    : "bg-white"
+                                }`}
+                              >
+                                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                  After
+                                </span>
+                                <span
+                                  className={`font-mono text-lg font-semibold ${
+                                    projectedNegative
+                                      ? "text-red-600"
+                                      : "text-gray-700"
+                                  }`}
+                                >
+                                  {projected.toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+                            {(projectedNegative || balance?.averageCost != null) && (
+                              <div className="flex items-center justify-between text-[11px]">
+                                {projectedNegative ? (
+                                  <span className="text-red-600 font-medium">
+                                    Would result in negative stock
+                                  </span>
+                                ) : (
+                                  <span />
+                                )}
+                                {balance?.averageCost != null && (
+                                  <span className="text-muted-foreground">
+                                    Avg cost {balance.averageCost.toLocaleString()}{" "}
+                                    {locationCurrency}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.notes`}
+                        render={({ field: f }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Item notes</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Optional — applies to this line only"
+                                rows={2}
+                                {...f}
+                                value={f.value ?? ""}
+                                disabled={isPending}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </section>

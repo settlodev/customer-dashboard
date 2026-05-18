@@ -291,7 +291,17 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
 
     const getErrorDetails = (axiosError: AxiosError): unknown => {
         const responseData = axiosError.response?.data as Record<string, unknown>;
-        return responseData?.details || responseData?.error || responseData?.errors || responseData;
+        // `fieldErrors` is the Bean-Validation payload our backends emit
+        // ({field, message, rejectedValue}[]). Checked first so forms can
+        // render the specific field that broke instead of the generic
+        // "Validation Failed" reason phrase that `error` carries.
+        return (
+            responseData?.fieldErrors ||
+            responseData?.details ||
+            responseData?.error ||
+            responseData?.errors ||
+            responseData
+        );
     };
 
     const getErrorMetadata = (axiosError: AxiosError): Record<string, unknown> | undefined => {

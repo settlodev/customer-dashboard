@@ -4,7 +4,21 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { StockUsage, STOCK_USAGE_TYPE_OPTIONS } from "@/types/stock-usage/type";
+import {
+  StockUsage,
+  USAGE_CATEGORY_OPTIONS,
+} from "@/types/stock-usage/type";
+import { Money } from "@/components/widgets/money";
+import { DEFAULT_CURRENCY } from "@/lib/helpers";
+
+const sumLineCost = (usage: StockUsage): number =>
+  usage.items?.reduce((acc, line) => {
+    if (line.unitCost == null) return acc;
+    return acc + Number(line.unitCost) * Number(line.quantity);
+  }, 0) ?? 0;
+
+const sumLineQuantity = (usage: StockUsage): number =>
+  usage.items?.reduce((acc, line) => acc + Number(line.quantity), 0) ?? 0;
 
 export const columns: ColumnDef<StockUsage>[] = [
   {
@@ -46,21 +60,12 @@ export const columns: ColumnDef<StockUsage>[] = [
     ),
   },
   {
-    accessorKey: "variantName",
-    header: "Stock item",
-    cell: ({ row }) => (
-      <span className="text-gray-900 font-medium truncate max-w-[220px] block">
-        {row.original.variantName || "—"}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "usageType",
-    header: "Usage type",
+    accessorKey: "category",
+    header: "Category",
     cell: ({ row }) => {
       const label =
-        STOCK_USAGE_TYPE_OPTIONS.find((o) => o.value === row.original.usageType)
-          ?.label || row.original.usageType;
+        USAGE_CATEGORY_OPTIONS.find((o) => o.value === row.original.category)
+          ?.label || row.original.category;
       return (
         <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700">
           {label}
@@ -69,11 +74,20 @@ export const columns: ColumnDef<StockUsage>[] = [
     },
   },
   {
-    accessorKey: "quantity",
-    header: "Quantity",
+    accessorKey: "purpose",
+    header: "Purpose",
     cell: ({ row }) => (
-      <span className="font-mono text-gray-900">
-        {Number(row.original.quantity).toLocaleString()}
+      <span className="text-gray-600 truncate max-w-[220px] block">
+        {row.original.purpose}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "recipientName",
+    header: "Recipient",
+    cell: ({ row }) => (
+      <span className="text-gray-900 font-medium truncate max-w-[160px] block">
+        {row.original.recipientName || "—"}
       </span>
     ),
   },
@@ -81,26 +95,61 @@ export const columns: ColumnDef<StockUsage>[] = [
     accessorKey: "departmentName",
     header: "Department",
     cell: ({ row }) => (
-      <span className="text-gray-600 truncate max-w-[180px] block">
+      <span className="text-gray-600 truncate max-w-[160px] block">
         {row.original.departmentName || "—"}
       </span>
     ),
   },
   {
-    accessorKey: "recordedByName",
-    header: "Recorded by",
-    cell: ({ row }) => (
-      <span className="text-gray-600">
-        {row.original.recordedByName || "—"}
-      </span>
-    ),
+    id: "items",
+    header: "Items",
+    cell: ({ row }) => {
+      const count = row.original.items?.length ?? 0;
+      const qty = sumLineQuantity(row.original);
+      return (
+        <span className="text-gray-600">
+          {count} {count === 1 ? "item" : "items"} · −{qty.toLocaleString()}
+        </span>
+      );
+    },
   },
   {
-    accessorKey: "createdAt",
+    id: "totalCost",
+    header: "Total cost",
+    cell: ({ row }) => {
+      const total = sumLineCost(row.original);
+      const currency = row.original.currency || DEFAULT_CURRENCY;
+      return total > 0 ? (
+        <Money amount={total} currency={currency} />
+      ) : (
+        <span className="text-gray-400">—</span>
+      );
+    },
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => {
+      const isReversed = row.original.status === "REVERSED";
+      return (
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+            isReversed
+              ? "bg-rose-50 text-rose-700"
+              : "bg-emerald-50 text-emerald-700"
+          }`}
+        >
+          {isReversed ? "Reversed" : "Active"}
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: "usageDate",
     header: "Date",
     cell: ({ row }) => (
       <span className="text-gray-600">
-        {new Date(row.original.createdAt).toLocaleDateString("en-GB", {
+        {new Date(row.original.usageDate).toLocaleDateString("en-GB", {
           day: "2-digit",
           month: "short",
           year: "numeric",

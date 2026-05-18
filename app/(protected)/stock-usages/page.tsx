@@ -12,44 +12,78 @@ import { columns } from "@/components/tables/stock-usage/column";
 import { searchStockUsages } from "@/lib/actions/stock-usage-actions";
 import { Plus } from "lucide-react";
 import {
-  STOCK_USAGE_TYPE_OPTIONS,
-  StockUsageType,
+  USAGE_CATEGORY_OPTIONS,
+  USAGE_STATUS_OPTIONS,
+  type UsageCategory,
+  type UsageStatus,
+  type StockUsageFilters,
 } from "@/types/stock-usage/type";
 
 type Params = {
   searchParams: Promise<{
     page?: string;
     limit?: string;
-    usageType?: string;
+    category?: string;
+    status?: string;
+    departmentId?: string;
+    recipientId?: string;
+    performedBy?: string;
+    from?: string;
+    to?: string;
   }>;
 };
 
 export default async function Page({ searchParams }: Params) {
-  const resolvedParams = await searchParams;
-  const page = Number(resolvedParams.page) || 0;
-  const pageLimit = Number(resolvedParams.limit) || 20;
-  const usageType = STOCK_USAGE_TYPE_OPTIONS.some(
-    (o) => o.value === resolvedParams.usageType,
+  const resolved = await searchParams;
+  const page = Number(resolved.page) || 0;
+  const pageLimit = Number(resolved.limit) || 20;
+
+  const category = USAGE_CATEGORY_OPTIONS.some(
+    (o) => o.value === resolved.category,
   )
-    ? (resolvedParams.usageType as StockUsageType)
+    ? (resolved.category as UsageCategory)
     : undefined;
+  const status = USAGE_STATUS_OPTIONS.some((o) => o.value === resolved.status)
+    ? (resolved.status as UsageStatus)
+    : undefined;
+
+  const filters: StockUsageFilters = {
+    category,
+    status,
+    departmentId: resolved.departmentId || undefined,
+    recipientId: resolved.recipientId || undefined,
+    performedBy: resolved.performedBy || undefined,
+    from: resolved.from || undefined,
+    to: resolved.to || undefined,
+  };
 
   const responseData = await searchStockUsages(
     page ? page - 1 : 0,
     pageLimit,
-    usageType,
+    filters,
   );
 
   const data = responseData.content;
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;
 
+  const hasActiveFilter =
+    !!(
+      filters.category ||
+      filters.status ||
+      filters.departmentId ||
+      filters.recipientId ||
+      filters.performedBy ||
+      filters.from ||
+      filters.to
+    );
+
   return (
     <PageShell>
       <PageBreadcrumbs items={[{ title: "Stock Usage" }]} />
       <PageHeader
         title="Stock Usage"
-        subtitle="Record internal stock consumption — staff meals, samples, training, marketing, and maintenance."
+        subtitle="Record internal stock consumption — staff meals, samples, training, marketing, maintenance and more."
         actions={
           <>
             <Button asChild size="sm">
@@ -62,7 +96,7 @@ export default async function Page({ searchParams }: Params) {
         }
       />
       <PageBody>
-        {total > 0 || usageType ? (
+        {total > 0 || hasActiveFilter ? (
           <DataTable
             columns={columns}
             data={data}
@@ -72,11 +106,21 @@ export default async function Page({ searchParams }: Params) {
             pageCount={pageCount}
             disableArchive
             rowClickBasePath="/stock-usages"
-            filterKey="usageType"
-            filterOptions={STOCK_USAGE_TYPE_OPTIONS.map((o) => ({
+            filterKey="category"
+            filterOptions={USAGE_CATEGORY_OPTIONS.map((o) => ({
               label: o.label,
               value: o.value,
             }))}
+            extraFilters={[
+              {
+                key: "status",
+                label: "Status",
+                options: USAGE_STATUS_OPTIONS.map((o) => ({
+                  label: o.label,
+                  value: o.value,
+                })),
+              },
+            ]}
           />
         ) : (
           <NoItems newItemUrl="/stock-usages/new" itemName="stock usage" />

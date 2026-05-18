@@ -25,8 +25,17 @@ export default function Error({
   }
 
   if (isPermissionDeniedError(error)) {
-    const { message, correlationId } = extractPermissionDeniedDetails(error);
-    return <PermissionDenied message={message} correlationId={correlationId} />;
+    const { message, correlationId, requiredPermission } =
+      extractPermissionDeniedDetails(error);
+    return (
+      <PermissionDenied
+        message={message}
+        correlationId={correlationId}
+        requiredPermission={requiredPermission}
+        homeHref="/warehouse"
+        homeLabel="Warehouse"
+      />
+    );
   }
 
   const handleReset = () => {
