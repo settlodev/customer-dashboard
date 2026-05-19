@@ -61,6 +61,13 @@ type Params = {
                                        pageNo={page}
                                        total={total}
                                        pageCount={pageCount}
+                                       filterKey="requestStatus"
+                                        filterOptions={[
+                                            { label: "All", value: "" },
+                                            { label: "Approved", value: "APPROVED" },
+                                            { label: "Pending", value: "PENDING" },
+                                            { label: "Cancelled", value: "CANCELLED" },
+                                        ]}
                             />
                         </CardContent>
                     </Card>

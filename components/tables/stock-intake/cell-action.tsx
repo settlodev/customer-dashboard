@@ -1,15 +1,20 @@
 "use client";
 
 import React, { useState } from "react";
-import { useDisclosure } from "@nextui-org/modal";
-import { EyeIcon } from "@nextui-org/shared-icons";
-import { Calculator, EditIcon, Info} from "lucide-react";
+import { useDisclosure } from "@/hooks/use-disclosure";
+import { MoreVertical, Eye as EyeIcon, Calculator, EditIcon, Info } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import ItemModal from "../item-modal";
 import { StockIntake } from "@/types/stock-intake/type";
 import { Button } from "@/components/ui/button";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
     Dialog,
     DialogContent,
@@ -85,34 +90,23 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
     return (
         <>
-            <div style={{ alignItems: "flex-end" }}>
-                <div
-                    style={{
-                        display: "flex",
-                        float: "right",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 16,
-                        fontSize: 20,
-                    }}
-                >
-                    <a
-                        style={{ flex: 1 }}
-                        onClick={onOpen}
-                        className="cursor-pointer"
-                    >
-                        <EyeIcon color={"#384B70"} />
-                    </a>
-
-                    <a
-                        style={{ flex: 1 }}
-                        onClick={handleOpenEditModal}
-                        className="cursor-pointer"
-                    >
-                        <EditIcon color={"#384B70"} size={20} />
-                    </a>
-                </div>
-            </div>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                        <MoreVertical className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={onOpen}>
+                        <EyeIcon className="mr-2 h-4 w-4" />
+                        View
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleOpenEditModal}>
+                        <EditIcon className="mr-2 h-4 w-4" />
+                        Edit value
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* View Modal */}
             <ItemModal isOpen={isOpen} onOpenChange={onOpenChange} data={data} />

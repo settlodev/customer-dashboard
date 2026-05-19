@@ -15,7 +15,7 @@ export const LocationSection = () => {
                 />
             </div>
 
-            <div className="absolute inset-0 bg-emerald-400/10 z-10" />
+            <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-primary-light to-transparent z-10" />
 
             {/* Content container */}
             <div className="relative z-20 container mx-auto px-4 h-full pt-24">
@@ -34,8 +34,8 @@ export const LocationSection = () => {
                         {/* Contact Information */}
                         <div className="space-y-6">
                             <div className="flex items-start gap-4">
-                                <div className="rounded-full p-2 bg-emerald-100 mt-1">
-                                    <MapPin className="w-5 h-5 text-emerald-600" />
+                                <div className="rounded-full p-2 bg-primary/10 mt-1">
+                                    <MapPin className="w-5 h-5 text-primary" />
                                 </div>
                                 <div className="space-y-1">
                                     <h3 className="font-semibold text-gray-900">Address</h3>
@@ -49,8 +49,8 @@ export const LocationSection = () => {
                             </div>
 
                             <div className="flex items-start gap-4">
-                                <div className="rounded-full p-2 bg-emerald-100 mt-1">
-                                    <Clock className="w-5 h-5 text-emerald-600" />
+                                <div className="rounded-full p-2 bg-primary/10 mt-1">
+                                    <Clock className="w-5 h-5 text-primary" />
                                 </div>
                                 <div className="space-y-1">
                                     <h3 className="font-semibold text-gray-900">Business Hours</h3>
@@ -62,29 +62,29 @@ export const LocationSection = () => {
                             </div>
 
                             <div className="flex items-start gap-4">
-                                <div className="rounded-full p-2 bg-emerald-100 mt-1">
-                                    <Phone className="w-5 h-5 text-emerald-600" />
+                                <div className="rounded-full p-2 bg-primary/10 mt-1">
+                                    <Phone className="w-5 h-5 text-primary" />
                                 </div>
                                 <div className="space-y-1">
                                     <h3 className="font-semibold text-gray-900">Phone</h3>
                                     <a
-                                        href="tel:+255788000000"
-                                        className="text-emerald-600 hover:text-emerald-700 transition-colors"
+                                        href="tel:+255759229777"
+                                        className="text-primary hover:text-primary/80 transition-colors"
                                     >
-                                        +255 788 000 000
+                                        +255 759 229 777
                                     </a>
                                 </div>
                             </div>
 
                             <div className="flex items-start gap-4">
-                                <div className="rounded-full p-2 bg-emerald-100 mt-1">
-                                    <Mail className="w-5 h-5 text-emerald-600" />
+                                <div className="rounded-full p-2 bg-primary/10 mt-1">
+                                    <Mail className="w-5 h-5 text-primary" />
                                 </div>
                                 <div className="space-y-1">
                                     <h3 className="font-semibold text-gray-900">Email</h3>
                                     <a
                                         href="mailto:support@settlo.co.tz"
-                                        className="text-emerald-600 hover:text-emerald-700 transition-colors"
+                                        className="text-primary hover:text-primary/80 transition-colors"
                                     >
                                         support@settlo.co.tz
                                     </a>
@@ -95,11 +95,11 @@ export const LocationSection = () => {
                         <div className="pt-6 border-t border-gray-200">
                             <p className="text-sm text-gray-500">
                                 Need help? Visit our{' '}
-                                <a href="/help" className="text-emerald-600 hover:text-emerald-700 transition-colors">
+                                <a href="/help" className="text-primary hover:text-primary/80 transition-colors">
                                     Help Center
                                 </a>
                                 {' '}or{' '}
-                                <a href="/contact" className="text-emerald-600 hover:text-emerald-700 transition-colors">
+                                <a href="/contact" className="text-primary hover:text-primary/80 transition-colors">
                                     contact support
                                 </a>
                             </p>

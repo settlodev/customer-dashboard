@@ -6,6 +6,7 @@ import { StockVariant } from "@/types/stockVariant/type";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { searchStockVariantsInWarehouse } from "@/lib/actions/warehouse/stock-variant-actions";
+import { CSVStockDialog } from "@/components/csv/stockCsvImport";
 
 const breadCrumbItems = [{title: "Stock Items", link: "/stock-variants"}];
 type Params = { 
@@ -42,8 +43,8 @@ type Params = {
                         <Link href={`/warehouse-stocks/new`}>Add Stock</Link>
                     </Button>
                     <div>
-                    {/* {total === 0 ?  <CSVStockDialog /> : null}
-                    {total === 0 ?  <ProductWithStockCSVDialog /> : null} */}
+                    {total === 0 ?  <CSVStockDialog uploadType="warehouse" /> : null}
+                    
                     </div>
                 </div>
             </div>

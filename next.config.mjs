@@ -26,6 +26,11 @@ const nextConfig = {
         hostname: "app.tallity.co.tz",
         port: "",
       },
+      {
+        protocol: "https",
+        hostname: "app.tality.co.tz",
+        port: "",
+      },
     ],
   },
 };

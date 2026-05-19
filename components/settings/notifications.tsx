@@ -1,6 +1,6 @@
 'use client'
 import { useState, useTransition, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader} from "../ui/card";
+import { Card, CardContent } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { Switch } from "../ui/switch";
 import { useForm } from "react-hook-form";
@@ -10,7 +10,8 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "../ui/form";
 import SubmitButton from "../widgets/submit-button";
 import { updateNotificationSetting } from "@/lib/actions/settings-actions";
-import { fetchLocationSettings } from "@/lib/actions/settings-actions"; // Import your server action
+import { fetchLocationSettings } from "@/lib/actions/settings-actions";
+import { Mail, MessageSquare, Smartphone } from "lucide-react";
 
 const NotificationSettings = () => {
     const [isPending, startTransition] = useTransition();
@@ -25,14 +26,12 @@ const NotificationSettings = () => {
         },
     });
 
-    // Fetch location settings on component mount
     useEffect(() => {
         const loadSettings = async () => {
             try {
                 setIsLoading(true);
                 const locationSettings = await fetchLocationSettings();
-                
-                // Update form with fetched values
+
                 form.reset({
                     enableEmailNotification: locationSettings.enableEmailNotifications,
                     enablePushNotification: locationSettings.enablePushNotifications,
@@ -40,7 +39,7 @@ const NotificationSettings = () => {
                 });
             } catch (error) {
                 console.error("Failed to fetch location settings:", error);
-                // Keep default values if fetch fails
+
             } finally {
                 setIsLoading(false);
             }
@@ -55,53 +54,53 @@ const NotificationSettings = () => {
             updateNotificationSetting(values);
         });
     }
-    
+
     if (isLoading) {
         return (
             <div className="space-y-6">
                 <div>
-                    <h2 className="text-2xl font-semibold">Notifications</h2>
-                    <p className="text-muted-foreground mt-1">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Notifications</h2>
+                    <p className="text-muted-foreground mt-1 text-sm">
                         Loading notification settings...
                     </p>
                 </div>
-                <Card>
+                <Card className="rounded-xl border shadow-sm">
                     <CardContent className="p-6">
                         <div className="animate-pulse space-y-4">
-                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                            <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
         );
     }
-    
+
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-2xl font-semibold">Notifications</h2>
-                <p className="text-muted-foreground mt-1">
-                    Get notified what&apos;s happening right now, you can turn off at any time
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Notifications</h2>
+                <p className="text-muted-foreground mt-1 text-sm">
+                    Get notified about what&apos;s happening — you can turn off at any time
                 </p>
             </div>
 
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)}>
-                    <Card>
-                        <CardHeader>
-                            <CardDescription className="text-base font-medium text-black">
-                                We can send you email, SMS, and push notifications for any new direct messages
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
+                    <Card className="rounded-xl border shadow-sm">
+                        <CardContent className="pt-6 space-y-1">
                             <FormField
                                 control={form.control}
                                 name="enableEmailNotification"
                                 render={({ field }) => (
-                                    <FormItem className="flex justify-between items-center space-x-3 space-y-0">
-                                        <FormLabel className="text-sm font-medium">Email Notifications</FormLabel>
+                                    <FormItem className="flex justify-between items-center px-3 py-3.5 rounded-lg hover:bg-primary-light dark:hover:bg-gray-800/50 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 dark:bg-gray-800">
+                                                <Mail className="h-4 w-4 text-primary" />
+                                            </div>
+                                            <FormLabel className="text-sm font-medium cursor-pointer">Email Notifications</FormLabel>
+                                        </div>
                                         <FormControl>
                                             <Switch
                                                 checked={field.value}
@@ -118,8 +117,13 @@ const NotificationSettings = () => {
                                 control={form.control}
                                 name="enableSmsNotification"
                                 render={({ field }) => (
-                                    <FormItem className="flex justify-between items-center space-x-3 space-y-0">
-                                        <FormLabel className="text-sm font-medium">SMS Notifications</FormLabel>
+                                    <FormItem className="flex justify-between items-center px-3 py-3.5 rounded-lg hover:bg-primary-light dark:hover:bg-gray-800/50 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 dark:bg-gray-800">
+                                                <MessageSquare className="h-4 w-4 text-primary" />
+                                            </div>
+                                            <FormLabel className="text-sm font-medium cursor-pointer">SMS Notifications</FormLabel>
+                                        </div>
                                         <FormControl>
                                             <Switch
                                                 checked={field.value}
@@ -129,15 +133,20 @@ const NotificationSettings = () => {
                                     </FormItem>
                                 )}
                             />
-                            
+
                             <Separator />
-                            
+
                             <FormField
                                 control={form.control}
                                 name="enablePushNotification"
                                 render={({ field }) => (
-                                    <FormItem className="flex justify-between items-center space-x-3 space-y-0">
-                                        <FormLabel className="text-sm font-medium">Push Notifications</FormLabel>
+                                    <FormItem className="flex justify-between items-center px-3 py-3.5 rounded-lg hover:bg-primary-light dark:hover:bg-gray-800/50 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 dark:bg-gray-800">
+                                                <Smartphone className="h-4 w-4 text-primary" />
+                                            </div>
+                                            <FormLabel className="text-sm font-medium cursor-pointer">Push Notifications</FormLabel>
+                                        </div>
                                         <FormControl>
                                             <Switch
                                                 checked={field.value}
@@ -147,13 +156,14 @@ const NotificationSettings = () => {
                                     </FormItem>
                                 )}
                             />
-                            
-                            <div className="flex items-center justify-end space-x-2 pt-6">
+
+                            <div className="flex items-center justify-end pt-6">
                                 <SubmitButton
                                     isPending={isPending}
                                     label="Save Changes"
+                                    className="bg-primary hover:bg-primary/90 text-white rounded-lg"
                                 />
-                            </div> 
+                            </div>
                         </CardContent>
                     </Card>
                 </form>

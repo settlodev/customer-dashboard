@@ -54,7 +54,7 @@ export default async function Page({ searchParams }: Params) {
 
             {/* Summary Report Cards */}
             {report && (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+                <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5 mb-6">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">
@@ -82,6 +82,23 @@ export default async function Page({ searchParams }: Params) {
                             <p className="text-xs text-muted-foreground">
                                 {report.totalStockRequests > 0 
                                     ? `${Math.round((report.approvedStockRequests / report.totalStockRequests) * 100)}% of total`
+                                    : "0% of total"
+                                }
+                            </p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">
+                                Received
+                            </CardTitle>
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-green-600">{report.receivedStockRequests}</div>
+                            <p className="text-xs text-muted-foreground">
+                                {report.totalStockRequests > 0 
+                                    ? `${Math.round((report.receivedStockRequests / report.totalStockRequests) * 100)}% of total`
                                     : "0% of total"
                                 }
                             </p>
@@ -139,8 +156,16 @@ export default async function Page({ searchParams }: Params) {
                             data={data}
                             pageCount={pageCount}
                             pageNo={page}
-                            searchKey=""
+                            searchKey="warehouseStockVariantName"
                             total={total}
+                            filterKey="requestStatus"
+                            filterOptions={[
+                            { label: "All", value: "" },
+                            { label: "Pending", value: "PENDING" },
+                            { label: "Approved", value: "APPROVED" },
+                            { label: "Received", value: "RECEIVED" },
+                            { label: "Cancelled", value: "CANCELLED" },
+                            ]}
                         />
                     </CardContent>
                 </Card>

@@ -7,6 +7,7 @@ import { uploadStockCSV } from "@/lib/actions/stock-actions";
 interface CSVUploadOptions {
   fileData: string;
   fileName: string;
+  uploadType: 'warehouse' | 'location';
 }
 
 interface UseCSVUploadResult {
@@ -19,10 +20,10 @@ interface UseCSVUploadResult {
 
 // Constants for timeouts and progress steps
 const UPLOAD_SIMULATION_STEPS = 8;
-const SIMULATION_STEP_TIME = 150; // milliseconds
-const VALIDATION_PROGRESS = 20; // First 20% for validation
-const PROCESSING_PROGRESS = 70; // Next 50% for processing
-const COMPLETION_PROGRESS = 100; // Final 30% for completion
+const SIMULATION_STEP_TIME = 150; 
+const VALIDATION_PROGRESS = 20; 
+const PROCESSING_PROGRESS = 70; 
+const COMPLETION_PROGRESS = 100; 
 
 export const useCSVUpload = (): UseCSVUploadResult => {
   const [isUploading, setIsUploading] = useState(false);
@@ -35,7 +36,7 @@ export const useCSVUpload = (): UseCSVUploadResult => {
     setError(null);
   }, []);
 
-  const uploadCSV = async ({ fileData, fileName }: CSVUploadOptions) => {
+  const uploadCSV = async ({ fileData, fileName,uploadType }: CSVUploadOptions) => {
     resetUpload();
     setIsUploading(true);
 
@@ -59,7 +60,7 @@ export const useCSVUpload = (): UseCSVUploadResult => {
       }
 
       // Final phase: Actual upload
-      const response = await uploadStockCSV({ fileData, fileName });
+      const response = await uploadStockCSV({ fileData, fileName,uploadType: uploadType });
       
       // Complete the progress
       setUploadProgress(COMPLETION_PROGRESS);
