@@ -422,7 +422,7 @@ const DeviceSettings = () => {
   const seatSummary = (() => {
     if (entitlementsLoading || devices === null) return null;
     if (isUnlimited) {
-      return `${occupiedSeats} ${occupiedSeats === 1 ? "device" : "devices"} in use · plan has no device cap`;
+      return `${occupiedSeats} of unlimited devices in use`;
     }
     const cap = maxDevices as number;
     return `${occupiedSeats} of ${cap} ${cap === 1 ? "seat" : "seats"} in use`;

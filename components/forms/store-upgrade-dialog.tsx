@@ -202,7 +202,10 @@ export default function StoreUpgradeDialog({
 
   // ── Derived ───────────────────────────────────────────────────────────
   const currentPackage = useMemo(
-    () => packages.find((p) => p.id === locationItem?.packageId) ?? null,
+    () =>
+      locationItem?.packageInfo
+        ? packages.find((p) => p.id === locationItem.packageInfo!.id) ?? locationItem.packageInfo
+        : null,
     [packages, locationItem],
   );
 
@@ -232,7 +235,7 @@ export default function StoreUpgradeDialog({
   /** Has the user already added the addon to this item? */
   const isAddonAdded = useCallback(
     (addonId: string) =>
-      !!locationItem?.addons.some((a) => a.addonId === addonId),
+      !!locationItem?.addons.some((a) => a.id === addonId),
     [locationItem],
   );
 
@@ -254,7 +257,7 @@ export default function StoreUpgradeDialog({
   const handlePickPlan = useCallback(
     async (plan: Package) => {
       if (!subscription || !locationItem || isMutating) return;
-      if (plan.id === locationItem.packageId) return;
+      if (plan.id === locationItem.packageInfo?.id) return;
 
       setIsMutating(true);
       try {

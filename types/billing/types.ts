@@ -51,26 +51,30 @@ export interface Addon {
 
 export type SubscriptionItemStatus = "ACTIVE" | "REMOVED";
 
-export interface SubscriptionItemAddon {
-  id: string;
-  addonId: string;
-  addonName: string;
-  addonVersion: number;
-  addedAt: string;
-}
-
 export interface SubscriptionItem {
   id: string;
   entityType: EntityType;
   entityId: string;
-  packageId: string;
-  packageName: string;
+  /** Snapshot of the Package at the time this item was added. May be null
+   *  for legacy/edge-case rows; trial items should still carry a plan. */
+  packageInfo: Package | null;
   packageVersion: number;
   isBundled: boolean;
   bundledByItemId: string | null;
   status: SubscriptionItemStatus;
   addedAt: string;
-  addons: SubscriptionItemAddon[];
+  removedAt: string | null;
+  /** Each addon mirrors the AddonResponse DTO: id, name, description, price. */
+  addons: Addon[];
+}
+
+export interface SubscriptionDiscount {
+  id: string;
+  description: string | null;
+  discountType: DiscountType;
+  discountValue: number;
+  validFrom: string;
+  validUntil: string | null;
 }
 
 export interface Subscription {
@@ -85,11 +89,17 @@ export interface Subscription {
   paidThrough: string;
   nextBillingDate: string | null;
   autoRenew: boolean;
-  currency: string;
+  hasActiveDiscount: boolean;
+  isFreeSubscription: boolean;
   cancelledAt: string | null;
   items: SubscriptionItem[];
+  activeDiscounts: SubscriptionDiscount[];
   createdAt: string;
   updatedAt: string;
+  /** Not returned by the Billing Service today — kept for the payment-initiation
+   *  call which still needs a currency code. Always falls back to TZS at the
+   *  call site. */
+  currency?: string;
 }
 
 // ── Invoices ────────────────────────────────────────────────────────
@@ -187,6 +197,76 @@ export interface PrepaymentResponse {
   extendsThrough: string;
   invoiceId: string;
   paidAt: string | null;
+}
+
+// ── Credits ─────────────────────────────────────────────────────────
+
+export type CreditTransactionType =
+  | "PACKAGE_RENEWAL"
+  | "PACK_PURCHASE"
+  | "USAGE"
+  | "MANUAL_ADJUSTMENT"
+  | "EXPIRY"
+  | "REFUND";
+
+export interface CreditType {
+  id: string;
+  name: string;
+  code: string;
+  description: string | null;
+  unitPrice: number;
+}
+
+export interface CreditPack {
+  id: string;
+  name: string;
+  description: string | null;
+  creditTypeId: string;
+  creditTypeName: string;
+  creditAmount: number;
+  price: number;
+}
+
+export interface CreditBalance {
+  creditTypeId: string;
+  creditTypeName: string;
+  creditTypeCode: string;
+  balance: number;
+  updatedAt: string;
+}
+
+export interface CreditTransaction {
+  id: string;
+  creditTypeName: string;
+  creditTypeCode: string;
+  transactionType: CreditTransactionType;
+  amount: number;
+  balanceAfter: number;
+  referenceId: string | null;
+  description: string | null;
+  createdAt: string;
+}
+
+/** Spring Pageable response shape used by the credit transactions endpoint. */
+export interface Page<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+  first: boolean;
+  last: boolean;
+}
+
+// ── Features ────────────────────────────────────────────────────────
+
+export interface Feature {
+  id: string;
+  name: string;
+  description: string | null;
+  featureKey: string;
+  featureType: FeatureType;
+  isActive: boolean;
 }
 
 // ── Payments ────────────────────────────────────────────────────────

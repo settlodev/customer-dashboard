@@ -4,6 +4,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import type {
   Package,
   PackageBreakdown,
+  PackageFeature,
   Addon,
   Subscription,
   SubscriptionItem,
@@ -11,6 +12,12 @@ import type {
   InvoiceViewDto,
   Coupon,
   PrepaymentResponse,
+  Feature,
+  CreditType,
+  CreditPack,
+  CreditBalance,
+  CreditTransaction,
+  Page,
 } from "@/types/billing/types";
 
 const BILLING_SERVICE_URL = process.env.BILLING_SERVICE_URL || "";
@@ -67,6 +74,16 @@ export async function getBusinessSubscription(businessId: string): Promise<Subsc
   } catch {
     return null;
   }
+}
+
+/**
+ * Cancel an active subscription. The Billing Service reads the actor from
+ * the X-User-Id header (already attached by ApiClient) so no body is needed.
+ * Note: cancellation publishes SUBSCRIPTION_CANCELLED on the event bus.
+ */
+export async function cancelSubscription(subscriptionId: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.delete<void>(billingUrl(`/api/v1/subscriptions/${subscriptionId}`));
 }
 
 // ── Subscription item management ────────────────────────────────────
@@ -166,4 +183,80 @@ export async function validateCoupon(code: string): Promise<Coupon | null> {
   } catch {
     return null;
   }
+}
+
+// ── Features ────────────────────────────────────────────────────────
+
+/** Lists every feature key the catalog knows about (used for plan comparison). */
+export async function getFeatures(): Promise<Feature[]> {
+  if (!BILLING_SERVICE_URL) return [];
+  const apiClient = new ApiClient();
+  apiClient.isPlain = true;
+  return apiClient.get<Feature[]>(billingUrl("/api/v1/features"));
+}
+
+export async function getIncludedPackageFeatures(packageId: string): Promise<PackageFeature[]> {
+  if (!BILLING_SERVICE_URL) return [];
+  const apiClient = new ApiClient();
+  apiClient.isPlain = true;
+  return apiClient.get<PackageFeature[]>(
+    billingUrl(`/api/v1/features/package/${packageId}/included`),
+  );
+}
+
+// ── Credits ─────────────────────────────────────────────────────────
+
+export async function getCreditTypes(): Promise<CreditType[]> {
+  if (!BILLING_SERVICE_URL) return [];
+  const apiClient = new ApiClient();
+  return apiClient.get<CreditType[]>(billingUrl("/api/v1/credits/types"));
+}
+
+export async function getCreditPacks(creditTypeId?: string): Promise<CreditPack[]> {
+  if (!BILLING_SERVICE_URL) return [];
+  const apiClient = new ApiClient();
+  const params = creditTypeId ? `?creditTypeId=${creditTypeId}` : "";
+  return apiClient.get<CreditPack[]>(billingUrl(`/api/v1/credits/packs${params}`));
+}
+
+export async function getCreditBalances(businessId: string): Promise<CreditBalance[]> {
+  if (!BILLING_SERVICE_URL || !businessId) return [];
+  try {
+    const apiClient = new ApiClient();
+    return await apiClient.get<CreditBalance[]>(
+      billingUrl(`/api/v1/credits/balances/${businessId}`),
+    );
+  } catch {
+    return [];
+  }
+}
+
+export async function getCreditTransactions(
+  businessId: string,
+  page = 0,
+  size = 10,
+  creditTypeId?: string,
+): Promise<Page<CreditTransaction> | null> {
+  if (!BILLING_SERVICE_URL || !businessId) return null;
+  try {
+    const apiClient = new ApiClient();
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (creditTypeId) params.set("creditTypeId", creditTypeId);
+    return await apiClient.get<Page<CreditTransaction>>(
+      billingUrl(`/api/v1/credits/transactions/${businessId}?${params.toString()}`),
+    );
+  } catch {
+    return null;
+  }
+}
+
+export async function purchaseCreditPack(
+  businessId: string,
+  creditPackId: string,
+): Promise<CreditBalance> {
+  const apiClient = new ApiClient();
+  return apiClient.post<CreditBalance, { businessId: string; creditPackId: string }>(
+    billingUrl("/api/v1/credits/packs/purchase"),
+    { businessId, creditPackId },
+  );
 }

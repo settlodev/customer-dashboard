@@ -133,7 +133,7 @@ export default function RenewSubscriptionPage() {
 
   const handleChangePlan = useCallback(
     async (plan: Package) => {
-      if (!subscription || !currentItem || plan.id === currentItem.packageId) return;
+      if (!subscription || !currentItem || plan.id === currentItem.packageInfo?.id) return;
       try {
         await changeItemPlan(subscription.id, currentItem.id, plan.id);
         toast({ title: "Plan updated", description: `Switched to ${plan.name}` });
@@ -148,7 +148,7 @@ export default function RenewSubscriptionPage() {
   const handleToggleAddon = useCallback(
     async (addon: Addon) => {
       if (!subscription || !currentItem) return;
-      const has = currentItem.addons.some((a) => a.addonId === addon.id);
+      const has = currentItem.addons.some((a) => a.id === addon.id);
       try {
         if (has) {
           await removeItemAddon(subscription.id, currentItem.id, addon.id);
@@ -182,7 +182,7 @@ export default function RenewSubscriptionPage() {
           const payment = await initiatePayment({
             invoiceId: prepayment.invoiceId,
             amount: prepayment.amount,
-            currency: subscription.currency,
+            currency: subscription.currency ?? "TZS",
             businessId: subscription.businessId,
             locationId: currentItem?.entityId || "",
             customerPhone: data.phone,
@@ -227,8 +227,8 @@ export default function RenewSubscriptionPage() {
   const getActionType = useCallback(
     (plan: Package): "upgrade" | "downgrade" | "renew" | "switch" | "subscribe" => {
       if (!currentItem) return "subscribe";
-      if (plan.id === currentItem.packageId) return "renew";
-      const currentPkg = packages.find((p) => p.id === currentItem.packageId);
+      if (plan.id === currentItem.packageInfo?.id) return "renew";
+      const currentPkg = packages.find((p) => p.id === currentItem.packageInfo?.id);
       if (!currentPkg) return "switch";
       if (plan.basePrice > currentPkg.basePrice) return "upgrade";
       if (plan.basePrice < currentPkg.basePrice) return "downgrade";
@@ -263,10 +263,12 @@ export default function RenewSubscriptionPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Current Plan</p>
-              <p className="text-lg font-bold text-gray-900 mt-1">{currentItem.packageName}</p>
+              <p className="text-lg font-bold text-gray-900 mt-1">
+                {currentItem.packageInfo?.name ?? "Trial plan"}
+              </p>
               {currentItem.addons.length > 0 && (
                 <p className="text-xs text-gray-500 mt-1">
-                  {currentItem.addons.map((a) => a.addonName).join(", ")}
+                  {currentItem.addons.map((a) => a.name).join(", ")}
                 </p>
               )}
             </div>
@@ -306,8 +308,8 @@ export default function RenewSubscriptionPage() {
                   <SubscriptionPlanCard
                     key={plan.id}
                     plan={plan}
-                    isSelected={plan.id === currentItem?.packageId}
-                    isCurrent={plan.id === currentItem?.packageId}
+                    isSelected={plan.id === currentItem?.packageInfo?.id}
+                    isCurrent={plan.id === currentItem?.packageInfo?.id}
                     actionType={getActionType(plan)}
                     onSelect={handleChangePlan}
                   />
@@ -327,7 +329,7 @@ export default function RenewSubscriptionPage() {
                   <AdditionalServiceCard
                     key={addon.id}
                     service={addon}
-                    isAdded={currentItem?.addons.some((a) => a.addonId === addon.id) ?? false}
+                    isAdded={currentItem?.addons.some((a) => a.id === addon.id) ?? false}
                     onAdd={handleToggleAddon}
                   />
                 ))}

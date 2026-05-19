@@ -5,7 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Menu, X, AlertTriangle } from "lucide-react";
 
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import { settingsNavItems } from "@/types/constants";
 import Loading from "@/components/ui/loading";
 import SessionExpired, { isSessionExpiredError } from "@/components/auth/session-expired";
@@ -186,7 +191,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 min-h-screen">
+    <PageShell>
       <SettingsLayout
         settings={settings}
         setSettings={setSettings}
@@ -200,7 +205,7 @@ export default function SettingsPage() {
         isLocationLoading={isLocationLoading}
         authUserId={authUserId}
       />
-    </div>
+    </PageShell>
   );
 }
 
@@ -240,7 +245,6 @@ function SettingsLayout({
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const breadcrumbItems = [{ title: "Settings", link: "/settings" }];
   const onSettingsSaved = (next: LocationSettings) => setSettings(next);
   const onBusinessSettingsSaved = (next: BusinessSettings) =>
     setBusinessSettings(next);
@@ -357,22 +361,17 @@ function SettingsLayout({
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <div className="hidden sm:block mb-2">
-          <BreadcrumbsNav items={breadcrumbItems} />
-        </div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-          <span className="text-primary">Settings</span>
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {location?.name ? `Configuring ${location.name}` : "Configuring this location"}
-          {isLocationLoading ? "…" : ""}
-        </p>
-      </div>
-
-      {/* Mobile selector */}
-      <div className="lg:hidden">
+    <>
+      <PageBreadcrumbs items={[{ title: "Settings" }]} />
+      <PageHeader
+        title="Settings"
+        subtitle={`${
+          location?.name ? `Configuring ${location.name}` : "Configuring this location"
+        }${isLocationLoading ? "…" : ""}`}
+      />
+      <PageBody>
+        {/* Mobile selector */}
+        <div className="lg:hidden">
         <button
           onClick={() => setIsMobileMenuOpen((v) => !v)}
           className="w-full flex items-center justify-between px-4 py-3 bg-card border rounded-xl shadow-sm"
@@ -441,13 +440,14 @@ function SettingsLayout({
         <main className="flex-1 min-w-0">{content()}</main>
       </div>
 
-      {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/25 z-40 lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-    </div>
+        {isMobileMenuOpen && (
+          <div
+            className="fixed inset-0 bg-black/25 z-40 lg:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+      </PageBody>
+    </>
   );
 }
 
