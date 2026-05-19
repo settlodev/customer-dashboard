@@ -352,6 +352,26 @@ export const deleteVariant = async (
   }
 };
 
+export const archiveVariant = async (
+  productId: UUID,
+  variantId: UUID[],
+): Promise<void> => {
+  if (!productId)
+    throw new Error("Product ID is required to perform this request");
+  if (!variantId || variantId.length === 0)
+    throw new Error("Variant ID is required to perform this request");
+
+  await getAuthenticatedUser();
+
+  try {
+    const apiClient = new ApiClient();
+    const payload = variantId;
+    await apiClient.put(`/api/variants/${productId}/archive`, payload);
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const uploadProductCSV = async ({
   fileData,
   fileName,

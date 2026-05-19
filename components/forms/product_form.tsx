@@ -43,6 +43,7 @@ import { FormError } from "../widgets/form-error";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
 import {
+  archiveVariant,
   createProduct,
   deleteVariant,
   generateAIDescription,
@@ -231,7 +232,7 @@ export default function ProductForm({ item }: ProductFormProps) {
     if (!variant || !item) return;
 
     try {
-      await deleteVariant(item.id, variant.id);
+      await archiveVariant(item.id, [variant.id]);
       remove(archiveVariantIndex);
       toast({
         title: "Archived",
