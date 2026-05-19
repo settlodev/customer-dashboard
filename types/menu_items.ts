@@ -94,6 +94,12 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
+        {
+          title: "Z-report",
+          link: "/report/z-report",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
       ],
     },
 
