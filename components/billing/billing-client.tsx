@@ -21,11 +21,13 @@ interface BillingClientProps {
   packages: Package[];
   addons: Addon[];
   invoices: BillingInvoice[];
+  totalInvoiceCount: number;
   businessId: string;
   creditBalances: CreditBalance[];
   creditPacks: CreditPack[];
   creditTransactions: CreditTransaction[];
   entityLabels?: Record<string, string>;
+  contactDefaults?: { email: string; phone: string };
 }
 
 export function BillingClient({
@@ -33,11 +35,13 @@ export function BillingClient({
   packages,
   addons,
   invoices,
+  totalInvoiceCount,
   businessId,
   creditBalances,
   creditPacks,
   creditTransactions,
   entityLabels,
+  contactDefaults,
 }: BillingClientProps) {
   const [tab, setTab] = useState("overview");
   const primaryItem = subscription.items.find((i) => i.status === "ACTIVE");
@@ -49,9 +53,9 @@ export function BillingClient({
         <TabsTrigger value="renew">Renew</TabsTrigger>
         <TabsTrigger value="invoices">
           Invoices
-          {invoices.length > 0 && (
+          {totalInvoiceCount > 0 && (
             <span className="ml-1.5 rounded bg-canvas px-1 font-mono text-[10px] tabular-nums">
-              {invoices.length}
+              {totalInvoiceCount}
             </span>
           )}
         </TabsTrigger>
@@ -68,11 +72,20 @@ export function BillingClient({
       </TabsContent>
 
       <TabsContent value="renew" className="mt-6">
-        <PrepayTab subscription={subscription} primaryItem={primaryItem} />
+        <PrepayTab
+          subscription={subscription}
+          primaryItem={primaryItem}
+          contactDefaults={contactDefaults}
+        />
       </TabsContent>
 
       <TabsContent value="invoices" className="mt-6">
-        <InvoicesTab invoices={invoices} />
+        <InvoicesTab
+          invoices={invoices}
+          businessId={businessId}
+          locationId={primaryItem?.entityId}
+          contactDefaults={contactDefaults}
+        />
       </TabsContent>
 
       <TabsContent value="credits" className="mt-6">

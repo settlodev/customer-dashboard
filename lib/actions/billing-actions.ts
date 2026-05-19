@@ -148,29 +148,55 @@ export async function prepaySubscription(
 /**
  * Get the most recent PENDING invoice for a subscription, if any.
  * Used by the renew page to show the current outstanding invoice.
+ *
+ * The server returns invoices sorted by invoiceDate DESC, so a pending
+ * invoice (which is always the most recent) will be on the first page.
  */
 export async function getPendingInvoice(subscriptionId: string): Promise<BillingInvoice | null> {
   if (!BILLING_SERVICE_URL) return null;
   try {
-    const invoices = await getSubscriptionInvoices(subscriptionId);
-    return invoices.find((inv) => inv.status === "PENDING") ?? null;
+    const page = await getSubscriptionInvoices(subscriptionId, 0, 20);
+    return page?.content.find((inv) => inv.status === "PENDING") ?? null;
   } catch {
     return null;
   }
 }
 
-export async function getSubscriptionInvoices(subscriptionId: string): Promise<BillingInvoice[]> {
-  if (!BILLING_SERVICE_URL) return [];
-  const apiClient = new ApiClient();
-  return apiClient.get<BillingInvoice[]>(
-    billingUrl(`/api/v1/invoices/subscription/${subscriptionId}`),
-  );
+export async function getSubscriptionInvoices(
+  subscriptionId: string,
+  page = 0,
+  size = 100,
+): Promise<Page<BillingInvoice> | null> {
+  if (!BILLING_SERVICE_URL) return null;
+  try {
+    const apiClient = new ApiClient();
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    return await apiClient.get<Page<BillingInvoice>>(
+      billingUrl(`/api/v1/invoices/subscription/${subscriptionId}?${params.toString()}`),
+    );
+  } catch {
+    return null;
+  }
 }
 
 export async function getInvoiceView(invoiceId: string): Promise<InvoiceViewDto | null> {
   if (!BILLING_SERVICE_URL) return null;
   const apiClient = new ApiClient();
   return apiClient.get<InvoiceViewDto>(billingUrl(`/api/v1/invoices/${invoiceId}/view`));
+}
+
+/**
+ * Cancel a pending invoice. The Billing Service reads the actor from
+ * X-User-Id, no body needed. Only valid while status is PENDING; paid or
+ * already-cancelled invoices will 409. This is a state transition (not a
+ * delete) — the row stays in the audit trail with status=CANCELLED.
+ */
+export async function cancelInvoice(invoiceId: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post<void, undefined>(
+    billingUrl(`/api/v1/invoices/${invoiceId}/cancel`),
+    undefined,
+  );
 }
 
 // ── Coupons ─────────────────────────────────────────────────────────

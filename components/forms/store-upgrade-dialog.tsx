@@ -3,14 +3,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  CheckCircle2,
   CreditCard,
   DollarSign,
   Layers,
   Loader2,
   Puzzle,
   Receipt,
-  ShieldCheck,
 } from "lucide-react";
 
 import {
@@ -21,21 +19,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { PhoneInput } from "@/components/ui/phone-input";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import SubscriptionPlanCard from "@/components/subscription/subscriptionPlanCard";
 import AdditionalServiceCard from "@/components/subscription/additionalServiceCard";
-import PaymentStatusModal from "@/components/widgets/paymentStatusModal";
+import { InvoiceViewDialog } from "@/components/billing/invoice-view-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { usePaymentPolling } from "@/hooks/usePaymentPolling";
 
 import {
   addItemAddon,
@@ -45,13 +32,7 @@ import {
   getPackages,
   getPendingInvoice,
 } from "@/lib/actions/billing-actions";
-import { initiatePayment } from "@/lib/actions/payment-actions";
 import { cn } from "@/lib/utils";
-
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { isValidPhoneNumber } from "libphonenumber-js";
 
 import type {
   Addon,
@@ -73,14 +54,6 @@ interface StoreUpgradeDialogProps {
 }
 
 type Tab = "plan" | "addon";
-
-const PaymentSchema = z.object({
-  email: z.string().min(1, "Email is required").email("Enter a valid email"),
-  phone: z
-    .string({ required_error: "Phone is required" })
-    .refine(isValidPhoneNumber, { message: "Enter a valid phone number" }),
-});
-type PaymentFormData = z.infer<typeof PaymentSchema>;
 
 export default function StoreUpgradeDialog({
   open,
@@ -104,18 +77,7 @@ export default function StoreUpgradeDialog({
   const [isMutating, setIsMutating] = useState(false);
 
   const [pendingInvoice, setPendingInvoice] = useState<BillingInvoice | null>(null);
-  const [paymentRefId, setPaymentRefId] = useState<string | null>(null);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false);
-  const [hasResolved, setHasResolved] = useState(false);
-
-  const form = useForm<PaymentFormData>({
-    resolver: zodResolver(PaymentSchema),
-    defaultValues: { email: "", phone: "" },
-  });
-
-  const { status: paymentStatus, error: paymentError } =
-    usePaymentPolling(paymentRefId);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
 
   // ── Load subscription + catalog when dialog opens ─────────────────────
   useEffect(() => {
@@ -125,9 +87,7 @@ export default function StoreUpgradeDialog({
     setIsLoading(true);
     setLoadError(null);
     setPendingInvoice(null);
-    setPaymentRefId(null);
-    setHasResolved(false);
-    form.reset();
+    setInvoiceOpen(false);
 
     (async () => {
       try {
@@ -172,39 +132,14 @@ export default function StoreUpgradeDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, locationId, form]);
-
-  // ── Watch payment status; fire onResolved on SUCCESS ──────────────────
-  useEffect(() => {
-    if (paymentStatus === "SUCCESS" && !hasResolved) {
-      setHasResolved(true);
-      toast({
-        title: "Payment successful",
-        description: "Creating your store...",
-      });
-      // Brief delay so the success modal frame paints before we tear down.
-      const t = setTimeout(() => {
-        setIsPaymentModalOpen(false);
-        setPaymentRefId(null);
-        onOpenChange(false);
-        onResolved();
-      }, 1200);
-      return () => clearTimeout(t);
-    }
-    if (paymentStatus === "FAILED") {
-      toast({
-        variant: "destructive",
-        title: "Payment failed",
-        description: paymentError || "Please try again.",
-      });
-    }
-  }, [paymentStatus, paymentError, hasResolved, toast, onOpenChange, onResolved]);
+  }, [open, locationId]);
 
   // ── Derived ───────────────────────────────────────────────────────────
   const currentPackage = useMemo(
     () =>
       locationItem?.packageInfo
-        ? packages.find((p) => p.id === locationItem.packageInfo!.id) ?? locationItem.packageInfo
+        ? packages.find((p) => p.id === locationItem.packageInfo!.id) ??
+          locationItem.packageInfo
         : null,
     [packages, locationItem],
   );
@@ -228,7 +163,10 @@ export default function StoreUpgradeDialog({
 
   /** LOCATION-scoped addons (paid store-slot lives here). */
   const locationAddons = useMemo(
-    () => addons.filter((a) => (a as Addon & { entityType?: string }).entityType === "LOCATION"),
+    () =>
+      addons.filter(
+        (a) => (a as Addon & { entityType?: string }).entityType === "LOCATION",
+      ),
     [addons],
   );
 
@@ -347,37 +285,6 @@ export default function StoreUpgradeDialog({
       }
     },
     [subscription, locationItem, isMutating, isAddonAdded, locationId, refetchPendingInvoice, toast],
-  );
-
-  const handlePay = useCallback(
-    async (data: PaymentFormData) => {
-      if (!pendingInvoice || !subscription) return;
-      setIsPaymentSubmitting(true);
-      setIsPaymentModalOpen(true);
-      try {
-        const payment = await initiatePayment({
-          invoiceId: pendingInvoice.id,
-          amount: pendingInvoice.totalAmount,
-          currency: pendingInvoice.currency,
-          businessId,
-          locationId,
-          customerPhone: data.phone,
-          customerEmail: data.email,
-          description: `Store-slot upgrade for invoice ${pendingInvoice.invoiceNumber}`,
-        });
-        setPaymentRefId(payment.externalReferenceId);
-      } catch (e: unknown) {
-        toast({
-          variant: "destructive",
-          title: "Payment failed",
-          description: e instanceof Error ? e.message : undefined,
-        });
-        setIsPaymentModalOpen(false);
-      } finally {
-        setIsPaymentSubmitting(false);
-      }
-    },
-    [pendingInvoice, subscription, businessId, locationId, toast],
   );
 
   const getActionType = useCallback(
@@ -543,7 +450,7 @@ export default function StoreUpgradeDialog({
                 </section>
               )}
 
-              {/* Invoice + payment */}
+              {/* Invoice summary — handed off to InvoiceViewDialog for payment */}
               {showInvoiceSection && pendingInvoice && (
                 <section className="space-y-4">
                   <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
@@ -586,95 +493,27 @@ export default function StoreUpgradeDialog({
                     </div>
                   </div>
 
-                  <Form {...form}>
-                    <form
-                      onSubmit={form.handleSubmit(handlePay)}
-                      className="space-y-3"
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPendingInvoice(null)}
                     >
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <FormField
-                          control={form.control}
-                          name="email"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs text-gray-600">
-                                Email
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="you@example.com"
-                                  className="h-9 text-sm rounded-xl"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="phone"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs text-gray-600">
-                                Phone
-                              </FormLabel>
-                              <FormControl>
-                                <PhoneInput
-                                  placeholder="Phone number"
-                                  className="h-9 text-sm"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={isPaymentSubmitting}
-                          onClick={() => {
-                            setPendingInvoice(null);
-                          }}
-                        >
-                          Change option
-                        </Button>
-                        <Button
-                          type="submit"
-                          disabled={isPaymentSubmitting}
-                          className={cn(
-                            "flex-1 h-10 rounded-xl font-semibold text-sm",
-                            "bg-gray-900 hover:bg-gray-800 text-white",
-                          )}
-                        >
-                          {isPaymentSubmitting ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              Processing…
-                            </>
-                          ) : (
-                            <>
-                              <DollarSign className="h-4 w-4 mr-1.5" />
-                              Pay {pendingInvoice.currency}{" "}
-                              {pendingInvoice.totalAmount.toLocaleString()} &amp;
-                              create store
-                            </>
-                          )}
-                        </Button>
-                      </div>
-
-                      <p className="flex items-center justify-center gap-1.5 text-[10px] text-gray-400">
-                        <ShieldCheck className="h-3 w-3" />
-                        Your store details are held safely and will be created
-                        the moment payment confirms.
-                      </p>
-                    </form>
-                  </Form>
+                      Change option
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => setInvoiceOpen(true)}
+                      className={cn(
+                        "flex-1 h-10 rounded-xl font-semibold text-sm",
+                        "bg-gray-900 hover:bg-gray-800 text-white",
+                      )}
+                    >
+                      <DollarSign className="h-4 w-4 mr-1.5" />
+                      Open invoice &amp; pay
+                    </Button>
+                  </div>
                 </section>
               )}
 
@@ -682,7 +521,8 @@ export default function StoreUpgradeDialog({
                 <p className="flex items-center gap-1.5 text-[10px] text-gray-400">
                   <CreditCard className="h-3 w-3" />
                   A prorated invoice is generated automatically when you pick an
-                  option. Pay it and your store is created instantly.
+                  option. Pay it from the invoice screen and your store is
+                  created instantly.
                 </p>
               )}
             </div>
@@ -690,31 +530,24 @@ export default function StoreUpgradeDialog({
         </DialogContent>
       </Dialog>
 
-      <PaymentStatusModal
-        isOpen={isPaymentModalOpen}
-        status={
-          paymentStatus === "ACCEPTED"
-            ? "PENDING"
-            : paymentStatus === "PROCESSING"
-              ? "PROCESSING"
-              : paymentStatus === "SUCCESS"
-                ? "SUCCESS"
-                : paymentStatus === "FAILED"
-                  ? "FAILED"
-                  : "INITIATING"
-        }
-        onClose={() => {
-          setIsPaymentModalOpen(false);
-          setPaymentRefId(null);
+      <InvoiceViewDialog
+        open={invoiceOpen}
+        onOpenChange={setInvoiceOpen}
+        invoiceId={pendingInvoice?.id ?? null}
+        businessId={businessId}
+        locationId={locationId}
+        onPaid={() => {
+          setInvoiceOpen(false);
+          onOpenChange(false);
+          onResolved();
+        }}
+        onCancelled={() => {
+          setInvoiceOpen(false);
+          // Invoice was abandoned — drop back to the option picker so the
+          // merchant can choose a different upgrade or close out.
+          setPendingInvoice(null);
         }}
       />
-
-      {/* Tiny success summary shown briefly inside the dialog before close */}
-      {hasResolved && paymentStatus === "SUCCESS" && (
-        <div className="sr-only" aria-live="polite">
-          <CheckCircle2 className="h-3 w-3" /> Payment confirmed
-        </div>
-      )}
     </>
   );
 }

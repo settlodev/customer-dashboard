@@ -10,10 +10,10 @@ function paymentUrl(path: string): string {
 }
 
 /**
- * Initiate a payment for an invoice.
- *
- * The paymentMethodId is intentionally omitted — the payment service
- * resolves the correct provider from the location's configured payment methods.
+ * Initiate a payment for an invoice. `paymentMethodId` is required by the
+ * payment service — it picks the provider that handles the push (mobile
+ * money MNO today, cards later) so the caller must pass the specific
+ * payment-method UUID selected by the merchant.
  */
 export async function initiatePayment(params: {
   invoiceId: string;
@@ -21,6 +21,7 @@ export async function initiatePayment(params: {
   currency: string;
   businessId: string;
   locationId: string;
+  paymentMethodId: string;
   customerPhone: string;
   customerEmail: string;
   description?: string;
@@ -36,6 +37,7 @@ export async function initiatePayment(params: {
       currency: params.currency,
       businessId: params.businessId,
       locationId: params.locationId,
+      paymentMethodId: params.paymentMethodId,
       customerPhoneNumber: params.customerPhone,
       customerEmail: params.customerEmail,
       description: params.description ?? "Subscription payment",

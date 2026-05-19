@@ -28,6 +28,7 @@ import {
 import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { getWarehouses } from "@/lib/actions/warehouse/list-warehouse";
+import { getAuthToken } from "@/lib/auth-utils";
 import { formatBillingDate, getSubscriptionStatusMeta } from "@/components/billing/shared";
 
 export const dynamic = "force-dynamic";
@@ -61,13 +62,17 @@ export default async function BillingPage() {
     );
   }
 
-  const business = await getCurrentBusiness();
+  const [business, authToken] = await Promise.all([getCurrentBusiness(), getAuthToken()]);
   const businessId = business?.id ?? subscription.businessId;
+  const contactDefaults = {
+    email: authToken?.email ?? "",
+    phone: authToken?.phoneNumber ?? "",
+  };
 
   const [
     packages,
     addons,
-    invoices,
+    invoicesPage,
     creditBalances,
     creditPacks,
     creditTransactionsPage,
@@ -76,7 +81,7 @@ export default async function BillingPage() {
   ] = await Promise.all([
     getPackages().catch(() => []),
     getAddons().catch(() => []),
-    getSubscriptionInvoices(subscription.id).catch(() => []),
+    getSubscriptionInvoices(subscription.id).catch(() => null),
     getCreditBalances(businessId).catch(() => []),
     getCreditPacks().catch(() => []),
     getCreditTransactions(businessId, 0, 10).catch(() => null),
@@ -84,6 +89,8 @@ export default async function BillingPage() {
     getWarehouses(businessId).catch(() => []),
   ]);
 
+  const invoices = invoicesPage?.content ?? [];
+  const totalInvoiceCount = invoicesPage?.totalElements ?? invoices.length;
   const creditTransactions = creditTransactionsPage?.content ?? [];
 
   const entityLabels: Record<string, string> = {};
@@ -151,7 +158,7 @@ export default async function BillingPage() {
             icon={<Building2 className="h-3 w-3" />}
             label="Items"
             value={activeItems.length.toLocaleString()}
-            delta={`${invoices.length} invoice${invoices.length === 1 ? "" : "s"} on file`}
+            delta={`${totalInvoiceCount} invoice${totalInvoiceCount === 1 ? "" : "s"} on file`}
             deltaTone="neutral"
           />
         </KpiStrip>
@@ -161,11 +168,13 @@ export default async function BillingPage() {
           packages={packages}
           addons={addons}
           invoices={invoices}
+          totalInvoiceCount={totalInvoiceCount}
           businessId={businessId}
           creditBalances={creditBalances}
           creditPacks={creditPacks}
           creditTransactions={creditTransactions}
           entityLabels={entityLabels}
+          contactDefaults={contactDefaults}
         />
       </PageBody>
     </PageShell>

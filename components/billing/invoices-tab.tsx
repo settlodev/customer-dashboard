@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Eye, ReceiptText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,10 @@ import type { BillingInvoice, InvoiceStatus } from "@/types/billing/types";
 
 interface InvoicesTabProps {
   invoices: BillingInvoice[];
+  /** Required when callers want pay/cancel actions enabled inside the view dialog. */
+  businessId?: string;
+  locationId?: string;
+  contactDefaults?: { email: string; phone: string };
 }
 
 const FILTER_OPTIONS: Array<{ id: "ALL" | InvoiceStatus; label: string }> = [
@@ -31,7 +36,13 @@ const FILTER_OPTIONS: Array<{ id: "ALL" | InvoiceStatus; label: string }> = [
   { id: "CANCELLED", label: "Cancelled" },
 ];
 
-export function InvoicesTab({ invoices }: InvoicesTabProps) {
+export function InvoicesTab({
+  invoices,
+  businessId,
+  locationId,
+  contactDefaults,
+}: InvoicesTabProps) {
+  const router = useRouter();
   const [filter, setFilter] = useState<"ALL" | InvoiceStatus>("ALL");
   const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null);
 
@@ -153,6 +164,18 @@ export function InvoicesTab({ invoices }: InvoicesTabProps) {
         open={openInvoiceId !== null}
         onOpenChange={(open) => !open && setOpenInvoiceId(null)}
         invoiceId={openInvoiceId}
+        businessId={businessId}
+        locationId={locationId}
+        defaultEmail={contactDefaults?.email}
+        defaultPhone={contactDefaults?.phone}
+        onPaid={() => {
+          setOpenInvoiceId(null);
+          router.refresh();
+        }}
+        onCancelled={() => {
+          setOpenInvoiceId(null);
+          router.refresh();
+        }}
       />
     </div>
   );

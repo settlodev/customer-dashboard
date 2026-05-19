@@ -1,18 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import {
-  CalendarClock,
-  DollarSign,
-  Loader2,
-  ShieldCheck,
-} from "lucide-react";
+import { CalendarClock, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
@@ -28,87 +22,96 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PhoneInput } from "@/components/ui/phone-input";
 import { useToast } from "@/hooks/use-toast";
-import { usePaymentPolling } from "@/hooks/usePaymentPolling";
-import { prepaySubscription } from "@/lib/actions/billing-actions";
-import { initiatePayment } from "@/lib/actions/payment-actions";
-import PaymentStatusModal from "@/components/widgets/paymentStatusModal";
-import { PrepaymentFormSchema } from "@/types/billing/schema";
+import {
+  getPendingInvoice,
+  prepaySubscription,
+} from "@/lib/actions/billing-actions";
+import { InvoiceViewDialog } from "./invoice-view-dialog";
 import { CouponInput } from "./coupon-input";
 import { formatBillingDate } from "./shared";
-import type { Coupon, Subscription, SubscriptionItem } from "@/types/billing/types";
+import type {
+  Coupon,
+  Subscription,
+  SubscriptionItem,
+} from "@/types/billing/types";
+
+const PrepaymentSchema = z.object({
+  monthsToPrepay: z
+    .number({ required_error: "Duration is required" })
+    .min(1, "Minimum 1 month")
+    .max(24, "Maximum 24 months"),
+});
+
+type PrepayFormData = z.infer<typeof PrepaymentSchema>;
 
 interface PrepayTabProps {
   subscription: Subscription;
   primaryItem: SubscriptionItem | undefined;
+  contactDefaults?: { email: string; phone: string };
 }
 
-type PrepayFormData = z.infer<typeof PrepaymentFormSchema>;
-
-export function PrepayTab({ subscription, primaryItem }: PrepayTabProps) {
+export function PrepayTab({
+  subscription,
+  primaryItem,
+  contactDefaults,
+}: PrepayTabProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
-  const [paymentRefId, setPaymentRefId] = useState<string | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
   const [coupon, setCoupon] = useState<Coupon | null>(null);
-
-  const { status: paymentStatus, error: paymentError } = usePaymentPolling(paymentRefId);
+  const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null);
 
   const form = useForm<PrepayFormData>({
-    resolver: zodResolver(PrepaymentFormSchema),
-    defaultValues: { email: "", phone: "", monthsToPrepay: 12 },
+    resolver: zodResolver(PrepaymentSchema),
+    defaultValues: { monthsToPrepay: 12 },
   });
-
-  useEffect(() => {
-    if (paymentStatus === "SUCCESS") {
-      toast({ title: "Payment successful", description: "Subscription extended." });
-      setTimeout(() => {
-        setModalOpen(false);
-        router.refresh();
-      }, 1500);
-    }
-    if (paymentStatus === "FAILED") {
-      toast({
-        variant: "destructive",
-        title: "Payment failed",
-        description: paymentError || "Please try again.",
-      });
-    }
-  }, [paymentStatus, paymentError, toast, router]);
 
   const onSubmit = useCallback(
     async (data: PrepayFormData) => {
       setSubmitting(true);
-      setModalOpen(true);
       try {
-        const prepayment = await prepaySubscription(subscription.id, data.monthsToPrepay);
-        const payment = await initiatePayment({
-          invoiceId: prepayment.invoiceId,
-          amount: prepayment.amount,
-          currency: subscription.currency ?? "TZS",
-          businessId: subscription.businessId,
-          locationId: primaryItem?.entityId ?? "",
-          customerPhone: data.phone,
-          customerEmail: data.email,
-          description: `Subscription prepayment — ${data.monthsToPrepay} month(s)${
-            coupon ? ` (coupon ${coupon.code} validated)` : ""
-          }`,
-        });
-        setPaymentRefId(payment.externalReferenceId);
+        // Try to generate a fresh prepayment invoice. If the period already
+        // has a pending invoice (409), recover the existing one instead so
+        // the merchant can pay it directly.
+        let invoiceId: string;
+        try {
+          const prepayment = await prepaySubscription(
+            subscription.id,
+            data.monthsToPrepay,
+          );
+          invoiceId = prepayment.invoiceId;
+        } catch (prepayError) {
+          const err = prepayError as { status?: number; message?: string };
+          const isConflict =
+            err.status === 409 ||
+            (err.message ?? "")
+              .toLowerCase()
+              .includes("invoice already exists");
+          if (!isConflict) throw prepayError;
+
+          const pending = await getPendingInvoice(subscription.id);
+          if (!pending) throw prepayError;
+
+          invoiceId = pending.id;
+          toast({
+            title: "Opening existing invoice",
+            description: `An invoice for this period is already pending — continuing with that one.`,
+          });
+        }
+
+        setOpenInvoiceId(invoiceId);
       } catch (error) {
         toast({
           variant: "destructive",
-          title: "Could not start payment",
+          title: "Could not generate invoice",
           description: (error as Error)?.message ?? "Please try again.",
         });
-        setModalOpen(false);
       } finally {
         setSubmitting(false);
       }
     },
-    [subscription, primaryItem, coupon, toast],
+    [subscription, toast],
   );
 
   return (
@@ -119,83 +122,55 @@ export function PrepayTab({ subscription, primaryItem }: PrepayTabProps) {
             <CalendarClock className="h-4 w-4 text-primary" />
           </span>
           <div>
-            <h3 className="text-base font-semibold text-ink">Prepay your subscription</h3>
+            <h3 className="text-base font-semibold text-ink">
+              Prepay your subscription
+            </h3>
             <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-              Pay ahead to extend access. 12+ months automatically applies our annual discount.
+              Pay ahead to extend access. 12+ months automatically applies our
+              annual discount.
             </p>
           </div>
         </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[11.5px] text-muted-foreground">Email</FormLabel>
+            <FormField
+              control={form.control}
+              name="monthsToPrepay"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-[11.5px] text-muted-foreground">
+                    Duration
+                  </FormLabel>
+                  <Select
+                    value={String(field.value ?? 12)}
+                    onValueChange={(value) =>
+                      field.onChange(parseInt(value, 10))
+                    }
+                  >
                     <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="you@example.com"
-                        className="h-9 text-[13px]"
-                      />
+                      <SelectTrigger className="h-9 text-[13px]">
+                        <SelectValue placeholder="Pick a duration" />
+                      </SelectTrigger>
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[11.5px] text-muted-foreground">Phone</FormLabel>
-                    <FormControl>
-                      <PhoneInput
-                        placeholder="Phone number"
-                        {...field}
-                        className="h-9 text-[13px]"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="monthsToPrepay"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[11.5px] text-muted-foreground">Duration</FormLabel>
-                    <Select
-                      value={String(field.value ?? 12)}
-                      onValueChange={(value) => field.onChange(parseInt(value, 10))}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-9 text-[13px]">
-                          <SelectValue placeholder="Pick a duration" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="12">1 year</SelectItem>
-                        <SelectItem value="6">6 months</SelectItem>
-                        <SelectItem value="3">3 months</SelectItem>
-                        <SelectItem value="1">1 month</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                    <SelectContent>
+                      <SelectItem value="12">1 year</SelectItem>
+                      <SelectItem value="6">6 months</SelectItem>
+                      <SelectItem value="3">3 months</SelectItem>
+                      <SelectItem value="1">1 month</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div>
               <CouponInput onCouponChange={setCoupon} disabled={submitting} />
               {coupon && (
                 <p className="mt-1 text-[11.5px] text-muted-foreground">
-                  Coupon recorded. Reach out to support to attach it to your subscription before the next invoice.
+                  Coupon recorded. Reach out to support to attach it to your
+                  subscription before the next invoice.
                 </p>
               )}
             </div>
@@ -204,19 +179,19 @@ export function PrepayTab({ subscription, primaryItem }: PrepayTabProps) {
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing…
+                  Generating invoice…
                 </>
               ) : (
                 <>
-                  <DollarSign className="mr-1.5 h-4 w-4" />
-                  Generate invoice & pay
+                  <FileText className="mr-1.5 h-4 w-4" />
+                  Generate invoice &amp; pay
                 </>
               )}
             </Button>
 
-            <p className="flex items-center justify-center gap-1.5 text-[11.5px] text-muted-foreground">
-              <ShieldCheck className="h-3 w-3" />
-              Secure payment — your card or mobile money is processed by our payment provider.
+            <p className="text-center text-[11.5px] text-muted-foreground">
+              You&apos;ll review the invoice before paying. Cancel or settle from
+              the next screen.
             </p>
           </form>
         </Form>
@@ -244,29 +219,33 @@ export function PrepayTab({ subscription, primaryItem }: PrepayTabProps) {
             Tips
           </p>
           <ul className="mt-2 space-y-1.5 text-[12px] leading-relaxed text-ink-2">
-            <li>• Prepayments cancel any open PENDING invoice and create a fresh one.</li>
-            <li>• Mobile-money prompts arrive within seconds — keep this tab open.</li>
+            <li>
+              • Generating opens an invoice — pay or cancel it from the next
+              screen.
+            </li>
+            <li>
+              • Mobile-money prompts arrive within seconds — keep this tab open.
+            </li>
             <li>• Need to pay for many locations at once? Contact support.</li>
           </ul>
         </div>
       </aside>
 
-      <PaymentStatusModal
-        isOpen={modalOpen}
-        status={
-          paymentStatus === "ACCEPTED"
-            ? "PENDING"
-            : paymentStatus === "PROCESSING"
-              ? "PROCESSING"
-              : paymentStatus === "SUCCESS"
-                ? "SUCCESS"
-                : paymentStatus === "FAILED"
-                  ? "FAILED"
-                  : "INITIATING"
-        }
-        onClose={() => {
-          setModalOpen(false);
-          setPaymentRefId(null);
+      <InvoiceViewDialog
+        open={openInvoiceId !== null}
+        onOpenChange={(open) => !open && setOpenInvoiceId(null)}
+        invoiceId={openInvoiceId}
+        businessId={subscription.businessId}
+        locationId={primaryItem?.entityId}
+        defaultEmail={contactDefaults?.email}
+        defaultPhone={contactDefaults?.phone}
+        onPaid={() => {
+          setOpenInvoiceId(null);
+          router.refresh();
+        }}
+        onCancelled={() => {
+          setOpenInvoiceId(null);
+          router.refresh();
         }}
       />
     </div>

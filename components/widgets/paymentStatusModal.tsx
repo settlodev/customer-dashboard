@@ -30,10 +30,10 @@ const STATUS_CONFIG = {
     description: "Please wait while we prepare your payment request.",
     progress: 20,
     icon: CreditCard,
-    iconClass: "text-blue-500",
-    iconBg: "bg-blue-50",
-    ringClass: "ring-blue-100",
-    progressClass: "bg-blue-500",
+    iconClass: "text-primary",
+    iconBg: "bg-primary-light",
+    ringClass: "ring-primary/15",
+    progressClass: "bg-primary",
     showClose: false,
     closable: false,
   },
@@ -42,10 +42,10 @@ const STATUS_CONFIG = {
     description: "Check your phone and complete the M-Pesa prompt to proceed.",
     progress: 45,
     icon: Loader2,
-    iconClass: "text-amber-500 animate-spin",
-    iconBg: "bg-amber-50",
-    ringClass: "ring-amber-100",
-    progressClass: "bg-amber-500",
+    iconClass: "text-warn animate-spin",
+    iconBg: "bg-warn-tint",
+    ringClass: "ring-warn/15",
+    progressClass: "bg-warn",
     showClose: false,
     closable: false,
   },
@@ -54,10 +54,10 @@ const STATUS_CONFIG = {
     description: "Your payment is being verified. This may take a moment.",
     progress: 75,
     icon: Loader2,
-    iconClass: "text-blue-500 animate-spin",
-    iconBg: "bg-blue-50",
-    ringClass: "ring-blue-100",
-    progressClass: "bg-blue-500",
+    iconClass: "text-primary animate-spin",
+    iconBg: "bg-primary-light",
+    ringClass: "ring-primary/15",
+    progressClass: "bg-primary",
     showClose: false,
     closable: false,
   },
@@ -66,28 +66,28 @@ const STATUS_CONFIG = {
     description: "Your subscription has been activated. You're all set!",
     progress: 100,
     icon: CheckCircle2,
-    iconClass: "text-emerald-500",
-    iconBg: "bg-emerald-50",
-    ringClass: "ring-emerald-100",
-    progressClass: "bg-emerald-500",
+    iconClass: "text-pos",
+    iconBg: "bg-pos-tint",
+    ringClass: "ring-pos/15",
+    progressClass: "bg-pos",
     showClose: true,
     closable: true,
     closeLabel: "Continue",
-    closeClass: "bg-emerald-600 hover:bg-emerald-700 text-white",
+    closeClass: "bg-pos hover:bg-pos/90 text-white",
   },
   FAILED: {
     title: "Payment Failed",
     description: "Something went wrong. Please try again or contact support.",
     progress: 100,
     icon: XCircle,
-    iconClass: "text-red-500",
-    iconBg: "bg-red-50",
-    ringClass: "ring-red-100",
-    progressClass: "bg-red-500",
+    iconClass: "text-neg",
+    iconBg: "bg-neg-tint",
+    ringClass: "ring-neg/15",
+    progressClass: "bg-neg",
     showClose: true,
     closable: true,
     closeLabel: "Try Again",
-    closeClass: "bg-red-600 hover:bg-red-700 text-white",
+    closeClass: "bg-neg hover:bg-neg/90 text-white",
   },
 } as const;
 
@@ -103,7 +103,7 @@ function ProgressBar({
   indeterminate?: boolean;
 }) {
   return (
-    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+    <div className="w-full h-1.5 bg-canvas rounded-full overflow-hidden">
       {indeterminate ? (
         // Indeterminate — sliding animation for processing states
         <div
@@ -164,24 +164,24 @@ function StepIndicator({
                 className={cn(
                   "h-2.5 w-2.5 rounded-full transition-all duration-300",
                   isFail
-                    ? "bg-red-500 ring-4 ring-red-100"
+                    ? "bg-neg ring-4 ring-neg/20"
                     : isActive
-                      ? "bg-blue-500 ring-4 ring-blue-100 scale-125"
+                      ? "bg-primary ring-4 ring-primary/20 scale-125"
                       : isComplete
-                        ? "bg-emerald-500"
-                        : "bg-gray-200",
+                        ? "bg-pos"
+                        : "bg-line",
                 )}
               />
               <span
                 className={cn(
                   "text-[10px] font-medium whitespace-nowrap",
                   isFail
-                    ? "text-red-500"
+                    ? "text-neg"
                     : isActive
-                      ? "text-gray-700"
+                      ? "text-ink"
                       : isComplete
-                        ? "text-emerald-600"
-                        : "text-gray-300",
+                        ? "text-pos"
+                        : "text-muted-2",
                 )}
               >
                 {step}
@@ -193,7 +193,7 @@ function StepIndicator({
               <div
                 className={cn(
                   "h-0.5 w-10 sm:w-14 mb-3.5 transition-all duration-500",
-                  i < activeStep ? "bg-emerald-400" : "bg-gray-200",
+                  i < activeStep ? "bg-pos" : "bg-line",
                 )}
               />
             )}
@@ -243,16 +243,16 @@ const PaymentStatusModal: React.FC<PaymentStatusModalProps> = ({
         />
 
         {/* Card */}
-        <div className="relative z-10 w-full max-w-sm rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden">
+        <div className="relative z-10 w-full max-w-sm rounded-2xl bg-card shadow-2xl ring-1 ring-line overflow-hidden">
           {/* Top accent bar */}
           <div
             className={cn(
               "h-1 w-full transition-all duration-700",
               isFailed
-                ? "bg-red-500"
+                ? "bg-neg"
                 : status === "SUCCESS"
-                  ? "bg-emerald-500"
-                  : "bg-blue-500",
+                  ? "bg-pos"
+                  : "bg-primary",
             )}
           />
 
@@ -272,8 +272,8 @@ const PaymentStatusModal: React.FC<PaymentStatusModalProps> = ({
 
             {/* Title + description */}
             <div className="text-center space-y-1.5">
-              <h3 className="text-base font-bold text-gray-900">{cfg.title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">
+              <h3 className="text-base font-bold text-ink">{cfg.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 {cfg.description}
               </p>
             </div>
@@ -293,7 +293,7 @@ const PaymentStatusModal: React.FC<PaymentStatusModalProps> = ({
 
             {/* Processing hint */}
             {!isTerminal && (
-              <p className="text-center text-xs text-gray-400 flex items-center justify-center gap-1.5">
+              <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Secure payment — do not close this window
               </p>

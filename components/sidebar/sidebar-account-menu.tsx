@@ -43,6 +43,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+import { useEntitlements } from "@/context/entitlementContext";
 import {
   Dialog,
   DialogContent,
@@ -95,6 +96,196 @@ function businessInitials(name?: string | null) {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
+function daysBetween(future: string | null | undefined): number | null {
+  if (!future) return null;
+  const t = Date.parse(future);
+  if (Number.isNaN(t)) return null;
+  const diff = t - Date.now();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+function formatBillingShortDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const t = Date.parse(value);
+  if (Number.isNaN(t)) return "—";
+  return new Date(t).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+interface SubscriptionSummaryCardProps {
+  workspaceName?: string | null;
+  entitlements: import("@/lib/actions/entitlement-actions").EntitlementResponse | null;
+  subscriptionStatus: import("@/types/types").SubscriptionStatus;
+  isActive: boolean;
+  isTrial: boolean;
+  isExpired: boolean;
+  isSuspended: boolean;
+  isPastDue: boolean;
+  paidThrough: string | null;
+  onNavigate: () => void;
+}
+
+function SubscriptionSummaryCard({
+  workspaceName,
+  entitlements,
+  subscriptionStatus,
+  isActive,
+  isTrial,
+  isExpired,
+  isSuspended,
+  isPastDue,
+  paidThrough,
+  onNavigate,
+}: SubscriptionSummaryCardProps) {
+  // The entitlement projection holds a *flat* packageName per item — the
+  // sidebar shows the most relevant one. If multiple items share a plan,
+  // the first non-null name is fine; otherwise show the count.
+  const planNames = (entitlements?.items ?? [])
+    .map((i) => i.packageName)
+    .filter(Boolean) as string[];
+  const distinctPlans = Array.from(new Set(planNames));
+  const planLabel =
+    distinctPlans.length === 0
+      ? subscriptionStatus === "TRIAL"
+        ? "Trial plan"
+        : "No plan"
+      : distinctPlans.length === 1
+        ? distinctPlans[0]
+        : `${distinctPlans.length} plans`;
+
+  const daysLeft = daysBetween(paidThrough);
+  const paidThroughLabel = formatBillingShortDate(paidThrough);
+
+  // Status pill — tone reflects how loud we should be about it.
+  const statusMeta: {
+    label: string;
+    pillClass: string;
+    barClass: string;
+    cardBorderClass: string;
+  } = isExpired
+    ? {
+        label: "Expired",
+        pillClass: "border-neg/40 bg-neg-tint text-neg",
+        barClass: "bg-neg",
+        cardBorderClass: "border-neg/30 from-neg/[0.05]",
+      }
+    : isSuspended
+      ? {
+          label: "Suspended",
+          pillClass: "border-neg/40 bg-neg-tint text-neg",
+          barClass: "bg-neg",
+          cardBorderClass: "border-neg/30 from-neg/[0.05]",
+        }
+      : isPastDue
+        ? {
+            label: "Past due",
+            pillClass: "border-warn/40 bg-warn-tint text-warn",
+            barClass: "bg-warn",
+            cardBorderClass: "border-warn/30 from-warn/[0.05]",
+          }
+        : isTrial
+          ? {
+              label: "Trial",
+              pillClass: "border-line bg-canvas text-ink-2",
+              barClass: "bg-gradient-to-r from-primary to-[#FFA876]",
+              cardBorderClass: "border-primary/20 from-primary/[0.05]",
+            }
+          : isActive
+            ? {
+                label: "Active",
+                pillClass: "border-pos/40 bg-pos-tint text-pos",
+                barClass: "bg-gradient-to-r from-primary to-[#FFA876]",
+                cardBorderClass: "border-primary/20 from-primary/[0.05]",
+              }
+            : {
+                label: subscriptionStatus ?? "Unknown",
+                pillClass: "border-line bg-canvas text-ink-2",
+                barClass: "bg-muted-2",
+                cardBorderClass: "border-line from-canvas",
+              };
+
+  // Progress: how full the runway is. We don't have the cycle start in
+  // the entitlement projection, so fall back to a 30-day window as the
+  // visual ceiling — long enough to keep the bar mostly green when the
+  // user just renewed, and tight enough to turn red as expiry nears.
+  const RUNWAY_DAYS = 30;
+  const progress =
+    daysLeft == null
+      ? 0
+      : Math.max(4, Math.min(100, Math.round((daysLeft / RUNWAY_DAYS) * 100)));
+
+  return (
+    <div
+      className={cn(
+        "mx-1 mb-1.5 mt-2 flex flex-col gap-2.5 rounded-xl border bg-gradient-to-b to-card p-3",
+        statusMeta.cardBorderClass,
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
+            {workspaceName ?? "Workspace"}
+          </p>
+          <p className="mt-0.5 truncate text-[12.5px] font-semibold tracking-tight text-ink">
+            {planLabel}
+          </p>
+        </div>
+        <span
+          className={cn(
+            "flex-shrink-0 rounded border px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.08em]",
+            statusMeta.pillClass,
+          )}
+        >
+          {statusMeta.label}
+        </span>
+      </div>
+
+      {paidThrough && !isExpired && !isSuspended && (
+        <>
+          <div className="relative h-1 overflow-hidden rounded-full bg-canvas">
+            <div
+              className={cn("h-full rounded-full transition-[width] duration-500", statusMeta.barClass)}
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+
+          <div className="flex items-baseline justify-between gap-3 text-[11.5px]">
+            <span className="font-mono text-[10.5px] tracking-wider text-muted-foreground">
+              {daysLeft === null
+                ? "—"
+                : daysLeft === 0
+                  ? "Expires today"
+                  : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left`}
+            </span>
+            <span className="truncate font-mono text-[10.5px] tracking-wider text-ink-2">
+              {paidThroughLabel}
+            </span>
+          </div>
+        </>
+      )}
+
+      {(isExpired || isSuspended) && (
+        <p className="text-[11.5px] leading-snug text-neg">
+          {isExpired
+            ? `Subscription expired on ${paidThroughLabel}. Renew to restore access.`
+            : "Subscription is suspended. Contact support to reactivate."}
+        </p>
+      )}
+
+      <Link
+        href="/billing"
+        onClick={onNavigate}
+        className="rounded-md border border-line bg-card px-2.5 py-1.5 text-center text-[11.5px] font-medium tracking-tight text-ink transition-colors hover:border-primary hover:bg-primary hover:text-white"
+      >
+        Manage subscription
+      </Link>
+    </div>
+  );
+}
+
 export function SidebarAccountMenu({
   user,
   currentBusiness,
@@ -110,6 +301,20 @@ export function SidebarAccountMenu({
   const [switching, setSwitching] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+
+  // Live subscription snapshot from the entitlements context preloaded
+  // by the (protected) layout. Status / plan / paid-through come from
+  // a single round-trip already on the page — no extra fetch here.
+  const {
+    entitlements,
+    subscriptionStatus,
+    isActive,
+    isTrial,
+    isExpired,
+    isSuspended,
+    isPastDue,
+    paidThrough,
+  } = useEntitlements();
 
   // Theme toggle. `useColorMode` reads from localStorage on the client,
   // so we render a placeholder until mounted to avoid an icon flicker
@@ -270,48 +475,21 @@ export function SidebarAccountMenu({
         </button>
       </div>
 
-      {/* Subscription card — stub. Real plan / status / progress / next
-          charge will replace these placeholders once the billing summary
-          endpoint lands. */}
-      <div className="mx-1 mb-1.5 mt-2 flex flex-col gap-2.5 rounded-xl border border-primary/20 bg-gradient-to-b from-primary/[0.05] to-card p-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="rounded bg-primary px-1.5 py-0.5 font-mono text-[9.5px] font-semibold tracking-[0.1em] text-white">
-              PRO
-            </span>
-            <span className="truncate text-[12px] font-medium tracking-tight text-ink">
-              {currentBusiness?.name ?? "Workspace"} subscription
-            </span>
-          </div>
-          <span className="flex-shrink-0 rounded border border-line bg-canvas px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.08em] text-ink-2">
-            Trial
-          </span>
-        </div>
-
-        <div className="relative h-1 overflow-hidden rounded-full bg-canvas">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-primary to-[#FFA876] transition-[width] duration-500"
-            style={{ width: "63%" }}
-          />
-        </div>
-
-        <div className="flex items-baseline justify-between gap-3 text-[11.5px]">
-          <span className="font-mono text-[10.5px] tracking-wider text-muted-foreground">
-            11 days left
-          </span>
-          <span className="truncate font-medium tracking-tight text-ink">
-            Manage in Billing
-          </span>
-        </div>
-
-        <Link
-          href="/billing"
-          onClick={() => setOpen(false)}
-          className="rounded-md border border-line bg-card px-2.5 py-1.5 text-center text-[11.5px] font-medium tracking-tight text-ink transition-colors hover:border-primary hover:bg-primary hover:text-white"
-        >
-          Manage subscription
-        </Link>
-      </div>
+      {/* Subscription card — live snapshot from the entitlements context.
+          Status, plan name, days-remaining, and paid-through date are all
+          pulled from the single round-trip the layout already made. */}
+      <SubscriptionSummaryCard
+        workspaceName={currentBusiness?.name}
+        entitlements={entitlements}
+        subscriptionStatus={subscriptionStatus}
+        isActive={isActive}
+        isTrial={isTrial}
+        isExpired={isExpired}
+        isSuspended={isSuspended}
+        isPastDue={isPastDue}
+        paidThrough={paidThrough}
+        onNavigate={() => setOpen(false)}
+      />
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {businessList.length > 0 && (

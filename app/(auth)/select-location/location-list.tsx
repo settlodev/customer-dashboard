@@ -148,6 +148,10 @@ const LocationList = ({
         currency: "TZS",
         businessId: "",
         locationId: selectedWarehouse.id,
+        // TODO: this whole handler is unreferenced — the warehouse subscribe
+        // flow lives in /stores and /warehouses now. Wire a real method picker
+        // if this is ever resurrected.
+        paymentMethodId: "",
         customerPhone: phone,
         customerEmail: email,
         description: `Warehouse subscription - ${numberOfMonths} month(s)`,
