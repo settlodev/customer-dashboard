@@ -43,7 +43,20 @@ export default {
             }
             return null;
           }
-          return await response.json();
+          // return await response.json();
+          // ✨ NEW: capture upstream routing headers
+          const upstreamService = response.headers.get("x-upstream-service");
+          const handoffToken = response.headers.get("x-handoff-token"); // if backend provides one
+
+          const userData = await response.json();
+
+          console.log("The user data after logging in: ", userData);
+
+          return {
+            ...userData,
+            upstreamService: upstreamService || null,
+            handoffToken: handoffToken || null,
+          };
         } catch (error: any) {
           console.log("error during registration: ", error);
           if (error instanceof AuthError) {

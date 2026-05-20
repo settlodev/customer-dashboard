@@ -9,7 +9,7 @@ import {
   UpdatePasswordSchema,
   UpdateUserSchema,
 } from "@/types/data-schemas";
-import { signIn, signOut } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { ExtendedUser, FormResponse } from "@/types/types";
 import { parseStringify } from "@/lib/utils";
 import {
@@ -23,6 +23,12 @@ import { cookies } from "next/headers";
 
 import { revalidatePath } from "next/cache";
 import { deleteActiveWarehouseCookie } from "./warehouse/current-warehouse-action";
+
+const SERVICE_URLS: Record<string, string> = {
+  alpha: "https://customer-dashboard-git-alpha-settlo.vercel.app",
+  dev: "https://customer-dashboard-git-dev-settlo.vercel.app",
+};
+const CURRENT_SERVICE = process.env.SERVICE_NAME;
 
 export async function logout() {
   try {
@@ -106,6 +112,24 @@ export const login = async (
 
     // Set cookie persistence based on rememberMe
     await setSessionPersistence(rememberMe);
+
+    // Check if backend asked us to reroute
+    const session = await auth();
+    const upstream = (session as any)?.upstreamService;
+    const handoffToken = (session as any)?.handoffToken;
+
+    if (upstream && upstream !== CURRENT_SERVICE && SERVICE_URLS[upstream]) {
+      const target = SERVICE_URLS[upstream];
+      const redirectUrl = handoffToken
+        ? `${target}/auth/handoff?token=${handoffToken}`
+        : `${target}/login`;
+
+      return parseStringify({
+        responseType: "success",
+        message: "Redirecting to your assigned environment...",
+        redirectUrl,
+      });
+    }
 
     return parseStringify({
       responseType: "success",

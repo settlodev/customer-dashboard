@@ -63,46 +63,51 @@ function LoginForm() {
     shouldUnregister: false,
   });
 
-  const submitData = useCallback((values: z.infer<typeof LoginSchema>) => {
-    setError("");
-    setPersistentError("");
+  const submitData = useCallback(
+    (values: z.infer<typeof LoginSchema>) => {
+      setError("");
+      setPersistentError("");
 
-    startTransition(async () => {
-      try {
-        const data: FormResponse = await login(values, rememberMe);
+      startTransition(async () => {
+        try {
+          const data: FormResponse = await login(values, rememberMe);
 
-        if (data) {
-          if (data.error === Error("Unexpected")) {
-            console.error("Login error:", data.error);
-            const errorMsg =
-              "Something went wrong while processing your request, please try again.";
-            setError(errorMsg);
-            setPersistentError(errorMsg);
-            return;
+          if (data) {
+            if (data.error === Error("Unexpected")) {
+              console.error("Login error:", data.error);
+              const errorMsg =
+                "Something went wrong while processing your request, please try again.";
+              setError(errorMsg);
+              setPersistentError(errorMsg);
+              return;
+            }
+
+            if (data.responseType === "error") {
+              setError(data.message);
+              setPersistentError(data.message);
+              return;
+            }
+
+            // SUCCESS
+            if (data.responseType === "success") {
+              // Clear errors
+              setError("");
+              setPersistentError("");
+              window.location.href =
+                data.redirectUrl || DEFAULT_LOGIN_REDIRECT_URL;
+              return;
+            }
           }
-
-          if (data.responseType === "error") {
-            setError(data.message);
-            setPersistentError(data.message);
-            return;
-          }
-
-          // SUCCESS
-          if (data.responseType === "success") {
-            // Clear errors
-            setError("");
-            setPersistentError("");
-            window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
-            return;
-          }
+        } catch (err: any) {
+          const errorMsg =
+            err.message ?? "Invalid email address and/or password";
+          setError(errorMsg);
+          setPersistentError(errorMsg);
         }
-      } catch (err: any) {
-        const errorMsg = err.message ?? "Invalid email address and/or password";
-        setError(errorMsg);
-        setPersistentError(errorMsg);
-      }
-    });
-  }, [rememberMe]);
+      });
+    },
+    [rememberMe],
+  );
 
   return (
     <section className="flex items-center justify-center">
