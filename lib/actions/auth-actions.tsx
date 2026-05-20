@@ -25,9 +25,11 @@ import { revalidatePath } from "next/cache";
 import { deleteActiveWarehouseCookie } from "./warehouse/current-warehouse-action";
 
 const SERVICE_URLS: Record<string, string> = {
-  alpha: "https://customer-dashboard-git-alpha-settlo.vercel.app",
-  dev: "https://customer-dashboard-git-dev-settlo.vercel.app",
+  "alpha-auth-service":
+    "https://customer-dashboard-git-alpha-settlo.vercel.app",
+  "dev-auth-service": "https://customer-dashboard-git-dev-settlo.vercel.app",
 };
+
 const CURRENT_SERVICE = process.env.SERVICE_NAME;
 
 export async function logout() {
