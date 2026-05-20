@@ -5,6 +5,8 @@ import type {
   CreditTransactionType,
 } from "@/types/billing/types";
 import type { SubscriptionStatus } from "@/types/types";
+import type { Business } from "@/types/business/type";
+import type { Location } from "@/types/location/type";
 
 type BadgeVariant = NonNullable<BadgeProps["variant"]>;
 type ActiveSubscriptionStatus = NonNullable<SubscriptionStatus>;
@@ -98,4 +100,68 @@ export function getCreditTxnLabel(type: CreditTransactionType): string {
 
 export function isUnlimited(limit: number | undefined | null): boolean {
   return limit === undefined || limit === null || limit === -1;
+}
+
+export interface InvoiceParty {
+  name: string;
+  /** Shown under `name` only when the business name differs from the location name. */
+  secondaryName?: string;
+  addressLines: string[];
+  phone?: string;
+  email?: string;
+}
+
+// Fixed seller identity printed on every subscription invoice — Settlo is the
+// merchant of record for SaaS billing, regardless of which whitelabel ran the
+// transaction.
+export const SETTLO_SELLER: InvoiceParty = {
+  name: "Settlo Technologies Limited",
+  addressLines: [
+    "P.O. Box 8059",
+    "Dar Es Salaam",
+    "United Republic of Tanzania",
+  ],
+  phone: "+255 759 229 777",
+  email: "support@settlo.co.tz",
+};
+
+function pickString(...candidates: Array<string | null | undefined>): string {
+  for (const c of candidates) {
+    const v = typeof c === "string" ? c.trim() : "";
+    if (v) return v;
+  }
+  return "";
+}
+
+// Build the "Bill to" party from a location and its parent business. Each field
+// prefers the location value and falls back to the business value when the
+// location is missing it. The business name is shown as a secondary line only
+// when it differs from the location name.
+export function buildBillToParty(
+  location: Location | null | undefined,
+  business: Business | null | undefined,
+): InvoiceParty {
+  const locName = pickString(location?.name);
+  const busName = pickString(business?.name);
+  const name = pickString(locName, busName) || "—";
+  const secondaryName =
+    locName && busName && locName !== busName ? busName : undefined;
+
+  const street = pickString(location?.address, business?.address);
+  const ward = pickString(location?.ward, business?.ward);
+  const district = pickString(location?.district, business?.district);
+  const region = pickString(location?.region, business?.region);
+  const postalCode = pickString(location?.postalCode, business?.postalCode);
+
+  const addressLines: string[] = [];
+  if (street) addressLines.push(street);
+  const cityLine = [ward, district].filter(Boolean).join(", ");
+  if (cityLine) addressLines.push(cityLine);
+  const regionLine = [region, postalCode].filter(Boolean).join(" ");
+  if (regionLine) addressLines.push(regionLine);
+
+  const phone = pickString(location?.phoneNumber, business?.phoneNumber) || undefined;
+  const email = pickString(location?.email, business?.email) || undefined;
+
+  return { name, secondaryName, addressLines, phone, email };
 }

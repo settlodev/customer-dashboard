@@ -19,6 +19,8 @@ import type {
   CreditTransaction,
   Page,
 } from "@/types/billing/types";
+import type { Business } from "@/types/business/type";
+import type { Location } from "@/types/location/type";
 
 const BILLING_SERVICE_URL = process.env.BILLING_SERVICE_URL || "";
 
@@ -183,6 +185,29 @@ export async function getInvoiceView(invoiceId: string): Promise<InvoiceViewDto 
   if (!BILLING_SERVICE_URL) return null;
   const apiClient = new ApiClient();
   return apiClient.get<InvoiceViewDto>(billingUrl(`/api/v1/invoices/${invoiceId}/view`));
+}
+
+/**
+ * Resolve the entity owning a subscription invoice so the "Bill to" block can
+ * be filled with location-preferred / business-fallback details. We hit the
+ * Accounts service (not Billing) because that's where business + location
+ * records live. Either field can be null when its lookup 404s — the dialog
+ * falls back to whatever side returns successfully.
+ */
+export async function getInvoiceBillingParties(
+  businessId: string | null | undefined,
+  locationId: string | null | undefined,
+): Promise<{ business: Business | null; location: Location | null }> {
+  const apiClient = new ApiClient();
+  const [business, location] = await Promise.all([
+    businessId
+      ? apiClient.get<Business>(`/api/v1/businesses/${businessId}`).catch(() => null)
+      : Promise.resolve(null),
+    locationId
+      ? apiClient.get<Location>(`/api/v1/locations/${locationId}`).catch(() => null)
+      : Promise.resolve(null),
+  ]);
+  return { business, location };
 }
 
 /**

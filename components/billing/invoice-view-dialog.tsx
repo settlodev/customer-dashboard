@@ -30,10 +30,21 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { cancelInvoice, getInvoiceView } from "@/lib/actions/billing-actions";
+import {
+  cancelInvoice,
+  getInvoiceBillingParties,
+  getInvoiceView,
+} from "@/lib/actions/billing-actions";
 import { formatMoney } from "@/lib/helpers";
-import { formatBillingDate, getInvoiceStatusMeta } from "./shared";
+import {
+  buildBillToParty,
+  formatBillingDate,
+  getInvoiceStatusMeta,
+  SETTLO_SELLER,
+  type InvoiceParty,
+} from "./shared";
 import { PaymentOptionsDialog } from "./payment-options-dialog";
+import { InvoicePaymentAttempts } from "./invoice-payment-attempts";
 import type { InvoiceViewDto } from "@/types/billing/types";
 
 interface InvoiceViewDialogProps {
@@ -72,6 +83,9 @@ export function InvoiceViewDialog({
   const [payOpen, setPayOpen] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  /** Bumps after each payment attempt resolves so the attempts list refetches. */
+  const [attemptsRefreshKey, setAttemptsRefreshKey] = useState(0);
+  const [billTo, setBillTo] = useState<InvoiceParty | null>(null);
 
   const loadInvoice = useCallback(async () => {
     if (!invoiceId) return;
@@ -87,6 +101,7 @@ export function InvoiceViewDialog({
   useEffect(() => {
     if (!open || !invoiceId) {
       setInvoice(null);
+      setBillTo(null);
       setPayOpen(false);
       setConfirmCancelOpen(false);
       return;
@@ -104,6 +119,32 @@ export function InvoiceViewDialog({
       cancelled = true;
     };
   }, [open, invoiceId]);
+
+  // Resolve the "Bill to" party from the business + location IDs in scope.
+  // Falls back to whatever the invoice DTO carries when neither lookup
+  // succeeds (e.g., invoice opened outside of a billing context).
+  useEffect(() => {
+    if (!open || (!businessId && !locationId)) {
+      setBillTo(null);
+      return;
+    }
+    let cancelled = false;
+    getInvoiceBillingParties(businessId, locationId)
+      .then(({ business, location }) => {
+        if (cancelled) return;
+        if (!business && !location) {
+          setBillTo(null);
+          return;
+        }
+        setBillTo(buildBillToParty(location, business));
+      })
+      .catch(() => {
+        if (!cancelled) setBillTo(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, businessId, locationId]);
 
   const statusMeta = invoice ? getInvoiceStatusMeta(invoice.status) : null;
   const isPending = invoice?.status === "PENDING";
@@ -193,23 +234,8 @@ export function InvoiceViewDialog({
                     {formatBillingDate(invoice.dueDate)}
                   </p>
                 </div>
-                <div>
-                  <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
-                    Billed to
-                  </p>
-                  <p className="mt-0.5 text-ink">{invoice.customerName || "—"}</p>
-                  {invoice.customerEmail && (
-                    <p className="font-mono text-[11px] text-muted-foreground">
-                      {invoice.customerEmail}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
-                    From
-                  </p>
-                  <p className="mt-0.5 text-ink">{invoice.sellerName || "—"}</p>
-                </div>
+                <PartyBlock label="Bill to" party={billTo ?? customerToParty(invoice)} />
+                <PartyBlock label="From" party={SETTLO_SELLER} />
               </div>
 
               <Separator />
@@ -289,6 +315,13 @@ export function InvoiceViewDialog({
                   {invoice.notes}
                 </p>
               )}
+
+              <Separator />
+
+              <InvoicePaymentAttempts
+                invoiceId={invoice.id}
+                refreshKey={attemptsRefreshKey}
+              />
             </div>
           )}
 
@@ -353,7 +386,13 @@ export function InvoiceViewDialog({
       {invoice && canPay && (
         <PaymentOptionsDialog
           open={payOpen}
-          onOpenChange={setPayOpen}
+          onOpenChange={(open) => {
+            setPayOpen(open);
+            // Whenever the payment dialog closes, refresh the attempts
+            // list — a timeout-FAILED row or a successful one may need
+            // to appear in the history beneath.
+            if (!open) setAttemptsRefreshKey((k) => k + 1);
+          }}
           invoice={{
             id: invoice.id,
             invoiceNumber: invoice.invoiceNumber,
@@ -366,6 +405,7 @@ export function InvoiceViewDialog({
           defaultPhone={defaultPhone ?? invoice.customerPhone ?? undefined}
           onPaid={() => {
             setPayOpen(false);
+            setAttemptsRefreshKey((k) => k + 1);
             void loadInvoice();
             onOpenChange(false);
             onPaid?.();
@@ -408,6 +448,42 @@ export function InvoiceViewDialog({
       </AlertDialog>
     </>
   );
+}
+
+function PartyBlock({ label, party }: { label: string; party: InvoiceParty }) {
+  return (
+    <div>
+      <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-0.5 font-medium text-ink">{party.name}</p>
+      {party.secondaryName && (
+        <p className="text-[12.5px] text-ink-2">{party.secondaryName}</p>
+      )}
+      {party.addressLines.map((line, idx) => (
+        <p key={`${label}-addr-${idx}`} className="text-[12.5px] text-ink-2">
+          {line}
+        </p>
+      ))}
+      {party.phone && (
+        <p className="font-mono text-[11px] text-muted-foreground">{party.phone}</p>
+      )}
+      {party.email && (
+        <p className="font-mono text-[11px] text-muted-foreground">{party.email}</p>
+      )}
+    </div>
+  );
+}
+
+// Fallback when no business/location is available (e.g., dialog opened from a
+// context that doesn't pass IDs): mirror whatever the invoice DTO carries.
+function customerToParty(invoice: InvoiceViewDto): InvoiceParty {
+  return {
+    name: invoice.customerName || "—",
+    addressLines: invoice.customerAddress ? [invoice.customerAddress] : [],
+    phone: invoice.customerPhone || undefined,
+    email: invoice.customerEmail || undefined,
+  };
 }
 
 function Row({

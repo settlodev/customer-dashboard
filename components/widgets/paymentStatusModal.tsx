@@ -5,7 +5,6 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
-  CreditCard,
   ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -29,8 +28,8 @@ const STATUS_CONFIG = {
     title: "Initiating Payment",
     description: "Please wait while we prepare your payment request.",
     progress: 20,
-    icon: CreditCard,
-    iconClass: "text-primary",
+    icon: Loader2,
+    iconClass: "text-primary animate-spin",
     iconBg: "bg-primary-light",
     ringClass: "ring-primary/15",
     progressClass: "bg-primary",

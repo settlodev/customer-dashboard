@@ -157,14 +157,9 @@ export function PaymentOptionsDialog({
       try {
         const payment = await initiatePayment({
           invoiceId: invoice.id,
-          amount: invoice.amount,
-          currency: invoice.currency,
-          businessId,
-          locationId,
-          paymentMethodId: data.paymentMethodId,
           customerPhone: data.phone,
           customerEmail: data.email,
-          description: description ?? `Invoice ${invoice.invoiceNumber}`,
+          channel: "MOBILE_MONEY",
         });
         setPaymentRefId(payment.externalReferenceId);
       } catch (err) {

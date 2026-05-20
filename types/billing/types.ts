@@ -286,4 +286,11 @@ export interface PaymentResponse {
   customerPhoneNumber: string;
   customerEmail: string;
   description: string | null;
+  channel?: "MOBILE_MONEY" | "CARD" | null;
+  paymentGatewayUrl?: string | null;
+  paymentToken?: string | null;
+  qr?: string | null;
+  errorMessage?: string | null;
+  createdAt?: string | null;
+  paidAt?: string | null;
 }
