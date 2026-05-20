@@ -4,6 +4,9 @@ const nextConfig = {
   experimental: {
     serverActions: true,
   },
+  env: {
+    SERVICE_NAME: process.env.VERCEL_GIT_COMMIT_REF || "local",
+  },
   images: {
     remotePatterns: [
       {
