@@ -12,6 +12,8 @@ import { createAuthToken } from "@/lib/auth-utils";
 declare module "next-auth" {
   interface Session {
     user: ExtendedUser;
+    upstreamService?: string | null;
+    handoffToken?: string | null;
   }
 }
 
@@ -77,10 +79,17 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         session.user.theme = (token.theme as string) ?? "light";
       }
 
+      (session as any).upstreamService = token.upstreamService;
+      (session as any).handoffToken = token.handoffToken;
       return session;
     },
 
-    async jwt({ token }) {
+    async jwt({ token, user }) {
+      // On initial sign-in, capture upstream routing info from authorize()
+      if (user) {
+        token.upstreamService = (user as any).upstreamService;
+        token.handoffToken = (user as any).handoffToken;
+      }
       if (!token.sub) return token;
 
       const existingUser = await getUserById(token.sub);
