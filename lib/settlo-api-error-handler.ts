@@ -140,6 +140,16 @@ const UI_ERROR_MESSAGES: Record<string, string> = {
     WAREHOUSE_NAME_TAKEN: "A warehouse with this name already exists in this business. Pick a different name.",
     CUSTOMER_PHONE_TAKEN: "A customer with this phone number already exists at this location.",
     DATA_INTEGRITY_ERROR: "This action conflicts with existing data. Please refresh and try again.",
+    // Day-session header contract — see useBusinessDayGuard for the
+    // UX. The hook maps all three of these to the open-day prompt;
+    // these messages only surface when the call was made outside a
+    // guarded form (rare).
+    BUSINESS_DAY_CLOSED: "There's no open business day right now. Open the day before recording activity.",
+    BUSINESS_DAY_SESSION_HEADER_MISSING: "There's no active business day on this device. Open the day to continue.",
+    BUSINESS_DAY_SESSION_UNKNOWN: "Your business day is still syncing. Please retry in a moment.",
+    BUSINESS_DAY_SESSION_LOCATION_MISMATCH: "The business day on this device belongs to another location. Switch location or open a day here.",
+    DAY_SESSION_ALREADY_OPEN: "A business day is already open at this location.",
+    DAY_SESSION_FORCE_OPEN_REQUIRED: "This date is outside the 2-day offline replay window. A supervisor with force-open permission must approve.",
 };
 
 /**

@@ -271,6 +271,56 @@ async function getScopedLocationId(): Promise<string | null> {
   return dest?.id ?? null;
 }
 
+/**
+ * Reads the {@code currentDaySession} cookie (written by the day-
+ * session widget + open/close server actions). Stamped onto every
+ * session-dependent request via the {@code X-Day-Session-Id} header.
+ * The server's BusinessDayResolver chain-follows the supersedence
+ * pointer before validating the location match, so the cached id
+ * stays valid even after an upstream merge.
+ *
+ * <p>Per-parent-location guard: a stale cookie from a prior location
+ * must NOT bleed through after the operator switches. We compare the
+ * cookie's locationId against the {@code currentLocation} cookie
+ * (the parent location — always set even when a store/warehouse is
+ * the active destination). When they differ, the header is omitted
+ * and the server returns {@code BUSINESS_DAY_SESSION_HEADER_MISSING}
+ * which {@code useBusinessDayGuard} surfaces as an "open the day"
+ * prompt at the new location.
+ */
+async function getDaySessionIdForLocation(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    const raw = cookieStore.get("currentDaySession")?.value;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { id?: string; locationId?: string };
+    if (!parsed?.id || !parsed.locationId) return null;
+    // Compare against the parent-location cookie (NOT the destination
+    // cookie). A store/warehouse is OK — it rolls up to the same
+    // parent location server-side; only a true location switch should
+    // drop the header.
+    const currentLocationId = await readCookieId("currentLocation");
+    if (currentLocationId && currentLocationId !== parsed.locationId) {
+      return null;
+    }
+    return parsed.id;
+  } catch {
+    return null;
+  }
+}
+
+async function readCookieId(cookieName: string): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    const raw = cookieStore.get(cookieName)?.value;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return typeof parsed?.id === "string" ? parsed.id : null;
+  } catch {
+    return null;
+  }
+}
+
 // ── ApiClient ───────────────────────────────────────────────────────
 class ApiClient {
   private instance: AxiosInstance;
@@ -396,6 +446,15 @@ class ApiClient {
       ]);
       if (businessId) config.headers["X-Business-Id"] = businessId;
       if (locationId) config.headers["X-Location-Id"] = locationId;
+
+      // Day session — every session-dependent endpoint downstream calls
+      // BusinessDayResolver.requireSessionForRequest, which throws
+      // BUSINESS_DAY_SESSION_HEADER_MISSING when this header is absent.
+      // Scoped to the parent location so a cookie left over from a
+      // prior location switch is treated as "no session" — the guard
+      // hook then prompts the operator to open the day at the new one.
+      const daySessionId = await getDaySessionIdForLocation();
+      if (daySessionId) config.headers["X-Day-Session-Id"] = daySessionId;
 
       const isFormData =
         typeof FormData !== "undefined" && config.data instanceof FormData;

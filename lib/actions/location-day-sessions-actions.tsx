@@ -3,6 +3,10 @@
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { FormResponse } from "@/types/types";
+import {
+  clearDaySessionCookie,
+  setDaySessionCookie,
+} from "@/lib/actions/day-session-cookie-actions";
 
 export interface DaySession {
   id: string;
@@ -49,7 +53,19 @@ export const openDaySession = async (
     // request optional.
     const body: Record<string, unknown> = { notes: notes ?? null };
     const data = await apiClient.post(`/api/v1/locations/${locationId}/day-sessions/open`, body);
-    return { responseType: "success", message: "Day session opened", data: parseStringify(data) };
+    const session = parseStringify(data) as DaySession | null;
+    // Mirror the persisted session into the cookie so the next session-
+    // dependent call (order create, expense, etc.) attaches the
+    // X-Day-Session-Id header without a round-trip to /current first.
+    if (session?.id) {
+      await setDaySessionCookie({
+        id: session.id,
+        locationId: session.locationId ?? locationId,
+        businessDate: session.businessDate,
+        status: session.status,
+      });
+    }
+    return { responseType: "success", message: "Day session opened", data: session ?? undefined };
   } catch (error) {
     const err = error as { code?: string; message?: string };
     // Already-open is functionally a success for callers that just need a
@@ -80,6 +96,10 @@ export const closeDaySession = async (
     if (notes) body.notes = notes;
     if (typeof closingFloat === "number") body.closingFloat = closingFloat;
     const data = await apiClient.post(`/api/v1/locations/${locationId}/day-sessions/close`, body);
+    // Day closed — drop the cookie so subsequent session-dependent calls
+    // surface BUSINESS_DAY_SESSION_HEADER_MISSING and the guard hook
+    // prompts the operator to open the day.
+    await clearDaySessionCookie();
     return { responseType: "success", message: "Day session closed", data: parseStringify(data) };
   } catch (error) {
     const err = error as { code?: string; message?: string };
@@ -111,7 +131,18 @@ export const extendDaySession = async (
       `/api/v1/locations/${locationId}/day-sessions/${sessionId}/extend`,
       body,
     );
-    return { responseType: "success", message: "Session extended", data: parseStringify(data) };
+    const session = parseStringify(data) as DaySession | null;
+    // The extend may have chain-followed to a canonical session id —
+    // refresh the cookie so future writes carry the canonical id.
+    if (session?.id) {
+      await setDaySessionCookie({
+        id: session.id,
+        locationId: session.locationId ?? locationId,
+        businessDate: session.businessDate,
+        status: session.status,
+      });
+    }
+    return { responseType: "success", message: "Session extended", data: session ?? undefined };
   } catch (error) {
     const err = error as { code?: string; message?: string };
     return {
@@ -127,9 +158,27 @@ export const getCurrentDaySession = async (locationId: string): Promise<DaySessi
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(`/api/v1/locations/${locationId}/day-sessions/current`);
-    return parseStringify(data);
+    const session = parseStringify(data) as DaySession | null;
+    // Keep the cookie in lock-step with the server's source of truth. The
+    // widget calls this every 60s and on DAY_SESSION_CHANGED_EVENT, so the
+    // cookie is always fresh enough for the interceptor to attach a
+    // current X-Day-Session-Id header.
+    if (session?.id) {
+      await setDaySessionCookie({
+        id: session.id,
+        locationId: session.locationId ?? locationId,
+        businessDate: session.businessDate,
+        status: session.status,
+      });
+    } else {
+      // No active session — clear any stale cookie so the next write
+      // surfaces BUSINESS_DAY_SESSION_HEADER_MISSING cleanly.
+      await clearDaySessionCookie();
+    }
+    return session;
   } catch {
-    // 204 No Content means no active session
+    // 204 No Content means no active session — same cleanup as above.
+    await clearDaySessionCookie();
     return null;
   }
 };

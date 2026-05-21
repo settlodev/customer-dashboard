@@ -24,6 +24,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogIcon,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -452,7 +453,10 @@ export function InvoiceViewDialog({
         open={confirmCancelOpen}
         onOpenChange={(o) => !cancelling && setConfirmCancelOpen(o)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent tone="danger">
+          <AlertDialogIcon>
+            <Ban className="h-5 w-5" />
+          </AlertDialogIcon>
           <AlertDialogHeader>
             <AlertDialogTitle>
               Cancel invoice {invoice?.invoiceNumber}?
@@ -473,7 +477,6 @@ export function InvoiceViewDialog({
                 void handleCancel();
               }}
               disabled={cancelling}
-              className="bg-neg text-white hover:bg-neg/90"
             >
               {cancelling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Cancel invoice
