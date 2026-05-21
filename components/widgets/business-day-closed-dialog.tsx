@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { openDaySession } from "@/lib/actions/location-day-sessions-actions";
 import { DAY_SESSION_CHANGED_EVENT } from "@/components/widgets/day-session-widget";
 
@@ -35,13 +36,27 @@ export function BusinessDayClosedDialog({
   const [error, setError] = useState<string | null>(null);
 
   const handleStart = () => {
-    if (!locationId) {
-      setError("Pick a location first, then try again.");
-      return;
-    }
     setError(null);
     startTransition(async () => {
-      const result = await openDaySession(locationId);
+      // The new BUSINESS_DAY_SESSION_HEADER_MISSING / _UNKNOWN /
+      // _LOCATION_MISMATCH codes from the server don't carry
+      // metadata.locationIds (yet). Fall back to the active location
+      // cookie so the operator can hit "Start business day" without
+      // first re-picking a location. The cookie is the same one the
+      // API client interceptor reads for X-Location-Id, so it always
+      // matches the location the failed request was targeting.
+      let resolvedLocationId = locationId;
+      if (!resolvedLocationId) {
+        const destination = await getCurrentDestination();
+        if (destination?.type === "LOCATION") {
+          resolvedLocationId = destination.id;
+        }
+      }
+      if (!resolvedLocationId) {
+        setError("Pick a location first, then try again.");
+        return;
+      }
+      const result = await openDaySession(resolvedLocationId);
       if (result.responseType === "success") {
         toast({
           variant: "success",

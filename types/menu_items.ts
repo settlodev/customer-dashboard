@@ -378,6 +378,12 @@ const getNormalMenuItems = (
       icon: "general",
       items: [
         {
+          title: "Day sessions",
+          link: "/day-sessions",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
           title: "Expenses",
           link: "/expenses",
           current: args?.isCurrentItem,

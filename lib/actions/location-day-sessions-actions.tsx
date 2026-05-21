@@ -15,7 +15,7 @@ export interface DaySession {
   locationName: string;
   identifier: string;
   businessDate: string;
-  status: "OPEN" | "CLOSED";
+  status: "OPEN" | "CLOSED" | "SUPERSEDED" | "DELETED";
   triggerType: "MANUAL" | "AUTO";
   openedAt: string;
   closedAt?: string;
@@ -154,33 +154,41 @@ export const extendDaySession = async (
   }
 };
 
+/**
+ * Returns the location's current active day session, or null when the
+ * server explicitly says there is none (HTTP 204 / empty body). Throws
+ * on transient errors (network, 5xx, timeouts) so callers can preserve
+ * their last-known state instead of flashing "no session" during a
+ * blip. Crucially we do NOT clear the day-session cookie on error —
+ * a stale cookie that points at a still-valid session is preferable to
+ * dropping the {@code X-Day-Session-Id} header on every subsequent
+ * write while Accounts is briefly unavailable.
+ */
 export const getCurrentDaySession = async (locationId: string): Promise<DaySession | null> => {
-  try {
-    const apiClient = new ApiClient();
-    const data = await apiClient.get(`/api/v1/locations/${locationId}/day-sessions/current`);
-    const session = parseStringify(data) as DaySession | null;
-    // Keep the cookie in lock-step with the server's source of truth. The
-    // widget calls this every 60s and on DAY_SESSION_CHANGED_EVENT, so the
-    // cookie is always fresh enough for the interceptor to attach a
-    // current X-Day-Session-Id header.
-    if (session?.id) {
-      await setDaySessionCookie({
-        id: session.id,
-        locationId: session.locationId ?? locationId,
-        businessDate: session.businessDate,
-        status: session.status,
-      });
-    } else {
-      // No active session — clear any stale cookie so the next write
-      // surfaces BUSINESS_DAY_SESSION_HEADER_MISSING cleanly.
-      await clearDaySessionCookie();
-    }
-    return session;
-  } catch {
-    // 204 No Content means no active session — same cleanup as above.
+  const apiClient = new ApiClient();
+  // No try/catch — let errors propagate. Axios's default validateStatus
+  // returns 204 successfully with an empty body (data is undefined),
+  // which parseStringify maps to null. Only that path counts as "no
+  // session"; everything else (4xx, 5xx, network) throws upstream.
+  const data = await apiClient.get(`/api/v1/locations/${locationId}/day-sessions/current`);
+  const session = parseStringify(data) as DaySession | null;
+  // Keep the cookie in lock-step with the server's source of truth. The
+  // widget calls this every 60s and on DAY_SESSION_CHANGED_EVENT, so the
+  // cookie is always fresh enough for the interceptor to attach a
+  // current X-Day-Session-Id header.
+  if (session?.id) {
+    await setDaySessionCookie({
+      id: session.id,
+      locationId: session.locationId ?? locationId,
+      businessDate: session.businessDate,
+      status: session.status,
+    });
+  } else {
+    // No active session — clear any stale cookie so the next write
+    // surfaces BUSINESS_DAY_SESSION_HEADER_MISSING cleanly.
     await clearDaySessionCookie();
-    return null;
   }
+  return session;
 };
 
 export const listDaySessions = async (

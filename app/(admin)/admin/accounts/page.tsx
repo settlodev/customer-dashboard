@@ -1,0 +1,193 @@
+import { redirect } from "next/navigation";
+
+import { AdminShell } from "@/components/layouts/admin-shell";
+import {
+  PageBody,
+  PageHeader,
+  PageShell,
+} from "@/components/layouts/page-shell";
+import { AccountsListView } from "@/components/admin/accounts-list-view";
+import { getStaffAuthToken } from "@/lib/auth-utils";
+import {
+  getAccountOnboardingCounts,
+  listAccounts,
+} from "@/lib/actions/admin/accounts";
+import {
+  AccountOnboardingCounts,
+  AdminAccountListPage,
+  OnboardingState,
+} from "@/types/admin/account";
+import { InternalRole } from "@/types/types";
+
+export const metadata = {
+  title: "Accounts",
+};
+
+const READ_ROLES: InternalRole[] = [
+  "SYSTEM_ADMIN",
+  "SUPER_ADMIN",
+  "SUPPORT_AGENT",
+];
+
+const ONBOARDING_STATES: OnboardingState[] = [
+  "EMAIL_UNVERIFIED",
+  "BUSINESS_INCOMPLETE",
+  "LOCATION_INCOMPLETE",
+  "COMPLETE",
+];
+
+interface AccountsPageProps {
+  searchParams: Promise<{
+    page?: string;
+    limit?: string;
+    search?: string;
+    status?: string;
+    active?: string;
+    state?: string;
+    from?: string;
+    to?: string;
+  }>;
+}
+
+function parseOnboardingState(value: string | undefined): OnboardingState | undefined {
+  if (!value) return undefined;
+  return ONBOARDING_STATES.includes(value as OnboardingState)
+    ? (value as OnboardingState)
+    : undefined;
+}
+
+function parseActive(
+  rawActive: string | undefined,
+  rawStatus: string | undefined,
+): boolean | undefined {
+  if (rawActive === "true") return true;
+  if (rawActive === "false") return false;
+  if (rawStatus === "active") return true;
+  if (rawStatus === "inactive") return false;
+  return undefined;
+}
+
+function dayBounds(from: string | undefined, to: string | undefined) {
+  const isDay = (s: string | undefined): s is string =>
+    !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  const fromIso = isDay(from) ? `${from}T00:00:00Z` : undefined;
+  // Upper bound is exclusive — push one day past `to` so the picked end-day
+  // is included.
+  let toIso: string | undefined;
+  if (isDay(to)) {
+    const d = new Date(`${to}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    toIso = d.toISOString();
+  }
+  return { fromIso, toIso };
+}
+
+export default async function AdminAccountsPage({
+  searchParams,
+}: AccountsPageProps) {
+  const token = await getStaffAuthToken();
+  if (!token?.accessToken) {
+    redirect("/login");
+  }
+
+  const role = token.internalRole;
+  const canRead = role ? READ_ROLES.includes(role) : false;
+  const canSuspend = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
+  const canDelete = role === "SYSTEM_ADMIN";
+
+  if (!canRead) {
+    return (
+      <AdminShell token={token}>
+        <PageShell>
+          <PageHeader
+            title="Accounts"
+            subtitle="You don't have permission to view accounts."
+          />
+        </PageShell>
+      </AdminShell>
+    );
+  }
+
+  const params = await searchParams;
+  // DataTable uses 1-indexed `?page=` in the URL; the backend expects
+  // 0-indexed. Centralise the conversion here so the rest of the file
+  // doesn't have to think about it.
+  const pageOneIndexed = Math.max(
+    1,
+    Number.parseInt(params.page ?? "1", 10) || 1,
+  );
+  const backendPage = pageOneIndexed - 1;
+  const size = Math.max(1, Number.parseInt(params.limit ?? "10", 10) || 10);
+  const search = params.search?.trim() || undefined;
+  const active = parseActive(params.active, params.status);
+  const onboardingState = parseOnboardingState(params.state);
+  const { fromIso, toIso } = dayBounds(params.from, params.to);
+
+  let pageData: AdminAccountListPage | null = null;
+  let counts: AccountOnboardingCounts = {
+    total: 0,
+    emailUnverified: 0,
+    businessIncomplete: 0,
+    locationIncomplete: 0,
+    complete: 0,
+  };
+  let loadError: string | null = null;
+  try {
+    [pageData, counts] = await Promise.all([
+      listAccounts({
+        page: backendPage,
+        size,
+        search,
+        active,
+        onboardingState,
+        createdFrom: fromIso,
+        createdTo: toIso,
+      }),
+      getAccountOnboardingCounts({
+        search,
+        active,
+        createdFrom: fromIso,
+        createdTo: toIso,
+      }),
+    ]);
+  } catch (error: any) {
+    loadError =
+      error?.message ?? "Failed to load accounts. Please try again.";
+  }
+
+  return (
+    <AdminShell token={token}>
+      <PageShell>
+        <PageHeader
+          title="Accounts"
+          subtitle="Filter by onboarding state and registration date to triage stalled signups across whitelabels."
+        />
+        <PageBody>
+          {loadError ? (
+            <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {loadError}
+            </p>
+          ) : (
+            <AccountsListView
+              initialPage={pageData!}
+              counts={counts}
+              initialSearch={search ?? ""}
+              initialStatus={
+                active === undefined
+                  ? "all"
+                  : active
+                    ? "active"
+                    : "inactive"
+              }
+              initialOnboardingState={onboardingState ?? "all"}
+              initialFrom={params.from ?? null}
+              initialTo={params.to ?? null}
+              canSuspend={canSuspend}
+              canDelete={canDelete}
+            />
+          )}
+        </PageBody>
+      </PageShell>
+    </AdminShell>
+  );
+}

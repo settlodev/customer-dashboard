@@ -13,9 +13,12 @@ import {
   SettloApiError,
 } from "@/lib/settlo-api-error-handler";
 import {
-  getAuthToken,
-  updateAuthToken,
   deleteAuthCookie,
+  deleteStaffAuthCookie,
+  getAuthToken,
+  getStaffAuthToken,
+  updateAuthToken,
+  updateStaffAuthToken,
 } from "@/lib/auth-utils";
 import { extractSubscriptionStatus } from "@/lib/jwt-utils";
 import { ErrorResponseType } from "@/types/types";
@@ -35,6 +38,9 @@ const ACCOUNTS_SERVICE_URL = requireEnv("ACCOUNTS_SERVICE_URL");
 const REPORTS_SERVICE_URL = requireEnv("REPORTS_SERVICE_URL");
 const PAYMENT_SERVICE_URL = requireEnv("PAYMENT_SERVICE_URL");
 const ORDER_MANAGEMENT_SERVICE_URL = requireEnv("ORDER_MANAGEMENT_SERVICE_URL");
+const BILLING_SERVICE_URL = requireEnv("BILLING_SERVICE_URL");
+const INVENTORY_SERVICE_URL = requireEnv("INVENTORY_SERVICE_URL");
+const ACCOUNTING_SERVICE_URL = requireEnv("ACCOUNTING_SERVICE_URL");
 const IS_DEV = process.env.NODE_ENV !== "production";
 
 const sharedHttpsAgent = new https.Agent({
@@ -322,9 +328,12 @@ async function readCookieId(cookieName: string): Promise<string | null> {
 }
 
 // ── ApiClient ───────────────────────────────────────────────────────
+export type ApiClientAudience = "user" | "staff";
+
 class ApiClient {
   private instance: AxiosInstance;
   private readonly baseURL: string;
+  private readonly audience: ApiClientAudience;
   public isPlain: boolean;
 
   constructor(
@@ -334,7 +343,11 @@ class ApiClient {
       | "reports"
       | "payments"
       | "orders"
+      | "billing"
+      | "inventory"
+      | "accounting"
       | boolean = "accounts",
+    audience: ApiClientAudience = "user",
   ) {
     if (typeof service === "boolean") {
       this.baseURL = service ? AUTH_SERVICE_URL : ACCOUNTS_SERVICE_URL;
@@ -348,9 +361,20 @@ class ApiClient {
               ? PAYMENT_SERVICE_URL
               : service === "orders"
                 ? ORDER_MANAGEMENT_SERVICE_URL
-                : ACCOUNTS_SERVICE_URL;
+                : service === "billing"
+                  ? BILLING_SERVICE_URL
+                  : service === "inventory"
+                    ? INVENTORY_SERVICE_URL
+                    : service === "accounting"
+                      ? ACCOUNTING_SERVICE_URL
+                      : ACCOUNTS_SERVICE_URL;
     }
+    this.audience = audience;
     this.isPlain = false;
+
+    const readToken = audience === "staff" ? getStaffAuthToken : getAuthToken;
+    const writeToken = audience === "staff" ? updateStaffAuthToken : updateAuthToken;
+    const clearToken = audience === "staff" ? deleteStaffAuthCookie : deleteAuthCookie;
 
     this.instance = axios.create({
       httpsAgent: sharedHttpsAgent,
@@ -370,7 +394,7 @@ class ApiClient {
       if (this.isPlain) {
         (config as any)._isPlain = true;
       } else {
-        let token = await getAuthToken();
+        let token = await readToken();
 
         // Proactive refresh: if the access token is expired or about to
         // expire, refresh it before sending the request — avoids a
@@ -385,7 +409,7 @@ class ApiClient {
           try {
             const refreshed = await refreshAccessToken(token.refreshToken);
             try {
-              await updateAuthToken({
+              await writeToken({
                 ...token,
                 accessToken: refreshed.accessToken,
                 refreshToken: refreshed.refreshToken,
@@ -404,7 +428,7 @@ class ApiClient {
           } catch {
             if (isTokenExpiringSoon(token.accessToken, 0)) {
               try {
-                await deleteAuthCookie();
+                await clearToken();
               } catch {
                 // Cookie deletion silently fails outside Server Action context.
               }
@@ -440,21 +464,25 @@ class ApiClient {
         }
       }
 
-      const [businessId, locationId] = await Promise.all([
-        getBusinessId(),
-        getScopedLocationId(),
-      ]);
-      if (businessId) config.headers["X-Business-Id"] = businessId;
-      if (locationId) config.headers["X-Location-Id"] = locationId;
+      // Business / location / day-session headers are customer-flow concepts.
+      // Staff requests target cross-tenant admin endpoints and never carry them.
+      if (this.audience === "user") {
+        const [businessId, locationId] = await Promise.all([
+          getBusinessId(),
+          getScopedLocationId(),
+        ]);
+        if (businessId) config.headers["X-Business-Id"] = businessId;
+        if (locationId) config.headers["X-Location-Id"] = locationId;
 
-      // Day session — every session-dependent endpoint downstream calls
-      // BusinessDayResolver.requireSessionForRequest, which throws
-      // BUSINESS_DAY_SESSION_HEADER_MISSING when this header is absent.
-      // Scoped to the parent location so a cookie left over from a
-      // prior location switch is treated as "no session" — the guard
-      // hook then prompts the operator to open the day at the new one.
-      const daySessionId = await getDaySessionIdForLocation();
-      if (daySessionId) config.headers["X-Day-Session-Id"] = daySessionId;
+        // Day session — every session-dependent endpoint downstream calls
+        // BusinessDayResolver.requireSessionForRequest, which throws
+        // BUSINESS_DAY_SESSION_HEADER_MISSING when this header is absent.
+        // Scoped to the parent location so a cookie left over from a
+        // prior location switch is treated as "no session" — the guard
+        // hook then prompts the operator to open the day at the new one.
+        const daySessionId = await getDaySessionIdForLocation();
+        if (daySessionId) config.headers["X-Day-Session-Id"] = daySessionId;
+      }
 
       const isFormData =
         typeof FormData !== "undefined" && config.data instanceof FormData;
@@ -535,7 +563,7 @@ class ApiClient {
           (originalRequest as any)._retry = true;
 
           try {
-            const token = await getAuthToken();
+            const token = await readToken();
             if (!token?.refreshToken) {
               throw new Error("No refresh token available");
             }
@@ -543,7 +571,7 @@ class ApiClient {
             const refreshed = await refreshAccessToken(token.refreshToken);
 
             try {
-              await updateAuthToken({
+              await writeToken({
                 ...token,
                 accessToken: refreshed.accessToken,
                 refreshToken: refreshed.refreshToken,
@@ -570,7 +598,7 @@ class ApiClient {
             // Public routes bypass middleware, so without this the stale
             // cookie would survive until the browser expires it.
             try {
-              await deleteAuthCookie();
+              await clearToken();
             } catch {
               // Cookie deletion silently fails outside Server Action context.
             }

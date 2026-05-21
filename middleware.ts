@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  ADMIN_DEFAULT_REDIRECT_URL,
+  ADMIN_LOGIN_URL,
+  ADMIN_ROUTE_PREFIX,
   apiAuthPrefix,
   authRoutes,
+  isAdminHost,
+  isAdminPath,
   publicRoutes,
   SELECT_BUSINESS_URL,
   DEFAULT_LOGIN_REDIRECT_URL,
@@ -11,7 +16,7 @@ import {
   VERIFICATION_REDIRECT_URL,
   SELECT_BUSINESS_LOCATION_URL,
 } from "@/routes";
-import { AuthToken } from "./types/types";
+import { AuthToken, InternalRole, SubjectType } from "./types/types";
 
 // ── Cookie constants (matching auth-utils.ts) ────────────────────────
 const COOKIE_CHUNK_SIZE = 3800;
@@ -63,6 +68,40 @@ function extractSubscriptionStatusFromJwt(accessToken: string): string | null {
   return valid.includes(status) ? status : null;
 }
 
+const INTERNAL_ROLES_EDGE: InternalRole[] = [
+  "SYSTEM_ADMIN",
+  "SUPER_ADMIN",
+  "SUPPORT_AGENT",
+  "BOARD_MEMBER",
+  "SALES_TEAM",
+];
+
+function extractInternalRoleFromJwt(accessToken: string): InternalRole | null {
+  const payload = decodeJwtPayload(accessToken);
+  if (!payload) return null;
+  const role = payload.internal_role as string | undefined;
+  if (!role) return null;
+  return INTERNAL_ROLES_EDGE.includes(role as InternalRole)
+    ? (role as InternalRole)
+    : null;
+}
+
+function extractInternalPermissionsFromJwt(accessToken: string): string[] {
+  const payload = decodeJwtPayload(accessToken);
+  if (!payload) return [];
+  const perms = payload.internal_permissions;
+  if (!Array.isArray(perms)) return [];
+  return perms.filter((p): p is string => typeof p === "string");
+}
+
+function extractSubjectTypeFromJwt(accessToken: string): SubjectType | null {
+  const payload = decodeJwtPayload(accessToken);
+  if (!payload) return null;
+  const t = payload.subject_type as string | undefined;
+  if (!t) return null;
+  return ["USER", "STAFF", "DEVICE"].includes(t) ? (t as SubjectType) : null;
+}
+
 /**
  * Attempt to refresh the access token using Edge-compatible fetch.
  * Returns new tokens on success, null on failure.
@@ -107,6 +146,7 @@ function applyTokenCookies(
   request: NextRequest,
   response: NextResponse,
   tokenValue: string,
+  cookieName: string = "authToken",
 ) {
   const isProduction = process.env.NODE_ENV === "production";
   const options = {
@@ -116,16 +156,16 @@ function applyTokenCookies(
   };
 
   // Clear old base + chunk cookies
-  response.cookies.delete("authToken");
-  request.cookies.delete("authToken");
+  response.cookies.delete(cookieName);
+  request.cookies.delete(cookieName);
   for (let i = 0; i < MAX_CHUNKS; i++) {
-    response.cookies.delete(`authToken.${i}`);
-    request.cookies.delete(`authToken.${i}`);
+    response.cookies.delete(`${cookieName}.${i}`);
+    request.cookies.delete(`${cookieName}.${i}`);
   }
 
   if (tokenValue.length <= COOKIE_CHUNK_SIZE) {
-    response.cookies.set("authToken", tokenValue, options);
-    request.cookies.set("authToken", tokenValue);
+    response.cookies.set(cookieName, tokenValue, options);
+    request.cookies.set(cookieName, tokenValue);
   } else {
     const numChunks = Math.ceil(tokenValue.length / COOKIE_CHUNK_SIZE);
     for (let i = 0; i < numChunks; i++) {
@@ -133,8 +173,8 @@ function applyTokenCookies(
         i * COOKIE_CHUNK_SIZE,
         (i + 1) * COOKIE_CHUNK_SIZE,
       );
-      response.cookies.set(`authToken.${i}`, chunk, options);
-      request.cookies.set(`authToken.${i}`, chunk);
+      response.cookies.set(`${cookieName}.${i}`, chunk, options);
+      request.cookies.set(`${cookieName}.${i}`, chunk);
     }
   }
 }
@@ -157,6 +197,18 @@ function getChunkedCookieFromRequest(
     value += chunk;
   }
   return value || null;
+}
+
+/**
+ * Create a redirect response that clears all staff auth cookies (force logout).
+ */
+function forceStaffLogout(request: NextRequest): NextResponse {
+  const response = NextResponse.redirect(new URL("/login", request.nextUrl));
+  response.cookies.delete("staffAuthToken");
+  for (let i = 0; i < MAX_CHUNKS; i++) {
+    response.cookies.delete(`staffAuthToken.${i}`);
+  }
+  return response;
 }
 
 /**
@@ -187,8 +239,105 @@ function forceLogout(request: NextRequest): NextResponse {
   return response;
 }
 
+async function handleAdminMiddleware(
+  request: NextRequest,
+  pathname: string,
+): Promise<NextResponse> {
+  // The route group lives at app/(admin)/admin/* — internal paths always
+  // start with /admin. Rewrite any inbound path that isn't already prefixed.
+  const needsRewrite = !isAdminPath(pathname);
+  const rewriteTarget = (target: string): URL =>
+    new URL(needsRewrite ? `${ADMIN_ROUTE_PREFIX}${target}` : target, request.url);
+
+  // Read staff session cookie
+  let staffToken: AuthToken | null = null;
+  try {
+    const raw = getChunkedCookieFromRequest(request, "staffAuthToken");
+    if (raw) staffToken = JSON.parse(raw);
+  } catch {
+    // Malformed cookie — treat as not logged in
+  }
+
+  const isStaffLoggedIn = !!(
+    staffToken?.accessToken && staffToken?.internalRole
+  );
+
+  // Strip the admin prefix when comparing paths to the login URL — pathname
+  // could be either /login (subdomain root) or /admin/login (already rewritten).
+  const normalizedPath = isAdminPath(pathname)
+    ? pathname.slice(ADMIN_ROUTE_PREFIX.length) || "/"
+    : pathname;
+  const isLoginPath = normalizedPath === "/login";
+
+  // ── Not logged in ──────────────────────────────────────────────────
+  if (!isStaffLoggedIn) {
+    if (isLoginPath) {
+      return needsRewrite
+        ? NextResponse.rewrite(rewriteTarget("/login"))
+        : NextResponse.next();
+    }
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // ── Token expiry / refresh ─────────────────────────────────────────
+  let refreshedTokenValue: string | null = null;
+  if (
+    staffToken!.refreshToken &&
+    isAccessTokenExpiringSoon(staffToken!.accessToken)
+  ) {
+    const refreshed = await refreshTokenAtEdge(staffToken!.refreshToken);
+    if (refreshed) {
+      staffToken = {
+        ...staffToken!,
+        accessToken: refreshed.accessToken,
+        refreshToken: refreshed.refreshToken,
+        internalRole: extractInternalRoleFromJwt(refreshed.accessToken),
+        internalPermissions: extractInternalPermissionsFromJwt(
+          refreshed.accessToken,
+        ),
+        subjectType:
+          extractSubjectTypeFromJwt(refreshed.accessToken) ?? "STAFF",
+      };
+      refreshedTokenValue = JSON.stringify(staffToken);
+    } else if (isAccessTokenExpired(staffToken!.accessToken)) {
+      return forceStaffLogout(request);
+    }
+  }
+
+  const withRefreshedStaffCookies = (response: NextResponse): NextResponse => {
+    if (refreshedTokenValue) {
+      applyTokenCookies(request, response, refreshedTokenValue, "staffAuthToken");
+    }
+    return response;
+  };
+
+  // ── Logged in: keep them off /login ────────────────────────────────
+  if (isLoginPath) {
+    return withRefreshedStaffCookies(
+      NextResponse.redirect(new URL("/dashboard", request.url)),
+    );
+  }
+
+  // ── Logged in: rewrite to /admin/* route group internally ─────────
+  if (needsRewrite) {
+    return withRefreshedStaffCookies(
+      NextResponse.rewrite(new URL(`${ADMIN_ROUTE_PREFIX}${pathname}`, request.url)),
+    );
+  }
+
+  return withRefreshedStaffCookies(NextResponse.next());
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const host = request.headers.get("host");
+
+  // ── Admin subdomain branch ─────────────────────────────────────────
+  // The admin dashboard lives on admin.* hosts. It has its own state
+  // machine that bypasses customer onboarding/subscription gates.
+  if (isAdminHost(host)) {
+    return handleAdminMiddleware(request, pathname);
+  }
 
   // ── Route classification ──────────────────────────────────────────
   const isApiAuthRoute = pathname.startsWith(apiAuthPrefix);
@@ -222,6 +371,23 @@ export async function middleware(request: NextRequest) {
   }
 
   const isLoggedIn = !!(authToken?.accessToken);
+
+  // ── Cross-domain leak guard ───────────────────────────────────────
+  // A token carrying internalRole was issued for the admin dashboard.
+  // If one shows up at the apex domain (bookmark, copy/paste, dev tools)
+  // bounce it to the admin subdomain rather than dragging it through the
+  // customer onboarding state machine.
+  if (isLoggedIn && authToken?.internalRole) {
+    const adminHost =
+      process.env.NEXT_PUBLIC_ADMIN_HOST ||
+      (process.env.NODE_ENV === "production"
+        ? "admin.settlo.co.tz"
+        : `admin.${host ?? "localhost:3000"}`);
+    const protocol = request.nextUrl.protocol;
+    return NextResponse.redirect(
+      new URL(`${protocol}//${adminHost}/dashboard`),
+    );
+  }
 
   console.log(`[MIDDLEWARE] ${pathname} | loggedIn=${isLoggedIn} | hasCookie=${!!request.cookies.get("authToken")?.value} | hasAccessToken=${!!authToken?.accessToken} | emailVerified=${authToken?.emailVerified} | bizComplete=${authToken?.isBusinessRegistrationComplete} | locComplete=${authToken?.isLocationRegistrationComplete}`);
 

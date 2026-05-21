@@ -64,6 +64,15 @@ export interface FormResponse<T = unknown> {
 
 export type SubscriptionStatus = "TRIAL" | "ACTIVE" | "PAST_DUE" | "EXPIRED" | "SUSPENDED" | "CANCELLED" | null;
 
+export type InternalRole =
+    | "SYSTEM_ADMIN"
+    | "SUPER_ADMIN"
+    | "SUPPORT_AGENT"
+    | "BOARD_MEMBER"
+    | "SALES_TEAM";
+
+export type SubjectType = "USER" | "STAFF" | "DEVICE";
+
 export declare interface AuthToken {
     accessToken: string;
     refreshToken: string;
@@ -83,6 +92,9 @@ export declare interface AuthToken {
     verificationResendToken?: string;
     subscriptionStatus?: SubscriptionStatus;
     businessId?: string | null;
+    internalRole?: InternalRole | null;
+    internalPermissions?: string[];
+    subjectType?: SubjectType;
 }
 
 export declare interface activeBusiness {

@@ -13,6 +13,9 @@ declare module "next-auth" {
 }
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
+  // Required for NextAuth callbacks to work across apex + admin.* subdomain
+  // on the same deployment.
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",

@@ -21,7 +21,7 @@ export interface DaySessionCookie {
   id: string;
   locationId: string;
   businessDate: string;
-  status: "OPEN" | "CLOSED" | "SUPERSEDED";
+  status: "OPEN" | "CLOSED" | "SUPERSEDED" | "DELETED";
 }
 
 const COOKIE_NAME = "currentDaySession";

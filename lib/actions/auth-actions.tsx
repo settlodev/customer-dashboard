@@ -22,14 +22,18 @@ import {
 import { parseStringify } from "@/lib/utils";
 import {
   createAuthTokenFromLogin,
+  createStaffAuthToken,
   deleteActiveBusinessCookie,
   deleteAuthCookie,
+  deleteStaffAuthCookie,
   getAuthToken,
+  getStaffAuthToken,
   storePendingVerification,
   getPendingVerification,
   clearPendingVerification,
   updateAuthToken,
 } from "@/lib/auth-utils";
+import { isStaffToken } from "@/lib/jwt-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseApiError, getUIErrorMessage } from "@/lib/settlo-api-error-handler";
 import { cookies } from "next/headers";
@@ -364,6 +368,124 @@ export const login = async (
     });
   }
 };
+
+export const loginAsStaff = async (
+  credentials: z.infer<typeof LoginSchema>,
+  recaptchaToken?: string,
+): Promise<FormResponse> => {
+  const validatedData = LoginSchema.safeParse(credentials);
+  if (!validatedData.success) {
+    return parseStringify({
+      responseType: "error",
+      message: "Please fill in all the fields marked with * before proceeding",
+      error: new Error("Incomplete credentials"),
+    });
+  }
+
+  await deleteStaffAuthCookie();
+
+  try {
+    const loginBody: Record<string, string> = {
+      email: validatedData.data.email,
+      password: validatedData.data.password,
+    };
+    if (recaptchaToken) {
+      loginBody.recaptchaToken = recaptchaToken;
+      loginBody.recaptchaAction = "login";
+    }
+
+    const response = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+      },
+      body: JSON.stringify(loginBody),
+    });
+
+    if (!response.ok) {
+      const apiError = await parseApiError(response);
+      return parseStringify({
+        responseType: "error",
+        message: getUIErrorMessage(
+          apiError.code,
+          apiError.message,
+          "Authentication failed. Please try again.",
+        ),
+        error: new Error(apiError.code || `HTTP ${response.status}`),
+      });
+    }
+
+    const loginData: LoginResponse = await response.json();
+
+    // Reject customer tokens — this portal is staff-only. The JWT subject_type
+    // claim is the canonical signal; internalRole presence is a belt-and-braces
+    // fallback for tokens issued before subject_type rolled out.
+    if (!isStaffToken(loginData.accessToken)) {
+      return parseStringify({
+        responseType: "error",
+        message: "This portal is for Settlo staff only. Use the customer dashboard instead.",
+        error: new Error("NOT_STAFF"),
+      });
+    }
+
+    // Skip the Accounts Service profile fetch — staff users have the sentinel
+    // accountId and no Accounts row exists for them. Skip NextAuth signIn —
+    // staff sessions live entirely in the staffAuthToken cookie.
+    await createStaffAuthToken(loginData);
+
+    return parseStringify({
+      responseType: "success",
+      message: "Login successful",
+    });
+  } catch (error: any) {
+    if (
+      error instanceof Error &&
+      "digest" in error &&
+      typeof error.digest === "string" &&
+      error.digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+
+    return parseStringify({
+      responseType: "error",
+      message: "An unexpected error occurred. Please try again.",
+      error: new Error(error?.message || "Unexpected"),
+    });
+  }
+};
+
+export async function logoutStaff() {
+  const token = await getStaffAuthToken();
+  if (token?.accessToken || token?.refreshToken) {
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+      };
+      if (token.accessToken) {
+        headers["Authorization"] = `Bearer ${token.accessToken}`;
+      }
+      await fetch(`${AUTH_SERVICE_URL}/auth/logout`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          refreshToken: token.refreshToken || undefined,
+          logoutAll: false,
+        }),
+      });
+    } catch {
+      // API might be down — continue with local cleanup
+    }
+  }
+
+  try {
+    await deleteStaffAuthCookie();
+  } catch {
+    // Cookie deletion may fail outside Server Action context
+  }
+}
 
 async function setSessionPersistence(rememberMe: boolean) {
   if (!rememberMe) return; // Session cookies are fine for non-remember-me

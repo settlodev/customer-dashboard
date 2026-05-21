@@ -21,9 +21,16 @@ import { logout } from "@/lib/actions/auth-actions";
 const COOKIE_CHUNK_SIZE = 3800; // Leave room for name + attributes
 const MAX_CHUNKS = 10;
 const AUTH_TOKEN_COOKIE = "authToken";
+const STAFF_AUTH_TOKEN_COOKIE = "staffAuthToken";
 
 // Import for internal use — callers should import from "@/lib/jwt-utils" directly
-import { extractBusinessId, extractSubscriptionStatus } from "@/lib/jwt-utils";
+import {
+  extractBusinessId,
+  extractInternalPermissions,
+  extractInternalRole,
+  extractSubjectType,
+  extractSubscriptionStatus,
+} from "@/lib/jwt-utils";
 
 function getCookieOptions() {
   const isProduction = process.env.NODE_ENV === "production";
@@ -159,6 +166,72 @@ export const createAuthTokenFromLogin = async (
   };
 
   await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData));
+  return authTokenData;
+};
+
+export const getStaffAuthToken = async (): Promise<AuthToken | null> => {
+  const raw = await getChunkedCookie(STAFF_AUTH_TOKEN_COOKIE);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as AuthToken;
+    return parsed.accessToken ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+export const updateStaffAuthToken = async (token: AuthToken) => {
+  const synced: AuthToken = {
+    ...token,
+    internalRole: token.accessToken ? extractInternalRole(token.accessToken) : null,
+    internalPermissions: token.accessToken
+      ? extractInternalPermissions(token.accessToken)
+      : [],
+    subjectType: token.accessToken
+      ? (extractSubjectType(token.accessToken) ?? "STAFF")
+      : "STAFF",
+  };
+  await setChunkedCookie(STAFF_AUTH_TOKEN_COOKIE, JSON.stringify(synced));
+};
+
+export const deleteStaffAuthCookie = async () => {
+  try {
+    await deleteChunkedCookie(STAFF_AUTH_TOKEN_COOKIE);
+  } catch {
+    // Cookies can only be modified in Server Actions or Route Handlers.
+  }
+};
+
+export const createStaffAuthToken = async (loginResponse: LoginResponse) => {
+  const internalRole = extractInternalRole(loginResponse.accessToken);
+  const internalPermissions = extractInternalPermissions(loginResponse.accessToken);
+  const subjectType = extractSubjectType(loginResponse.accessToken) ?? "STAFF";
+
+  // Defensive defaults — customer state machine reads these. Even if the cookie
+  // ever leaks to apex, staff users skip onboarding/subscription gates.
+  const authTokenData: AuthToken = {
+    accessToken: loginResponse.accessToken,
+    refreshToken: loginResponse.refreshToken,
+    userId: loginResponse.userId,
+    accountId: loginResponse.accountId,
+    email: loginResponse.email,
+    firstName: "",
+    lastName: "",
+    phoneNumber: "",
+    pictureUrl: null,
+    emailVerified: true,
+    isBusinessRegistrationComplete: true,
+    isLocationRegistrationComplete: true,
+    countryId: "",
+    countryCode: "",
+    theme: null,
+    internalRole,
+    internalPermissions,
+    subjectType,
+  };
+
+  await setChunkedCookie(STAFF_AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData));
   return authTokenData;
 };
 

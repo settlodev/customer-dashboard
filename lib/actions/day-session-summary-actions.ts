@@ -79,19 +79,39 @@ export interface DaySessionSummary {
 
 /**
  * Returns the current day-session view used by the dashboard widget.
- * The Accounts {@code /current} call returns the precise live values
- * for the action buttons (extensionAllowed, effectiveCloseAt); the
- * Reports {@code /current} call returns the sales summary. Both are
- * best-effort — the widget gracefully renders whatever it has.
+ *
+ * <p>Accounts-first / Reports-enrichment, mirroring the day-sessions
+ * list page:
+ * <ol>
+ *   <li>Try Accounts {@code /current} for the authoritative lifecycle
+ *       row (extension window, identifier, notes).</li>
+ *   <li>Try Reports {@code /current} for sales aggregates.</li>
+ *   <li>If Accounts errored (network blip / 5xx) but Reports knows
+ *       there's an OPEN session, <b>synthesise</b> a partial lifecycle
+ *       from the Reports row so the widget keeps showing "open"
+ *       instead of flashing closed.</li>
+ *   <li>If both halves are empty <i>and</i> Accounts errored, throw —
+ *       the widget's {@code load()} catch then preserves its previous
+ *       summary rather than rendering an empty state from a blip.</li>
+ * </ol>
+ *
+ * <p>Note: a clean 204 from Accounts (definitively "no session") still
+ * resolves to {@code {session: null, report: null}} and is NOT treated
+ * as a transient error.
  */
 export async function getDaySessionSummary(
   locationId: string,
 ): Promise<DaySessionSummary> {
-  // Accounts is the source of truth for the operator-control fields
-  // (extensionAllowed/extensionWindowStart/effectiveCloseAt are
-  // computed against the live planner-task queue and settings).
-  const session = await getCurrentDaySession(locationId);
+  // ── 1. Accounts (source of truth for lifecycle) ─────────────────
+  let session: DaySession | null = null;
+  let accountsAvailable = true;
+  try {
+    session = await getCurrentDaySession(locationId);
+  } catch {
+    accountsAvailable = false;
+  }
 
+  // ── 2. Reports (aggregates + fallback lifecycle on Accounts blips) ─
   let report: CurrentSessionSummary | null = null;
   try {
     const apiClient = new ApiClient("reports");
@@ -103,15 +123,77 @@ export async function getDaySessionSummary(
       report = parseStringify(data) as CurrentSessionSummary;
     }
   } catch {
-    // Reports temporarily unavailable — still surface the session so
-    // the widget can render lifecycle without the totals.
+    // Reports temporarily unavailable — Accounts (if it answered) is
+    // sufficient for the widget to render lifecycle without totals.
     report = null;
   }
 
-  if (!session && !report) return { session: null, report: null };
+  // ── 3. Synthesise lifecycle from Reports when Accounts blipped ─
+  // Only when Accounts itself errored (NOT when it cleanly returned
+  // null) and Reports has an OPEN session. Keeps the widget stable
+  // through a brief outage instead of flashing "Business day closed".
+  if (!accountsAvailable && !session && report?.status === "OPEN") {
+    session = synthesizeFromReport(report, locationId);
+  }
+
+  // ── 4. Both empty + Accounts errored → propagate so the widget
+  // keeps its last-known state instead of rendering a fresh empty-
+  // state from a blip. A clean 204 still resolves normally.
+  if (!accountsAvailable && !session && !report) {
+    throw new Error(
+      "Day-session refresh failed — Accounts and Reports both unavailable",
+    );
+  }
 
   return {
     session: session ? (parseStringify(session) as DaySession) : null,
     report,
+  };
+}
+
+/**
+ * Builds a partial {@link DaySession} from a Reports
+ * {@link CurrentSessionSummary} so the widget can render the "open"
+ * pill during a brief Accounts outage. Reports doesn't carry the
+ * human-readable identifier or notes, so a {@code DSY-XXXXXX}
+ * stand-in is generated from the session id prefix — the next
+ * successful Accounts refresh swaps in the canonical value.
+ *
+ * <p>The synthesised row is a temporary view, not a write target —
+ * extension and close actions still hit Accounts directly using
+ * {@code session.id}, which IS canonical (Reports stores the same id).
+ */
+function synthesizeFromReport(
+  report: CurrentSessionSummary,
+  locationId: string,
+): DaySession {
+  const fallbackStatus: DaySession["status"] =
+    report.status === "OPEN" || report.status === "CLOSED"
+      ? report.status
+      : "OPEN";
+  return {
+    id: report.sessionId,
+    accountId: "",
+    locationId: report.locationId ?? locationId,
+    locationName: "",
+    identifier: `DSY-${report.sessionId.slice(0, 6).toUpperCase()}`,
+    businessDate: report.businessDate,
+    status: fallbackStatus,
+    triggerType: report.triggerType,
+    openedAt: report.openedAt,
+    closedAt: report.closedAt ?? undefined,
+    openedBy: report.openedBy ?? undefined,
+    closedBy: report.closedBy ?? undefined,
+    openedByLabel: report.openedByLabel ?? null,
+    closedByLabel: report.closedByLabel ?? null,
+    openingNotes: undefined,
+    closingNotes: undefined,
+    createdAt: report.openedAt,
+    updatedAt: report.openedAt,
+    extendedUntil: report.extendedUntil ?? null,
+    extensionCount: report.extensionCount,
+    effectiveCloseAt: report.effectiveCloseAt ?? null,
+    extensionAllowed: report.extensionAllowed ?? null,
+    extensionWindowStart: report.extensionWindowStart ?? null,
   };
 }

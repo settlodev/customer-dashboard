@@ -1,4 +1,4 @@
-import { SubscriptionStatus } from "@/types/types";
+import { InternalRole, SubjectType, SubscriptionStatus } from "@/types/types";
 
 /**
  * Decode a JWT payload (without verifying signature) to extract claims.
@@ -38,4 +38,44 @@ export function extractBusinessId(accessToken: string): string | null {
   if (!claims) return null;
   const businessId = claims.business_id;
   return typeof businessId === "string" && businessId.length > 0 ? businessId : null;
+}
+
+const INTERNAL_ROLES: InternalRole[] = [
+  "SYSTEM_ADMIN",
+  "SUPER_ADMIN",
+  "SUPPORT_AGENT",
+  "BOARD_MEMBER",
+  "SALES_TEAM",
+];
+
+const SUBJECT_TYPES: SubjectType[] = ["USER", "STAFF", "DEVICE"];
+
+export function extractInternalRole(accessToken: string): InternalRole | null {
+  const claims = decodeJwtClaims(accessToken);
+  if (!claims) return null;
+  const role = claims.internal_role;
+  if (typeof role !== "string") return null;
+  return INTERNAL_ROLES.includes(role as InternalRole) ? (role as InternalRole) : null;
+}
+
+export function extractInternalPermissions(accessToken: string): string[] {
+  const claims = decodeJwtClaims(accessToken);
+  if (!claims) return [];
+  const perms = claims.internal_permissions;
+  if (!Array.isArray(perms)) return [];
+  return perms.filter((p): p is string => typeof p === "string");
+}
+
+export function extractSubjectType(accessToken: string): SubjectType | null {
+  const claims = decodeJwtClaims(accessToken);
+  if (!claims) return null;
+  const subjectType = claims.subject_type;
+  if (typeof subjectType !== "string") return null;
+  return SUBJECT_TYPES.includes(subjectType as SubjectType)
+    ? (subjectType as SubjectType)
+    : null;
+}
+
+export function isStaffToken(accessToken: string): boolean {
+  return extractSubjectType(accessToken) === "STAFF" || extractInternalRole(accessToken) !== null;
 }

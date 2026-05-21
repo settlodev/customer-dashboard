@@ -397,11 +397,22 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
 
             switch (status) {
                 case 400:
+                    // Honour the server's errorCode when present so domain-
+                    // specific codes (e.g. BUSINESS_DAY_SESSION_HEADER_MISSING)
+                    // reach the UI's guard hooks instead of collapsing to a
+                    // generic VALIDATION_ERROR. Falls back to VALIDATION_ERROR
+                    // for legacy 400s that don't carry a code.
                     return createErrorResponse(
                         status,
-                        ErrorCodes.VALIDATION_ERROR,
-                        serverMessage || 'Invalid request parameters.',
-                        errorDetails
+                        serverCode || ErrorCodes.VALIDATION_ERROR,
+                        getUIErrorMessage(
+                            serverCode,
+                            serverMessage,
+                            'Invalid request parameters.',
+                        ),
+                        errorDetails,
+                        undefined,
+                        errorMetadata,
                     );
 
                 case 401: {
@@ -496,11 +507,18 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
                     );
 
                 case 422:
+                    // Same rationale as 400 — let domain codes through.
                     return createErrorResponse(
                         status,
-                        ErrorCodes.VALIDATION_ERROR,
-                        serverMessage || 'Validation error occurred.',
-                        errorDetails
+                        serverCode || ErrorCodes.VALIDATION_ERROR,
+                        getUIErrorMessage(
+                            serverCode,
+                            serverMessage,
+                            'Validation error occurred.',
+                        ),
+                        errorDetails,
+                        undefined,
+                        errorMetadata,
                     );
 
                 case 429:
