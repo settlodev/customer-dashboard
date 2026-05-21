@@ -16,6 +16,7 @@ const createMinimalBusiness = (business: Business): MinimalBusiness => {
     user: business.user,
     id: business.id,
     name: business.name,
+    slug: business.slug,
     prefix: business.prefix,
     businessType: business.businessType,
     logo: business.logo || null,

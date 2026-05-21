@@ -114,6 +114,7 @@ export const getBusinessDropDown = async (): Promise<Business[] | null> => {
     const myEndpoints = endpoints({ userId });
     const apiClient = new ApiClient();
     const data = await apiClient.get(myEndpoints.business.list.endpoint);
+    console.debug("Business drop down", data);
     return parseStringify(data);
   } catch (error: unknown) {
     if (error instanceof AuthenticationError) {
