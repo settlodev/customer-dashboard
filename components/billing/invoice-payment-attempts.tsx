@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -11,53 +11,40 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { listInvoicePayments } from "@/lib/actions/payment-actions";
 import type { PaymentResponse, PaymentStatus } from "@/types/billing/types";
 
 /**
- * Shows every Selcom payment attempt against an invoice — succeeded,
- * failed, and in-flight — newest first. Tied to the invoice id so the
- * merchant can audit retries from inside InvoiceViewDialog.
- *
- * `refreshKey` lets the parent force a refetch (e.g. after a successful
- * payment from the same dialog) without remounting the component.
+ * Statuses that block the parent invoice from being cancelled. Exported so
+ * the dialog can gate its Cancel button against the same data this list
+ * renders — keep the two in sync with the server's BLOCKING_STATUSES in
+ * `SelcomPaymentService`.
+ */
+export const BLOCKING_PAYMENT_STATUSES: PaymentStatus[] = [
+  "ACCEPTED",
+  "PROCESSING",
+  "SUCCESS",
+];
+
+export function hasBlockingPayment(attempts: PaymentResponse[] | null): boolean {
+  if (!attempts) return false;
+  return attempts.some((a) => BLOCKING_PAYMENT_STATUSES.includes(a.paymentStatus));
+}
+
+/**
+ * Renders every Selcom payment attempt against an invoice — succeeded,
+ * failed, and in-flight — newest first. Pure presenter; the parent owns
+ * the fetch so it can share the same `attempts` array with the cancel-
+ * button gating logic.
  */
 export function InvoicePaymentAttempts({
-  invoiceId,
-  refreshKey = 0,
+  attempts,
+  loading,
+  error,
 }: {
-  invoiceId: string | null;
-  refreshKey?: number;
+  attempts: PaymentResponse[] | null;
+  loading: boolean;
+  error: string | null;
 }) {
-  const [attempts, setAttempts] = useState<PaymentResponse[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!invoiceId) {
-      setAttempts(null);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    listInvoicePayments(invoiceId)
-      .then((data) => {
-        if (!cancelled) setAttempts(data ?? []);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Couldn't load history");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [invoiceId, refreshKey]);
-
-  if (!invoiceId) return null;
-
   return (
     <div>
       <p className="mb-2 font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">

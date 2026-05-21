@@ -8,7 +8,7 @@ import {
 import type { PaymentStatus } from "@/types/billing/types";
 
 const POLL_INTERVAL_MS = 5_000;
-const POLL_TIMEOUT_MS = 5 * 60 * 1_000; // 5 minutes
+const POLL_TIMEOUT_MS = 150 * 1_000;
 
 interface UsePaymentPollingReturn {
   status: PaymentStatus | null;
@@ -18,16 +18,6 @@ interface UsePaymentPollingReturn {
   stop: () => void;
 }
 
-/**
- * Polls payment status until a terminal state (SUCCESS/FAILED) or until
- * the polling window expires. On timeout, calls the server's `timeout`
- * endpoint so the SelcomPayment row is persisted as FAILED — the row can
- * still be upgraded to SUCCESS later if Selcom's webhook lands after we
- * gave up.
- *
- * Pass `null` to disable polling. Pass the `externalReferenceId` from
- * the initiatePayment response to start.
- */
 export function usePaymentPolling(
   externalReferenceId: string | null,
 ): UsePaymentPollingReturn {
@@ -73,7 +63,9 @@ export function usePaymentPolling(
           // Network error on the timeout call is non-fatal — the server
           // can still receive the late webhook and resolve the row.
         }
-        setError("Payment verification timed out. We didn't receive a confirmation from your mobile-money provider.");
+        setError(
+          "Payment verification timed out. We didn't receive a confirmation from your mobile-money provider.",
+        );
         setStatus("FAILED");
         return;
       }
@@ -86,7 +78,9 @@ export function usePaymentPolling(
         if (newStatus === "SUCCESS" || newStatus === "FAILED") {
           stop();
           if (newStatus === "FAILED") {
-            setError(response.errorMessage || "Payment failed. Please try again.");
+            setError(
+              response.errorMessage || "Payment failed. Please try again.",
+            );
           }
         }
       } catch {

@@ -188,6 +188,9 @@ export const login = async (
     }
 
     let profileData: any = {};
+    let profileFetchError:
+      | { status: number; code?: string; message?: string }
+      | null = null;
     try {
       console.log("[LOGIN] Fetching profile from:", `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/${loginData.accountId}`);
       const profileResponse = await fetch(
@@ -205,11 +208,49 @@ export const login = async (
         profileData = await profileResponse.json();
         console.log("[LOGIN] Profile fetched for:", profileData.firstName, profileData.lastName);
       } else {
-        const profileError = await profileResponse.text().catch(() => "");
-        console.error("[LOGIN] Profile fetch failed:", profileResponse.status, profileError);
+        const apiError = await parseApiError(profileResponse);
+        console.error(
+          "[LOGIN] Profile fetch failed:",
+          profileResponse.status,
+          JSON.stringify(apiError),
+        );
+        profileFetchError = {
+          status: profileResponse.status,
+          code: apiError.code,
+          message: apiError.message,
+        };
       }
-    } catch (profileErr) {
+    } catch (profileErr: any) {
       console.error("[LOGIN] Profile fetch error:", profileErr);
+      profileFetchError = {
+        status: 0,
+        code: "NETWORK_ERROR",
+        message: profileErr?.message,
+      };
+    }
+
+    // Profile fetch is required for routing decisions (business/location
+    // completion flags drive the onboarding redirect). If it failed, abort
+    // the login and surface the error so the user can retry — defaulting
+    // the flags to false sends fully-onboarded users back to the business
+    // registration screen.
+    if (profileFetchError) {
+      await deleteAuthCookie();
+      const fallback =
+        profileFetchError.status >= 500 || profileFetchError.status === 0
+          ? "We couldn't load your account right now. Please try again in a moment."
+          : "We couldn't load your account. Please try again.";
+      return parseStringify({
+        responseType: "error",
+        message: getUIErrorMessage(
+          profileFetchError.code,
+          profileFetchError.message,
+          fallback,
+        ),
+        error: new Error(
+          profileFetchError.code || `HTTP ${profileFetchError.status}`,
+        ),
+      });
     }
 
     console.log("[LOGIN] Creating auth token cookie...");
@@ -421,6 +462,9 @@ export const oauthLogin = async (
     }
 
     let profileData: any = {};
+    let profileFetchError:
+      | { status: number; code?: string; message?: string }
+      | null = null;
     try {
       const profileResponse = await fetch(
         `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/${loginData.accountId}`,
@@ -434,9 +478,48 @@ export const oauthLogin = async (
       );
       if (profileResponse.ok) {
         profileData = await profileResponse.json();
+      } else {
+        const apiError = await parseApiError(profileResponse);
+        console.error(
+          "[OAUTH] Profile fetch failed:",
+          profileResponse.status,
+          JSON.stringify(apiError),
+        );
+        profileFetchError = {
+          status: profileResponse.status,
+          code: apiError.code,
+          message: apiError.message,
+        };
       }
-    } catch {
-      // Best-effort
+    } catch (profileErr: any) {
+      console.error("[OAUTH] Profile fetch error:", profileErr);
+      profileFetchError = {
+        status: 0,
+        code: "NETWORK_ERROR",
+        message: profileErr?.message,
+      };
+    }
+
+    // See comment in login() — abort instead of defaulting the
+    // onboarding flags to false, which would wrongly bounce returning
+    // users to the business registration screen.
+    if (profileFetchError) {
+      await deleteAuthCookie();
+      const fallback =
+        profileFetchError.status >= 500 || profileFetchError.status === 0
+          ? "We couldn't load your account right now. Please try again in a moment."
+          : "We couldn't load your account. Please try again.";
+      return parseStringify({
+        responseType: "error",
+        message: getUIErrorMessage(
+          profileFetchError.code,
+          profileFetchError.message,
+          fallback,
+        ),
+        error: new Error(
+          profileFetchError.code || `HTTP ${profileFetchError.status}`,
+        ),
+      });
     }
 
     await createAuthTokenFromLogin(loginData, {
@@ -719,6 +802,9 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
 
       // Fetch user profile
       let profileData: any = {};
+      let profileFetchError:
+        | { status: number; code?: string; message?: string }
+        | null = null;
       try {
         const profileResponse = await fetch(
           `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/${verifyData.accountId}`,
@@ -732,9 +818,47 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
         );
         if (profileResponse.ok) {
           profileData = await profileResponse.json();
+        } else {
+          const apiError = await parseApiError(profileResponse);
+          console.error(
+            "[VERIFY_EMAIL] Profile fetch failed:",
+            profileResponse.status,
+            JSON.stringify(apiError),
+          );
+          profileFetchError = {
+            status: profileResponse.status,
+            code: apiError.code,
+            message: apiError.message,
+          };
         }
-      } catch {
-        // Best-effort
+      } catch (profileErr: any) {
+        console.error("[VERIFY_EMAIL] Profile fetch error:", profileErr);
+        profileFetchError = {
+          status: 0,
+          code: "NETWORK_ERROR",
+          message: profileErr?.message,
+        };
+      }
+
+      // See comment in login() — without the profile we can't make the
+      // right onboarding routing decision, so fail loudly and let the
+      // user retry rather than dropping them on business-registration.
+      if (profileFetchError) {
+        const fallback =
+          profileFetchError.status >= 500 || profileFetchError.status === 0
+            ? "We couldn't load your account right now. Please try again in a moment."
+            : "We couldn't load your account. Please try again.";
+        return parseStringify({
+          responseType: "error",
+          message: getUIErrorMessage(
+            profileFetchError.code,
+            profileFetchError.message,
+            fallback,
+          ),
+          error: new Error(
+            profileFetchError.code || `HTTP ${profileFetchError.status}`,
+          ),
+        });
       }
 
       // Clear pending verification before setting new cookies to avoid 431

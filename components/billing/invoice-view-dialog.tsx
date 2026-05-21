@@ -44,8 +44,12 @@ import {
   type InvoiceParty,
 } from "./shared";
 import { PaymentOptionsDialog } from "./payment-options-dialog";
-import { InvoicePaymentAttempts } from "./invoice-payment-attempts";
-import type { InvoiceViewDto } from "@/types/billing/types";
+import {
+  hasBlockingPayment,
+  InvoicePaymentAttempts,
+} from "./invoice-payment-attempts";
+import { listInvoicePayments } from "@/lib/actions/payment-actions";
+import type { InvoiceViewDto, PaymentResponse } from "@/types/billing/types";
 
 interface InvoiceViewDialogProps {
   open: boolean;
@@ -86,6 +90,9 @@ export function InvoiceViewDialog({
   /** Bumps after each payment attempt resolves so the attempts list refetches. */
   const [attemptsRefreshKey, setAttemptsRefreshKey] = useState(0);
   const [billTo, setBillTo] = useState<InvoiceParty | null>(null);
+  const [attempts, setAttempts] = useState<PaymentResponse[] | null>(null);
+  const [attemptsLoading, setAttemptsLoading] = useState(false);
+  const [attemptsError, setAttemptsError] = useState<string | null>(null);
 
   const loadInvoice = useCallback(async () => {
     if (!invoiceId) return;
@@ -120,6 +127,34 @@ export function InvoiceViewDialog({
     };
   }, [open, invoiceId]);
 
+  // Fetch the Selcom payment-attempt history. Drives both the list shown
+  // beneath the invoice totals and the "Cancel invoice" button's
+  // disabled state (an in-flight or successful attempt blocks cancel).
+  useEffect(() => {
+    if (!open || !invoiceId) {
+      setAttempts(null);
+      setAttemptsError(null);
+      return;
+    }
+    let cancelled = false;
+    setAttemptsLoading(true);
+    setAttemptsError(null);
+    listInvoicePayments(invoiceId)
+      .then((data) => {
+        if (!cancelled) setAttempts(data ?? []);
+      })
+      .catch((err) => {
+        if (!cancelled)
+          setAttemptsError(err instanceof Error ? err.message : "Couldn't load history");
+      })
+      .finally(() => {
+        if (!cancelled) setAttemptsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, invoiceId, attemptsRefreshKey]);
+
   // Resolve the "Bill to" party from the business + location IDs in scope.
   // Falls back to whatever the invoice DTO carries when neither lookup
   // succeeds (e.g., invoice opened outside of a billing context).
@@ -149,6 +184,10 @@ export function InvoiceViewDialog({
   const statusMeta = invoice ? getInvoiceStatusMeta(invoice.status) : null;
   const isPending = invoice?.status === "PENDING";
   const canPay = isPending && !!businessId && !!locationId;
+  // Cancel is blocked while an attempt is INITIATING/PROCESSING (USSD push
+  // could still confirm) or has already SUCCEEDED (a real customer payment
+  // we can't void). Server enforces the same rule on the cancel endpoint.
+  const cancelBlocked = hasBlockingPayment(attempts);
 
   const handleCancel = useCallback(async () => {
     if (!invoice) return;
@@ -181,9 +220,14 @@ export function InvoiceViewDialog({
           overlayClassName="bg-foreground/30 backdrop-blur-sm"
         >
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex flex-wrap items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground" />
-              {invoice ? `Invoice ${invoice.invoiceNumber}` : "Invoice"}
+              <span>{invoice ? `Invoice ${invoice.invoiceNumber}` : "Invoice"}</span>
+              {statusMeta && (
+                <Badge variant={statusMeta.variant} className="ml-0.5">
+                  {statusMeta.label}
+                </Badge>
+              )}
             </DialogTitle>
             <DialogDescription>
               {invoice
@@ -200,22 +244,6 @@ export function InvoiceViewDialog({
 
           {invoice && !loading && (
             <div className="max-h-[60vh] space-y-4 overflow-y-auto pr-1">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                {statusMeta && (
-                  <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
-                )}
-                <div className="text-right">
-                  <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
-                    Total
-                  </p>
-                  <p className="text-xl font-semibold tabular-nums text-ink">
-                    {formatMoney(invoice.totalAmount, invoice.currency)}
-                  </p>
-                </div>
-              </div>
-
-              <Separator />
-
               <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
                 <div>
                   <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
@@ -319,8 +347,9 @@ export function InvoiceViewDialog({
               <Separator />
 
               <InvoicePaymentAttempts
-                invoiceId={invoice.id}
-                refreshKey={attemptsRefreshKey}
+                attempts={attempts}
+                loading={attemptsLoading}
+                error={attemptsError}
               />
             </div>
           )}
@@ -334,6 +363,12 @@ export function InvoiceViewDialog({
                     variant="ghost"
                     className="text-neg hover:bg-neg/10 hover:text-neg"
                     onClick={() => setConfirmCancelOpen(true)}
+                    disabled={cancelBlocked}
+                    title={
+                      cancelBlocked
+                        ? "Can't cancel — a payment is in progress or already successful for this invoice."
+                        : undefined
+                    }
                   >
                     <Ban className="mr-2 h-4 w-4" />
                     Cancel invoice
@@ -466,10 +501,10 @@ function PartyBlock({ label, party }: { label: string; party: InvoiceParty }) {
         </p>
       ))}
       {party.phone && (
-        <p className="font-mono text-[11px] text-muted-foreground">{party.phone}</p>
+        <p className="text-[12.5px] text-ink-2">{party.phone}</p>
       )}
       {party.email && (
-        <p className="font-mono text-[11px] text-muted-foreground">{party.email}</p>
+        <p className="text-[12.5px] text-ink-2">{party.email}</p>
       )}
     </div>
   );
