@@ -51,6 +51,8 @@ import { recordExpensePayment } from "@/lib/actions/expense-payment-actions";
 import { fetchExchangeRate } from "@/lib/actions/exchange-rate-actions";
 import { ExpensePaymentSchema } from "@/types/expense/schema";
 import type { Expense } from "@/types/expense/type";
+import { NumericFormat } from "react-number-format";
+import { NumericInput } from "@/components/ui/numeric-input";
 
 interface Props {
   expense: Expense;
@@ -71,7 +73,8 @@ export default function ExpensePaymentForm({
   const [isPending, startTransition] = useTransition();
   const [paymentMethodLabel, setPaymentMethodLabel] = useState("");
   const today = format(new Date(), "yyyy-MM-dd");
-  const locationCurrency = useLocationCurrency() || expense.currencyCode || "TZS";
+  const locationCurrency =
+    useLocationCurrency() || expense.currencyCode || "TZS";
 
   const [fxLoading, setFxLoading] = useState(false);
   const [fxError, setFxError] = useState<string | null>(null);
@@ -183,10 +186,7 @@ export default function ExpensePaymentForm({
           </SheetDescription>
         </SheetHeader>
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(submit)}
-            className="mt-6 space-y-4"
-          >
+          <form onSubmit={form.handleSubmit(submit)} className="mt-6 space-y-4">
             <FormField
               control={form.control}
               name="amount"
@@ -194,11 +194,10 @@ export default function ExpensePaymentForm({
                 <FormItem>
                   <FormLabel>Amount</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      step="0.0001"
-                      {...field}
-                      value={field.value ?? ""}
+                    <NumericInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="0.00"
                       disabled={isPending}
                     />
                   </FormControl>
@@ -257,7 +256,8 @@ export default function ExpensePaymentForm({
                         <span className="text-red-600">{fxError}</span>
                       ) : convertedAmount ? (
                         <>
-                          {Number(watchedAmount).toLocaleString()} {watchedCurrency} ={" "}
+                          {Number(watchedAmount).toLocaleString()}{" "}
+                          {watchedCurrency} ={" "}
                           <span className="font-medium">
                             {convertedAmount.toLocaleString(undefined, {
                               maximumFractionDigits: 0,
@@ -302,7 +302,9 @@ export default function ExpensePaymentForm({
                     <PopoverContent className="w-[300px] p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={field.value ? new Date(field.value) : undefined}
+                        selected={
+                          field.value ? new Date(field.value) : undefined
+                        }
                         onSelect={(d) => {
                           if (d) field.onChange(format(d, "yyyy-MM-dd"));
                         }}

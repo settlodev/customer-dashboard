@@ -1,4 +1,4 @@
-import { format, subDays } from "date-fns";
+import { format, startOfYear } from "date-fns";
 import { TrendingUp, TrendingDown, CircleDollarSign } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,10 +55,7 @@ function Section({
               </tr>
             ) : (
               rows.map((r) => (
-                <tr
-                  key={r.accountId ?? r.code}
-                  className="hover:bg-gray-50/50"
-                >
+                <tr key={r.accountId ?? r.code} className="hover:bg-gray-50/50">
                   <td className="px-4 py-2.5 font-mono text-xs">{r.code}</td>
                   <td className="px-4 py-2.5">{r.name}</td>
                   <td className="px-4 py-2.5 text-right font-mono tabular-nums">
@@ -89,7 +86,10 @@ export default async function ProfitLossPage({
 }) {
   const params = await searchParams;
   const today = format(new Date(), "yyyy-MM-dd");
-  const startDate = params.startDate ?? format(subDays(new Date(), 30), "yyyy-MM-dd");
+  // const startDate =
+  //   params.startDate ?? format(subDays(new Date(), 30), "yyyy-MM-dd");
+  const startDate =
+    params.startDate ?? format(startOfYear(new Date()), "yyyy-MM-dd");
   const endDate = params.endDate ?? today;
 
   const location = await getCurrentLocation();
@@ -106,7 +106,7 @@ export default async function ProfitLossPage({
         ]}
       />
       <PageHeader
-        title="Profit & loss"
+        title="Profit \ loss"
         subtitle={`From ${startDate} to ${endDate}. Revenue minus expenses from posted journals.`}
       />
       <PageBody>

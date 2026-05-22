@@ -127,15 +127,21 @@ export async function updateExpense(
   }
 }
 
-export async function submitExpense(id: string): Promise<FormResponse<Expense>> {
+export async function submitExpense(
+  id: string,
+): Promise<FormResponse<Expense>> {
   return workflowAction(id, "submit", "Expense submitted for approval");
 }
 
-export async function approveExpense(id: string): Promise<FormResponse<Expense>> {
+export async function approveExpense(
+  id: string,
+): Promise<FormResponse<Expense>> {
   return workflowAction(id, "approve", "Expense approved");
 }
 
-export async function rejectExpense(id: string): Promise<FormResponse<Expense>> {
+export async function rejectExpense(
+  id: string,
+): Promise<FormResponse<Expense>> {
   return workflowAction(id, "reject", "Expense rejected");
 }
 
@@ -203,7 +209,10 @@ function sanitize(values: z.infer<typeof ExpenseSchema>) {
   };
 }
 
-function errorResponse(error: unknown, fallback: string): FormResponse<Expense> {
+function errorResponse(
+  error: unknown,
+  fallback: string,
+): FormResponse<Expense> {
   console.error(fallback, error);
   return {
     responseType: "error",

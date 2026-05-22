@@ -52,15 +52,14 @@ import { ExpenseCategorySelector } from "@/components/widgets/expense-category-s
 import { ChartOfAccountSelector } from "@/components/widgets/chart-of-account-selector";
 import CurrencySelector from "@/components/widgets/currency-selector";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
-import {
-  createExpense,
-  updateExpense,
-} from "@/lib/actions/expense-actions";
+import { createExpense, updateExpense } from "@/lib/actions/expense-actions";
 import { fetchExchangeRate } from "@/lib/actions/exchange-rate-actions";
 import { ExpenseSchema } from "@/types/expense/schema";
 import type { Expense } from "@/types/expense/type";
 
 import styles from "./styles/form-shell.module.css";
+import { NumericFormat } from "react-number-format";
+import { NumericInput } from "@/components/ui/numeric-input";
 
 interface Props {
   item: Expense | null;
@@ -76,15 +75,18 @@ interface Props {
 
 type FormValues = z.infer<typeof ExpenseSchema>;
 
-export default function ExpenseForm({ item, defaultCurrency, defaultDueDays }: Props) {
+export default function ExpenseForm({
+  item,
+  defaultCurrency,
+  defaultDueDays,
+}: Props) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   // Resolve the location's base currency on the client so it stays in
   // sync if the merchant switches locations without a full reload.
   // Falls back to the SSR-provided default until the cache warms.
-  const locationCurrency =
-    useLocationCurrency() || defaultCurrency || "TZS";
+  const locationCurrency = useLocationCurrency() || defaultCurrency || "TZS";
 
   const isEdit = !!item;
   const today = format(new Date(), "yyyy-MM-dd");
@@ -218,10 +220,7 @@ export default function ExpenseForm({ item, defaultCurrency, defaultDueDays }: P
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(submit)}
-        className={styles.formRoot}
-      >
+      <form onSubmit={form.handleSubmit(submit)} className={styles.formRoot}>
         <div className={styles.formStack}>
           {/* ── 01. Vendor & Description ─────────────────────────── */}
           <section className={styles.formCard}>
@@ -359,8 +358,8 @@ export default function ExpenseForm({ item, defaultCurrency, defaultDueDays }: P
               <div className="flex-1 min-w-0">
                 <h3>Amounts</h3>
                 <p className={styles.formCardHeadDesc}>
-                  Net amount + tax. Payments are recorded separately
-                  after approval.
+                  Net amount + tax. Payments are recorded separately after
+                  approval.
                 </p>
               </div>
               <div className={styles.formCardActions}>
@@ -378,13 +377,11 @@ export default function ExpenseForm({ item, defaultCurrency, defaultDueDays }: P
                         Net amount <span className="req">*</span>
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.0001"
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isPending || isLocked}
+                        <NumericInput
+                          value={field.value}
+                          onChange={field.onChange}
                           placeholder="0.00"
+                          disabled={isPending || isLocked}
                         />
                       </FormControl>
                       <FormMessage className="text-xs" />
@@ -455,9 +452,13 @@ export default function ExpenseForm({ item, defaultCurrency, defaultDueDays }: P
                               FETCHING…
                             </span>
                           ) : fxStale ? (
-                            <span className="opt text-amber-600">STALE — VERIFY</span>
+                            <span className="opt text-amber-600">
+                              STALE — VERIFY
+                            </span>
                           ) : (
-                            <span className="opt">AUTO-FETCHED · OVERRIDE OK</span>
+                            <span className="opt">
+                              AUTO-FETCHED · OVERRIDE OK
+                            </span>
                           )}
                         </FormLabel>
                         <FormControl>

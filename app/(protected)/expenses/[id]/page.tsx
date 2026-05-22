@@ -7,12 +7,7 @@ import {
   PageShell,
 } from "@/components/layouts/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getExpense, getExpenseTimeline } from "@/lib/actions/expense-actions";
 import { listExpensePayments } from "@/lib/actions/expense-payment-actions";
 import { listExpenseAttachments } from "@/lib/actions/expense-attachment-actions";
@@ -41,17 +36,15 @@ export default async function ExpensesDetailPage({
   // The cache is hydrated by Kafka events from the Accounts Service —
   // see LocationSettingsConsumer in the accounting service.
   const settings = await getAccountingLocationSettings();
-  const defaultCurrency = settings.currency || settings.defaultCurrency || "TZS";
+  const defaultCurrency =
+    settings.currency || settings.defaultCurrency || "TZS";
   const defaultDueDays = settings.defaultInvoiceDueDays ?? null;
 
   if (isNew) {
     return (
       <PageShell>
         <PageBreadcrumbs
-          items={[
-            { title: "Expenses", href: "/expenses" },
-            { title: "New" },
-          ]}
+          items={[{ title: "Expenses", href: "/expenses" }, { title: "New" }]}
         />
         <PageHeader
           title="Record expense"
@@ -69,6 +62,7 @@ export default async function ExpensesDetailPage({
   }
 
   const expense = await getExpense(id);
+
   if (!expense) notFound();
 
   const [payments, attachments, timeline] = await Promise.all([

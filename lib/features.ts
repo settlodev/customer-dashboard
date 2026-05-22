@@ -110,7 +110,8 @@ export const FEATURE_META: Record<string, FeatureMeta> = {
   },
   [Features.MODIFIER_GROUPS]: {
     title: "Modifier Groups",
-    description: "Let customers customize orders with options like sizes, toppings, and extras.",
+    description:
+      "Let customers customize orders with options like sizes, toppings, and extras.",
     benefits: [
       "Create modifier groups (size, spice level, extras)",
       "Set pricing per modifier option",
@@ -119,7 +120,8 @@ export const FEATURE_META: Record<string, FeatureMeta> = {
   },
   [Features.ADDON_GROUPS]: {
     title: "Addon Groups",
-    description: "Offer add-on items that pair with your products to increase order value.",
+    description:
+      "Offer add-on items that pair with your products to increase order value.",
     benefits: [
       "Suggest add-ons at checkout",
       "Bundle complementary items",
@@ -128,7 +130,8 @@ export const FEATURE_META: Record<string, FeatureMeta> = {
   },
   [Features.PURCHASE_REQUISITIONS]: {
     title: "Purchase Orders",
-    description: "Streamline procurement with purchase orders, approvals, and goods received tracking.",
+    description:
+      "Streamline procurement with purchase orders, approvals, and goods received tracking.",
     benefits: [
       "Create and approve purchase orders",
       "Track goods received vs ordered",
@@ -137,7 +140,8 @@ export const FEATURE_META: Record<string, FeatureMeta> = {
   },
   [Features.TABLE_RESERVATIONS]: {
     title: "Tables & Reservations",
-    description: "Manage table layouts, accept reservations, and reduce no-shows with deposits.",
+    description:
+      "Manage table layouts, accept reservations, and reduce no-shows with deposits.",
     benefits: [
       "Visual floor plan management",
       "Online and phone reservations",
@@ -146,7 +150,8 @@ export const FEATURE_META: Record<string, FeatureMeta> = {
   },
   [Features.KITCHEN_DISPLAY]: {
     title: "Kitchen Display System",
-    description: "Send orders directly to kitchen screens for faster, more accurate preparation.",
+    description:
+      "Send orders directly to kitchen screens for faster, more accurate preparation.",
     benefits: [
       "Real-time order display in kitchen",
       "Priority and timing management",
@@ -155,7 +160,8 @@ export const FEATURE_META: Record<string, FeatureMeta> = {
   },
   [Features.REPORTS]: {
     title: "Advanced Reports",
-    description: "Get detailed insights into sales, stock, staff performance, and profitability.",
+    description:
+      "Get detailed insights into sales, stock, staff performance, and profitability.",
     benefits: [
       "Cash flow and profit/loss reports",
       "Top-selling and slow-moving product analysis",
@@ -167,7 +173,7 @@ export const FEATURE_META: Record<string, FeatureMeta> = {
     description:
       "Full double-entry accounting — track expenses, vendors, AP/AR, journal entries, and produce real financial statements.",
     benefits: [
-      "Trial balance, balance sheet, profit & loss, general ledger drill-down",
+      "Trial balance, balance sheet, profit \ loss, general ledger drill-down",
       "Vendor + expense workflow with approval, payments, and AP aging",
       "Journal entries, fund transfers, till reconciliation, and month-end close",
     ],
