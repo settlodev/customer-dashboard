@@ -132,4 +132,3 @@ export const deleteActiveLocationCookie = async () => {
   const cookieStore = await cookies();
   cookieStore.delete("activeLocation");
 };
-

@@ -1,3 +1,5 @@
+// "use server";
+
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 import https from "https";
 import { handleSettloApiError } from "@/lib/settlo-api-error-handler";
@@ -222,22 +224,6 @@ class ApiClient {
     try {
       const response = await this.instance.delete<T>(url, config);
       return response.data;
-    } catch (error) {
-      if (error instanceof AuthenticationError) throw error;
-      throw await handleSettloApiError(error);
-    }
-  }
-  public async postWithHeaders<T, U>(
-    url: string,
-    data: U,
-    config?: AxiosRequestConfig,
-  ): Promise<{ data: T; headers: Record<string, string> }> {
-    try {
-      const response = await this.instance.post<T>(url, data, config);
-      return {
-        data: response.data,
-        headers: response.headers as Record<string, string>,
-      };
     } catch (error) {
       if (error instanceof AuthenticationError) throw error;
       throw await handleSettloApiError(error);

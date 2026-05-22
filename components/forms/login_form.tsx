@@ -93,8 +93,7 @@ function LoginForm() {
               // Clear errors
               setError("");
               setPersistentError("");
-              window.location.href =
-                data.redirectUrl || DEFAULT_LOGIN_REDIRECT_URL;
+              window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
               return;
             }
           }

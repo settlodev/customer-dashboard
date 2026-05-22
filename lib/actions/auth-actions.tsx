@@ -9,7 +9,7 @@ import {
   UpdatePasswordSchema,
   UpdateUserSchema,
 } from "@/types/data-schemas";
-import { auth, signIn, signOut } from "@/auth";
+import { signIn, signOut } from "@/auth";
 import { ExtendedUser, FormResponse } from "@/types/types";
 import { parseStringify } from "@/lib/utils";
 import {
@@ -23,16 +23,6 @@ import { cookies } from "next/headers";
 
 import { revalidatePath } from "next/cache";
 import { deleteActiveWarehouseCookie } from "./warehouse/current-warehouse-action";
-
-const SERVICE_URLS: Record<string, string> = {
-  alpha: "https://customer-dashboard-git-alpha-settlo.vercel.app",
-  dev: "https://customer-dashboard-git-dev-settlo.vercel.app",
-};
-
-function normalizeService(value: string | null | undefined): string | null {
-  if (!value) return null;
-  return value.split("-")[0];
-}
 
 export async function logout() {
   try {
@@ -84,7 +74,9 @@ export const login = async (
       redirect: false,
     });
 
+    // Only handle specific credential errors
     if (result?.error === "CredentialsSignin") {
+      console.log("Credentials sign-in error detected");
       return parseStringify({
         responseType: "error",
         message: "Wrong credentials! Invalid email address and/or password",
@@ -92,7 +84,9 @@ export const login = async (
       });
     }
 
+    // Handle other specific errors
     if (result?.error) {
+      console.log("Other authentication error:", result.error);
       return parseStringify({
         responseType: "error",
         message: "Authentication failed. Please try again.",
@@ -100,7 +94,9 @@ export const login = async (
       });
     }
 
+    // Check if authentication was successful
     if (result?.ok === false) {
+      console.log("Authentication not OK, but no specific error");
       return parseStringify({
         responseType: "error",
         message: "Authentication failed. Please try again.",
@@ -108,39 +104,15 @@ export const login = async (
       });
     }
 
+    // Set cookie persistence based on rememberMe
     await setSessionPersistence(rememberMe);
-
-    // ✨ Check if backend asked us to reroute to a different deployment
-    const session = await auth();
-    const upstream = normalizeService(session?.upstreamService);
-    const handoffToken = session?.handoffToken;
-    const current = normalizeService(process.env.SERVICE_NAME);
-
-    console.log("🟠 [login] upstream:", upstream, "current:", current);
-
-    if (upstream && current && upstream !== current && SERVICE_URLS[upstream]) {
-      // Clear the partial dev session — alpha will create its own
-      await deleteAuthCookie();
-
-      const target = SERVICE_URLS[upstream];
-      const redirectUrl = handoffToken
-        ? `${target}/auth/handoff?token=${handoffToken}`
-        : `${target}/login`;
-
-      console.log("✅ [login] REROUTE →", redirectUrl);
-
-      return parseStringify({
-        responseType: "success",
-        message: "Redirecting to your assigned environment...",
-        redirectUrl,
-      });
-    }
 
     return parseStringify({
       responseType: "success",
       message: "Login successful",
     });
   } catch (error: any) {
+    // Handle Auth.js specific errors
     if (
       error?.type === "CredentialsSignin" ||
       error?.name === "CredentialsSignin"
@@ -152,6 +124,7 @@ export const login = async (
       });
     }
 
+    // Handle other Auth.js errors
     if (
       error?.message?.includes("CredentialsSignin") ||
       error?.toString?.().includes("CredentialsSignin")
@@ -170,119 +143,6 @@ export const login = async (
     });
   }
 };
-
-// export const login = async (
-//   credentials: z.infer<typeof LoginSchema>,
-//   rememberMe: boolean = false,
-// ): Promise<FormResponse> => {
-//   const validatedData = LoginSchema.safeParse(credentials);
-//   if (!validatedData.success) {
-//     return parseStringify({
-//       responseType: "error",
-//       message: "Please fill in all the fields marked with * before proceeding",
-//       error: new Error("Incomplete credentials"),
-//     });
-//   }
-//
-//   await deleteAuthCookie();
-//   await deleteActiveBusinessCookie();
-//   await deleteActiveLocationCookie();
-//   await deleteActiveWarehouseCookie();
-//
-//   try {
-//     const result = await signIn("credentials", {
-//       email: validatedData.data.email,
-//       password: validatedData.data.password,
-//       redirect: false,
-//     });
-//
-//     // Only handle specific credential errors
-//     if (result?.error === "CredentialsSignin") {
-//       console.log("Credentials sign-in error detected");
-//       return parseStringify({
-//         responseType: "error",
-//         message: "Wrong credentials! Invalid email address and/or password",
-//         error: new Error("Wrong credentials"),
-//       });
-//     }
-//
-//     // Handle other specific errors
-//     if (result?.error) {
-//       console.log("Other authentication error:", result.error);
-//       return parseStringify({
-//         responseType: "error",
-//         message: "Authentication failed. Please try again.",
-//         error: new Error("Authentication failed"),
-//       });
-//     }
-//
-//     // Check if authentication was successful
-//     if (result?.ok === false) {
-//       console.log("Authentication not OK, but no specific error");
-//       return parseStringify({
-//         responseType: "error",
-//         message: "Authentication failed. Please try again.",
-//         error: new Error("Authentication failed"),
-//       });
-//     }
-//
-//     // Set cookie persistence based on rememberMe
-//     await setSessionPersistence(rememberMe);
-//
-//     // Check if backend asked us to reroute
-//     const session = await auth();
-//     const upstream = (session as any)?.upstreamService;
-//     const handoffToken = (session as any)?.handoffToken;
-//
-//     if (upstream && upstream !== CURRENT_SERVICE && SERVICE_URLS[upstream]) {
-//       const target = SERVICE_URLS[upstream];
-//       const redirectUrl = handoffToken
-//         ? `${target}/auth/handoff?token=${handoffToken}`
-//         : `${target}/login`;
-//
-//       return parseStringify({
-//         responseType: "success",
-//         message: "Redirecting to your assigned environment...",
-//         redirectUrl,
-//       });
-//     }
-//
-//     return parseStringify({
-//       responseType: "success",
-//       message: "Login successful",
-//     });
-//   } catch (error: any) {
-//     // Handle Auth.js specific errors
-//     if (
-//       error?.type === "CredentialsSignin" ||
-//       error?.name === "CredentialsSignin"
-//     ) {
-//       return parseStringify({
-//         responseType: "error",
-//         message: "Wrong credentials! Invalid email address and/or password",
-//         error: new Error("Wrong credentials"),
-//       });
-//     }
-//
-//     // Handle other Auth.js errors
-//     if (
-//       error?.message?.includes("CredentialsSignin") ||
-//       error?.toString?.().includes("CredentialsSignin")
-//     ) {
-//       return parseStringify({
-//         responseType: "error",
-//         message: "Wrong credentials! Invalid email address and/or password",
-//         error: new Error("Wrong credentials"),
-//       });
-//     }
-//
-//     return parseStringify({
-//       responseType: "error",
-//       message: "An unexpected error occurred. Please try again.",
-//       error: new Error("Unexpected"),
-//     });
-//   }
-// };
 
 /**
  * Re-sets auth cookies with appropriate persistence based on rememberMe.

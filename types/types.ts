@@ -55,7 +55,6 @@ export interface FormResponse<T = unknown> {
   message: string;
   error?: Error | null;
   data?: T;
-  redirectUrl?: string;
 }
 
 export declare interface AuthToken {
