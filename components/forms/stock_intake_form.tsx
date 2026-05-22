@@ -605,6 +605,7 @@ function StockIntakeForm({
                                   (!!prefill &&
                                     !!prefill.stockIntakes[index]?.stockVariant)
                                 }
+                                initialVariantInfo={state.variantInfo}
                                 placeholder="Select stock item"
                                 onChange={(val) =>
                                   handleVariantChange(index, val)
