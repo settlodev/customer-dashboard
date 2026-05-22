@@ -1,7 +1,8 @@
 "use server";
 
+import { cache } from "react";
 import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import * as z from "zod";
 import ApiClient from "@/lib/settlo-api-client";
 import { SettloApiError } from "@/lib/settlo-api-error-handler";
@@ -9,6 +10,7 @@ import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { Store } from "@/types/store/type";
 import { StoreSchema } from "@/types/store/schema";
+import { LAYOUT_TAGS } from "@/lib/cache-tags";
 
 /** Reads the active store from the `currentStore` cookie, if any. */
 export const getCurrentStore = async (): Promise<Store | undefined> => {
@@ -22,21 +24,29 @@ export const getCurrentStore = async (): Promise<Store | undefined> => {
   }
 };
 
-export const fetchAllStores = async (
-  businessId?: string,
-  locationId?: string,
-): Promise<Store[]> => {
-  try {
+// Per-request memoisation only — `unstable_cache` can't be used here
+// because `ApiClient` reads cookies inside its interceptors, which
+// Next.js disallows inside a cache scope.
+const _fetchAllStores = cache(
+  async (
+    businessId?: string,
+    locationId?: string,
+  ): Promise<Store[]> => {
     const apiClient = new ApiClient();
     const params = new URLSearchParams();
     if (businessId) params.append("businessId", businessId);
     if (locationId) params.append("locationId", locationId);
     const query = params.toString() ? `?${params.toString()}` : "";
-    const data = await apiClient.get(`/api/v1/stores${query}`);
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
+    const data = await apiClient.get<Store[] | null>(`/api/v1/stores${query}`);
+    return parseStringify(data ?? []);
+  },
+);
+
+export const fetchAllStores = async (
+  businessId?: string,
+  locationId?: string,
+): Promise<Store[]> => {
+  return _fetchAllStores(businessId, locationId);
 };
 
 export const searchStores = async (
@@ -88,6 +98,7 @@ export const createStore = async (
     const apiClient = new ApiClient();
     const response = await apiClient.post(`/api/v1/stores`, validatedData.data);
     revalidatePath("/stores");
+    revalidateTag(LAYOUT_TAGS.stores);
     return { responseType: "success", message: "Store created successfully", data: response };
   } catch (error) {
     if (error instanceof SettloApiError) {
@@ -124,6 +135,7 @@ export const updateStore = async (
     const apiClient = new ApiClient();
     await apiClient.put(`/api/v1/stores/${id}`, validatedData.data);
     revalidatePath("/stores");
+    revalidateTag(LAYOUT_TAGS.stores);
     return { responseType: "success", message: "Store updated successfully" };
   } catch (error) {
     return {
@@ -140,6 +152,7 @@ export const deleteStore = async (id: string): Promise<void> => {
     const apiClient = new ApiClient();
     await apiClient.delete(`/api/v1/stores/${id}`);
     revalidatePath("/stores");
+    revalidateTag(LAYOUT_TAGS.stores);
   } catch (error) {
     throw error;
   }
@@ -150,6 +163,7 @@ export const deactivateStore = async (id: string): Promise<FormResponse> => {
     const apiClient = new ApiClient();
     await apiClient.post(`/api/v1/stores/${id}/deactivate`, {});
     revalidatePath("/stores");
+    revalidateTag(LAYOUT_TAGS.stores);
     return { responseType: "success", message: "Store deactivated successfully" };
   } catch (error) {
     return {
@@ -165,6 +179,7 @@ export const reactivateStore = async (id: string): Promise<FormResponse> => {
     const apiClient = new ApiClient();
     await apiClient.post(`/api/v1/stores/${id}/reactivate`, {});
     revalidatePath("/stores");
+    revalidateTag(LAYOUT_TAGS.stores);
     return { responseType: "success", message: "Store reactivated successfully" };
   } catch (error) {
     return {

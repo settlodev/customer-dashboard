@@ -20,10 +20,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
-import {
-  DaySessionSummary,
-  getDaySessionSummary,
-} from "@/lib/actions/day-session-summary-actions";
+import type { DaySessionSummary } from "@/lib/actions/day-session-summary-actions";
 import {
   closeDaySession,
   extendDaySession,
@@ -151,7 +148,16 @@ export function DaySessionWidget({ locationId }: DaySessionWidgetProps) {
     }
     setLoading(true);
     try {
-      const data = await getDaySessionSummary(locationId);
+      // Route Handler instead of server action — a server action call
+      // from a client component triggers a full RSC re-render of the
+      // layout on every poll, which in turn refires the layout's
+      // reference-data fan-out and tips the gateway into 429s.
+      const res = await fetch(
+        `/api/day-session/summary?locationId=${encodeURIComponent(locationId)}`,
+        { cache: "no-store" },
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as DaySessionSummary;
       setSummary(data);
     } catch {
       // Network blip — keep whatever we last had rather than flash closed.

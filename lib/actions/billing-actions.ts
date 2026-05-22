@@ -1,6 +1,8 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
 import ApiClient from "@/lib/settlo-api-client";
+import { LAYOUT_TAGS } from "@/lib/cache-tags";
 import type {
   Package,
   PackageBreakdown,
@@ -86,6 +88,7 @@ export async function getBusinessSubscription(businessId: string): Promise<Subsc
 export async function cancelSubscription(subscriptionId: string): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.delete<void>(billingUrl(`/api/v1/subscriptions/${subscriptionId}`));
+  revalidateTag(LAYOUT_TAGS.entitlements);
 }
 
 // ── Subscription item management ────────────────────────────────────
@@ -96,10 +99,12 @@ export async function changeItemPlan(
   packageId: string,
 ): Promise<SubscriptionItem> {
   const apiClient = new ApiClient();
-  return apiClient.put<SubscriptionItem, undefined>(
+  const result = await apiClient.put<SubscriptionItem, undefined>(
     billingUrl(`/api/v1/subscriptions/${subscriptionId}/items/${itemId}/plan/${packageId}`),
     undefined,
   );
+  revalidateTag(LAYOUT_TAGS.entitlements);
+  return result;
 }
 
 export async function addItemAddon(
@@ -112,6 +117,7 @@ export async function addItemAddon(
     billingUrl(`/api/v1/subscriptions/${subscriptionId}/items/${itemId}/addons/${addonId}`),
     undefined,
   );
+  revalidateTag(LAYOUT_TAGS.entitlements);
 }
 
 export async function removeItemAddon(
@@ -123,6 +129,7 @@ export async function removeItemAddon(
   await apiClient.delete<void>(
     billingUrl(`/api/v1/subscriptions/${subscriptionId}/items/${itemId}/addons/${addonId}`),
   );
+  revalidateTag(LAYOUT_TAGS.entitlements);
 }
 
 // ── Prepayments ─────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 "use server";
 
+import { cache } from "react";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { SubscriptionStatus } from "@/types/types";
@@ -31,6 +32,20 @@ export interface EntitlementResponse {
   storeCount: number;
 }
 
+// Entitlements come from the Billing Service and depend on the
+// caller's auth cookies, so we use React's per-request `cache()`
+// instead of `unstable_cache` (which forbids dynamic data sources
+// like cookies inside the cached function).
+const _fetchEntitlements = cache(
+  async (): Promise<EntitlementResponse | null> => {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get<EntitlementResponse | null>(
+      `${BILLING_SERVICE_URL}/api/v1/entitlements`,
+    );
+    return parseStringify(data);
+  },
+);
+
 /**
  * Fetch entitlements for the current business from the Billing Service.
  * Reads business_id from the JWT — no path variable needed.
@@ -45,9 +60,7 @@ export const getEntitlements = async (): Promise<EntitlementResponse | null> => 
   }
 
   try {
-    const apiClient = new ApiClient();
-    const data = await apiClient.get(`${BILLING_SERVICE_URL}/api/v1/entitlements`);
-    return parseStringify(data);
+    return await _fetchEntitlements();
   } catch (error) {
     console.warn("[ENTITLEMENTS] Failed to fetch entitlements:", (error as Error)?.message);
     return null;

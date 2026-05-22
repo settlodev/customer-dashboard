@@ -294,7 +294,7 @@ export default async function AdminBusinessDetailPage({
               </Button>
               {canBilling && (
                 <Button asChild size="sm">
-                  <Link href={`/billing?businessId=${business.id}`}>
+                  <Link href={`/businesses/${business.id}/billing`}>
                     <CreditCard className="mr-1.5 h-4 w-4" />
                     Manage billing
                   </Link>

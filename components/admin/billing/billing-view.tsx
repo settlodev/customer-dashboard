@@ -5,11 +5,15 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
+  ArrowUpCircle,
   CheckCircle2,
   Gift,
+  Link2,
   Loader2,
   MoreHorizontal,
+  PackagePlus,
   Plus,
+  RefreshCw,
   Sparkles,
   XCircle,
 } from "lucide-react";
@@ -33,11 +37,14 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 
+import { AddAddonDialog } from "@/components/admin/billing/add-addon-dialog";
 import { ApplyDiscountDialog } from "@/components/admin/billing/apply-discount-dialog";
+import { AttachInvoiceDialog } from "@/components/admin/billing/attach-invoice-dialog";
 import { GenerateInvoiceDialog } from "@/components/admin/billing/generate-invoice-dialog";
 import { GrantFreeSubscriptionDialog } from "@/components/admin/billing/grant-free-subscription-dialog";
 import { InvoiceActionsDialog } from "@/components/admin/billing/invoice-actions-dialog";
-import { revokeDiscount } from "@/lib/actions/admin/billing";
+import { UpgradePlanDialog } from "@/components/admin/billing/upgrade-plan-dialog";
+import { republishSubscriptions, revokeDiscount } from "@/lib/actions/admin/billing";
 import {
   DiscountResponse,
   InvoicePage,
@@ -166,9 +173,35 @@ export function BillingView({
   const [generateOpen, setGenerateOpen] = useState(false);
   const [applyDiscountOpen, setApplyDiscountOpen] = useState(false);
   const [grantFreeOpen, setGrantFreeOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [addAddonOpen, setAddAddonOpen] = useState(false);
+  const [attachOpen, setAttachOpen] = useState(false);
   const [invoiceTarget, setInvoiceTarget] = useState<InvoiceResponse | null>(
     null,
   );
+
+  const handleRepublish = useCallback(() => {
+    if (
+      !confirm(
+        "Republish SUBSCRIPTION_UPDATED events for this business? Use after a downstream consumer (entitlements, sidebar) has drifted out of sync.",
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      const result = await republishSubscriptions(businessId);
+      if (result.responseType === "error") {
+        toast({
+          title: "Republish failed",
+          description: result.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: result.message });
+      router.refresh();
+    });
+  }, [businessId, router, toast]);
 
   const handleRevoke = useCallback(
     (discount: SubscriptionDiscountResponse) => {
@@ -207,11 +240,37 @@ export function BillingView({
         <Button
           size="sm"
           variant="outline"
+          onClick={() => setUpgradeOpen(true)}
+          disabled={!subscription || subscription.items.length === 0}
+        >
+          <ArrowUpCircle className="mr-1.5 h-4 w-4" />
+          Upgrade plan
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setAddAddonOpen(true)}
+          disabled={!subscription || subscription.items.length === 0}
+        >
+          <PackagePlus className="mr-1.5 h-4 w-4" />
+          Attach addon
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
           onClick={() => setApplyDiscountOpen(true)}
           disabled={!subscription || availableDiscounts.length === 0}
         >
           <Sparkles className="mr-1.5 h-4 w-4" />
           Apply discount
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setAttachOpen(true)}
+        >
+          <Link2 className="mr-1.5 h-4 w-4" />
+          Attach prospect invoice
         </Button>
         {canGrantFree && (
           <Button
@@ -223,6 +282,23 @@ export function BillingView({
           >
             <Gift className="mr-1.5 h-4 w-4" />
             Grant free subscription
+          </Button>
+        )}
+        {canGrantFree && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRepublish}
+            disabled={isPending || !subscription}
+            className="ml-auto text-muted-foreground hover:text-ink"
+            title="Republish SUBSCRIPTION_UPDATED events"
+          >
+            {isPending ? (
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-1.5 h-4 w-4" />
+            )}
+            Republish events
           </Button>
         )}
       </div>
@@ -463,7 +539,7 @@ export function BillingView({
                     size="sm"
                     onClick={() => {
                       router.push(
-                        `/billing?businessId=${businessId}&page=${invoicePage.number - 1}`,
+                        `/businesses/${businessId}/billing?page=${invoicePage.number - 1}`,
                       );
                     }}
                     disabled={invoicePage.first || isPending}
@@ -477,7 +553,7 @@ export function BillingView({
                     size="sm"
                     onClick={() => {
                       router.push(
-                        `/billing?businessId=${businessId}&page=${invoicePage.number + 1}`,
+                        `/businesses/${businessId}/billing?page=${invoicePage.number + 1}`,
                       );
                     }}
                     disabled={invoicePage.last || isPending}
@@ -518,6 +594,30 @@ export function BillingView({
           onGranted={refresh}
         />
       )}
+      {subscription && (
+        <UpgradePlanDialog
+          businessId={businessId}
+          items={subscription.items}
+          open={upgradeOpen}
+          onOpenChange={setUpgradeOpen}
+          onUpgraded={refresh}
+        />
+      )}
+      {subscription && (
+        <AddAddonDialog
+          businessId={businessId}
+          items={subscription.items}
+          open={addAddonOpen}
+          onOpenChange={setAddAddonOpen}
+          onAdded={refresh}
+        />
+      )}
+      <AttachInvoiceDialog
+        businessId={businessId}
+        open={attachOpen}
+        onOpenChange={setAttachOpen}
+        onAttached={refresh}
+      />
       {invoiceTarget && (
         <InvoiceActionsDialog
           businessId={businessId}

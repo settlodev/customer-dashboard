@@ -2,7 +2,8 @@
 
 type UUID = string;
 
-import { revalidatePath } from "next/cache";
+import { cache } from "react";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import * as z from "zod";
 
@@ -14,29 +15,32 @@ import { getCurrentLocation } from "@/lib/actions/business/get-current-business"
 import { Location } from "@/types/location/type";
 import { LocationSchema } from "@/types/location/schema";
 import { switchToLocation } from "./destination";
+import { LAYOUT_TAGS } from "@/lib/cache-tags";
 
-export const fetchAllLocations = async (): Promise<Location[] | null> => {
-  try {
-    const businessId = (await getAuthToken())?.businessId;
+// Per-request memoisation only — `unstable_cache` can't wrap this
+// because `ApiClient` reads cookies (auth token, destination headers)
+// inside its interceptors, and Next.js forbids dynamic data sources
+// inside a cache scope. React's `cache()` dedupes parallel callers in
+// a single render without crossing into cross-request storage.
+//
+// Returns `[]` when the user genuinely has no locations under this
+// business. Throws on transport / auth failures so callers — notably
+// the /select-location page — can distinguish "no locations" from
+// "couldn't reach the server" instead of incorrectly bouncing the
+// user to /business-location.
+const _fetchAllLocations = cache(async (): Promise<Location[]> => {
+  const businessId = (await getAuthToken())?.businessId;
+  if (!businessId) return [];
 
-    if (!businessId) {
-      return null;
-    }
+  const apiClient = new ApiClient();
+  const locationsData = await apiClient.get<Location[] | null>(
+    `/api/v1/locations?businessId=${businessId}`,
+  );
+  return parseStringify(locationsData ?? []);
+});
 
-    const apiClient = new ApiClient();
-
-    const locationsData = await apiClient.get(
-      `/api/v1/locations?businessId=${businessId}`,
-    );
-
-    return parseStringify(locationsData);
-  } catch (error: unknown) {
-    const message = (error && typeof error === "object" && "message" in error)
-      ? (error as { message: string }).message
-      : "Unknown error";
-    console.error("Error in fetchAllLocations:", message);
-    return null;
-  }
+export const fetchAllLocations = async (): Promise<Location[]> => {
+  return _fetchAllLocations();
 };
 
 export const searchLocations = async (
@@ -155,6 +159,7 @@ export const createLocation = async (
   if (formResponse) {
     if (formResponse.responseType === "success") {
       revalidatePath("/select-location");
+      revalidateTag(LAYOUT_TAGS.locations);
     }
     return formResponse;
   }
@@ -225,6 +230,7 @@ export const updateLocation = async (
   });
 
   revalidatePath("/select-location");
+  revalidateTag(LAYOUT_TAGS.locations);
   return parseStringify(formResponse);
 };
 
@@ -277,6 +283,7 @@ export const updateLocationBasics = async (
     );
     revalidatePath("/select-location");
     revalidatePath("/settings");
+    revalidateTag(LAYOUT_TAGS.locations);
     return {
       responseType: "success",
       message: "Location updated successfully",
@@ -333,6 +340,7 @@ export const deleteLocation = async (id: UUID): Promise<void> => {
 
     await apiClient.delete(`/api/v1/locations/${id}`);
     revalidatePath("/locations");
+    revalidateTag(LAYOUT_TAGS.locations);
   } catch (error) {
     throw error;
   }
@@ -344,6 +352,7 @@ export const deactivateLocation = async (id: UUID): Promise<FormResponse> => {
     const apiClient = new ApiClient();
     await apiClient.post(`/api/v1/locations/${id}/deactivate`, {});
     revalidatePath("/locations");
+    revalidateTag(LAYOUT_TAGS.locations);
     return { responseType: "success", message: "Location deactivated successfully" };
   } catch (error) {
     return {
@@ -360,6 +369,7 @@ export const reactivateLocation = async (id: UUID): Promise<FormResponse> => {
     const apiClient = new ApiClient();
     await apiClient.post(`/api/v1/locations/${id}/reactivate`, {});
     revalidatePath("/locations");
+    revalidateTag(LAYOUT_TAGS.locations);
     return { responseType: "success", message: "Location reactivated successfully" };
   } catch (error) {
     return {

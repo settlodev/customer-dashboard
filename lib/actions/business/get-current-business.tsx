@@ -112,17 +112,22 @@ export const getCurrentLocation = async (): Promise<Location | undefined> => {
   }
 };
 
-export const getBusinessDropDown = async (): Promise<Business[] | null> => {
-  try {
-    const apiClient = new ApiClient();
-    const data = await apiClient.get(`/api/v1/businesses`);
-    return parseStringify(data);
-  } catch (error) {
-    if (error instanceof Error && error.message === "NEXT_REDIRECT") {
-      throw error;
-    }
+// Per-request memoisation only — `unstable_cache` can't be used here
+// because `ApiClient` reads cookies (auth token, destination headers)
+// inside its interceptors, and Next.js forbids dynamic data sources
+// inside a cache scope. React's `cache()` dedupes parallel callers in
+// a single render without touching cross-request storage.
+//
+// Returns `[]` when the user genuinely has no businesses. Throws on
+// transport / auth failures so callers can distinguish "no data" from
+// "couldn't reach the server" — the /select-business page in
+// particular must not treat an API error as "no businesses created".
+const _getBusinessDropDown = cache(async (): Promise<Business[]> => {
+  const apiClient = new ApiClient();
+  const data = await apiClient.get<Business[] | null>(`/api/v1/businesses`);
+  return parseStringify(data ?? []);
+});
 
-    console.error("Failed to get business list:", error);
-    return null;
-  }
+export const getBusinessDropDown = async (): Promise<Business[]> => {
+  return _getBusinessDropDown();
 };

@@ -1,10 +1,19 @@
 import * as Sentry from "@sentry/nextjs";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { AlertTriangle } from "lucide-react";
 import BusinessSelector from "@/app/(auth)/select-business/business_list";
 
 import Loading from "@/components/ui/loading";
+import {
+  Alert,
+  AlertBody,
+  AlertDescription,
+  AlertIcon,
+  AlertTitle,
+} from "@/components/ui/alert";
 import { getBusinessDropDown } from "@/lib/actions/business/get-current-business";
+import RetryButton from "@/app/(auth)/select-business/retry-button";
 
 export const dynamic = "force-dynamic";
 
@@ -17,30 +26,51 @@ function BusinessPageLoading() {
 }
 
 async function BusinessPageContent() {
+  let data: Awaited<ReturnType<typeof getBusinessDropDown>>;
   try {
-    const data = await getBusinessDropDown();
-
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      redirect("/business-registration");
-    }
-
-    // Pass all businesses to the client component.
-    // Auto-selection (single business, single location → dashboard)
-    // is handled client-side where server actions can set cookies.
-    return <BusinessSelector businesses={data} />;
+    data = await getBusinessDropDown();
   } catch (error) {
     if (
       error instanceof Error &&
       "digest" in error &&
-      typeof (error as any).digest === "string" &&
-      (error as any).digest.startsWith("NEXT_REDIRECT")
+      typeof (error as { digest?: unknown }).digest === "string" &&
+      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
     ) {
       throw error;
     }
 
     Sentry.captureException(error);
-    redirect("/login");
+
+    return (
+      <div className="w-full max-w-md mx-auto">
+        <Alert tone="danger" variant="soft">
+          <AlertIcon>
+            <AlertTriangle className="h-3.5 w-3.5" />
+          </AlertIcon>
+          <AlertBody>
+            <AlertTitle>We couldn&apos;t load your businesses</AlertTitle>
+            <AlertDescription>
+              Something went wrong reaching our servers. Your account is fine —
+              please try again in a moment.
+            </AlertDescription>
+            <div className="pt-2">
+              <RetryButton />
+            </div>
+          </AlertBody>
+        </Alert>
+      </div>
+    );
   }
+
+  // Genuine "no businesses on this account" — safe to send them to registration.
+  if (data.length === 0) {
+    redirect("/business-registration");
+  }
+
+  // Pass all businesses to the client component.
+  // Auto-selection (single business, single location → dashboard)
+  // is handled client-side where server actions can set cookies.
+  return <BusinessSelector businesses={data} />;
 }
 
 export default async function SelectBusinessPage() {

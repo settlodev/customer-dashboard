@@ -1,23 +1,36 @@
 "use server";
 
+import { cache } from "react";
 import { z } from "zod";
 import { parseStringify } from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { FormResponse } from "@/types/types";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
 import { getAuthToken } from "@/lib/auth-utils";
 import { getCurrentWarehouse } from "./current-warehouse-action";
+import { LAYOUT_TAGS } from "@/lib/cache-tags";
 
 // ── Queries ─────────────────────────────────────────────────────────
 
+// Per-request memoisation — `unstable_cache` can't be used here
+// because `ApiClient` reads cookies inside its interceptors and
+// Next.js forbids dynamic data sources inside a cache scope.
+const _fetchWarehouses = cache(
+  async (businessId?: string): Promise<Warehouses[]> => {
+    const apiClient = new ApiClient();
+    const url = businessId
+      ? `/api/v1/warehouses?businessId=${businessId}`
+      : `/api/v1/warehouses`;
+    const data = await apiClient.get<Warehouses[] | null>(url);
+    return parseStringify(data ?? []) as Warehouses[];
+  },
+);
+
 export async function getWarehouses(businessId?: string): Promise<Warehouses[]> {
   try {
-    const apiClient = new ApiClient();
-    const biz = businessId || (await getAuthToken())?.businessId;
-    const params = biz ? `?businessId=${biz}` : "";
-    const data = await apiClient.get(`/api/v1/warehouses${params}`);
-    return parseStringify(data) as Warehouses[];
+    const biz = businessId ?? (await getAuthToken())?.businessId ?? undefined;
+    return await _fetchWarehouses(biz);
   } catch {
     return [];
   }
@@ -78,6 +91,7 @@ export async function createWarehouse(data: {
     });
 
     revalidatePath("/warehouses");
+    revalidateTag(LAYOUT_TAGS.warehouses);
     return parseStringify({ responseType: "success", message: "Warehouse created successfully" });
   } catch (error: any) {
     return parseStringify({
@@ -104,6 +118,7 @@ export async function updateWarehouse(
     await apiClient.put(`/api/v1/warehouses/${id}`, data);
 
     revalidatePath("/warehouses");
+    revalidateTag(LAYOUT_TAGS.warehouses);
     return parseStringify({ responseType: "success", message: "Warehouse updated successfully" });
   } catch (error: any) {
     return parseStringify({
@@ -118,18 +133,21 @@ export async function deleteWarehouse(id: string): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.delete(`/api/v1/warehouses/${id}`);
   revalidatePath("/warehouses");
+  revalidateTag(LAYOUT_TAGS.warehouses);
 }
 
 export async function deactivateWarehouse(id: string): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post(`/api/v1/warehouses/${id}/deactivate`, {});
   revalidatePath("/warehouses");
+  revalidateTag(LAYOUT_TAGS.warehouses);
 }
 
 export async function reactivateWarehouse(id: string): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post(`/api/v1/warehouses/${id}/reactivate`, {});
   revalidatePath("/warehouses");
+  revalidateTag(LAYOUT_TAGS.warehouses);
 }
 
 // ── Backward compat aliases ─────────────────────────────────────────

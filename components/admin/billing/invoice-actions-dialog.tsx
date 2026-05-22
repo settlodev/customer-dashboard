@@ -84,6 +84,11 @@ const REFUND_BADGE: Record<RefundStatus, { label: string; className: string }> =
     className:
       "border-sky-200 bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/20",
   },
+  PROCESSED: {
+    label: "Processed",
+    className:
+      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20",
+  },
   APPROVED: {
     label: "Approved",
     className:

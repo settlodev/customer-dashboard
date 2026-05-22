@@ -2,7 +2,8 @@
 
 type UUID = string;
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { LAYOUT_TAGS } from "@/lib/cache-tags";
 import * as z from "zod";
 
 import { parseStringify } from "@/lib/utils";
@@ -85,6 +86,7 @@ export const updateBusiness = async (
   }
 
   revalidatePath("/settings");
+  revalidateTag(LAYOUT_TAGS.businesses);
   return parseStringify(formResponse);
 };
 

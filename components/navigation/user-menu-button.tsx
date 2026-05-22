@@ -29,6 +29,7 @@ import { ExtendedUser } from "@/types/types";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Location } from "@/types/location/type";
 import { getAuthToken } from "@/lib/auth-utils";
 import { logout } from "@/lib/actions/auth-actions";
@@ -52,8 +53,10 @@ export const UserDropdown = ({ user }: UserDropdownProps) => {
     const [currentWarehouse, setCurrentWarehouse] = useState<Warehouses | undefined>(undefined);
     const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        setMounted(true);
         const fetchData = async () => {
             const [location, warehouse] = await Promise.all([
                 getCurrentLocation(),
@@ -108,14 +111,16 @@ export const UserDropdown = ({ user }: UserDropdownProps) => {
 
   return (
     <>
-      {/* Full-screen logout overlay */}
-      {loggingOut && (
+      {/* Portal to body so the overlay escapes the header's backdrop-filter
+          containing block and actually covers the full viewport. */}
+      {mounted && loggingOut && createPortal(
         <div className="fixed inset-0 z-[9999] bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
           <Loader2 className="h-6 w-6 text-primary animate-spin" />
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
             Logging out...
           </p>
-        </div>
+        </div>,
+        document.body
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

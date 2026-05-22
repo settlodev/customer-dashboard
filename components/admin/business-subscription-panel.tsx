@@ -148,8 +148,8 @@ export function BusinessSubscriptionPanel({
           Subscription &amp; billing
         </h3>
         <Button asChild variant="ghost" size="sm">
-          <Link href={`/billing?businessId=${businessId}`}>
-            Manage in Billing →
+          <Link href={`/businesses/${businessId}/billing`}>
+            Manage billing →
           </Link>
         </Button>
       </div>

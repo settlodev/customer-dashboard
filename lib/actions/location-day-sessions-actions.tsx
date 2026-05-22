@@ -5,6 +5,7 @@ import { parseStringify } from "@/lib/utils";
 import { FormResponse } from "@/types/types";
 import {
   clearDaySessionCookie,
+  getDaySessionCookie,
   setDaySessionCookie,
 } from "@/lib/actions/day-session-cookie-actions";
 
@@ -175,15 +176,28 @@ export const getCurrentDaySession = async (locationId: string): Promise<DaySessi
   // Keep the cookie in lock-step with the server's source of truth. The
   // widget calls this every 60s and on DAY_SESSION_CHANGED_EVENT, so the
   // cookie is always fresh enough for the interceptor to attach a
-  // current X-Day-Session-Id header.
+  // current X-Day-Session-Id header. Only write when the cookie
+  // actually changed — a no-op write on every poll wastes work and
+  // (with revalidate semantics elsewhere) can fan back out into the
+  // request tree.
+  const existing = await getDaySessionCookie();
   if (session?.id) {
-    await setDaySessionCookie({
-      id: session.id,
-      locationId: session.locationId ?? locationId,
-      businessDate: session.businessDate,
-      status: session.status,
-    });
-  } else {
+    const nextLocationId = session.locationId ?? locationId;
+    const changed =
+      !existing ||
+      existing.id !== session.id ||
+      existing.status !== session.status ||
+      existing.businessDate !== session.businessDate ||
+      existing.locationId !== nextLocationId;
+    if (changed) {
+      await setDaySessionCookie({
+        id: session.id,
+        locationId: nextLocationId,
+        businessDate: session.businessDate,
+        status: session.status,
+      });
+    }
+  } else if (existing) {
     // No active session — clear any stale cookie so the next write
     // surfaces BUSINESS_DAY_SESSION_HEADER_MISSING cleanly.
     await clearDaySessionCookie();
