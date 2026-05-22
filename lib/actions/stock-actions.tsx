@@ -23,8 +23,15 @@ interface CSVUploadResponse {
 
 interface StockVariant {
   id: string;
+  name: string;
   // Add other variant properties as needed
 }
+
+type StockVariantApiResponse =
+  | { stockName: string; variant: StockVariant } // already normalized shape
+  | (StockVariant & { stock?: { name?: string }; stockName?: string }) // raw variant shape
+  | null
+  | undefined;
 
 let stockCache: Stock[] | null = null;
 
@@ -478,35 +485,96 @@ export const downloadStockCSV = async (
 };
 
 // Function to get a single stock variant by ID (uses cache when possible)
-export const getStockVariantById = async (variantId: string) => {
+// export const getStockVariantById = async (variantId: string) => {
+//   if (!variantId) return null;
+//
+//   try {
+//     // Try to get from cache first
+//     if (!stockCache) {
+//       stockCache = await fetchStock();
+//     }
+//
+//     if (stockCache && stockCache.length > 0) {
+//       for (const stock of stockCache) {
+//         const variant = stock.stockVariants.find(
+//           (v: StockVariant) => v.id === variantId,
+//         );
+//         if (variant) {
+//           return {
+//             stockName: stock.name,
+//             variant,
+//           };
+//         }
+//       }
+//     }
+//
+//     // If not in cache or cache doesn't exist, fetch directly
+//     const apiClient = new ApiClient();
+//     const data = await apiClient.get(`/api/stock-variants/${variantId}`);
+//     return parseStringify(data);
+//   } catch (error) {
+//     console.error("Error fetching stock variant:", error);
+//     return null;
+//   }
+// };
+
+export const getStockVariantById = async (
+  variantId: string,
+): Promise<{ stockName: string; variant: StockVariant } | null> => {
   if (!variantId) return null;
 
-  try {
-    // Try to get from cache first
-    if (!stockCache) {
-      stockCache = await fetchStock();
-    }
-
-    if (stockCache && stockCache.length > 0) {
-      for (const stock of stockCache) {
-        const variant = stock.stockVariants.find(
-          (v: StockVariant) => v.id === variantId,
-        );
-        if (variant) {
-          return {
-            stockName: stock.name,
-            variant,
-          };
-        }
+  // 1. Opportunistic cache hit (only if cache is already loaded)
+  if (stockCache && stockCache.length > 0) {
+    for (const stock of stockCache) {
+      const variant = stock.stockVariants.find(
+        (v: StockVariant) => v.id === variantId,
+      );
+      if (variant) {
+        return { stockName: stock.name, variant };
       }
     }
+  }
 
-    // If not in cache or cache doesn't exist, fetch directly
+  // 2. Direct fetch — primary path for large catalogs
+  try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(`/api/stock-variants/${variantId}`);
-    return parseStringify(data);
-  } catch (error) {
-    console.error("Error fetching stock variant:", error);
+    const parsed = parseStringify(data) as StockVariantApiResponse;
+
+    if (!parsed) return null;
+
+    if ("variant" in parsed && parsed.variant) {
+      return {
+        stockName: parsed.stockName ?? "",
+        variant: parsed.variant,
+      };
+    }
+
+    if ("id" in parsed && "name" in parsed && parsed.id && parsed.name) {
+      return {
+        stockName: parsed.stock?.name ?? parsed.stockName ?? "",
+        variant: parsed as StockVariant,
+      };
+    }
+
     return null;
+  } catch (error) {
+    console.error("Error fetching stock variant directly:", error);
+    return null;
+  }
+};
+
+// Separate function callers can use to warm the cache when appropriate
+// (e.g. on a small-catalog page). Failure is swallowed so it can't break
+// subsequent single-variant lookups.
+export const warmStockCache = async (): Promise<void> => {
+  if (stockCache) return;
+  try {
+    const data = await fetchStock();
+    if (Array.isArray(data) && data.length > 0) {
+      stockCache = data;
+    }
+  } catch (error) {
+    console.error("Failed to warm stock cache:", error);
   }
 };
