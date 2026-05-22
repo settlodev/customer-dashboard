@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import React, { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -46,6 +46,7 @@ import { JournalEntrySchema } from "@/types/journal-entry/schema";
 import type { JournalEntry } from "@/types/journal-entry/type";
 
 import styles from "./styles/form-shell.module.css";
+import { NumericInput } from "@/components/ui/numeric-input";
 
 interface Props {
   item: JournalEntry | null;
@@ -77,8 +78,18 @@ export default function JournalEntryForm({ item, defaultCurrency }: Props) {
             creditAmount: l.creditAmount ?? 0,
           }))
         : [
-            { chartOfAccountId: "", description: "", debitAmount: 0, creditAmount: 0 },
-            { chartOfAccountId: "", description: "", debitAmount: 0, creditAmount: 0 },
+            {
+              chartOfAccountId: "",
+              description: "",
+              debitAmount: 0,
+              creditAmount: 0,
+            },
+            {
+              chartOfAccountId: "",
+              description: "",
+              debitAmount: 0,
+              creditAmount: 0,
+            },
           ],
     },
   });
@@ -89,7 +100,10 @@ export default function JournalEntryForm({ item, defaultCurrency }: Props) {
   });
 
   const lines = form.watch("lines");
-  const totalDebit = lines.reduce((s, l) => s + (Number(l.debitAmount) || 0), 0);
+  const totalDebit = lines.reduce(
+    (s, l) => s + (Number(l.debitAmount) || 0),
+    0,
+  );
   const totalCredit = lines.reduce(
     (s, l) => s + (Number(l.creditAmount) || 0),
     0,
@@ -336,11 +350,10 @@ export default function JournalEntryForm({ item, defaultCurrency }: Props) {
                                 Debit
                               </FormLabel>
                               <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.0001"
-                                  {...field}
+                                <NumericInput
                                   value={field.value ?? ""}
+                                  onChange={field.onChange}
+                                  placeholder="0.00"
                                   disabled={isPending || isLocked}
                                 />
                               </FormControl>
@@ -359,11 +372,10 @@ export default function JournalEntryForm({ item, defaultCurrency }: Props) {
                                 Credit
                               </FormLabel>
                               <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.0001"
-                                  {...field}
+                                <NumericInput
                                   value={field.value ?? ""}
+                                  onChange={field.onChange}
+                                  placeholder="0.00"
                                   disabled={isPending || isLocked}
                                 />
                               </FormControl>
@@ -411,9 +423,7 @@ export default function JournalEntryForm({ item, defaultCurrency }: Props) {
                 </div>
                 <div className="ml-auto">
                   {balanced ? (
-                    <span className="font-medium text-green-600">
-                      Balanced
-                    </span>
+                    <span className="font-medium text-green-600">Balanced</span>
                   ) : (
                     <span className="font-medium text-red-600">
                       Off by{" "}
