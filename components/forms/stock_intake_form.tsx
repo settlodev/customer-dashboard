@@ -283,18 +283,32 @@ function StockIntakeForm({
     setLineStates((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleVariantChange = async (index: number, value: string) => {
+  const handleVariantChange = (
+    index: number,
+    value: string,
+    info?: { stockName: string; variant?: { name: string } } | null,
+  ) => {
     form.setValue(`stockIntakes.${index}.stockVariant`, value);
+
     if (!value) {
       updateLineState(index, { variantInfo: null });
       return;
     }
-    try {
-      const info = await getStockVariantById(value);
+
+    // User picked from the dropdown — use the info they gave us. No fetch.
+    if (info) {
       updateLineState(index, { variantInfo: info });
-    } catch {
-      updateLineState(index, { variantInfo: null });
+      return;
     }
+
+    // Fallback only — programmatic value change without info attached.
+    getStockVariantById(value)
+      .then((fetched) => {
+        if (fetched) updateLineState(index, { variantInfo: fetched });
+      })
+      .catch(() => {
+        // IMPORTANT: do NOT null out variantInfo on failure — keep what we had
+      });
   };
 
   const handleSharedTimeChange = (type: "hour" | "minutes", value: string) => {
@@ -607,8 +621,8 @@ function StockIntakeForm({
                                 }
                                 initialVariantInfo={state.variantInfo}
                                 placeholder="Select stock item"
-                                onChange={(val) =>
-                                  handleVariantChange(index, val)
+                                onChange={(val, info) =>
+                                  handleVariantChange(index, val, info)
                                 }
                               />
                             </FormControl>
