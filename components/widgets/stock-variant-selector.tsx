@@ -36,7 +36,6 @@ interface Props {
   description?: string;
   onChange: (value: string) => void;
   disabledValues?: string[];
-  // NEW: pre-fetched variant info from the parent — skips the internal lookup
   initialVariantInfo?: {
     stockName: string;
     variant?: { id?: string; name: string };
@@ -60,7 +59,6 @@ const StockVariantSelector: React.FC<Props> = ({
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  // Seed from initialVariantInfo synchronously if available — no fetch needed.
   const [selectedVariantInfo, setSelectedVariantInfo] = useState<{
     id: string;
     displayName: string;
@@ -83,10 +81,11 @@ const StockVariantSelector: React.FC<Props> = ({
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Track which ids we've already fetched, so we don't refetch on every
-  // stocks change or re-render.
   const fetchedIdsRef = useRef<Set<string>>(new Set());
+
+  // NEW: cache of displayNames we've seen, keyed by variant id.
+  // Survives async parent updates that might null out initialVariantInfo.
+  const displayNameCacheRef = useRef<Map<string, string>>(new Map());
 
   const ITEMS_PER_PAGE = 20;
 
@@ -106,99 +105,101 @@ const StockVariantSelector: React.FC<Props> = ({
     return `${stock.name} - ${variant.name}`;
   }, []);
 
-  const loadSpecificVariantInfo = useCallback(async (variantId: string) => {
-    // Guard: don't refetch the same id
-    if (fetchedIdsRef.current.has(variantId)) return;
-    fetchedIdsRef.current.add(variantId);
-
-    setIsLoadingVariant(true);
-    try {
-      const variantInfo = await getStockVariantById(variantId);
-      if (variantInfo && variantInfo.variant) {
-        setSelectedVariantInfo({
-          id: variantInfo.variant.id,
-          displayName: `${variantInfo.stockName || ""} - ${variantInfo.variant.name}`,
-        });
-      }
-    } catch (error) {
-      // Allow retry on error
-      fetchedIdsRef.current.delete(variantId);
-      console.error("Error loading specific variant info:", error);
-    } finally {
-      setIsLoadingVariant(false);
-    }
+  // Helper: cache and set
+  const setSelectedInfo = useCallback((id: string, displayName: string) => {
+    displayNameCacheRef.current.set(id, displayName);
+    setSelectedVariantInfo({ id, displayName });
   }, []);
 
-  // NEW: hydrate from initialVariantInfo when it arrives or changes.
-  // This handles the case where the parent fetches asynchronously and the
-  // prop becomes available after mount.
+  const loadSpecificVariantInfo = useCallback(
+    async (variantId: string) => {
+      if (fetchedIdsRef.current.has(variantId)) return;
+      fetchedIdsRef.current.add(variantId);
+
+      setIsLoadingVariant(true);
+      try {
+        const variantInfo = await getStockVariantById(variantId);
+        if (variantInfo && variantInfo.variant) {
+          const displayName = `${variantInfo.stockName || ""} - ${variantInfo.variant.name}`;
+          setSelectedInfo(variantInfo.variant.id, displayName);
+        }
+      } catch (error) {
+        fetchedIdsRef.current.delete(variantId);
+        console.error("Error loading specific variant info:", error);
+      } finally {
+        setIsLoadingVariant(false);
+      }
+    },
+    [setSelectedInfo],
+  );
+
+  // Hydrate from initialVariantInfo when it arrives.
+  // Only update if it actually adds information (don't overwrite with null).
   useEffect(() => {
-    if (!value || !initialVariantInfo?.variant?.name) return;
+    if (!value) return;
+    if (!initialVariantInfo?.variant?.name) return;
     if (selectedVariantInfo?.id === value) return;
-    setSelectedVariantInfo({
-      id: value,
-      displayName: `${initialVariantInfo.stockName} - ${initialVariantInfo.variant.name}`,
-    });
-    // Mark as fetched so we never redundantly call getStockVariantById
+
+    const displayName = `${initialVariantInfo.stockName} - ${initialVariantInfo.variant.name}`;
+    setSelectedInfo(value, displayName);
     fetchedIdsRef.current.add(value);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, initialVariantInfo]);
 
-  // FIX 1: Run this effect ONLY when `value` changes — not when `stocks` changes.
-  // If we already have selectedVariantInfo for this id, don't refetch.
+  // Main resolver: when `value` changes, figure out the display.
+  // CRITICAL: never set selectedVariantInfo to null here unless `value` is empty.
   useEffect(() => {
     if (!value) {
       setSelectedVariantInfo(null);
       return;
     }
 
-    // Already have it cached locally — nothing to do.
+    // Already showing this value — done.
     if (selectedVariantInfo?.id === value) return;
 
-    // If parent supplied initialVariantInfo for this value, the hydration
-    // effect above handles it — don't fetch.
-    if (initialVariantInfo?.variant?.name) return;
-
-    // Check if it's in the currently loaded stocks list
-    let foundInStocks: { stock: Stock; variant: StockVariant } | null = null;
-    for (const stock of stocks) {
-      const variant = stock.stockVariants.find((v) => v.id === value);
-      if (variant) {
-        foundInStocks = { stock, variant };
-        break;
-      }
-    }
-
-    if (foundInStocks) {
-      // Hydrate from already-loaded data, no network call needed
-      setSelectedVariantInfo({
-        id: foundInStocks.variant.id,
-        displayName: getDisplayName(foundInStocks.stock, foundInStocks.variant),
-      });
+    // Check our local cache first — this is the key fix.
+    // If we've previously resolved this id (e.g. user just selected it),
+    // restore it instantly without any network call or dependency on parent state.
+    const cachedName = displayNameCacheRef.current.get(value);
+    if (cachedName) {
+      setSelectedVariantInfo({ id: value, displayName: cachedName });
       return;
     }
 
-    // Not in cache or stocks — fetch it
+    // Check stocks list (already loaded options)
+    for (const stock of stocks) {
+      const variant = stock.stockVariants.find((v) => v.id === value);
+      if (variant) {
+        const displayName = getDisplayName(stock, variant);
+        setSelectedInfo(variant.id, displayName);
+        return;
+      }
+    }
+
+    // Check parent-supplied info
+    if (initialVariantInfo?.variant?.name) {
+      const displayName = `${initialVariantInfo.stockName} - ${initialVariantInfo.variant.name}`;
+      setSelectedInfo(value, displayName);
+      return;
+    }
+
+    // Last resort: fetch
     loadSpecificVariantInfo(value);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
-  // Separate effect: when stocks load and contain our value, hydrate from them
-  // (cheap, no network call). This handles the case where the user opens the
-  // dropdown after the value was set.
+  // When stocks load and contain our value, hydrate (cheap, no network).
   useEffect(() => {
     if (!value || selectedVariantInfo?.id === value) return;
     for (const stock of stocks) {
       const variant = stock.stockVariants.find((v) => v.id === value);
       if (variant) {
-        setSelectedVariantInfo({
-          id: variant.id,
-          displayName: getDisplayName(stock, variant),
-        });
+        const displayName = getDisplayName(stock, variant);
+        setSelectedInfo(variant.id, displayName);
         return;
       }
     }
-  }, [stocks, value, selectedVariantInfo?.id, getDisplayName]);
+  }, [stocks, value, selectedVariantInfo?.id, getDisplayName, setSelectedInfo]);
 
   useEffect(() => {
     if (open && stocks.length === 0) {
@@ -269,6 +270,9 @@ const StockVariantSelector: React.FC<Props> = ({
     if (selectedVariantInfo && selectedVariantInfo.id === value) {
       return selectedVariantInfo;
     }
+    // Fall back to the in-memory cache before anything else
+    const cachedName = displayNameCacheRef.current.get(value);
+    if (cachedName) return { id: value, displayName: cachedName };
     const option = allVariantOptions.find((o) => o.id === value);
     if (option) return option;
     return null;
@@ -293,16 +297,22 @@ const StockVariantSelector: React.FC<Props> = ({
   const handleSelect = useCallback(
     (option: { id: string; displayName: string }) => {
       const newValue = option.id === value ? "" : option.id;
-      onChange(newValue);
+
+      // Cache the displayName BEFORE calling onChange — that way, even if the
+      // parent triggers a re-render with stale initialVariantInfo, our cache
+      // already has the truth.
       if (newValue) {
+        displayNameCacheRef.current.set(newValue, option.displayName);
         setSelectedVariantInfo({
-          id: option.id,
+          id: newValue,
           displayName: option.displayName,
         });
         fetchedIdsRef.current.add(newValue);
       } else {
         setSelectedVariantInfo(null);
       }
+
+      onChange(newValue);
       setOpen(false);
     },
     [value, onChange],
