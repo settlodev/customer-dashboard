@@ -29,6 +29,15 @@ import { StockCacheRealtimeBinder } from "@/components/realtime/stock-cache-real
 import { CustomerCacheRealtimeBinder } from "@/components/realtime/customer-cache-realtime-binder";
 import type { ExtendedUser } from "@/types/types";
 
+// Every page under (protected) resolves identity from cookies (authToken,
+// X-Client-Id, active-destination headers) via the ApiClient interceptors,
+// so none of them can be statically prerendered. Declaring it here cascades
+// to all nested routes — without it, the build's static-generation pass hits
+// `cookies()`, throws Next's DYNAMIC_SERVER_USAGE bailout, and logs it as a
+// spurious error (e.g. "Error fetching location") before falling back to
+// dynamic rendering anyway.
+export const dynamic = "force-dynamic";
+
 export default async function RootLayout({
   children,
 }: {
