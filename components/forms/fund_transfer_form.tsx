@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import React, { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,6 +40,7 @@ import { createFundTransfer } from "@/lib/actions/fund-transfer-actions";
 import { FundTransferSchema } from "@/types/fund-transfer/schema";
 
 import styles from "./styles/form-shell.module.css";
+import { NumericInput } from "@/components/ui/numeric-input";
 
 interface Props {
   locationId: string;
@@ -179,11 +180,10 @@ export default function FundTransferForm({
                         Amount <span className="req">*</span>
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.0001"
-                          {...field}
+                        <NumericInput
                           value={field.value ?? ""}
+                          onChange={field.onChange}
+                          placeholder="0.00"
                           disabled={isPending}
                         />
                       </FormControl>
