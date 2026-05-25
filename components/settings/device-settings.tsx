@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import {
   Battery,
   BatteryCharging,
@@ -92,6 +100,19 @@ function formatRelative(iso: string | null): string {
   return `${Math.floor(mon / 12)}y ago`;
 }
 
+// availableStorage arrives in MB (heartbeat payload `availableStorageMB`).
+function formatStorage(mb: number | null): string {
+  if (mb == null || !Number.isFinite(mb)) return "—";
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+  return `${Math.round(mb)} MB`;
+}
+
+function formatAbsolute(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+}
+
 function statusClass(status: DeviceStatus | null): string {
   switch (status) {
     case "ACTIVE":
@@ -120,6 +141,7 @@ type DialogMode =
   | { type: "pair" }
   | { type: "regenerate"; device: Device }
   | { type: "edit"; device: Device }
+  | { type: "details"; device: Device }
   | { type: "logout"; device: Device }
   | { type: "delete"; device: Device };
 
@@ -380,6 +402,23 @@ const DeviceSettings = () => {
     return () => clearInterval(id);
   }, [locationId, realtimeStatus, refresh, maybeClosePairDialog]);
 
+  // While a pairing dialog is open, poll for the device connecting regardless
+  // of WS health. The realtime DEVICE_CREATED / heartbeat path closes it
+  // faster when those events arrive, but this guarantees the dialog closes and
+  // the list refreshes even if the gateway doesn't fan device events to this
+  // channel. Scoped to the open dialog, so it's not a constant background poll.
+  useEffect(() => {
+    if (!locationId) return;
+    if (dialog.type !== "pair" && dialog.type !== "regenerate") return;
+    const id = setInterval(() => {
+      const previous = devicesRef.current ?? [];
+      void refresh(locationId).then((fresh) => {
+        maybeClosePairDialog(fresh, previous);
+      });
+    }, 4000);
+    return () => clearInterval(id);
+  }, [locationId, dialog.type, refresh, maybeClosePairDialog]);
+
   // Any mutation action returns the updated device; patch it in-place so the
   // list doesn't need a full re-fetch on every action.
   const applyResult = (res: DeviceActionResponse<Device | null>): boolean => {
@@ -513,6 +552,7 @@ const DeviceSettings = () => {
             <DeviceRow
               key={d.id}
               device={d}
+              onViewDetails={() => setDialog({ type: "details", device: d })}
               onEdit={() => setDialog({ type: "edit", device: d })}
               onDeleteRequest={() => setDialog({ type: "delete", device: d })}
               onLogoutRequest={() => setDialog({ type: "logout", device: d })}
@@ -553,6 +593,15 @@ const DeviceSettings = () => {
         />
       )}
 
+      {dialog.type === "details" && (
+        <DeviceDetailsDialog
+          device={
+            devices?.find((d) => d.id === dialog.device.id) ?? dialog.device
+          }
+          onClose={() => setDialog({ type: "idle" })}
+        />
+      )}
+
       {dialog.type === "logout" && (
         <ConfirmLogoutDialog
           device={dialog.device}
@@ -584,6 +633,7 @@ export default DeviceSettings;
 
 function DeviceRow({
   device,
+  onViewDetails,
   onEdit,
   onDeleteRequest,
   onLogoutRequest,
@@ -591,6 +641,7 @@ function DeviceRow({
   onAction,
 }: {
   device: Device;
+  onViewDetails: () => void;
   onEdit: () => void;
   onDeleteRequest: () => void;
   onLogoutRequest: () => void;
@@ -636,7 +687,13 @@ function DeviceRow({
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-medium truncate">{name}</p>
+              <button
+                type="button"
+                onClick={onViewDetails}
+                className="truncate text-left text-sm font-medium hover:underline focus-visible:underline focus-visible:outline-none"
+              >
+                {name}
+              </button>
               {status && (
                 <Badge
                   variant="outline"
@@ -693,6 +750,11 @@ function DeviceRow({
                   {device.batteryLevel}%
                 </span>
               )}
+              {device.availableStorage != null && (
+                <span className="truncate">
+                  Storage: {formatStorage(device.availableStorage)} free
+                </span>
+              )}
             </div>
 
             {isLoggedOut && (
@@ -721,6 +783,9 @@ function DeviceRow({
             <DropdownMenuContent align="end" className="w-60">
               <DropdownMenuLabel>Manage device</DropdownMenuLabel>
 
+              <DropdownMenuItem onClick={onViewDetails}>
+                View details
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onEdit}>
                 Edit name & department
               </DropdownMenuItem>
@@ -1023,6 +1088,213 @@ function formatCountdown(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Device details — full read-only view of everything we hold for a device.
+// The parent passes the live row from `devices`, so heartbeat patches
+// (battery, storage, last-seen) update here in place while it's open.
+// ──────────────────────────────────────────────────────────────────────
+
+function DetailRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-1.5">
+      <span className="flex-shrink-0 text-xs text-muted-foreground">{label}</span>
+      <span className="break-all text-right text-xs font-medium">{value}</span>
+    </div>
+  );
+}
+
+function DetailSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+      </p>
+      <div className="divide-y divide-border/50 rounded-md border px-3">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function DeviceDetailsDialog({
+  device,
+  onClose,
+}: {
+  device: Device;
+  onClose: () => void;
+}) {
+  const name = deviceDisplayName(device);
+  const Icon = device.isTablet ? Tablet : Smartphone;
+  const dash = (v: string | number | null | undefined): string =>
+    v === null || v === undefined || v === "" ? "—" : String(v);
+  const osLine = [device.os, device.osVersion].filter(Boolean).join(" ");
+  const hasSystem =
+    device.buildNumber != null ||
+    device.apiLevel != null ||
+    device.firstInstallTime != null ||
+    device.timezone != null ||
+    device.deviceLocale != null ||
+    device.isEmulator != null;
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Icon className="h-4 w-4 text-muted-foreground" />
+            {name}
+          </DialogTitle>
+          <DialogDescription>
+            {device.status
+              ? DEVICE_STATUS_DESCRIPTIONS[device.status]
+              : "Full device details."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <DetailSection title="Status">
+            <DetailRow
+              label="Status"
+              value={
+                device.status
+                  ? (DEVICE_STATUS_LABELS[device.status] ?? device.status)
+                  : "—"
+              }
+            />
+            <DetailRow label="Suspended" value={device.suspended ? "Yes" : "No"} />
+            <DetailRow
+              label="PIN required"
+              value={device.pinRequired ? "Yes" : "No"}
+            />
+            <DetailRow label="Assignment" value={dash(device.assignmentType)} />
+          </DetailSection>
+
+          <DetailSection title="Live telemetry">
+            <DetailRow
+              label="Battery"
+              value={
+                device.batteryLevel != null ? (
+                  <span className="inline-flex items-center gap-1">
+                    {device.isCharging ? (
+                      <BatteryCharging className="h-3.5 w-3.5" />
+                    ) : (
+                      <Battery className="h-3.5 w-3.5" />
+                    )}
+                    {device.batteryLevel}%{device.isCharging ? " · charging" : ""}
+                  </span>
+                ) : (
+                  "—"
+                )
+              }
+            />
+            <DetailRow
+              label="Free storage"
+              value={formatStorage(device.availableStorage)}
+            />
+            <DetailRow
+              label="Last seen"
+              value={
+                device.lastActiveAt
+                  ? `${formatRelative(device.lastActiveAt)} · ${formatAbsolute(device.lastActiveAt)}`
+                  : "—"
+              }
+            />
+            <DetailRow label="Last IP" value={dash(device.lastIp)} />
+            <DetailRow label="App version" value={dash(device.appVersion)} />
+          </DetailSection>
+
+          <DetailSection title="Hardware">
+            <DetailRow label="Type" value={dash(device.deviceType)} />
+            <DetailRow label="Manufacturer" value={dash(device.manufacturer)} />
+            <DetailRow label="Brand" value={dash(device.brand)} />
+            <DetailRow label="Model" value={dash(device.model)} />
+            <DetailRow label="OS" value={dash(osLine || null)} />
+            <DetailRow label="Serial number" value={dash(device.serialNumber)} />
+            {device.ramInGB != null && (
+              <DetailRow label="RAM" value={`${device.ramInGB.toFixed(1)} GB`} />
+            )}
+            {device.storageInGB != null && (
+              <DetailRow
+                label="Total storage"
+                value={`${device.storageInGB.toFixed(1)} GB`}
+              />
+            )}
+            {device.batteryInMah != null && (
+              <DetailRow
+                label="Battery capacity"
+                value={`${device.batteryInMah} mAh`}
+              />
+            )}
+            {device.processor && (
+              <DetailRow label="Processor" value={device.processor} />
+            )}
+            {device.displayResolution && (
+              <DetailRow label="Display" value={device.displayResolution} />
+            )}
+            {device.imei && <DetailRow label="IMEI" value={device.imei} />}
+            {device.macAddress && (
+              <DetailRow label="MAC address" value={device.macAddress} />
+            )}
+          </DetailSection>
+
+          {hasSystem && (
+            <DetailSection title="System">
+              {device.buildNumber && (
+                <DetailRow label="Build" value={device.buildNumber} />
+              )}
+              {device.apiLevel != null && (
+                <DetailRow label="API level" value={String(device.apiLevel)} />
+              )}
+              {device.firstInstallTime && (
+                <DetailRow
+                  label="First install"
+                  value={formatAbsolute(device.firstInstallTime)}
+                />
+              )}
+              {device.timezone && (
+                <DetailRow label="Timezone" value={device.timezone} />
+              )}
+              {device.deviceLocale && (
+                <DetailRow label="Locale" value={device.deviceLocale} />
+              )}
+              {device.isEmulator != null && (
+                <DetailRow
+                  label="Emulator"
+                  value={device.isEmulator ? "Yes" : "No"}
+                />
+              )}
+            </DetailSection>
+          )}
+
+          <DetailSection title="Lifecycle">
+            <DetailRow label="Paired" value={formatAbsolute(device.pairedAt)} />
+            <DetailRow label="First added" value={formatAbsolute(device.createdAt)} />
+            <DetailRow label="Last updated" value={formatAbsolute(device.updatedAt)} />
+          </DetailSection>
+
+          <DetailSection title="Identifiers">
+            <DetailRow label="Device name (reported)" value={dash(device.name)} />
+            <DetailRow label="Device ID" value={dash(device.id)} />
+            <DetailRow label="Fingerprint" value={dash(device.fingerprint)} />
+          </DetailSection>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // ──────────────────────────────────────────────────────────────────────

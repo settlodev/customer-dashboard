@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -103,6 +103,26 @@ export function PaymentOptionsDialog({
   const { status: paymentStatus, error: paymentError } =
     usePaymentPolling(paymentRefId);
 
+  // Polling is active from the moment we have a payment ref until we hit
+  // a terminal status. Use this to keep the form's submit button locked
+  // and the user oriented while the USSD push is awaiting confirmation.
+  const waitingForConfirmation =
+    !!paymentRefId &&
+    paymentStatus !== "SUCCESS" &&
+    paymentStatus !== "FAILED";
+
+  // Keep latest callback refs so the success effect can depend only on the
+  // polling status, not on prop identity. Without this, parent re-renders
+  // (very common after success because the parent refetches the invoice)
+  // refire the success effect, repeatedly cancelling and rescheduling the
+  // 1500ms cleanup timer and triggering React's "max update depth" guard.
+  const onPaidRef = useRef(onPaid);
+  const onOpenChangeRef = useRef(onOpenChange);
+  useEffect(() => {
+    onPaidRef.current = onPaid;
+    onOpenChangeRef.current = onOpenChange;
+  });
+
   const form = useForm<FormData>({
     resolver: zodResolver(Schema),
     defaultValues: {
@@ -126,6 +146,10 @@ export function PaymentOptionsDialog({
   }, [open, defaultEmail, defaultPhone, form]);
 
   // ── Watch payment polling — fire onPaid + close on SUCCESS ─────────
+  // Deps intentionally exclude `onPaid`, `onOpenChange`, and `toast` — they
+  // come from props/hooks that can re-create their identities on every parent
+  // render, which would refire this effect, cancel the success timer, and
+  // loop. We read them through refs instead.
   useEffect(() => {
     if (paymentStatus === "SUCCESS") {
       toast({
@@ -135,8 +159,8 @@ export function PaymentOptionsDialog({
       const t = setTimeout(() => {
         setStatusOpen(false);
         setPaymentRefId(null);
-        onOpenChange(false);
-        onPaid?.();
+        onOpenChangeRef.current?.(false);
+        onPaidRef.current?.();
       }, 1500);
       return () => clearTimeout(t);
     }
@@ -147,7 +171,8 @@ export function PaymentOptionsDialog({
         description: paymentError || "Please try again.",
       });
     }
-  }, [paymentStatus, paymentError, invoice.invoiceNumber, onOpenChange, onPaid, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentStatus, paymentError, invoice.invoiceNumber]);
 
 
   const onSubmit = useCallback(
@@ -265,15 +290,25 @@ export function PaymentOptionsDialog({
                   type="button"
                   variant="outline"
                   onClick={() => onOpenChange(false)}
-                  disabled={submitting}
+                  disabled={submitting || waitingForConfirmation}
+                  title={
+                    waitingForConfirmation
+                      ? "Payment is still being confirmed — keep this window open."
+                      : undefined
+                  }
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={submitting}>
+                <Button type="submit" disabled={submitting || waitingForConfirmation}>
                   {submitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Sending push…
+                    </>
+                  ) : waitingForConfirmation ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Awaiting confirmation on your phone…
                     </>
                   ) : (
                     <>Pay {formatMoney(invoice.amount, invoice.currency)}</>

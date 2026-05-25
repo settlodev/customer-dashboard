@@ -1,6 +1,11 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useState,
+} from "react";
 import { CheckCircle2, Loader2, Sparkles, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,41 +20,89 @@ interface CouponInputProps {
   disabled?: boolean;
 }
 
-export function CouponInput({ onCouponChange, disabled }: CouponInputProps) {
+/**
+ * Imperative handle exposed by CouponInput so a parent submit handler can
+ * make sure any typed-but-not-yet-applied code is validated before it
+ * proceeds with the invoice generation.
+ */
+export type CouponInputHandle = {
+  /**
+   * Returns when the coupon state is settled:
+   *   - { status: "ready", coupon: null }   → no code entered
+   *   - { status: "ready", coupon: Coupon } → already applied or just applied
+   *   - { status: "invalid", message }      → code is present but failed validation
+   */
+  resolve(): Promise<
+    | { status: "ready"; coupon: Coupon | null }
+    | { status: "invalid"; message: string }
+  >;
+};
+
+export const CouponInput = forwardRef<CouponInputHandle, CouponInputProps>(
+  function CouponInput({ onCouponChange, disabled }, ref) {
   const [code, setCode] = useState("");
   const [coupon, setCoupon] = useState<Coupon | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
 
+  const validate = useCallback(
+    async (
+      raw: string,
+    ): Promise<
+      | { status: "ready"; coupon: Coupon | null }
+      | { status: "invalid"; message: string }
+    > => {
+      const trimmed = raw.trim();
+      if (!trimmed) return { status: "ready", coupon: null };
+      setChecking(true);
+      setError(null);
+      try {
+        const result = await validateCoupon(trimmed);
+        if (!result || !result.isActive) {
+          const message = "That code isn't active. Check the spelling or try another.";
+          setCoupon(null);
+          onCouponChange(null);
+          setError(message);
+          return { status: "invalid", message };
+        }
+        if (result.validUntil && new Date(result.validUntil) < new Date()) {
+          const message = "This coupon has expired.";
+          setCoupon(null);
+          onCouponChange(null);
+          setError(message);
+          return { status: "invalid", message };
+        }
+        setCoupon(result);
+        onCouponChange(result);
+        return { status: "ready", coupon: result };
+      } catch {
+        const message = "Couldn't reach the billing service. Try again.";
+        setCoupon(null);
+        onCouponChange(null);
+        setError(message);
+        return { status: "invalid", message };
+      } finally {
+        setChecking(false);
+      }
+    },
+    [onCouponChange],
+  );
+
   const apply = useCallback(async () => {
-    const trimmed = code.trim();
-    if (!trimmed) return;
-    setChecking(true);
-    setError(null);
-    try {
-      const result = await validateCoupon(trimmed);
-      if (!result || !result.isActive) {
-        setCoupon(null);
-        onCouponChange(null);
-        setError("That code isn't active. Check the spelling or try another.");
-        return;
-      }
-      if (result.validUntil && new Date(result.validUntil) < new Date()) {
-        setCoupon(null);
-        onCouponChange(null);
-        setError("This coupon has expired.");
-        return;
-      }
-      setCoupon(result);
-      onCouponChange(result);
-    } catch {
-      setCoupon(null);
-      onCouponChange(null);
-      setError("Couldn't reach the billing service. Try again.");
-    } finally {
-      setChecking(false);
-    }
-  }, [code, onCouponChange]);
+    await validate(code);
+  }, [code, validate]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      async resolve() {
+        // Already applied — nothing pending.
+        if (coupon) return { status: "ready", coupon };
+        return validate(code);
+      },
+    }),
+    [code, coupon, validate],
+  );
 
   const clear = useCallback(() => {
     setCode("");
@@ -117,4 +170,4 @@ export function CouponInput({ onCouponChange, disabled }: CouponInputProps) {
       )}
     </div>
   );
-}
+});

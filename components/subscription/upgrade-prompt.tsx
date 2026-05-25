@@ -53,7 +53,7 @@ export function UpgradePagePrompt({
 
         {/* CTA */}
         <div className="space-y-3">
-          <Link href="/renew-subscription">
+          <Link href="/billing">
             <Button size="lg" className="w-full sm:w-auto gap-2">
               Upgrade Your Plan
               <ArrowRight className="h-4 w-4" />
@@ -171,7 +171,7 @@ export function LimitGate({
             Upgrade your plan to add more
           </p>
         </div>
-        <Link href="/renew-subscription">
+        <Link href="/billing">
           <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/30">
             Upgrade
           </Button>

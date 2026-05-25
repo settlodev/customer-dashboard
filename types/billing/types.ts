@@ -187,18 +187,6 @@ export interface Coupon {
   isActive: boolean;
 }
 
-// ── Prepayments ─────────────────────────────────────────────────────
-
-export interface PrepaymentResponse {
-  id: string;
-  subscriptionId: string;
-  monthsPaid: number;
-  amount: number;
-  extendsThrough: string;
-  invoiceId: string;
-  paidAt: string | null;
-}
-
 // ── Credits ─────────────────────────────────────────────────────────
 
 export type CreditTransactionType =

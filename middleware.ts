@@ -545,10 +545,10 @@ export async function middleware(request: NextRequest) {
 
   if (
     (subscriptionStatus === "EXPIRED" || subscriptionStatus === "CANCELLED") &&
-    pathname !== "/renew-subscription"
+    pathname !== "/billing"
   ) {
     return withRefreshedCookies(NextResponse.redirect(
-      new URL("/renew-subscription", request.nextUrl),
+      new URL("/billing", request.nextUrl),
     ));
   }
 

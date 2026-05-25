@@ -27,7 +27,6 @@ export const specialAuthRoutes = [
   "/user-verification",
   "/subscription",
   "/account-suspended",
-  "/renew-subscription",
 ];
 
 export const apiAuthPrefix = "/api/auth";

@@ -88,7 +88,7 @@ export function SubscriptionGuard({
             <AlertDescription className="text-sm text-orange-800">
               This feature is not included in your current plan.
               <div className="mt-3">
-                <Link href="/renew-subscription">
+                <Link href="/billing">
                   <Button size="sm" className="bg-primary hover:bg-orange-600 text-white">
                     Upgrade Plan
                   </Button>

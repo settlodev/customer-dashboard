@@ -160,7 +160,7 @@ export function SubscriptionBanner() {
       tag: "Expired",
       message: "Your subscription has expired — renew to keep making changes.",
       actionLabel: "Renew now",
-      actionHref: "/renew-subscription",
+      actionHref: "/billing",
       dismissible: false,
     };
   } else if (isPastDue) {
@@ -171,7 +171,7 @@ export function SubscriptionBanner() {
       message: "Update your billing to avoid interruption.",
       meta: timeLeft ? `Service stops in ${timeLeft}` : undefined,
       actionLabel: "Update billing",
-      actionHref: "/renew-subscription",
+      actionHref: "/billing",
       dismissible: false,
     };
   } else if (
@@ -186,7 +186,7 @@ export function SubscriptionBanner() {
       message: "Renew to avoid interruption.",
       meta: timeLeft ? `Expires in ${timeLeft}` : undefined,
       actionLabel: "Renew",
-      actionHref: "/renew-subscription",
+      actionHref: "/billing",
       dismissible: true,
     };
   } else if (isTrial && daysLeft !== null && daysLeft <= TRIAL_URGENT_DAYS) {
@@ -197,7 +197,7 @@ export function SubscriptionBanner() {
       message: "Subscribe now to keep access to all features.",
       meta: timeLeft ? `Ends in ${timeLeft}` : undefined,
       actionLabel: "Subscribe now",
-      actionHref: "/renew-subscription",
+      actionHref: "/billing",
       dismissible: false,
     };
   } else if (isTrial) {
@@ -208,7 +208,7 @@ export function SubscriptionBanner() {
       message: "Explore every feature — subscribe when ready.",
       meta: timeLeft ? `${timeLeft} remaining` : undefined,
       actionLabel: "View plans",
-      actionHref: "/renew-subscription",
+      actionHref: "/billing",
       dismissible: true,
     };
   }

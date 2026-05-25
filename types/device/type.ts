@@ -49,6 +49,19 @@ export interface Device {
   brand: string | null;
   serialNumber: string | null;
   isTablet: boolean | null;
+  imei: string | null;
+  macAddress: string | null;
+  processor: string | null;
+  displayResolution: string | null;
+  storageInGB: number | null;
+  ramInGB: number | null;
+  batteryInMah: number | null;
+  isEmulator: boolean | null;
+  apiLevel: number | null;
+  buildNumber: string | null;
+  firstInstallTime: string | null;
+  timezone: string | null;
+  deviceLocale: string | null;
 
   // Runtime telemetry (heartbeat)
   batteryLevel: number | null;

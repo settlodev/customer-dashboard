@@ -13,7 +13,6 @@ import type {
   BillingInvoice,
   InvoiceViewDto,
   Coupon,
-  PrepaymentResponse,
   Feature,
   CreditType,
   CreditPack,
@@ -140,16 +139,23 @@ export async function removeItemAddon(
  * This is the primary billing action: it auto-cancels any existing PENDING
  * invoice and generates a fresh one for the requested months.
  * Annual discount is applied server-side for 12+ months.
+ *
+ * Server returns the generated invoice (not a Prepayment record).
  */
 export async function prepaySubscription(
   subscriptionId: string,
   monthsToPrepay: number,
-): Promise<PrepaymentResponse> {
+  couponCode?: string,
+): Promise<BillingInvoice> {
   const apiClient = new ApiClient();
-  return apiClient.post<PrepaymentResponse, { subscriptionId: string; monthsToPrepay: number }>(
-    billingUrl("/api/v1/prepayments"),
-    { subscriptionId, monthsToPrepay },
-  );
+  return apiClient.post<
+    BillingInvoice,
+    { subscriptionId: string; monthsToPrepay: number; couponCode?: string }
+  >(billingUrl("/api/v1/prepayments"), {
+    subscriptionId,
+    monthsToPrepay,
+    ...(couponCode ? { couponCode } : {}),
+  });
 }
 
 // ── Invoices ────────────────────────────────────────────────────────

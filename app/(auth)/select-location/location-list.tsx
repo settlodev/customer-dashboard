@@ -139,12 +139,12 @@ const LocationList = ({
       // TODO: Warehouse subscription needs its own subscription ID.
       // For now this uses the prepayment flow which requires an existing subscription.
       // The billing service should create the warehouse subscription item first.
-      const prepayment = await prepaySubscription(packageId, numberOfMonths);
+      const invoice = await prepaySubscription(packageId, numberOfMonths);
 
       setPaymentStatus("PENDING");
       const paymentResponse = await initiatePayment({
-        invoiceId: prepayment.invoiceId,
-        amount: prepayment.amount,
+        invoiceId: invoice.id,
+        amount: invoice.totalAmount,
         currency: "TZS",
         businessId: "",
         locationId: selectedWarehouse.id,
@@ -157,7 +157,7 @@ const LocationList = ({
         description: `Warehouse subscription - ${numberOfMonths} month(s)`,
       });
       setPaymentStatus("PROCESSING");
-      handlePendingPayment(paymentResponse.externalReferenceId, prepayment.invoiceId);
+      handlePendingPayment(paymentResponse.externalReferenceId, invoice.id);
 
       setShowSubscriptionModal(false);
       setSelectedWarehouse(null);
@@ -218,7 +218,7 @@ const LocationList = ({
         });
         setIsRedirecting(true);
         await switchToLocation(item);
-        window.location.href = `/renew-subscription?location=${item.id}`;
+        window.location.href = "/billing";
       } else {
         setIsRedirecting(true);
         await switchToLocation(item);

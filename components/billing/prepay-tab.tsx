@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,7 +28,7 @@ import {
   prepaySubscription,
 } from "@/lib/actions/billing-actions";
 import { InvoiceViewDialog } from "./invoice-view-dialog";
-import { CouponInput } from "./coupon-input";
+import { CouponInput, type CouponInputHandle } from "./coupon-input";
 import { formatBillingDate } from "./shared";
 import type {
   Coupon,
@@ -61,6 +61,7 @@ export function PrepayTab({
   const [submitting, setSubmitting] = useState(false);
   const [coupon, setCoupon] = useState<Coupon | null>(null);
   const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null);
+  const couponInputRef = useRef<CouponInputHandle>(null);
 
   const form = useForm<PrepayFormData>({
     resolver: zodResolver(PrepaymentSchema),
@@ -71,16 +72,32 @@ export function PrepayTab({
     async (data: PrepayFormData) => {
       setSubmitting(true);
       try {
+        // If a coupon code was typed but the user never clicked "Apply",
+        // validate it now. Abort the whole flow on a bad code so we don't
+        // generate an invoice the merchant didn't expect.
+        const couponResolution = await couponInputRef.current?.resolve();
+        if (couponResolution?.status === "invalid") {
+          toast({
+            variant: "destructive",
+            title: "Coupon couldn't be applied",
+            description: couponResolution.message,
+          });
+          return;
+        }
+        const appliedCoupon =
+          couponResolution?.status === "ready" ? couponResolution.coupon : coupon;
+
         // Try to generate a fresh prepayment invoice. If the period already
         // has a pending invoice (409), recover the existing one instead so
         // the merchant can pay it directly.
         let invoiceId: string;
         try {
-          const prepayment = await prepaySubscription(
+          const invoice = await prepaySubscription(
             subscription.id,
             data.monthsToPrepay,
+            appliedCoupon?.code,
           );
-          invoiceId = prepayment.invoiceId;
+          invoiceId = invoice.id;
         } catch (prepayError) {
           const err = prepayError as { status?: number; message?: string };
           const isConflict =
@@ -111,7 +128,7 @@ export function PrepayTab({
         setSubmitting(false);
       }
     },
-    [subscription, toast],
+    [subscription, toast, coupon],
   );
 
   return (
@@ -166,11 +183,14 @@ export function PrepayTab({
             />
 
             <div>
-              <CouponInput onCouponChange={setCoupon} disabled={submitting} />
+              <CouponInput
+                ref={couponInputRef}
+                onCouponChange={setCoupon}
+                disabled={submitting}
+              />
               {coupon && (
                 <p className="mt-1 text-[11.5px] text-muted-foreground">
-                  Coupon recorded. Reach out to support to attach it to your
-                  subscription before the next invoice.
+                  Coupon {coupon.code} will apply to this invoice.
                 </p>
               )}
             </div>
