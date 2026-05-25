@@ -28,14 +28,22 @@ import { Stock } from "@/types/stock/type";
 import { StockVariant } from "@/types/stockVariant/type";
 import { ApiResponse } from "@/types/types";
 
+type VariantInfo = {
+  stockName: string;
+  variant?: { id?: string; name: string };
+} | null;
+
 interface Props {
   placeholder?: string;
   isRequired?: boolean;
   value?: string;
   isDisabled?: boolean;
   description?: string;
-  onChange: (value: string) => void;
+  // Now also passes back the selected variant info so the parent doesn't
+  // have to refetch.
+  onChange: (value: string, info?: VariantInfo) => void;
   disabledValues?: string[];
+  initialVariantInfo?: VariantInfo;
 }
 
 const StockVariantSelector: React.FC<Props> = ({
@@ -45,6 +53,7 @@ const StockVariantSelector: React.FC<Props> = ({
   description,
   onChange,
   disabledValues = [],
+  initialVariantInfo,
 }) => {
   const [open, setOpen] = useState(false);
   const [stocks, setStocks] = useState<Stock[]>([]);
@@ -53,21 +62,34 @@ const StockVariantSelector: React.FC<Props> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+
   const [selectedVariantInfo, setSelectedVariantInfo] = useState<{
     id: string;
     displayName: string;
-  } | null>(null);
+  } | null>(() => {
+    if (
+      value &&
+      initialVariantInfo?.variant?.name &&
+      initialVariantInfo.stockName
+    ) {
+      return {
+        id: value,
+        displayName: `${initialVariantInfo.stockName} - ${initialVariantInfo.variant.name}`,
+      };
+    }
+    return null;
+  });
 
-  // Track trigger width for responsive popover sizing
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [triggerWidth, setTriggerWidth] = useState<number>(0);
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const fetchedIdsRef = useRef<Set<string>>(new Set());
+  const displayNameCacheRef = useRef<Map<string, string>>(new Map());
 
   const ITEMS_PER_PAGE = 20;
 
-  // Measure trigger width on mount and resize
   useEffect(() => {
     const measure = () => {
       if (triggerRef.current) {
@@ -84,46 +106,98 @@ const StockVariantSelector: React.FC<Props> = ({
     return `${stock.name} - ${variant.name}`;
   }, []);
 
-  const loadSpecificVariantInfo = useCallback(async (variantId: string) => {
-    setIsLoadingVariant(true);
-    try {
-      const variantInfo = await getStockVariantById(variantId);
-      if (variantInfo && variantInfo.variant) {
-        setSelectedVariantInfo({
-          id: variantInfo.variant.id,
-          displayName: `${variantInfo.stockName || ""} - ${variantInfo.variant.name}`,
-        });
-      }
-    } catch (error) {
-      console.error("Error loading specific variant info:", error);
-    } finally {
-      setIsLoadingVariant(false);
-    }
+  const setSelectedInfo = useCallback((id: string, displayName: string) => {
+    displayNameCacheRef.current.set(id, displayName);
+    setSelectedVariantInfo({ id, displayName });
   }, []);
 
-  // Load selected variant info when value changes
-  useEffect(() => {
-    if (value) {
-      const variantExists = stocks.some((stock) =>
-        stock.stockVariants.some((variant) => variant.id === value),
-      );
-      if (!variantExists && selectedVariantInfo?.id !== value) {
-        loadSpecificVariantInfo(value);
-      }
-    } else {
-      setSelectedVariantInfo(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, stocks]);
+  const loadSpecificVariantInfo = useCallback(
+    async (variantId: string) => {
+      if (fetchedIdsRef.current.has(variantId)) return;
+      fetchedIdsRef.current.add(variantId);
 
-  // Load stocks when popover opens (only once)
+      setIsLoadingVariant(true);
+      try {
+        const variantInfo = await getStockVariantById(variantId);
+        if (variantInfo && variantInfo.variant) {
+          const displayName = `${variantInfo.stockName || ""} - ${variantInfo.variant.name}`;
+          setSelectedInfo(variantInfo.variant.id, displayName);
+        }
+      } catch (error) {
+        fetchedIdsRef.current.delete(variantId);
+        console.error("Error loading specific variant info:", error);
+      } finally {
+        setIsLoadingVariant(false);
+      }
+    },
+    [setSelectedInfo],
+  );
+
+  // Hydrate from initialVariantInfo when it arrives, but only ADD info —
+  // never let a stale or null prop wipe a good local display.
+  useEffect(() => {
+    if (!value) return;
+    if (!initialVariantInfo?.variant?.name) return;
+    if (selectedVariantInfo?.id === value) return;
+    const displayName = `${initialVariantInfo.stockName} - ${initialVariantInfo.variant.name}`;
+    setSelectedInfo(value, displayName);
+    fetchedIdsRef.current.add(value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, initialVariantInfo]);
+
+  // When value changes — resolve display via cache first, then stocks, then fetch.
+  useEffect(() => {
+    if (!value) {
+      setSelectedVariantInfo(null);
+      return;
+    }
+
+    if (selectedVariantInfo?.id === value) return;
+
+    const cachedName = displayNameCacheRef.current.get(value);
+    if (cachedName) {
+      setSelectedVariantInfo({ id: value, displayName: cachedName });
+      return;
+    }
+
+    for (const stock of stocks) {
+      const variant = stock.stockVariants.find((v) => v.id === value);
+      if (variant) {
+        const displayName = getDisplayName(stock, variant);
+        setSelectedInfo(variant.id, displayName);
+        return;
+      }
+    }
+
+    if (initialVariantInfo?.variant?.name) {
+      const displayName = `${initialVariantInfo.stockName} - ${initialVariantInfo.variant.name}`;
+      setSelectedInfo(value, displayName);
+      return;
+    }
+
+    loadSpecificVariantInfo(value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  useEffect(() => {
+    if (!value || selectedVariantInfo?.id === value) return;
+    for (const stock of stocks) {
+      const variant = stock.stockVariants.find((v) => v.id === value);
+      if (variant) {
+        const displayName = getDisplayName(stock, variant);
+        setSelectedInfo(variant.id, displayName);
+        return;
+      }
+    }
+  }, [stocks, value, selectedVariantInfo?.id, getDisplayName, setSelectedInfo]);
+
   useEffect(() => {
     if (open && stocks.length === 0) {
       loadStocks("", 1);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Debounced search
   useEffect(() => {
     if (!open) return;
     if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
@@ -135,6 +209,7 @@ const StockVariantSelector: React.FC<Props> = ({
     return () => {
       if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, open]);
 
   const loadStocks = useCallback(
@@ -167,6 +242,7 @@ const StockVariantSelector: React.FC<Props> = ({
     [],
   );
 
+  // Options now carry the raw stock+variant so handleSelect can pass them up.
   const allVariantOptions = useMemo(
     () =>
       stocks.flatMap((stock) =>
@@ -175,6 +251,8 @@ const StockVariantSelector: React.FC<Props> = ({
           displayName: getDisplayName(stock, variant),
           disabled: disabledValues.includes(variant.id),
           searchString: `${stock.name.toLowerCase()} ${variant.name.toLowerCase()}`,
+          stock,
+          variant,
         })),
       ),
     [stocks, disabledValues, getDisplayName],
@@ -182,10 +260,13 @@ const StockVariantSelector: React.FC<Props> = ({
 
   const selectedOption = useMemo(() => {
     if (!value) return null;
-    const option = allVariantOptions.find((o) => o.id === value);
-    if (option) return option;
-    if (selectedVariantInfo && selectedVariantInfo.id === value)
+    if (selectedVariantInfo && selectedVariantInfo.id === value) {
       return selectedVariantInfo;
+    }
+    const cachedName = displayNameCacheRef.current.get(value);
+    if (cachedName) return { id: value, displayName: cachedName };
+    const option = allVariantOptions.find((o) => o.id === value);
+    if (option) return { id: option.id, displayName: option.displayName };
     return null;
   }, [allVariantOptions, value, selectedVariantInfo]);
 
@@ -206,27 +287,43 @@ const StockVariantSelector: React.FC<Props> = ({
   );
 
   const handleSelect = useCallback(
-    (option: { id: string; displayName: string }) => {
+    (option: {
+      id: string;
+      displayName: string;
+      stock: Stock;
+      variant: StockVariant;
+    }) => {
       const newValue = option.id === value ? "" : option.id;
-      onChange(newValue);
+
       if (newValue) {
+        displayNameCacheRef.current.set(newValue, option.displayName);
         setSelectedVariantInfo({
-          id: option.id,
+          id: newValue,
           displayName: option.displayName,
         });
+        fetchedIdsRef.current.add(newValue);
+
+        // Hand the info up so parent doesn't have to refetch
+        const info: VariantInfo = {
+          stockName: option.stock.name,
+          variant: { id: option.variant.id, name: option.variant.name },
+        };
+        onChange(newValue, info);
       } else {
         setSelectedVariantInfo(null);
+        onChange(newValue, null);
       }
+
       setOpen(false);
     },
     [value, onChange],
   );
 
   const displayText = useMemo(() => {
-    if (isLoadingVariant) return "Loading...";
     if (selectedOption) return selectedOption.displayName;
+    if (isLoadingVariant && value) return "Loading...";
     return placeholder;
-  }, [isLoadingVariant, selectedOption, placeholder]);
+  }, [isLoadingVariant, selectedOption, placeholder, value]);
 
   const popoverWidth = Math.max(triggerWidth, 300);
 
@@ -243,13 +340,11 @@ const StockVariantSelector: React.FC<Props> = ({
             disabled={isDisabled}
           >
             <span className="flex items-center gap-2 min-w-0 flex-1">
-              {isLoadingVariant && (
+              {isLoadingVariant && !selectedOption && (
                 <Loader2 className="h-4 w-4 animate-spin shrink-0" />
               )}
-
               <span className="truncate text-left">{displayText}</span>
             </span>
-
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -292,7 +387,6 @@ const StockVariantSelector: React.FC<Props> = ({
                           value === option.id ? "opacity-100" : "opacity-0",
                         )}
                       />
-
                       <span className="break-words">{option.displayName}</span>
                     </CommandItem>
                   ))

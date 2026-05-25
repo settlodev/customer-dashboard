@@ -1,6 +1,6 @@
 "use client";
 
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
   CalendarIcon,
@@ -73,6 +73,37 @@ const fmt2 = (v: number | null | undefined) =>
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(v ?? 0);
+
+/* Map EFD status codes → human label */
+const statusLabel = (code: string | number | null | undefined) => {
+  const s = String(code ?? "").trim();
+  switch (s) {
+    case "0":
+      return "Pending";
+    case "1":
+      return "Submitted";
+    case "2":
+      return "Acknowledged";
+    case "3":
+      return "Failed";
+    default:
+      return s || "—";
+  }
+};
+
+const statusToneClasses = (code: string | number | null | undefined) => {
+  const s = String(code ?? "").trim();
+  switch (s) {
+    case "2":
+      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400";
+    case "1":
+      return "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400";
+    case "3":
+      return "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400";
+    default:
+      return "bg-muted text-muted-foreground";
+  }
+};
 
 /* ── EFD Status gate component ── */
 const EfdStatusGate = ({ status }: { status: EfdStatusResponse | null }) => {
@@ -221,7 +252,7 @@ const EfdStatusGate = ({ status }: { status: EfdStatusResponse | null }) => {
   );
 };
 
-/* ── The Z-Report receipt itself, reused for both screen and PDF capture ── */
+/* ── Receipt body — shows per-day rows plus aggregated totals ── */
 const ZReceiptBody = ({
   reportData,
   location,
@@ -237,20 +268,33 @@ const ZReceiptBody = ({
   const totals = reportData.reduce(
     (acc, r) => {
       acc.totalReceipt += r.totalReceipt ?? 0;
+      acc.totalSales += r.totalSales ?? 0;
       acc.totalSalesVatInc += r.totalSalesVatInc ?? 0;
       acc.totalSalesVatExc += r.totalSalesVatExc ?? 0;
       acc.totalTax += r.totalTax ?? 0;
+      acc.totalDiscount += r.totalDiscount ?? 0;
+      acc.totalNetAmount += r.totalNetAmount ?? 0;
       return acc;
     },
     {
       totalReceipt: 0,
+      totalSales: 0,
       totalSalesVatInc: 0,
       totalSalesVatExc: 0,
       totalTax: 0,
+      totalDiscount: 0,
+      totalNetAmount: 0,
     },
   );
 
-  const last = reportData[reportData.length - 1];
+  // Gross is a cumulative counter from the EFD — use the latest row's value
+  const sorted = [...reportData].sort((a, b) =>
+    a.zrDate.localeCompare(b.zrDate),
+  );
+  const firstRow = sorted[0];
+  const lastRow = sorted[sorted.length - 1];
+  const cumulativeGross = lastRow?.gross ?? 0;
+
   const startStr = format(startDate, "dd-MM-yyyy");
   const endStr = format(endDate, "dd-MM-yyyy");
   const timeStr = format(new Date(), "HH:mm");
@@ -258,13 +302,14 @@ const ZReceiptBody = ({
     (location as any)?.efdSerialNumber ??
     (location as any)?.serialNumber ??
     "—";
-  const zNo = last?.zrDate
-    ? `Z-${last.zrDate.replace(/-/g, "").slice(-7)}`
+  const zNoStart = firstRow?.zrDate
+    ? `Z-${firstRow.zrDate.replace(/-/g, "").slice(-7)}`
+    : "—";
+  const zNoEnd = lastRow?.zrDate
+    ? `Z-${lastRow.zrDate.replace(/-/g, "").slice(-7)}`
     : "—";
 
-  // Tanzania VAT mapping — backend returns a single tax bucket, so we
-  // place the whole figure under VAT 18% (standard rate). 0% and EXEMPT
-  // rows display 0.00 until the API exposes per-rate breakdown.
+  // VAT bucket mapping (backend exposes only a single tax bucket)
   const totalSalesIncVat = totals.totalSalesVatInc;
   const vat18Amount = totals.totalTax;
   const vat0Amount = 0;
@@ -308,7 +353,7 @@ const ZReceiptBody = ({
           "'Courier New', 'Courier', 'Liberation Mono', 'DejaVu Sans Mono', monospace",
         fontSize: 13,
         lineHeight: 1.6,
-        color: "#111827",
+        color: "inherit",
       }}
     >
       {/* COMPANY HEADER */}
@@ -352,17 +397,71 @@ const ZReceiptBody = ({
             marginBottom: 4,
           }}
         >
-          <span>DATE: {startStr}</span>
+          <span>FROM: {startStr}</span>
           <span>TIME: {timeStr}</span>
         </div>
         {startStr !== endStr && (
-          <div style={{ marginBottom: 4 }}>TO DATE: {endStr}</div>
+          <div style={{ marginBottom: 4 }}>TO: {endStr}</div>
         )}
-        <div style={{ marginBottom: 4 }}>RECEIPT/Z-NO: {zNo}</div>
+        <div style={{ marginBottom: 4 }}>
+          Z-NO RANGE: {zNoStart}
+          {zNoStart !== zNoEnd ? ` → ${zNoEnd}` : ""}
+        </div>
         <div>EFD SERIAL NO: {efdSerial}</div>
       </div>
 
       {divider}
+
+      {/* PER-DAY BREAKDOWN */}
+      {reportData.length > 1 && (
+        <>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>
+            --- DAILY BREAKDOWN ---
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            {sorted.map((row, idx) => {
+              let dateLabel = row.zrDate;
+              try {
+                dateLabel = format(parseISO(row.zrDate), "dd MMM");
+              } catch {
+                /* keep raw */
+              }
+              return (
+                <div key={`${row.zrDate}-${idx}`} style={{ marginBottom: 6 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <span>{dateLabel}</span>
+                    <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {fmt2(row.totalSalesVatInc)}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontSize: 11,
+                      opacity: 0.7,
+                    }}
+                  >
+                    <span>
+                      {row.totalReceipt} rcpt · status {statusLabel(row.status)}
+                    </span>
+                    <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                      VAT {fmt2(row.totalTax)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {divider}
+        </>
+      )}
 
       {/* SUMMARY */}
       <div style={{ fontWeight: 700, marginBottom: 8 }}>--- SUMMARY ---</div>
@@ -376,25 +475,33 @@ const ZReceiptBody = ({
         {line("VAT18% NETT", fmt2(vat18Nett))}
         {line("TOTAL VAT PAYABLE", fmt2(totalVatPayable), { bold: true })}
         <div style={{ height: 10 }} />
+        {line("TOTAL DISCOUNT", fmt2(totals.totalDiscount))}
+        {line("TOTAL NET AMOUNT", fmt2(totals.totalNetAmount))}
+        <div style={{ height: 10 }} />
         {line("TOTAL INVOICES", String(totalInvoices))}
         {line("CANCELLED RECEIPTS", String(cancelledReceipts))}
       </div>
 
       {divider}
 
-      {/* QR placeholder */}
-      <div style={{ textAlign: "center", margin: "14px 0" }}>
-        [QR CODE SCANNING]
+      {/* GRAND TOTAL (cumulative EFD counter) */}
+      <div style={{ marginBottom: 8 }}>
+        {line("GRAND TOTAL (Cumulative)", fmt2(cumulativeGross), {
+          bold: true,
+        })}
+        <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>
+          Lifetime gross reported by EFD device
+        </div>
       </div>
 
       {divider}
 
       {/* FOOTER */}
-      <div style={{ marginTop: 12 }}>
+      <div className=" flex flex-col items-center justify-center mt-3">
         <div style={{ fontWeight: 700, marginBottom: 4 }}>
           THANK YOU FOR YOUR BUSINESS
         </div>
-        <div>TRA-SDC-E-FISCAL</div>
+        <div>Powered by Settlo Technologies</div>
       </div>
     </div>
   );
@@ -437,6 +544,20 @@ const ZReport = () => {
   useEffect(() => {
     getCurrentLocation().then(setLocation);
   }, []);
+
+  // Aggregated totals for the header strip
+  const aggregates = useMemo(() => {
+    return reportData.reduce(
+      (acc, r) => {
+        acc.receipts += r.totalReceipt ?? 0;
+        acc.salesInc += r.totalSalesVatInc ?? 0;
+        acc.tax += r.totalTax ?? 0;
+        acc.discount += r.totalDiscount ?? 0;
+        return acc;
+      },
+      { receipts: 0, salesInc: 0, tax: 0, discount: 0 },
+    );
+  }, [reportData]);
 
   // Normalise API response: array, or wrapped in { content/data/items }
   const normaliseRows = (res: any): ZReportRow[] => {
@@ -496,7 +617,7 @@ const ZReport = () => {
       "Tax",
       "Discount",
       "Net Amount",
-      "Gross",
+      "Cumulative Gross",
       "Status",
     ];
     const rows = data.map((row) => [
@@ -509,7 +630,7 @@ const ZReport = () => {
       row.totalDiscount,
       row.totalNetAmount,
       row.gross,
-      row.status,
+      statusLabel(row.status),
     ]);
     return [headers, ...rows].map((row) => row.join(",")).join("\n");
   };
@@ -556,12 +677,22 @@ const ZReport = () => {
       ]);
 
       await new Promise((r) => setTimeout(r, 100));
+      // For the PDF capture we temporarily force a white background
+      // and dark text so the saved file is always readable in print.
+      const prevBg = el.style.background;
+      const prevColor = el.style.color;
+      el.style.background = "#ffffff";
+      el.style.color = "#111827";
+
       const canvas = await html2canvas(el, {
         scale: 3,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
       });
+
+      el.style.background = prevBg;
+      el.style.color = prevColor;
 
       const A4_W = 210;
       const A4_H = 297;
@@ -823,7 +954,141 @@ const ZReport = () => {
           </Form>
         </div>
 
-        {/* ── Receipt area ── */}
+        {/* ── KPI strip (visible only after fetch) ── */}
+        {hasFetched && !isLoading && reportData.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-background border rounded-xl p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                Total sales (VAT inc)
+              </p>
+              <p className="text-base font-semibold tabular-nums mt-1">
+                TSh {fmt2(aggregates.salesInc)}
+              </p>
+            </div>
+            <div className="bg-background border rounded-xl p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                VAT collected
+              </p>
+              <p className="text-base font-semibold tabular-nums mt-1">
+                TSh {fmt2(aggregates.tax)}
+              </p>
+            </div>
+            <div className="bg-background border rounded-xl p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                Receipts
+              </p>
+              <p className="text-base font-semibold tabular-nums mt-1">
+                {aggregates.receipts.toLocaleString()}
+              </p>
+            </div>
+            <div className="bg-background border rounded-xl p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                Days in range
+              </p>
+              <p className="text-base font-semibold tabular-nums mt-1">
+                {reportData.length}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Daily rows table (visible only when multiple days) ── */}
+        {hasFetched && !isLoading && reportData.length > 1 && (
+          <div className="bg-background border rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b">
+              <p className="text-sm font-medium">Daily breakdown</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Each row is one closed fiscal day reported by the EFD
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs uppercase tracking-wider text-muted-foreground border-b bg-muted/30">
+                    <th className="text-left font-medium px-4 py-2.5">Date</th>
+                    <th className="text-right font-medium px-4 py-2.5">
+                      Receipts
+                    </th>
+                    <th className="text-right font-medium px-4 py-2.5">
+                      Sales (VAT inc)
+                    </th>
+                    <th className="text-right font-medium px-4 py-2.5">VAT</th>
+                    <th className="text-right font-medium px-4 py-2.5">
+                      Discount
+                    </th>
+                    <th className="text-center font-medium px-4 py-2.5">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {[...reportData]
+                    .sort((a, b) => a.zrDate.localeCompare(b.zrDate))
+                    .map((row, idx) => {
+                      let label = row.zrDate;
+                      try {
+                        label = format(parseISO(row.zrDate), "dd MMM yyyy");
+                      } catch {
+                        /* keep raw */
+                      }
+                      return (
+                        <tr
+                          key={`${row.zrDate}-${idx}`}
+                          className="hover:bg-muted/30 transition-colors"
+                        >
+                          <td className="px-4 py-2.5 font-medium">{label}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums">
+                            {row.totalReceipt.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-2.5 text-right tabular-nums">
+                            {fmt2(row.totalSalesVatInc)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right tabular-nums">
+                            {fmt2(row.totalTax)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
+                            {fmt2(row.totalDiscount)}
+                          </td>
+                          <td className="px-4 py-2.5 text-center">
+                            <span
+                              className={cn(
+                                "inline-block text-[10px] font-medium px-2 py-0.5 rounded uppercase tracking-wider",
+                                statusToneClasses(row.status),
+                              )}
+                            >
+                              {statusLabel(row.status)}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t bg-muted/30 text-xs font-semibold">
+                    <td className="px-4 py-2.5 uppercase tracking-wider">
+                      Total
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {aggregates.receipts.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {fmt2(aggregates.salesInc)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {fmt2(aggregates.tax)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {fmt2(aggregates.discount)}
+                    </td>
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── Receipt area (no white background; uses theme surface) ── */}
         <div className="bg-background border rounded-xl overflow-hidden relative">
           {isLoading && (
             <div className="absolute inset-0 bg-background/70 backdrop-blur-sm z-10 flex items-center justify-center">
@@ -850,14 +1115,14 @@ const ZReport = () => {
           )}
 
           {hasFetched && !isLoading && reportData.length > 0 && (
-            <div className="flex justify-center py-8 px-4 bg-muted/20">
-              {/* The receipt card */}
+            <div className="flex justify-center py-8 px-4">
+              {/* Receipt card — uses theme background, dashed border, no harsh white */}
               <div
                 ref={printRef}
-                className="bg-white text-gray-900 shadow-md rounded-sm"
+                className="bg-muted/20 text-foreground border border-dashed border-border rounded-md"
                 style={{
                   width: "100%",
-                  maxWidth: 480,
+                  maxWidth: 520,
                   padding: "32px 36px",
                 }}
               >

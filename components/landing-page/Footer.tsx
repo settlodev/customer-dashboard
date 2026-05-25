@@ -28,9 +28,21 @@ const legalLinks = [
 ];
 
 const contactLinks = [
-  { text: "support@settlo.co.tz", icon: <Mail className="w-4 h-4" />, href: "mailto:support@settlo.co.tz" },
-  { text: "(+255) 0759 229 777", icon: <Phone className="w-4 h-4" />, href: "tel:+255759229777" },
-  { text: "8th Floor Noble Centre, Bagamoyo Road, Dar es Salaam", icon: <MapPin className="w-4 h-4" />, href: undefined },
+  {
+    text: "support@settlo.co.tz",
+    icon: <Mail className="w-4 h-4" />,
+    href: "mailto:support@settlo.co.tz",
+  },
+  {
+    text: "(+255) 0759 229 777",
+    icon: <Phone className="w-4 h-4" />,
+    href: "tel:+255759229777",
+  },
+  {
+    text: "5th Floor Auditax International, Coca-Cola Road, Mikocheni, Dar es Salaam",
+    icon: <MapPin className="w-4 h-4" />,
+    href: undefined,
+  },
 ];
 
 export const Footer = () => {
@@ -50,7 +62,8 @@ export const Footer = () => {
               />
             </Link>
             <p className="text-sm leading-relaxed text-gray-500">
-              The all-in-one POS platform built for modern businesses across Tanzania and beyond.
+              The all-in-one POS platform built for modern businesses across
+              Tanzania and beyond.
             </p>
             <div className="flex gap-2">
               {socialMedia.map((item) => (
@@ -118,12 +131,16 @@ export const Footer = () => {
                       href={item.href}
                       className="flex items-start gap-2.5 text-sm text-gray-500 hover:text-primary transition-colors duration-200"
                     >
-                      <span className="mt-0.5 flex-shrink-0 text-primary/60">{item.icon}</span>
+                      <span className="mt-0.5 flex-shrink-0 text-primary/60">
+                        {item.icon}
+                      </span>
                       {item.text}
                     </a>
                   ) : (
                     <span className="flex items-start gap-2.5 text-sm text-gray-500">
-                      <span className="mt-0.5 flex-shrink-0 text-primary/60">{item.icon}</span>
+                      <span className="mt-0.5 flex-shrink-0 text-primary/60">
+                        {item.icon}
+                      </span>
                       {item.text}
                     </span>
                   )}
