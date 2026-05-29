@@ -243,7 +243,7 @@ export const updatePhysicalReceiptPaymentDetails = async (
   try {
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
-    const result = await apiClient.post(
+    const result = await apiClient.put(
       `/api/physical-receipt-payment-details/${location?.id}/all`,
       payload,
     );
