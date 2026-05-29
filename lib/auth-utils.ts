@@ -12,6 +12,7 @@ import {
   FormResponse,
 } from "@/types/types";
 import { logout } from "@/lib/actions/auth-actions";
+import { getCookieConfig } from "@/lib/cookie-config";
 
 export const getUser = async () => {
   const session = await auth();
@@ -49,6 +50,8 @@ export const updateAuthToken = async (token: AuthToken) => {
 
 export const createAuthToken = async (user: ExtendedUser) => {
   const cookieStore = await cookies();
+  const config = getCookieConfig();
+
   const authTokenData: AuthToken = {
     firstName: user.firstName,
     lastName: user.lastName,
@@ -77,9 +80,7 @@ export const createAuthToken = async (user: ExtendedUser) => {
   cookieStore.set({
     name: "authToken",
     value: JSON.stringify(authTokenData),
-    httpOnly: true, // Only available in server
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    ...config,
   });
 };
 
