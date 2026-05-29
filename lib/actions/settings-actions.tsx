@@ -6,7 +6,6 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { UUID } from "node:crypto";
 import {
   getCurrentBusiness,
@@ -18,8 +17,6 @@ import {
   PhysicalReceiptPaymentDetails,
   physicalReceiptPaymentDetailsSchema,
 } from "@/types/payments/schema";
-import { Proforma } from "@/types/proforma/type";
-import { Location } from "@/types/location/type";
 
 export const fetchLocationSettings = async (): Promise<any> => {
   await getAuthenticatedUser();
@@ -200,6 +197,7 @@ export const getAllDigitalReceiptPaymentDetails = async (): Promise<any> => {
     const settingsData = await apiClient.get(
       `/api/digital-receipt-payment-details/${location?.id}/all`,
     );
+    // console.log("Digital methods are", settingsData);
     return parseStringify(settingsData);
   } catch (error) {
     console.error("Failed to get All Digital receipt payment details:", error);
@@ -220,6 +218,89 @@ export const getAllPhysicalReceiptPaymentDetails = async (): Promise<any> => {
     return parseStringify(settingsData);
   } catch (error) {
     console.error("Failed to get All Physical receipt payment details:", error);
+    throw error;
+  }
+};
+
+export const updatePhysicalReceiptPaymentDetails = async (
+  methods: PhysicalReceiptPaymentDetails,
+): Promise<any> => {
+  await getAuthenticatedUser();
+
+  const validated = physicalReceiptPaymentDetailsSchema.safeParse(methods);
+  if (!validated.success) {
+    const errors = validated.error.errors.map((err) => {
+      const path = err.path.join(".");
+      return path ? `${path}: ${err.message}` : err.message;
+    });
+    throw new Error(`Validation failed: ${errors.join("; ")}`);
+  }
+
+  const payload = Array.isArray(validated.data)
+    ? validated.data
+    : [validated.data];
+
+  try {
+    const apiClient = new ApiClient();
+    const location = await getCurrentLocation();
+    const result = await apiClient.post(
+      `/api/physical-receipt-payment-details/${location?.id}/all`,
+      payload,
+    );
+    return parseStringify(result);
+  } catch (error) {
+    console.error("Failed to update physical receipt payment details:", error);
+    throw error;
+  }
+};
+
+export const updateDigitalReceiptPaymentDetails = async (
+  methods: PhysicalReceiptPaymentDetails,
+): Promise<any> => {
+  await getAuthenticatedUser();
+
+  const validated = physicalReceiptPaymentDetailsSchema.safeParse(methods);
+  if (!validated.success) {
+    const errors = validated.error.errors.map((err) => {
+      const path = err.path.join(".");
+      return path ? `${path}: ${err.message}` : err.message;
+    });
+    throw new Error(`Validation failed: ${errors.join("; ")}`);
+  }
+
+  const payload = Array.isArray(validated.data)
+    ? validated.data
+    : [validated.data];
+
+  try {
+    const apiClient = new ApiClient();
+    const location = await getCurrentLocation();
+    const result = await apiClient.put(
+      `/api/digital-receipt-payment-details/${location?.id}/all`,
+      payload,
+    );
+    return parseStringify(result);
+  } catch (error) {
+    console.error("Failed to update digital receipt payment details:", error);
+    throw error;
+  }
+};
+
+export const deleteReceiptPaymentDetail = async (
+  id: string,
+  type: "physical" | "digital",
+): Promise<void> => {
+  await getAuthenticatedUser();
+  try {
+    const apiClient = new ApiClient();
+    const location = await getCurrentLocation();
+    const endpoint =
+      type === "physical"
+        ? `/api/physical-receipt-payment-details/${location?.id}/${id}`
+        : `/api/digital-receipt-payment-details/${location?.id}/${id}`;
+    await apiClient.delete(endpoint);
+  } catch (error) {
+    console.error("Failed to delete receipt payment detail:", error);
     throw error;
   }
 };

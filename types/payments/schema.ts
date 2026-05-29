@@ -21,6 +21,7 @@ export const locationOverrideSchema = z.object({
 
 // Receipt payment details (unchanged)
 const paymentMethodItemSchema = z.object({
+  id: z.string().uuid().optional(),
   acceptedPaymentMethodType: z.string().uuid({
     message: "Invalid UUID format for acceptedPaymentMethodType",
   }),
