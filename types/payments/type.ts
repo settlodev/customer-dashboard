@@ -75,3 +75,10 @@ export interface LocationOverride {
 export interface TogglePaymentMethodRequest {
   enabled: boolean;
 }
+export interface ApiPaymentDetail {
+  id: string;
+  acceptedPaymentMethodType: string;
+  acceptedPaymentMethodTypeName: string;
+  accountNumber: string;
+  notes: string;
+}
