@@ -1,221 +1,221 @@
-'use client';
-import React, { useEffect, useState } from 'react';
-import { format } from 'date-fns';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { CalendarIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { topSellingProduct } from '@/lib/actions/product-actions';
-import { Input } from '@/components/ui/input';
-import { TopItems, TopSellingProduct } from '@/types/product/type';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import Loading from '@/components/ui/loading';
+import { endOfMonth, format, startOfMonth } from "date-fns";
+import {
+  CircleDollarSign,
+  Layers,
+  Package,
+  TrendingUp,
+} from "lucide-react";
 
-function DateTimePicker({ value, onChange }: { value: Date; onChange: (date: Date) => void }) {
-  const [isOpen, setIsOpen] = useState(false);
+import {
+  PageBody,
+  PageBreadcrumbs,
+  PageHeader,
+  PageShell,
+} from "@/components/layouts/page-shell";
+import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
+import NoItems from "@/components/layouts/no-items";
+import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
+import { TopSellingSortToggle } from "@/components/reports/top-selling/top-selling-sort-toggle";
+import { TopSellingTable } from "@/components/reports/top-selling/top-selling-table";
+import { listTopSellingProducts } from "@/lib/actions/product-actions";
+import {
+  TOP_SELLING_SORT_LABELS,
+  type TopSellingItem,
+  type TopSellingSortBy,
+} from "@/types/reports/top-selling";
 
-  const handleDateSelect = (selected: Date | undefined) => {
-    if (selected) {
-      const newDate = new Date(selected);
-      newDate.setHours(value.getHours());
-      newDate.setMinutes(value.getMinutes());
-      onChange(newDate);
-    }
-  };
+const DEFAULT_LIMIT = 100;
+const VALID_SORTS: TopSellingSortBy[] = ["revenue", "quantity", "profit"];
 
-  const handleTimeChange = (type: 'hour' | 'minute', val: string) => {
-    const newDate = new Date(value);
-    if (type === 'hour') {
-      newDate.setHours(parseInt(val, 10));
-    } else {
-      newDate.setMinutes(parseInt(val, 10));
-    }
-    onChange(newDate);
-  };
+type Params = {
+  searchParams: Promise<{
+    search?: string;
+    page?: string;
+    limit?: string;
+    sort?: string;
+    from?: string;
+    to?: string;
+  }>;
+};
 
+const formatMoney = (value: number) =>
+  Intl.NumberFormat("en", { maximumFractionDigits: 0 }).format(value);
+
+const matchesSearch = (item: TopSellingItem, q: string): boolean => {
+  if (!q) return true;
+  const needle = q.toLowerCase();
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" className="w-full justify-start text-left font-normal">
-          <CalendarIcon className="hidden mr-2 h-4 w-4" />
-          {format(value, 'MM/dd/yyyy HH:mm')}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <div className="sm:flex">
-          <Calendar mode="single" selected={value} onSelect={handleDateSelect} initialFocus />
-          <div className="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x">
-            <ScrollArea className="w-64 sm:w-auto">
-              <div className="flex sm:flex-col p-2">
-                {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
-                  <Button
-                    key={hour}
-                    size="icon"
-                    variant={value.getHours() === hour ? 'default' : 'ghost'}
-                    onClick={() => handleTimeChange('hour', hour.toString())}
-                  >
-                    {hour}
-                  </Button>
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" className="sm:hidden" />
-            </ScrollArea>
-            <ScrollArea className="w-64 sm:w-auto">
-              <div className="flex sm:flex-col p-2">
-                {Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => (
-                  <Button
-                    key={minute}
-                    size="icon"
-                    variant={value.getMinutes() === minute ? 'default' : 'ghost'}
-                    onClick={() => handleTimeChange('minute', minute.toString())}
-                  >
-                    {minute.toString().padStart(2, '0')}
-                  </Button>
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" className="sm:hidden" />
-            </ScrollArea>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-const TopSellingPage = () => {
-  const [startDate, setStartDate] = useState(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-  });
-  const [endDate, setEndDate] = useState(new Date());
-  const [limit, setLimit] = useState(10);
-  const [soldData, setSoldData] = useState<TopSellingProduct | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isFiltering, setIsFiltering] = useState(false);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await topSellingProduct(startDate, endDate, limit);
-        setSoldData(response);
-      } catch (error) {
-        console.error('Error fetching top selling products:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
-  const handleFilter = async () => {
-    setIsFiltering(true);
-    try {
-      const response = await topSellingProduct(startDate, endDate, limit);
-      setSoldData(response);
-    } catch (error) {
-      console.error('Error fetching top selling products:', error);
-    } finally {
-      setIsFiltering(false);
-    }
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat().format(value);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loading />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 space-y-6 min-h-screen">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            Top selling products
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Most popular products by revenue
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
-          <DateTimePicker value={startDate} onChange={setStartDate} />
-          <DateTimePicker value={endDate} onChange={setEndDate} />
-          <Input
-            type="number"
-            value={limit}
-            onChange={(e) => setLimit(Number(e.target.value))}
-            className="w-full sm:w-20"
-            min={1}
-            placeholder="Limit"
-          />
-          <Button onClick={handleFilter} disabled={isFiltering}>
-            {isFiltering ? (
-              <div className="border-t-transparent border-4 border-green-500 w-[20px] h-[20px] rounded-full animate-spin" />
-            ) : (
-              'Filter'
-            )}
-          </Button>
-        </div>
-      </div>
-
-      {/* Results table */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Top {soldData?.items?.length || 0} products
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>#</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
-                <TableHead className="text-right">Revenue</TableHead>
-                <TableHead className="text-right">% of total</TableHead>
-                <TableHead className="text-right">Latest sold</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {soldData?.items?.length ? (
-                soldData.items.map((item: TopItems, index: number) => (
-                  <TableRow key={`${item.productName}-${item.variantName}-${index}`}>
-                    <TableCell className="text-muted-foreground">{index + 1}</TableCell>
-                    <TableCell className="font-medium">
-                      {item.productName}{item.variantName ? ` - ${item.variantName}` : ''}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{item.categoryName}</TableCell>
-                    <TableCell className="text-right font-medium">{formatCurrency(item.quantity)}</TableCell>
-                    <TableCell className="text-right font-medium">{formatCurrency(item.revenue)} TZS</TableCell>
-                    <TableCell className="text-right font-medium">{item.percentageOfTotal}%</TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {format(new Date(item.latestSoldDate), 'dd MMM HH:mm')}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    No data available for the selected period
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+    item.productName.toLowerCase().includes(needle) ||
+    (item.variantName ?? "").toLowerCase().includes(needle) ||
+    (item.categoryName ?? "").toLowerCase().includes(needle)
   );
 };
 
-export default TopSellingPage;
+export default async function Page({ searchParams }: Params) {
+  const resolved = await searchParams;
+  const q = resolved.search ?? "";
+  const page = Number(resolved.page) || 1;
+  const limit = Number(resolved.limit) || 10;
+  const sortParam = resolved.sort ?? "";
+  const sortBy: TopSellingSortBy = VALID_SORTS.includes(
+    sortParam as TopSellingSortBy,
+  )
+    ? (sortParam as TopSellingSortBy)
+    : "revenue";
+
+  // Default to current month — keeps the first paint scoped, matching
+  // every other reporting screen.
+  const now = new Date();
+  const from = resolved.from ?? format(startOfMonth(now), "yyyy-MM-dd");
+  const to = resolved.to ?? format(endOfMonth(now), "yyyy-MM-dd");
+
+  const report = await listTopSellingProducts({
+    fromDate: from,
+    toDate: to,
+    sortBy,
+    limit: DEFAULT_LIMIT,
+  }).catch(() => null);
+
+  const items = report?.items ?? [];
+  const currency = report?.summary.currency ?? "TZS";
+  const filtered = items.filter((item) => matchesSearch(item, q));
+  const total = filtered.length;
+  const pageCount = Math.max(1, Math.ceil(total / limit));
+  const start = (page - 1) * limit;
+  const pageData = filtered.slice(start, start + limit);
+
+  const hasAny = items.length > 0;
+  const isDefaultRange = !resolved.from && !resolved.to;
+  const hasFilters =
+    q !== "" || sortParam !== "" || !isDefaultRange;
+
+  const subtitle =
+    from === to
+      ? `Top performers on ${format(new Date(from), "MMM d, yyyy")}`
+      : `Top performers ${format(new Date(from), "MMM d")} – ${format(new Date(to), "MMM d, yyyy")}`;
+
+  return (
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Top selling" }]} />
+      <PageHeader
+        title="Top selling products"
+        subtitle={subtitle}
+        titleAccessory={
+          <span className="inline-flex items-center rounded-full border border-line bg-canvas px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+            {TOP_SELLING_SORT_LABELS[sortBy]}
+          </span>
+        }
+      />
+
+      <PageBody>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TopSellingSortToggle active={sortBy} />
+          <OrdersDateFilter from={from} to={to} />
+        </div>
+
+        {hasAny || hasFilters ? (
+          <ReportBody
+            report={report}
+            pageData={pageData}
+            pageCount={pageCount}
+            pageNo={page - 1}
+            total={total}
+            currency={currency}
+          />
+        ) : (
+          <NoItems itemName="top selling products" />
+        )}
+      </PageBody>
+    </PageShell>
+  );
+}
+
+function ReportBody({
+  report,
+  pageData,
+  pageCount,
+  pageNo,
+  total,
+  currency,
+}: {
+  report: Awaited<ReturnType<typeof listTopSellingProducts>>;
+  pageData: TopSellingItem[];
+  pageCount: number;
+  pageNo: number;
+  total: number;
+  currency: string;
+}) {
+  // The summary is server-side aggregated across the whole period, so
+  // KPIs don't shimmy when the user types into the search box.
+  const summary = report?.summary;
+  const top = report?.items?.[0] ?? null;
+
+  const revenue = summary?.totalRevenue ?? 0;
+  const itemsSold = summary?.totalQuantitySold ?? 0;
+  const grossProfit = summary?.totalGrossProfit ?? 0;
+  const avgMargin = summary?.averageMargin;
+  const uniqueProducts = summary?.uniqueProductCount ?? 0;
+  const uniqueCategories = summary?.uniqueCategoryCount ?? 0;
+  const totalOrders = summary?.totalOrdersCount ?? 0;
+
+  return (
+    <>
+      <KpiStrip cols={4}>
+        <KpiCard
+          icon={<CircleDollarSign className="h-3 w-3" />}
+          label="Revenue"
+          value={revenue > 0 ? formatMoney(revenue) : "—"}
+          unit={currency}
+          delta={
+            totalOrders > 0
+              ? `${totalOrders.toLocaleString()} order${totalOrders === 1 ? "" : "s"}`
+              : undefined
+          }
+          deltaTone="neutral"
+        />
+        <KpiCard
+          icon={<Package className="h-3 w-3" />}
+          label="Items sold"
+          value={itemsSold > 0 ? itemsSold.toLocaleString() : "—"}
+          delta={
+            top
+              ? `Leader: ${top.productName}${top.variantName ? ` · ${top.variantName}` : ""}`
+              : undefined
+          }
+          deltaTone="neutral"
+        />
+        <KpiCard
+          icon={<TrendingUp className="h-3 w-3" />}
+          label={grossProfit >= 0 ? "Gross profit" : "Gross loss"}
+          value={grossProfit !== 0 ? formatMoney(Math.abs(grossProfit)) : "—"}
+          unit={currency}
+          delta={
+            avgMargin !== null && avgMargin !== undefined
+              ? `${avgMargin.toFixed(1)}% avg margin`
+              : "Margin —"
+          }
+          deltaTone={grossProfit >= 0 ? "pos" : "neg"}
+        />
+        <KpiCard
+          icon={<Layers className="h-3 w-3" />}
+          label="Unique products"
+          value={uniqueProducts > 0 ? uniqueProducts.toLocaleString() : "—"}
+          delta={
+            uniqueCategories > 0
+              ? `Across ${uniqueCategories.toLocaleString()} categor${uniqueCategories === 1 ? "y" : "ies"}`
+              : undefined
+          }
+          deltaTone="neutral"
+        />
+      </KpiStrip>
+
+      <TopSellingTable
+        data={pageData}
+        pageCount={pageCount}
+        pageNo={pageNo}
+        total={total}
+        currency={currency}
+      />
+    </>
+  );
+}

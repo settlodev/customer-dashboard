@@ -21,7 +21,10 @@ function Calendar({
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0 w-full",
-        month: "space-y-4 w-full",
+        // Fluid grid (flex-1 / aspect-square cells) has no intrinsic width,
+        // so without a floor it collapses to min-content inside w-auto
+        // popovers. min-w keeps each month usable; w-full still lets it grow.
+        month: "space-y-4 w-full min-w-[16rem]",
         caption: "flex justify-center pt-1 relative items-center",
         caption_label:
           "inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium",

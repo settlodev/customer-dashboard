@@ -300,67 +300,8 @@ export interface PriceOverrideResponse {
   updatedAt: string;
 }
 
-// ── Reports — kept untouched. These DTOs come from the reports/orders
-// service, not the inventory service, and are consumed by analytics
-// widgets, sold-items reports, and dashboard summaries elsewhere in
-// the app. Do not modify without a coordinated change there.
-
-export interface TopSellingProduct {
-  startDate: Date;
-  endDate: Date;
-  locationName: string;
-  items: TopItems[];
-  totalRevenue: number;
-  totalQuantitySold: number;
-  soldItemsReport: SoldItemsReport;
-}
-
-export interface TopItems {
-  name: string;
-  productName: string;
-  variantName: string;
-  categoryName: string;
-  imageUrl: string;
-  staffName: string;
-  quantity: number;
-  revenue: number;
-  percentageOfTotal: number;
-  averagePrice: number;
-  latestSoldDate: Date;
-  earliestSoldDate: Date;
-}
-
-export interface SoldItemsReport {
-  locationName: string;
-  startDate: Date;
-  endDate: Date;
-  items: SoldItem[];
-  totalQuantity: number;
-  totalRevenue: number;
-  totalCost: number | null;
-  totalProfit: number;
-  averageMargin: number;
-}
-
-export interface SoldItem {
-  productName: string;
-  variantName: string;
-  categoryName: string;
-  staffName: string;
-  imageUrl: string;
-  quantity: number;
-  price: number;
-  cost: number;
-  profit: number;
-  netProfit: number;
-  margin: number;
-  refundedQuantity: number;
-  refundedPrice: number;
-  netPrice: number;
-  refundedCost: number;
-  netQuantity: number;
-  netCost: number;
-  latestSoldDate: string;
-  earliestSoldDate: string;
-  discountIncludingOrderDiscountPortion: number;
-}
+// ── Reports — top-selling and sold-items were dropped from this file.
+// Both have been redesigned and now live under `types/reports/`:
+//   - types/reports/top-selling.ts
+//   - types/reports/sold-items.ts
+// No legacy types remain here.

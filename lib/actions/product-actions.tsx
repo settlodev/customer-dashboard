@@ -14,9 +14,15 @@ import { getCurrentLocation } from "./business/get-current-business";
 import {
   Product,
   PriceOverrideResponse,
-  SoldItemsReport,
-  TopSellingProduct,
 } from "@/types/product/type";
+import type {
+  ListTopSellingParams,
+  TopSellingReport,
+} from "@/types/reports/top-selling";
+import type {
+  ListSoldItemsParams,
+  SoldItemsReport,
+} from "@/types/reports/sold-items";
 import {
   ProductSchema,
   type ProductVariantInput,
@@ -648,38 +654,76 @@ export const productSummary = async (): Promise<any> => {
   }
 };
 
-export const topSellingProduct = async (
-  startDate?: Date,
-  endDate?: Date,
-  limit?: number,
-): Promise<TopSellingProduct | null> => {
+/**
+ * Top-selling products report.
+ *
+ * Backed by `GET /api/v2/analytics/item-sales/top-selling` on the
+ * reports service. The response shape mirrors `TopSellingReport` 1:1
+ * so we only need to forward query params and pass the JSON through
+ * `parseStringify`.
+ */
+export const listTopSellingProducts = async (
+  params?: ListTopSellingParams,
+): Promise<TopSellingReport | null> => {
   try {
-    const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();
-    const topSelling = await apiClient.get(
-      `/api/reports/${location?.id}/products/top-selling`,
-      { params: { startDate, endDate, limit } },
+    if (!location?.id) return null;
+
+    const apiClient = new ApiClient("reports");
+    const data = await apiClient.get<TopSellingReport>(
+      `/api/v2/analytics/item-sales/top-selling`,
+      {
+        params: {
+          locationId: location.id,
+          fromDate: params?.fromDate,
+          toDate: params?.toDate,
+          sortBy: params?.sortBy,
+          limit: params?.limit,
+        },
+      },
     );
-    return parseStringify(topSelling);
+    return parseStringify(data);
   } catch (error) {
-    throw error;
+    console.error("[listTopSellingProducts] request failed", error);
+    return null;
   }
 };
 
-export const SoldItemsReports = async (
-  startDate?: Date,
-  endDate?: Date,
+/**
+ * Sold-items report.
+ *
+ * Backed by `GET /api/v2/analytics/item-sales/sold-items` on the
+ * reports service. Returns line-level data (one row per OrderItem) so
+ * an operator can audit exactly what physically went out the door,
+ * including voided lines. Money fields are intentionally absent — this
+ * is a volume / audit screen.
+ */
+export const listSoldItems = async (
+  params?: ListSoldItemsParams,
 ): Promise<SoldItemsReport | null> => {
   try {
-    const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();
-    const soldItems = await apiClient.get(
-      `/api/reports/${location?.id}/products/sold-items`,
-      { params: { startDate, endDate } },
+    if (!location?.id) return null;
+
+    const apiClient = new ApiClient("reports");
+    const data = await apiClient.get<SoldItemsReport>(
+      `/api/v2/analytics/item-sales/sold-items`,
+      {
+        params: {
+          locationId: location.id,
+          fromDate: params?.fromDate,
+          toDate: params?.toDate,
+          status: params?.status,
+          categoryId: params?.categoryId,
+          staffId: params?.staffId,
+          limit: params?.limit,
+        },
+      },
     );
-    return parseStringify(soldItems);
+    return parseStringify(data);
   } catch (error) {
-    throw error;
+    console.error("[listSoldItems] request failed", error);
+    return null;
   }
 };
 
