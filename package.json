@@ -7,7 +7,7 @@
     "@radix-ui/react-primitive": "2.1.4"
   },
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
