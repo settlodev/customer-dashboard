@@ -4,19 +4,6 @@ const nextConfig = {
   experimental: {
     serverActions: true,
   },
-  async rewrites() {
-    return {
-      beforeFiles: [
-        {
-          source: "/:path*",
-          has: [
-            { type: "host", value: "(?<subdomain>[^.]+)\\.settlo\\.co\\.tz" },
-          ],
-          destination: "/:path*", // middleware handles the rest
-        },
-      ],
-    };
-  },
   images: {
     remotePatterns: [
       {
