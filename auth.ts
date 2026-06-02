@@ -23,21 +23,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     error: "/auth-error",
     newUser: "/business-registration",
   },
-  cookies: {
-    sessionToken: {
-      name: "authjs.session-token",
-      options: {
-        domain:
-          process.env.NODE_ENV === "production"
-            ? ".settlo.co.tz" // ← leading dot = all subdomains
-            : ".lvh.me", // ← was ".settlo.local"
-        httpOnly: true,
-        sameSite: "lax", // ← strict breaks cross-subdomain redirects
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-      },
-    },
-  },
   events: {
     async linkAccount({ user }) {
       await validateEmail(user.id!);

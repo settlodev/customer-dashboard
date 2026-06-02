@@ -71,7 +71,10 @@ const StockLineItemSchema = object({
       message: "Value cannot be less than 0",
     }),
   ),
-  orderDate: string({ required_error: "Order date is required" }),
+
+  orderDate: string({ required_error: "Order date is required" }).min(1, {
+    message: "Order date is required",
+  }),
   batchExpiryDate: string().optional(),
   status: boolean().optional(),
 });
@@ -79,7 +82,9 @@ const StockLineItemSchema = object({
 const FormSchema = object({
   staff: string({ message: "Please select a staff member" }).uuid(),
   supplier: string({ message: "Please select a supplier" }).uuid().optional(),
-  deliveryDate: string({ required_error: "Delivery date is required" }),
+  deliveryDate: string({ required_error: "Delivery date is required" }).min(1, {
+    message: "Delivery date is required",
+  }),
   stockIntakes: array(StockLineItemSchema).min(1, {
     message: "At least one stock item must be added",
   }),
@@ -112,7 +117,6 @@ const defaultLineItem = () => ({
   orderDate: "",
   batchExpiryDate: undefined,
   status: true,
-  createDirectStockIntakeReceipt: true,
 });
 
 const labelClass = "font-medium flex items-center gap-2 text-sm text-gray-700";
@@ -159,6 +163,7 @@ function StockIntakeForm({
     count: number;
   }>({ open: false, receiptId: undefined, count: 0 });
 
+  // Shared date state (visual pickers)
   const [orderDate, setOrderDate] = useState<Date | undefined>(
     item?.orderDate ? new Date(item.orderDate) : undefined,
   );
@@ -191,7 +196,8 @@ function StockIntakeForm({
               stockVariant: item.stockVariant,
               quantity: item.quantity,
               value: item.value,
-              orderDate: item.orderDate,
+              // FIX: ensure the form field is seeded with the ISO string
+              orderDate: item.orderDate ?? "",
               batchExpiryDate: item.batchExpiryDate,
               status: item.status,
             },
@@ -205,7 +211,8 @@ function StockIntakeForm({
               stockVariant: line.stockVariant,
               quantity: line.quantity,
               value: line.value,
-              orderDate: line.orderDate,
+              // FIX: seed from prefill
+              orderDate: line.orderDate ?? "",
               batchExpiryDate: undefined,
               status: true,
             })),
@@ -219,6 +226,8 @@ function StockIntakeForm({
             ],
           },
   });
+
+  // ── Prefill effects ──────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!prefill) return;
@@ -240,6 +249,8 @@ function StockIntakeForm({
     name: "stockIntakes",
   });
 
+  // ── stockVariantId query-param pre-selection ─────────────────────────────────
+
   useEffect(() => {
     if (!stockVariantId) return;
     form.setValue("stockIntakes.0.stockVariant", stockVariantId);
@@ -248,6 +259,8 @@ function StockIntakeForm({
       .catch(console.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stockVariantId]);
+
+  // ── Cross-field date validation (live) ──────────────────────────────────────
 
   useEffect(() => {
     if (!orderDate || !deliveryDate) return;
@@ -258,10 +271,13 @@ function StockIntakeForm({
         prev === "Order date cannot be in the future." ||
         prev === "Delivery date cannot exceed today's date." ||
         prev === "Delivery date cannot be before the order date." ||
-        prev === "Delivery date is required.";
+        prev === "Delivery date is required." ||
+        prev === "Order date is required.";
       return isDateError ? (msg ?? undefined) : prev;
     });
   }, [orderDate, deliveryDate]);
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
 
   const updateLineState = (index: number, patch: Partial<LineState>) =>
     setLineStates((prev) => {
@@ -295,32 +311,55 @@ function StockIntakeForm({
       return;
     }
 
-    // User picked from the dropdown — use the info they gave us. No fetch.
     if (info) {
       updateLineState(index, { variantInfo: info });
       return;
     }
 
-    // Fallback only — programmatic value change without info attached.
     getStockVariantById(value)
       .then((fetched) => {
         if (fetched) updateLineState(index, { variantInfo: fetched });
       })
       .catch(() => {
-        // IMPORTANT: do NOT null out variantInfo on failure — keep what we had
+        // Keep whatever variantInfo we had — don't null it out on failure
       });
   };
 
+  // FIX: sync time changes back to every line item's orderDate form field
+  // so the ISO string in the payload reflects the chosen time.
   const handleSharedTimeChange = (type: "hour" | "minutes", value: string) => {
-    const apply = (d: Date | undefined) => {
+    const apply = (d: Date | undefined): Date | undefined => {
       if (!d) return d;
       const n = new Date(d);
       type === "hour" ? n.setHours(Number(value)) : n.setMinutes(Number(value));
       return n;
     };
-    setOrderDate((d) => apply(d));
-    setDeliveryDate((d) => apply(d));
+
+    setOrderDate((prev) => {
+      const updated = apply(prev);
+      if (updated) {
+        // Write the updated ISO string back into every line's orderDate field
+        fields.forEach((_, i) => {
+          form.setValue(`stockIntakes.${i}.orderDate`, updated.toISOString(), {
+            shouldValidate: true,
+          });
+        });
+      }
+      return updated;
+    });
+
+    setDeliveryDate((prev) => {
+      const updated = apply(prev);
+      if (updated) {
+        form.setValue("deliveryDate", updated.toISOString(), {
+          shouldValidate: true,
+        });
+      }
+      return updated;
+    });
   };
+
+  // ── Serial-number / unique-identifier validation ─────────────────────────────
 
   const validateLines = (): string | null => {
     for (let i = 0; i < lineStates.length; i++) {
@@ -344,47 +383,50 @@ function StockIntakeForm({
     });
   }, [toast]);
 
+  // ── Submit ────────────────────────────────────────────────────────────────────
+
   const submitData = (values: FormValues) => {
-    const firstOrderDateStr = values.stockIntakes?.[0]?.orderDate;
-    const deliveryDateStr = values.deliveryDate;
-
-    const resolvedOrderDate = firstOrderDateStr
-      ? new Date(firstOrderDateStr)
-      : undefined;
-    const resolvedDeliveryDate = deliveryDateStr
-      ? new Date(deliveryDateStr)
-      : undefined;
-
-    // Guard: delivery date is required
-    if (!resolvedDeliveryDate) {
+    // ── 1. Delivery date presence ─────────────────────────────────────────────
+    if (!values.deliveryDate) {
       setError("Delivery date is required.");
-      setTimeout(() => {
-        document
-          .querySelector("[data-form-error]")
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 50);
+      scrollToError();
       return;
     }
+
+    // ── 2. FIX: Validate that every line item has an orderDate ────────────────
+    for (let i = 0; i < values.stockIntakes.length; i++) {
+      if (!values.stockIntakes[i].orderDate) {
+        setError(
+          values.stockIntakes.length > 1
+            ? `Item ${i + 1}: Order date is required.`
+            : "Order date is required.",
+        );
+        scrollToError();
+        return;
+      }
+    }
+
+    // ── 3. Cross-field date logic ─────────────────────────────────────────────
+    const resolvedOrderDate = values.stockIntakes[0]?.orderDate
+      ? new Date(values.stockIntakes[0].orderDate)
+      : undefined;
+    const resolvedDeliveryDate = new Date(values.deliveryDate);
 
     const dateError = validateDates(resolvedOrderDate, resolvedDeliveryDate);
     if (dateError) {
       setError(dateError);
-      setTimeout(() => {
-        document
-          .querySelector("[data-form-error]")
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 50);
-      return; // Hard stop — API is never called
+      scrollToError();
+      return;
     }
 
-    // ── 2. Serial / unique-identifier validation ──────────────────────────────
+    // ── 4. Serial / unique-identifier validation ──────────────────────────────
     const lineErr = validateLines();
     if (lineErr) {
       setError(lineErr);
       return;
     }
 
-    // ── 3. All clear — submit to API ──────────────────────────────────────────
+    // ── 5. All clear — submit to API ──────────────────────────────────────────
     setError(undefined);
 
     startTransition(() => {
@@ -420,6 +462,7 @@ function StockIntakeForm({
             stockVariantId: lineItem.stockVariant,
             quantity: lineItem.quantity,
             value: lineItem.value,
+            // FIX: this now always contains the ISO string written by the picker
             orderDate: lineItem.orderDate,
             ...(lineItem.batchExpiryDate
               ? { batchExpiryDate: lineItem.batchExpiryDate }
@@ -429,13 +472,11 @@ function StockIntakeForm({
         }),
       };
 
+      console.log("Payload for stock intake is ...", payload);
+
       createStockIntake(payload)
         .then((result) => {
           if (result?.responseType === "success") {
-            console.debug(
-              "[StockIntakeForm] createStockIntake result.data:",
-              result?.data,
-            );
             const receiptId = (result?.data as { id?: string })?.id;
             setSuccessModal({
               open: true,
@@ -451,6 +492,16 @@ function StockIntakeForm({
         .catch(() => setError("An unexpected error occurred."));
     });
   };
+
+  const scrollToError = () => {
+    setTimeout(() => {
+      document
+        .querySelector("[data-form-error]")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
     <Form {...form}>
@@ -506,7 +557,10 @@ function StockIntakeForm({
                   handleTimeChange={handleSharedTimeChange}
                   onDateSelect={(d) => {
                     setDeliveryDate(d);
-                    // Eagerly surface the error while the popover is still open
+                    // FIX: write ISO string back into the RHF field
+                    form.setValue("deliveryDate", d ? d.toISOString() : "", {
+                      shouldValidate: true,
+                    });
                     const msg = validateDates(orderDate, d);
                     setError(msg ?? undefined);
                   }}
@@ -691,38 +745,58 @@ function StockIntakeForm({
                         )}
                       />
 
-                      {/* Order Date */}
                       <FormField
                         control={form.control}
                         name={`stockIntakes.${index}.orderDate`}
-                        render={({ field }) => (
+                        render={({ field: f }) => (
                           <FormItem>
                             <FormLabel className={labelClass}>
                               <Calendar className={iconClass} />
                               Order Date <span className="text-red-500">*</span>
                             </FormLabel>
                             <DateTimePicker
-                              field={field}
+                              field={f}
                               date={orderDate}
                               setDate={setOrderDate}
                               handleTimeChange={handleSharedTimeChange}
                               onDateSelect={(d) => {
                                 setOrderDate(d);
-                                // Eagerly validate with the new order date
+
+                                // FIX: write the chosen date as an ISO string
+                                // into every line item's orderDate field so
+                                // the payload is never empty.
+                                const iso = d ? d.toISOString() : "";
+                                fields.forEach((_, i) => {
+                                  form.setValue(
+                                    `stockIntakes.${i}.orderDate`,
+                                    iso,
+                                    { shouldValidate: true },
+                                  );
+                                });
+
+                                // Live cross-field validation
                                 const msg = validateDates(d, deliveryDate);
                                 setError(msg ?? undefined);
+
                                 // Clear delivery date if it became invalid
                                 if (
+                                  d &&
                                   deliveryDate &&
                                   toDay(deliveryDate) < toDay(d)
                                 ) {
                                   setDeliveryDate(undefined);
-                                  form.setValue("deliveryDate", "");
+                                  form.setValue("deliveryDate", "", {
+                                    shouldValidate: true,
+                                  });
                                 }
                               }}
                               maxDate={new Date()}
                               disabled={!!item}
                             />
+                            {/* FIX: FormMessage now shows "Order date is
+                                required" when the field is empty and the
+                                form is submitted — because .min(1) in the
+                                schema catches the empty string. */}
                             <FormMessage />
                           </FormItem>
                         )}
@@ -752,10 +826,22 @@ function StockIntakeForm({
                                   ? n.setHours(Number(val))
                                   : n.setMinutes(Number(val));
                                 updateLineState(index, { batchExpiryDate: n });
+                                // Sync batchExpiryDate back to the RHF field
+                                form.setValue(
+                                  `stockIntakes.${index}.batchExpiryDate`,
+                                  n.toISOString(),
+                                  { shouldValidate: false },
+                                );
                               }}
-                              onDateSelect={(d) =>
-                                updateLineState(index, { batchExpiryDate: d })
-                              }
+                              onDateSelect={(d) => {
+                                updateLineState(index, { batchExpiryDate: d });
+                                // FIX: also sync batchExpiryDate to RHF
+                                form.setValue(
+                                  `stockIntakes.${index}.batchExpiryDate`,
+                                  d ? d.toISOString() : "",
+                                  { shouldValidate: false },
+                                );
+                              }}
                               disabled={!!item}
                             />
                             <FormMessage />
