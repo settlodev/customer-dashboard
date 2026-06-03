@@ -353,6 +353,17 @@ function OverviewTab({ product }: { product: Product }) {
       ?.label ??
     (product.lifecycleStatus === "DRAFT" ? "Draft" : product.lifecycleStatus);
 
+  // Departments live on categories (a product can span several), so surface
+  // the distinct set rolled up from its categories rather than a single
+  // product-level field. Deduped by id, ordered by first appearance.
+  const departmentNames = Array.from(
+    new Map(
+      (product.categories ?? [])
+        .filter((c) => c.departmentId && c.departmentName)
+        .map((c) => [c.departmentId, c.departmentName] as const),
+    ).values(),
+  );
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Image + headline */}
@@ -406,7 +417,10 @@ function OverviewTab({ product }: { product: Product }) {
           <div className="overflow-hidden rounded-lg border border-line bg-line">
             <dl className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2">
               <DetailRow label="Brand" value={product.brandName} />
-              <DetailRow label="Department" value={product.departmentName} />
+              <DetailRow
+                label="Department"
+                value={departmentNames.length ? departmentNames.join(", ") : null}
+              />
               <DetailRow
                 label="Category"
                 value={

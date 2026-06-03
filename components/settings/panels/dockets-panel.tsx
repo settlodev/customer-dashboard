@@ -40,42 +40,49 @@ export function DocketsPanel({
       >
         <SettingsSwitchRow
           label="Show amount on dockets"
+          description="Shows the order amount on the printed docket."
           checked={!!v.showAmountOnDockets}
           onChange={(x) => p.setField("showAmountOnDockets", x)}
           disabled={p.isPending}
         />
         <SettingsSwitchRow
           label="Print each item on its own docket"
+          description="Prints every item on a separate docket instead of grouping them together."
           checked={!!v.printEachDocketItem}
           onChange={(x) => p.setField("printEachDocketItem", x)}
           disabled={p.isPending}
         />
         <SettingsSwitchRow
           label="Show docket count"
+          description="Shows the docket count on each printout."
           checked={!!v.showDocketCount}
           onChange={(x) => p.setField("showDocketCount", x)}
           disabled={p.isPending}
         />
         <SettingsSwitchRow
           label="Single-docket print (per order)"
+          description="Forces all dockets to print on the main printer."
           checked={!!v.singleDocketPrint}
           onChange={(x) => p.setField("singleDocketPrint", x)}
           disabled={p.isPending}
         />
         <SettingsSwitchRow
           label="Show price on kitchen docket"
+          description="Shows each item's price on the kitchen docket."
           checked={!!v.showPriceOnDocket}
           onChange={(x) => p.setField("showPriceOnDocket", x)}
           disabled={p.isPending}
         />
         <SettingsSwitchRow
           label="Auto-print dockets"
+          description="Automatically prints dockets when an order is sent, without manual action."
           checked={!!v.autoPrintDockets}
           onChange={(x) => p.setField("autoPrintDockets", x)}
           disabled={p.isPending}
         />
         <SettingsSwitchRow
           label="Allow duplicate docket prints"
+          description="Permits reprinting a docket that has already been printed."
           checked={!!v.allowDuplicateDocketPrinting}
           onChange={(x) => p.setField("allowDuplicateDocketPrinting", x)}
           disabled={p.isPending}

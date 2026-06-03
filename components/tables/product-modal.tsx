@@ -34,6 +34,16 @@ export default function ProductModal({ isOpen, onOpenChange, data }: ProductModa
     return new Intl.NumberFormat().format(amount);
   };
 
+  // Departments roll up from the product's categories (a product can span
+  // several), so show the distinct set rather than a single product field.
+  const departmentNames = Array.from(
+    new Map(
+      (data.categories ?? [])
+        .filter((c) => c.departmentId && c.departmentName)
+        .map((c) => [c.departmentId, c.departmentName] as const),
+    ).values(),
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
@@ -61,7 +71,11 @@ export default function ProductModal({ isOpen, onOpenChange, data }: ProductModa
                     <Building2 className="h-4 w-4" />
                     Department
                   </div>
-                  <p className="font-medium">{data.departmentName}</p>
+                  <p className="font-medium">
+                    {departmentNames.length
+                      ? departmentNames.join(", ")
+                      : "—"}
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-1 text-sm text-gray-500">

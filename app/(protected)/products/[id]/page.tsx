@@ -155,7 +155,8 @@ export default async function ProductPage({
 
   const subtitleParts = [
     product.categories?.[0]?.name,
-    product.departmentName,
+    // Department rolls up from the category; show the first one that has it.
+    product.categories?.find((c) => c.departmentName)?.departmentName,
     product.brandName,
   ].filter(Boolean) as string[];
 

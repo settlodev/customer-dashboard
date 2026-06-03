@@ -44,9 +44,11 @@ export interface Product {
   lifecycleStatus: LifecycleStatus;
   replacementProductId: string | null;
   tags: string[];
+  // A product can roll up to several departments — one per category it
+  // belongs to. Departments live on the category, not the product, so read
+  // them off `categories[].departmentName` (see {@link CategoryInfo}) rather
+  // than expecting a single product-level field.
   categories: CategoryInfo[];
-  departmentId: string | null;
-  departmentName: string | null;
   brandId: string | null;
   brandName: string | null;
   variants: ProductVariant[];
@@ -60,6 +62,13 @@ export interface CategoryInfo {
   id: string;
   name: string;
   slug: string;
+  // Department this category rolls up to. Departments are a paid-tier
+  // feature attached to categories; both fields are null when the category
+  // has no department. `departmentName` is resolved server-side from the
+  // location's DepartmentReference mirror, so it may be null if the mirror
+  // hasn't synced the name yet even when `departmentId` is set.
+  departmentId: string | null;
+  departmentName: string | null;
 }
 
 // ── Product Variant ─────────────────────────────────────────────────

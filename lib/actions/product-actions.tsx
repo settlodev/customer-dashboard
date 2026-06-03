@@ -406,6 +406,12 @@ export async function createProductWithStock(
  *
  * trackStock is derived from the supplied variants when provided so the
  * product flag stays in sync with the variant set the form is showing.
+ *
+ * Returns a success/error FormResponse rather than redirecting: the edit
+ * form runs the per-variant writes AFTER this resolves and navigates
+ * itself once they finish. Redirecting here threw NEXT_REDIRECT out of the
+ * awaited call, which short-circuited the form before any variant update
+ * fired — so variant edits silently never persisted.
  */
 export async function updateProduct(
   productId: string,
@@ -452,9 +458,11 @@ export async function updateProduct(
     revalidatePath("/products");
     revalidatePath(`/products/${productId}`);
     revalidatePath(`/products/${productId}/edit`);
-    redirect(`/products/${productId}`);
+    return parseStringify({
+      responseType: "success",
+      message: "Product updated",
+    });
   } catch (error: any) {
-    if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     return parseStringify({
       responseType: "error",
       message: error?.message ?? "Failed to update product",
