@@ -13,6 +13,7 @@ import {
 } from "@/types/types";
 import { logout } from "@/lib/actions/auth-actions";
 import { getCookieConfig } from "@/lib/cookie-config";
+import { getDomainConfig } from "@/lib/domain-config";
 
 export const getUser = async () => {
   const session = await auth();
@@ -38,13 +39,12 @@ export const getAuthToken = async (): Promise<AuthToken | null> => {
 
 export const updateAuthToken = async (token: AuthToken) => {
   const cookieStore = await cookies();
+  const config = getCookieConfig(); // ← use shared config, not hardcoded
 
   cookieStore.set({
     name: "authToken",
     value: JSON.stringify(token),
-    httpOnly: true, // Only available in server
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    ...config,
   });
 };
 
@@ -70,7 +70,6 @@ export const createAuthToken = async (user: ExtendedUser) => {
     phoneNumber: user.phoneNumber,
     emailVerified: user.emailVerified,
     phoneNumberVerified: user.phoneNumberVerified,
-    //emailVerificationToken: user.emailVerificationToken,
     consent: user.consent,
     theme: user.theme,
     subscriptionStatus: user.subscriptionStatus,
@@ -88,7 +87,6 @@ export const getAuthenticatedUser = async (): Promise<FormResponse | User> => {
   const user = await getUser();
 
   if (!user) {
-    // redirect to log in
     redirect("/login");
   }
 
@@ -98,26 +96,60 @@ export const getAuthenticatedUser = async (): Promise<FormResponse | User> => {
 export const deleteAuthCookie = async () => {
   try {
     const cookieStore = await cookies();
+    const { rootDomain } = getDomainConfig();
+    const isProduction = process.env.NODE_ENV === "production";
 
-    cookieStore.delete("authToken");
-    cookieStore.delete("next-auth.session-token");
-    cookieStore.delete("next-auth.csrf-token");
-    cookieStore.delete("activeBusiness");
-    cookieStore.delete("activeLocation");
-    cookieStore.delete("currentBusiness");
-    cookieStore.delete("currentLocation");
-    cookieStore.delete("authjs.csrf-token");
-    cookieStore.delete("authjs.callback-url");
-    cookieStore.delete("authjs.session-token");
+    // Must specify domain when deleting domain-scoped cookies —
+    // otherwise delete() only removes the cookie for the current origin
+    const domainScopedCookies = [
+      "authToken",
+      "authjs.session-token",
+      "authjs.csrf-token",
+      "authjs.callback-url",
+      "next-auth.session-token",
+      "next-auth.csrf-token",
+      "activeBusiness",
+      "activeLocation",
+      "currentBusiness",
+      "currentLocation",
+    ];
+
+    for (const name of domainScopedCookies) {
+      // Delete with domain scope (removes the shared cookie)
+      cookieStore.set({
+        name,
+        value: "",
+        domain: rootDomain,
+        path: "/",
+        maxAge: 0,
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: "lax",
+      });
+
+      // Also delete without domain scope (belt-and-suspenders)
+      cookieStore.delete(name);
+    }
   } catch (e) {
-    // Do not throw error - do NOT call signOut here as it triggers
-    // the signOut event which calls deleteAuthCookie again, causing an infinite loop
     console.log("Error deleting auth cookie", e);
   }
 };
 
 export const deleteActiveBusinessCookie = async () => {
   const cookieStore = await cookies();
+  const { rootDomain } = getDomainConfig();
+  const isProduction = process.env.NODE_ENV === "production";
+
+  cookieStore.set({
+    name: "activeBusiness",
+    value: "",
+    domain: rootDomain,
+    path: "/",
+    maxAge: 0,
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+  });
   cookieStore.delete("activeBusiness");
 };
 
@@ -131,5 +163,18 @@ export const getActiveBusiness = async (): Promise<activeBusiness | null> => {
 
 export const deleteActiveLocationCookie = async () => {
   const cookieStore = await cookies();
+  const { rootDomain } = getDomainConfig();
+  const isProduction = process.env.NODE_ENV === "production";
+
+  cookieStore.set({
+    name: "activeLocation",
+    value: "",
+    domain: rootDomain,
+    path: "/",
+    maxAge: 0,
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+  });
   cookieStore.delete("activeLocation");
 };
