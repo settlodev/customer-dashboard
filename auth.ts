@@ -8,12 +8,15 @@ import authConfig from "@/auth.config";
 import { SpringAuthAdapter } from "@/lib/spring-auth-adapter";
 import { ExtendedUser } from "@/types/types";
 import { createAuthToken } from "@/lib/auth-utils";
+import { getDomainConfig } from "@/lib/domain-config";
 
 declare module "next-auth" {
   interface Session {
     user: ExtendedUser;
   }
 }
+
+const { rootDomain } = getDomainConfig();
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   adapter: SpringAuthAdapter(process.env.SERVICE_URL!),
@@ -27,12 +30,9 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     sessionToken: {
       name: "authjs.session-token",
       options: {
-        domain:
-          process.env.NODE_ENV === "production"
-            ? ".settlo.co.tz" // ← leading dot = all subdomains
-            : ".lvh.me", // ← was ".settlo.local"
+        domain: rootDomain,
         httpOnly: true,
-        sameSite: "lax", // ← strict breaks cross-subdomain redirects
+        sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
         path: "/",
       },
@@ -54,14 +54,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     },
   },
   callbacks: {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async signIn({ user, account }) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      //const existingUser = await getUserById(user.id!);
-
-      //Check if email is verified
-      //return existingUser?.emailVerified != null;
-
       return true;
     },
     async session({ token, session }) {
@@ -87,7 +80,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         session.user.businessComplete = token.businessComplete as boolean;
         session.user.emailVerified = token.emailVerified as Date;
         session.user.phoneNumberVerified = token.emailVerified as Date;
-        //session.user.emailVerificationToken = token.emailVerificationToken as string;
         session.user.consent = (token.consent as boolean) ?? null;
         session.user.theme = (token.theme as string) ?? "light";
       }
@@ -116,7 +108,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       token.phoneNumberVerified = existingUser.phoneNumberVerified;
       token.emailVerified = existingUser.emailVerified;
       token.businessComplete = existingUser.businessComplete;
-      //token.emailVerificationToken = existingUser.emailVerificationToken;
       return token;
     },
   },

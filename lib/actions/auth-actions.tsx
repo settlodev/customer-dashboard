@@ -23,6 +23,7 @@ import { cookies } from "next/headers";
 
 import { revalidatePath } from "next/cache";
 import { deleteActiveWarehouseCookie } from "./warehouse/current-warehouse-action";
+import { getDomainConfig } from "@/lib/domain-config";
 
 export async function logout() {
   try {
@@ -188,11 +189,52 @@ export const login = async (
 //   }
 // }
 
+// async function setSessionPersistence(rememberMe: boolean) {
+//   const cookieStore = await cookies();
+//   const isProduction = process.env.NODE_ENV === "production";
+//   const THIRTY_DAYS = 30 * 24 * 60 * 60;
+//   const DOMAIN = isProduction ? ".settlopay.co.tz" : ".lvh.me"; // ← key fix
+//
+//   const authTokenValue = cookieStore.get("authToken")?.value;
+//   if (authTokenValue) {
+//     cookieStore.set({
+//       name: "authToken",
+//       value: authTokenValue,
+//       httpOnly: true,
+//       secure: isProduction,
+//       sameSite: "lax",
+//       domain: DOMAIN,
+//       path: "/",
+//       ...(rememberMe ? { maxAge: THIRTY_DAYS } : {}),
+//     });
+//   }
+//
+//   const sessionCookieNames = [
+//     "authjs.session-token",
+//     "next-auth.session-token",
+//   ];
+//   for (const name of sessionCookieNames) {
+//     const value = cookieStore.get(name)?.value;
+//     if (value) {
+//       cookieStore.set({
+//         name,
+//         value,
+//         httpOnly: true,
+//         secure: isProduction,
+//         sameSite: "lax",
+//         domain: DOMAIN,
+//         path: "/",
+//         ...(rememberMe ? { maxAge: THIRTY_DAYS } : {}),
+//       });
+//     }
+//   }
+// }
+
 async function setSessionPersistence(rememberMe: boolean) {
   const cookieStore = await cookies();
   const isProduction = process.env.NODE_ENV === "production";
   const THIRTY_DAYS = 30 * 24 * 60 * 60;
-  const DOMAIN = isProduction ? ".settlo.co.tz" : ".lvh.me"; // ← key fix
+  const { rootDomain } = getDomainConfig();
 
   const authTokenValue = cookieStore.get("authToken")?.value;
   if (authTokenValue) {
@@ -202,7 +244,7 @@ async function setSessionPersistence(rememberMe: boolean) {
       httpOnly: true,
       secure: isProduction,
       sameSite: "lax",
-      domain: DOMAIN,
+      domain: rootDomain,
       path: "/",
       ...(rememberMe ? { maxAge: THIRTY_DAYS } : {}),
     });
@@ -221,7 +263,7 @@ async function setSessionPersistence(rememberMe: boolean) {
         httpOnly: true,
         secure: isProduction,
         sameSite: "lax",
-        domain: DOMAIN,
+        domain: rootDomain,
         path: "/",
         ...(rememberMe ? { maxAge: THIRTY_DAYS } : {}),
       });
