@@ -69,6 +69,8 @@ interface Props {
   currency: string;
   /** Per-variant recipe payload — empty when the product has no RECIPE-mode variants. */
   recipeSummary: ProductRecipeSummary;
+  /** Tab to open on mount (from `?tab=`), e.g. "sales" when arriving from a report. */
+  initialTab?: string;
 }
 
 const TABS = [
@@ -126,8 +128,13 @@ export function ProductDetailView({
   auditEntries,
   currency,
   recipeSummary,
+  initialTab,
 }: Props) {
-  const [tab, setTab] = useState<TabKey>("overview");
+  const [tab, setTab] = useState<TabKey>(
+    TABS.some((t) => t.key === initialTab)
+      ? (initialTab as TabKey)
+      : "overview",
+  );
 
   // ── Aggregates for KPI strip ────────────────────────────────────────
   const activeVariants = product.variants.filter((v) => v.archivedAt == null);

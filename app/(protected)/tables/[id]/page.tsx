@@ -12,12 +12,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { Space, TABLE_SPACE_TYPE_LABELS } from "@/types/space/type";
 import { getTable, getSpace } from "@/lib/actions/space-actions";
+import { getLocationCurrency } from "@/lib/actions/currency-actions";
+import { listOrders } from "@/lib/actions/order-actions";
+import { OrderStatus } from "@/types/orders/type";
 import { SpaceDetailView } from "@/app/(protected)/spaces/[id]/space-detail-view";
 
 type Params = Promise<{ id: string }>;
+type SearchParams = Promise<{ tab?: string }>;
 
-export default async function TablePage({ params }: { params: Params }) {
+export default async function TablePage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
   const { id } = await params;
+  const { tab } = await searchParams;
 
   if (id === "new") redirect("/tables/new");
 
@@ -35,6 +46,24 @@ export default async function TablePage({ params }: { params: Params }) {
   }
   if (redirectTo) redirect(redirectTo);
   if (!space) notFound();
+
+  // Per-table sales for the Sales tab — last 30 days of closed orders at
+  // this table. No per-table orders endpoint exists, so pull the location's
+  // recent closed orders and filter by tableId.
+  const currency = await getLocationCurrency().catch(() => "TZS");
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const fromDate30 = thirtyDaysAgo.toISOString().split("T")[0];
+  const toDate = now.toISOString().split("T")[0];
+  const allOrders = await listOrders({
+    fromDate: fromDate30,
+    toDate,
+    status: OrderStatus.CLOSED,
+  }).catch(() => []);
+  const salesOrders = allOrders.filter(
+    (o) => String(o.tableId) === String(space.id),
+  );
 
   const statusLabel = space.active ? "Active" : "Inactive";
   const statusClass = space.active
@@ -89,7 +118,12 @@ export default async function TablePage({ params }: { params: Params }) {
       />
 
       <PageBody>
-        <SpaceDetailView space={space} />
+        <SpaceDetailView
+          space={space}
+          salesOrders={salesOrders}
+          currency={currency}
+          initialTab={tab}
+        />
       </PageBody>
     </PageShell>
   );

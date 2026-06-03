@@ -16,7 +16,6 @@ import { ORDERING_MODE_OPTIONS } from "@/types/location-settings/type";
 
 const KEYS = [
   "orderingMode",
-  "enableTableManagement",
   "enableKitchenDisplay",
   "allowTipping",
   "allowOrderRequests",
@@ -99,13 +98,6 @@ export function OrdersPosPanel({
         </div>
 
         <div className="space-y-1">
-          <SettingsSwitchRow
-            label="Table management"
-            description="Require a table to be selected before placing an order."
-            checked={!!v.enableTableManagement}
-            onChange={(x) => panel.setField("enableTableManagement", x)}
-            disabled={panel.isPending}
-          />
           <SettingsSwitchRow
             label="Kitchen display system"
             description="Route tickets to connected KDS screens."

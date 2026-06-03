@@ -79,7 +79,6 @@ export interface LocationSettings {
   autoCloseOrderWhenFullyPaid: boolean;
   autoOpenCashDrawer: boolean;
   discountApprovalThreshold: number | null;
-  enableTableManagement: boolean;
   orderingMode: OrderingMode;
   receiptCopies: number;
   enableKitchenDisplay: boolean;

@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { DataTable } from "@/components/tables/data-table";
 import {
   PageBody,
   PageBreadcrumbs,
@@ -23,13 +22,15 @@ import NoItems from "@/components/layouts/no-items";
 import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { OrdersTabNav, type OrdersTab } from "@/components/orders/orders-tab-nav";
 import { OrdersRealtimeBridge } from "@/components/realtime/orders-realtime-bridge";
-import { columns } from "@/components/tables/orders/columns";
-import { abandonedColumns } from "@/components/tables/orders/abandoned-columns";
+import { OrdersDataTable } from "@/components/tables/orders/orders-data-table";
+import { AbandonedDataTable } from "@/components/tables/orders/abandoned-data-table";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getLocationSettings } from "@/lib/actions/location-settings-actions";
 import { listOrders } from "@/lib/actions/order-actions";
+import { fetchAllStaff } from "@/lib/actions/staff-actions";
+import { fetchAllTables } from "@/lib/actions/space-actions";
 import {
   Order,
-  ORDER_STATUS_FILTER_OPTIONS,
   OrderStatus,
   PaymentStatus,
 } from "@/types/orders/type";
@@ -83,24 +84,59 @@ export default async function Page({ searchParams }: Params) {
       ? OrderStatus.ABANDONED
       : statusParam || undefined;
 
-  const [orders, currentLocation] = await Promise.all([
-    listOrders({
-      fromDate: from,
-      toDate: to,
-      status: effectiveStatus,
-    }).catch((): Order[] => []),
-    getCurrentLocation(),
-  ]);
+  const [orders, currentLocation, locationSettings, staffList, tablesList] =
+    await Promise.all([
+      listOrders({
+        fromDate: from,
+        toDate: to,
+        status: effectiveStatus,
+      }).catch((): Order[] => []),
+      getCurrentLocation(),
+      getLocationSettings().catch(() => null),
+      fetchAllStaff().catch(() => []),
+      fetchAllTables().catch(() => []),
+    ]);
 
-  const filtered = orders.filter((o) => matchesSearch(o, q));
+  // Table-based ordering swaps the lead column to the table name; the
+  // standard mode keeps the order number in front.
+  const tableMode = locationSettings?.orderingMode === "TABLE_MANAGEMENT";
+
+  // Abandoned orders have their own tab. When the main list runs without
+  // an explicit status filter the OMS hands back every status, so strip
+  // ABANDONED here to stop it bleeding into the orders list.
+  const scopedOrders =
+    tab === "orders"
+      ? orders.filter((o) => o.orderStatus !== OrderStatus.ABANDONED)
+      : orders;
+
+  const filtered = scopedOrders.filter((o) => matchesSearch(o, q));
   const total = filtered.length;
   const pageCount = Math.max(1, Math.ceil(total / limit));
   const start = (page - 1) * limit;
   const pageData = filtered.slice(start, start + limit);
 
+  // Resolve assigned/closed-by staff and table UUIDs to names, but only
+  // for the rows actually on this page — keeps the props handed to the
+  // client table small instead of shipping the full staff/table lists.
+  const staffNames: Record<string, string> = {};
+  const tableNames: Record<string, string> = {};
+  const neededStaffIds = new Set<string>();
+  const neededTableIds = new Set<string>();
+  for (const o of pageData) {
+    if (o.assignedTo) neededStaffIds.add(o.assignedTo);
+    if (o.finishedBy) neededStaffIds.add(o.finishedBy);
+    if (o.tableId) neededTableIds.add(o.tableId);
+  }
+  for (const s of staffList) {
+    if (neededStaffIds.has(s.id)) staffNames[s.id] = s.fullName;
+  }
+  for (const t of tablesList) {
+    if (neededTableIds.has(t.id)) tableNames[t.id] = t.name;
+  }
+
   const currency =
-    orders.find((o) => o.settlementCurrency)?.settlementCurrency ?? "TZS";
-  const totalOrders = orders.length;
+    scopedOrders.find((o) => o.settlementCurrency)?.settlementCurrency ?? "TZS";
+  const totalOrders = scopedOrders.length;
   const hasAny = totalOrders > 0;
   // The default current-month range shouldn't count as a "user filter" —
   // we want first-time locations to land on the empty state, not on a
@@ -140,21 +176,27 @@ export default async function Page({ searchParams }: Params) {
         {hasAny || hasFilters ? (
           tab === "orders" ? (
             <OrdersTabContent
-              orders={orders}
+              orders={scopedOrders}
               pageData={pageData}
               pageCount={pageCount}
               pageNo={page - 1}
               total={total}
               currency={currency}
               statusParam={statusParam}
+              tableMode={tableMode}
+              staffNames={staffNames}
+              tableNames={tableNames}
             />
           ) : (
             <AbandonedTabContent
-              orders={orders}
+              orders={scopedOrders}
               pageData={pageData}
               pageCount={pageCount}
               pageNo={page - 1}
               total={total}
+              tableMode={tableMode}
+              staffNames={staffNames}
+              tableNames={tableNames}
             />
           )
         ) : (
@@ -173,6 +215,9 @@ function OrdersTabContent({
   total,
   currency,
   statusParam,
+  tableMode,
+  staffNames,
+  tableNames,
 }: {
   orders: Order[];
   pageData: Order[];
@@ -181,6 +226,9 @@ function OrdersTabContent({
   total: number;
   currency: string;
   statusParam: OrderStatus | "";
+  tableMode: boolean;
+  staffNames: Record<string, string>;
+  tableNames: Record<string, string>;
 }) {
   // KPI strip — derive from the unfiltered set so totals don't jump
   // when the user types in the search box.
@@ -246,16 +294,14 @@ function OrdersTabContent({
 
       <Card>
         <CardContent className="px-2 pt-6 sm:px-6">
-          <DataTable
-            columns={columns}
+          <OrdersDataTable
             data={pageData}
             pageCount={pageCount}
             pageNo={pageNo}
-            searchKey="orderNumber"
             total={total}
-            filterKey="orderStatus"
-            filterOptions={ORDER_STATUS_FILTER_OPTIONS}
-            rowClickBasePath="/orders"
+            tableMode={tableMode}
+            staffNames={staffNames}
+            tableNames={tableNames}
           />
         </CardContent>
       </Card>
@@ -269,12 +315,18 @@ function AbandonedTabContent({
   pageCount,
   pageNo,
   total,
+  tableMode,
+  staffNames,
+  tableNames,
 }: {
   orders: Order[];
   pageData: Order[];
   pageCount: number;
   pageNo: number;
   total: number;
+  tableMode: boolean;
+  staffNames: Record<string, string>;
+  tableNames: Record<string, string>;
 }) {
   // Abandoned orders are typically empty-draft auto-cancels. Split by
   // whether the auto-EOD purge sweep is the likely culprit (closed
@@ -324,14 +376,14 @@ function AbandonedTabContent({
 
       <Card>
         <CardContent className="px-2 pt-6 sm:px-6">
-          <DataTable
-            columns={abandonedColumns}
+          <AbandonedDataTable
             data={pageData}
             pageCount={pageCount}
             pageNo={pageNo}
-            searchKey="orderNumber"
             total={total}
-            rowClickBasePath="/orders"
+            tableMode={tableMode}
+            staffNames={staffNames}
+            tableNames={tableNames}
           />
         </CardContent>
       </Card>

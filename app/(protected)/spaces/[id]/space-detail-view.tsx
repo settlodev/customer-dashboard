@@ -1,21 +1,34 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Activity,
   CornerDownRight,
+  DollarSign,
   LayoutGrid,
   Palette,
   Power,
   PowerOff,
+  ShoppingCart,
   Sparkles,
   StickyNote,
   Tag,
   Timer,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Space,
   TABLE_SPACE_TYPE_LABELS,
@@ -23,17 +36,40 @@ import {
   BOOKABLE_TYPES,
 } from "@/types/space/type";
 import { TableStatus } from "@/types/enums";
+import type { Order } from "@/types/orders/type";
 
 const TABS = [
   { key: "overview", label: "Overview", icon: LayoutGrid },
+  { key: "sales", label: "Sales", icon: ShoppingCart },
   { key: "operations", label: "Operations", icon: Activity },
   { key: "layout", label: "Layout", icon: Palette },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
 
-export function SpaceDetailView({ space }: { space: Space }) {
-  const [tab, setTab] = useState<TabKey>("overview");
+interface Props {
+  space: Space;
+  /** Closed orders at this table over the last 30 days. When provided, the
+   * Sales tab is shown — only the tables route passes this. */
+  salesOrders?: Order[];
+  currency?: string;
+  /** Tab to open on mount (from `?tab=`), e.g. "sales" from a report. */
+  initialTab?: string;
+}
+
+export function SpaceDetailView({
+  space,
+  salesOrders,
+  currency = "TZS",
+  initialTab,
+}: Props) {
+  const showSales = salesOrders !== undefined;
+  const visibleTabs = TABS.filter((t) => t.key !== "sales" || showSales);
+  const [tab, setTab] = useState<TabKey>(
+    visibleTabs.some((t) => t.key === initialTab)
+      ? (initialTab as TabKey)
+      : "overview",
+  );
   const isBookable = BOOKABLE_TYPES.includes(space.type);
 
   return (
@@ -95,7 +131,7 @@ export function SpaceDetailView({ space }: { space: Space }) {
 
       <div className="overflow-x-auto rounded-xl border border-line bg-card">
         <div className="flex min-w-max gap-0 border-b border-line bg-surface px-2">
-          {TABS.map((t) => {
+          {visibleTabs.map((t) => {
             const Icon = t.icon;
             const isActive = tab === t.key;
             return (
@@ -123,10 +159,141 @@ export function SpaceDetailView({ space }: { space: Space }) {
       </div>
 
       {tab === "overview" && <OverviewTab space={space} />}
+      {tab === "sales" && showSales && (
+        <TableSalesTab orders={salesOrders} currency={currency} />
+      )}
       {tab === "operations" && (
         <OperationsTab space={space} isBookable={isBookable} />
       )}
       {tab === "layout" && <LayoutTab space={space} />}
+    </div>
+  );
+}
+
+// ── Sales (per-table orders, last 30 days) ──────────────────────────
+
+function TableSalesTab({
+  orders,
+  currency,
+}: {
+  orders: Order[];
+  currency: string;
+}) {
+  if (orders.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <ShoppingCart className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            No closed orders at this table in the last 30 days.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const fmt = (v: number) =>
+    v.toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+  const gross = orders.reduce((s, o) => s + (o.grossAmount ?? 0), 0);
+  const net = orders.reduce((s, o) => s + (o.netAmount ?? 0), 0);
+  const profit = orders.reduce((s, o) => s + (o.grossProfit ?? 0), 0);
+  const avg = orders.length > 0 ? net / orders.length : 0;
+  const margin = net > 0 ? (profit / net) * 100 : 0;
+
+  return (
+    <div className="space-y-6">
+      <KpiStrip cols={5}>
+        <KpiCard
+          icon={<ShoppingCart className="h-3 w-3" />}
+          label="Orders"
+          value={orders.length.toLocaleString()}
+        />
+        <KpiCard
+          icon={<DollarSign className="h-3 w-3" />}
+          label="Gross"
+          value={fmt(gross)}
+          unit={currency}
+        />
+        <KpiCard
+          icon={<DollarSign className="h-3 w-3" />}
+          label="Net"
+          value={fmt(net)}
+          unit={currency}
+        />
+        <KpiCard
+          icon={<DollarSign className="h-3 w-3" />}
+          label="Avg / order"
+          value={fmt(avg)}
+          unit={currency}
+        />
+        <KpiCard
+          icon={<TrendingUp className="h-3 w-3" />}
+          label="Gross profit"
+          value={fmt(profit)}
+          unit={currency}
+          delta={net > 0 ? `${margin.toFixed(1)}% margin` : undefined}
+          deltaTone={profit >= 0 ? "pos" : "neg"}
+        />
+      </KpiStrip>
+
+      <Card>
+        <CardContent className="pt-6">
+          <h3 className="mb-3 text-sm font-semibold">
+            Orders at this table (last 30 days)
+          </h3>
+          <div className="overflow-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Order #</TableHead>
+                  <TableHead>Opened</TableHead>
+                  <TableHead className="text-right">Gross</TableHead>
+                  <TableHead className="text-right">Net</TableHead>
+                  <TableHead className="text-right">Profit</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orders.map((o) => (
+                  <TableRow key={String(o.id)}>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/orders/${o.id}`}
+                        className="text-primary hover:underline"
+                      >
+                        {o.orderNumber}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {new Date(o.openedDate).toLocaleString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {fmt(o.grossAmount ?? 0)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {fmt(o.netAmount ?? 0)}
+                    </TableCell>
+                    <TableCell
+                      className={`text-right font-medium tabular-nums ${
+                        (o.grossProfit ?? 0) >= 0
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-red-600 dark:text-red-400"
+                      }`}
+                    >
+                      {fmt(o.grossProfit ?? 0)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

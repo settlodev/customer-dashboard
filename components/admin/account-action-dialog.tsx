@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { CheckCircle2, Loader2, PauseCircle, Trash2 } from "lucide-react";
+import { CheckCircle2, Loader2, Mail, PauseCircle, Trash2 } from "lucide-react";
 
 import {
   AlertDialog,
@@ -23,12 +23,13 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   deleteAccount,
   reactivateAccount,
+  resendVerificationEmail,
   suspendAccount,
 } from "@/lib/actions/admin/accounts";
 import { AdminAccountListItem } from "@/types/admin/account";
 
 interface AccountActionDialogProps {
-  kind: "suspend" | "reactivate" | "delete";
+  kind: "suspend" | "reactivate" | "delete" | "resend-verification";
   account: AdminAccountListItem;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -56,6 +57,8 @@ export function AccountActionDialog({
       <Trash2 className="h-5 w-5" />
     ) : kind === "suspend" ? (
       <PauseCircle className="h-5 w-5" />
+    ) : kind === "resend-verification" ? (
+      <Mail className="h-5 w-5" />
     ) : (
       <CheckCircle2 className="h-5 w-5" />
     );
@@ -65,7 +68,9 @@ export function AccountActionDialog({
       ? "Delete this account?"
       : kind === "suspend"
         ? "Suspend this account?"
-        : "Reactivate this account?";
+        : kind === "resend-verification"
+          ? "Resend verification email?"
+          : "Reactivate this account?";
 
   const description =
     kind === "delete" ? (
@@ -79,6 +84,11 @@ export function AccountActionDialog({
         <strong>{accountLabel}</strong> will be unable to sign in until you
         reactivate them. Optionally include a reason for the audit log.
       </>
+    ) : kind === "resend-verification" ? (
+      <>
+        A new verification link and code will be emailed to{" "}
+        <strong>{account.email}</strong>. Any previous link will stop working.
+      </>
     ) : (
       <>
         <strong>{accountLabel}</strong> will regain access immediately. Any
@@ -91,7 +101,9 @@ export function AccountActionDialog({
       ? "Delete account"
       : kind === "suspend"
         ? "Suspend"
-        : "Reactivate";
+        : kind === "resend-verification"
+          ? "Send email"
+          : "Reactivate";
 
   useEffect(() => {
     if (!open) {
@@ -108,7 +120,9 @@ export function AccountActionDialog({
           ? await deleteAccount(account.id)
           : kind === "suspend"
             ? await suspendAccount(account.id, reason.trim() || undefined)
-            : await reactivateAccount(account.id);
+            : kind === "resend-verification"
+              ? await resendVerificationEmail(account.id)
+              : await reactivateAccount(account.id);
 
       if (result.responseType === "error") {
         setError(result.message);
@@ -121,7 +135,9 @@ export function AccountActionDialog({
             ? "Account deleted"
             : kind === "suspend"
               ? "Account suspended"
-              : "Account reactivated",
+              : kind === "resend-verification"
+                ? "Verification email sent"
+                : "Account reactivated",
         description: result.message,
       });
       onDone();

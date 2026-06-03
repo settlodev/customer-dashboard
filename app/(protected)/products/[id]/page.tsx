@@ -30,9 +30,17 @@ import { ProductDetailActions } from "./product-detail-actions";
 import { BulkBarcodeGenerator } from "@/components/widgets/products/bulk-barcode-generator";
 
 type Params = Promise<{ id: string }>;
+type SearchParams = Promise<{ tab?: string }>;
 
-export default async function ProductPage({ params }: { params: Params }) {
+export default async function ProductPage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
   const { id } = await params;
+  const { tab } = await searchParams;
 
   // /products/new is now a sibling route — bounce there if someone
   // links to /products/new through the dynamic segment.
@@ -198,6 +206,7 @@ export default async function ProductPage({ params }: { params: Params }) {
           auditEntries={auditPage.content ?? []}
           currency={currency}
           recipeSummary={recipeSummary}
+          initialTab={tab}
         />
       </PageBody>
     </PageShell>

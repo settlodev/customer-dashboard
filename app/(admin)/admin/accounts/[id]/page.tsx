@@ -87,6 +87,9 @@ export default async function AdminAccountDetailPage({
   const canSuspend = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
   const canDelete = role === "SYSTEM_ADMIN";
   const canAssignStaff = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
+  // Resend verification mirrors the backend's :read authority — every internal
+  // role that can open this page (incl. SUPPORT_AGENT) may resend.
+  const canResend = canRead;
 
   if (!canRead) {
     return (
@@ -173,6 +176,7 @@ export default async function AdminAccountDetailPage({
                 account={account}
                 canSuspend={canSuspend}
                 canDelete={canDelete}
+                canResend={canResend}
               />
             </>
           }

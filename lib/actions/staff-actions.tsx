@@ -415,18 +415,53 @@ export const assignStaffRoles = async (
 // Reports
 // ---------------------------------------------------------------------------
 
+/** Shape of one row from the Reports Service all-staff rollup. */
+interface StaffRollupRow {
+  staffId: string;
+  staffName: string | null;
+  image: string | null;
+  totalOrdersCompleted: number | null;
+  totalItemsSold: number | null;
+  totalGrossAmount: number | null;
+  totalNetAmount: number | null;
+  totalGrossProfit: number | null;
+}
+
 export const staffReport = async (
   startDate?: Date,
   endDate?: Date,
 ): Promise<StaffSummaryReport | null> => {
   try {
-    const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();
-    const params: Record<string, unknown> = {};
-    if (startDate) params.startDate = startDate;
-    if (endDate) params.endDate = endDate;
-    const report = await apiClient.get(`/api/reports/${location?.id}/staff/summary`, { params });
-    return parseStringify(report);
+    if (!location?.id) return { staffReports: [] };
+
+    const apiClient = new ApiClient("reports");
+    const fmt = (d: Date) => d.toISOString().split("T")[0];
+    const params: Record<string, unknown> = { locationId: location.id };
+    if (startDate) params.startDate = fmt(startDate);
+    if (endDate) params.endDate = fmt(endDate);
+
+    // Reports Service returns a flat per-staff rollup list; the dashboard's
+    // StaffSummaryReport wraps it under `staffReports`. Stock-intake counts
+    // aren't part of this rollup, so they default to 0.
+    const rows = await apiClient.get<StaffRollupRow[]>(
+      `/api/v2/analytics/summary/staff/all`,
+      { params },
+    );
+
+    const staffReports = (Array.isArray(rows) ? rows : []).map((r) => ({
+      id: r.staffId,
+      name: r.staffName ?? "",
+      image: r.image ?? "",
+      totalOrdersCompleted: Number(r.totalOrdersCompleted ?? 0),
+      totalItemsSold: Number(r.totalItemsSold ?? 0),
+      totalStockIntakePerformed: 0,
+      totalGrossAmount: Number(r.totalGrossAmount ?? 0),
+      totalNetAmount: Number(r.totalNetAmount ?? 0),
+      totalGrossProfit: Number(r.totalGrossProfit ?? 0),
+    }));
+
+    return parseStringify({ staffReports });
   } catch (error: any) {
     throw new Error(error?.message || "Failed to fetch staff report");
   }

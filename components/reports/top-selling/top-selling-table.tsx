@@ -14,6 +14,12 @@ interface Props {
   pageNo: number;
   total: number;
   currency: string;
+  /**
+   * Optional query string appended to the product link on row click
+   * (e.g. "?tab=sales" to land straight on the product's Sales tab when
+   * this table is embedded in the sales report hub).
+   */
+  rowClickQuery?: string;
 }
 
 /**
@@ -30,6 +36,7 @@ export function TopSellingTable({
   pageNo,
   total,
   currency,
+  rowClickQuery = "",
 }: Props) {
   const router = useRouter();
   const columns = useMemo(
@@ -53,7 +60,7 @@ export function TopSellingTable({
           total={total}
           onRowClick={(item) => {
             if (item.productId) {
-              router.push(`/products/${item.productId}`);
+              router.push(`/products/${item.productId}${rowClickQuery}`);
             }
           }}
         />

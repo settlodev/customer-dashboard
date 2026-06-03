@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, PauseCircle, Trash2 } from "lucide-react";
+import { CheckCircle2, Mail, PauseCircle, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { AccountActionDialog } from "@/components/admin/account-action-dialog";
@@ -15,6 +15,7 @@ interface AccountDetailActionsProps {
   account: AdminAccountDetail;
   canSuspend: boolean;
   canDelete: boolean;
+  canResend: boolean;
 }
 
 function toListItem(detail: AdminAccountDetail): AdminAccountListItem {
@@ -38,12 +39,13 @@ function toListItem(detail: AdminAccountDetail): AdminAccountListItem {
   };
 }
 
-type ActionKind = "suspend" | "reactivate" | "delete";
+type ActionKind = "suspend" | "reactivate" | "delete" | "resend-verification";
 
 export function AccountDetailActions({
   account,
   canSuspend,
   canDelete,
+  canResend,
 }: AccountDetailActionsProps) {
   const router = useRouter();
   const [active, setActive] = useState<ActionKind | null>(null);
@@ -74,6 +76,19 @@ export function AccountDetailActions({
             Reactivate
           </Button>
         ))}
+
+      {canResend && !account.emailVerified && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setActive("resend-verification")}
+          className="text-sky-700 hover:bg-sky-50 hover:text-sky-800 dark:text-sky-300 dark:hover:bg-sky-500/10"
+        >
+          <Mail className="mr-1.5 h-4 w-4" />
+          Resend verification
+        </Button>
+      )}
 
       {canDelete && (
         <Button

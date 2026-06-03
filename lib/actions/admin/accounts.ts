@@ -127,6 +127,31 @@ export async function reactivateAccount(
   }
 }
 
+export async function resendVerificationEmail(
+  accountId: string,
+): Promise<FormResponse<{ message: string }>> {
+  try {
+    const result = await staffClient().post<
+      { message: string },
+      Record<string, never>
+    >(`/api/v1/admin/accounts/${accountId}/resend-verification-email`, {});
+
+    revalidatePath("/admin/accounts");
+    revalidatePath(`/admin/accounts/${accountId}`);
+    return parseStringify({
+      responseType: "success",
+      message: result?.message ?? "Verification email sent",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to send verification email",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
 export async function deleteAccount(
   accountId: string,
 ): Promise<FormResponse<void>> {

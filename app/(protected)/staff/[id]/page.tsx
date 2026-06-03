@@ -9,14 +9,26 @@ import {
 } from "@/components/layouts/page-shell";
 import { Button } from "@/components/ui/button";
 import { getStaff, getStaffDetail } from "@/lib/actions/staff-actions";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getLocationCurrency } from "@/lib/actions/currency-actions";
+import { getStaffItemSales } from "@/lib/actions/item-sales-actions";
 import { Staff, StaffDetail } from "@/types/staff";
+import type { ItemSalesAggregate } from "@/types/item-sales/type";
 import { StaffDetailView } from "./staff-detail-view";
 import { StaffDetailActions } from "./staff-detail-actions";
 
 type Params = Promise<{ id: string }>;
+type SearchParams = Promise<{ tab?: string }>;
 
-export default async function StaffPage({ params }: { params: Params }) {
+export default async function StaffPage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
   const { id } = await params;
+  const { tab } = await searchParams;
 
   if (id === "new") redirect("/staff/new");
 
@@ -38,6 +50,26 @@ export default async function StaffPage({ params }: { params: Params }) {
   } catch {
     throw new Error("Failed to load staff data");
   }
+
+  // Per-staff item sales for the Sales tab — last 30 days, mirroring the
+  // product detail's Sales window. Scoped to this staff via getItemSalesSummary's
+  // staffId filter.
+  const [location, currency] = await Promise.all([
+    getCurrentLocation().catch(() => null),
+    getLocationCurrency().catch(() => "TZS"),
+  ]);
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const fromDate30 = thirtyDaysAgo.toISOString().split("T")[0];
+  const toDate = now.toISOString().split("T")[0];
+  const salesItems: ItemSalesAggregate[] = location?.id
+    ? (
+        await getStaffItemSales(location.id, fromDate30, toDate, id).catch(
+          () => null,
+        )
+      )?.items ?? []
+    : [];
 
   const fullName = `${staff.firstName} ${staff.lastName}`;
 
@@ -102,7 +134,13 @@ export default async function StaffPage({ params }: { params: Params }) {
       />
 
       <PageBody>
-        <StaffDetailView staff={staff} detail={detail} />
+        <StaffDetailView
+          staff={staff}
+          detail={detail}
+          initialTab={tab}
+          salesItems={salesItems}
+          currency={currency}
+        />
       </PageBody>
     </PageShell>
   );

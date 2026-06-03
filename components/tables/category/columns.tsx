@@ -74,16 +74,17 @@ export const columns: ColumnDef<Category>[] = [
     },
   },
   {
-    accessorKey: "productCount",
+    accessorKey: "departmentName",
     enableHiding: true,
-    header: () => <span className="hidden md:inline">Products</span>,
+    header: () => <span className="hidden md:inline">Department</span>,
     cell: ({ row }) => {
-      const count = row.original.productCount ?? 0;
+      const name = row.original.departmentName;
+      if (!name) {
+        return <span className="hidden text-muted-foreground md:inline">—</span>;
+      }
       return (
         <div className="hidden md:block">
-          <Badge variant="soft">
-            {new Intl.NumberFormat("en-US").format(count)}
-          </Badge>
+          <Badge variant="soft">{name}</Badge>
         </div>
       );
     },
