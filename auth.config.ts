@@ -1,8 +1,10 @@
 import { AuthError, NextAuthConfig } from "next-auth";
 import Credentials from "@auth/core/providers/credentials";
 import { LoginSchema } from "@/types/data-schemas";
+import { getDomainConfig } from "@/lib/domain-config";
 
 const serviceURL = process.env.SERVICE_URL;
+const { rootDomain } = getDomainConfig();
 
 export default {
   providers: [
@@ -66,4 +68,16 @@ export default {
       },
     }),
   ],
+  cookies: {
+    sessionToken: {
+      name: "authjs.session-token",
+      options: {
+        domain: rootDomain, // ← .settlopay.co.tz in prod, .lvh.me locally
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+      },
+    },
+  },
 } satisfies NextAuthConfig;
