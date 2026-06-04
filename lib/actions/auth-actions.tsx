@@ -25,31 +25,6 @@ import { revalidatePath } from "next/cache";
 import { deleteActiveWarehouseCookie } from "./warehouse/current-warehouse-action";
 import { getDomainConfig } from "@/lib/domain-config";
 
-export async function logout() {
-  try {
-    //Make sure token does not exist
-    await deleteAuthCookie();
-    await deleteActiveBusinessCookie();
-    await deleteActiveLocationCookie();
-    await deleteActiveWarehouseCookie();
-
-    await signOut({ redirectTo: "/login" });
-  } catch (error) {
-    // Always re-throw redirect errors so Next.js can handle navigation
-    if (
-      error instanceof Error &&
-      "digest" in error &&
-      typeof (error as any).digest === "string" &&
-      (error as any).digest.startsWith("NEXT_REDIRECT")
-    ) {
-      throw error;
-    }
-    if (error instanceof AuthError) {
-      throw error;
-    }
-  }
-}
-
 export const login = async (
   credentials: z.infer<typeof LoginSchema>,
   rememberMe: boolean = false,
@@ -485,4 +460,42 @@ export const resendVerificationEmail = async (
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
+};
+
+export const logout = async () => {
+  const { rootDomain } = getDomainConfig();
+  const isProduction = process.env.NODE_ENV === "production";
+
+  const cookieStore = await cookies();
+
+  const domainScopedCookies = [
+    "authToken",
+    "authjs.session-token",
+    "authjs.csrf-token",
+    "authjs.callback-url",
+    "next-auth.session-token",
+    "next-auth.csrf-token",
+    "activeBusiness",
+    "activeLocation",
+    "currentBusiness",
+    "currentLocation",
+    "currentWarehouse",
+    "activeWarehouse",
+  ];
+
+  for (const name of domainScopedCookies) {
+    // Delete domain-scoped cookie by setting maxAge to 0
+    cookieStore.set({
+      name,
+      value: "",
+      domain: rootDomain,
+      path: "/",
+      maxAge: 0,
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+    });
+  }
+
+  await signOut({ redirect: false });
 };

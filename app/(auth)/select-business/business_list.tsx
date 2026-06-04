@@ -30,33 +30,6 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
     };
   }, []);
 
-  // const handleBusinessSelect = useCallback(
-  //   async (selectedBusiness: Business, index: number) => {
-  //     if (isLoading || isRedirecting) return;
-  //
-  //     setPendingIndex(index);
-  //     setIsLoading(true);
-  //
-  //     try {
-  //       setIsRedirecting(true);
-  //       await refreshBusiness(selectedBusiness);
-  //       router.push("/select-location");
-  //     } catch (error) {
-  //       Sentry.captureException(error);
-  //       setIsRedirecting(false);
-  //       setIsLoading(false);
-  //       setPendingIndex(null);
-  //
-  //       toast({
-  //         variant: "destructive",
-  //         title: "Error",
-  //         description: "Failed to load business details. Please try again.",
-  //       });
-  //     }
-  //   },
-  //   [isLoading, isRedirecting, toast, router],
-  // );
-
   const handleBusinessSelect = useCallback(
     async (selectedBusiness: Business, index: number) => {
       if (isLoading || isRedirecting) return;
