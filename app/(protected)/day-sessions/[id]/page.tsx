@@ -25,6 +25,8 @@ import {
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import { getCurrentDestination } from "@/lib/actions/context";
 import { getDaySessionDetail } from "@/lib/actions/day-session-list-actions";
+import { listPaymentMethodReconciliations } from "@/lib/actions/payment-method-reconciliation-actions";
+import { PaymentMethodReconciliationCard } from "@/components/widgets/accounting/payment-method-reconciliation-card";
 
 type Params = Promise<{ id: string }>;
 
@@ -83,6 +85,10 @@ export default async function DaySessionDetailPage({
   //     show empty financials gracefully below.
   if (!detail.session) notFound();
   const { session, report } = detail;
+
+  // Per-method cash-up (Accounting Service) — manager approves here; an
+  // offline-mobile-money variance posts a Mobile Money Over/Short.
+  const reconciliations = await listPaymentMethodReconciliations(id);
 
   const headerLabel =
     session.identifier ?? `Session ${session.id.slice(0, 8)}`;
@@ -315,6 +321,10 @@ export default async function DaySessionDetailPage({
 
           {/* ── Reconciliation tab ──────────────────────────────────── */}
           <TabsContent value="reconciliation" className="space-y-4 pt-4">
+            <PaymentMethodReconciliationCard
+              reconciliations={reconciliations}
+              sessionId={id}
+            />
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm flex items-center gap-2">

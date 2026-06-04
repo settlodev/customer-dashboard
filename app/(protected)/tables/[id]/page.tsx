@@ -2,6 +2,7 @@ import { UUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
+import { endOfMonth, format, startOfMonth } from "date-fns";
 
 import {
   PageShell,
@@ -11,14 +12,40 @@ import {
 } from "@/components/layouts/page-shell";
 import { Button } from "@/components/ui/button";
 import { Space, TABLE_SPACE_TYPE_LABELS } from "@/types/space/type";
-import { getTable, getSpace } from "@/lib/actions/space-actions";
+import {
+  getTable,
+  getSpace,
+  fetchAllTables,
+} from "@/lib/actions/space-actions";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
+import { getLocationSettings } from "@/lib/actions/location-settings-actions";
 import { listOrders } from "@/lib/actions/order-actions";
-import { OrderStatus } from "@/types/orders/type";
+import { fetchAllStaff } from "@/lib/actions/staff-actions";
+import { Order, OrderStatus } from "@/types/orders/type";
 import { SpaceDetailView } from "@/app/(protected)/spaces/[id]/space-detail-view";
+import { TableOrdersPanel, type SalesView } from "./table-orders-panel";
 
 type Params = Promise<{ id: string }>;
-type SearchParams = Promise<{ tab?: string }>;
+type SearchParams = Promise<{
+  tab?: string;
+  view?: string;
+  from?: string;
+  to?: string;
+  search?: string;
+  page?: string;
+  limit?: string;
+}>;
+
+const matchesSearch = (order: Order, q: string): boolean => {
+  if (!q) return true;
+  const needle = q.toLowerCase();
+  return (
+    order.orderNumber?.toLowerCase().includes(needle) ||
+    (order.notes ?? "").toLowerCase().includes(needle) ||
+    (order.externalOrderId ?? "").toLowerCase().includes(needle) ||
+    (order.cancellationReason ?? "").toLowerCase().includes(needle)
+  );
+};
 
 export default async function TablePage({
   params,
@@ -28,7 +55,15 @@ export default async function TablePage({
   searchParams: SearchParams;
 }) {
   const { id } = await params;
-  const { tab } = await searchParams;
+  const {
+    tab,
+    view: viewParam,
+    from: fromParam,
+    to: toParam,
+    search: searchParam,
+    page: pageParam,
+    limit: limitParam,
+  } = await searchParams;
 
   if (id === "new") redirect("/tables/new");
 
@@ -47,23 +82,110 @@ export default async function TablePage({
   if (redirectTo) redirect(redirectTo);
   if (!space) notFound();
 
-  // Per-table sales for the Sales tab — last 30 days of closed orders at
-  // this table. No per-table orders endpoint exists, so pull the location's
-  // recent closed orders and filter by tableId.
-  const currency = await getLocationCurrency().catch(() => "TZS");
+  // ── Per-table Sales tab — the Orders list scoped to this table ──────
+  // No per-table orders endpoint exists, so pull the location's orders
+  // for the chosen range and filter by tableId. Date range, search, the
+  // Orders/Abandoned sub-tab, and paging are all URL-driven so this
+  // re-fetches exactly like the standalone Orders page. Default to the
+  // current month when no range is supplied, matching that page.
   const now = new Date();
-  const thirtyDaysAgo = new Date(now);
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const fromDate30 = thirtyDaysAgo.toISOString().split("T")[0];
-  const toDate = now.toISOString().split("T")[0];
-  const allOrders = await listOrders({
-    fromDate: fromDate30,
-    toDate,
-    status: OrderStatus.CLOSED,
-  }).catch(() => []);
-  const salesOrders = allOrders.filter(
+  const from = fromParam ?? format(startOfMonth(now), "yyyy-MM-dd");
+  const to = toParam ?? format(endOfMonth(now), "yyyy-MM-dd");
+  const q = searchParam ?? "";
+  const pageNo = Number(pageParam) || 1;
+  const limit = Number(limitParam) || 10;
+  const view: SalesView = viewParam === "abandoned" ? "abandoned" : "orders";
+
+  const [allOrders, locationSettings, staffList, tablesList, currency] =
+    await Promise.all([
+      listOrders({ fromDate: from, toDate: to }).catch((): Order[] => []),
+      getLocationSettings().catch(() => null),
+      fetchAllStaff().catch(() => []),
+      fetchAllTables().catch(() => []),
+      getLocationCurrency().catch(() => "TZS"),
+    ]);
+
+  // Table-based ordering swaps the lead column to the table name.
+  const tableMode = locationSettings?.orderingMode === "TABLE_MANAGEMENT";
+
+  // Scope to this table, then split: the Abandoned sub-tab gets the
+  // empty-draft auto-cancels, the Orders sub-tab gets everything else
+  // (so the Status column / filter stay meaningful, as on /orders).
+  const tableOrders = allOrders.filter(
     (o) => String(o.tableId) === String(space.id),
   );
+  const scoped =
+    view === "abandoned"
+      ? tableOrders.filter((o) => o.orderStatus === OrderStatus.ABANDONED)
+      : tableOrders.filter((o) => o.orderStatus !== OrderStatus.ABANDONED);
+
+  const filtered = scoped.filter((o) => matchesSearch(o, q));
+  const total = filtered.length;
+  const pageCount = Math.max(1, Math.ceil(total / limit));
+  const start = (pageNo - 1) * limit;
+  const pageData = filtered.slice(start, start + limit);
+
+  // Resolve assigned/closed-by staff and table UUIDs to names, but only
+  // for the rows on the visible page — keeps the client props small.
+  const staffNames: Record<string, string> = {};
+  const tableNames: Record<string, string> = {};
+  const neededStaffIds = new Set<string>();
+  const neededTableIds = new Set<string>();
+  for (const o of pageData) {
+    if (o.assignedTo) neededStaffIds.add(o.assignedTo);
+    if (o.finishedBy) neededStaffIds.add(o.finishedBy);
+    if (o.tableId) neededTableIds.add(o.tableId);
+  }
+  for (const s of staffList) {
+    if (neededStaffIds.has(s.id)) staffNames[s.id] = s.fullName;
+  }
+  for (const t of tablesList) {
+    if (neededTableIds.has(t.id)) tableNames[t.id] = t.name;
+  }
+
+  const salesContent = (
+    // Keyed because this element is created here but rendered among
+    // sibling conditionals inside SpaceDetailView — without a key React's
+    // dev validation flags it as a keyless list child (its owner differs
+    // from the component that renders it).
+    <TableOrdersPanel
+      key="sales-panel"
+      basePath={`/tables/${space.id}`}
+      view={view}
+      from={from}
+      to={to}
+      scoped={scoped}
+      pageData={pageData}
+      pageCount={pageCount}
+      pageNo={pageNo - 1}
+      total={total}
+      tableMode={tableMode}
+      staffNames={staffNames}
+      tableNames={tableNames}
+      currency={currency}
+      preservedParams={{
+        from: fromParam,
+        to: toParam,
+        search: searchParam,
+        limit: limitParam,
+        tab,
+      }}
+    />
+  );
+
+  // Land on the Sales tab when the URL carries any of its (sales-only)
+  // state — a shared or reloaded `?from=…&view=…` link should reopen the
+  // view it describes, not fall back to Overview. An explicit `?tab=`
+  // still wins.
+  const hasSalesParams = !!(
+    fromParam ||
+    toParam ||
+    viewParam ||
+    searchParam ||
+    pageParam ||
+    limitParam
+  );
+  const initialTab = tab ?? (hasSalesParams ? "sales" : undefined);
 
   const statusLabel = space.active ? "Active" : "Inactive";
   const statusClass = space.active
@@ -120,9 +242,8 @@ export default async function TablePage({
       <PageBody>
         <SpaceDetailView
           space={space}
-          salesOrders={salesOrders}
-          currency={currency}
-          initialTab={tab}
+          salesContent={salesContent}
+          initialTab={initialTab}
         />
       </PageBody>
     </PageShell>
