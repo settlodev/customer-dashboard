@@ -1,12 +1,12 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, CornerDownRight } from "lucide-react";
+import { CornerDownRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CellAction } from "@/components/tables/category/cell-action";
 import { TableAvatar } from "@/components/tables/shared/table-avatar";
+import { SortableHeader } from "@/components/tables/shared/sortable-header";
 import { Category } from "@/types/category/type";
 
 export const columns: ColumnDef<Category>[] = [
@@ -33,17 +33,8 @@ export const columns: ColumnDef<Category>[] = [
   {
     accessorKey: "name",
     enableHiding: false,
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="xs"
-        className="-ml-2 h-auto px-2 font-mono text-[10.5px] font-medium uppercase tracking-[0.06em] text-muted-foreground hover:text-ink"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Category
-        <ArrowUpDown className="ml-1 h-3 w-3 opacity-60" />
-      </Button>
-    ),
+    enableSorting: false,
+    header: () => <SortableHeader sortKey="name" label="Category" />,
     cell: ({ row }) => {
       const hasParent = !!row.original.parentName;
       return (
@@ -76,7 +67,14 @@ export const columns: ColumnDef<Category>[] = [
   {
     accessorKey: "departmentName",
     enableHiding: true,
-    header: () => <span className="hidden md:inline">Department</span>,
+    enableSorting: false,
+    header: () => (
+      <SortableHeader
+        sortKey="departmentName"
+        label="Department"
+        className="hidden md:inline-flex"
+      />
+    ),
     cell: ({ row }) => {
       const name = row.original.departmentName;
       if (!name) {

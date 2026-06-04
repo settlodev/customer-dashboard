@@ -50,7 +50,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, FolderOpen, Trash2 } from "lucide-react";
+import { CheckCircle2, FolderOpen, Trash2, X } from "lucide-react";
 
 import styles from "./styles/form-shell.module.css";
 
@@ -88,6 +88,13 @@ const CategoryForm = ({
   });
 
   const showDepartmentPicker = departments.length > 1;
+
+  // A category must belong to the same department as its parent, so once a
+  // parent is chosen the department is locked to the parent's (set on
+  // selection below). `watch` reflects the parent that's already set when
+  // editing, so the lock holds on first render too.
+  const selectedParentId = form.watch("parentId");
+  const departmentLocked = !!selectedParentId;
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
@@ -172,7 +179,11 @@ const CategoryForm = ({
                 </div>
 
                 <div className="flex-1 min-w-0 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div
+                    className={`grid grid-cols-1 gap-4 ${
+                      showDepartmentPicker ? "sm:grid-cols-3" : "sm:grid-cols-2"
+                    }`}
+                  >
                     <FormField
                       control={form.control}
                       name="name"
@@ -198,15 +209,46 @@ const CategoryForm = ({
                       name="parentId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className={styles.fieldLabel}>
-                            Parent category
-                            <span className="opt">OPTIONAL</span>
-                          </FormLabel>
+                          <div className="flex items-center gap-2">
+                            <FormLabel className={styles.fieldLabel}>
+                              Parent category
+                            </FormLabel>
+                            {field.value ? (
+                              <button
+                                type="button"
+                                onClick={() => field.onChange("")}
+                                disabled={isPending}
+                                title="Remove from parent category"
+                                className="ml-auto inline-flex items-center gap-1 whitespace-nowrap font-mono text-[10px] tracking-[0.04em] text-muted-foreground transition-colors hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <X className="h-3 w-3" />
+                                Clear
+                              </button>
+                            ) : (
+                              <span className="ml-auto font-mono text-[10px] tracking-[0.04em] text-muted-foreground">
+                                OPTIONAL
+                              </span>
+                            )}
+                          </div>
                           <FormControl>
                             <CategorySelector
                               simple
                               categories={categories}
-                              onChange={field.onChange}
+                              onChange={(value) => {
+                                field.onChange(value);
+                                // Inherit (and lock to) the parent's
+                                // department — every category carries one.
+                                const parentDeptId = value
+                                  ? categories?.find((c) => c.id === value)
+                                      ?.departmentId
+                                  : undefined;
+                                if (parentDeptId) {
+                                  form.setValue("departmentId", parentDeptId, {
+                                    shouldValidate: true,
+                                    shouldDirty: true,
+                                  });
+                                }
+                              }}
                               onBlur={field.onBlur}
                               isDisabled={isPending}
                               placeholder="Select parent"
@@ -231,7 +273,7 @@ const CategoryForm = ({
                             <Select
                               onValueChange={field.onChange}
                               value={field.value ?? ""}
-                              disabled={isPending}
+                              disabled={isPending || departmentLocked}
                             >
                               <FormControl>
                                 <SelectTrigger>
@@ -246,6 +288,12 @@ const CategoryForm = ({
                                 ))}
                               </SelectContent>
                             </Select>
+                            {departmentLocked && (
+                              <p className={styles.fieldHint}>
+                                Set by the parent category — a category stays in
+                                its parent&apos;s department.
+                              </p>
+                            )}
                             <FormMessage />
                           </FormItem>
                         )}
