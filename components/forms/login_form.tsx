@@ -36,7 +36,7 @@ import {
   Shield,
   UserCheck,
 } from "lucide-react";
-import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
+import { DEFAULT_LOGIN_REDIRECT_URL, SELECT_BUSINESS_URL } from "@/routes";
 import { motion } from "framer-motion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { deleteAuthCookie } from "@/lib/auth-utils";
@@ -48,9 +48,9 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [rememberMe, setRememberMe] = useState<boolean>(false);
 
-  useEffect(() => {
-    deleteAuthCookie();
-  }, []);
+  // useEffect(() => {
+  //   deleteAuthCookie();
+  // }, []);
 
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),
@@ -93,7 +93,7 @@ function LoginForm() {
               // Clear errors
               setError("");
               setPersistentError("");
-              window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
+              window.location.href = SELECT_BUSINESS_URL;
               return;
             }
           }
