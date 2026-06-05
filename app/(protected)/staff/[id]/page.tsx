@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
+import { endOfMonth, format, startOfMonth } from "date-fns";
 import {
   PageShell,
   PageHeader,
@@ -8,17 +9,42 @@ import {
   PageBody,
 } from "@/components/layouts/page-shell";
 import { Button } from "@/components/ui/button";
-import { getStaff, getStaffDetail } from "@/lib/actions/staff-actions";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import {
+  getStaff,
+  getStaffDetail,
+  fetchAllStaff,
+} from "@/lib/actions/staff-actions";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
-import { getStaffItemSales } from "@/lib/actions/item-sales-actions";
+import { getLocationSettings } from "@/lib/actions/location-settings-actions";
+import { listOrders } from "@/lib/actions/order-actions";
+import { fetchAllTables } from "@/lib/actions/space-actions";
+import { Order, OrderStatus } from "@/types/orders/type";
 import { Staff, StaffDetail } from "@/types/staff";
-import type { ItemSalesAggregate } from "@/types/item-sales/type";
+import { OrdersPanel, type SalesView } from "@/components/orders/orders-panel";
 import { StaffDetailView } from "./staff-detail-view";
 import { StaffDetailActions } from "./staff-detail-actions";
 
 type Params = Promise<{ id: string }>;
-type SearchParams = Promise<{ tab?: string }>;
+type SearchParams = Promise<{
+  tab?: string;
+  view?: string;
+  from?: string;
+  to?: string;
+  search?: string;
+  page?: string;
+  limit?: string;
+}>;
+
+const matchesSearch = (order: Order, q: string): boolean => {
+  if (!q) return true;
+  const needle = q.toLowerCase();
+  return (
+    order.orderNumber?.toLowerCase().includes(needle) ||
+    (order.notes ?? "").toLowerCase().includes(needle) ||
+    (order.externalOrderId ?? "").toLowerCase().includes(needle) ||
+    (order.cancellationReason ?? "").toLowerCase().includes(needle)
+  );
+};
 
 export default async function StaffPage({
   params,
@@ -28,7 +54,15 @@ export default async function StaffPage({
   searchParams: SearchParams;
 }) {
   const { id } = await params;
-  const { tab } = await searchParams;
+  const {
+    tab,
+    view: viewParam,
+    from: fromParam,
+    to: toParam,
+    search: searchParam,
+    page: pageParam,
+    limit: limitParam,
+  } = await searchParams;
 
   if (id === "new") redirect("/staff/new");
 
@@ -51,25 +85,109 @@ export default async function StaffPage({
     throw new Error("Failed to load staff data");
   }
 
-  // Per-staff item sales for the Sales tab — last 30 days, mirroring the
-  // product detail's Sales window. Scoped to this staff via getItemSalesSummary's
-  // staffId filter.
-  const [location, currency] = await Promise.all([
-    getCurrentLocation().catch(() => null),
-    getLocationCurrency().catch(() => "TZS"),
-  ]);
+  // ── Per-staff Sales tab — the Orders list scoped to this staff ──────
+  // Mirrors the per-table Sales tab: no per-staff orders endpoint exists,
+  // so pull the location's orders for the chosen range and keep the ones
+  // this staff member is assigned to or closed. Date range, search, the
+  // Orders/Abandoned sub-tab, and paging are all URL-driven. Default to
+  // the current month when no range is supplied, matching /orders.
   const now = new Date();
-  const thirtyDaysAgo = new Date(now);
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const fromDate30 = thirtyDaysAgo.toISOString().split("T")[0];
-  const toDate = now.toISOString().split("T")[0];
-  const salesItems: ItemSalesAggregate[] = location?.id
-    ? (
-        await getStaffItemSales(location.id, fromDate30, toDate, id).catch(
-          () => null,
-        )
-      )?.items ?? []
-    : [];
+  const from = fromParam ?? format(startOfMonth(now), "yyyy-MM-dd");
+  const to = toParam ?? format(endOfMonth(now), "yyyy-MM-dd");
+  const q = searchParam ?? "";
+  const pageNo = Number(pageParam) || 1;
+  const limit = Number(limitParam) || 10;
+  const view: SalesView = viewParam === "abandoned" ? "abandoned" : "orders";
+
+  const [allOrders, locationSettings, staffList, tablesList, currency] =
+    await Promise.all([
+      listOrders({ fromDate: from, toDate: to }).catch((): Order[] => []),
+      getLocationSettings().catch(() => null),
+      fetchAllStaff().catch(() => []),
+      fetchAllTables().catch(() => []),
+      getLocationCurrency().catch(() => "TZS"),
+    ]);
+
+  // Table-based ordering swaps the lead column to the table name.
+  const tableMode = locationSettings?.orderingMode === "TABLE_MANAGEMENT";
+
+  // Scope to this staff member — orders they're assigned to or closed —
+  // then split: the Abandoned sub-tab gets the empty-draft auto-cancels,
+  // the Orders sub-tab gets everything else (so the Status column /
+  // filter stay meaningful, as on /orders).
+  const staffOrders = allOrders.filter(
+    (o) => o.assignedTo === id || o.finishedBy === id,
+  );
+  const scoped =
+    view === "abandoned"
+      ? staffOrders.filter((o) => o.orderStatus === OrderStatus.ABANDONED)
+      : staffOrders.filter((o) => o.orderStatus !== OrderStatus.ABANDONED);
+
+  const filtered = scoped.filter((o) => matchesSearch(o, q));
+  const total = filtered.length;
+  const pageCount = Math.max(1, Math.ceil(total / limit));
+  const start = (pageNo - 1) * limit;
+  const pageData = filtered.slice(start, start + limit);
+
+  // Resolve assigned/closed-by staff and table UUIDs to names, but only
+  // for the rows on the visible page — keeps the client props small.
+  const staffNames: Record<string, string> = {};
+  const tableNames: Record<string, string> = {};
+  const neededStaffIds = new Set<string>();
+  const neededTableIds = new Set<string>();
+  for (const o of pageData) {
+    if (o.assignedTo) neededStaffIds.add(o.assignedTo);
+    if (o.finishedBy) neededStaffIds.add(o.finishedBy);
+    if (o.tableId) neededTableIds.add(o.tableId);
+  }
+  for (const s of staffList) {
+    if (neededStaffIds.has(s.id)) staffNames[s.id] = s.fullName;
+  }
+  for (const t of tablesList) {
+    if (neededTableIds.has(t.id)) tableNames[t.id] = t.name;
+  }
+
+  const salesContent = (
+    // Keyed because this element is created here but rendered among
+    // sibling conditionals inside StaffDetailView — without a key React's
+    // dev validation flags it as a keyless list child.
+    <OrdersPanel
+      key="sales-panel"
+      basePath={`/staff/${id}`}
+      view={view}
+      from={from}
+      to={to}
+      scoped={scoped}
+      pageData={pageData}
+      pageCount={pageCount}
+      pageNo={pageNo - 1}
+      total={total}
+      tableMode={tableMode}
+      staffNames={staffNames}
+      tableNames={tableNames}
+      currency={currency}
+      preservedParams={{
+        from: fromParam,
+        to: toParam,
+        search: searchParam,
+        limit: limitParam,
+        tab,
+      }}
+    />
+  );
+
+  // Land on the Sales tab when the URL carries any of its (sales-only)
+  // state — a shared or reloaded link should reopen the view it
+  // describes, not fall back to Overview. An explicit `?tab=` still wins.
+  const hasSalesParams = !!(
+    fromParam ||
+    toParam ||
+    viewParam ||
+    searchParam ||
+    pageParam ||
+    limitParam
+  );
+  const initialTab = tab ?? (hasSalesParams ? "sales" : undefined);
 
   const fullName = `${staff.firstName} ${staff.lastName}`;
 
@@ -137,9 +255,8 @@ export default async function StaffPage({
         <StaffDetailView
           staff={staff}
           detail={detail}
-          initialTab={tab}
-          salesItems={salesItems}
-          currency={currency}
+          initialTab={initialTab}
+          salesContent={salesContent}
         />
       </PageBody>
     </PageShell>

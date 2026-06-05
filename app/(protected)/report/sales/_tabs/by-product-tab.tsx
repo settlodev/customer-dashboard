@@ -139,7 +139,7 @@ export async function ByProductTab({
         pageNo={page - 1}
         total={total}
         currency={currency}
-        rowClickQuery="?tab=sales"
+        rowClickQuery={`?tab=sales&from=${from}&to=${to}`}
       />
     </div>
   );

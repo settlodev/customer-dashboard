@@ -47,6 +47,11 @@ export declare interface Customer {
   tinNumber: string | null;
   vrn: string | null;
   creditLimit: number | null;
+  /**
+   * Client-enriched on the customers list from the prepayment analytics
+   * balance map — NOT part of the Accounts customer payload.
+   */
+  prepaidBalance?: number;
   allowNotifications: boolean;
   notes: string | null;
   loyaltyPoints: number;

@@ -6,6 +6,7 @@ import {
   UserCheck,
   Users,
   UserX,
+  Wallet,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,11 @@ import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
 import { CustomerStatusTabs } from "@/components/tables/customer/status-tabs";
 import { Customer } from "@/types/customer/type";
+import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
+import {
+  getOutstandingPrepaidLiability,
+  getTopCustomerPrepaidBalances,
+} from "@/lib/actions/prepayment-analytics-actions";
 
 type Params = {
   searchParams: Promise<{
@@ -55,18 +61,34 @@ export default async function CustomersPage({ searchParams }: Params) {
   // current page is showing. Folded into the same Promise.all as the
   // paged search so all three fetches happen in parallel instead of
   // counts+stats finishing before the search even starts.
-  const [counts, stats, responseData] = await Promise.all([
-    getCustomerCount().catch(() => ({ total: 0, active: 0, inactive: 0 })),
-    getCustomerSummaryStats().catch(() => ({
-      loyaltyPointsTotal: 0,
-      creditLimitCount: 0,
-      withEmail: 0,
-      noShowCustomers: 0,
-    })),
-    searchCustomer(q, page, pageLimit, activeFilter),
-  ]);
+  const business = await getCurrentBusiness();
+  const [counts, stats, responseData, prepaid, topBalances] =
+    await Promise.all([
+      getCustomerCount().catch(() => ({ total: 0, active: 0, inactive: 0 })),
+      getCustomerSummaryStats().catch(() => ({
+        loyaltyPointsTotal: 0,
+        creditLimitCount: 0,
+        withEmail: 0,
+        noShowCustomers: 0,
+      })),
+      searchCustomer(q, page, pageLimit, activeFilter),
+      business?.id
+        ? getOutstandingPrepaidLiability(business.id)
+        : Promise.resolve(null),
+      business?.id
+        ? getTopCustomerPrepaidBalances(business.id, 500)
+        : Promise.resolve([]),
+    ]);
 
-  const data: Customer[] = responseData.content;
+  // Per-customer prepaid balance map (business-wide) → enrich the visible rows
+  // so the table can show a Prepaid column without an N+1 per-row fetch.
+  const prepaidByCustomer = new Map(
+    topBalances.map((b) => [b.customerId, b.outstandingBalance]),
+  );
+  const data: Customer[] = responseData.content.map((c) => ({
+    ...c,
+    prepaidBalance: prepaidByCustomer.get(c.id),
+  }));
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;
 
@@ -91,7 +113,7 @@ export default async function CustomersPage({ searchParams }: Params) {
       <PageBody>
         {hasAnyCustomer || q !== "" ? (
           <>
-            <KpiStrip cols={5}>
+            <KpiStrip cols={6}>
               <KpiCard
                 icon={<Users className="h-3 w-3" />}
                 label="Total"
@@ -138,6 +160,24 @@ export default async function CustomersPage({ searchParams }: Params) {
                     : undefined
                 }
                 deltaTone={stats.noShowCustomers > 0 ? "neg" : "neutral"}
+              />
+              <KpiCard
+                icon={<Wallet className="h-3 w-3" />}
+                label="Prepaid owed"
+                value={
+                  prepaid && prepaid.outstandingLiability > 0
+                    ? prepaid.outstandingLiability.toLocaleString(undefined, {
+                        maximumFractionDigits: 0,
+                      })
+                    : "—"
+                }
+                unit={
+                  prepaid && prepaid.outstandingLiability > 0 ? "TZS" : undefined
+                }
+                delta="Business-wide"
+                deltaTone={
+                  prepaid && prepaid.outstandingLiability > 0 ? "neg" : "neutral"
+                }
               />
             </KpiStrip>
 

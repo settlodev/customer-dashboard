@@ -2,26 +2,22 @@
 
 import { useState } from "react";
 import {
-  ArrowUpRight,
   Award,
   Briefcase,
   CalendarDays,
   Clock,
-  DollarSign,
   Flame,
   History as HistoryIcon,
   IdCard,
   Layers,
   Mail,
   MapPin,
-  Percent,
   Phone,
   Shield,
   ShoppingCart,
   Sparkles,
   Star,
   Target,
-  TrendingUp,
   Trophy,
   User,
   Users,
@@ -38,17 +34,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { Staff, StaffDetail, StaffXpTransaction } from "@/types/staff";
-import type { ItemSalesAggregate } from "@/types/item-sales/type";
 
 interface Props {
   staff: Staff;
   detail: StaffDetail | null;
   /** Tab to open on mount (from `?tab=`), e.g. "sales" when arriving from a report. */
   initialTab?: string;
-  /** Per-staff item sales for the Sales tab — last 30 days. */
-  salesItems: ItemSalesAggregate[];
-  /** Location currency for money labels. */
-  currency: string;
+  /** Pre-rendered Sales-tab content — the per-staff Orders/Abandoned view
+   * with its date filter, KPIs, and tables, built on the server. */
+  salesContent: React.ReactNode;
 }
 
 const TABS = [
@@ -66,8 +60,7 @@ export function StaffDetailView({
   staff,
   detail,
   initialTab,
-  salesItems,
-  currency,
+  salesContent,
 }: Props) {
   const [tab, setTab] = useState<TabKey>(
     TABS.some((t) => t.key === initialTab)
@@ -186,9 +179,6 @@ export function StaffDetailView({
                 (attendance?.recentTimesheetEntries?.length ?? 0);
               if (ct > 0) badge = String(ct);
             }
-            if (t.key === "sales" && salesItems.length > 0) {
-              badge = String(salesItems.length);
-            }
             return (
               <button
                 key={t.key}
@@ -226,9 +216,7 @@ export function StaffDetailView({
 
       {/* ── Tab content ───────────────────────────────────────── */}
       {tab === "overview" && <OverviewTab staff={staff} />}
-      {tab === "sales" && (
-        <StaffSalesTab salesItems={salesItems} currency={currency} />
-      )}
+      {tab === "sales" && salesContent}
       {tab === "access" && <AccessTab staff={staff} />}
       {tab === "performance" && (
         <PerformanceTab
@@ -240,167 +228,6 @@ export function StaffDetailView({
       {tab === "history" && (
         <HistoryTab xp={gamification?.recentXpTransactions ?? []} />
       )}
-    </div>
-  );
-}
-
-// ── Sales (per-staff item sales, last 30 days) ──────────────────────
-
-function StaffSalesTab({
-  salesItems,
-  currency,
-}: {
-  salesItems: ItemSalesAggregate[];
-  currency: string;
-}) {
-  if (salesItems.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <ShoppingCart className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            No sales recorded for this staff member in the last 30 days.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const fmt = (v: number) =>
-    v.toLocaleString(undefined, { maximumFractionDigits: 0 });
-
-  const totalQtySold = salesItems.reduce((s, i) => s + i.quantitySold, 0);
-  const totalGross = salesItems.reduce((s, i) => s + i.grossSales, 0);
-  const totalNet = salesItems.reduce((s, i) => s + i.netSales, 0);
-  const totalCost = salesItems.reduce((s, i) => s + i.totalCost, 0);
-  const totalProfit = salesItems.reduce((s, i) => s + i.grossProfit, 0);
-  const totalDiscount = salesItems.reduce((s, i) => s + i.totalDiscount, 0);
-  const profitMargin = totalNet > 0 ? (totalProfit / totalNet) * 100 : 0;
-
-  return (
-    <div className="space-y-6">
-      <KpiStrip cols={6}>
-        <KpiCard
-          icon={<ShoppingCart className="h-3 w-3" />}
-          label="Qty sold"
-          value={totalQtySold.toLocaleString()}
-        />
-        <KpiCard
-          icon={<DollarSign className="h-3 w-3" />}
-          label="Gross sales"
-          value={fmt(totalGross)}
-          unit={currency}
-        />
-        <KpiCard
-          icon={<DollarSign className="h-3 w-3" />}
-          label="Net sales"
-          value={fmt(totalNet)}
-          unit={currency}
-          delta={totalDiscount > 0 ? `-${fmt(totalDiscount)} disc` : undefined}
-          deltaTone={totalDiscount > 0 ? "neg" : "neutral"}
-        />
-        <KpiCard
-          icon={<ArrowUpRight className="h-3 w-3" />}
-          label="COGS"
-          value={fmt(totalCost)}
-          unit={currency}
-        />
-        <KpiCard
-          icon={<TrendingUp className="h-3 w-3" />}
-          label="Gross profit"
-          value={fmt(totalProfit)}
-          unit={currency}
-          deltaTone={totalProfit >= 0 ? "pos" : "neg"}
-        />
-        <KpiCard
-          icon={<Percent className="h-3 w-3" />}
-          label="Margin"
-          value={`${profitMargin.toFixed(1)}%`}
-          deltaTone={
-            profitMargin >= 20 ? "pos" : profitMargin >= 10 ? "neutral" : "neg"
-          }
-        />
-      </KpiStrip>
-
-      <Card>
-        <CardContent className="pt-6">
-          <h3 className="mb-3 text-sm font-semibold">
-            Items sold by this staff member (last 30 days)
-          </h3>
-          <div className="overflow-auto rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead className="text-right">Qty sold</TableHead>
-                  <TableHead className="text-right">Gross</TableHead>
-                  <TableHead className="text-right">Discount</TableHead>
-                  <TableHead className="text-right">Net</TableHead>
-                  <TableHead className="text-right">COGS</TableHead>
-                  <TableHead className="text-right">Profit</TableHead>
-                  <TableHead className="text-right">Margin</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {salesItems.map((item, idx) => {
-                  const margin =
-                    item.netSales > 0
-                      ? (item.grossProfit / item.netSales) * 100
-                      : 0;
-                  return (
-                    <TableRow key={`${item.variantId}-${idx}`}>
-                      <TableCell className="font-medium">
-                        {item.itemName}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {item.departmentName || "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {item.quantitySold.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {fmt(item.grossSales)}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {item.totalDiscount > 0 ? fmt(item.totalDiscount) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {fmt(item.netSales)}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {fmt(item.totalCost)}
-                      </TableCell>
-                      <TableCell
-                        className={`text-right font-medium ${
-                          item.grossProfit >= 0
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-red-600 dark:text-red-400"
-                        }`}
-                      >
-                        {fmt(item.grossProfit)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span
-                          className={
-                            margin >= 20
-                              ? "text-green-600 dark:text-green-400"
-                              : margin >= 10
-                                ? "text-amber-600 dark:text-amber-400"
-                                : "text-red-600 dark:text-red-400"
-                          }
-                        >
-                          {margin.toFixed(1)}%
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

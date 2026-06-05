@@ -25,7 +25,8 @@ const formatMoney = (value: number) =>
 export type SalesView = "orders" | "abandoned";
 
 interface Props {
-  /** `/tables/{id}` — the route the sub-tab links and filters live on. */
+  /** `/tables/{id}` or `/staff/{id}` — the route the sub-tab links and
+   * filters live on. */
   basePath: string;
   /** Active sub-tab, sourced from the `?view=` param. */
   view: SalesView;
@@ -33,7 +34,7 @@ interface Props {
   from: string;
   to: string;
   /**
-   * The full table-scoped set for the active sub-tab BEFORE search and
+   * The full scoped set for the active sub-tab BEFORE search and
    * pagination — KPIs derive from this so the totals don't jump when the
    * user types in the search box.
    */
@@ -52,13 +53,13 @@ interface Props {
 }
 
 /**
- * The per-table Sales view — the standalone Orders list, scoped to a
- * single table. Mirrors `/orders`: a date filter, an Orders/Abandoned
- * sub-tab nav, a KPI strip, and the same data tables. All filtering,
- * paging, and the date range are URL-driven so the server re-fetches
- * exactly like the Orders page does.
+ * A Sales view — the standalone Orders list, scoped to a single entity
+ * (a table, a staff member, …). Mirrors `/orders`: a date filter, an
+ * Orders/Abandoned sub-tab nav, a KPI strip, and the same data tables.
+ * All filtering, paging, and the date range are URL-driven so the server
+ * re-fetches exactly like the Orders page does.
  */
-export function TableOrdersPanel({
+export function OrdersPanel({
   basePath,
   view,
   from,
@@ -231,7 +232,7 @@ function AbandonedView({
 }) {
   // Same split as the Orders page: auto-cancels from the end-of-day
   // sweep vs. a manual cancel of an empty order. "Tied to a table" is
-  // dropped here — on a single table it's always 100%.
+  // dropped here — scoped to a single entity it isn't a useful ratio.
   const totalAbandoned = scoped.length;
   const autoAbandoned = scoped.filter((o) =>
     (o.cancellationReason ?? "").toLowerCase().startsWith("auto-cancelled"),

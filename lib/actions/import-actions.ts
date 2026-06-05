@@ -20,7 +20,10 @@ export type PreviewResult =
 
 export type CommitResult =
   | { ok: true; data: CommitResponse }
-  | { ok: false; data?: CommitResponse; message: string };
+  // `pending` means the request reached the server but we never got a result
+  // (gateway timeout / 5xx / dropped connection). The import may have already
+  // completed — the UI must warn rather than invite a duplicate re-import.
+  | { ok: false; pending?: boolean; message: string };
 
 /**
  * Multipart preview. The file is forwarded as-is to the inventory
@@ -70,27 +73,29 @@ export async function commitImport(
       inventoryUrl("/api/v1/imports/commit"),
       { previewId, decisions },
     )) as CommitResponse;
-    // Per-type cache busting so the imported records show up on
-    // their list pages.
-    invalidatePaths(type);
+    // Partial success: valid rows commit even when others fail, so refresh
+    // the list pages whenever at least one row actually landed. Per-row
+    // failures ride along in `data.errors` for the UI to surface.
+    if (data.created + data.updated > 0) {
+      invalidatePaths(type);
+    }
     return { ok: true, data: parseStringify(data) };
   } catch (error: unknown) {
-    // The backend returns 422 with a structured CommitResponse when
-    // the transaction rolled back — surface that to the UI verbatim.
-    const apiData = (error as { response?: { data?: CommitResponse } })
-      ?.response?.data;
-    if (apiData && Array.isArray(apiData.errors) && apiData.errors.length) {
-      return {
-        ok: false,
-        data: parseStringify(apiData),
-        message: `${apiData.errors.length} row${apiData.errors.length > 1 ? "s" : ""} failed — batch rolled back`,
-      };
-    }
-    return {
-      ok: false,
-      message:
-        error instanceof Error ? error.message : "Commit failed",
-    };
+    console.error("commitImport failed", error);
+    const message = error instanceof Error ? error.message : "Commit failed";
+    // The import is non-idempotent, so the failure mode matters. A clean 4xx
+    // (expired preview, validation) means nothing ran — safe to fix and retry.
+    // A gateway timeout / 5xx / network drop means the server may have
+    // processed the import even though we never saw the result.
+    const status = (error as { status?: number })?.status ?? 0;
+    const pending =
+      status === 0 ||
+      status === 408 ||
+      status >= 500 ||
+      /took too long|timed?\s?out|temporarily unavailable|try again/i.test(
+        message,
+      );
+    return { ok: false, pending, message };
   }
 }
 

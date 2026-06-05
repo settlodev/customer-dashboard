@@ -90,6 +90,7 @@ export const settingsNavItems = [
     { id: 'receipts', label: 'Receipts & invoicing', icon: Printer, description: 'Receipts, invoices, tax' },
     { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Email, SMS & push alerts' },
     { id: 'loyalty-points', label: 'Customers & loyalty', icon: Star, description: 'Accounts, reviews, and points' },
+    { id: 'customer-prepayments', label: 'Customer prepayments', icon: Wallet, description: 'Top-up limits, expiry, and scope' },
     { id: 'staff-hr', label: 'Staff & HR', icon: UserCheck, description: 'Shifts, time, performance' },
     { id: 'stock-inventory', label: 'Stock & inventory', icon: Boxes, description: 'Deduction timing & inventory flags' },
     { id: 'day-sessions', label: 'Day sessions & hours', icon: Sun, description: 'Operating hours, 24-hour, settlement' },

@@ -420,6 +420,12 @@ const getNormalMenuItems = (
           icon: "cart",
         },
         {
+          title: "Prepaid credit",
+          link: "/prepayments",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
           title: "Journal entries",
           link: "/accounting/journal-entries",
           current: args?.isCurrentItem,

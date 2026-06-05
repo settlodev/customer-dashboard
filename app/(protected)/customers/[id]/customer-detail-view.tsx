@@ -16,10 +16,13 @@ import {
   Star,
   Tag,
   User,
+  Wallet,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TableAvatar } from "@/components/tables/shared/table-avatar";
+import { usePermissions } from "@/context/permissionsContext";
+import { CustomerPrepaidAccountTab } from "@/components/customer/customer-prepaid-account-tab";
 import {
   Customer,
   CustomerPreference,
@@ -36,6 +39,7 @@ interface Props {
 const TABS = [
   { key: "overview", label: "Overview", icon: User },
   { key: "loyalty", label: "Loyalty & Credit", icon: Star },
+  { key: "prepayments", label: "Prepaid account", icon: Wallet },
   { key: "addresses", label: "Addresses", icon: MapPin },
   { key: "preferences", label: "Preferences", icon: Tag },
 ] as const;
@@ -44,6 +48,7 @@ type TabKey = (typeof TABS)[number]["key"];
 
 export function CustomerDetailView({ customer, preferences }: Props) {
   const [tab, setTab] = useState<TabKey>("overview");
+  const { hasPermission } = usePermissions();
 
   const memberSince = customer.createdAt
     ? new Date(customer.createdAt).toLocaleDateString()
@@ -105,7 +110,11 @@ export function CustomerDetailView({ customer, preferences }: Props) {
       {/* ── Tabs (segmented underline — matches staff detail) ── */}
       <div className="overflow-x-auto rounded-xl border border-line bg-card">
         <div className="flex min-w-max gap-0 border-b border-line bg-surface px-2">
-          {TABS.map((t) => {
+          {TABS.filter(
+            (t) =>
+              t.key !== "prepayments" ||
+              hasPermission("customer_prepayments:view"),
+          ).map((t) => {
             const Icon = t.icon;
             const isActive = tab === t.key;
             let badge: string | null = null;
@@ -153,6 +162,12 @@ export function CustomerDetailView({ customer, preferences }: Props) {
       {/* ── Tab content ───────────────────────────────────────── */}
       {tab === "overview" && <OverviewTab customer={customer} />}
       {tab === "loyalty" && <LoyaltyTab customer={customer} />}
+      {tab === "prepayments" && (
+        <CustomerPrepaidAccountTab
+          customerId={customer.id}
+          locationId={customer.locationId}
+        />
+      )}
       {tab === "addresses" && <AddressesTab customer={customer} />}
       {tab === "preferences" && <PreferencesTab preferences={preferences} />}
     </div>

@@ -156,6 +156,28 @@ export const columns: ColumnDef<Customer>[] = [
     },
   },
   {
+    id: "prepaid",
+    enableHiding: true,
+    header: () => <span className="hidden xl:inline">Prepaid</span>,
+    cell: ({ row }) => {
+      const bal = row.original.prepaidBalance ?? 0;
+      if (bal <= 0) {
+        return (
+          <span className="hidden font-mono text-[12px] text-muted-foreground xl:inline">
+            —
+          </span>
+        );
+      }
+      return (
+        <div className="hidden xl:block">
+          <span className="font-mono text-[12px] tabular-nums text-ink">
+            {bal.toLocaleString()}
+          </span>
+        </div>
+      );
+    },
+  },
+  {
     id: "noShow",
     enableHiding: true,
     header: () => <span className="hidden xl:inline">No-shows</span>,

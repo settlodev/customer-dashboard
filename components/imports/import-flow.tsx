@@ -82,6 +82,7 @@ export function ImportFlow({
   const [result, setResult] = useState<CommitResponse | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [commitError, setCommitError] = useState<string | null>(null);
+  const [commitPending, setCommitPending] = useState<string | null>(null);
   const [creatingLookups, setCreatingLookups] = useState(false);
 
   const downloadTemplate = useCallback(() => {
@@ -136,31 +137,56 @@ export function ImportFlow({
     if (!preview) return;
     setCommitting(true);
     setCommitError(null);
+    setCommitPending(null);
     try {
       const list = Array.from(decisions.values());
       const res = await commitImport(type, preview.previewId, list);
-      if (!res.ok && !res.data) {
-        setCommitError(res.message);
-        toast({
-          variant: "destructive",
-          title: "Commit failed",
-          description: res.message,
-        });
+      if (!res.ok) {
+        if (res.pending) {
+          // Reached the server but no result came back (gateway timeout /
+          // 5xx). The import may have completed — warn instead of inviting a
+          // blind, duplicate-creating retry. Stay on this screen so nothing
+          // is lost, but don't claim success or failure.
+          setCommitPending(res.message);
+          toast({
+            variant: "warning",
+            title: "Import may still be processing",
+            description:
+              "We didn't get a confirmation from the server. Check whether the records were imported before trying again.",
+          });
+        } else {
+          // Couldn't run the commit at all (expired preview, validation).
+          setCommitError(res.message);
+          toast({
+            variant: "destructive",
+            title: "Commit failed",
+            description: res.message,
+          });
+        }
         return;
       }
-      setResult(res.data ?? null);
+      const data = res.data;
+      setResult(data);
       setStage("result");
-      if (res.ok) {
+      const imported = data.created + data.updated;
+      const failed = data.errors?.length ?? 0;
+      if (failed === 0) {
         toast({
           variant: "success",
           title: "Import complete",
-          description: `${res.data.created} created, ${res.data.updated} updated, ${res.data.skipped} skipped`,
+          description: `${data.created} created, ${data.updated} updated, ${data.skipped} skipped`,
+        });
+      } else if (imported > 0) {
+        toast({
+          variant: "warning",
+          title: "Imported with some errors",
+          description: `${imported} imported · ${failed} row${failed === 1 ? "" : "s"} failed — see the summary below`,
         });
       } else {
         toast({
           variant: "destructive",
-          title: "Batch rolled back",
-          description: res.message,
+          title: "Nothing imported",
+          description: `All ${failed} row${failed === 1 ? "" : "s"} failed — see the summary below`,
         });
       }
     } finally {
@@ -357,9 +383,11 @@ export function ImportFlow({
               setPreview(null);
               setDecisions(new Map());
               setCommitError(null);
+              setCommitPending(null);
             }}
             type={type}
             error={commitError}
+            pending={commitPending}
             missingLookups={missingLookups}
             creatingLookups={creatingLookups}
             onCreateMissingLookups={onCreateMissingLookups}
@@ -377,6 +405,7 @@ export function ImportFlow({
               setResult(null);
               setPreviewError(null);
               setCommitError(null);
+              setCommitPending(null);
             }}
           />
         )}
@@ -603,6 +632,7 @@ function PreviewStep({
   onReset,
   type,
   error,
+  pending,
   missingLookups,
   creatingLookups,
   onCreateMissingLookups,
@@ -621,6 +651,7 @@ function PreviewStep({
   onReset: () => void;
   type: ImportType;
   error: string | null;
+  pending: string | null;
   missingLookups: { categories: string[]; brands: string[] };
   creatingLookups: boolean;
   onCreateMissingLookups: () => void;
@@ -658,6 +689,25 @@ function PreviewStep({
           <AlertBody>
             <AlertTitle>Commit failed</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
+          </AlertBody>
+        </Alert>
+      )}
+      {pending && (
+        <Alert tone="warning">
+          <AlertIcon>
+            <AlertTriangle className="h-3.5 w-3.5" />
+          </AlertIcon>
+          <AlertBody>
+            <AlertTitle>Import may still be processing</AlertTitle>
+            <AlertDescription className="space-y-1">
+              <p>{pending}</p>
+              <p>
+                The server didn&apos;t confirm the result, but the import may
+                have finished. Open your list page and check whether these
+                records were imported before trying again — re-importing could
+                create duplicates.
+              </p>
+            </AlertDescription>
           </AlertBody>
         </Alert>
       )}
@@ -1294,27 +1344,61 @@ function ResultStep({
   result: CommitResponse;
   onReset: () => void;
 }) {
-  const hasErrors = result.errors && result.errors.length > 0;
+  const imported = result.created + result.updated;
+  const failed = result.errors?.length ?? 0;
+  const state: "ok" | "partial" | "failed" =
+    failed === 0 ? "ok" : imported > 0 ? "partial" : "failed";
+
+  const Icon =
+    state === "ok"
+      ? CheckCircle2
+      : state === "partial"
+        ? AlertTriangle
+        : XCircle;
+  const iconClass =
+    state === "ok"
+      ? "text-emerald-600"
+      : state === "partial"
+        ? "text-amber-600"
+        : "text-red-600";
+  const heading =
+    state === "ok"
+      ? "Import complete"
+      : state === "partial"
+        ? "Imported with some errors"
+        : "Nothing imported";
+
   return (
     <Card>
       <CardContent className="pt-6 space-y-4">
         <div className="flex items-center gap-3">
-          {hasErrors ? (
-            <XCircle className="h-8 w-8 text-red-600" />
-          ) : (
-            <CheckCircle2 className="h-8 w-8 text-emerald-600" />
-          )}
+          <Icon className={`h-8 w-8 ${iconClass}`} />
           <div>
-            <h3 className="text-lg font-medium">
-              {hasErrors ? "Import rolled back" : "Import complete"}
-            </h3>
+            <h3 className="text-lg font-medium">{heading}</h3>
             <p className="text-sm text-muted-foreground">
               {result.created} created · {result.updated} updated ·{" "}
               {result.skipped} skipped
+              {failed > 0 ? ` · ${failed} failed` : ""}
             </p>
           </div>
         </div>
-        {hasErrors && (
+        {state === "partial" && (
+          <Alert tone="warning">
+            <AlertIcon>
+              <AlertTriangle className="h-3.5 w-3.5" />
+            </AlertIcon>
+            <AlertBody>
+              <AlertTitle>The rows below weren&apos;t imported</AlertTitle>
+              <AlertDescription>
+                The other rows were imported successfully. Fix the rows listed
+                below in your CSV and re-import just those. On the next preview,
+                rows that already imported will show as existing matches —
+                leave them on “Skip” so they aren&apos;t created twice.
+              </AlertDescription>
+            </AlertBody>
+          </Alert>
+        )}
+        {failed > 0 && (
           <div className="rounded border border-red-200 bg-red-50 p-3 space-y-1">
             {result.errors.map((e, i) => (
               <p key={i} className="text-xs text-red-700">

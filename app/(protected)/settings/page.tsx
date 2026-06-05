@@ -45,6 +45,7 @@ import { DocketsPanel } from "@/components/settings/panels/dockets-panel";
 import { ReceiptsInvoicingPanel } from "@/components/settings/panels/receipts-panel";
 import { NotificationsPanel } from "@/components/settings/panels/notifications-panel";
 import { LoyaltyRewardsPanel } from "@/components/settings/panels/loyalty-panel";
+import { CustomerPrepaymentsPanel } from "@/components/settings/panels/customer-prepayments-panel";
 import { StockInventoryPanel } from "@/components/settings/panels/stock-inventory-panel";
 import { DaySessionsPanel } from "@/components/settings/panels/day-sessions-panel";
 import { ClosureDatesPanel } from "@/components/settings/panels/closure-dates-panel";
@@ -70,6 +71,7 @@ type TabId =
   | "receipts"
   | "notifications"
   | "loyalty-points"
+  | "customer-prepayments"
   | "staff-hr"
   | "stock-inventory"
   | "day-sessions"
@@ -297,6 +299,9 @@ function SettingsLayout({
       case "loyalty-points":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
         return <LoyaltyRewardsPanel settings={settings} onSaved={onSettingsSaved} />;
+      case "customer-prepayments":
+        if (!location) return <EmptyState label="Location unavailable" />;
+        return <CustomerPrepaymentsPanel locationId={location.id} />;
       case "staff-hr":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
         return <StaffHrPanel settings={settings} onSaved={onSettingsSaved} />;

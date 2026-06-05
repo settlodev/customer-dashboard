@@ -54,6 +54,8 @@ import {
   QtyOnHandChart,
   StockValueChart,
 } from "@/components/widgets/inventory/stock-item-charts";
+import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
+import { format } from "date-fns";
 
 interface Props {
   product: Product;
@@ -71,6 +73,10 @@ interface Props {
   recipeSummary: ProductRecipeSummary;
   /** Tab to open on mount (from `?tab=`), e.g. "sales" when arriving from a report. */
   initialTab?: string;
+  /** Sales-window start (yyyy-MM-dd) — scopes the sales KPIs + Sales tab. */
+  from: string;
+  /** Sales-window end (yyyy-MM-dd). */
+  to: string;
 }
 
 const TABS = [
@@ -107,13 +113,22 @@ function sellabilityLabel(v: ProductVariant): {
   return { label: "Recipe / BOM", tone: "warn" };
 }
 
-function totalAvailableQty(product: Product): number | "Unlimited" {
+function totalAvailableQty(
+  product: Product,
+  maxSellableByVariant: Map<string, number>,
+): number | "Unlimited" {
   let any = false;
   let total = 0;
   for (const v of product.variants) {
     if (v.archivedAt != null) continue;
     if (v.unlimited) return "Unlimited";
-    const q = v.qtyAvailable ?? v.availableQuantity ?? 0;
+    // Recipe variants carry no qtyAvailable/availableQuantity — fall back to
+    // the BOM weakest-link buildable count from the recipe summary.
+    const q =
+      v.qtyAvailable ??
+      v.availableQuantity ??
+      maxSellableByVariant.get(v.id) ??
+      0;
     total += Math.max(0, q);
     any = true;
   }
@@ -129,6 +144,8 @@ export function ProductDetailView({
   currency,
   recipeSummary,
   initialTab,
+  from,
+  to,
 }: Props) {
   const [tab, setTab] = useState<TabKey>(
     TABS.some((t) => t.key === initialTab)
@@ -140,16 +157,34 @@ export function ProductDetailView({
   const activeVariants = product.variants.filter((v) => v.archivedAt == null);
   const archivedVariantsCount = product.variants.length - activeVariants.length;
 
-  const available = totalAvailableQty(product);
+  // Recipe (BOM) variants have no inventory_balance row; their availability
+  // and value derive from the BOM weakest-link yield (maxSellable) in the
+  // recipe summary. Lookup keyed by product-variant id.
+  const maxSellableByVariant = new Map<string, number>();
+  for (const vr of recipeSummary.variants) {
+    if (vr.maxSellable != null) {
+      maxSellableByVariant.set(vr.variantId, vr.maxSellable);
+    }
+  }
 
-  // Cost basis = sum(cost * qty) for tracked variants where we know both.
+  const available = totalAvailableQty(product, maxSellableByVariant);
+
+  // Stock value = Σ(cost × qty). DIRECT variants use on-hand balance × unit
+  // cost; recipe variants hold no finished-goods stock, so we value what can
+  // be built right now — buildable count (maxSellable) × BOM unit cost.
   let costBasis = 0;
   for (const v of activeVariants) {
     const cost = v.currentCost ?? v.costPrice ?? 0;
+    if (cost <= 0) continue;
     if (v.stockLinkType === "DIRECT" && v.stockVariantId) {
       const bal = stockBalanceMap[v.stockVariantId];
-      if (bal && cost > 0) {
+      if (bal) {
         costBasis += bal.quantityOnHand * cost;
+      }
+    } else if (v.stockLinkType == null && !v.unlimited) {
+      const buildable = maxSellableByVariant.get(v.id) ?? 0;
+      if (buildable > 0) {
+        costBasis += buildable * cost;
       }
     }
   }
@@ -165,8 +200,21 @@ export function ProductDetailView({
   const totalDiscount = productSales.reduce((s, i) => s + i.totalDiscount, 0);
   const profitMargin = totalNet > 0 ? (totalProfit / totalNet) * 100 : 0;
 
+  const rangeLabel =
+    from === to
+      ? format(new Date(from), "MMM d, yyyy")
+      : `${format(new Date(from), "MMM d")} – ${format(new Date(to), "MMM d, yyyy")}`;
+
   return (
     <div className="space-y-6">
+      {/* ── Sales period selector (scopes the sales KPIs + Sales tab) ── */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+          Sales period
+        </span>
+        <OrdersDateFilter from={from} to={to} />
+      </div>
+
       {/* ── Summary KPIs ──────────────────────────────────────── */}
       <KpiStrip cols={6}>
         <KpiCard
@@ -202,12 +250,12 @@ export function ProductDetailView({
         />
         <KpiCard
           icon={<ShoppingCart className="h-3 w-3" />}
-          label="Qty sold (30d)"
+          label="Qty sold"
           value={totalQtySold > 0 ? totalQtySold.toLocaleString() : "—"}
         />
         <KpiCard
           icon={<TrendingUp className="h-3 w-3" />}
-          label="Net sales (30d)"
+          label="Net sales"
           value={
             totalNet > 0
               ? totalNet.toLocaleString(undefined, { maximumFractionDigits: 0 })
@@ -223,7 +271,7 @@ export function ProductDetailView({
         />
         <KpiCard
           icon={<Percent className="h-3 w-3" />}
-          label="Margin (30d)"
+          label="Margin"
           value={totalNet > 0 ? `${profitMargin.toFixed(1)}%` : "—"}
           delta={
             totalProfit !== 0
@@ -297,7 +345,11 @@ export function ProductDetailView({
       {/* ── Tab content ───────────────────────────────────────── */}
       {tab === "overview" && <OverviewTab product={product} />}
       {tab === "variants" && (
-        <VariantsTab product={product} currency={currency} />
+        <VariantsTab
+          product={product}
+          currency={currency}
+          recipeSummary={recipeSummary}
+        />
       )}
       {tab === "inventory" && (
         <InventoryTab
@@ -320,6 +372,7 @@ export function ProductDetailView({
             profitMargin,
           }}
           currency={currency}
+          rangeLabel={rangeLabel}
         />
       )}
       {tab === "charts" && (
@@ -524,9 +577,11 @@ function DetailBoolRow({ label, value }: { label: string; value: boolean }) {
 function VariantsTab({
   product,
   currency,
+  recipeSummary,
 }: {
   product: Product;
   currency: string;
+  recipeSummary: ProductRecipeSummary;
 }) {
   return (
     <Card>
@@ -560,9 +615,12 @@ function VariantsTab({
                     ? ((v.price - cost) / v.price) * 100
                     : null;
                 const sellability = sellabilityLabel(v);
+                const recipeMax = recipeSummary.variants.find(
+                  (r) => r.variantId === v.id,
+                )?.maxSellable;
                 const available: number | "Unlimited" | null = v.unlimited
                   ? v.availableQuantity ?? "Unlimited"
-                  : v.qtyAvailable;
+                  : v.qtyAvailable ?? recipeMax ?? null;
                 const pricingLabel =
                   PRICING_STRATEGY_OPTIONS.find(
                     (o) => o.value === v.pricingStrategy,
@@ -1081,6 +1139,7 @@ function SalesTab({
   salesItems,
   totals,
   currency,
+  rangeLabel,
 }: {
   salesItems: ItemSalesAggregate[];
   totals: {
@@ -1093,6 +1152,7 @@ function SalesTab({
     profitMargin: number;
   };
   currency: string;
+  rangeLabel: string;
 }) {
   if (salesItems.length === 0) {
     return (
@@ -1100,7 +1160,7 @@ function SalesTab({
         <CardContent className="py-12 text-center">
           <ShoppingCart className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
           <p className="text-sm text-muted-foreground">
-            No sales recorded for this product in the last 30 days.
+            No sales recorded for this product in {rangeLabel}.
           </p>
         </CardContent>
       </Card>
@@ -1171,7 +1231,7 @@ function SalesTab({
       <Card>
         <CardContent className="pt-6">
           <h3 className="text-sm font-semibold mb-3">
-            Per-variant sales (last 30 days)
+            Per-variant sales — {rangeLabel}
           </h3>
           <div className="rounded-md border overflow-auto">
             <Table>

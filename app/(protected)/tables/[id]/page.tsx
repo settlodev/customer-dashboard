@@ -23,7 +23,7 @@ import { listOrders } from "@/lib/actions/order-actions";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import { Order, OrderStatus } from "@/types/orders/type";
 import { SpaceDetailView } from "@/app/(protected)/spaces/[id]/space-detail-view";
-import { TableOrdersPanel, type SalesView } from "./table-orders-panel";
+import { OrdersPanel, type SalesView } from "@/components/orders/orders-panel";
 
 type Params = Promise<{ id: string }>;
 type SearchParams = Promise<{
@@ -148,7 +148,7 @@ export default async function TablePage({
     // sibling conditionals inside SpaceDetailView — without a key React's
     // dev validation flags it as a keyless list child (its owner differs
     // from the component that renders it).
-    <TableOrdersPanel
+    <OrdersPanel
       key="sales-panel"
       basePath={`/tables/${space.id}`}
       view={view}

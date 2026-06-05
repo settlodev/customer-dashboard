@@ -21,6 +21,7 @@ import {
   getAuditLogByEntity,
 } from "@/lib/actions/inventory-analytics-reports-actions";
 import { getProductRecipeSummary } from "@/lib/actions/bom-rule-actions";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import type { Product } from "@/types/product/type";
 import type { InventoryBalanceSummary } from "@/types/inventory-balance/summary-type";
 import type { InventorySnapshot } from "@/types/inventory-snapshot/type";
@@ -30,7 +31,7 @@ import { ProductDetailActions } from "./product-detail-actions";
 import { BulkBarcodeGenerator } from "@/components/widgets/products/bulk-barcode-generator";
 
 type Params = Promise<{ id: string }>;
-type SearchParams = Promise<{ tab?: string }>;
+type SearchParams = Promise<{ tab?: string; from?: string; to?: string }>;
 
 export default async function ProductPage({
   params,
@@ -40,7 +41,7 @@ export default async function ProductPage({
   searchParams: SearchParams;
 }) {
   const { id } = await params;
-  const { tab } = await searchParams;
+  const { tab, from, to } = await searchParams;
 
   // /products/new is now a sibling route — bounce there if someone
   // links to /products/new through the dynamic segment.
@@ -61,15 +62,16 @@ export default async function ProductPage({
 
   const locationId = location?.id ?? null;
 
-  // Date windows: 30d for sales, 90d for snapshot charts.
+  // Sales window honors the ?from/?to range carried through from the sales
+  // report, defaulting to the current month to match the report and the other
+  // reporting screens. The 90-day snapshot window (charts) stays separate.
   const now = new Date();
-  const thirtyDaysAgo = new Date(now);
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const ninetyDaysAgo = new Date(now);
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-  const fromDate30 = thirtyDaysAgo.toISOString().split("T")[0];
   const toDate = now.toISOString().split("T")[0];
   const fromDate90 = ninetyDaysAgo.toISOString().split("T")[0];
+  const salesFrom = from ?? format(startOfMonth(now), "yyyy-MM-dd");
+  const salesTo = to ?? format(endOfMonth(now), "yyyy-MM-dd");
 
   // Linked stock variants — drives balance + snapshot fetches.
   const linkedStockVariantIds = Array.from(
@@ -103,7 +105,7 @@ export default async function ProductPage({
         ? getBalanceSummariesByLocation(locationId, linkedStockVariantIds)
         : Promise.resolve([] as InventoryBalanceSummary[]),
       locationId
-        ? getItemSalesSummary(locationId, fromDate30, toDate)
+        ? getItemSalesSummary(locationId, salesFrom, salesTo)
         : Promise.resolve(null),
       linkedStockVariantIds.length > 0
         ? getVariantsSnapshotHistory(linkedStockVariantIds, fromDate90, toDate)
@@ -208,6 +210,8 @@ export default async function ProductPage({
           currency={currency}
           recipeSummary={recipeSummary}
           initialTab={tab}
+          from={salesFrom}
+          to={salesTo}
         />
       </PageBody>
     </PageShell>
