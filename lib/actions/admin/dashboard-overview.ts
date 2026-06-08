@@ -7,6 +7,7 @@ import {
   BillingSummary,
   DashboardOverview,
   DashboardOverviewResponse,
+  DashboardSectionKey,
   HeadlineMetric,
   OnboardingFunnel,
   PlanMixItem,
@@ -26,12 +27,28 @@ import {
 
 const OVERVIEW_PATH = "/api/v2/internal/metrics/dashboard/overview";
 
+const ALL_SECTIONS: DashboardSectionKey[] = [
+  "revenue",
+  "stats",
+  "funnel",
+  "revenueSeries",
+  "planMix",
+  "trials",
+  "regions",
+  "billing",
+  "platform",
+  "topBusinesses",
+  "activity",
+];
+
 /**
- * Admin dashboard overview. Pulls the live aggregate from the Reports
- * Service (`GET /api/v2/internal/metrics/dashboard/overview`) and maps it
- * into the UI `DashboardOverview` shape. Falls back to the placeholder
- * (with "Live data pending" badges) when the Reports Service isn't
- * reachable / configured yet, so the dashboard always renders.
+ * Admin dashboard overview. Pulls the live aggregate from the Reports Service
+ * (`GET /api/v2/internal/metrics/dashboard/overview`) and maps it into the UI
+ * `DashboardOverview` shape. There is deliberately NO demo/dummy fallback: if
+ * the whole call fails we return an empty overview with every section marked
+ * errored, and the UI renders honest "couldn't load" cards rather than
+ * fabricated figures. Per-section failures (the backend fault-isolates each
+ * section) arrive in `res.errors` and are surfaced the same way.
  */
 export async function getDashboardOverview(): Promise<DashboardOverview> {
   try {
@@ -39,9 +56,40 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       OVERVIEW_PATH,
     );
     return mapOverview(res);
-  } catch {
-    return stubDashboardOverview();
+  } catch (error: any) {
+    // A 403 means REPORTS_INTERNAL_SECRET doesn't match the Reports Service's
+    // INTERNAL_API_SECRET; a network error means it's unreachable; a 500 means
+    // the endpoint itself threw. Log it, then render all sections as errored.
+    console.error(
+      `[admin/dashboard-overview] live Reports fetch failed (${OVERVIEW_PATH}) — rendering "couldn't load" cards:`,
+      error?.code ? `${error.code} ${error.message ?? ""}`.trim() : error?.message ?? error,
+    );
+    return blankOverview(ALL_SECTIONS);
   }
+}
+
+/**
+ * A type-valid, data-free overview. Used when the whole endpoint is
+ * unreachable — every section listed in `errored` renders a "couldn't load"
+ * card, and no fabricated numbers are shown.
+ */
+function blankOverview(errored: DashboardSectionKey[]): DashboardOverview {
+  return {
+    errored,
+    generatedAt: new Date().toISOString(),
+    headline: [],
+    stats: [],
+    funnel: { stages: [], summary: "" },
+    revenue: [],
+    planMix: { caption: "", items: [] },
+    trials: [],
+    regions: { caption: "", items: [] },
+    billing: { collectedLabel: "—", collectedCaption: "", lines: [] },
+    platformHealth: [],
+    support: [],
+    topBusinesses: [],
+    activity: [],
+  };
 }
 
 // ── Backend → UI mapping ─────────────────────────────────────────────
@@ -88,6 +136,18 @@ function compactParts(n: number): { value: string; suffix?: string } {
   const c = compactNumber(n);
   const m = /^(-?[\d.,]+)([KMB])?$/.exec(c);
   return m ? { value: m[1], suffix: m[2] || undefined } : { value: c };
+}
+
+/**
+ * Coerce a possibly-missing value to a finite number. The Reports `/overview`
+ * endpoint fault-isolates each section — a failed section returns an empty
+ * default — so any scalar can be absent. This keeps `.toLocaleString()` / math
+ * from throwing (which would bubble up and force the whole dashboard to the
+ * demo-data fallback).
+ */
+function num(v: unknown): number {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
 }
 
 function pctDelta(
@@ -159,44 +219,49 @@ function mapOverview(res: DashboardOverviewResponse): DashboardOverview {
   ];
 
   // Stat strip
-  const inactiveAccounts = Math.max(0, st.totalAccounts - st.activeAccounts);
+  const totalAccounts = num(st.totalAccounts);
+  const activeAccounts = num(st.activeAccounts);
+  const newAccounts30d = num(st.newAccounts30d);
+  const newBusinesses30d = num(st.newBusinesses30d);
+  const newLocations30d = num(st.newLocations30d);
+  const inactiveAccounts = Math.max(0, totalAccounts - activeAccounts);
   const stats: StatStripItem[] = [
     {
       label: "Accounts",
-      value: st.totalAccounts.toLocaleString(),
-      sub: st.newAccounts30d > 0 ? `+${st.newAccounts30d} 30d` : `${st.activeAccounts} active`,
-      subTone: st.newAccounts30d > 0 ? "pos" : "muted",
+      value: totalAccounts.toLocaleString(),
+      sub: newAccounts30d > 0 ? `+${newAccounts30d} 30d` : `${activeAccounts} active`,
+      subTone: newAccounts30d > 0 ? "pos" : "muted",
     },
     {
       label: "Businesses",
-      value: st.totalBusinesses.toLocaleString(),
-      sub: st.newBusinesses30d > 0 ? `+${st.newBusinesses30d} 30d` : undefined,
+      value: num(st.totalBusinesses).toLocaleString(),
+      sub: newBusinesses30d > 0 ? `+${newBusinesses30d} 30d` : undefined,
       subTone: "pos",
     },
     {
       label: "Paying locations",
-      value: st.payingLocations.toLocaleString(),
-      sub: st.newLocations30d > 0 ? `+${st.newLocations30d} 30d` : `${st.activeLocations} active`,
-      subTone: st.newLocations30d > 0 ? "pos" : "muted",
+      value: num(st.payingLocations).toLocaleString(),
+      sub: newLocations30d > 0 ? `+${newLocations30d} 30d` : `${num(st.activeLocations)} active`,
+      subTone: newLocations30d > 0 ? "pos" : "muted",
     },
     {
       label: "Active rate",
-      value: ratioPercent(st.activeAccounts, st.totalAccounts, 0),
+      value: ratioPercent(activeAccounts, totalAccounts, 0),
       sub: `${inactiveAccounts} inactive`,
       subTone: "muted",
     },
     {
       label: "Open trials",
-      value: st.openTrials.toLocaleString(),
+      value: num(st.openTrials).toLocaleString(),
       sub:
         st.trialConversionRate != null
-          ? `${Math.round(st.trialConversionRate)}% convert`
+          ? `${Math.round(num(st.trialConversionRate))}% convert`
           : undefined,
       subTone: "muted",
     },
     {
       label: "ARPL",
-      value: compactNumber(st.arpl),
+      value: compactNumber(num(st.arpl)),
       sub: "TZS / location",
       subTone: "muted",
     },
@@ -386,16 +451,17 @@ function mapOverview(res: DashboardOverviewResponse): DashboardOverview {
   };
 
   // Platform health — only the signals we can actually source.
+  const platform = res.platform ?? ({} as DashboardOverviewResponse["platform"]);
   const platformHealth: PlatformHealthItem[] = [
     {
       kind: "transactions",
       label: "Transactions today",
-      value: res.platform.transactionsToday.toLocaleString(),
+      value: num(platform.transactionsToday).toLocaleString(),
     },
     {
       kind: "terminals",
       label: "Active terminals",
-      value: `${res.platform.activeTerminals} / ${res.platform.totalTerminals}`,
+      value: `${num(platform.activeTerminals)} / ${num(platform.totalTerminals)}`,
     },
   ];
   const support: SupportSummaryItem[] = [];
@@ -466,7 +532,9 @@ function mapOverview(res: DashboardOverviewResponse): DashboardOverview {
   });
 
   return {
-    isLive: true,
+    errored: (res.errors ?? []).filter((e): e is DashboardSectionKey =>
+      (ALL_SECTIONS as string[]).includes(e),
+    ),
     generatedAt: res.generatedAt,
     headline,
     stats,
@@ -480,448 +548,5 @@ function mapOverview(res: DashboardOverviewResponse): DashboardOverview {
     support,
     topBusinesses,
     activity,
-  };
-}
-
-/**
- * Placeholder used when the Reports Service isn't reachable yet. Realistic
- * demo data sized to the platform's scale; `isLive: false` lights the
- * "Live data pending" badges so reviewers don't act on the numbers.
- */
-async function stubDashboardOverview(): Promise<DashboardOverview> {
-  const INK = "hsl(var(--ink))";
-  const ORANGE = "hsl(var(--primary))";
-  const POS = "hsl(var(--pos))";
-  const MUTED = "hsl(var(--muted-2))";
-  const BLUE = "#2563EB";
-
-  return {
-    isLive: false,
-    generatedAt: new Date().toISOString(),
-
-    headline: [
-      {
-        key: "mrr",
-        label: "MRR",
-        currency: "TZS",
-        value: "3.64",
-        suffix: "M",
-        delta: { value: "6.4%", tone: "up" },
-        spark: [12, 18, 24, 31, 38, 46, 55, 64, 73, 82, 91, 100],
-      },
-      {
-        key: "arr",
-        label: "ARR (run-rate)",
-        currency: "TZS",
-        value: "43.6",
-        suffix: "M",
-        delta: { value: "18.2% YoY", tone: "up" },
-        footNote: "MRR × 12",
-      },
-      {
-        key: "gmv",
-        label: "GMV processed",
-        currency: "TZS",
-        value: "248.6",
-        suffix: "M",
-        delta: { value: "8.2%", tone: "up" },
-        spark: [40, 35, 52, 46, 64, 60, 72, 70, 84, 88, 96, 100],
-      },
-      {
-        key: "nrr",
-        label: "Net revenue retention",
-        value: "108",
-        suffix: "%",
-        delta: { value: "4 pts", tone: "up" },
-        footNote: "expansion > churn",
-      },
-    ],
-
-    stats: [
-      { label: "Accounts", value: "15", sub: "+2 30d", subTone: "pos" },
-      { label: "Businesses", value: "13", sub: "+1 30d", subTone: "pos" },
-      { label: "Paying locations", value: "17", sub: "+3 30d", subTone: "pos" },
-      { label: "Active rate", value: "100%", sub: "0 churned", subTone: "muted" },
-      { label: "Open trials", value: "3", sub: "67% convert", subTone: "muted" },
-      { label: "ARPL", value: "214K", sub: "TZS / location", subTone: "muted" },
-    ],
-
-    funnel: {
-      stages: [
-        {
-          key: "account",
-          label: "Account created",
-          count: 15,
-          pct: 100,
-          color: ORANGE,
-          note: "all signups",
-          noteTone: "dim",
-        },
-        {
-          key: "email",
-          label: "Email verified",
-          count: 13,
-          pct: 87,
-          color: "#E8954F",
-          note: "▼ 2 unverified",
-          noteTone: "warn",
-        },
-        {
-          key: "business",
-          label: "Business created",
-          count: 12,
-          pct: 80,
-          color: "#EEB46B",
-          note: "▼ 1 no business",
-          noteTone: "warn",
-        },
-        {
-          key: "location",
-          label: "Location live",
-          qualifier: "· billable",
-          count: 12,
-          pct: 80,
-          color: POS,
-          note: "✓ 0 pending",
-          noteTone: "ok",
-        },
-      ],
-      summary:
-        "3 accounts stalled before going live — 2 haven't verified email, 1 has no business yet",
-    },
-
-    revenue: [
-      {
-        key: "mrr",
-        label: "MRR",
-        currency: "TZS",
-        headlineValue: "3.64M",
-        delta: { value: "6.4% vs May", tone: "up" },
-        caption: "+TZS 2.46M added since Jul 2025 · 209% growth",
-        valueKind: "currency",
-        points: [
-          { label: "Jul", value: 1_180_000 },
-          { label: "Aug", value: 1_320_000 },
-          { label: "Sep", value: 1_560_000 },
-          { label: "Oct", value: 1_740_000 },
-          { label: "Nov", value: 1_980_000 },
-          { label: "Dec", value: 2_220_000 },
-          { label: "Jan", value: 2_470_000 },
-          { label: "Feb", value: 2_760_000 },
-          { label: "Mar", value: 3_010_000 },
-          { label: "Apr", value: 3_280_000 },
-          { label: "May", value: 3_420_000 },
-          { label: "Jun", value: 3_640_000 },
-        ],
-      },
-      {
-        key: "gmv",
-        label: "GMV",
-        currency: "TZS",
-        headlineValue: "248.6M",
-        delta: { value: "8.2% vs May", tone: "up" },
-        caption: "POS volume flowing through Settlo · last 12 months",
-        valueKind: "currency",
-        points: [
-          { label: "Jul", value: 96_000_000 },
-          { label: "Aug", value: 112_000_000 },
-          { label: "Sep", value: 134_000_000 },
-          { label: "Oct", value: 151_000_000 },
-          { label: "Nov", value: 168_000_000 },
-          { label: "Dec", value: 205_000_000 },
-          { label: "Jan", value: 188_000_000 },
-          { label: "Feb", value: 201_000_000 },
-          { label: "Mar", value: 219_000_000 },
-          { label: "Apr", value: 233_000_000 },
-          { label: "May", value: 241_000_000 },
-          { label: "Jun", value: 248_600_000 },
-        ],
-      },
-      {
-        key: "accounts",
-        label: "Accounts",
-        headlineValue: "15",
-        delta: { value: "2 vs May", tone: "up" },
-        caption: "Cumulative registered accounts · last 12 months",
-        valueKind: "count",
-        points: [
-          { label: "Jul", value: 4 },
-          { label: "Aug", value: 5 },
-          { label: "Sep", value: 6 },
-          { label: "Oct", value: 8 },
-          { label: "Nov", value: 9 },
-          { label: "Dec", value: 10 },
-          { label: "Jan", value: 11 },
-          { label: "Feb", value: 12 },
-          { label: "Mar", value: 12 },
-          { label: "Apr", value: 13 },
-          { label: "May", value: 13 },
-          { label: "Jun", value: 15 },
-        ],
-      },
-    ],
-
-    planMix: {
-      caption: "17 locations · TZS 3.64M MRR",
-      items: [
-        {
-          tier: "enterprise",
-          label: "Enterprise",
-          locations: 2,
-          mrrLabel: "TZS 1.50M",
-          pct: 41,
-          color: INK,
-        },
-        {
-          tier: "pro",
-          label: "Pro",
-          locations: 3,
-          mrrLabel: "TZS 1.05M",
-          pct: 29,
-          color: ORANGE,
-        },
-        {
-          tier: "growth",
-          label: "Growth",
-          locations: 5,
-          mrrLabel: "TZS 0.75M",
-          pct: 20,
-          color: BLUE,
-        },
-        {
-          tier: "starter",
-          label: "Starter",
-          locations: 7,
-          mrrLabel: "TZS 0.34M",
-          pct: 9,
-          color: MUTED,
-        },
-      ],
-    },
-
-    trials: [
-      {
-        id: "t1",
-        name: "Mlimani Fresh Mart",
-        meta: "Growth trial · Arusha",
-        daysLabel: "4d left",
-        tone: "pos",
-        avatarColor: "#0E7C7B",
-      },
-      {
-        id: "t2",
-        name: "Bahari Hotel & Grill",
-        meta: "Pro trial · Zanzibar",
-        daysLabel: "2d left",
-        tone: "warn",
-        avatarColor: "#7C3AED",
-      },
-      {
-        id: "t3",
-        name: "Uhuru Duka",
-        meta: "Starter trial · Dodoma",
-        daysLabel: "Expires today",
-        tone: "neg",
-        avatarColor: "#C8442A",
-      },
-    ],
-
-    regions: {
-      caption: "17 locations · 5 regions",
-      items: [
-        { name: "Dar es Salaam", count: 9, pct: 53 },
-        { name: "Arusha", count: 3, pct: 18 },
-        { name: "Mwanza", count: 3, pct: 18 },
-        { name: "Dodoma", count: 1, pct: 8 },
-        { name: "Zanzibar", count: 1, pct: 8 },
-      ],
-    },
-
-    billing: {
-      collectedLabel: "3.41M",
-      collectedCaption: "collected · 94% of billed",
-      lines: [
-        {
-          label: "Outstanding",
-          value: "TZS 420K · 2 loc",
-          tone: "warn",
-          dotColor: "hsl(var(--warn))",
-        },
-        {
-          label: "Failed payments",
-          value: "TZS 149K · 1 loc",
-          tone: "neg",
-          dotColor: "hsl(var(--neg))",
-        },
-        {
-          label: "Renewals · next 7d",
-          value: "TZS 1.10M · 4 loc",
-          tone: "pos",
-          dotColor: "hsl(var(--pos))",
-        },
-        {
-          label: "Refunds issued",
-          value: "TZS 49K · 1",
-          tone: "muted",
-          dotColor: "hsl(var(--muted-2))",
-        },
-      ],
-    },
-
-    platformHealth: [
-      {
-        kind: "uptime",
-        label: "API uptime",
-        value: "99.98%",
-        healthDot: POS,
-      },
-      {
-        kind: "latency",
-        label: "p95 latency",
-        value: "142 ms",
-        healthDot: POS,
-      },
-      { kind: "transactions", label: "Transactions today", value: "1,284" },
-      { kind: "terminals", label: "Active terminals", value: "29 / 31" },
-    ],
-
-    support: [
-      { label: "Open tickets", value: "4 · 1 urgent" },
-      { label: "Avg first response", value: "1h 12m" },
-      { label: "CSAT (30d)", value: "96%", valueTone: "pos" },
-    ],
-
-    topBusinesses: [
-      {
-        id: "b1",
-        name: "Coco Paaz",
-        locations: "3 locations",
-        region: "Dar es Salaam",
-        tier: "enterprise",
-        planLabel: "Enterprise",
-        gmvLabel: "68.4M",
-        mrrLabel: "750K",
-        statusLabel: "Active",
-        statusTone: "pos",
-        avatarColor: "#C25E26",
-      },
-      {
-        id: "b2",
-        name: "Karanjas Juice Bar",
-        locations: "2 locations",
-        region: "Dar es Salaam",
-        tier: "pro",
-        planLabel: "Pro",
-        gmvLabel: "41.2M",
-        mrrLabel: "349K",
-        statusLabel: "Active",
-        statusTone: "pos",
-        avatarColor: "#0E8B5F",
-      },
-      {
-        id: "b3",
-        name: "Serengeti Supermarket",
-        locations: "1 location",
-        region: "Mwanza",
-        tier: "enterprise",
-        planLabel: "Enterprise",
-        gmvLabel: "37.8M",
-        mrrLabel: "750K",
-        statusLabel: "Active",
-        statusTone: "pos",
-        avatarColor: "#1E3A8A",
-      },
-      {
-        id: "b4",
-        name: "Kilimanjaro Coffee House",
-        locations: "1 location",
-        region: "Arusha",
-        tier: "pro",
-        planLabel: "Pro",
-        gmvLabel: "22.5M",
-        mrrLabel: "349K",
-        statusLabel: "Active",
-        statusTone: "pos",
-        avatarColor: "#6B2D5C",
-      },
-      {
-        id: "b5",
-        name: "Mwanza Wholesalers",
-        locations: "1 location",
-        region: "Mwanza",
-        tier: "growth",
-        planLabel: "Growth",
-        gmvLabel: "19.1M",
-        mrrLabel: "149K",
-        statusLabel: "Active",
-        statusTone: "pos",
-        avatarColor: "#2563EB",
-      },
-      {
-        id: "b6",
-        name: "Bahari Foods",
-        locations: "1 location",
-        region: "Zanzibar",
-        tier: "growth",
-        planLabel: "Growth",
-        gmvLabel: "14.7M",
-        mrrLabel: "149K",
-        statusLabel: "Past due",
-        statusTone: "warn",
-        avatarColor: "#C4892B",
-      },
-    ],
-
-    activity: [
-      {
-        id: "a1",
-        kind: "signup",
-        lead: "Bahari Foods",
-        text: " signed up on the Growth plan",
-        time: "2 hours ago · Zanzibar",
-      },
-      {
-        id: "a2",
-        kind: "upgrade",
-        lead: "Karanjas Juice Bar",
-        text: " upgraded Growth → Pro",
-        time: "5 hours ago · +TZS 200K MRR",
-        amount: "+200K",
-        amountTone: "pos",
-      },
-      {
-        id: "a3",
-        kind: "payment",
-        lead: "Coco Paaz",
-        text: " payment received",
-        time: "Yesterday · 4:12 PM",
-        amount: "750K",
-      },
-      {
-        id: "a4",
-        kind: "business",
-        lead: "Mlimani Fresh Mart",
-        text: " — new business added to a trial",
-        time: "Yesterday · Arusha",
-      },
-      {
-        id: "a5",
-        kind: "failed",
-        lead: "Bahari Foods",
-        text: " payment failed — retry scheduled",
-        time: "Yesterday · TZS 149K",
-        amount: "−149K",
-        amountTone: "neg",
-      },
-      {
-        id: "a6",
-        kind: "refund",
-        lead: "Uhuru Duka",
-        text: " refund issued",
-        time: "2 days ago · Starter",
-        amount: "−49K",
-        amountTone: "dim",
-      },
-    ],
   };
 }

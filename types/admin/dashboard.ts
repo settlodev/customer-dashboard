@@ -160,9 +160,27 @@ export interface ActivityItem {
   amountTone?: "pos" | "neg" | "dim";
 }
 
+/**
+ * Section keys that can independently fail to load. They mirror the backend
+ * `errors[]` from the fault-isolated `/overview` endpoint; the UI renders a
+ * "couldn't load" card for each one instead of fabricated data.
+ */
+export type DashboardSectionKey =
+  | "revenue"
+  | "stats"
+  | "funnel"
+  | "revenueSeries"
+  | "planMix"
+  | "trials"
+  | "regions"
+  | "billing"
+  | "platform"
+  | "topBusinesses"
+  | "activity";
+
 export interface DashboardOverview {
-  /** False while the analytics pipeline is stubbed. */
-  isLive: boolean;
+  /** Section keys that couldn't be loaded from the Reports Service. */
+  errored: DashboardSectionKey[];
   generatedAt: string;
   headline: HeadlineMetric[];
   stats: StatStripItem[];
@@ -187,6 +205,8 @@ export interface DashboardOverview {
 
 export interface DashboardOverviewResponse {
   generatedAt: string;
+  /** Section names the backend couldn't compute (fault-isolated per section). */
+  errors?: string[];
   revenue: {
     mrr: number;
     mrrPrev: number;
