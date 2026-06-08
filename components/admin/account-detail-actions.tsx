@@ -1,11 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Mail, PauseCircle, Trash2 } from "lucide-react";
+import {
+  CheckCircle2,
+  FlaskConical,
+  Mail,
+  PauseCircle,
+  Trash2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { AccountActionDialog } from "@/components/admin/account-action-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { setAccountInternal } from "@/lib/actions/admin/accounts";
 import {
   AdminAccountDetail,
   AdminAccountListItem,
@@ -16,6 +24,7 @@ interface AccountDetailActionsProps {
   canSuspend: boolean;
   canDelete: boolean;
   canResend: boolean;
+  canManage: boolean;
 }
 
 function toListItem(detail: AdminAccountDetail): AdminAccountListItem {
@@ -26,6 +35,7 @@ function toListItem(detail: AdminAccountDetail): AdminAccountListItem {
     phoneNumber: detail.phoneNumber,
     accountNumber: detail.accountNumber,
     active: detail.active,
+    internal: detail.internal,
     slug: detail.slug,
     whitelabelAppId: detail.whitelabelAppId,
     whitelabelAppCode: detail.whitelabelAppCode,
@@ -46,9 +56,24 @@ export function AccountDetailActions({
   canSuspend,
   canDelete,
   canResend,
+  canManage,
 }: AccountDetailActionsProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [active, setActive] = useState<ActionKind | null>(null);
+  const [markingInternal, startMarkInternal] = useTransition();
+
+  const toggleInternal = () => {
+    startMarkInternal(async () => {
+      const next = !account.internal;
+      const res = await setAccountInternal(account.id, next);
+      toast({
+        title: next ? "Marked as internal" : "Marked as customer",
+        description: res.message,
+      });
+      if (res.responseType === "success") router.refresh();
+    });
+  };
 
   return (
     <>
@@ -87,6 +112,20 @@ export function AccountDetailActions({
         >
           <Mail className="mr-1.5 h-4 w-4" />
           Resend verification
+        </Button>
+      )}
+
+      {canManage && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={toggleInternal}
+          disabled={markingInternal}
+          className="text-[#7C3AED] hover:bg-[#7C3AED]/10 hover:text-[#7C3AED]"
+        >
+          <FlaskConical className="mr-1.5 h-4 w-4" />
+          {account.internal ? "Mark as customer" : "Mark as internal"}
         </Button>
       )}
 

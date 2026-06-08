@@ -13,6 +13,8 @@ export interface AdminAccountListItem {
   phoneNumber: string;
   accountNumber: string;
   active: boolean;
+  /** Internal (test/demo/employee) account — excluded from SaaS metrics. */
+  internal: boolean;
   slug: string;
   whitelabelAppId: string | null;
   whitelabelAppCode: string | null;
@@ -50,6 +52,8 @@ export interface AdminAccountDetail {
   accountNumber: string;
   identifier: string | null;
   active: boolean;
+  /** Internal (test/demo/employee) account — excluded from SaaS metrics. */
+  internal: boolean;
   slug: string;
   bio: string | null;
   pictureUrl: string | null;

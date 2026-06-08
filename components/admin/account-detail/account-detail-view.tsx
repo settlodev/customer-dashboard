@@ -40,6 +40,7 @@ interface AccountDetailViewProps {
   canDelete: boolean;
   canAssignStaff: boolean;
   canResend: boolean;
+  canManage: boolean;
 }
 
 function accountAge(createdAt: string): { value: string; note: string } {
@@ -64,6 +65,7 @@ export function AccountDetailView({
   canDelete,
   canAssignStaff,
   canResend,
+  canManage,
 }: AccountDetailViewProps) {
   const stub = !insights.isLive;
   const name = account.fullName || account.email;
@@ -83,6 +85,7 @@ export function AccountDetailView({
                 {name}
               </h1>
               <StatusBadge active={account.active} />
+              {account.internal && <InternalBadge />}
               <OnboardingBadge state={account.onboardingState} />
             </div>
             <p className="mt-1.5 font-mono text-[12.5px] text-muted-foreground">
@@ -121,6 +124,7 @@ export function AccountDetailView({
             canSuspend={canSuspend}
             canDelete={canDelete}
             canResend={canResend}
+            canManage={canManage}
           />
         </div>
       </div>
@@ -353,6 +357,18 @@ export function AccountDetailView({
         </div>
       </div>
     </div>
+  );
+}
+
+// ── Internal-account badge ───────────────────────────────────────────
+// Purple, distinct from the green/red status pill — flags an account that is
+// excluded from SaaS analytics (test / demo / employee).
+function InternalBadge() {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7C3AED]/10 px-2.5 py-1 text-[12px] font-semibold text-[#7C3AED]">
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      Internal
+    </span>
   );
 }
 

@@ -127,6 +127,34 @@ export async function reactivateAccount(
   }
 }
 
+export async function setAccountInternal(
+  accountId: string,
+  internal: boolean,
+): Promise<FormResponse<{ message: string }>> {
+  try {
+    const result = await staffClient().patch<
+      { message: string },
+      { internal: boolean }
+    >(`/api/v1/admin/accounts/${accountId}/internal`, { internal });
+
+    revalidatePath("/admin/accounts");
+    revalidatePath(`/admin/accounts/${accountId}`);
+    return parseStringify({
+      responseType: "success",
+      message:
+        result?.message ??
+        (internal ? "Account marked as internal" : "Account marked as customer"),
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to update internal flag",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
 export async function resendVerificationEmail(
   accountId: string,
 ): Promise<FormResponse<{ message: string }>> {

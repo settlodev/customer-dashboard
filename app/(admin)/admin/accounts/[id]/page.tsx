@@ -41,6 +41,9 @@ export default async function AdminAccountDetailPage({
   const canSuspend = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
   const canDelete = role === "SYSTEM_ADMIN";
   const canAssignStaff = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
+  // Marking an account internal hides it from platform metrics — same gate as
+  // suspend/manage (backend: INTERNAL_internal:accounts:manage).
+  const canManage = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
   // Resend verification mirrors the backend's :read authority — every internal
   // role that can open this page (incl. SUPPORT_AGENT) may resend.
   const canResend = canRead;
@@ -101,6 +104,7 @@ export default async function AdminAccountDetailPage({
           canDelete={canDelete}
           canAssignStaff={canAssignStaff}
           canResend={canResend}
+          canManage={canManage}
         />
       </PageShell>
     </AdminShell>
