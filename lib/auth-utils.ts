@@ -141,6 +141,7 @@ export const createAuthTokenFromLogin = async (
     countryCode?: string;
     theme?: string | null;
   },
+  opts?: { impersonating?: boolean; impersonatorId?: string | null },
 ) => {
   const authTokenData: AuthToken = {
     accessToken: loginResponse.accessToken,
@@ -163,6 +164,8 @@ export const createAuthTokenFromLogin = async (
     verificationResendToken: loginResponse.verificationResendToken,
     subscriptionStatus: extractSubscriptionStatus(loginResponse.accessToken),
     businessId: extractBusinessId(loginResponse.accessToken),
+    impersonating: opts?.impersonating ?? false,
+    impersonatorId: opts?.impersonatorId ?? null,
   };
 
   await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData));

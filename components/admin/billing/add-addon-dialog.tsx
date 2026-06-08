@@ -163,7 +163,7 @@ export function AddAddonDialog({
                     <SelectContent>
                       {items.map((item) => (
                         <SelectItem key={item.id} value={item.id}>
-                          {item.packageName ?? item.packageId} · {item.status}
+                          {item.packageInfo?.name ?? item.entityType} · {item.status}
                         </SelectItem>
                       ))}
                     </SelectContent>

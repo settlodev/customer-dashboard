@@ -57,13 +57,24 @@ export type PaymentMethod =
 
 // ── Subscription ────────────────────────────────────────────────────
 
+export type SubscriptionItemStatus = "ACTIVE" | "REMOVED";
+
+/**
+ * A subscription item = one billable unit (location / warehouse / store) on
+ * its own plan. `packageInfo` carries the plan name + base price; the
+ * subscription's own status (TRIAL/ACTIVE/…) governs the billing state.
+ */
 export interface SubscriptionItemResponse {
   id: string;
-  packageId: string;
-  packageName: string | null;
-  status: string;
-  unitPrice: number | null;
-  quantity: number | null;
+  entityType: SubscribableEntityType;
+  entityId: string;
+  packageInfo: PackageResponse | null;
+  packageVersion: number | null;
+  isBundled: boolean | null;
+  bundledByItemId: string | null;
+  status: SubscriptionItemStatus;
+  addedAt: string | null;
+  removedAt: string | null;
 }
 
 export interface SubscriptionDiscountResponse {

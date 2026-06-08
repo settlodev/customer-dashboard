@@ -149,6 +149,13 @@ interface DataTableProps<TData, TValue> {
   disableArchive?: boolean;
   onRowClick?: (row: TData) => void;
   rowClickBasePath?: string;
+  /**
+   * Opt-in: drive column sorting through the URL (`?sort=field,dir`) so the
+   * backend sorts the full dataset instead of just reordering the current
+   * page client-side. Column ids must match backend sort fields. When
+   * omitted, sorting stays client-side (current behaviour for other lists).
+   */
+  manualSort?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -163,6 +170,7 @@ export function DataTable<TData, TValue>({
   disableArchive = false,
   onRowClick,
   rowClickBasePath,
+  manualSort = false,
 }: DataTableProps<TData, TValue>) {
   const router = useRouter();
   const pathname = usePathname();
@@ -180,7 +188,17 @@ export function DataTable<TData, TValue>({
   const perPageAsNumber = Number(per_page);
   const fallbackPerPage = isNaN(perPageAsNumber) ? 10 : perPageAsNumber;
 
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  // Seed sorting from `?sort=field,dir` once on mount when server-side
+  // sorting is enabled, so the header arrow matches the URL on first paint.
+  const initialSorting = React.useMemo<SortingState>(() => {
+    if (!manualSort) return [];
+    const raw = searchParams?.get("sort");
+    if (!raw) return [];
+    const [id, dir] = raw.split(",");
+    return id ? [{ id, desc: dir !== "asc" }] : [];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const [sorting, setSorting] = React.useState<SortingState>(initialSorting);
   const [statusFilter, setStatusFilter] = React.useState<string>("");
   // Per-key selection state for the optional extraFilters. Click the
   // same option to clear it; empty string means "no filter on this key".
@@ -329,6 +347,25 @@ export function DataTable<TData, TValue>({
     [pageIndex, pageSize, searchParams, savePaginationState],
   );
 
+  // Server-side sort: push `?sort=field,dir` (resetting to page 1) so the
+  // backend reorders the whole dataset. Only active when `manualSort` is set.
+  const handleSortingChange = React.useCallback(
+    (updater: SortingState | ((old: SortingState) => SortingState)) => {
+      const next =
+        typeof updater === "function" ? updater(sorting) : updater;
+      setSorting(next);
+      if (manualSort) {
+        const first = next[0];
+        const sortParam = first
+          ? `${first.id},${first.desc ? "desc" : "asc"}`
+          : null;
+        const queryString = createQueryString({ sort: sortParam, page: 1 });
+        router.replace(`${pathname}?${queryString}`, { scroll: false });
+      }
+    },
+    [sorting, manualSort, createQueryString, router, pathname],
+  );
+
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setLoading(false);
@@ -363,8 +400,9 @@ export function DataTable<TData, TValue>({
     getPaginationRowModel: getPaginationRowModel(),
     manualPagination: true,
     manualFiltering: true,
+    manualSorting: manualSort,
     enableRowSelection: true,
-    onSortingChange: setSorting,
+    onSortingChange: manualSort ? handleSortingChange : setSorting,
     getSortedRowModel: getSortedRowModel(),
   });
 

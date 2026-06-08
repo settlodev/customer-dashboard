@@ -94,6 +94,33 @@ export interface AdminLocationDetail extends AdminLocationListItem {
   updatedAt: string;
 }
 
+export interface AdminWarehouseListItem {
+  id: string;
+  name: string;
+  slug: string;
+  identifier: string;
+  active: boolean;
+  businessId: string;
+  accountId: string;
+  code: string | null;
+  capacity: number | null;
+  primary: boolean;
+  createdAt: string;
+}
+
+export interface AdminStoreListItem {
+  id: string;
+  name: string;
+  slug: string;
+  identifier: string;
+  active: boolean;
+  businessId: string;
+  accountId: string;
+  locationId: string;
+  code: string | null;
+  createdAt: string;
+}
+
 export type AdminBusinessPage = ApiResponse<AdminBusinessListItem>;
 
 export interface ListBusinessesParams {
@@ -102,4 +129,10 @@ export interface ListBusinessesParams {
   accountId?: string;
   search?: string;
   active?: boolean;
+}
+
+export interface BusinessStatusCounts {
+  total: number;
+  active: number;
+  inactive: number;
 }

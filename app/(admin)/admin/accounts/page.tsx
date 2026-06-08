@@ -46,7 +46,19 @@ interface AccountsPageProps {
     state?: string;
     from?: string;
     to?: string;
+    sort?: string;
   }>;
+}
+
+// Whitelist the columns the UI exposes as sortable — keeps an arbitrary
+// `?sort=` from reaching JPA as an unknown property path.
+const SORTABLE_FIELDS = new Set(["fullName", "createdAt"]);
+
+function parseSort(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const [field, dirRaw] = value.split(",");
+  if (!SORTABLE_FIELDS.has(field)) return undefined;
+  return `${field},${dirRaw === "asc" ? "asc" : "desc"}`;
 }
 
 function parseOnboardingState(value: string | undefined): OnboardingState | undefined {
@@ -121,6 +133,7 @@ export default async function AdminAccountsPage({
   const search = params.search?.trim() || undefined;
   const active = parseActive(params.active, params.status);
   const onboardingState = parseOnboardingState(params.state);
+  const sort = parseSort(params.sort);
   const { fromIso, toIso } = dayBounds(params.from, params.to);
 
   let pageData: AdminAccountListPage | null = null;
@@ -137,6 +150,7 @@ export default async function AdminAccountsPage({
       listAccounts({
         page: backendPage,
         size,
+        sort,
         search,
         active,
         onboardingState,
@@ -171,7 +185,6 @@ export default async function AdminAccountsPage({
             <AccountsListView
               initialPage={pageData!}
               counts={counts}
-              initialSearch={search ?? ""}
               initialStatus={
                 active === undefined
                   ? "all"

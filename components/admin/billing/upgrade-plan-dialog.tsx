@@ -179,10 +179,10 @@ export function UpgradePlanDialog({
                     <SelectContent>
                       {items.map((item) => (
                         <SelectItem key={item.id} value={item.id}>
-                          {item.packageName ?? item.packageId} ·{" "}
+                          {item.packageInfo?.name ?? item.entityType} ·{" "}
                           {item.status}
-                          {item.unitPrice !== null
-                            ? ` · ${formatMoney(item.unitPrice)}`
+                          {item.packageInfo?.basePrice != null
+                            ? ` · ${formatMoney(item.packageInfo.basePrice)}`
                             : ""}
                         </SelectItem>
                       ))}
@@ -226,7 +226,7 @@ export function UpgradePlanDialog({
                   </Select>
                   {selectedItem && selectedPackage && (
                     <FormDescription>
-                      {formatMoney(selectedItem.unitPrice)} →{" "}
+                      {formatMoney(selectedItem.packageInfo?.basePrice)} →{" "}
                       {formatMoney(selectedPackage.basePrice)} ·{" "}
                       {selectedPackage.entityType.toLowerCase()}
                     </FormDescription>

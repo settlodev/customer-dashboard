@@ -34,6 +34,7 @@ import {
   updateAuthToken,
 } from "@/lib/auth-utils";
 import { isStaffToken } from "@/lib/jwt-utils";
+import { establishCustomerSession } from "@/lib/customer-session";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseApiError, getUIErrorMessage } from "@/lib/settlo-api-error-handler";
 import { cookies } from "next/headers";
@@ -98,6 +99,56 @@ export async function logout() {
       throw error;
     }
   }
+}
+
+/**
+ * Ends a staff impersonation ("login on behalf") session from the customer
+ * side: best-effort revokes the short-lived impersonation token at the auth
+ * service, then clears the local customer session (cookie + NextAuth). Returns
+ * a result instead of redirecting so the banner's client handler can close the
+ * impersonation tab afterwards.
+ */
+export async function endImpersonation(): Promise<FormResponse> {
+  const authToken = await getAuthToken();
+
+  if (authToken?.accessToken || authToken?.refreshToken) {
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+      };
+      if (authToken.accessToken) {
+        headers["Authorization"] = `Bearer ${authToken.accessToken}`;
+      }
+      await fetch(`${AUTH_SERVICE_URL}/auth/logout`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          refreshToken: authToken.refreshToken || undefined,
+          logoutAll: false,
+        }),
+      });
+    } catch {
+      // Auth service unreachable — still clear local state below.
+    }
+  }
+
+  try {
+    await deleteAuthCookie();
+  } catch {
+    // Cookie deletion can fail outside an action/route context — ignore.
+  }
+
+  try {
+    await signOut({ redirect: false });
+  } catch {
+    // With redirect:false signOut resolves normally; guard just in case.
+  }
+
+  return parseStringify({
+    responseType: "success",
+    message: "Impersonation ended",
+  });
 }
 
 export const login = async (
@@ -257,8 +308,8 @@ export const login = async (
       });
     }
 
-    console.log("[LOGIN] Creating auth token cookie...");
-    await createAuthTokenFromLogin(loginData, {
+    console.log("[LOGIN] Establishing customer session...");
+    await establishCustomerSession(loginData, {
       firstName: profileData.firstName,
       lastName: profileData.lastName,
       phoneNumber: profileData.phoneNumber,
@@ -273,56 +324,7 @@ export const login = async (
       countryCode: profileData.countryCode,
       theme: profileData.theme,
     });
-
-    // Verify the cookie was actually set
-    const verifyToken = await getAuthToken();
-    console.log("[LOGIN] Auth token cookie set:", {
-      hasAccessToken: !!verifyToken?.accessToken,
-      accessTokenLength: verifyToken?.accessToken?.length,
-      hasRefreshToken: !!verifyToken?.refreshToken,
-      emailVerified: verifyToken?.emailVerified,
-      bizComplete: verifyToken?.isBusinessRegistrationComplete,
-      locComplete: verifyToken?.isLocationRegistrationComplete,
-    });
-
-    console.log("[LOGIN] Signing into NextAuth session...");
-    await signIn("credentials", {
-      __preAuthenticated: "true",
-      userId: loginData.userId,
-      email: loginData.email,
-      name: `${profileData.firstName || ""} ${profileData.lastName || ""}`.trim(),
-      firstName: profileData.firstName || "",
-      lastName: profileData.lastName || "",
-      phoneNumber: profileData.phoneNumber || "",
-      accessToken: loginData.accessToken,
-      refreshToken: loginData.refreshToken,
-      emailVerified: "true",
-      isBusinessRegistrationComplete: String(
-        profileData.isBusinessRegistrationComplete ??
-          profileData.businessComplete ??
-          false,
-      ),
-      isLocationRegistrationComplete: String(
-        profileData.isLocationRegistrationComplete ??
-          profileData.locationComplete ??
-          false,
-      ),
-      countryId: profileData.countryId || profileData.country || "",
-      countryCode: profileData.countryCode || "",
-      accountId: loginData.accountId || "",
-      theme: profileData.theme || "",
-      pictureUrl: profileData.pictureUrl || profileData.avatar || "",
-      redirect: false,
-    });
-    console.log("[LOGIN] NextAuth signIn completed");
-
-    // Verify cookie survived signIn (event handler might overwrite)
-    const postSignInToken = await getAuthToken();
-    console.log("[LOGIN] Auth token AFTER signIn:", {
-      hasAccessToken: !!postSignInToken?.accessToken,
-      accessTokenLength: postSignInToken?.accessToken?.length,
-      hasRefreshToken: !!postSignInToken?.refreshToken,
-    });
+    console.log("[LOGIN] Customer session established");
 
     await setSessionPersistence(rememberMe);
 

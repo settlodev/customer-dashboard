@@ -17,6 +17,9 @@ export const publicRoutes = [
   "/pr/[token]",
   "/rfq/[token]",
   "/sr/[token]",
+  // Staff-impersonation handoff landing — establishes the customer session
+  // from a sealed blob, so it must be reachable before any customer cookie.
+  "/impersonate/consume",
 ];
 
 export const authRoutes = ["/login", "/register"];

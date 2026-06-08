@@ -7,6 +7,9 @@ import {
   AdminBusinessPage,
   AdminLocationDetail,
   AdminLocationListItem,
+  AdminStoreListItem,
+  AdminWarehouseListItem,
+  BusinessStatusCounts,
   ListBusinessesParams,
 } from "@/types/admin/business";
 
@@ -31,6 +34,24 @@ export async function listAdminBusinesses(
     `/api/v1/admin/businesses?${buildQuery(params)}`,
   );
   return parseStringify(data);
+}
+
+/**
+ * Active/inactive counts for the businesses list status tabs. There's no
+ * dedicated counts endpoint, so we read `totalElements` off two size=1
+ * queries (all + active) and derive inactive. Scoped by the same
+ * search/accountId filters as the list so the tab counts match the table.
+ */
+export async function getBusinessStatusCounts(
+  params: Pick<ListBusinessesParams, "accountId" | "search"> = {},
+): Promise<BusinessStatusCounts> {
+  const [all, activeOnly] = await Promise.all([
+    listAdminBusinesses({ ...params, active: undefined, page: 0, size: 1 }),
+    listAdminBusinesses({ ...params, active: true, page: 0, size: 1 }),
+  ]);
+  const total = all.totalElements ?? 0;
+  const active = activeOnly.totalElements ?? 0;
+  return { total, active, inactive: Math.max(0, total - active) };
 }
 
 export async function listAccountBusinesses(
@@ -61,6 +82,24 @@ export async function listAdminBusinessLocations(
 ): Promise<AdminLocationListItem[]> {
   const data = await staffClient().get<AdminLocationListItem[]>(
     `/api/v1/admin/businesses/${businessId}/locations`,
+  );
+  return parseStringify(data);
+}
+
+export async function listAdminBusinessWarehouses(
+  businessId: string,
+): Promise<AdminWarehouseListItem[]> {
+  const data = await staffClient().get<AdminWarehouseListItem[]>(
+    `/api/v1/admin/businesses/${businessId}/warehouses`,
+  );
+  return parseStringify(data);
+}
+
+export async function listAdminBusinessStores(
+  businessId: string,
+): Promise<AdminStoreListItem[]> {
+  const data = await staffClient().get<AdminStoreListItem[]>(
+    `/api/v1/admin/businesses/${businessId}/stores`,
   );
   return parseStringify(data);
 }

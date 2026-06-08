@@ -79,3 +79,35 @@ export function extractSubjectType(accessToken: string): SubjectType | null {
 export function isStaffToken(accessToken: string): boolean {
   return extractSubjectType(accessToken) === "STAFF" || extractInternalRole(accessToken) !== null;
 }
+
+/**
+ * Extract the subject id (`sub`) from a JWT — the auth user id. Used by the
+ * impersonation consume route, whose minted LoginResponse omits `userId`.
+ */
+export function extractSubjectId(accessToken: string): string | null {
+  const claims = decodeJwtClaims(accessToken);
+  const sub = claims?.sub;
+  return typeof sub === "string" && sub.length > 0 ? sub : null;
+}
+
+/**
+ * Extract the `email` claim from a JWT, when present (user tokens carry it).
+ */
+export function extractEmail(accessToken: string): string | null {
+  const claims = decodeJwtClaims(accessToken);
+  const email = claims?.email;
+  return typeof email === "string" && email.length > 0 ? email : null;
+}
+
+/** True when the token was minted via staff impersonation (`impersonating` claim). */
+export function extractImpersonating(accessToken: string): boolean {
+  const claims = decodeJwtClaims(accessToken);
+  return claims?.impersonating === true;
+}
+
+/** The impersonator's auth user id (`impersonator_id` claim), when impersonating. */
+export function extractImpersonatorId(accessToken: string): string | null {
+  const claims = decodeJwtClaims(accessToken);
+  const id = claims?.impersonator_id;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}

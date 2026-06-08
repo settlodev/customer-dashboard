@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
 import { AssignStaffDialog } from "@/components/admin/assign-staff-dialog";
+import { Monogram } from "@/components/admin/shared/monogram";
 import { AssignedStaffInfo } from "@/types/admin/account";
 
 interface AccountStaffCardProps {
@@ -15,6 +15,12 @@ interface AccountStaffCardProps {
   canEdit: boolean;
 }
 
+/**
+ * Ownership card (Sales person / Support staff) on the account-detail
+ * screen. Shows the assigned internal staffer as a monogram + name + role,
+ * or a dashed "Unassigned" placeholder, with an Assign/Change affordance
+ * that opens the existing assignment dialog.
+ */
 export function AccountStaffCard({
   accountId,
   kind,
@@ -26,37 +32,46 @@ export function AccountStaffCard({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="rounded-lg border border-line bg-card p-4">
+    <div className="rounded-2xl border border-line bg-card px-[18px] py-4">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+        <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {title}
         </p>
         {canEdit && (
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
             onClick={() => setOpen(true)}
-            className="h-7 px-2 text-[12px]"
+            className="text-[12.5px] font-semibold text-[#C25E26] transition-colors hover:text-[#a04d1d]"
           >
             {staff ? "Change" : "Assign"}
-          </Button>
+          </button>
         )}
       </div>
 
-      {staff ? (
-        <div className="mt-2 space-y-1">
-          <p className="font-medium text-ink">{staff.fullName}</p>
-          <p className="break-all font-mono text-[12px] text-muted-foreground">
-            {staff.email}
-          </p>
-          <p className="font-mono text-[11px] capitalize text-muted-foreground">
-            {staff.role.replace(/_/g, " ").toLowerCase()}
-          </p>
-        </div>
-      ) : (
-        <p className="mt-2 text-[13px] text-muted-foreground">Unassigned</p>
-      )}
+      <div className="mt-3 flex items-center gap-3">
+        {staff ? (
+          <>
+            <Monogram name={staff.fullName} seed={staff.id} size="md" round />
+            <div className="min-w-0">
+              <div className="truncate text-[14px] font-semibold text-ink">
+                {staff.fullName}
+              </div>
+              <div className="truncate font-mono text-[11px] capitalize text-muted-foreground">
+                {staff.role.replace(/_/g, " ").toLowerCase()}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border-[1.5px] border-dashed border-line-2 text-[15px] text-muted-2">
+              +
+            </span>
+            <span className="text-[14px] font-medium text-muted-2">
+              Unassigned
+            </span>
+          </>
+        )}
+      </div>
 
       {canEdit && (
         <AssignStaffDialog

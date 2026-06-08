@@ -8,9 +8,15 @@ import {
 } from "@/components/layouts/page-shell";
 import { BusinessesListView } from "@/components/admin/businesses-list-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
-import { listAdminBusinesses } from "@/lib/actions/admin/businesses";
+import {
+  getBusinessStatusCounts,
+  listAdminBusinesses,
+} from "@/lib/actions/admin/businesses";
 import { getBusinessLifecycleBatch } from "@/lib/actions/admin/business-intel";
-import type { AdminBusinessPage } from "@/types/admin/business";
+import type {
+  AdminBusinessPage,
+  BusinessStatusCounts,
+} from "@/types/admin/business";
 import type { BusinessLifecycleSnapshot } from "@/types/admin/business-intel";
 import type { InternalRole } from "@/types/types";
 
@@ -27,6 +33,7 @@ const READ_ROLES: InternalRole[] = [
 interface BusinessesPageProps {
   searchParams: Promise<{
     page?: string;
+    limit?: string;
     search?: string;
     status?: string;
     accountId?: string;
@@ -57,7 +64,10 @@ export default async function AdminBusinessesPage({
   }
 
   const params = await searchParams;
-  const page = Math.max(0, Number.parseInt(params.page ?? "0", 10) || 0);
+  // DataTable uses 1-indexed `?page=` in the URL; the backend is 0-indexed.
+  const pageOneIndexed = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
+  const backendPage = pageOneIndexed - 1;
+  const size = Math.max(1, Number.parseInt(params.limit ?? "10", 10) || 10);
   const search = params.search?.trim() || undefined;
   const accountId = params.accountId?.trim() || undefined;
   const status = params.status;
@@ -65,21 +75,25 @@ export default async function AdminBusinessesPage({
     status === "active" ? true : status === "inactive" ? false : undefined;
 
   let pageData: AdminBusinessPage | null = null;
+  let counts: BusinessStatusCounts = { total: 0, active: 0, inactive: 0 };
   let loadError: string | null = null;
   try {
-    pageData = await listAdminBusinesses({
-      page,
-      size: 20,
-      search,
-      active,
-      accountId,
-    });
+    [pageData, counts] = await Promise.all([
+      listAdminBusinesses({
+        page: backendPage,
+        size,
+        search,
+        active,
+        accountId,
+      }),
+      getBusinessStatusCounts({ search, accountId }),
+    ]);
   } catch (error: any) {
     loadError = error?.message ?? "Failed to load businesses.";
   }
 
   // Lifecycle batch — best-effort. A failure here shouldn't block the list;
-  // the column simply renders "—" for every row instead.
+  // the column simply renders "No data" for every row instead.
   let lifecycleByBusinessId: Record<string, BusinessLifecycleSnapshot> = {};
   if (pageData && pageData.content.length > 0) {
     try {
@@ -87,7 +101,7 @@ export default async function AdminBusinessesPage({
         pageData.content.map((b) => b.id),
       );
     } catch {
-      // swallow — the column will just show "—" for every row
+      // swallow — the column will just show "No data" for every row
     }
   }
 
@@ -110,7 +124,7 @@ export default async function AdminBusinessesPage({
           ) : (
             <BusinessesListView
               initialPage={pageData!}
-              initialSearch={search ?? ""}
+              counts={counts}
               initialStatus={status ?? "all"}
               accountId={accountId ?? null}
               lifecycleByBusinessId={lifecycleByBusinessId}

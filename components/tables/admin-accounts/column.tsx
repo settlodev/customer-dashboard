@@ -1,66 +1,46 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, User } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
-import { AdminAccountListItem, OnboardingState } from "@/types/admin/account";
+import { cn } from "@/lib/utils";
+import { AdminAccountListItem } from "@/types/admin/account";
 import { AccountRowActions } from "@/components/tables/admin-accounts/cell-action";
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
-  try {
-    return new Date(value).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return value;
-  }
-}
-
-function timeSince(value: string | null | undefined): string {
-  if (!value) return "";
-  try {
-    const then = new Date(value).getTime();
-    const diff = Date.now() - then;
-    if (diff < 0) return "";
-    const days = Math.floor(diff / 86_400_000);
-    if (days >= 365) return `${Math.floor(days / 365)}y ago`;
-    if (days >= 30) return `${Math.floor(days / 30)}mo ago`;
-    if (days >= 1) return `${days}d ago`;
-    const hours = Math.floor(diff / 3_600_000);
-    if (hours >= 1) return `${hours}h ago`;
-    const minutes = Math.floor(diff / 60_000);
-    return minutes >= 1 ? `${minutes}m ago` : "just now";
-  } catch {
-    return "";
-  }
-}
-
-const STATE_LABEL: Record<OnboardingState, string> = {
-  EMAIL_UNVERIFIED: "Email unverified",
-  BUSINESS_INCOMPLETE: "Business pending",
-  LOCATION_INCOMPLETE: "Location pending",
-  COMPLETE: "Fully registered",
-};
-
-const STATE_TONE: Record<OnboardingState, string> = {
-  EMAIL_UNVERIFIED:
-    "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400",
-  BUSINESS_INCOMPLETE:
-    "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
-  LOCATION_INCOMPLETE:
-    "bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-400",
-  COMPLETE:
-    "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
-};
+import { Monogram } from "@/components/admin/shared/monogram";
+import { OnboardingBadge } from "@/components/admin/shared/onboarding-badge";
+import { formatDate, timeSince } from "@/components/admin/shared/format";
 
 interface ColumnDeps {
   canSuspend: boolean;
   canDelete: boolean;
+}
+
+function SortHeader({
+  label,
+  direction,
+  onClick,
+}: {
+  label: string;
+  direction?: false | "asc" | "desc";
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.06em] text-muted-foreground transition-colors hover:text-ink"
+    >
+      {label}
+      {direction === "asc" ? (
+        <ArrowUp className="h-3 w-3 text-ink-3" />
+      ) : direction === "desc" ? (
+        <ArrowDown className="h-3 w-3 text-ink-3" />
+      ) : (
+        <ChevronsUpDown className="h-3 w-3 text-muted-2" />
+      )}
+    </button>
+  );
 }
 
 export function buildAccountColumns({
@@ -72,32 +52,30 @@ export function buildAccountColumns({
       accessorKey: "fullName",
       enableHiding: false,
       header: ({ column }) => (
-        <Button
-          className="text-left p-0 font-semibold"
-          variant="ghost"
+        <SortHeader
+          label="Account"
+          direction={column.getIsSorted()}
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Account
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+        />
       ),
       cell: ({ row }) => {
         const account = row.original;
+        const name = account.fullName || account.email;
         return (
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center flex-shrink-0">
-              <User className="h-4 w-4 text-blue-500" />
-            </div>
+          <div className="flex min-w-0 items-center gap-3">
+            <Monogram name={name} seed={account.id} size="lg" />
             <div className="min-w-0">
               <Link
                 href={`/accounts/${account.id}`}
-                className="font-medium text-gray-900 dark:text-gray-100 hover:text-primary block truncate"
+                className="block truncate text-[13.5px] font-semibold tracking-[-0.01em] text-ink hover:text-[#C25E26]"
               >
-                {account.fullName || account.email}
+                {name}
               </Link>
-              <span className="text-xs text-muted-foreground font-mono block truncate">
+              <span className="block truncate font-mono text-[11.5px] text-muted-foreground">
                 {account.email}
-                {account.accountNumber ? ` · ${account.accountNumber}` : ""}
+                {account.accountNumber && (
+                  <span className="text-muted-2"> · {account.accountNumber}</span>
+                )}
               </span>
             </div>
           </div>
@@ -108,31 +86,20 @@ export function buildAccountColumns({
       accessorKey: "whitelabelAppCode",
       header: "Whitelabel",
       enableHiding: true,
-      cell: ({ row }) => (
-        <span className="font-mono text-xs text-muted-foreground">
-          {row.original.whitelabelAppCode ?? "—"}
-        </span>
-      ),
+      cell: ({ row }) =>
+        row.original.whitelabelAppCode ? (
+          <span className="inline-flex rounded-md border border-line bg-canvas px-2 py-0.5 font-mono text-[11px] font-medium tracking-[0.04em] text-ink-3">
+            {row.original.whitelabelAppCode}
+          </span>
+        ) : (
+          <span className="text-[12.5px] text-muted-2">—</span>
+        ),
     },
     {
       id: "onboardingState",
       header: "Onboarding",
       enableHiding: true,
-      cell: ({ row }) => {
-        const state = row.original.onboardingState;
-        if (!state) {
-          return (
-            <span className="text-xs text-muted-foreground">—</span>
-          );
-        }
-        return (
-          <span
-            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATE_TONE[state]}`}
-          >
-            {STATE_LABEL[state]}
-          </span>
-        );
-      },
+      cell: ({ row }) => <OnboardingBadge state={row.original.onboardingState} />,
     },
     {
       accessorKey: "active",
@@ -140,13 +107,14 @@ export function buildAccountColumns({
       enableHiding: true,
       cell: ({ row }) => {
         const active = row.original.active;
-        const tone = active
-          ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
-          : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
         return (
-          <span
-            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${tone}`}
-          >
+          <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
+            <span
+              className={cn(
+                "h-[7px] w-[7px] rounded-full",
+                active ? "bg-pos" : "bg-muted-2",
+              )}
+            />
             {active ? "Active" : "Suspended"}
           </span>
         );
@@ -157,32 +125,27 @@ export function buildAccountColumns({
       header: "Phone",
       enableHiding: true,
       cell: ({ row }) => (
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="font-mono text-[12.5px] text-ink-2">
           {row.original.phoneNumber || "—"}
         </span>
       ),
     },
     {
       accessorKey: "createdAt",
-      header: ({ column }) => (
-        <Button
-          className="text-left p-0 font-semibold"
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Registered
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
       enableHiding: true,
+      header: ({ column }) => (
+        <SortHeader
+          label="Registered"
+          direction={column.getIsSorted()}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        />
+      ),
       cell: ({ row }) => {
         const created = row.original.createdAt;
         return (
           <div className="flex flex-col">
-            <span className="text-sm text-gray-900 dark:text-gray-100">
-              {formatDate(created)}
-            </span>
-            <span className="text-[10.5px] text-muted-foreground">
+            <span className="text-[13px] text-ink">{formatDate(created)}</span>
+            <span className="font-mono text-[11.5px] text-muted-foreground">
               {timeSince(created)}
             </span>
           </div>

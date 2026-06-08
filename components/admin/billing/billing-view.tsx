@@ -370,13 +370,12 @@ export function BillingView({
                   className="flex items-center justify-between text-[13px]"
                 >
                   <span className="font-medium text-ink">
-                    {item.packageName ?? item.packageId}
+                    {item.packageInfo?.name ?? item.entityType}
                   </span>
                   <span className="font-mono text-[12px] text-muted-foreground">
-                    {item.status}
-                    {item.quantity ? ` · ${item.quantity}×` : ""}
-                    {item.unitPrice !== null
-                      ? ` · ${formatMoney(item.unitPrice)}`
+                    {item.entityType} · {item.status}
+                    {item.packageInfo?.basePrice != null
+                      ? ` · ${formatMoney(item.packageInfo.basePrice)}`
                       : ""}
                   </span>
                 </li>

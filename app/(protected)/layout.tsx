@@ -27,6 +27,7 @@ import { BuildPill } from "@/components/widgets/build-pill";
 import { SettloRealtimeListener } from "@/components/realtime/settlo-realtime-listener";
 import { StockCacheRealtimeBinder } from "@/components/realtime/stock-cache-realtime-binder";
 import { CustomerCacheRealtimeBinder } from "@/components/realtime/customer-cache-realtime-binder";
+import { ImpersonationBanner } from "@/components/impersonation/impersonation-banner";
 import type { ExtendedUser } from "@/types/types";
 
 // Every page under (protected) resolves identity from cookies (authToken,
@@ -96,6 +97,9 @@ export default async function RootLayout({
     return (
       <EntitlementProvider initialEntitlements={entitlements}>
         <div className="flex h-screen flex-col bg-canvas">
+          {authToken?.impersonating && (
+            <ImpersonationBanner email={authToken.email} />
+          )}
           <ExpiredTopBar
             businessName={currentBusiness?.name}
             locationName={currentLocation?.name}
@@ -145,6 +149,9 @@ export default async function RootLayout({
         <LoadingBarProvider>
           <SidebarProvider>
             <div className="flex h-screen flex-col overflow-hidden bg-canvas">
+              {authToken?.impersonating && (
+                <ImpersonationBanner email={authToken.email} />
+              )}
               <SubscriptionBanner />
               <div className="flex flex-1 min-h-0 overflow-hidden">
                 <DashboardSidebarShell data={businessData} user={user} />

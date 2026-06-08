@@ -1,6 +1,5 @@
 import Dashboard from "@/components/dashboard/Dashboard";
-import { InventoryKpiStrip } from "@/components/widgets/inventory/inventory-kpi-strip";
-import { PrepaymentKpiStrip } from "@/components/widgets/prepayments/prepayments-kpi-strip";
+import { PageShell } from "@/components/layouts/page-shell";
 import {
     getCurrentBusiness,
     getCurrentLocation,
@@ -23,10 +22,12 @@ export default async function DashboardPage() {
     ]);
 
     return (
-        <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 min-h-screen space-y-4">
-            <InventoryKpiStrip summary={summary} />
-            <PrepaymentKpiStrip summary={prepaid} />
-            <Dashboard />
-        </div>
+        <PageShell>
+            <Dashboard
+                locationId={location?.id ?? null}
+                inventorySummary={summary}
+                prepaid={prepaid}
+            />
+        </PageShell>
     );
 }

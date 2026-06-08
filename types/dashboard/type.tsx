@@ -32,28 +32,4 @@ export default interface OverviewResponse {
 
   totalRefundCount: number;
   totalRefundedAmount: number;
-
-  paymentMethodBreakdown: PaymentMethodBreakdown[];
-  topSellingItems: TopSellingItem[];
-}
-
-export interface PaymentMethodBreakdown {
-  acceptedPaymentMethodType: string;
-  acceptedPaymentMethodTypeName: string;
-  paymentType: string;
-  transactionCount: number;
-  totalAmount: number;
-  percentage: number;
-}
-
-export interface TopSellingItem {
-  productId: string;
-  variantId: string;
-  itemName: string;
-  imageUrl: string | null;
-  departmentName: string;
-  quantitySold: number;
-  grossSales: number;
-  netSales: number;
-  grossProfit: number;
 }

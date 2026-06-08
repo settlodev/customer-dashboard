@@ -19,6 +19,10 @@ export declare interface LoginResponse {
     verificationResendTokenExpiresAt?: string;
     mfaRequired?: boolean;
     mfaToken?: string;
+    /** Set on tokens minted via POST /auth/impersonate ("login on behalf"). */
+    impersonating?: boolean;
+    /** Auth user id of the staff member performing the impersonation. */
+    impersonatorId?: string;
 }
 
 export type ApiResponse<T> = {
@@ -95,6 +99,10 @@ export declare interface AuthToken {
     internalRole?: InternalRole | null;
     internalPermissions?: string[];
     subjectType?: SubjectType;
+    /** True when this customer session was minted by staff impersonation. */
+    impersonating?: boolean;
+    /** Auth user id of the staff member impersonating this account. */
+    impersonatorId?: string | null;
 }
 
 export declare interface activeBusiness {

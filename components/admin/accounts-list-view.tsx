@@ -32,7 +32,6 @@ import {
 interface AccountsListViewProps {
   initialPage: AdminAccountListPage;
   counts: AccountOnboardingCounts;
-  initialSearch: string;
   initialStatus: string;
   initialOnboardingState: string;
   initialFrom: string | null;
@@ -45,6 +44,8 @@ interface TabConfig {
   key: "all" | OnboardingState;
   label: string;
   count: number;
+  /** Colour of the leading status dot (omitted for the "All" tab). */
+  dotColor?: string;
 }
 
 function parseDateInput(value: string | null): Date | undefined {
@@ -56,7 +57,6 @@ function parseDateInput(value: string | null): Date | undefined {
 export function AccountsListView({
   initialPage,
   counts,
-  initialSearch,
   initialStatus,
   initialOnboardingState,
   initialFrom,
@@ -106,21 +106,25 @@ export function AccountsListView({
       key: "EMAIL_UNVERIFIED",
       label: "Email unverified",
       count: counts.emailUnverified,
+      dotColor: "hsl(var(--neg))",
     },
     {
       key: "BUSINESS_INCOMPLETE",
       label: "Business pending",
       count: counts.businessIncomplete,
+      dotColor: "hsl(var(--warn))",
     },
     {
       key: "LOCATION_INCOMPLETE",
       label: "Location pending",
       count: counts.locationIncomplete,
+      dotColor: "#2563EB",
     },
     {
       key: "COMPLETE",
       label: "Fully registered",
       count: counts.complete,
+      dotColor: "hsl(var(--pos))",
     },
   ];
 
@@ -178,7 +182,7 @@ export function AccountsListView({
       <div
         role="tablist"
         aria-label="Current onboarding state"
-        className="inline-flex w-fit max-w-full items-center gap-0.5 overflow-x-auto rounded-md border border-line bg-card p-[3px]"
+        className="-mb-px flex flex-wrap items-center gap-1.5 overflow-x-auto border-b border-line"
       >
         {tabs.map((tab) => {
           const active = activeTabKey === tab.key;
@@ -190,19 +194,25 @@ export function AccountsListView({
               aria-selected={active}
               onClick={() => onTabClick(tab.key)}
               className={cn(
-                "inline-flex items-center gap-1.5 whitespace-nowrap rounded-[5px] px-3 py-1.5 text-[12.5px] font-medium transition-colors",
+                "-mb-px inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-3.5 pb-3 pt-2 text-[13.5px] transition-colors",
                 active
-                  ? "bg-canvas text-ink"
-                  : "text-ink-3 hover:text-ink",
+                  ? "border-primary font-semibold text-ink"
+                  : "border-transparent font-medium text-ink-3 hover:text-ink",
               )}
             >
+              {tab.dotColor && (
+                <span
+                  className="h-[7px] w-[7px] rounded-full"
+                  style={{ backgroundColor: tab.dotColor }}
+                />
+              )}
               {tab.label}
               <span
                 className={cn(
-                  "rounded-[3px] px-1.5 font-mono text-[10.5px] tracking-[0.02em]",
+                  "rounded-md px-1.5 py-px font-mono text-[11px] font-semibold tracking-[0.02em]",
                   active
-                    ? "border border-line bg-card text-ink-3"
-                    : "bg-canvas text-muted-foreground",
+                    ? "bg-primary/12 text-[#C25E26]"
+                    : "bg-black/[0.05] text-ink-3 dark:bg-white/[0.06]",
                 )}
               >
                 {tab.count.toLocaleString()}
@@ -296,6 +306,7 @@ export function AccountsListView({
         total={totalElements}
         pageCount={Math.max(1, totalPages)}
         rowClickBasePath="/accounts"
+        manualSort
         disableArchive
       />
     </div>
