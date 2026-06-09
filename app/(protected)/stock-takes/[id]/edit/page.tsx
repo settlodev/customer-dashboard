@@ -70,6 +70,14 @@ function toFormValues(stockTake: StockTake): Partial<CreateStockTakeInput> {
           ? (String(parsed.classification).toUpperCase() as "A" | "B" | "C")
           : undefined,
       };
+    case "DEPARTMENT":
+      return {
+        ...base,
+        departmentId:
+          typeof parsed.departmentId === "string"
+            ? parsed.departmentId
+            : undefined,
+      };
     case "ZONE":
       return {
         ...base,

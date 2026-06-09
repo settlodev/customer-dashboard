@@ -246,8 +246,17 @@ async function handleAdminMiddleware(
   // The route group lives at app/(admin)/admin/* — internal paths always
   // start with /admin. Rewrite any inbound path that isn't already prefixed.
   const needsRewrite = !isAdminPath(pathname);
-  const rewriteTarget = (target: string): URL =>
-    new URL(needsRewrite ? `${ADMIN_ROUTE_PREFIX}${target}` : target, request.url);
+  // Rewrite into the /admin/* route group while PRESERVING the inbound query
+  // string and hash. Building a URL from a path-only string —
+  // `new URL("/admin/accounts", request.url)` — silently drops the query, which
+  // made every ?page/&size/&search/&sort and onboarding/status/date filter
+  // param vanish before reaching the page's searchParams. Cloning nextUrl and
+  // only swapping the pathname keeps the search params intact.
+  const rewriteTarget = (target: string): URL => {
+    const url = request.nextUrl.clone();
+    url.pathname = needsRewrite ? `${ADMIN_ROUTE_PREFIX}${target}` : target;
+    return url;
+  };
 
   // Read staff session cookie
   let staffToken: AuthToken | null = null;
@@ -321,7 +330,7 @@ async function handleAdminMiddleware(
   // ── Logged in: rewrite to /admin/* route group internally ─────────
   if (needsRewrite) {
     return withRefreshedStaffCookies(
-      NextResponse.rewrite(new URL(`${ADMIN_ROUTE_PREFIX}${pathname}`, request.url)),
+      NextResponse.rewrite(rewriteTarget(pathname)),
     );
   }
 

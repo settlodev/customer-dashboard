@@ -16,12 +16,13 @@ export const CreateStockTakeSchema = z
       })
       .default("LOCATION"),
     cycleCountType: z
-      .enum(["FULL", "ABC_CLASS", "RANDOM", "ZONE"])
+      .enum(["FULL", "ABC_CLASS", "DEPARTMENT", "RANDOM", "ZONE"])
       .default("FULL"),
     blindCount: z.boolean().optional(),
     notes: z.string().max(2000, "Notes cannot exceed 2000 characters").optional(),
 
     abcClass: z.enum(["A", "B", "C"]).optional(),
+    departmentId: uuid.optional(),
     zoneId: uuid.optional(),
 
     sampleMode: z.enum(["size", "percentage"]).optional(),
@@ -46,6 +47,15 @@ export const CreateStockTakeSchema = z
             code: z.ZodIssueCode.custom,
             path: ["abcClass"],
             message: "Pick an ABC class",
+          });
+        }
+        break;
+      case "DEPARTMENT":
+        if (!data.departmentId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["departmentId"],
+            message: "Pick a department",
           });
         }
         break;

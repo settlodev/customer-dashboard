@@ -70,6 +70,7 @@ export async function createStockTake(
     blindCount,
     notes,
     abcClass,
+    departmentId,
     zoneId,
     sampleMode,
     sampleSize,
@@ -84,6 +85,7 @@ export async function createStockTake(
     filterCriteria: buildFilterCriteria({
       cycleCountType,
       abcClass,
+      departmentId,
       zoneId,
       sampleMode,
       sampleSize,
@@ -111,6 +113,7 @@ export async function createStockTake(
 function buildFilterCriteria(args: {
   cycleCountType: z.infer<typeof CreateStockTakeSchema>["cycleCountType"];
   abcClass?: "A" | "B" | "C";
+  departmentId?: string;
   zoneId?: string;
   sampleMode?: "size" | "percentage";
   sampleSize?: number;
@@ -119,6 +122,10 @@ function buildFilterCriteria(args: {
   switch (args.cycleCountType) {
     case "ABC_CLASS":
       return args.abcClass ? JSON.stringify({ classification: args.abcClass }) : undefined;
+    case "DEPARTMENT":
+      return args.departmentId
+        ? JSON.stringify({ departmentId: args.departmentId })
+        : undefined;
     case "ZONE":
       return args.zoneId ? JSON.stringify({ zoneId: args.zoneId }) : undefined;
     case "RANDOM":
@@ -187,6 +194,7 @@ export async function updateStockTakeDraft(
     blindCount,
     notes,
     abcClass,
+    departmentId,
     zoneId,
     sampleMode,
     sampleSize,
@@ -201,6 +209,7 @@ export async function updateStockTakeDraft(
     filterCriteria: buildFilterCriteria({
       cycleCountType,
       abcClass,
+      departmentId,
       zoneId,
       sampleMode,
       sampleSize,
@@ -234,6 +243,7 @@ export async function getStockTakePreview(
     locationType,
     cycleCountType,
     abcClass,
+    departmentId,
     zoneId,
     sampleMode,
     sampleSize,
@@ -246,6 +256,7 @@ export async function getStockTakePreview(
     filterCriteria: buildFilterCriteria({
       cycleCountType,
       abcClass,
+      departmentId,
       zoneId,
       sampleMode,
       sampleSize,

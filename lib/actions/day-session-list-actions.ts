@@ -318,24 +318,38 @@ export async function getDaySessionDetail(
     session = null;
   }
 
-  // Z-report (CLOSED) vs X-report (OPEN). We don't know the status
-  // until the Accounts call lands, so pick the right path here.
+  // X-report (OPEN) vs Z-report (CLOSED). The Accounts lifecycle status
+  // drives the first choice, but Accounts and Reports can disagree — a
+  // stale, merged, or superseded session — and the Reports Service rejects
+  // an X-report for a session IT considers CLOSED (and a Z-report for one it
+  // considers OPEN). So try the status-implied report first, then fall back
+  // to the other type, so the user gets whichever report Reports actually
+  // has instead of an empty panel.
   let report: DaySessionReport | null = null;
   if (session) {
-    const reportPath =
+    const apiClient = new ApiClient("reports");
+    const params = new URLSearchParams({ locationId }).toString();
+
+    const fetchReport = async (
+      kind: "x-report" | "z-report",
+    ): Promise<DaySessionReport | null> => {
+      try {
+        const data = (await apiClient.get(
+          `/api/v2/analytics/day-sessions/${sessionId}/${kind}?${params}`,
+        )) as DaySessionReport;
+        return parseStringify(data) as DaySessionReport;
+      } catch {
+        return null;
+      }
+    };
+
+    // Only the second call runs when the first fails, so a matching status
+    // costs nothing extra.
+    const [primary, fallback] =
       session.status === "OPEN"
-        ? `/api/v2/analytics/day-sessions/${sessionId}/x-report`
-        : `/api/v2/analytics/day-sessions/${sessionId}/z-report`;
-    const params = new URLSearchParams({ locationId });
-    try {
-      const apiClient = new ApiClient("reports");
-      const data = (await apiClient.get(
-        `${reportPath}?${params.toString()}`,
-      )) as DaySessionReport;
-      report = parseStringify(data) as DaySessionReport;
-    } catch {
-      report = null;
-    }
+        ? (["x-report", "z-report"] as const)
+        : (["z-report", "x-report"] as const);
+    report = (await fetchReport(primary)) ?? (await fetchReport(fallback));
   }
 
   return { session, report };

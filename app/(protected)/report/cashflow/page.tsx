@@ -1,325 +1,218 @@
-"use client";
-import React, { useEffect, useState } from "react";
-import { format } from "date-fns";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { endOfMonth, format, startOfMonth } from "date-fns";
 import {
-  ArrowUpCircle,
-  CalendarIcon,
-  DollarSign,
+  ArrowDownToLine,
+  ArrowUpFromLine,
   Receipt,
   RefreshCcw,
-  TrendingDown,
+  Wallet,
 } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
+
+import { SectionCard } from "@/components/admin/shared/section-card";
+import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
+import NoItems from "@/components/layouts/no-items";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { cashFlowReport } from "@/lib/actions/order-actions";
-import { CashFlow } from "@/types/orders/type";
+  PageBody,
+  PageBreadcrumbs,
+  PageHeader,
+  PageShell,
+} from "@/components/layouts/page-shell";
+import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import Loading from "@/components/ui/loading";
+  CashflowMethodBreakdown,
+  CashflowSummaryPanel,
+} from "@/components/reports/cashflow/cashflow-panels";
+import { CashflowTrendChart } from "@/components/reports/cashflow/cashflow-trend-chart";
+import { getLocationCurrency } from "@/lib/actions/currency-actions";
+import { fetchOverview } from "@/lib/actions/dashboard-action";
+import { cashFlowDaily } from "@/lib/actions/order-actions";
+import { getPaymentMethodBreakdown } from "@/lib/actions/transaction-analytics-actions";
+import {
+  buildPlaceholderTrend,
+  buildTrendFromDaily,
+} from "@/lib/reports/cashflow-trend";
+import { breakdownToMethodRows, fmtAmount } from "@/types/reports/cashflow";
+import type OverviewResponse from "@/types/dashboard/type";
 
-function DateTimePicker({
-  value,
-  onChange,
-}: {
-  value: Date;
-  onChange: (date: Date) => void;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const handleDateSelect = (selected: Date | undefined) => {
-    if (selected) {
-      const newDate = new Date(selected);
-      newDate.setHours(value.getHours());
-      newDate.setMinutes(value.getMinutes());
-      onChange(newDate);
-    }
-  };
-
-  const handleTimeChange = (type: "hour" | "minute", val: string) => {
-    const newDate = new Date(value);
-    if (type === "hour") {
-      newDate.setHours(parseInt(val, 10));
-    } else {
-      newDate.setMinutes(parseInt(val, 10));
-    }
-    onChange(newDate);
-  };
-
-  return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className="w-full justify-start text-left font-normal"
-        >
-          <CalendarIcon className="hidden mr-2 h-4 w-4" />
-          {format(value, "MM/dd/yyyy HH:mm")}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <div className="sm:flex">
-          <Calendar
-            mode="single"
-            selected={value}
-            onSelect={handleDateSelect}
-            initialFocus
-          />
-          <div className="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x">
-            <ScrollArea className="w-64 sm:w-auto">
-              <div className="flex sm:flex-col p-2">
-                {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
-                  <Button
-                    key={hour}
-                    size="icon"
-                    variant={value.getHours() === hour ? "default" : "ghost"}
-                    onClick={() => handleTimeChange("hour", hour.toString())}
-                  >
-                    {hour}
-                  </Button>
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" className="sm:hidden" />
-            </ScrollArea>
-            <ScrollArea className="w-64 sm:w-auto">
-              <div className="flex sm:flex-col p-2">
-                {Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => (
-                  <Button
-                    key={minute}
-                    size="icon"
-                    variant={
-                      value.getMinutes() === minute ? "default" : "ghost"
-                    }
-                    onClick={() =>
-                      handleTimeChange("minute", minute.toString())
-                    }
-                  >
-                    {minute.toString().padStart(2, "0")}
-                  </Button>
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" className="sm:hidden" />
-            </ScrollArea>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-const CashFlowReportDashboard = () => {
-  const [startDate, setStartDate] = useState(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-  });
-  const [endDate, setEndDate] = useState(new Date());
-  const [cashfData, setCashData] = useState<CashFlow | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isFiltering, setIsFiltering] = useState(false);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await cashFlowReport(startDate, endDate);
-        console.log("Cash flow report:", response);
-        setCashData(response);
-      } catch (error) {
-        console.error("Error fetching cash flow report:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
-  const handleFilter = async () => {
-    setIsFiltering(true);
-    try {
-      const response = await cashFlowReport(startDate, endDate);
-      setCashData(response);
-    } catch (error) {
-      console.error("Error fetching cash flow report:", error);
-    } finally {
-      setIsFiltering(false);
-    }
-  };
-
-  const formatCurrency = (value: number) => {
-    return `${new Intl.NumberFormat().format(value)} TZS`;
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loading />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 space-y-6 min-h-screen">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            Cash flow report
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Overview of transactions, expenses and refunds
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
-          <DateTimePicker value={startDate} onChange={setStartDate} />
-          <DateTimePicker value={endDate} onChange={setEndDate} />
-          <Button onClick={handleFilter} disabled={isFiltering}>
-            {isFiltering ? (
-              <div className="border-t-transparent border-4 border-green-500 w-[20px] h-[20px] rounded-full animate-spin" />
-            ) : (
-              "Filter"
-            )}
-          </Button>
-        </div>
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Transactions
-            </CardTitle>
-            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              <Receipt className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 pt-0">
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {formatCurrency(cashfData?.transactionsAmount || 0)}
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {cashfData?.transactions || 0} transactions
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Expenses
-            </CardTitle>
-            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              <DollarSign className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 pt-0">
-            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-              {formatCurrency(cashfData?.expensesPaidAmount || 0)}
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {cashfData?.expensePayments || 0} expenses
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Refunds
-            </CardTitle>
-            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              <RefreshCcw className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 pt-0">
-            <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-              {formatCurrency(cashfData?.refundsAmount || 0)}
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {cashfData?.refunds || 0} refunds
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Closing balance
-            </CardTitle>
-            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              {(cashfData?.closingBalance || 0) >= 0 ? (
-                <ArrowUpCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-              ) : (
-                <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 pt-0">
-            <div className={`text-2xl font-bold ${(cashfData?.closingBalance || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-              {formatCurrency(cashfData?.closingBalance || 0)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Payment methods table */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Breakdown by payment method
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10">#</TableHead>
-                <TableHead>Payment method</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {cashfData?.paymentMethodTotals?.length ? (
-                cashfData.paymentMethodTotals.map((method, index) => (
-                  <TableRow key={`${method.paymentMethodName}-${index}`}>
-                    <TableCell className="text-muted-foreground">
-                      {index + 1}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {method.paymentMethodName}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(method.amount)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={3}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    No payment data available
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-    </div>
-  );
+type Params = {
+  searchParams: Promise<{
+    from?: string;
+    to?: string;
+  }>;
 };
 
-export default CashFlowReportDashboard;
+const pluralize = (n: number, word: string) =>
+  `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
+
+export default async function CashflowReportPage({ searchParams }: Params) {
+  const resolved = await searchParams;
+
+  // Default to the current month — keeps the first paint scoped, matching
+  // every other reporting screen.
+  const now = new Date();
+  const from = resolved.from ?? format(startOfMonth(now), "yyyy-MM-dd");
+  const to = resolved.to ?? format(endOfMonth(now), "yyyy-MM-dd");
+
+  // `cashFlowReport` takes Date objects; widen to whole days so the last
+  // day's evening trade is included (same convention as the sales report).
+  const [overview, currency, paymentBreakdown, dailyPoints] =
+    await Promise.all([
+      // KPIs/summary come from the Reports Service overview. (The old
+      // /api/reports cash-flow summary was never migrated and 404s behind
+      // the analytics gateway.)
+      fetchOverview(from, to)
+        .then((data) => data as OverviewResponse | null)
+        .catch(() => null),
+      getLocationCurrency().catch(() => "TZS"),
+      // Richer per-tender breakdown (transaction counts + server-computed
+      // share). The overview reads the same transactions, so they reconcile.
+      getPaymentMethodBreakdown({ startDate: from, endDate: to }).catch(
+        () => [],
+      ),
+      // Real per-day series for the trend chart. [] → fall back to a modeled
+      // trend (e.g. before the endpoint is deployed).
+      cashFlowDaily(from, to).catch(() => []),
+    ]);
+
+  const cashIn = overview?.transactionsAmount ?? 0;
+  const expenses = overview?.expensesPaidAmount ?? 0;
+  const refunds = overview?.totalRefundedAmount ?? 0;
+  const cashOut = expenses + refunds;
+  const closing = overview?.closingBalance ?? cashIn - cashOut;
+
+  const methodRows = breakdownToMethodRows(paymentBreakdown);
+
+  // The overview carries no settled-transaction count, so sum the per-tender
+  // counts from the payment-method breakdown.
+  const txnCount = methodRows.reduce((sum, row) => sum + (row.count ?? 0), 0);
+  const expenseCount = overview?.totalExpenses ?? 0;
+  const refundCount = overview?.totalRefundCount ?? 0;
+  const outCount = expenseCount + refundCount;
+  // Real daily series when the endpoint returns data; otherwise a modeled
+  // distribution of the period totals (flagged "Live data pending").
+  const hasDailySeries = dailyPoints.length > 0;
+  const trend = hasDailySeries
+    ? buildTrendFromDaily(from, to, dailyPoints)
+    : buildPlaceholderTrend(from, to, cashIn, cashOut);
+  const trendIsStub = !hasDailySeries;
+  const hasMovement = cashIn !== 0 || cashOut !== 0;
+  const retainRate = cashIn > 0 ? (closing / cashIn) * 100 : null;
+
+  const subtitle =
+    from === to
+      ? `Cash position on ${format(new Date(from), "MMM d, yyyy")}`
+      : `Cash position ${format(new Date(from), "MMM d")} – ${format(new Date(to), "MMM d, yyyy")}`;
+
+  const money = (value: number) => (hasMovement ? fmtAmount(value) : "—");
+  const signedClosing = hasMovement
+    ? `${closing < 0 ? "−" : ""}${fmtAmount(Math.abs(closing))}`
+    : "—";
+
+  return (
+    <PageShell maxWidth="wide">
+      <PageBreadcrumbs items={[{ title: "Cashflow" }]} />
+      <PageHeader
+        title="Cashflow report"
+        subtitle={subtitle}
+        titleAccessory={
+          <span className="inline-flex items-center rounded-full border border-line bg-canvas px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+            {currency}
+          </span>
+        }
+      />
+
+      <PageBody>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <OrdersDateFilter from={from} to={to} />
+        </div>
+
+        <KpiStrip cols={5}>
+          <KpiCard
+            icon={<ArrowDownToLine className="h-3 w-3" />}
+            label="Cash in"
+            value={money(cashIn)}
+            unit={currency}
+            delta={pluralize(txnCount, "transaction")}
+            deltaTone="pos"
+          />
+          <KpiCard
+            icon={<ArrowUpFromLine className="h-3 w-3" />}
+            label="Cash out"
+            value={money(cashOut)}
+            unit={currency}
+            delta={pluralize(outCount, "payment")}
+            deltaTone="neg"
+          />
+          <KpiCard
+            icon={<Wallet className="h-3 w-3" />}
+            label="Closing balance"
+            value={signedClosing}
+            unit={currency}
+            delta={
+              retainRate !== null
+                ? `${retainRate.toFixed(1)}% of cash in`
+                : undefined
+            }
+            deltaTone={closing < 0 ? "neg" : "pos"}
+          />
+          <KpiCard
+            icon={<Receipt className="h-3 w-3" />}
+            label="Expenses"
+            value={money(expenses)}
+            unit={currency}
+            delta={pluralize(expenseCount, "payment")}
+            deltaTone="neutral"
+          />
+          <KpiCard
+            icon={<RefreshCcw className="h-3 w-3" />}
+            label="Refunds"
+            value={money(refunds)}
+            unit={currency}
+            delta={pluralize(refundCount, "refund")}
+            deltaTone={refunds > 0 ? "neg" : "neutral"}
+          />
+        </KpiStrip>
+
+        {hasMovement ? (
+          <>
+            <div className="grid gap-4 lg:grid-cols-3">
+              <SectionCard
+                className="lg:col-span-2"
+                title="Cash flow over time"
+                subtitle={
+                  trendIsStub
+                    ? "Daily money in vs out — modeled from period totals"
+                    : "Daily money in vs out across the period"
+                }
+                stub={trendIsStub}
+              >
+                <CashflowTrendChart data={trend} currency={currency} />
+              </SectionCard>
+
+              <SectionCard
+                title="Cash flow summary"
+                subtitle="How inflow nets down to the closing balance"
+              >
+                <CashflowSummaryPanel
+                  cashIn={cashIn}
+                  expenses={expenses}
+                  refunds={refunds}
+                  closing={closing}
+                  currency={currency}
+                />
+              </SectionCard>
+            </div>
+
+            <SectionCard
+              title="Cash in by payment method"
+              subtitle={`How customers paid · ${pluralize(methodRows.length, "method")}`}
+            >
+              <CashflowMethodBreakdown rows={methodRows} currency={currency} />
+            </SectionCard>
+          </>
+        ) : (
+          <NoItems itemName="cash flow" />
+        )}
+      </PageBody>
+    </PageShell>
+  );
+}

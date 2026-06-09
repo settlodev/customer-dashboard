@@ -74,7 +74,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <AdminShell token={token}>
-      <PageShell maxWidth="wide">
+      <PageShell>
         <PageHeader
           title="Admin Dashboard"
           subtitle={subtitle}

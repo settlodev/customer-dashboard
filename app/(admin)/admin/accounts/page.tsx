@@ -19,6 +19,14 @@ import {
 } from "@/types/admin/account";
 import { InternalRole } from "@/types/types";
 
+// This page is driven entirely by URL search params — page/limit, sort, search,
+// and the onboarding/status/date filters. Force dynamic rendering so every param
+// change re-runs this Server Component with the *new* params. Without it, Next's
+// client Router Cache serves a prefetched, param-less copy of the route, so the
+// backend keeps receiving page=0&size=10 with no filters and paging/sort/filter/
+// search all silently no-op even though the URL updates.
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Accounts",
 };

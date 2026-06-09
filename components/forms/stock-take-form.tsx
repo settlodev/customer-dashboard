@@ -55,6 +55,7 @@ import {
   AlertDescription,
 } from "@/components/ui/alert";
 import ZoneSelector from "@/components/widgets/zone-selector";
+import DepartmentSelector from "@/components/widgets/department-selector";
 import {
   createStockTake,
   getStockTakePreview,
@@ -96,6 +97,7 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
       notes: initialValues?.notes ?? "",
       sampleMode: initialValues?.sampleMode ?? "size",
       abcClass: initialValues?.abcClass,
+      departmentId: initialValues?.departmentId,
       zoneId: initialValues?.zoneId,
       sampleSize: initialValues?.sampleSize,
       samplePercentage: initialValues?.samplePercentage,
@@ -114,6 +116,7 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
 
   useEffect(() => {
     if (cycleType !== "ABC_CLASS") form.setValue("abcClass", undefined);
+    if (cycleType !== "DEPARTMENT") form.setValue("departmentId", undefined);
     if (cycleType !== "ZONE") form.setValue("zoneId", undefined);
     if (cycleType !== "RANDOM") {
       form.setValue("sampleSize", undefined);
@@ -323,6 +326,31 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
                               ))}
                             </SelectContent>
                           </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {cycleType === "DEPARTMENT" && (
+                    <FormField
+                      control={form.control}
+                      name="departmentId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Department</FormLabel>
+                          <FormControl>
+                            <DepartmentSelector
+                              value={field.value ?? ""}
+                              onChange={field.onChange}
+                              isDisabled={isPending}
+                              placeholder="Select a department"
+                            />
+                          </FormControl>
+                          <p className="text-[11px] text-muted-foreground">
+                            Counts on-hand variants of products in this
+                            department&apos;s categories.
+                          </p>
                           <FormMessage />
                         </FormItem>
                       )}

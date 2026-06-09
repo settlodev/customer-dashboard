@@ -9,6 +9,7 @@ import { FormResponse } from "@/types/types";
 import { CartState } from "@/context/cartContext";
 import {
   CashFlow,
+  CashFlowDailyPoint,
   Credit,
   Order,
   OrderDetail,
@@ -296,6 +297,31 @@ export const cashFlowReport = async (
     { params },
   );
   return parseStringify(report);
+};
+
+/**
+ * Daily cash-flow series (money in vs out per day) for the cash-flow trend
+ * chart. Backed by `GET /api/v2/analytics/cash-flow/daily` (Reports Service);
+ * the buckets reconcile with `/api/v2/analytics/overview` totals for the same
+ * range. Dates are yyyy-MM-dd. Returns [] on any failure so the page can fall
+ * back to a modeled trend.
+ */
+export const cashFlowDaily = async (
+  startDate: string,
+  endDate?: string,
+): Promise<CashFlowDailyPoint[]> => {
+  try {
+    const apiClient = new ApiClient("reports");
+    const location = await getCurrentLocation();
+    if (!location?.id) return [];
+    const series = await apiClient.get(`/api/v2/analytics/cash-flow/daily`, {
+      params: { locationId: location.id, startDate, endDate },
+    });
+    return parseStringify(series) ?? [];
+  } catch (error) {
+    console.error("[cashFlowDaily] request failed", error);
+    return [];
+  }
 };
 
 export const creditReport = async (

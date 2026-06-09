@@ -669,6 +669,25 @@ export interface CashFlow {
   paymentMethodTotals: PaymentMethods[];
 }
 
+/**
+ * One day on the cash-flow trend, from
+ * `GET /api/v2/analytics/cash-flow/daily` (Reports Service). Summing each
+ * field over the range reproduces the matching `/api/v2/analytics/overview`
+ * total — same fact tables and filters, grouped by business_date.
+ */
+export interface CashFlowDailyPoint {
+  /** Calendar day, yyyy-MM-dd. */
+  date: string;
+  /** Money in — settled transactions (is_refund = 0). */
+  cashIn: number;
+  /** Refunds paid out that day. */
+  refundsAmount: number;
+  /** Expenses paid out that day. */
+  expensesPaidAmount: number;
+  /** cashIn − refundsAmount − expensesPaidAmount. */
+  net: number;
+}
+
 interface UnpaidOrders {
   orderId: UUID;
   orderName: string;

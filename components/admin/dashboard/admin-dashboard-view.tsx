@@ -233,14 +233,15 @@ function PlanMixCard({
       <BarList>
         {items.map((p) => (
           <BarRow
-            key={p.tier}
+            key={p.label}
             dot
             color={p.color}
             label={
               <>
                 {p.label}
                 <span className="ml-1 font-mono text-[11px] text-muted-2">
-                  · {p.locations} loc
+                  · {p.activeCount} active
+                  {p.trialCount > 0 ? ` · ${p.trialCount} trial` : ""}
                 </span>
               </>
             }

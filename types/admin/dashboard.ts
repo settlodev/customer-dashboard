@@ -68,9 +68,15 @@ export interface RevenueSeries {
 export interface PlanMixItem {
   tier: PlanTier;
   label: string;
-  locations: number;
+  /** Businesses currently on this package (active + trial). */
+  businesses: number;
+  /** Paying businesses (ACTIVE/PAST_DUE — incl. those that paid during trial). */
+  activeCount: number;
+  /** Businesses still on an open trial of this package. */
+  trialCount: number;
   /** Pre-formatted MRR contribution, e.g. "TZS 1.50M". */
   mrrLabel: string;
+  /** Share of the mix by business count (so bars are meaningful pre-revenue). */
   pct: number;
   color: string;
 }
@@ -244,10 +250,11 @@ export interface DashboardOverviewResponse {
   };
   planMix: {
     plan_name: string | null;
-    business_count: number;
-    location_count: number;
-    revenue: number;
     tier: string | null;
+    business_count: number;
+    active_count: number;
+    trial_count: number;
+    mrr: number;
   }[];
   trials: {
     business_id: string;

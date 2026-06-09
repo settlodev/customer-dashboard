@@ -374,25 +374,29 @@ function mapOverview(res: DashboardOverviewResponse): DashboardOverview {
     },
   ];
 
-  // Plan mix
-  const totalPlanRevenue = res.planMix.reduce((s, p) => s + p.revenue, 0);
-  const totalPlanLocations = res.planMix.reduce(
-    (s, p) => s + (p.location_count || p.business_count),
-    0,
-  );
-  const planItems: PlanMixItem[] = res.planMix.map((p) => {
+  // Plan mix — per-package breakdown of current subscriptions. Bars are sized
+  // by business share (meaningful even pre-revenue); active = paying (incl.
+  // businesses that paid during their trial, which Billing flips to ACTIVE).
+  const planRows = res.planMix ?? [];
+  const totalPlanBiz = planRows.reduce((s, p) => s + num(p.business_count), 0);
+  const totalActive = planRows.reduce((s, p) => s + num(p.active_count), 0);
+  const totalTrial = planRows.reduce((s, p) => s + num(p.trial_count), 0);
+  const totalPlanMrr = planRows.reduce((s, p) => s + num(p.mrr), 0);
+  const planItems: PlanMixItem[] = planRows.map((p) => {
     const tier = tierOf(p.tier || p.plan_name);
     return {
       tier,
       label: p.plan_name ?? "Unknown",
-      locations: p.location_count || p.business_count,
-      mrrLabel: `TZS ${compactNumber(p.revenue)}`,
-      pct: totalPlanRevenue > 0 ? (p.revenue / totalPlanRevenue) * 100 : 0,
+      businesses: num(p.business_count),
+      activeCount: num(p.active_count),
+      trialCount: num(p.trial_count),
+      mrrLabel: `TZS ${compactNumber(num(p.mrr))}`,
+      pct: totalPlanBiz > 0 ? (num(p.business_count) / totalPlanBiz) * 100 : 0,
       color: tierColor(tier),
     };
   });
   const planMix = {
-    caption: `${totalPlanLocations} locations · TZS ${compactNumber(totalPlanRevenue)} MRR`,
+    caption: `${totalPlanBiz} ${totalPlanBiz === 1 ? "business" : "businesses"} · ${totalActive} active · ${totalTrial} trial · TZS ${compactNumber(totalPlanMrr)} MRR`,
     items: planItems,
   };
 

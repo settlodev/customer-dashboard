@@ -20,7 +20,6 @@ import { KpiStrip } from "@/components/layouts/kpi-strip";
 import { SectionCard, CardLink } from "@/components/admin/shared/section-card";
 import { DefList, DefRow } from "@/components/admin/shared/def-list";
 import { MetricGrid, MetricCell } from "@/components/admin/shared/metric-cell";
-import { Monogram } from "@/components/admin/shared/monogram";
 import { PlanBadge, planTier } from "@/components/admin/shared/plan-badge";
 import { LogInAsButton } from "@/components/admin/account-detail/log-in-as-button";
 import { BusinessNotesPanel } from "@/components/admin/business-notes-panel";
@@ -323,6 +322,41 @@ export function BusinessDetailView({
         </div>
       </div>
 
+      {/* ── Profile + address ───────────────────────────────── */}
+      <SectionCard>
+        <div className="grid gap-x-10 gap-y-6 md:grid-cols-2">
+          <div>
+            <p className="mb-3.5 text-[13px] font-semibold text-ink">Profile</p>
+            <div className="grid grid-cols-1 gap-x-7 gap-y-4 sm:grid-cols-2">
+              <Field label="Name" value={business.name} />
+              <Field label="Identifier" value={business.identifier} mono />
+              <Field label="Slug" value={business.slug} mono />
+              <Field label="Base currency" value={business.baseCurrency} mono />
+              <Field label="Phone" value={business.phoneNumber} mono />
+              <Field label="Email" value={business.email} mono />
+              <Field label="Website" value={business.website} mono />
+              <Field label="Industry" value={industry} />
+            </div>
+          </div>
+          <div>
+            <p className="mb-3.5 text-[13px] font-semibold text-ink">Address &amp; country</p>
+            <div className="grid grid-cols-1 gap-x-7 gap-y-4 sm:grid-cols-2">
+              <Field label="Country" value={business.countryName ?? business.countryCode} />
+              <Field label="Region" value={business.region} />
+              <Field label="District" value={business.district} />
+              <Field label="Ward" value={business.ward} />
+              <Field label="Address" value={business.address} />
+              <Field label="Postal code" value={business.postalCode} mono />
+            </div>
+            <p className="mb-3.5 mt-6 text-[13px] font-semibold text-ink">Timestamps</p>
+            <div className="grid grid-cols-1 gap-x-7 gap-y-4 sm:grid-cols-2">
+              <Field label="Created" value={formatDateTime(business.createdAt)} />
+              <Field label="Updated" value={formatDateTime(business.updatedAt)} />
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+
       {/* ── KPI strip ───────────────────────────────────────── */}
       <KpiStrip cols={6}>
         <KCell
@@ -349,7 +383,13 @@ export function BusinessDetailView({
           label="Churn risk"
           value={churn.label}
           valueColor={churn.color}
-          sub={n(lifecycle?.days_since_last_order) <= 7 ? "new · engaged" : "quiet"}
+          sub={
+            churnP == null
+              ? "score pending"
+              : n(lifecycle?.days_since_last_order) <= 7
+                ? "recently active"
+                : "quiet"
+          }
         />
         <KCell
           label="30-day net sales"
@@ -492,6 +532,12 @@ export function BusinessDetailView({
             title="Health sub-scores"
             action={<span className="font-mono text-[11px] text-muted-foreground">{healthScore ?? "—"} / 100</span>}
           >
+            {healthScore == null && (
+              <p className="mb-2.5 font-mono text-[11px] text-muted-2">
+                Health is scored by a nightly model — no score computed for this
+                business yet.
+              </p>
+            )}
             <div className="flex flex-col">
               <ScoreBar name="Revenue" score={health?.revenue_score ?? null} />
               <ScoreBar name="Engagement" score={health?.engagement_score ?? null} />
@@ -582,67 +628,8 @@ export function BusinessDetailView({
             )}
           </SectionCard>
 
-          <SectionCard
-            title="Owning account"
-            action={<CardLink href={`/accounts/${business.accountId}`}>Full account</CardLink>}
-          >
-            <Link
-              href={`/accounts/${business.accountId}`}
-              className="flex items-center gap-3 pb-3.5"
-            >
-              <Monogram name={business.accountFullName ?? business.accountEmail ?? "?"} seed={business.accountId} size="lg" round />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 text-[14.5px] font-semibold text-ink">
-                  <span className="truncate">{business.accountFullName ?? "—"}</span>
-                  <StatusBadge active={business.accountActive} small />
-                </div>
-                <div className="truncate font-mono text-[11.5px] text-muted-foreground">
-                  {[business.accountEmail, business.accountNumber].filter(Boolean).join(" · ")}
-                </div>
-              </div>
-            </Link>
-            <DefList>
-              <DefRow label="Phone" value={business.accountPhoneNumber ?? "—"} tone={business.accountPhoneNumber ? "default" : "dim"} />
-              <DefRow label="Account ID" value={<span className="text-[11px]">{business.accountId}</span>} rawValue />
-            </DefList>
-          </SectionCard>
         </div>
       </div>
-
-      {/* ── Profile + address ───────────────────────────────── */}
-      <SectionCard>
-        <div className="grid gap-x-10 gap-y-6 md:grid-cols-2">
-          <div>
-            <p className="mb-3.5 text-[13px] font-semibold text-ink">Profile</p>
-            <div className="grid grid-cols-1 gap-x-7 gap-y-4 sm:grid-cols-2">
-              <Field label="Name" value={business.name} />
-              <Field label="Identifier" value={business.identifier} mono />
-              <Field label="Slug" value={business.slug} mono />
-              <Field label="Base currency" value={business.baseCurrency} mono />
-              <Field label="Phone" value={business.phoneNumber} mono />
-              <Field label="Email" value={business.email} mono />
-              <Field label="Website" value={business.website} mono />
-              <Field label="Industry" value={industry} />
-            </div>
-          </div>
-          <div>
-            <p className="mb-3.5 text-[13px] font-semibold text-ink">Address &amp; country</p>
-            <div className="grid grid-cols-1 gap-x-7 gap-y-4 sm:grid-cols-2">
-              <Field label="Country" value={business.countryName ?? business.countryCode} />
-              <Field label="Region" value={business.region} />
-              <Field label="District" value={business.district} />
-              <Field label="Ward" value={business.ward} />
-              <Field label="Address" value={business.address} />
-              <Field label="Postal code" value={business.postalCode} mono />
-            </div>
-            <p className="mb-3.5 mt-6 text-[13px] font-semibold text-ink">Timestamps</p>
-            <div className="grid grid-cols-1 gap-x-7 gap-y-4 sm:grid-cols-2">
-              <Field label="Created" value={formatDateTime(business.createdAt)} />
-              <Field label="Updated" value={formatDateTime(business.updatedAt)} />
-            </div>
-          </div>
-        </div>
-      </SectionCard>
 
       {/* ── Staff notes (existing wired component) ──────────── */}
       <BusinessNotesPanel

@@ -7,7 +7,12 @@ export type StockTakeStatus =
   | "APPROVED"
   | "CANCELLED";
 
-export type CycleCountType = "FULL" | "ABC_CLASS" | "RANDOM" | "ZONE";
+export type CycleCountType =
+  | "FULL"
+  | "ABC_CLASS"
+  | "DEPARTMENT"
+  | "RANDOM"
+  | "ZONE";
 
 export type AbcClass = "A" | "B" | "C";
 
@@ -86,6 +91,7 @@ export const STOCK_TAKE_STATUS_TONES: Record<StockTakeStatus, string> = {
 export const CYCLE_COUNT_TYPE_LABELS: Record<CycleCountType, string> = {
   FULL: "Full — every variant",
   ABC_CLASS: "By ABC class",
+  DEPARTMENT: "By department",
   RANDOM: "Random sample",
   ZONE: "By warehouse zone",
 };
@@ -93,6 +99,8 @@ export const CYCLE_COUNT_TYPE_LABELS: Record<CycleCountType, string> = {
 export const CYCLE_COUNT_TYPE_DESCRIPTIONS: Record<CycleCountType, string> = {
   FULL: "Count every variant currently on hand at the location.",
   ABC_CLASS: "Count variants classified as A, B, or C (by value contribution).",
+  DEPARTMENT:
+    "Count variants belonging to products in a department's categories.",
   RANDOM: "Count a randomly selected subset — by count or percentage.",
   ZONE: "Count only variants currently stored in a specific warehouse zone.",
 };
@@ -100,6 +108,7 @@ export const CYCLE_COUNT_TYPE_DESCRIPTIONS: Record<CycleCountType, string> = {
 export const CYCLE_COUNT_TYPE_OPTIONS: { value: CycleCountType; label: string }[] = [
   { value: "FULL", label: CYCLE_COUNT_TYPE_LABELS.FULL },
   { value: "ABC_CLASS", label: CYCLE_COUNT_TYPE_LABELS.ABC_CLASS },
+  { value: "DEPARTMENT", label: CYCLE_COUNT_TYPE_LABELS.DEPARTMENT },
   { value: "RANDOM", label: CYCLE_COUNT_TYPE_LABELS.RANDOM },
   { value: "ZONE", label: CYCLE_COUNT_TYPE_LABELS.ZONE },
 ];
@@ -144,6 +153,10 @@ export function describeFilterCriteria(
       return parsed.classification
         ? `ABC class ${String(parsed.classification).toUpperCase()}`
         : CYCLE_COUNT_TYPE_LABELS.ABC_CLASS;
+    case "DEPARTMENT":
+      return parsed.departmentId
+        ? `Department ${String(parsed.departmentId).slice(0, 8)}…`
+        : CYCLE_COUNT_TYPE_LABELS.DEPARTMENT;
     case "RANDOM":
       if (typeof parsed.sampleSize === "number") {
         return `Random sample — ${parsed.sampleSize} items`;
