@@ -7,6 +7,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { getStockTake } from "@/lib/actions/stock-take-actions";
+import { getDepartment } from "@/lib/actions/department-actions";
 import {
   STOCK_TAKE_STATUS_LABELS,
   STOCK_TAKE_STATUS_TONES,
@@ -43,9 +44,30 @@ export default async function StockTakeDetailPage({ params }: { params: Params }
   const blindCount = Boolean(stockTake.blindCount);
   const readOnly =
     stockTake.status !== "IN_PROGRESS";
+
+  // For department counts, resolve the department's current name so the scope
+  // reads "Department: Drinks" rather than a raw id slice. Falls back to the
+  // slice if the department was since removed or the lookup fails.
+  let departmentName: string | null = null;
+  if (stockTake.cycleCountType === "DEPARTMENT" && stockTake.filterCriteria) {
+    try {
+      const parsed = JSON.parse(stockTake.filterCriteria) as {
+        departmentId?: string;
+      };
+      if (parsed?.departmentId) {
+        departmentName = await getDepartment(parsed.departmentId)
+          .then((d) => d?.name ?? null)
+          .catch(() => null);
+      }
+    } catch {
+      // malformed filterCriteria — fall back to the generic label
+    }
+  }
+
   const scopeDescription = describeFilterCriteria(
     stockTake.cycleCountType,
     stockTake.filterCriteria,
+    { departmentName },
   );
   const hasBins = stockTake.items.some((item) => item.binCode);
 

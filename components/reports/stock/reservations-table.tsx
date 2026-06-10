@@ -22,10 +22,12 @@ interface Props {
 /**
  * Reservations table — used by the stock report's Reservations tab.
  *
- * Paginated server-side: the parent server component fetches one page
- * at a time via `searchStockReservations(locationId, {page, size})`.
- * The DataTable's status filter mirrors the URL `status` param so the
- * server can re-query when the user toggles.
+ * Paginated server-side: the parent fetches one page at a time via
+ * `searchStockReservations(locationId, {page, size, status})`. The status
+ * filter runs in `manualFilter` mode so toggling it pushes `?status=…` to
+ * the URL and the server re-queries the full filtered set (not just the
+ * visible page). Search is hidden — the reservations endpoint has no
+ * free-text search, so a box that silently did nothing was removed.
  */
 export function ReservationsTable({ data, pageCount, pageNo, total }: Props) {
   return (
@@ -40,6 +42,8 @@ export function ReservationsTable({ data, pageCount, pageNo, total }: Props) {
           total={total}
           filterKey="status"
           filterOptions={STATUS_FILTER_OPTIONS}
+          manualFilter
+          hideSearch
         />
       </CardContent>
     </Card>

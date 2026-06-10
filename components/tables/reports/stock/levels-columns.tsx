@@ -43,7 +43,7 @@ const STATUS_LABEL: Record<Status, string> = {
   OK: "OK",
 };
 
-const deriveStatus = (b: InventoryBalance): Status => {
+export const deriveLevelStatus = (b: InventoryBalance): Status => {
   if (b.outOfStock) return "OUT";
   if (b.lowStock) return "LOW";
   if (b.overstock) return "OVERSTOCK";
@@ -61,6 +61,17 @@ export function buildLevelsColumns({
     {
       accessorKey: "variantName",
       enableHiding: false,
+      // Search matches both the variant name and its parent stock name, so
+      // typing either finds the row (the table searches this column).
+      filterFn: (row, _columnId, value) => {
+        const q = String(value ?? "").toLowerCase();
+        if (!q) return true;
+        const b = row.original;
+        return (
+          (b.variantName ?? "").toLowerCase().includes(q) ||
+          (b.stockName ?? "").toLowerCase().includes(q)
+        );
+      },
       header: ({ column }) => (
         <Button
           variant="ghost"
@@ -189,7 +200,7 @@ export function buildLevelsColumns({
       id: "status",
       header: "Status",
       cell: ({ row }) => {
-        const status = deriveStatus(row.original);
+        const status = deriveLevelStatus(row.original);
         return (
           <Badge
             variant="outline"

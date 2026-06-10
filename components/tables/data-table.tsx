@@ -127,15 +127,39 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   searchKey: string;
-  pageNo: number;
-  total: number;
+  pageNo?: number;
+  total?: number;
   pageSizeOptions?: number[];
-  pageCount: number;
+  pageCount?: number;
   searchParams?: {
     [key: string]: string | string[] | undefined;
   };
   filterKey?: string;
   filterOptions?: { label: string; value: string }[];
+  /**
+   * Drive pagination, search, and filtering entirely client-side over the
+   * full `data` array — no URL or localStorage round-trips. Use when the
+   * parent already loads the whole dataset in one shot (e.g. report tabs
+   * that fetch every row), or when several tables share one screen and
+   * therefore can't each own the URL's `?page`/`?search` namespace.
+   * `pageCount`/`pageNo`/`total` are ignored in this mode (the table
+   * derives them from the data).
+   */
+  clientMode?: boolean;
+  /**
+   * Sync the `filterKey` dropdown to the URL (`?<filterKey>=value`, resetting
+   * to page 1) so a server component can re-query the filtered set, instead
+   * of filtering the current page client-side. Mirrors `manualSort`. Only
+   * meaningful alongside server-side pagination (i.e. when `clientMode` is
+   * off). The URL param name is `filterKey`.
+   */
+  manualFilter?: boolean;
+  /**
+   * Hide the search input entirely. Use for server-paged tables whose
+   * backend has no free-text search — a box that silently does nothing is
+   * worse than no box.
+   */
+  hideSearch?: boolean;
   /**
    * Additional client-side filters that compose with `filterKey`. Each
    * renders its own dropdown next to the primary filter; all active
@@ -171,6 +195,9 @@ export function DataTable<TData, TValue>({
   onRowClick,
   rowClickBasePath,
   manualSort = false,
+  clientMode = false,
+  manualFilter = false,
+  hideSearch = false,
 }: DataTableProps<TData, TValue>) {
   const router = useRouter();
   const pathname = usePathname();
@@ -199,42 +226,51 @@ export function DataTable<TData, TValue>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting);
-  const [statusFilter, setStatusFilter] = React.useState<string>("");
+  // In manual (server-side) filter mode the dropdown's active value is owned
+  // by the URL, so seed it from there on mount; otherwise it's local state.
+  const [statusFilter, setStatusFilter] = React.useState<string>(() =>
+    manualFilter && filterKey ? (searchParams?.get(filterKey) ?? "") : "",
+  );
   // Per-key selection state for the optional extraFilters. Click the
   // same option to clear it; empty string means "no filter on this key".
   const [extraFilterValues, setExtraFilterValues] = React.useState<
     Record<string, string>
   >({});
   const [loading, setLoading] = React.useState<boolean>(false);
-  const [isInitialized, setIsInitialized] = React.useState(false);
+  // Client-side mode never touches the URL/localStorage, so it's "initialized"
+  // from the first paint — no async restore step to wait on.
+  const [isInitialized, setIsInitialized] = React.useState(clientMode);
 
   React.useEffect(() => {
-    if (!isInitialized) {
+    if (!clientMode && !isInitialized) {
       const timer = setTimeout(() => {
         initializePaginationState();
         setIsInitialized(true);
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [initializePaginationState, isInitialized]);
+  }, [initializePaginationState, isInitialized, clientMode]);
 
   const [{ pageIndex, pageSize }, setPagination] =
     React.useState<PaginationState>({
-      pageIndex: fallbackPage - 1,
+      // Client-side mode always starts at page 1 — a `?page` left in the URL
+      // by a sibling server-paged tab must not seed it onto a fresh client
+      // table. (It still inherits `?limit` as a sensible rows-per-page.)
+      pageIndex: clientMode ? 0 : fallbackPage - 1,
       pageSize: fallbackPerPage,
     });
 
   React.useEffect(() => {
-    if (isInitialized) {
+    if (!clientMode && isInitialized) {
       setPagination({
         pageIndex: fallbackPage - 1,
         pageSize: fallbackPerPage,
       });
     }
-  }, [fallbackPage, fallbackPerPage, isInitialized]);
+  }, [fallbackPage, fallbackPerPage, isInitialized, clientMode]);
 
   React.useEffect(() => {
-    if (isInitialized && typeof window !== "undefined") {
+    if (!clientMode && isInitialized && typeof window !== "undefined") {
       const paginationState = {
         pageIndex,
         pageSize,
@@ -245,13 +281,13 @@ export function DataTable<TData, TValue>({
         JSON.stringify(paginationState),
       );
     }
-  }, [pageIndex, pageSize, pathname, isInitialized]);
+  }, [pageIndex, pageSize, pathname, isInitialized, clientMode]);
 
   const [pendingPagination, setPendingPagination] =
     React.useState<PaginationState | null>(null);
 
   React.useEffect(() => {
-    if (!isInitialized) return;
+    if (!isInitialized || clientMode) return;
 
     const timer = setTimeout(() => {
       if (pendingPagination) {
@@ -267,12 +303,23 @@ export function DataTable<TData, TValue>({
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [pendingPagination, isInitialized, pathname, router]);
+  }, [pendingPagination, isInitialized, pathname, router, clientMode]);
 
   const handleStatusFilterChange = (newStatus: string) => {
     // Toggle: re-selecting the active option clears the filter so the
     // user can get back to "all" without leaving the page.
-    setStatusFilter((prev) => (prev === newStatus ? "" : newStatus));
+    const next = statusFilter === newStatus ? "" : newStatus;
+    setStatusFilter(next);
+    // Server-side filter: push the choice to the URL (resetting to page 1)
+    // so the parent re-queries the full filtered set rather than filtering
+    // just the visible page client-side.
+    if (manualFilter && filterKey) {
+      const queryString = createQueryString({
+        [filterKey]: next.length > 0 ? next : null,
+        page: 1,
+      });
+      router.replace(`${pathname}?${queryString}`, { scroll: false });
+    }
   };
 
   const handleExtraFilterChange = (key: string, newValue: string) => {
@@ -294,7 +341,10 @@ export function DataTable<TData, TValue>({
 
   const filteredData = React.useMemo(() => {
     let result = data;
-    if (filterKey && statusFilter) {
+    // In manualFilter mode the server already returned the filtered set, so
+    // re-filtering the page client-side would be redundant (and wrong if the
+    // filter maps to a derived value rather than a raw field).
+    if (filterKey && statusFilter && !manualFilter) {
       result = result.filter(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (item) => (item as any)[filterKey] === statusFilter,
@@ -312,7 +362,7 @@ export function DataTable<TData, TValue>({
     }
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, statusFilter, filterKey, extraFiltersSig, extraFilterValues]);
+  }, [data, statusFilter, filterKey, manualFilter, extraFiltersSig, extraFilterValues]);
 
   const createQueryString = React.useCallback(
     (params: Record<string, string | number | null>) => {
@@ -336,6 +386,10 @@ export function DataTable<TData, TValue>({
           ? updater({ pageIndex, pageSize })
           : updater;
       setPagination(newPagination);
+      // Client-side: the table owns pagination internally — no URL push,
+      // no localStorage. (Several client-mode tables can share one route,
+      // so they must not write a shared `?page`/`pagination-<path>` key.)
+      if (clientMode) return;
       setPendingPagination(newPagination);
       if (!searchParams?.has("_rsc")) {
         savePaginationState(
@@ -344,7 +398,7 @@ export function DataTable<TData, TValue>({
         );
       }
     },
-    [pageIndex, pageSize, searchParams, savePaginationState],
+    [pageIndex, pageSize, searchParams, savePaginationState, clientMode],
   );
 
   // Server-side sort: push `?sort=field,dir` (resetting to page 1) so the
@@ -378,6 +432,9 @@ export function DataTable<TData, TValue>({
   // flow through the column's filter value and back into the URL via
   // the effect below.
   const initialColumnFilters = React.useMemo(() => {
+    // Client-side mode owns search locally and shares routes with other
+    // tables — don't seed from a `?search` that may belong to a sibling.
+    if (clientMode) return [];
     const search = searchParams?.get("search");
     return search ? [{ id: searchKey, value: search }] : [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -386,7 +443,9 @@ export function DataTable<TData, TValue>({
   const table = useReactTable({
     data: filteredData,
     columns,
-    pageCount: pageCount ?? -1,
+    // Client-side mode lets the table derive the page count from the data;
+    // server-side mode trusts the caller's count.
+    pageCount: clientMode ? undefined : (pageCount ?? -1),
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     initialState: {
@@ -398,11 +457,12 @@ export function DataTable<TData, TValue>({
     },
     onPaginationChange: handlePaginationChange,
     getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    manualFiltering: true,
-    manualSorting: manualSort,
+    manualPagination: !clientMode,
+    manualFiltering: !clientMode,
+    manualSorting: manualSort && !clientMode,
     enableRowSelection: true,
-    onSortingChange: manualSort ? handleSortingChange : setSorting,
+    onSortingChange:
+      manualSort && !clientMode ? handleSortingChange : setSorting,
     getSortedRowModel: getSortedRowModel(),
   });
 
@@ -415,7 +475,8 @@ export function DataTable<TData, TValue>({
   // visit. Page-size changes flow through the pagination effect above,
   // so they are intentionally not part of this effect.
   React.useEffect(() => {
-    if (!isInitialized) return;
+    // Client-side search filters in-memory (no URL); hidden search can't type.
+    if (!isInitialized || clientMode || hideSearch) return;
 
     const urlSearch = searchParams?.get("search") ?? "";
     const inputSearch = (searchValue ?? "").toString();
@@ -431,7 +492,7 @@ export function DataTable<TData, TValue>({
     }, 300);
 
     return () => clearTimeout(handle);
-  }, [searchValue, isInitialized, searchParams, pathname, router, createQueryString]);
+  }, [searchValue, isInitialized, clientMode, hideSearch, searchParams, pathname, router, createQueryString]);
 
   const selectedRowIds = table
     .getFilteredSelectedRowModel()
@@ -497,12 +558,25 @@ export function DataTable<TData, TValue>({
   const currentPage = table.getState().pagination.pageIndex + 1;
   const totalPages = Math.max(1, table.getPageCount());
 
+  // The toolbar carries the search box on the left and filter/import/export
+  // actions on the right. With search hidden and nothing actionable, there's
+  // nothing to render — drop the empty bar entirely (only reachable via the
+  // opt-in `hideSearch`, so other pages are unaffected).
+  const hasActions =
+    !!(filterKey && filterOptions) ||
+    !!(extraFilters && extraFilters.length > 0) ||
+    !!pageConfig.importComponent ||
+    !!pageConfig.exportComponent;
+  const showToolbar = !hideSearch || hasActions;
+
   return (
     <motion.div className="space-y-3">
       {/* ── Toolbar ─────────────────────────────────────────── */}
+      {showToolbar && (
       <div className="flex flex-wrap items-center gap-2">
         {/* Search-box — design's pill-shaped input with the icon
             inside a hairline border on the card surface. */}
+        {!hideSearch && (
         <div className="relative flex-1 md:max-w-[320px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -517,6 +591,7 @@ export function DataTable<TData, TValue>({
             }
           />
         </div>
+        )}
 
         {/* Desktop actions — lg and above */}
         <div className="ml-auto hidden items-center gap-2 lg:flex">
@@ -681,6 +756,7 @@ export function DataTable<TData, TValue>({
           </DropdownMenu>
         </div>
       </div>
+      )}
 
       {/* ── Table + foot pager (single shell) ────────────────── */}
       {loading ? (

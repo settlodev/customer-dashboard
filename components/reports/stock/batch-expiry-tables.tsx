@@ -10,25 +10,19 @@ import type { StockBatch } from "@/types/stock-batch/type";
 
 interface Props {
   data: StockBatch[];
-  pageCount: number;
-  pageNo: number;
-  total: number;
   currency: string;
 }
 
 /**
  * Expiring-soon table — wraps `DataTable` with the expiring columns.
  *
- * `today` is memoised so each render in a single SSR pass uses the same
- * anchor for "days until expiry" calculations.
+ * Runs in `clientMode`: the aging tab loads the full (capped) batch set in
+ * one call and stacks several tables on one route, so pagination and search
+ * run in-memory here rather than fighting over a shared URL. `today` is
+ * memoised so each render in a single pass uses the same anchor for
+ * "days until expiry".
  */
-export function ExpiringBatchesTable({
-  data,
-  pageCount,
-  pageNo,
-  total,
-  currency,
-}: Props) {
+export function ExpiringBatchesTable({ data, currency }: Props) {
   const today = useMemo(() => new Date(), []);
   const columns = useMemo(
     () => buildExpiringBatchColumns(currency, today),
@@ -41,23 +35,15 @@ export function ExpiringBatchesTable({
         <DataTable
           columns={columns}
           data={data}
-          pageCount={pageCount}
-          pageNo={pageNo}
           searchKey="variantName"
-          total={total}
+          clientMode
         />
       </CardContent>
     </Card>
   );
 }
 
-export function ExpiredBatchesTable({
-  data,
-  pageCount,
-  pageNo,
-  total,
-  currency,
-}: Props) {
+export function ExpiredBatchesTable({ data, currency }: Props) {
   const today = useMemo(() => new Date(), []);
   const columns = useMemo(
     () => buildExpiredBatchColumns(currency, today),
@@ -70,10 +56,8 @@ export function ExpiredBatchesTable({
         <DataTable
           columns={columns}
           data={data}
-          pageCount={pageCount}
-          pageNo={pageNo}
           searchKey="variantName"
-          total={total}
+          clientMode
         />
       </CardContent>
     </Card>

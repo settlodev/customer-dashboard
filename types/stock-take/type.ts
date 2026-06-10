@@ -134,6 +134,7 @@ export const ABC_CLASS_OPTIONS: { value: AbcClass; label: string; hint: string }
 export function describeFilterCriteria(
   cycleCountType: CycleCountType | null | undefined,
   filterCriteria: string | null | undefined,
+  opts?: { departmentName?: string | null },
 ): string | null {
   if (!cycleCountType || cycleCountType === "FULL") return null;
   if (!filterCriteria) return CYCLE_COUNT_TYPE_LABELS[cycleCountType];
@@ -154,6 +155,7 @@ export function describeFilterCriteria(
         ? `ABC class ${String(parsed.classification).toUpperCase()}`
         : CYCLE_COUNT_TYPE_LABELS.ABC_CLASS;
     case "DEPARTMENT":
+      if (opts?.departmentName) return `Department: ${opts.departmentName}`;
       return parsed.departmentId
         ? `Department ${String(parsed.departmentId).slice(0, 8)}…`
         : CYCLE_COUNT_TYPE_LABELS.DEPARTMENT;

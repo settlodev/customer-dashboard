@@ -9,19 +9,15 @@ import type { DeadStockItem } from "@/types/inventory-analytics/type";
 
 interface Props {
   data: DeadStockItem[];
-  pageCount: number;
-  pageNo: number;
-  total: number;
   currency: string;
 }
 
-export function DeadStockTable({
-  data,
-  pageCount,
-  pageNo,
-  total,
-  currency,
-}: Props) {
+/**
+ * Dead-stock table — runs in `clientMode` (full set loaded in one call,
+ * shares the aging route with sibling tables), so pagination and search
+ * work in-memory over every row.
+ */
+export function DeadStockTable({ data, currency }: Props) {
   const columns = useMemo(() => buildDeadStockColumns(currency), [currency]);
 
   return (
@@ -30,10 +26,8 @@ export function DeadStockTable({
         <DataTable
           columns={columns}
           data={data}
-          pageCount={pageCount}
-          pageNo={pageNo}
           searchKey="variantName"
-          total={total}
+          clientMode
         />
       </CardContent>
     </Card>

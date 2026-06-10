@@ -60,7 +60,6 @@ export default async function StockReportPage({ searchParams }: Params) {
 
   const page = Number(resolved.page) || 1;
   const limit = Number(resolved.limit) || 50;
-  const search = resolved.search ?? "";
   const status = resolved.status ?? "";
 
   const subtitle = buildSubtitle(tab, asOf, from, to);
@@ -87,15 +86,7 @@ export default async function StockReportPage({ searchParams }: Params) {
         </div>
 
         {tab === "overview" && <OverviewTab asOf={asOf} from={from} to={to} />}
-        {tab === "levels" && (
-          <LevelsTab
-            asOf={asOf}
-            page={page}
-            limit={limit}
-            search={search}
-            status={status}
-          />
-        )}
+        {tab === "levels" && <LevelsTab />}
         {tab === "movement" && <MovementTab from={from} to={to} />}
         {tab === "risk" && <RiskTab asOf={asOf} />}
         {tab === "aging" && <AgingTab asOf={asOf} />}

@@ -12,6 +12,12 @@ interface Props {
   total: number;
 }
 
+/**
+ * Activity (audit-log) table — paginated server-side via
+ * `getAuditLogByLocation(page, size, from, to)`. Search is hidden: the
+ * audit-log endpoint filters by date range only, with no free-text search,
+ * so the box would have done nothing.
+ */
 export function ActivityTable({ data, pageCount, pageNo, total }: Props) {
   return (
     <Card>
@@ -23,6 +29,7 @@ export function ActivityTable({ data, pageCount, pageNo, total }: Props) {
           pageNo={pageNo}
           searchKey="entityType"
           total={total}
+          hideSearch
         />
       </CardContent>
     </Card>

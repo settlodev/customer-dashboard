@@ -25,7 +25,6 @@ interface Props {
 }
 
 const EXPIRY_WINDOW_DAYS = 7;
-const PAGE_LIMIT = 25;
 const EXPIRED_FETCH_SIZE = 200;
 
 const fmt = (value: number) =>
@@ -181,13 +180,7 @@ export async function AgingTab({ asOf: _asOf }: Props) {
               {fmt(expiring.length)} batch{expiring.length === 1 ? "" : "es"}
             </span>
           </header>
-          <ExpiringBatchesTable
-            data={expiring}
-            pageCount={Math.max(1, Math.ceil(expiring.length / PAGE_LIMIT))}
-            pageNo={0}
-            total={expiring.length}
-            currency={currency}
-          />
+          <ExpiringBatchesTable data={expiring} currency={currency} />
         </section>
       )}
 
@@ -203,13 +196,7 @@ export async function AgingTab({ asOf: _asOf }: Props) {
                 : `${fmt(expired.length)} batch${expired.length === 1 ? "" : "es"}`}
             </span>
           </header>
-          <ExpiredBatchesTable
-            data={expired}
-            pageCount={Math.max(1, Math.ceil(expired.length / PAGE_LIMIT))}
-            pageNo={0}
-            total={expired.length}
-            currency={currency}
-          />
+          <ExpiredBatchesTable data={expired} currency={currency} />
         </section>
       )}
 
@@ -223,13 +210,7 @@ export async function AgingTab({ asOf: _asOf }: Props) {
               {fmt(deadStock.length)} item{deadStock.length === 1 ? "" : "s"}
             </span>
           </header>
-          <DeadStockTable
-            data={deadStock}
-            pageCount={Math.max(1, Math.ceil(deadStock.length / PAGE_LIMIT))}
-            pageNo={0}
-            total={deadStock.length}
-            currency={currency}
-          />
+          <DeadStockTable data={deadStock} currency={currency} />
         </section>
       )}
     </>

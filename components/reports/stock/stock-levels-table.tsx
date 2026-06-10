@@ -4,7 +4,10 @@ import { useMemo } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/tables/data-table";
-import { buildLevelsColumns } from "@/components/tables/reports/stock/levels-columns";
+import {
+  buildLevelsColumns,
+  deriveLevelStatus,
+} from "@/components/tables/reports/stock/levels-columns";
 import type { InventoryBalance } from "@/types/inventory-balance/type";
 
 const STATUS_FILTER_OPTIONS = [
@@ -17,31 +20,27 @@ const STATUS_FILTER_OPTIONS = [
 
 interface Props {
   data: InventoryBalance[];
-  pageCount: number;
-  pageNo: number;
-  total: number;
   currency: string;
 }
 
 /**
  * Client wrapper around the stock-levels DataTable.
  *
- * Filters are client-side because the inventory-balance endpoint returns
- * the full per-location balance set in one call — the page server-side
- * filters by search / status and paginates the result before passing
- * the slice in. The DataTable's built-in `filterKey` provides the
- * status dropdown UI; the page server-trip is what handles the URL sync.
+ * The inventory-balance endpoint returns the full per-location balance set
+ * in one call, so the table runs in `clientMode`: pagination, search, and
+ * the status filter all work in-memory over the complete dataset — no
+ * server round-trip per page, and the status filter spans every row rather
+ * than just the visible page.
+ *
+ * Status is derived (out/low/overstock/ok), not a stored field, so we
+ * project it onto each row as `__status` for the filter dropdown to match.
  */
-export function StockLevelsTable({
-  data,
-  pageCount,
-  pageNo,
-  total,
-  currency,
-}: Props) {
-  const columns = useMemo(
-    () => buildLevelsColumns({ currency }),
-    [currency],
+export function StockLevelsTable({ data, currency }: Props) {
+  const columns = useMemo(() => buildLevelsColumns({ currency }), [currency]);
+
+  const rows = useMemo(
+    () => data.map((b) => ({ ...b, __status: deriveLevelStatus(b) })),
+    [data],
   );
 
   return (
@@ -49,13 +48,11 @@ export function StockLevelsTable({
       <CardContent className="px-2 pt-6 sm:px-6">
         <DataTable
           columns={columns}
-          data={data}
-          pageCount={pageCount}
-          pageNo={pageNo}
+          data={rows}
           searchKey="variantName"
-          total={total}
           filterKey="__status"
           filterOptions={STATUS_FILTER_OPTIONS}
+          clientMode
         />
       </CardContent>
     </Card>

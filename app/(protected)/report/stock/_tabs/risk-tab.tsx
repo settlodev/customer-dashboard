@@ -40,10 +40,10 @@ export async function RiskTab({ asOf: _asOf }: Props) {
   const high = forecast.filter((f) => f.riskLevel === "HIGH").length;
   const reorderCount = reorder.length;
 
-  // Hard-cap the rendered rows at 1000 per table. The underlying analytics
-  // endpoints already return a sensible cap, but this prevents a
-  // pathological forecast from blowing the DOM if that ever drifts.
-  const PAGE_LIMIT = 25;
+  // Hard-cap at 1000 rows per table. The analytics endpoints already return a
+  // sensible cap; this is a backstop so a pathological result can't bloat the
+  // payload. The table paginates client-side, so only one page renders at a
+  // time regardless.
   const forecastSlice = forecast.slice(0, 1000);
   const reorderSlice = reorder.slice(0, 1000);
 
@@ -82,12 +82,7 @@ export async function RiskTab({ asOf: _asOf }: Props) {
             {fmt(forecast.length)} item{forecast.length === 1 ? "" : "s"}
           </span>
         </header>
-        <ForecastTable
-          data={forecastSlice}
-          pageCount={Math.max(1, Math.ceil(forecastSlice.length / PAGE_LIMIT))}
-          pageNo={0}
-          total={forecastSlice.length}
-        />
+        <ForecastTable data={forecastSlice} />
       </section>
 
       <section>
@@ -99,12 +94,7 @@ export async function RiskTab({ asOf: _asOf }: Props) {
             {fmt(reorder.length)} item{reorder.length === 1 ? "" : "s"}
           </span>
         </header>
-        <ReorderTable
-          data={reorderSlice}
-          pageCount={Math.max(1, Math.ceil(reorderSlice.length / PAGE_LIMIT))}
-          pageNo={0}
-          total={reorderSlice.length}
-        />
+        <ReorderTable data={reorderSlice} />
       </section>
     </>
   );
