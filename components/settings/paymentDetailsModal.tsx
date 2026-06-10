@@ -12,17 +12,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, Loader2Icon } from "lucide-react";
+import { Plus, Loader2Icon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
-  digitalReceiptPaymentDetails,
+  getAllDigitalReceiptPaymentDetails,
+  getAllPhysicalReceiptPaymentDetails,
+  updatePhysicalReceiptPaymentDetails,
+  updateDigitalReceiptPaymentDetails,
   physicalReceiptPaymentDetails,
+  digitalReceiptPaymentDetails,
 } from "@/lib/actions/settings-actions";
 import PaymentMethodSelectorWidget from "@/components/widgets/paymentMethodSelector";
 import { PhysicalReceiptPaymentDetails } from "@/types/payments/schema";
 
 export interface PaymentRow {
   id: string;
+  serverId?: string;
   methodId: string;
   accountNumber: string;
   notes: string;
@@ -33,13 +38,11 @@ interface PaymentDetailsModalProps {
   onClose: () => void;
   onSaved?: () => void;
   receiptType: "physical" | "digital";
-  initialBankRows?: PaymentRow[];
-  initialMnoRows?: PaymentRow[];
-  initialRows?: PaymentRow[];
 }
 
 const newRow = (): PaymentRow => ({
   id: `${Date.now()}-${Math.random()}`,
+  serverId: undefined,
   methodId: "",
   accountNumber: "",
   notes: "",
@@ -49,37 +52,64 @@ const toPayload = (rows: PaymentRow[]): PhysicalReceiptPaymentDetails =>
   rows
     .filter((r) => r.methodId.trim() && r.accountNumber.trim())
     .map((r) => ({
+      ...(r.serverId ? { id: r.serverId } : {}), // ← spreads id only when present
       acceptedPaymentMethodType: r.methodId.trim(),
       accountNumber: r.accountNumber.trim(),
       notes: r.notes.trim(),
     }));
 
-// ─── Component ────────────────────────────────────────────────────────────────
+const mapApiToRow = (item: any): PaymentRow => ({
+  id: `${Date.now()}-${Math.random()}`, // local React key only
+  serverId: item.id, // ← this was missing
+  methodId: item.acceptedPaymentMethodType ?? "",
+  accountNumber: item.accountNumber ?? "",
+  notes: item.notes ?? "",
+});
+
+const isBank = (item: any): boolean =>
+  item.acceptedPaymentMethodTypeName?.toLowerCase().includes("bank") ?? false;
+
 export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
   isOpen,
   onClose,
   onSaved,
   receiptType,
-  initialBankRows,
-  initialMnoRows,
-  initialRows,
 }) => {
-  const [bankRows, setBankRows] = useState<PaymentRow[]>(
-    initialBankRows ?? initialRows ?? [],
-  );
-  const [mnoRows, setMnoRows] = useState<PaymentRow[]>(
-    initialMnoRows ?? initialRows ?? [],
-  );
+  const [bankRows, setBankRows] = useState<PaymentRow[]>([]);
+  const [mnoRows, setMnoRows] = useState<PaymentRow[]>([]);
+  const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      setBankRows(initialBankRows?.length ? initialBankRows : []);
-      setMnoRows(initialMnoRows?.length ? initialMnoRows : []);
-    }
-  }, [isOpen]);
+    if (!isOpen) return;
 
-  // ── Row helpers ─────────────────────────────────────────────────────────────
+    const load = async () => {
+      setIsFetching(true);
+      try {
+        const fetchFn =
+          receiptType === "physical"
+            ? getAllPhysicalReceiptPaymentDetails
+            : getAllDigitalReceiptPaymentDetails;
+
+        const data = await fetchFn();
+        const list: any[] = Array.isArray(data) ? data : (data?.data ?? []);
+
+        setBankRows(list.filter(isBank).map(mapApiToRow));
+        setMnoRows(list.filter((d) => !isBank(d)).map(mapApiToRow));
+      } catch {
+        toast({
+          variant: "destructive",
+          title: "Failed to load",
+          description: "Could not load existing payment details.",
+        });
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    load();
+  }, [isOpen, receiptType]);
+
   const addRow = (set: React.Dispatch<React.SetStateAction<PaymentRow[]>>) =>
     set((prev) => [...prev, newRow()]);
 
@@ -125,9 +155,9 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
     if (!validateRows(bankRows, "bank")) return;
     if (!validateRows(mnoRows, "MNO")) return;
 
-    const payload = toPayload([...bankRows, ...mnoRows]);
+    const allRows = toPayload([...bankRows, ...mnoRows]);
 
-    if (payload.length === 0) {
+    if (allRows.length === 0) {
       toast({
         variant: "destructive",
         title: "No entries",
@@ -136,14 +166,28 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
       return;
     }
 
+    // Split by presence of id
+    const toCreate = allRows.filter((r) => !r.id);
+    const toUpdate = allRows.filter((r) => !!r.id);
+
+    const createFn =
+      receiptType === "physical"
+        ? physicalReceiptPaymentDetails
+        : digitalReceiptPaymentDetails;
+
+    const updateFn =
+      receiptType === "physical"
+        ? updatePhysicalReceiptPaymentDetails
+        : updateDigitalReceiptPaymentDetails;
+
     setIsSaving(true);
     try {
-      const saveFn =
-        receiptType === "physical"
-          ? physicalReceiptPaymentDetails
-          : digitalReceiptPaymentDetails;
-
-      await saveFn(payload);
+      await Promise.all(
+        [
+          toCreate.length > 0 ? createFn(toCreate) : null,
+          toUpdate.length > 0 ? updateFn(toUpdate) : null,
+        ].filter(Boolean),
+      );
 
       toast({
         title: "Saved",
@@ -177,24 +221,12 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
       ) : (
         rows.map((row, index) => (
           <div key={row.id} className="border rounded-lg p-4 space-y-3">
-            {/* Card header */}
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">
                 {label} {index + 1}
               </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => removeRow(set, row.id)}
-                disabled={isSaving}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
             </div>
 
-            {/* Method selector */}
             <div className="space-y-1.5">
               <Label>
                 {mode === "bank" ? "Bank" : "Mobile Money Operator"}
@@ -207,17 +239,14 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
               />
             </div>
 
-            {/* Account / phone number */}
             <div className="space-y-1.5">
               <Label htmlFor={`${mode}-acct-${row.id}`}>
-                {mode === "bank" ? "Account Number" : "Phone Number"}
+                {mode === "bank" ? "Account Number" : "Lipa Number"}
               </Label>
               <Input
                 id={`${mode}-acct-${row.id}`}
                 placeholder={
-                  mode === "bank"
-                    ? "e.g., 1234567890"
-                    : "e.g., +255 XXX XXX XXX"
+                  mode === "bank" ? "e.g., 1234567890" : "e.g.,  130 XXX XXX"
                 }
                 value={row.accountNumber}
                 onChange={(e) =>
@@ -227,7 +256,6 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
               />
             </div>
 
-            {/* Account name / notes */}
             <div className="space-y-1.5">
               <Label htmlFor={`${mode}-notes-${row.id}`}>
                 Account Name{" "}
@@ -237,7 +265,7 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
               </Label>
               <Input
                 id={`${mode}-notes-${row.id}`}
-                placeholder="e.g., Patrick Bijampola"
+                placeholder="e.g., Lipa Settlo Technologies Limited"
                 value={row.notes}
                 onChange={(e) =>
                   updateRow(set, row.id, "notes", e.target.value)
@@ -265,80 +293,91 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        {/* No <form> element — avoids Radix portal native submit issues */}
-        <Tabs defaultValue="bank" className="w-full mt-2">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="bank">
-              Bank Details
-              {bankRows.filter((r) => r.methodId && r.accountNumber).length >
-                0 && (
-                <span className="ml-1.5 text-xs bg-primary text-primary-foreground rounded-full px-1.5 py-0.5">
-                  {bankRows.filter((r) => r.methodId && r.accountNumber).length}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="mno">
-              MNO Details
-              {mnoRows.filter((r) => r.methodId && r.accountNumber).length >
-                0 && (
-                <span className="ml-1.5 text-xs bg-primary text-primary-foreground rounded-full px-1.5 py-0.5">
-                  {mnoRows.filter((r) => r.methodId && r.accountNumber).length}
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
+        {isFetching ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2Icon className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <Tabs defaultValue="bank" className="w-full mt-2">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="bank">
+                Bank Details
+                {bankRows.filter((r) => r.methodId && r.accountNumber).length >
+                  0 && (
+                  <span className="ml-1.5 text-xs bg-primary text-primary-foreground rounded-full px-1.5 py-0.5">
+                    {
+                      bankRows.filter((r) => r.methodId && r.accountNumber)
+                        .length
+                    }
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="mno">
+                MNO Details
+                {mnoRows.filter((r) => r.methodId && r.accountNumber).length >
+                  0 && (
+                  <span className="ml-1.5 text-xs bg-primary text-primary-foreground rounded-full px-1.5 py-0.5">
+                    {
+                      mnoRows.filter((r) => r.methodId && r.accountNumber)
+                        .length
+                    }
+                  </span>
+                )}
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Bank tab */}
-          <TabsContent value="bank" className="mt-4 space-y-3">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground">
-                Add bank account information
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => addRow(setBankRows)}
-                disabled={isSaving}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Bank
-              </Button>
-            </div>
-            {renderRows(bankRows, "bank", setBankRows, "Bank Account")}
-          </TabsContent>
+            <TabsContent value="bank" className="mt-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-muted-foreground">
+                  Add bank account information
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addRow(setBankRows)}
+                  disabled={isSaving}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add Bank
+                </Button>
+              </div>
+              {renderRows(bankRows, "bank", setBankRows, "Bank Account")}
+            </TabsContent>
 
-          {/* MNO tab */}
-          <TabsContent value="mno" className="mt-4 space-y-3">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground">
-                Add mobile money operator information
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => addRow(setMnoRows)}
-                disabled={isSaving}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add MNO
-              </Button>
-            </div>
-            {renderRows(mnoRows, "mno", setMnoRows, "MNO Account")}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="mno" className="mt-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-muted-foreground">
+                  Add mobile money operator information
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addRow(setMnoRows)}
+                  disabled={isSaving}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add MNO
+                </Button>
+              </div>
+              {renderRows(mnoRows, "mno", setMnoRows, "MNO Account")}
+            </TabsContent>
+          </Tabs>
+        )}
 
         <DialogFooter className="mt-6">
           <Button
             type="button"
             variant="outline"
             onClick={onClose}
-            disabled={isSaving}
+            disabled={isSaving || isFetching}
           >
             Cancel
           </Button>
-          <Button type="button" onClick={handleSave} disabled={isSaving}>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving || isFetching}
+          >
             {isSaving ? (
               <>
                 <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />

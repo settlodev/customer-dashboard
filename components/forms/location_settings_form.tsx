@@ -38,6 +38,7 @@ import {
 import {
   getAllDigitalReceiptPaymentDetails,
   getAllPhysicalReceiptPaymentDetails,
+  deleteReceiptPaymentDetail,
   updateLocationSettings,
 } from "@/lib/actions/settings-actions";
 import { toast } from "@/hooks/use-toast";
@@ -48,11 +49,23 @@ import {
 } from "@/types/settings/type";
 import { LocationSettingsSchema } from "@/types/settings/schema";
 import { ImageUploadModal } from "@/components/settings/uploadImage";
-import {
-  PaymentDetailsModal,
-  PaymentRow,
-} from "@/components/settings/paymentDetailsModal";
+import { PaymentDetailsModal } from "@/components/settings/paymentDetailsModal";
 import CountrySelector from "@/components/widgets/country-selector";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ApiPaymentDetail {
+  id: string;
+  acceptedPaymentMethodType: string;
+  acceptedPaymentMethodTypeName: string;
+  accountNumber: string;
+  notes: string;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const isBank = (d: ApiPaymentDetail) =>
+  d.acceptedPaymentMethodTypeName?.toLowerCase().includes("bank") ?? false;
 
 const LoadingSkeleton = () => {
   const categories = [
@@ -64,7 +77,6 @@ const LoadingSkeleton = () => {
     "order",
     "system",
   ];
-
   return (
     <Card>
       <CardContent className="space-y-6 pt-6">
@@ -118,9 +130,143 @@ const groupSettingsByCategory = (settings: SettingField[]) =>
     {} as Record<string, SettingField[]>,
   );
 
-const getGridClass = (fields: SettingField[]): string => {
-  return "grid grid-cols-1 md:grid-cols-2 gap-4";
+// ─── Payment Details Card ─────────────────────────────────────────────────────
+
+interface PaymentDetailsCardProps {
+  details: ApiPaymentDetail[];
+  isLoading: boolean;
+  type: "physical" | "digital";
+  onEdit: () => void;
+  onDelete: (id: string) => Promise<void>;
+}
+
+const PaymentDetailsCard: React.FC<PaymentDetailsCardProps> = ({
+  details,
+  isLoading,
+  type,
+  onEdit,
+  onDelete,
+}) => {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await onDelete(id);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2Icon className="h-4 w-4 animate-spin" />
+        Loading payment details...
+      </div>
+    );
+  }
+
+  if (details.length === 0) {
+    return (
+      <Button type="button" variant="outline" size="sm" onClick={onEdit}>
+        <FileText className="h-4 w-4 mr-2" />
+        Add payment details
+      </Button>
+    );
+  }
+
+  const banks = details.filter(isBank);
+  const mnos = details.filter((d) => !isBank(d));
+
+  const renderRow = (
+    detail: ApiPaymentDetail,
+    i: number,
+    arr: ApiPaymentDetail[],
+  ) => (
+    <div
+      key={detail.id}
+      className={`flex items-center gap-2.5 px-3 py-2 ${
+        i < arr.length - 1 ? "border-b border-border/50" : ""
+      }`}
+    >
+      <div className="w-8 h-8 rounded-md bg-primary-light dark:bg-primary-light/95 flex items-center justify-center flex-shrink-0">
+        {isBank(detail) ? (
+          <Building2 className="w-3.5 h-3.5 text-primary" />
+        ) : (
+          <Smartphone className="w-3.5 h-3.5 text-primary" />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-medium text-foreground leading-none mb-0.5">
+          {detail.acceptedPaymentMethodTypeName}
+        </p>
+        <p className="text-[11px] text-muted-foreground font-mono">
+          ••••{String(detail.accountNumber).slice(-4)}
+        </p>
+      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="w-7 h-7 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
+        onClick={() => handleDelete(detail.id)}
+        disabled={deletingId === detail.id}
+      >
+        {deletingId === detail.id ? (
+          <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+        ) : (
+          <Trash2 className="w-3.5 h-3.5" />
+        )}
+      </Button>
+    </div>
+  );
+
+  return (
+    <div className="rounded-lg border border-border overflow-hidden">
+      {/* Banks */}
+      {banks.length > 0 && (
+        <>
+          <p className="px-3 pt-2.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Banks
+          </p>
+          {banks.map((d, i, arr) => renderRow(d, i, arr))}
+        </>
+      )}
+
+      {/* Divider */}
+      {banks.length > 0 && mnos.length > 0 && (
+        <div className="border-t border-border mx-3" />
+      )}
+
+      {/* MNOs */}
+      {mnos.length > 0 && (
+        <>
+          <p className="px-3 pt-2.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Mobile money
+          </p>
+          {mnos.map((d, i, arr) => renderRow(d, i, arr))}
+        </>
+      )}
+
+      {/* Footer */}
+      <div className="border-t border-border p-2.5">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={onEdit}
+        >
+          <FileText className="h-3.5 w-3.5 mr-2" />
+          Edit payment details
+        </Button>
+      </div>
+    </div>
+  );
 };
+
+// ─── Main Form ────────────────────────────────────────────────────────────────
 
 const LocationSettingsForm = ({
   item,
@@ -140,104 +286,68 @@ const LocationSettingsForm = ({
     "physical" | "digital"
   >("physical");
 
-  const [physicalPaymentSaved, setPhysicalPaymentSaved] = useState(false);
-  const [digitalPaymentSaved, setDigitalPaymentSaved] = useState(false);
+  // Image
   const [receiptImage, setReceiptImage] = useState<string>("");
-  const [digitalPaymentDetails, setDigitalPaymentDetails] = useState<any[]>([]);
+
+  // Payment display lists
+  const [digitalPaymentDetails, setDigitalPaymentDetails] = useState<
+    ApiPaymentDetail[]
+  >([]);
   const [isLoadingDigitalPayments, setIsLoadingDigitalPayments] =
     useState(true);
-  const [digitalBankRows, setDigitalBankRows] = useState<PaymentRow[]>([]);
-  const [digitalMnoRows, setDigitalMnoRows] = useState<PaymentRow[]>([]);
 
-  const [physicalPaymentDetails, setPhysicalPaymentDetails] = useState<any[]>(
-    [],
-  );
+  const [physicalPaymentDetails, setPhysicalPaymentDetails] = useState<
+    ApiPaymentDetail[]
+  >([]);
   const [isLoadingPhysicalPayments, setIsLoadingPhysicalPayments] =
     useState(true);
-  const [physicalBankRows, setPhysicalBankRows] = useState<PaymentRow[]>([]);
-  const [physicalMnoRows, setPhysicalMnoRows] = useState<PaymentRow[]>([]);
 
   const form = useForm<z.infer<typeof LocationSettingsSchema>>({
     resolver: zodResolver(LocationSettingsSchema),
     defaultValues: { ...item, status: true },
   });
 
+  // ── Fetch helpers ──────────────────────────────────────────────────────────
+
+  const fetchPaymentDetails = async (type: "physical" | "digital") => {
+    const fetchFn =
+      type === "physical"
+        ? getAllPhysicalReceiptPaymentDetails
+        : getAllDigitalReceiptPaymentDetails;
+
+    const setDetails =
+      type === "physical"
+        ? setPhysicalPaymentDetails
+        : setDigitalPaymentDetails;
+
+    const setLoading =
+      type === "physical"
+        ? setIsLoadingPhysicalPayments
+        : setIsLoadingDigitalPayments;
+
+    try {
+      setLoading(true);
+      const data = await fetchFn();
+      const list: ApiPaymentDetail[] = Array.isArray(data)
+        ? data
+        : (data?.data ?? []);
+      setDetails(list);
+    } catch (error) {
+      console.error(`Failed to fetch ${type} payment details:`, error);
+      toast({
+        variant: "destructive",
+        title: "Failed to load",
+        description: `Could not load ${type} payment details.`,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // On mount
   useEffect(() => {
-    const fetchDigitalPaymentDetails = async () => {
-      try {
-        setIsLoadingDigitalPayments(true);
-        const data = await getAllDigitalReceiptPaymentDetails();
-        const details: any[] = data?.data ?? data ?? [];
-        const list = Array.isArray(details) ? details : [details];
-
-        if (list.length > 0) {
-          const toRow = (item: any): PaymentRow => ({
-            id: item.id ?? `${Date.now()}-${Math.random()}`,
-            methodId: item.acceptedPaymentMethodType ?? "",
-            accountNumber: item.accountNumber ?? "",
-            notes: item.notes ?? "",
-          });
-
-          const bankList = list.filter((d) =>
-            d.acceptedPaymentMethodTypeName?.toLowerCase().includes("bank"),
-          );
-          const mnoList = list.filter(
-            (d) =>
-              !d.acceptedPaymentMethodTypeName?.toLowerCase().includes("bank"),
-          );
-
-          setDigitalBankRows(bankList.map(toRow));
-          setDigitalMnoRows(mnoList.map(toRow));
-          setDigitalPaymentDetails(list); // ← this line was missing
-          setDigitalPaymentSaved(true);
-        }
-      } catch (error) {
-        console.error("Failed to fetch digital payment details:", error);
-      } finally {
-        setIsLoadingDigitalPayments(false);
-      }
-    };
-
-    fetchDigitalPaymentDetails();
-  }, []);
-
-  useEffect(() => {
-    const fetchPhysicalPaymentDetails = async () => {
-      try {
-        setIsLoadingPhysicalPayments(true);
-        const data = await getAllPhysicalReceiptPaymentDetails();
-        const details: any[] = data?.data ?? data ?? [];
-        const list = Array.isArray(details) ? details : [details];
-
-        if (list.length > 0) {
-          const toRow = (item: any): PaymentRow => ({
-            id: item.id ?? `${Date.now()}-${Math.random()}`,
-            methodId: item.acceptedPaymentMethodType ?? "",
-            accountNumber: item.accountNumber ?? "",
-            notes: item.notes ?? "",
-          });
-
-          const bankList = list.filter((d) =>
-            d.acceptedPaymentMethodTypeName?.toLowerCase().includes("bank"),
-          );
-          const mnoList = list.filter(
-            (d) =>
-              !d.acceptedPaymentMethodTypeName?.toLowerCase().includes("bank"),
-          );
-
-          setPhysicalBankRows(bankList.map(toRow));
-          setPhysicalMnoRows(mnoList.map(toRow));
-          setPhysicalPaymentDetails(list);
-          setPhysicalPaymentSaved(true);
-        }
-      } catch (error) {
-        console.error("Failed to fetch physical payment details:", error);
-      } finally {
-        setIsLoadingPhysicalPayments(false);
-      }
-    };
-
-    fetchPhysicalPaymentDetails();
+    fetchPaymentDetails("digital");
+    fetchPaymentDetails("physical");
   }, []);
 
   useEffect(() => {
@@ -250,8 +360,40 @@ const LocationSettingsForm = ({
     }
   }, [item, form]);
 
+  // ── Handlers ───────────────────────────────────────────────────────────────
+
+  const openPaymentModal = (type: "physical" | "digital") => {
+    setPaymentModalType(type);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handlePaymentSaved = () => {
+    fetchPaymentDetails(paymentModalType);
+  };
+
+  const handleDeletePayment = async (
+    id: string,
+    type: "physical" | "digital",
+  ) => {
+    try {
+      await deleteReceiptPaymentDetail(id, type);
+      // Optimistic removal from display list
+      if (type === "physical") {
+        setPhysicalPaymentDetails((prev) => prev.filter((d) => d.id !== id));
+      } else {
+        setDigitalPaymentDetails((prev) => prev.filter((d) => d.id !== id));
+      }
+      toast({ title: "Deleted", description: "Payment method removed." });
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Delete failed",
+        description: "Could not remove the payment method. Please try again.",
+      });
+    }
+  };
+
   const onInvalid = useCallback((errors: FieldErrors) => {
-    console.error("Form validation errors:", errors);
     toast({
       variant: "destructive",
       title: "Uh oh! Something went wrong.",
@@ -286,9 +428,7 @@ const LocationSettingsForm = ({
   const getFilteredSettings = () => {
     const currentValues = form.watch();
     return SETTINGS_CONFIG.filter((setting) => {
-      if (categories && !categories.includes(setting.category)) {
-        return false;
-      }
+      if (categories && !categories.includes(setting.category)) return false;
       if (setting.dependencies?.length) {
         return setting.dependencies.every(
           (dep) => currentValues[dep as keyof typeof currentValues],
@@ -298,80 +438,7 @@ const LocationSettingsForm = ({
     });
   };
 
-  const openPaymentModal = (type: "physical" | "digital") => {
-    setPaymentModalType(type);
-    setIsPaymentModalOpen(true);
-  };
-
-  const handlePaymentSaved = () => {
-    if (paymentModalType === "physical") {
-      setPhysicalPaymentSaved(true);
-      getAllPhysicalReceiptPaymentDetails()
-        .then((data) => {
-          const details: any[] = data?.data ?? data ?? [];
-          const list = Array.isArray(details) ? details : [details];
-          setPhysicalPaymentDetails(list);
-
-          const toRow = (item: any): PaymentRow => ({
-            id: item.id ?? `${Date.now()}-${Math.random()}`,
-            methodId: item.acceptedPaymentMethodType ?? "",
-            accountNumber: item.accountNumber ?? "",
-            notes: item.notes ?? "",
-          });
-          setPhysicalBankRows(
-            list
-              .filter((d) =>
-                d.acceptedPaymentMethodTypeName?.toLowerCase().includes("bank"),
-              )
-              .map(toRow),
-          );
-          setPhysicalMnoRows(
-            list
-              .filter(
-                (d) =>
-                  !d.acceptedPaymentMethodTypeName
-                    ?.toLowerCase()
-                    .includes("bank"),
-              )
-              .map(toRow),
-          );
-        })
-        .catch(console.error);
-    } else {
-      setDigitalPaymentSaved(true);
-      getAllDigitalReceiptPaymentDetails()
-        .then((data) => {
-          const details: any[] = data?.data ?? data ?? [];
-          const list = Array.isArray(details) ? details : [details];
-          setDigitalPaymentDetails(list);
-
-          const toRow = (item: any): PaymentRow => ({
-            id: item.id ?? `${Date.now()}-${Math.random()}`,
-            methodId: item.acceptedPaymentMethodType ?? "",
-            accountNumber: item.accountNumber ?? "",
-            notes: item.notes ?? "",
-          });
-          setDigitalBankRows(
-            list
-              .filter((d) =>
-                d.acceptedPaymentMethodTypeName?.toLowerCase().includes("bank"),
-              )
-              .map(toRow),
-          );
-          setDigitalMnoRows(
-            list
-              .filter(
-                (d) =>
-                  !d.acceptedPaymentMethodTypeName
-                    ?.toLowerCase()
-                    .includes("bank"),
-              )
-              .map(toRow),
-          );
-        })
-        .catch(console.error);
-    }
-  };
+  // ── Render controls ────────────────────────────────────────────────────────
 
   const renderFormControl = (field: SettingField) => {
     const { key, type, placeholder, helperText, inputType, min, max, step } =
@@ -435,301 +502,23 @@ const LocationSettingsForm = ({
                 )}
 
                 {key === "physicalReceiptPaymentDetails" && (
-                  <div className="space-y-3">
-                    {isLoadingPhysicalPayments ? (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2Icon className="h-4 w-4 animate-spin" />
-                        Loading payment details...
-                      </div>
-                    ) : physicalPaymentSaved &&
-                      physicalPaymentDetails.length > 0 ? (
-                      <>
-                        <div className="rounded-lg border border-border overflow-hidden">
-                          {/* Bank section */}
-                          {physicalPaymentDetails.some((d) =>
-                            d.acceptedPaymentMethodTypeName
-                              ?.toLowerCase()
-                              .includes("bank"),
-                          ) && (
-                            <>
-                              <p className="px-3 pt-2.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                Banks
-                              </p>
-                              {physicalPaymentDetails
-                                .filter((d) =>
-                                  d.acceptedPaymentMethodTypeName
-                                    ?.toLowerCase()
-                                    .includes("bank"),
-                                )
-                                .map((detail, i, arr) => (
-                                  <div
-                                    key={detail.id ?? i}
-                                    className={`flex items-center gap-2.5 px-3 py-2 ${i < arr.length - 1 ? "border-b border-border/50" : ""}`}
-                                  >
-                                    <div className="w-8 h-8 rounded-md bg-primary-light dark:bg-primary-light/95 flex items-center justify-center flex-shrink-0">
-                                      <Building2 className="w-3.5 h-3.5 text-primary dark:text-primary" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-[13px] font-medium text-foreground leading-none mb-0.5">
-                                        {detail.acceptedPaymentMethodTypeName}
-                                      </p>
-                                      <p className="text-[11px] text-muted-foreground font-mono">
-                                        ••••
-                                        {String(detail.accountNumber).slice(-4)}
-                                      </p>
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="w-7 h-7 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
-                                  </div>
-                                ))}
-                            </>
-                          )}
-
-                          {/* Divider between sections */}
-                          {physicalPaymentDetails.some((d) =>
-                            d.acceptedPaymentMethodTypeName
-                              ?.toLowerCase()
-                              .includes("bank"),
-                          ) &&
-                            physicalPaymentDetails.some(
-                              (d) =>
-                                !d.acceptedPaymentMethodTypeName
-                                  ?.toLowerCase()
-                                  .includes("bank"),
-                            ) && (
-                              <div className="border-t border-border mx-3" />
-                            )}
-
-                          {/* MNO section */}
-                          {physicalPaymentDetails.some(
-                            (d) =>
-                              !d.acceptedPaymentMethodTypeName
-                                ?.toLowerCase()
-                                .includes("bank"),
-                          ) && (
-                            <>
-                              <p className="px-3 pt-2.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                Mobile money
-                              </p>
-                              {physicalPaymentDetails
-                                .filter(
-                                  (d) =>
-                                    !d.acceptedPaymentMethodTypeName
-                                      ?.toLowerCase()
-                                      .includes("bank"),
-                                )
-                                .map((detail, i, arr) => (
-                                  <div
-                                    key={detail.id ?? i}
-                                    className={`flex items-center gap-2.5 px-3 py-2 ${i < arr.length - 1 ? "border-b border-border/50" : ""}`}
-                                  >
-                                    <div className="w-8 h-8 rounded-md bg-primary-light dark:bg-primary-light/95 flex items-center justify-center flex-shrink-0">
-                                      <Smartphone className="w-3.5 h-3.5 text-primary dark:text-primary" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-[13px] font-medium text-foreground leading-none mb-0.5">
-                                        {detail.acceptedPaymentMethodTypeName}
-                                      </p>
-                                      <p className="text-[11px] text-muted-foreground font-mono">
-                                        ••••
-                                        {String(detail.accountNumber).slice(-4)}
-                                      </p>
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="w-7 h-7 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
-                                  </div>
-                                ))}
-                            </>
-                          )}
-
-                          {/* Footer button */}
-                          <div className="border-t border-border p-2.5">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="w-full"
-                              onClick={() => openPaymentModal("physical")}
-                            >
-                              <FileText className="h-3.5 w-3.5 mr-2" />
-                              Edit payment details
-                            </Button>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openPaymentModal("physical")}
-                      >
-                        <FileText className="h-4 w-4 mr-2" />
-                        Add payment details
-                      </Button>
-                    )}
-                  </div>
+                  <PaymentDetailsCard
+                    details={physicalPaymentDetails}
+                    isLoading={isLoadingPhysicalPayments}
+                    type="physical"
+                    onEdit={() => openPaymentModal("physical")}
+                    onDelete={(id) => handleDeletePayment(id, "physical")}
+                  />
                 )}
 
                 {key === "digitalReceiptPaymentDetails" && (
-                  <div className="space-y-3">
-                    {isLoadingDigitalPayments ? (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2Icon className="h-4 w-4 animate-spin" />
-                        Loading payment details...
-                      </div>
-                    ) : digitalPaymentSaved &&
-                      digitalPaymentDetails.length > 0 ? (
-                      <>
-                        <div className="rounded-lg border border-border overflow-hidden">
-                          {/* Bank section */}
-                          {digitalPaymentDetails.some((d) =>
-                            d.acceptedPaymentMethodTypeName
-                              ?.toLowerCase()
-                              .includes("bank"),
-                          ) && (
-                            <>
-                              <p className="px-3 pt-2.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                Banks
-                              </p>
-                              {digitalPaymentDetails
-                                .filter((d) =>
-                                  d.acceptedPaymentMethodTypeName
-                                    ?.toLowerCase()
-                                    .includes("bank"),
-                                )
-                                .map((detail, i, arr) => (
-                                  <div
-                                    key={detail.id ?? i}
-                                    className={`flex items-center gap-2.5 px-3 py-2 ${i < arr.length - 1 ? "border-b border-border/50" : ""}`}
-                                  >
-                                    <div className="w-8 h-8 rounded-md bg-primary-light dark:bg-primary-light/95 flex items-center justify-center flex-shrink-0">
-                                      <Building2 className="w-3.5 h-3.5 text-primary dark:text-primary" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-[13px] font-medium text-foreground leading-none mb-0.5">
-                                        {detail.acceptedPaymentMethodTypeName}
-                                      </p>
-                                      <p className="text-[11px] text-muted-foreground font-mono">
-                                        ••••
-                                        {String(detail.accountNumber).slice(-4)}
-                                      </p>
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="w-7 h-7 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
-                                  </div>
-                                ))}
-                            </>
-                          )}
-
-                          {/* Divider between sections */}
-                          {digitalPaymentDetails.some((d) =>
-                            d.acceptedPaymentMethodTypeName
-                              ?.toLowerCase()
-                              .includes("bank"),
-                          ) &&
-                            digitalPaymentDetails.some(
-                              (d) =>
-                                !d.acceptedPaymentMethodTypeName
-                                  ?.toLowerCase()
-                                  .includes("bank"),
-                            ) && (
-                              <div className="border-t border-border mx-3" />
-                            )}
-
-                          {/* MNO section */}
-                          {digitalPaymentDetails.some(
-                            (d) =>
-                              !d.acceptedPaymentMethodTypeName
-                                ?.toLowerCase()
-                                .includes("bank"),
-                          ) && (
-                            <>
-                              <p className="px-3 pt-2.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                Mobile money
-                              </p>
-                              {digitalPaymentDetails
-                                .filter(
-                                  (d) =>
-                                    !d.acceptedPaymentMethodTypeName
-                                      ?.toLowerCase()
-                                      .includes("bank"),
-                                )
-                                .map((detail, i, arr) => (
-                                  <div
-                                    key={detail.id ?? i}
-                                    className={`flex items-center gap-2.5 px-3 py-2 ${i < arr.length - 1 ? "border-b border-border/50" : ""}`}
-                                  >
-                                    <div className="w-8 h-8 rounded-md bg-primary-light dark:bg-primary-light/95 flex items-center justify-center flex-shrink-0">
-                                      <Smartphone className="w-3.5 h-3.5 text-primary dark:text-primary" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-[13px] font-medium text-foreground leading-none mb-0.5">
-                                        {detail.acceptedPaymentMethodTypeName}
-                                      </p>
-                                      <p className="text-[11px] text-muted-foreground font-mono">
-                                        ••••
-                                        {String(detail.accountNumber).slice(-4)}
-                                      </p>
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="w-7 h-7 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
-                                  </div>
-                                ))}
-                            </>
-                          )}
-
-                          {/* Footer button */}
-                          <div className="border-t border-border p-2.5">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="w-full"
-                              onClick={() => openPaymentModal("digital")}
-                            >
-                              <FileText className="h-3.5 w-3.5 mr-2" />
-                              Edit payment details
-                            </Button>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openPaymentModal("digital")}
-                      >
-                        <FileText className="h-4 w-4 mr-2" />
-                        Add payment details
-                      </Button>
-                    )}
-                  </div>
+                  <PaymentDetailsCard
+                    details={digitalPaymentDetails}
+                    isLoading={isLoadingDigitalPayments}
+                    type="digital"
+                    onEdit={() => openPaymentModal("digital")}
+                    onDelete={(id) => handleDeletePayment(id, "digital")}
+                  />
                 )}
               </div>
             </div>
@@ -876,7 +665,7 @@ const LocationSettingsForm = ({
                         ] ||
                           category.charAt(0).toUpperCase() + category.slice(1)}
                       </h3>
-                      <div className={getGridClass(settings)}>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {settings.map((field) => renderFormControl(field))}
                       </div>
                     </div>
@@ -901,7 +690,7 @@ const LocationSettingsForm = ({
           </Form>
         </CardContent>
       </Card>
-      {/* Image Upload Modal */}
+
       <ImageUploadModal
         isOpen={isImageModalOpen}
         onClose={() => setIsImageModalOpen(false)}
@@ -911,17 +700,12 @@ const LocationSettingsForm = ({
         }}
         currentImage={receiptImage}
       />
+
       <PaymentDetailsModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
         onSaved={handlePaymentSaved}
         receiptType={paymentModalType}
-        initialBankRows={
-          paymentModalType === "digital" ? digitalBankRows : physicalBankRows
-        }
-        initialMnoRows={
-          paymentModalType === "digital" ? digitalMnoRows : physicalMnoRows
-        }
       />
     </>
   );
