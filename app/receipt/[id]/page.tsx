@@ -888,20 +888,19 @@ const OrderReceipt = async ({
         </div>
 
         {/* Desktop action buttons (non-EFD) */}
-        <div className="hidden lg:block">
-          {!isDownloadable && (
-            <div className="flex justify-center items-center mt-6 mb-4 gap-3">
-              <DownloadButton
-                title="Download PDF"
-                orderNumber={orderData.orderNumber}
-                isDownloadable={isDownloadable === "1"}
-                isEfd={false}
-                fontSize={{ header: "16px", body: "11px", footer: "9px" }}
-              />
-              <ShareButton url={orderUrl} />
-            </div>
-          )}
-        </div>
+        {/* Action buttons (non-EFD) */}
+        {!isDownloadable && (
+          <div className="flex justify-center items-center mt-6 mb-4 gap-3">
+            <DownloadButton
+              title="Download PDF"
+              orderNumber={orderData.orderNumber}
+              isDownloadable={isDownloadable === "1"}
+              isEfd={false}
+              fontSize={{ header: "16px", body: "11px", footer: "9px" }}
+            />
+            <ShareButton url={orderUrl} />
+          </div>
+        )}
 
         {/* Mobile EFD Generate button */}
         <div className="w-full lg:hidden mt-3">

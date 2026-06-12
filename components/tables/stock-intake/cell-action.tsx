@@ -47,6 +47,7 @@ interface CellActionProps {
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
+  console.log("The cell action", data);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   // State for edit modal
@@ -56,9 +57,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   // Initialize React Hook Form
   const form = useForm<z.infer<typeof UpdatedStockIntakeSchema>>({
     resolver: zodResolver(UpdatedStockIntakeSchema),
-    defaultValues: {
-      value: data.value || 0,
-    },
+    defaultValues: { value: 0 },
   });
 
   // Handle edit submission
@@ -76,7 +75,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
   const handleOpenEditModal = () => {
     // Reset form with current data values when opening modal
-    form.reset({ value: data.value || 0 });
+    form.reset({ value: 0 });
     setShowEditModal(true);
   };
   const calculateCostPerItem = () => {
