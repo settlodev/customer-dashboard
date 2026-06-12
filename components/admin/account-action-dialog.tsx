@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { CheckCircle2, Loader2, Mail, PauseCircle, Trash2 } from "lucide-react";
+import {
+  CheckCircle2,
+  Loader2,
+  Mail,
+  PauseCircle,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 
 import {
   AlertDialog,
@@ -23,13 +30,14 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   deleteAccount,
   reactivateAccount,
+  republishAccountEvents,
   resendVerificationEmail,
   suspendAccount,
 } from "@/lib/actions/admin/accounts";
 import { AdminAccountListItem } from "@/types/admin/account";
 
 interface AccountActionDialogProps {
-  kind: "suspend" | "reactivate" | "delete" | "resend-verification";
+  kind: "suspend" | "reactivate" | "delete" | "resend-verification" | "republish";
   account: AdminAccountListItem;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -59,6 +67,8 @@ export function AccountActionDialog({
       <PauseCircle className="h-5 w-5" />
     ) : kind === "resend-verification" ? (
       <Mail className="h-5 w-5" />
+    ) : kind === "republish" ? (
+      <RefreshCw className="h-5 w-5" />
     ) : (
       <CheckCircle2 className="h-5 w-5" />
     );
@@ -70,7 +80,9 @@ export function AccountActionDialog({
         ? "Suspend this account?"
         : kind === "resend-verification"
           ? "Resend verification email?"
-          : "Reactivate this account?";
+          : kind === "republish"
+            ? "Republish account events?"
+            : "Reactivate this account?";
 
   const description =
     kind === "delete" ? (
@@ -89,6 +101,13 @@ export function AccountActionDialog({
         A new verification link and code will be emailed to{" "}
         <strong>{account.email}</strong>. Any previous link will stop working.
       </>
+    ) : kind === "republish" ? (
+      <>
+        Re-broadcasts the current state of <strong>{accountLabel}</strong>{" "}
+        (account plus the owner identity events) so a downstream consumer that
+        drifted out of sync — Reports, or the onboarding/email status shown
+        here — can reconcile. Safe to repeat.
+      </>
     ) : (
       <>
         <strong>{accountLabel}</strong> will regain access immediately. Any
@@ -103,7 +122,9 @@ export function AccountActionDialog({
         ? "Suspend"
         : kind === "resend-verification"
           ? "Send email"
-          : "Reactivate";
+          : kind === "republish"
+            ? "Republish"
+            : "Reactivate";
 
   useEffect(() => {
     if (!open) {
@@ -122,7 +143,9 @@ export function AccountActionDialog({
             ? await suspendAccount(account.id, reason.trim() || undefined)
             : kind === "resend-verification"
               ? await resendVerificationEmail(account.id)
-              : await reactivateAccount(account.id);
+              : kind === "republish"
+                ? await republishAccountEvents(account.id)
+                : await reactivateAccount(account.id);
 
       if (result.responseType === "error") {
         setError(result.message);
@@ -137,7 +160,9 @@ export function AccountActionDialog({
               ? "Account suspended"
               : kind === "resend-verification"
                 ? "Verification email sent"
-                : "Account reactivated",
+                : kind === "republish"
+                  ? "Events republished"
+                  : "Account reactivated",
         description: result.message,
       });
       onDone();

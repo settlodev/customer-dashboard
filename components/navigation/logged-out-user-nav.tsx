@@ -23,22 +23,26 @@ interface LoggedOutNavbarProps {
 export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
   const authToken = await getAuthToken();
 
-  const user: ExtendedUser | null = authToken ? {
-    id: authToken.userId,
-    name: `${authToken.firstName} ${authToken.lastName}`.trim(),
-    email: authToken.email,
-    firstName: authToken.firstName,
-    lastName: authToken.lastName,
-    avatar: authToken.pictureUrl,
-    phoneNumber: authToken.phoneNumber,
-    emailVerified: authToken.emailVerified ? new Date() : null,
-    isBusinessRegistrationComplete: authToken.isBusinessRegistrationComplete,
-    isLocationRegistrationComplete: authToken.isLocationRegistrationComplete,
-    accountId: authToken.accountId,
-    countryId: authToken.countryId,
-    countryCode: authToken.countryCode,
-    theme: authToken.theme,
-  } as ExtendedUser : null;
+  const user: ExtendedUser | null = authToken
+    ? ({
+        id: authToken.userId,
+        name: `${authToken.firstName} ${authToken.lastName}`.trim(),
+        email: authToken.email,
+        firstName: authToken.firstName,
+        lastName: authToken.lastName,
+        avatar: authToken.pictureUrl,
+        phoneNumber: authToken.phoneNumber,
+        emailVerified: authToken.emailVerified ? new Date() : null,
+        isBusinessRegistrationComplete:
+          authToken.isBusinessRegistrationComplete,
+        isLocationRegistrationComplete:
+          authToken.isLocationRegistrationComplete,
+        accountId: authToken.accountId,
+        countryId: authToken.countryId,
+        countryCode: authToken.countryCode,
+        theme: authToken.theme,
+      } as ExtendedUser)
+    : null;
 
   const MobileNav = () => (
     <SheetContent side="left" className="w-72 p-0">
@@ -155,15 +159,6 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
                     className="hidden sm:inline-flex text-sm font-medium"
                   >
                     <Link href="/login">Login</Link>
-                  </Button>
-                  <Button
-                    asChild
-                    className="bg-primary hover:bg-primary/90 text-white rounded-lg shadow-sm transition-all duration-200"
-                  >
-                    <Link href="/register" className="flex items-center text-sm">
-                      Get Started
-                      <ChevronRight className="ml-1 h-4 w-4" />
-                    </Link>
                   </Button>
                 </>
               )}

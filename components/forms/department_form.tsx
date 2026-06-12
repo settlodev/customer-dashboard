@@ -30,7 +30,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { DepartmentSchema } from "@/types/department/schema";
-import { createDepartment, updateDepartment } from "@/lib/actions/department-actions";
+import {
+  createDepartment,
+  updateDepartment,
+} from "@/lib/actions/department-actions";
 import { invalidateDepartmentsCache } from "@/lib/cache/reference-data";
 import { Department } from "@/types/department/type";
 import { useRouter } from "next/navigation";
@@ -50,6 +53,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const [imageUrl, setImageUrl] = useState<string>(item?.image || "");
+  const [discardOpen, setDiscardOpen] = useState(false);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -95,7 +99,11 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
         if (result) {
           if (result.responseType === "success") {
             invalidateDepartmentsCache();
-            toast({ variant: "success", title: "Success", description: result.message });
+            toast({
+              variant: "success",
+              title: "Success",
+              description: result.message,
+            });
             router.push("/departments");
           } else {
             setResponse(result);
@@ -178,7 +186,9 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                       name="color"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className={styles.fieldLabel}>Color</FormLabel>
+                          <FormLabel className={styles.fieldLabel}>
+                            Color
+                          </FormLabel>
                           <FormControl>
                             <div className="flex items-center gap-3">
                               <input

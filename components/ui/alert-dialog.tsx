@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 /**
  * AlertDialog — modal confirmation. Distinct from `<Dialog>` (general
@@ -52,18 +52,18 @@
  * exactly. The token field renders just above the footer.
  */
 
-import * as React from "react"
-import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
-import { cva, type VariantProps } from "class-variance-authority"
+import * as React from "react";
+import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
+import { cva, type VariantProps } from "class-variance-authority";
 import {
   AnimatePresence,
   motion,
   useReducedMotion,
   type HTMLMotionProps,
   type Transition,
-} from "framer-motion"
+} from "framer-motion";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────
 // Tone CSS-variable bindings — same trick toast / notice-bar / alert
@@ -81,16 +81,16 @@ const TONE_STYLES = {
     "[--tone:hsl(var(--warn))] [--tone-tint:hsl(var(--warn)/0.12)] [--tone-tint-strong:hsl(var(--warn)/0.18)]",
   danger:
     "[--tone:hsl(var(--neg))] [--tone-tint:hsl(var(--neg)/0.10)] [--tone-tint-strong:hsl(var(--neg)/0.16)]",
-} as const
+} as const;
 
-type AlertDialogTone = keyof typeof TONE_STYLES
+type AlertDialogTone = keyof typeof TONE_STYLES;
 
 // ─────────────────────────────────────────────────────────────────────
 // Open-state context — Content uses this to drive AnimatePresence
 // without consumers having to wire up `forceMount` themselves.
 // ─────────────────────────────────────────────────────────────────────
 
-const AlertDialogOpenContext = React.createContext<boolean>(false)
+const AlertDialogOpenContext = React.createContext<boolean>(false);
 
 // ─────────────────────────────────────────────────────────────────────
 // Require-text context — wires the typed token through to the action
@@ -98,12 +98,12 @@ const AlertDialogOpenContext = React.createContext<boolean>(false)
 // ─────────────────────────────────────────────────────────────────────
 
 interface AlertDialogContextValue {
-  tone: AlertDialogTone
-  requireText?: string
-  typed: string
-  setTyped: (v: string) => void
+  tone: AlertDialogTone;
+  requireText?: string;
+  typed: string;
+  setTyped: (v: string) => void;
   /** True when no `requireText` is set, OR the user has typed it exactly. */
-  canConfirm: boolean
+  canConfirm: boolean;
 }
 
 const AlertDialogContext = React.createContext<AlertDialogContextValue>({
@@ -112,10 +112,10 @@ const AlertDialogContext = React.createContext<AlertDialogContextValue>({
   typed: "",
   setTyped: () => {},
   canConfirm: true,
-})
+});
 
 function useAlertDialog() {
-  return React.useContext(AlertDialogContext)
+  return React.useContext(AlertDialogContext);
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -126,7 +126,7 @@ function useAlertDialog() {
 
 type AlertDialogRootProps = React.ComponentPropsWithoutRef<
   typeof AlertDialogPrimitive.Root
->
+>;
 
 const AlertDialog: React.FC<AlertDialogRootProps> = ({
   open: controlledOpen,
@@ -134,19 +134,19 @@ const AlertDialog: React.FC<AlertDialogRootProps> = ({
   onOpenChange,
   ...props
 }) => {
-  const [internalOpen, setInternalOpen] = React.useState(defaultOpen ?? false)
+  const [internalOpen, setInternalOpen] = React.useState(defaultOpen ?? false);
   const currentOpen =
-    controlledOpen !== undefined ? controlledOpen : internalOpen
+    controlledOpen !== undefined ? controlledOpen : internalOpen;
 
   const handleOpenChange = React.useCallback(
     (next: boolean) => {
       // Mirror state locally even in controlled mode so context stays
       // in sync without an extra render from the parent.
-      setInternalOpen(next)
-      onOpenChange?.(next)
+      setInternalOpen(next);
+      onOpenChange?.(next);
     },
     [onOpenChange],
-  )
+  );
 
   return (
     <AlertDialogOpenContext.Provider value={currentOpen}>
@@ -157,27 +157,27 @@ const AlertDialog: React.FC<AlertDialogRootProps> = ({
         onOpenChange={handleOpenChange}
       />
     </AlertDialogOpenContext.Provider>
-  )
-}
+  );
+};
 
-const AlertDialogTrigger = AlertDialogPrimitive.Trigger
-const AlertDialogPortal = AlertDialogPrimitive.Portal
+const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
+const AlertDialogPortal = AlertDialogPrimitive.Portal;
 
 // ─────────────────────────────────────────────────────────────────────
 // Motion presets — confident settle, quick exit. Subtle deltas so the
 // dialog never feels "showy".
 // ─────────────────────────────────────────────────────────────────────
 
-const overlayEnter: Transition = { duration: 0.2, ease: [0.32, 0.72, 0, 1] }
-const overlayExit: Transition = { duration: 0.16, ease: [0.4, 0, 0.6, 1] }
+const overlayEnter: Transition = { duration: 0.2, ease: [0.32, 0.72, 0, 1] };
+const overlayExit: Transition = { duration: 0.16, ease: [0.4, 0, 0.6, 1] };
 
 const contentEnter: Transition = {
   type: "spring",
   stiffness: 380,
   damping: 32,
   mass: 0.85,
-}
-const contentExit: Transition = { duration: 0.14, ease: [0.4, 0, 1, 1] }
+};
+const contentExit: Transition = { duration: 0.14, ease: [0.4, 0, 1, 1] };
 
 const iconEnter: Transition = {
   type: "spring",
@@ -185,7 +185,7 @@ const iconEnter: Transition = {
   damping: 24,
   mass: 0.6,
   delay: 0.08,
-}
+};
 
 // ─────────────────────────────────────────────────────────────────────
 // Overlay — preserved as a separate exported primitive for callers
@@ -194,7 +194,7 @@ const iconEnter: Transition = {
 // ─────────────────────────────────────────────────────────────────────
 
 const OVERLAY_CLASSES =
-  "fixed inset-0 z-[1200] bg-[rgba(20,17,12,0.45)] backdrop-blur-md supports-[backdrop-filter]:bg-[rgba(20,17,12,0.30)] supports-[backdrop-filter]:backdrop-blur-[12px]"
+  "fixed inset-0 z-[1200] bg-[rgba(20,17,12,0.45)] backdrop-blur-md supports-[backdrop-filter]:bg-[rgba(20,17,12,0.30)] supports-[backdrop-filter]:backdrop-blur-[12px]";
 
 const AlertDialogOverlay = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Overlay>,
@@ -205,8 +205,8 @@ const AlertDialogOverlay = React.forwardRef<
     className={cn(OVERLAY_CLASSES, className)}
     {...props}
   />
-))
-AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName
+));
+AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 
 // ─────────────────────────────────────────────────────────────────────
 // Content — animated card. The wrapper div handles fixed-position
@@ -232,10 +232,11 @@ const contentVariants = cva(
       tone: "default",
     },
   },
-)
+);
 
 interface AlertDialogContentProps
-  extends Omit<
+  extends
+    Omit<
       React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>,
       "color"
     >,
@@ -243,22 +244,22 @@ interface AlertDialogContentProps
   /** When set, the Confirm button stays disabled until the user types
    *  this exact string in the require-text field. Use for high-stakes
    *  actions (e.g. typing "DELETE"). */
-  requireText?: string
+  requireText?: string;
 }
 
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   AlertDialogContentProps
 >(({ className, tone, children, requireText, ...props }, ref) => {
-  const open = React.useContext(AlertDialogOpenContext)
-  const reduce = useReducedMotion()
-  const [typed, setTyped] = React.useState("")
-  const canConfirm = !requireText || typed === requireText
+  const open = React.useContext(AlertDialogOpenContext);
+  const reduce = useReducedMotion();
+  const [typed, setTyped] = React.useState("");
+  const canConfirm = !requireText || typed === requireText;
 
   // Reset typed token when the dialog closes so the next open starts blank.
   React.useEffect(() => {
-    if (!open) setTyped("")
-  }, [open])
+    if (!open) setTyped("");
+  }, [open]);
 
   const ctxValue = React.useMemo<AlertDialogContextValue>(
     () => ({
@@ -269,7 +270,7 @@ const AlertDialogContent = React.forwardRef<
       canConfirm,
     }),
     [tone, requireText, typed, canConfirm],
-  )
+  );
 
   // Reduced-motion: flat fades only, no transform. Keeps the dialog
   // accessible without any hint of bounce or drift.
@@ -285,7 +286,7 @@ const AlertDialogContent = React.forwardRef<
         animate: { opacity: 1 },
         exit: { opacity: 0, transition: overlayExit },
         transition: overlayEnter,
-      }
+      };
 
   const contentMotion: HTMLMotionProps<"div"> = reduce
     ? {
@@ -299,22 +300,17 @@ const AlertDialogContent = React.forwardRef<
         animate: { opacity: 1, scale: 1, y: 0 },
         exit: { opacity: 0, scale: 0.97, y: -4, transition: contentExit },
         transition: contentEnter,
-      }
+      };
 
   return (
     <AnimatePresence>
       {open && (
         <AlertDialogPrimitive.Portal forceMount>
-          <AlertDialogPrimitive.Overlay asChild forceMount>
-            <motion.div className={OVERLAY_CLASSES} {...overlayMotion} />
-          </AlertDialogPrimitive.Overlay>
+          {/* Plain motion div — no Radix Overlay wrapper needed here */}
+          <motion.div className={OVERLAY_CLASSES} {...overlayMotion} />
+
           <AlertDialogContext.Provider value={ctxValue}>
-            <AlertDialogPrimitive.Content
-              asChild
-              forceMount
-              ref={ref}
-              {...props}
-            >
+            <AlertDialogPrimitive.Content forceMount ref={ref} {...props}>
               <div className="pointer-events-none fixed inset-0 z-[1201] grid place-items-center p-6">
                 <motion.div
                   {...contentMotion}
@@ -332,9 +328,9 @@ const AlertDialogContent = React.forwardRef<
         </AlertDialogPrimitive.Portal>
       )}
     </AnimatePresence>
-  )
-})
-AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName
+  );
+});
+AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
 
 // ─────────────────────────────────────────────────────────────────────
 // Layout — icon disc, header, footer.
@@ -351,7 +347,7 @@ const AlertDialogIcon = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
-  const reduce = useReducedMotion()
+  const reduce = useReducedMotion();
   return (
     <motion.div
       ref={ref}
@@ -366,9 +362,9 @@ const AlertDialogIcon = React.forwardRef<
       )}
       {...(props as HTMLMotionProps<"div">)}
     />
-  )
-})
-AlertDialogIcon.displayName = "AlertDialogIcon"
+  );
+});
+AlertDialogIcon.displayName = "AlertDialogIcon";
 
 /**
  * Header wrapper — keeps title + description stacked. Drop the title
@@ -383,8 +379,8 @@ const AlertDialogHeader = React.forwardRef<
     className={cn("flex min-w-0 flex-col gap-1.5", className)}
     {...props}
   />
-))
-AlertDialogHeader.displayName = "AlertDialogHeader"
+));
+AlertDialogHeader.displayName = "AlertDialogHeader";
 
 /**
  * Footer — actions row spanning both grid columns. Cancel on the left,
@@ -402,8 +398,8 @@ const AlertDialogFooter = React.forwardRef<
     )}
     {...props}
   />
-))
-AlertDialogFooter.displayName = "AlertDialogFooter"
+));
+AlertDialogFooter.displayName = "AlertDialogFooter";
 
 // ─────────────────────────────────────────────────────────────────────
 // Typography
@@ -421,8 +417,8 @@ const AlertDialogTitle = React.forwardRef<
     )}
     {...props}
   />
-))
-AlertDialogTitle.displayName = AlertDialogPrimitive.Title.displayName
+));
+AlertDialogTitle.displayName = AlertDialogPrimitive.Title.displayName;
 
 const AlertDialogDescription = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Description>,
@@ -436,9 +432,9 @@ const AlertDialogDescription = React.forwardRef<
     )}
     {...props}
   />
-))
+));
 AlertDialogDescription.displayName =
-  AlertDialogPrimitive.Description.displayName
+  AlertDialogPrimitive.Description.displayName;
 
 // ─────────────────────────────────────────────────────────────────────
 // Require-text input — high-stakes confirmation flow.
@@ -456,8 +452,8 @@ const AlertDialogRequireText = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
-  const { requireText, typed, setTyped } = useAlertDialog()
-  if (!requireText) return null
+  const { requireText, typed, setTyped } = useAlertDialog();
+  if (!requireText) return null;
 
   return (
     <div
@@ -484,9 +480,9 @@ const AlertDialogRequireText = React.forwardRef<
         )}
       />
     </div>
-  )
-})
-AlertDialogRequireText.displayName = "AlertDialogRequireText"
+  );
+});
+AlertDialogRequireText.displayName = "AlertDialogRequireText";
 
 // ─────────────────────────────────────────────────────────────────────
 // Action buttons
@@ -500,8 +496,8 @@ const AlertDialogAction = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Action>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action>
 >(({ className, disabled, ...props }, ref) => {
-  const { canConfirm } = useAlertDialog()
-  const isDisabled = disabled || !canConfirm
+  const { canConfirm } = useAlertDialog();
+  const isDisabled = disabled || !canConfirm;
 
   return (
     <AlertDialogPrimitive.Action
@@ -518,9 +514,9 @@ const AlertDialogAction = React.forwardRef<
       )}
       {...props}
     />
-  )
-})
-AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName
+  );
+});
+AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName;
 
 /**
  * Cancel button. Outline-style, neutral.
@@ -540,8 +536,8 @@ const AlertDialogCancel = React.forwardRef<
     )}
     {...props}
   />
-))
-AlertDialogCancel.displayName = AlertDialogPrimitive.Cancel.displayName
+));
+AlertDialogCancel.displayName = AlertDialogPrimitive.Cancel.displayName;
 
 export {
   AlertDialog,
@@ -557,4 +553,4 @@ export {
   AlertDialogRequireText,
   AlertDialogAction,
   AlertDialogCancel,
-}
+};

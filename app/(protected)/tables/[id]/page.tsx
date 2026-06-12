@@ -20,6 +20,7 @@ import {
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import { getLocationSettings } from "@/lib/actions/location-settings-actions";
 import { listOrders } from "@/lib/actions/order-actions";
+import { buildOrderListView } from "@/lib/orders/order-list-view";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import { Order, OrderStatus } from "@/types/orders/type";
 import { SpaceDetailView } from "@/app/(protected)/spaces/[id]/space-detail-view";
@@ -35,17 +36,6 @@ type SearchParams = Promise<{
   page?: string;
   limit?: string;
 }>;
-
-const matchesSearch = (order: Order, q: string): boolean => {
-  if (!q) return true;
-  const needle = q.toLowerCase();
-  return (
-    order.orderNumber?.toLowerCase().includes(needle) ||
-    (order.notes ?? "").toLowerCase().includes(needle) ||
-    (order.externalOrderId ?? "").toLowerCase().includes(needle) ||
-    (order.cancellationReason ?? "").toLowerCase().includes(needle)
-  );
-};
 
 export default async function TablePage({
   params,
@@ -119,29 +109,15 @@ export default async function TablePage({
       ? tableOrders.filter((o) => o.orderStatus === OrderStatus.ABANDONED)
       : tableOrders.filter((o) => o.orderStatus !== OrderStatus.ABANDONED);
 
-  const filtered = scoped.filter((o) => matchesSearch(o, q));
-  const total = filtered.length;
-  const pageCount = Math.max(1, Math.ceil(total / limit));
-  const start = (pageNo - 1) * limit;
-  const pageData = filtered.slice(start, start + limit);
-
-  // Resolve assigned/closed-by staff and table UUIDs to names, but only
-  // for the rows on the visible page — keeps the client props small.
-  const staffNames: Record<string, string> = {};
-  const tableNames: Record<string, string> = {};
-  const neededStaffIds = new Set<string>();
-  const neededTableIds = new Set<string>();
-  for (const o of pageData) {
-    if (o.assignedTo) neededStaffIds.add(o.assignedTo);
-    if (o.finishedBy) neededStaffIds.add(o.finishedBy);
-    if (o.tableId) neededTableIds.add(o.tableId);
-  }
-  for (const s of staffList) {
-    if (neededStaffIds.has(s.id)) staffNames[s.id] = s.fullName;
-  }
-  for (const t of tablesList) {
-    if (neededTableIds.has(t.id)) tableNames[t.id] = t.name;
-  }
+  const { pageData, total, pageCount, staffNames, tableNames } =
+    buildOrderListView({
+      orders: scoped,
+      search: q,
+      page: pageNo,
+      limit,
+      staff: staffList,
+      tables: tablesList,
+    });
 
   const salesContent = (
     // Keyed because this element is created here but rendered among

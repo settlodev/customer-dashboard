@@ -161,6 +161,10 @@ interface DataTableProps<TData, TValue> {
    */
   hideSearch?: boolean;
   /**
+   * Placeholder text for the search input. Defaults to "Search...".
+   */
+  searchPlaceholder?: string;
+  /**
    * Additional client-side filters that compose with `filterKey`. Each
    * renders its own dropdown next to the primary filter; all active
    * filters AND together. Click the same option again to clear it.
@@ -198,6 +202,7 @@ export function DataTable<TData, TValue>({
   clientMode = false,
   manualFilter = false,
   hideSearch = false,
+  searchPlaceholder = "Search...",
 }: DataTableProps<TData, TValue>) {
   const router = useRouter();
   const pathname = usePathname();
@@ -581,7 +586,7 @@ export function DataTable<TData, TValue>({
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="h-9 pl-9 text-[12.5px]"
-            placeholder="Search..."
+            placeholder={searchPlaceholder}
             type="search"
             value={
               (table.getColumn(searchKey)?.getFilterValue() as string) ?? ""

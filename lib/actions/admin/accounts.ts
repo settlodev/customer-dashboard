@@ -180,6 +180,43 @@ export async function resendVerificationEmail(
   }
 }
 
+export async function republishAccountEvents(
+  accountId: string,
+): Promise<
+  FormResponse<{
+    accountId: string;
+    accountEventEmitted: boolean;
+    identityRepublished: boolean;
+  }>
+> {
+  try {
+    const result = await staffClient().post<
+      {
+        accountId: string;
+        accountEventEmitted: boolean;
+        identityRepublished: boolean;
+      },
+      Record<string, never>
+    >(`/api/v1/admin/accounts/${accountId}/republish`, {});
+
+    revalidatePath("/admin/accounts");
+    revalidatePath(`/admin/accounts/${accountId}`);
+    return parseStringify({
+      responseType: "success",
+      message: result?.identityRepublished
+        ? "Republished account and identity events"
+        : "Republished account events",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to republish account events",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
 export async function deleteAccount(
   accountId: string,
 ): Promise<FormResponse<void>> {
