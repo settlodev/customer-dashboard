@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import {
   Banknote,
   Ban,
@@ -50,14 +52,36 @@ interface Props {
   currency: string;
   /** Carried across sub-tab switches so date / search context survives. */
   preservedParams: Record<string, string | undefined>;
+  /**
+   * Query param that carries the active sub-tab. Defaults to `view` (the
+   * entity Sales tabs); the standalone Orders page passes `tab`.
+   */
+  tabParamKey?: string;
+  /**
+   * `location` (the standalone Orders page) shows the extra "Tied to a
+   * table" abandoned KPI; `entity` (a staff/table Sales tab) omits it.
+   */
+  scope?: "location" | "entity";
+  /**
+   * Active status filter — drives the Orders KPI delta text only. Set by the
+   * standalone Orders page; omitted by the entity Sales tabs.
+   */
+  statusParam?: OrderStatus | "";
+  /**
+   * Rendered in place of the Orders/Abandoned view (the tab nav + date filter
+   * still render above it). The standalone Orders page passes its empty-state
+   * element here when the list is empty and unfiltered.
+   */
+  emptyState?: ReactNode;
 }
 
 /**
- * A Sales view — the standalone Orders list, scoped to a single entity
- * (a table, a staff member, …). Mirrors `/orders`: a date filter, an
- * Orders/Abandoned sub-tab nav, a KPI strip, and the same data tables.
- * All filtering, paging, and the date range are URL-driven so the server
- * re-fetches exactly like the Orders page does.
+ * The Orders list body — a date filter, an Orders/Abandoned sub-tab nav, a
+ * KPI strip, and the order data tables. Used both location-wide (the
+ * standalone `/orders` page, via `scope="location"`) and scoped to a single
+ * entity (a staff member or table Sales tab). All filtering, paging, and the
+ * date range are URL-driven so the server re-fetches exactly like the Orders
+ * page does.
  */
 export function OrdersPanel({
   basePath,
@@ -74,6 +98,10 @@ export function OrdersPanel({
   tableNames,
   currency,
   preservedParams,
+  tabParamKey = "view",
+  scope = "entity",
+  statusParam,
+  emptyState,
 }: Props) {
   return (
     <div className="space-y-6">
@@ -81,36 +109,39 @@ export function OrdersPanel({
         <OrdersTabNav
           active={view}
           basePath={basePath}
-          paramKey="view"
+          paramKey={tabParamKey}
           preservedParams={preservedParams}
         />
         <OrdersDateFilter from={from} to={to} />
       </div>
 
-      {view === "orders" ? (
-        <OrdersView
-          scoped={scoped}
-          pageData={pageData}
-          pageCount={pageCount}
-          pageNo={pageNo}
-          total={total}
-          currency={currency}
-          tableMode={tableMode}
-          staffNames={staffNames}
-          tableNames={tableNames}
-        />
-      ) : (
-        <AbandonedView
-          scoped={scoped}
-          pageData={pageData}
-          pageCount={pageCount}
-          pageNo={pageNo}
-          total={total}
-          tableMode={tableMode}
-          staffNames={staffNames}
-          tableNames={tableNames}
-        />
-      )}
+      {emptyState ??
+        (view === "orders" ? (
+          <OrdersView
+            scoped={scoped}
+            pageData={pageData}
+            pageCount={pageCount}
+            pageNo={pageNo}
+            total={total}
+            currency={currency}
+            tableMode={tableMode}
+            staffNames={staffNames}
+            tableNames={tableNames}
+            statusParam={statusParam}
+          />
+        ) : (
+          <AbandonedView
+            scoped={scoped}
+            pageData={pageData}
+            pageCount={pageCount}
+            pageNo={pageNo}
+            total={total}
+            tableMode={tableMode}
+            staffNames={staffNames}
+            tableNames={tableNames}
+            scope={scope}
+          />
+        ))}
     </div>
   );
 }
@@ -125,6 +156,7 @@ function OrdersView({
   tableMode,
   staffNames,
   tableNames,
+  statusParam,
 }: {
   scoped: Order[];
   pageData: Order[];
@@ -135,6 +167,7 @@ function OrdersView({
   tableMode: boolean;
   staffNames: Record<string, string>;
   tableNames: Record<string, string>;
+  statusParam?: OrderStatus | "";
 }) {
   const openCount = scoped.filter(
     (o) => o.orderStatus === OrderStatus.OPEN,
@@ -158,7 +191,9 @@ function OrdersView({
           icon={<ReceiptText className="h-3 w-3" />}
           label="Orders"
           value={scoped.length.toLocaleString()}
-          delta="Across all statuses"
+          delta={
+            statusParam ? `Filtered: ${statusParam}` : "Across all statuses"
+          }
           deltaTone="neutral"
         />
         <KpiCard
@@ -220,6 +255,7 @@ function AbandonedView({
   tableMode,
   staffNames,
   tableNames,
+  scope,
 }: {
   scoped: Order[];
   pageData: Order[];
@@ -229,6 +265,7 @@ function AbandonedView({
   tableMode: boolean;
   staffNames: Record<string, string>;
   tableNames: Record<string, string>;
+  scope: "location" | "entity";
 }) {
   // Same split as the Orders page: auto-cancels from the end-of-day
   // sweep vs. a manual cancel of an empty order. "Tied to a table" is
@@ -238,10 +275,11 @@ function AbandonedView({
     (o.cancellationReason ?? "").toLowerCase().startsWith("auto-cancelled"),
   ).length;
   const manualAbandoned = totalAbandoned - autoAbandoned;
+  const withTable = scoped.filter((o) => !!o.tableId).length;
 
   return (
     <>
-      <KpiStrip cols={3}>
+      <KpiStrip cols={scope === "location" ? 4 : 3}>
         <KpiCard
           icon={<Ban className="h-3 w-3" />}
           label="Abandoned"
@@ -263,6 +301,15 @@ function AbandonedView({
           delta="Cancelled with no items"
           deltaTone="neutral"
         />
+        {scope === "location" ? (
+          <KpiCard
+            icon={<Receipt className="h-3 w-3" />}
+            label="Tied to a table"
+            value={withTable > 0 ? withTable.toLocaleString() : "—"}
+            delta="Likely claim auto-release"
+            deltaTone="neutral"
+          />
+        ) : null}
       </KpiStrip>
 
       <Card>

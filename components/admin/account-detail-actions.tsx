@@ -7,6 +7,7 @@ import {
   FlaskConical,
   Mail,
   PauseCircle,
+  RefreshCw,
   Trash2,
 } from "lucide-react";
 
@@ -49,7 +50,12 @@ function toListItem(detail: AdminAccountDetail): AdminAccountListItem {
   };
 }
 
-type ActionKind = "suspend" | "reactivate" | "delete" | "resend-verification";
+type ActionKind =
+  | "suspend"
+  | "reactivate"
+  | "delete"
+  | "resend-verification"
+  | "republish";
 
 export function AccountDetailActions({
   account,
@@ -126,6 +132,19 @@ export function AccountDetailActions({
         >
           <FlaskConical className="mr-1.5 h-4 w-4" />
           {account.internal ? "Mark as customer" : "Mark as internal"}
+        </Button>
+      )}
+
+      {canManage && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setActive("republish")}
+          className="text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-500/10"
+        >
+          <RefreshCw className="mr-1.5 h-4 w-4" />
+          Republish events
         </Button>
       )}
 
