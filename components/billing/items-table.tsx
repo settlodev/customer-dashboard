@@ -157,7 +157,7 @@ export function ItemsTable({
                         size="icon"
                         variant="ghost"
                         className="h-8 w-8"
-                        disabled={disabled || item.isBundled}
+                        disabled={disabled || item.isBundled || item.status !== "ACTIVE"}
                         aria-label="Item actions"
                       >
                         <MoreHorizontal className="h-4 w-4" />
