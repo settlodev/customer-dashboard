@@ -207,6 +207,28 @@ export function ChurnSection({
                           {p.is_in_trial ? ` · trial ${p.trial_days_remaining ?? "?"}d left` : ""}
                           {p.is_past_due ? " · PAST DUE" : ""}
                         </span>
+                        {p.billing_status && (
+                          <Badge
+                            variant="outline"
+                            className="mt-0.5 w-fit text-[10px] border-sky-200 bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/20"
+                          >
+                            {p.billing_status}
+                          </Badge>
+                        )}
+                        {(() => {
+                          const parts: string[] = [];
+                          if ((p.past_due_item_count ?? 0) > 0)
+                            parts.push(`${p.past_due_item_count} past-due`);
+                          if ((p.expired_item_count ?? 0) > 0)
+                            parts.push(`${p.expired_item_count} expired`);
+                          if ((p.suspended_item_count ?? 0) > 0)
+                            parts.push(`${p.suspended_item_count} suspended`);
+                          return parts.length > 0 ? (
+                            <span className="font-mono text-[11px] text-muted-foreground">
+                              {parts.join(" · ")}
+                            </span>
+                          ) : null;
+                        })()}
                       </div>
                     </TableCell>
                     <TableCell>

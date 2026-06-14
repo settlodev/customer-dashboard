@@ -54,6 +54,10 @@ export interface ChurnPrediction {
   is_past_due: number;
   is_in_trial: number;
   trial_days_remaining: number | null;
+  billing_status: string | null;
+  past_due_item_count: number;
+  expired_item_count: number;
+  suspended_item_count: number;
   revenue_trend_30d: number;
   top_contributing_features: string | null;
   recommended_action: string | null;
