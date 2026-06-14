@@ -16,6 +16,7 @@ import { EngagementSection } from "@/components/admin/analytics/engagement-secti
 
 import {
   ActivationCohort,
+  BillingRetentionCohortCell,
   ChurnPrediction,
   ChurnSummary,
   EngagementSnapshot,
@@ -32,6 +33,7 @@ interface AnalyticsTabsProps {
     mrrMovements: MrrMovement[];
     latestMrr: MrrMovement | null;
     retentionCohorts: RetentionCohortCell[];
+    billingRetentionCohorts: BillingRetentionCohortCell[];
     churnPredictions: ChurnPrediction[];
     churnSummary: ChurnSummary | null;
     engagement: EngagementSnapshot[];
@@ -40,6 +42,23 @@ interface AnalyticsTabsProps {
     trialConversion: TrialConversionRow[];
   };
   errors: Record<string, string | null>;
+}
+
+function toBillingCohortCells(
+  cells: BillingRetentionCohortCell[],
+): RetentionCohortCell[] {
+  return cells.map((c) => ({
+    cohort_month: c.cohort_month,
+    months_since_signup: c.months_since_signup,
+    cohort_size: c.cohort_size,
+    active_businesses: c.active_businesses,
+    retention_rate: c.retention_rate,
+    orders_in_period: c.invoices_in_period,
+    revenue_in_period: c.revenue_in_period,
+    arpa_in_period: c.arpa_in_period,
+    computed_at: "",
+    ver: 0,
+  }));
 }
 
 const TABS = ["mrr", "retention", "churn", "engagement"] as const;
@@ -93,6 +112,16 @@ export function AnalyticsTabs({
           canRecompute={canRecompute}
           error={errors.retentionCohorts}
         />
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-ink">
+            Billing retention (paid invoices)
+          </h3>
+          <RetentionSection
+            cohorts={toBillingCohortCells(data.billingRetentionCohorts)}
+            canRecompute={false}
+            error={errors.billingRetentionCohorts ?? null}
+          />
+        </div>
       </TabsContent>
 
       <TabsContent value="churn" className="space-y-6">

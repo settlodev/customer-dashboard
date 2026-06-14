@@ -23,6 +23,17 @@ export interface MrrMovement {
 
 // ── Retention ────────────────────────────────────────────────────────
 
+export interface BillingRetentionCohortCell {
+  cohort_month: string;
+  months_since_signup: number;
+  cohort_size: number;
+  active_businesses: number;
+  retention_rate: number;
+  invoices_in_period: number;
+  revenue_in_period: number;
+  arpa_in_period: number;
+}
+
 export interface RetentionCohortCell {
   cohort_month: string;
   months_since_signup: number;
