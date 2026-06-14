@@ -3,6 +3,7 @@ import type { BadgeProps } from "@/components/ui/badge";
 import type {
   InvoiceStatus,
   CreditTransactionType,
+  SubscriptionItemStatus,
 } from "@/types/billing/types";
 import type { SubscriptionStatus } from "@/types/types";
 import type { Business } from "@/types/business/type";
@@ -96,6 +97,38 @@ const CREDIT_TXN_LABEL: Record<CreditTransactionType, string> = {
 
 export function getCreditTxnLabel(type: CreditTransactionType): string {
   return CREDIT_TXN_LABEL[type] ?? type;
+}
+
+// ── Per-item subscription status ──────────────────────────────────────
+// Each SubscriptionItem has its own lifecycle status independent of the
+// parent subscription. REMOVED is a soft-delete sentinel (item no longer
+// visible in active listings); the rest map to the billing service enum.
+
+const SUBSCRIPTION_ITEM_STATUS_VARIANT: Record<SubscriptionItemStatus, BadgeVariant> = {
+  ACTIVE: "pos",
+  PAST_DUE: "warn",
+  EXPIRED: "neg",
+  SUSPENDED: "neg",
+  CANCELLED: "neg",
+  REMOVED: "soft",
+};
+
+const SUBSCRIPTION_ITEM_STATUS_LABEL: Record<SubscriptionItemStatus, string> = {
+  ACTIVE: "Active",
+  PAST_DUE: "Past due",
+  EXPIRED: "Expired",
+  SUSPENDED: "Suspended",
+  CANCELLED: "Cancelled",
+  REMOVED: "Removed",
+};
+
+export function getSubscriptionItemStatusMeta(
+  status: SubscriptionItemStatus,
+): { label: string; variant: BadgeVariant } {
+  return {
+    label: SUBSCRIPTION_ITEM_STATUS_LABEL[status] ?? status,
+    variant: SUBSCRIPTION_ITEM_STATUS_VARIANT[status] ?? "soft",
+  };
 }
 
 export function isUnlimited(limit: number | undefined | null): boolean {

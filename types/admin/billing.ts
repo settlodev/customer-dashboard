@@ -57,7 +57,13 @@ export type PaymentMethod =
 
 // ── Subscription ────────────────────────────────────────────────────
 
-export type SubscriptionItemStatus = "ACTIVE" | "REMOVED";
+export type SubscriptionItemStatus =
+  | "ACTIVE"
+  | "PAST_DUE"
+  | "EXPIRED"
+  | "SUSPENDED"
+  | "CANCELLED"
+  | "REMOVED";
 
 /**
  * A subscription item = one billable unit (location / warehouse / store) on
@@ -73,6 +79,7 @@ export interface SubscriptionItemResponse {
   isBundled: boolean | null;
   bundledByItemId: string | null;
   status: SubscriptionItemStatus;
+  trialEndDate: string | null;
   addedAt: string | null;
   removedAt: string | null;
 }
