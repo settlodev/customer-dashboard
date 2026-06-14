@@ -80,10 +80,22 @@ export function BillingClient({
       </TabsContent>
 
       <TabsContent value="invoices" className="mt-6">
+        {/*
+         * Invoices are consolidated at the business level (one invoice per
+         * business, with a line per entity). The "Bill to" party is therefore
+         * the business itself, not whichever entity happens to be first in the
+         * items list. We pass only businessId here so getInvoiceBillingParties
+         * resolves the business record and leaves locationId undefined.
+         *
+         * NOTE: If a future per-invoice entity field is added to InvoiceViewDto
+         * (e.g. a primary entityId on the invoice), that could be used to
+         * refine the bill-to address to the specific entity for single-entity
+         * invoices. For now, business-level resolution is correct for the
+         * consolidated multi-entity billing model.
+         */}
         <InvoicesTab
           invoices={invoices}
           businessId={businessId}
-          locationId={primaryItem?.entityId}
           contactDefaults={contactDefaults}
         />
       </TabsContent>
