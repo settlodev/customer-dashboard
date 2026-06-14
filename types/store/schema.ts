@@ -16,4 +16,7 @@ export const StoreSchema = z.object({
   latitude: z.number().optional(),
   longitude: z.number().optional(),
   capacity: z.number().optional(),
+  /** STORE billing plan code forwarded to the accounts CreateStoreRequest
+   *  so the service can provision the correct trial plan at creation time. */
+  planCode: z.string().optional(),
 });
