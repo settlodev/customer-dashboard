@@ -455,6 +455,31 @@ function Field({
   );
 }
 
+// ── Billing status badge (per-entity best-of rollup) ────────────────
+function BillingStatusBadge({ status }: { status: string }) {
+  const s = status.toUpperCase();
+  const cfg = s === "ACTIVE"
+    ? { bg: "bg-pos-tint", text: "text-pos" }
+    : s === "TRIAL"
+      ? { bg: "bg-[hsl(var(--warn)_/_0.1)]", text: "text-warn" }
+      : s === "PAST_DUE"
+        ? { bg: "bg-[hsl(var(--warn)_/_0.1)]", text: "text-warn" }
+        : { bg: "bg-neg-tint", text: "text-neg" };
+  const label = s.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold",
+        cfg.bg,
+        cfg.text,
+      )}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {label}
+    </span>
+  );
+}
+
 // ── Billing rollup (account = owner; each unit billed on its own plan) ──
 function BillingRollupCard({
   billing,
@@ -508,6 +533,13 @@ function BillingRollupCard({
           label="MRR"
           value={`${billing.mrr.currency} ${billing.mrr.value}`}
         />
+        {billing.billingStatus && (
+          <DefRow
+            label="Billing status"
+            rawValue
+            value={<BillingStatusBadge status={billing.billingStatus} />}
+          />
+        )}
         {billing.planMix.length > 0 && (
           <DefRow
             label="Plan mix"
