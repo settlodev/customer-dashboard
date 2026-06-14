@@ -73,7 +73,9 @@ export interface PaymentOptionsDialogProps {
     currency: string;
   };
   businessId: string;
-  locationId: string;
+  /** Optional: not sent to the payment API (Billing derives routing from the
+   *  invoice). Kept for callers that historically passed a location context. */
+  locationId?: string;
   description?: string;
   defaultEmail?: string;
   defaultPhone?: string;
@@ -198,7 +200,7 @@ export function PaymentOptionsDialog({
         setSubmitting(false);
       }
     },
-    [invoice, businessId, locationId, description, toast],
+    [invoice, businessId, description, toast],
   );
 
   return (

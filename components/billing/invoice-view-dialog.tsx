@@ -440,7 +440,7 @@ export function InvoiceViewDialog({
             currency: invoice.currency,
           }}
           businessId={businessId!}
-          locationId={locationId!}
+          locationId={locationId}
           defaultEmail={defaultEmail ?? invoice.customerEmail ?? undefined}
           defaultPhone={defaultPhone ?? invoice.customerPhone ?? undefined}
           onPaid={() => {
