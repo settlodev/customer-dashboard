@@ -194,6 +194,7 @@ export interface DashboardOverview {
   stats: StatStripItem[];
   funnel: OnboardingFunnel;
   revenue: RevenueSeries[];
+  mrrByEntityType: { name: string; value: number }[];
   planMix: { caption: string; items: PlanMixItem[] };
   trials: TrialPipelineItem[];
   regions: { caption: string; items: RegionItem[] };
@@ -223,6 +224,7 @@ export interface DashboardOverviewResponse {
     gmvPrev: number;
     nrr: number | null;
     payingCustomers: number;
+    mrrByEntityType: { entity_type: string; mrr: number }[];
   };
   stats: {
     totalAccounts: number;

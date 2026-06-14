@@ -81,6 +81,7 @@ function blankOverview(errored: DashboardSectionKey[]): DashboardOverview {
     stats: [],
     funnel: { stages: [], summary: "" },
     revenue: [],
+    mrrByEntityType: [],
     planMix: { caption: "", items: [] },
     trials: [],
     regions: { caption: "", items: [] },
@@ -536,6 +537,13 @@ function mapOverview(res: DashboardOverviewResponse): DashboardOverview {
     };
   });
 
+  // MRR by entity type (LOCATION / WAREHOUSE / STORE)
+  const byType = res.revenue?.mrrByEntityType ?? [];
+  const mrrByEntityType = byType.map((r) => ({
+    name: r.entity_type,
+    value: num(r.mrr),
+  }));
+
   return {
     errored: (res.errors ?? []).filter((e): e is DashboardSectionKey =>
       (ALL_SECTIONS as string[]).includes(e),
@@ -545,6 +553,7 @@ function mapOverview(res: DashboardOverviewResponse): DashboardOverview {
     stats,
     funnel,
     revenue: series,
+    mrrByEntityType,
     planMix,
     trials,
     regions,

@@ -78,6 +78,11 @@ export function AdminDashboardView({ data }: { data: DashboardOverview }) {
         </section>
       )}
 
+      {/* MRR by entity type */}
+      {data.mrrByEntityType.length > 0 && (
+        <MrrByEntityTypeCard items={data.mrrByEntityType} />
+      )}
+
       {/* Account → business → location stat strip */}
       {failed("stats") ? (
         <SectionUnavailable label="platform stats" />
@@ -346,6 +351,29 @@ function BillingCard({
           </div>
         </div>
       ))}
+    </SectionCard>
+  );
+}
+
+// ── MRR by entity type ───────────────────────────────────────────────
+function MrrByEntityTypeCard({
+  items,
+}: {
+  items: DashboardOverview["mrrByEntityType"];
+}) {
+  const total = items.reduce((s, r) => s + r.value, 0);
+  return (
+    <SectionCard title="MRR by entity type" subtitle="Breakdown by subscription entity">
+      <BarList>
+        {items.map((r) => (
+          <BarRow
+            key={r.name}
+            label={r.name}
+            value={r.value.toLocaleString()}
+            pct={total > 0 ? (r.value / total) * 100 : 0}
+          />
+        ))}
+      </BarList>
     </SectionCard>
   );
 }
