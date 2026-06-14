@@ -8,6 +8,7 @@ export type FeatureType = "CORE" | "ADVANCED" | "PREMIUM" | "LIMIT";
 
 export interface Package {
   id: string;
+  code?: string;
   name: string;
   description: string | null;
   basePrice: number;
