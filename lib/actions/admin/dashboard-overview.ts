@@ -380,23 +380,24 @@ function mapOverview(res: DashboardOverviewResponse): DashboardOverview {
   const planRows = res.planMix ?? [];
   const totalPlanBiz = planRows.reduce((s, p) => s + num(p.business_count), 0);
   const totalActive = planRows.reduce((s, p) => s + num(p.active_count), 0);
-  const totalTrial = planRows.reduce((s, p) => s + num(p.trial_count), 0);
+  const totalItems = planRows.reduce((s, p) => s + num(p.item_count), 0);
   const totalPlanMrr = planRows.reduce((s, p) => s + num(p.mrr), 0);
   const planItems: PlanMixItem[] = planRows.map((p) => {
     const tier = tierOf(p.tier || p.plan_name);
     return {
       tier,
       label: p.plan_name ?? "Unknown",
+      entityType: p.entity_type,
       businesses: num(p.business_count),
       activeCount: num(p.active_count),
-      trialCount: num(p.trial_count),
+      itemCount: num(p.item_count),
       mrrLabel: `TZS ${compactNumber(num(p.mrr))}`,
       pct: totalPlanBiz > 0 ? (num(p.business_count) / totalPlanBiz) * 100 : 0,
       color: tierColor(tier),
     };
   });
   const planMix = {
-    caption: `${totalPlanBiz} ${totalPlanBiz === 1 ? "business" : "businesses"} · ${totalActive} active · ${totalTrial} trial · TZS ${compactNumber(totalPlanMrr)} MRR`,
+    caption: `${totalPlanBiz} ${totalPlanBiz === 1 ? "business" : "businesses"} · ${totalActive} active · ${totalItems} ${totalItems === 1 ? "item" : "items"} · TZS ${compactNumber(totalPlanMrr)} MRR`,
     items: planItems,
   };
 

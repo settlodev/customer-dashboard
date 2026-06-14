@@ -239,9 +239,12 @@ function PlanMixCard({
             label={
               <>
                 {p.label}
+                <span className="ml-1.5 rounded px-1 py-px font-mono text-[10px] font-semibold uppercase tracking-wide bg-ink/[0.07] text-ink-2">
+                  {p.entityType}
+                </span>
                 <span className="ml-1 font-mono text-[11px] text-muted-2">
-                  · {p.activeCount} active
-                  {p.trialCount > 0 ? ` · ${p.trialCount} trial` : ""}
+                  · {p.activeCount} active · {p.itemCount}{" "}
+                  {p.itemCount === 1 ? "item" : "items"}
                 </span>
               </>
             }
