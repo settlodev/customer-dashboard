@@ -15,7 +15,7 @@ import { ItemsTable } from "./items-table";
 import { PlanChangeDialog } from "./plan-change-dialog";
 import { AddonsDialog } from "./addons-dialog";
 import { CancelSubscriptionDialog } from "./cancel-subscription-dialog";
-import { formatBillingDate, getSubscriptionStatusMeta } from "./shared";
+import { formatBillingDate, getSubscriptionStatusMeta, isInTrial } from "./shared";
 import type {
   Addon,
   Package,
@@ -36,10 +36,14 @@ export function OverviewTab({ subscription, packages, addons, entityLabels }: Ov
   const [cancelOpen, setCancelOpen] = useState(false);
 
   const statusMeta = getSubscriptionStatusMeta(subscription.status);
+  // Cancellable when the subscription header is ACTIVE or PAST_DUE, OR when
+  // the entity is in a date-based trial (primary signal), OR when the header
+  // still carries TRIAL (legacy/fallback for the subscription-level status).
   const isCancellable =
     subscription.status === "ACTIVE" ||
-    subscription.status === "TRIAL" ||
-    subscription.status === "PAST_DUE";
+    subscription.status === "PAST_DUE" ||
+    isInTrial(subscription.trialEndDate) ||
+    subscription.status === "TRIAL";
 
   return (
     <div className="space-y-6">

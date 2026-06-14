@@ -118,6 +118,7 @@ export function SubscriptionBanner() {
     isSuspended,
     isPastDue,
     paidThrough,
+    trialEndDate,
     loading,
   } = useEntitlements();
 
@@ -139,8 +140,21 @@ export function SubscriptionBanner() {
   // CSS variable (`--banner-h`) before the conditional return below.
   // React requires hooks to be called unconditionally, so the variable
   // useEffect has to live above any `return null`.
-  const daysLeft = paidThrough ? getDaysUntil(paidThrough) : null;
-  const timeLeft = paidThrough ? formatTimeRemaining(paidThrough) : null;
+  // For trial states use trialEndDate as the countdown target (the primary
+  // trial signal); for all other states fall back to paidThrough.
+  const trialCountdownDate = isTrial ? (trialEndDate ?? paidThrough) : null;
+  const nonTrialCountdownDate = !isTrial ? paidThrough : null;
+
+  const daysLeft = trialCountdownDate
+    ? getDaysUntil(trialCountdownDate)
+    : nonTrialCountdownDate
+      ? getDaysUntil(nonTrialCountdownDate)
+      : null;
+  const timeLeft = trialCountdownDate
+    ? formatTimeRemaining(trialCountdownDate)
+    : nonTrialCountdownDate
+      ? formatTimeRemaining(nonTrialCountdownDate)
+      : null;
 
   let variant: BannerVariant | null = null;
 

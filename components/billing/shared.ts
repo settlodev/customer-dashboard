@@ -135,6 +135,15 @@ export function isUnlimited(limit: number | undefined | null): boolean {
   return limit === undefined || limit === null || limit === -1;
 }
 
+/**
+ * Returns true when the entity is currently in a free trial period.
+ * Derived purely from the trial end date — if the date is in the future
+ * the trial is active regardless of the subscription status field.
+ */
+export function isInTrial(trialEndDate: string | null | undefined): boolean {
+  return !!trialEndDate && new Date(trialEndDate).getTime() > Date.now();
+}
+
 export interface InvoiceParty {
   name: string;
   /** Shown under `name` only when the business name differs from the location name. */
