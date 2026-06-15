@@ -601,7 +601,7 @@ export function BusinessDetailView({
                 <DefRow label="MRR" value={`${currency} ${amt(itemsMrr)}`} />
                 {planMixParts && (
                   <DefRow
-                    label="Plan mix"
+                    label="Active plan mix"
                     rawValue
                     value={<span className="font-mono text-[12px] text-ink">{planMixParts}</span>}
                   />
