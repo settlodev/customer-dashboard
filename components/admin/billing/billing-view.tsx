@@ -6,8 +6,6 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   ArrowUpCircle,
-  CalendarPlus,
-  CheckCircle2,
   Gift,
   Link2,
   Loader2,
@@ -16,7 +14,6 @@ import {
   Plus,
   RefreshCw,
   Sparkles,
-  XCircle,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +22,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -45,7 +41,7 @@ import { GenerateInvoiceDialog } from "@/components/admin/billing/generate-invoi
 import { GrantFreeSubscriptionDialog } from "@/components/admin/billing/grant-free-subscription-dialog";
 import { InvoiceActionsDialog } from "@/components/admin/billing/invoice-actions-dialog";
 import { UpgradePlanDialog } from "@/components/admin/billing/upgrade-plan-dialog";
-import { extendEntityTrial, republishSubscriptions, revokeDiscount } from "@/lib/actions/admin/billing";
+import { republishSubscriptions, revokeDiscount } from "@/lib/actions/admin/billing";
 import {
   DiscountResponse,
   InvoicePage,
@@ -224,43 +220,6 @@ export function BillingView({
     [businessId, router, toast],
   );
 
-  const handleExtendTrial = useCallback(
-    (item: { id: string; entityType: string }) => {
-      if (
-        !confirm(
-          `Extend the trial for ${item.entityType} item ${item.id}? This will push the trial end date forward by the standard trial length.`,
-        )
-      ) {
-        return;
-      }
-      if (!subscription) return;
-      startTransition(async () => {
-        const result = await extendEntityTrial(
-          businessId,
-          subscription.id,
-          item.id,
-        );
-        if (result.responseType === "error") {
-          toast({
-            title: "Failed to extend trial",
-            description: result.message,
-            variant: "destructive",
-          });
-          return;
-        }
-        // Surface the new trial end date from the updated item
-        const updatedItem = result.data?.items.find((i) => i.id === item.id);
-        toast({
-          title: updatedItem?.trialEndDate
-            ? `Trial extended — new end: ${formatDate(updatedItem.trialEndDate)}`
-            : "Trial extended",
-        });
-        router.refresh();
-      });
-    },
-    [businessId, subscription, router, toast],
-  );
-
   const refresh = () => router.refresh();
 
   return (
@@ -398,9 +357,12 @@ export function BillingView({
 
         {subscription && subscription.items.length > 0 && (
           <div className="mt-5 border-t border-line pt-4">
-            <h4 className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">
+            <h4 className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
               Subscription items
             </h4>
+            <p className="mb-2 text-[12px] text-muted-foreground">
+              Plan, trial &amp; add-on actions live on each unit&apos;s detail page.
+            </p>
             <ul className="space-y-1.5">
               {subscription.items.map((item) => (
                 <li
@@ -410,28 +372,12 @@ export function BillingView({
                   <span className="font-medium text-ink">
                     {item.packageInfo?.name ?? item.entityType}
                   </span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[12px] text-muted-foreground">
-                      {item.entityType} · {item.status}
-                      {item.packageInfo?.basePrice != null
-                        ? ` · ${formatMoney(item.packageInfo.basePrice)}`
-                        : ""}
-                    </span>
-                    {item.paidThrough == null &&
-                      item.status !== "CANCELLED" && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          disabled={isPending}
-                          onClick={() => handleExtendTrial(item)}
-                          className="h-7 px-2 text-[12px] text-sky-700 hover:bg-sky-50 dark:text-sky-300 dark:hover:bg-sky-500/10"
-                        >
-                          <CalendarPlus className="mr-1 h-3.5 w-3.5" />
-                          Extend trial
-                        </Button>
-                      )}
-                  </div>
+                  <span className="font-mono text-[12px] text-muted-foreground">
+                    {item.entityType} · {item.status}
+                    {item.packageInfo?.basePrice != null
+                      ? ` · ${formatMoney(item.packageInfo.basePrice)}`
+                      : ""}
+                  </span>
                 </li>
               ))}
             </ul>
