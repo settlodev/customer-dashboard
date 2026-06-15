@@ -102,6 +102,7 @@ export default async function StoreDetailPage({
             ordersRow={null}
             rangeLabel=""
             canBilling={canBilling}
+            stock={null}
           />
         </PageBody>
       </PageShell>

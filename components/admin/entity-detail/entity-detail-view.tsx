@@ -20,6 +20,7 @@ import { extendEntityTrial } from "@/lib/actions/admin/billing";
 
 import type { SubscriptionItemResponse } from "@/types/admin/billing";
 import type { BusinessLocationBreakdownRow } from "@/types/admin/business-intel";
+import type { EntityStockSummary } from "@/types/admin/inventory";
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,7 @@ export interface EntityDetailViewProps {
   ordersRow: BusinessLocationBreakdownRow | null;
   rangeLabel: string;
   canBilling: boolean;
+  stock: EntityStockSummary | null;
 }
 
 // ── Currency helper (no dedicated export in format.ts) ───────────────────────
@@ -50,6 +52,7 @@ export function EntityDetailView({
   ordersRow,
   rangeLabel,
   canBilling,
+  stock,
 }: EntityDetailViewProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -99,7 +102,7 @@ export function EntityDetailView({
       <Tabs defaultValue="subscription">
         <TabsList>
           <TabsTrigger value="subscription">Subscription</TabsTrigger>
-          <TabsTrigger value="orders">Orders</TabsTrigger>
+          {entityType === "LOCATION" && <TabsTrigger value="orders">Orders</TabsTrigger>}
           <TabsTrigger value="stock">Stock &amp; Products</TabsTrigger>
         </TabsList>
 
@@ -203,68 +206,130 @@ export function EntityDetailView({
         </TabsContent>
 
         {/* ── Tab 2: Orders ─────────────────────────────────────────────── */}
-        <TabsContent value="orders" className="space-y-4">
-          {entityType !== "LOCATION" ? (
-            <SectionCard
-              stub
-              title="Orders"
-              subtitle={rangeLabel}
-            >
-              <p className="text-sm text-muted-foreground">
-                Per-{entityLabel} orders — pending a dedicated data endpoint.
-              </p>
-            </SectionCard>
-          ) : ordersRow == null ? (
-            <SectionCard title="Orders" subtitle={rangeLabel}>
-              <p className="text-sm text-muted-foreground">
-                No order data for this location in {rangeLabel}.
-              </p>
-            </SectionCard>
-          ) : (
-            <SectionCard title="Orders" subtitle={rangeLabel}>
-              <MetricGrid cols={4}>
-                <MetricCell
-                  label="Total orders"
-                  value={formatMoney(ordersRow.total_orders ?? 0)}
-                />
-                <MetricCell
-                  label="Completed"
-                  value={formatMoney(ordersRow.completed_orders ?? 0)}
-                />
-                <MetricCell
-                  label="Net sales"
-                  value={compactNumber(ordersRow.net_sales ?? 0)}
-                />
-                <MetricCell
-                  label="Gross profit"
-                  value={compactNumber(ordersRow.gross_profit ?? 0)}
-                />
-                <MetricCell
-                  label="Avg order value"
-                  value={formatMoney(ordersRow.avg_order_value ?? 0)}
-                />
-                <MetricCell
-                  label="Active staff"
-                  value={formatMoney(ordersRow.active_staff ?? 0)}
-                  small
-                />
-                <MetricCell
-                  label="Unique customers"
-                  value={formatMoney(ordersRow.unique_customers ?? 0)}
-                  small
-                />
-              </MetricGrid>
-            </SectionCard>
-          )}
-        </TabsContent>
+        {entityType === "LOCATION" && (
+          <TabsContent value="orders" className="space-y-4">
+            {ordersRow == null ? (
+              <SectionCard title="Orders" subtitle={rangeLabel}>
+                <p className="text-sm text-muted-foreground">
+                  No order data for this location in {rangeLabel}.
+                </p>
+              </SectionCard>
+            ) : (
+              <SectionCard title="Orders" subtitle={rangeLabel}>
+                <MetricGrid cols={4}>
+                  <MetricCell
+                    label="Total orders"
+                    value={formatMoney(ordersRow.total_orders ?? 0)}
+                  />
+                  <MetricCell
+                    label="Completed"
+                    value={formatMoney(ordersRow.completed_orders ?? 0)}
+                  />
+                  <MetricCell
+                    label="Net sales"
+                    value={compactNumber(ordersRow.net_sales ?? 0)}
+                  />
+                  <MetricCell
+                    label="Gross profit"
+                    value={compactNumber(ordersRow.gross_profit ?? 0)}
+                  />
+                  <MetricCell
+                    label="Avg order value"
+                    value={formatMoney(ordersRow.avg_order_value ?? 0)}
+                  />
+                  <MetricCell
+                    label="Active staff"
+                    value={formatMoney(ordersRow.active_staff ?? 0)}
+                    small
+                  />
+                  <MetricCell
+                    label="Unique customers"
+                    value={formatMoney(ordersRow.unique_customers ?? 0)}
+                    small
+                  />
+                </MetricGrid>
+              </SectionCard>
+            )}
+          </TabsContent>
+        )}
 
         {/* ── Tab 3: Stock & Products ───────────────────────────────────── */}
         <TabsContent value="stock" className="space-y-4">
-          <SectionCard stub title="Stock &amp; Products">
-            <p className="text-sm text-muted-foreground">
-              Per-{entityLabel} stock &amp; products — pending a dedicated data endpoint.
-            </p>
-          </SectionCard>
+          {!stock ||
+          (stock.productCount === 0 &&
+            stock.variantCount === 0 &&
+            stock.totalStockValue === 0) ? (
+            <SectionCard title="Stock &amp; Products">
+              <p className="text-sm text-muted-foreground">
+                No stock recorded for this {entityLabel}.
+              </p>
+            </SectionCard>
+          ) : (
+            <>
+              <SectionCard title="Stock &amp; Products">
+                <MetricGrid cols={4}>
+                  <MetricCell label="Products" value={formatMoney(stock.productCount)} />
+                  <MetricCell label="Stock items" value={formatMoney(stock.variantCount)} />
+                  <MetricCell label="Stock value" value={compactNumber(stock.totalStockValue)} />
+                  <MetricCell label="Qty on hand" value={compactNumber(stock.totalQuantityOnHand)} />
+                  <MetricCell label="Low stock" value={formatMoney(stock.lowStockCount)} small />
+                  <MetricCell label="Out of stock" value={formatMoney(stock.outOfStockCount)} small />
+                  <MetricCell label="Active batches" value={formatMoney(stock.activeBatchCount)} small />
+                  <MetricCell
+                    label="Last movement"
+                    value={stock.lastMovementAt ? formatDate(stock.lastMovementAt) : "—"}
+                    small
+                  />
+                </MetricGrid>
+              </SectionCard>
+
+              <SectionCard title="Top items by value">
+                {stock.topItemsByValue.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No items in stock.</p>
+                ) : (
+                  <div className="flex flex-col">
+                    {stock.topItemsByValue.map((row) => (
+                      <div
+                        key={row.variantId}
+                        className="flex items-center gap-3 border-b border-line py-2.5 last:border-b-0"
+                      >
+                        <div className="min-w-0 flex-1 truncate text-[13.5px] text-ink">{row.name}</div>
+                        <div className="flex-shrink-0 font-mono text-[11px] text-muted-foreground">
+                          {compactNumber(row.quantityOnHand)} on hand
+                        </div>
+                        <div className="w-24 flex-shrink-0 text-right font-mono text-[12.5px] font-semibold text-ink">
+                          {compactNumber(row.stockValue)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
+
+              <SectionCard title="Low-stock items">
+                {stock.lowStockItems.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No low-stock items.</p>
+                ) : (
+                  <div className="flex flex-col">
+                    {stock.lowStockItems.map((row) => (
+                      <div
+                        key={row.variantId}
+                        className="flex items-center gap-3 border-b border-line py-2.5 last:border-b-0"
+                      >
+                        <div className="min-w-0 flex-1 truncate text-[13.5px] text-ink">{row.name}</div>
+                        <div className="flex-shrink-0 font-mono text-[11px] text-warn">
+                          {compactNumber(row.available)} left
+                        </div>
+                        <div className="w-24 flex-shrink-0 text-right font-mono text-[12px] text-muted-foreground">
+                          ≤ {compactNumber(row.lowStockThreshold)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
+            </>
+          )}
         </TabsContent>
       </Tabs>
 

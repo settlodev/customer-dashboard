@@ -132,6 +132,7 @@ export default async function LocationDetailPage({
             ordersRow={ordersRow}
             rangeLabel={rangeLabel}
             canBilling={canBilling}
+            stock={null}
           />
         </PageBody>
       </PageShell>
