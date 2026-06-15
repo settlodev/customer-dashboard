@@ -12,7 +12,8 @@ interface ArchiveEntityProps {
     | "staff"
     | "stock-intake"
     | "customer"
-    | "supplier";
+    | "supplier"
+    | "category";
   locationId?: string;
 }
 
@@ -63,6 +64,12 @@ export async function archiveEntity({
             ids,
           );
           break;
+        case "category":
+          await apiClient.put(
+            `/api/categories/${actualLocationId}/archive`,
+            ids,
+          );
+          break;
 
         default:
           return {
@@ -87,6 +94,7 @@ export async function archiveEntity({
       supplier: "/suppliers",
       customer: "/customers",
       stockIntake: "/stock-intakes",
+      category: "/category",
     };
 
     if (paths[entityType]) {

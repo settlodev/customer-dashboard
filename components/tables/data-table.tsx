@@ -70,6 +70,15 @@ const pageSpecificComponents = {
     allowArchive: true,
     isWarehouse: false,
   },
+  "/categories": {
+    entityType: "category" as const,
+    importComponent: null,
+    exportComponent: null,
+    entityNames: { singular: "Category", plural: "Categories" },
+    allowArchive: true,
+    isWarehouse: false,
+  },
+
   "/stock-variants": {
     entityType: "stock" as const,
     importComponent: (
@@ -405,6 +414,7 @@ export function DataTable<TData, TValue>({
             | "stock"
             | "staff"
             | "stock-intake"
+            | "category"
         }
         onSuccess={resetTableSelection}
         entityNameSingular={pageConfig.entityNames.singular}
