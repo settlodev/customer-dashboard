@@ -126,11 +126,7 @@ export default async function LocationDetailPage({
         <PageBody>
           <EntityDetailView
             entityType="LOCATION"
-            entityId={id}
-            entityName={location.name}
-            region={location.region}
             businessId={businessId}
-            businessName={location.businessName}
             subscriptionId={subscription?.id ?? null}
             item={item}
             ordersRow={ordersRow}

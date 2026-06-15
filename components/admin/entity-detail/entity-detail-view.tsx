@@ -25,11 +25,7 @@ import type { BusinessLocationBreakdownRow } from "@/types/admin/business-intel"
 
 export interface EntityDetailViewProps {
   entityType: "LOCATION" | "WAREHOUSE" | "STORE";
-  entityId: string;
-  entityName: string;
-  region: string | null;
   businessId: string;
-  businessName: string | null;
   subscriptionId: string | null;
   item: SubscriptionItemResponse | null;
   ordersRow: BusinessLocationBreakdownRow | null;
@@ -48,11 +44,7 @@ function formatMoney(value: number | null | undefined): string {
 
 export function EntityDetailView({
   entityType,
-  entityId,
-  entityName,
-  region,
   businessId,
-  businessName,
   subscriptionId,
   item,
   ordersRow,
