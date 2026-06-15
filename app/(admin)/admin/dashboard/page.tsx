@@ -7,12 +7,26 @@ import {
   PageShell,
 } from "@/components/layouts/page-shell";
 import { AdminDashboardView } from "@/components/admin/dashboard/admin-dashboard-view";
+import { SystemsStatusPill } from "@/components/admin/dashboard/dashboard-period-toggle";
+import { DateFilterBar } from "@/components/admin/catalog/package-detail/date-filter-bar";
 import {
-  DashboardPeriodToggle,
-  SystemsStatusPill,
-} from "@/components/admin/dashboard/dashboard-period-toggle";
+  OperationsBand,
+  type OperationMetric,
+  type OperationsData,
+} from "@/components/admin/dashboard/operations-band";
 import { getDashboardOverview } from "@/lib/actions/admin/dashboard-overview";
+import {
+  getPlatformAccounts,
+  getPlatformOrders,
+  getPlatformStockMovement,
+} from "@/lib/actions/admin/platform-metrics";
+import {
+  parseComparison,
+  parseRange,
+  resolveComparisonRange,
+} from "@/lib/admin/period-range";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import type { PackageDateRange } from "@/types/admin/billing";
 import type { InternalRole } from "@/types/types";
 
 export const metadata = {
@@ -25,6 +39,10 @@ const STATS_ROLES: InternalRole[] = [
   "BOARD_MEMBER",
   "SALES_TEAM",
 ];
+
+interface AdminDashboardPageProps {
+  searchParams: Promise<{ from?: string; to?: string; compare?: string }>;
+}
 
 function formatTimestamp(value: string | null | undefined): string {
   if (!value) return "—";
@@ -41,7 +59,48 @@ function formatTimestamp(value: string | null | undefined): string {
   }
 }
 
-export default async function AdminDashboardPage() {
+/** Run one operations metric for the current + comparison windows. */
+async function loadMetric<T>(
+  current: Promise<T>,
+  comparison: Promise<T> | null,
+): Promise<OperationMetric<T>> {
+  const [cur, prev] = await Promise.allSettled([
+    current,
+    comparison ?? Promise.resolve(null),
+  ]);
+  return {
+    value: cur.status === "fulfilled" ? cur.value : null,
+    prev: prev.status === "fulfilled" ? prev.value : null,
+    error: cur.status === "rejected",
+  };
+}
+
+async function loadOperations(
+  range: PackageDateRange,
+  comparison: PackageDateRange | null,
+): Promise<OperationsData> {
+  const [orders, accounts, stock] = await Promise.all([
+    loadMetric(
+      getPlatformOrders(range.from, range.to),
+      comparison ? getPlatformOrders(comparison.from, comparison.to) : null,
+    ),
+    loadMetric(
+      getPlatformAccounts(range.from, range.to),
+      comparison ? getPlatformAccounts(comparison.from, comparison.to) : null,
+    ),
+    loadMetric(
+      getPlatformStockMovement(range.from, range.to),
+      comparison
+        ? getPlatformStockMovement(comparison.from, comparison.to)
+        : null,
+    ),
+  ]);
+  return { orders, accounts, stock };
+}
+
+export default async function AdminDashboardPage({
+  searchParams,
+}: AdminDashboardPageProps) {
   const token = await getStaffAuthToken();
   if (!token?.accessToken) {
     redirect("/login");
@@ -70,7 +129,15 @@ export default async function AdminDashboardPage() {
     );
   }
 
-  const overview = await getDashboardOverview();
+  const { from, to, compare } = await searchParams;
+  const range = parseRange(from, to);
+  const comparisonMode = parseComparison(compare);
+  const comparisonRange = resolveComparisonRange(range, comparisonMode);
+
+  const [overview, operations] = await Promise.all([
+    getDashboardOverview(),
+    loadOperations(range, comparisonRange),
+  ]);
 
   return (
     <AdminShell token={token}>
@@ -78,14 +145,18 @@ export default async function AdminDashboardPage() {
         <PageHeader
           title="Admin Dashboard"
           subtitle={subtitle}
-          actions={
-            <>
-              <SystemsStatusPill />
-              <DashboardPeriodToggle />
-            </>
-          }
+          actions={<SystemsStatusPill />}
         />
         <PageBody>
+          {/* Period-filtered operations metrics (orders / accounts / stock). */}
+          <DateFilterBar
+            range={range}
+            comparisonMode={comparisonMode}
+            comparisonRange={comparisonRange}
+          />
+          <OperationsBand data={operations} range={range} />
+
+          {/* Live platform snapshot (not period-scoped). */}
           <AdminDashboardView data={overview} />
           <p className="text-center font-mono text-[11px] text-muted-2">
             Snapshot · {formatTimestamp(overview.generatedAt)} · figures refresh
