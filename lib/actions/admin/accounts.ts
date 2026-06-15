@@ -346,3 +346,27 @@ export async function unassignSupportStaff(
 ): Promise<FormResponse<void>> {
   return deleteStaffAssignment(accountId, "support-staff");
 }
+
+export async function sendAccountEmail(
+  accountId: string,
+  subject: string,
+  body: string,
+): Promise<FormResponse<{ message: string }>> {
+  try {
+    const result = await staffClient().post<{ message: string }, { subject: string; body: string }>(
+      `/api/v1/admin/accounts/${accountId}/send-email`,
+      { subject, body },
+    );
+    return parseStringify({
+      responseType: "success",
+      message: result?.message ?? "Email queued",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to send email",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}

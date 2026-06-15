@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Clock,
-  Mail,
   MonitorCheck,
   Store,
   TrendingUp,
@@ -22,6 +21,7 @@ import { LifecycleCard } from "@/components/admin/account-detail/lifecycle-card"
 import { BusinessesLocationsCard } from "@/components/admin/account-detail/businesses-locations-card";
 import { AccountNotesCard } from "@/components/admin/account-detail/account-notes-card";
 import { LogInAsButton } from "@/components/admin/account-detail/log-in-as-button";
+import { AccountEmailButton } from "@/components/admin/account-detail/send-email-dialog";
 import { SectionCard } from "@/components/admin/shared/section-card";
 import { Monogram } from "@/components/admin/shared/monogram";
 import { DefList, DefRow, DefIcon } from "@/components/admin/shared/def-list";
@@ -111,12 +111,12 @@ export function AccountDetailView({
             </Link>
           </Button>
           <LogInAsButton accountId={account.id} />
-          <Button asChild variant="outline" size="sm">
-            <a href={`mailto:${account.email}`}>
-              <Mail className="h-4 w-4" />
-              Email
-            </a>
-          </Button>
+          {canManage && (
+            <AccountEmailButton
+              accountId={account.id}
+              recipientEmail={account.email}
+            />
+          )}
           <Button asChild variant="accent" size="sm">
             <Link href={`/businesses?accountId=${account.id}`}>
               <Store className="h-4 w-4" />
