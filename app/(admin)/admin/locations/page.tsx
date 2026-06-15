@@ -83,7 +83,7 @@ export default async function AdminLocationsPage({
   const subtitle = pageData
     ? `${pageData.totalElements.toLocaleString()} active location${
         pageData.totalElements === 1 ? "" : "s"
-      } · subscription status shown at the business level`
+      } · each location has its own subscription`
     : "Locations across all businesses with their subscription status.";
 
   return (

@@ -63,7 +63,10 @@ export function buildLocationColumns(): ColumnDef<PlatformLocationRow>[] {
       cell: ({ row }) => {
         const l = row.original;
         return (
-          <div className="flex min-w-0 items-center gap-3">
+          <Link
+            href={`/locations/${l.locationId}`}
+            className="flex min-w-0 items-center gap-3 hover:text-[#C25E26]"
+          >
             <Monogram name={l.locationName || "—"} seed={l.locationId} size="lg" />
             <div className="min-w-0">
               <span className="block truncate text-[13.5px] font-semibold tracking-[-0.01em] text-ink">
@@ -76,7 +79,7 @@ export function buildLocationColumns(): ColumnDef<PlatformLocationRow>[] {
                 </span>
               )}
             </div>
-          </div>
+          </Link>
         );
       },
     },
