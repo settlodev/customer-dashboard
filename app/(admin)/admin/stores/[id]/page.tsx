@@ -11,6 +11,7 @@ import { EntityDetailView } from "@/components/admin/entity-detail/entity-detail
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { getAdminStoreDetail } from "@/lib/actions/admin/businesses";
 import { getBusinessSubscription } from "@/lib/actions/admin/billing";
+import { getEntityStockSummary } from "@/lib/actions/admin/business-operations";
 import type { InternalRole } from "@/types/types";
 
 export const metadata = {
@@ -79,6 +80,7 @@ export default async function StoreDetailPage({
     ? await getBusinessSubscription(businessId).catch(() => null)
     : null;
   const item = subscription?.items.find((i) => i.entityId === id) ?? null;
+  const stock = await getEntityStockSummary("STORE", id).catch(() => null);
 
   return (
     <AdminShell token={token}>
@@ -102,7 +104,7 @@ export default async function StoreDetailPage({
             ordersRow={null}
             rangeLabel=""
             canBilling={canBilling}
-            stock={null}
+            stock={stock}
           />
         </PageBody>
       </PageShell>

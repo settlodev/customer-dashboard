@@ -15,6 +15,7 @@ import {
   getBusinessLocationBreakdown,
   getDefaultIntelRange,
 } from "@/lib/actions/admin/business-intel";
+import { getEntityStockSummary } from "@/lib/actions/admin/business-operations";
 import type { InternalRole } from "@/types/types";
 
 export const metadata = {
@@ -105,6 +106,7 @@ export default async function LocationDetailPage({
   const item = subscription?.items.find((i) => i.entityId === id) ?? null;
   const ordersRow = breakdown.find((r) => r.location_id === id) ?? null;
   const rangeLabel = `${shortDay(startDate)} → ${shortDay(endDate)}`;
+  const stock = await getEntityStockSummary("LOCATION", id).catch(() => null);
 
   return (
     <AdminShell token={token}>
@@ -132,7 +134,7 @@ export default async function LocationDetailPage({
             ordersRow={ordersRow}
             rangeLabel={rangeLabel}
             canBilling={canBilling}
-            stock={null}
+            stock={stock}
           />
         </PageBody>
       </PageShell>
