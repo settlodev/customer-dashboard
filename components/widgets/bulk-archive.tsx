@@ -23,7 +23,8 @@ interface BulkArchiveProps {
     | "staff"
     | "stock-intake"
     | "supplier"
-    | "customer";
+    | "customer"
+    | "category";
   onSuccess?: () => void;
   entityNameSingular?: string;
   entityNamePlural?: string;
