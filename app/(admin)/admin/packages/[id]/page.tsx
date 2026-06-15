@@ -217,7 +217,7 @@ export default async function AdminPackageDetailPage({
               comparison={analytics.comparison?.subscribersTimeline}
               isLive={analytics.isLive}
               variant="line"
-              formatSummary={(v) => `${Math.round(v / Math.max(1, analytics.subscribersTimeline.length)).toLocaleString()} avg`}
+              summaryStat="average"
             />
             <ComparisonChart
               title="Revenue"

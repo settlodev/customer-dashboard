@@ -288,8 +288,8 @@ export function InvoiceViewDialog({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
-                      {invoice.items.map((line) => (
-                        <tr key={line.id}>
+                      {invoice.items.map((line, idx) => (
+                        <tr key={line.id || `line-${idx}`}>
                           <td className="px-3 py-2 text-ink">
                             {line.description}
                             {line.isProration && (
