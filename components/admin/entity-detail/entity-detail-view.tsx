@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUpCircle, CalendarPlus, Loader2, PackagePlus } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -16,58 +15,11 @@ import { DefList, DefRow } from "@/components/admin/shared/def-list";
 import { MetricGrid, MetricCell } from "@/components/admin/shared/metric-cell";
 import { PlanBadge, planTier } from "@/components/admin/shared/plan-badge";
 import { formatDate, compactNumber } from "@/components/admin/shared/format";
+import { SubscriptionItemStatusBadge } from "@/components/admin/shared/subscription-item-status-badge";
 import { extendEntityTrial } from "@/lib/actions/admin/billing";
 
-import type { SubscriptionItemResponse, SubscriptionStatus } from "@/types/admin/billing";
+import type { SubscriptionItemResponse } from "@/types/admin/billing";
 import type { BusinessLocationBreakdownRow } from "@/types/admin/business-intel";
-
-// ── Re-implement the SubscriptionStatusBadge inline so we don't import from a
-//    non-public column module (columns.tsx is collocated with the table and
-//    doesn't export this helper).
-type StatusTone = "pos" | "blue" | "warn" | "neg" | "muted";
-
-const STATUS_TONE: Record<StatusTone, string> = {
-  pos: "bg-pos-tint text-pos",
-  blue: "bg-[#2563EB]/10 text-[#2563EB]",
-  warn: "bg-warn-tint text-warn",
-  neg: "bg-neg-tint text-neg",
-  muted: "bg-black/[0.05] text-ink-3 dark:bg-white/[0.06]",
-};
-
-// SubscriptionItemStatus is a superset of SubscriptionStatus — map the
-// item-level statuses that don't exist on SubscriptionStatus (REMOVED → muted).
-const ITEM_STATUS_META: Record<
-  SubscriptionItemResponse["status"],
-  { label: string; tone: StatusTone }
-> = {
-  ACTIVE: { label: "Active", tone: "pos" },
-  PAST_DUE: { label: "Past due", tone: "warn" },
-  EXPIRED: { label: "Expired", tone: "neg" },
-  SUSPENDED: { label: "Suspended", tone: "neg" },
-  CANCELLED: { label: "Cancelled", tone: "muted" },
-  REMOVED: { label: "Removed", tone: "muted" },
-};
-
-function SubscriptionStatusBadge({
-  status,
-}: {
-  status: SubscriptionItemResponse["status"] | null;
-}) {
-  const meta = status
-    ? (ITEM_STATUS_META[status] ?? { label: status, tone: "muted" as StatusTone })
-    : { label: "No subscription", tone: "muted" as StatusTone };
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[12.5px] font-semibold",
-        STATUS_TONE[meta.tone],
-      )}
-    >
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-      {meta.label}
-    </span>
-  );
-}
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
@@ -192,7 +144,7 @@ export function EntityDetailView({
                   rawValue
                   value={
                     <span className="flex items-center gap-2">
-                      <SubscriptionStatusBadge status={item.status} />
+                      <SubscriptionItemStatusBadge status={item.status} />
                       {isTrialActive && (
                         <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 font-mono text-[10px] font-semibold text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300">
                           Trial active
