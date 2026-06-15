@@ -14,6 +14,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { KpiStrip } from "@/components/layouts/kpi-strip";
 import { AccountStaffCard } from "@/components/admin/account-staff-card";
 import { AccountDetailActions } from "@/components/admin/account-detail-actions";
@@ -32,10 +33,12 @@ import {
   AccountBillingRollup,
   AccountInsights,
 } from "@/types/admin/account-insights";
+import type { AccountStructure } from "@/types/admin/account-structure";
 
 interface AccountDetailViewProps {
   account: AdminAccountDetail;
   insights: AccountInsights;
+  structure: AccountStructure;
   canSuspend: boolean;
   canDelete: boolean;
   canAssignStaff: boolean;
@@ -61,6 +64,7 @@ function accountAge(createdAt: string): { value: string; note: string } {
 export function AccountDetailView({
   account,
   insights,
+  structure,
   canSuspend,
   canDelete,
   canAssignStaff,
@@ -129,82 +133,202 @@ export function AccountDetailView({
         </div>
       </div>
 
-      {/* ── Attention banner ───────────────────────────────── */}
-      {insights.attentionBanner && (
-        <div className="flex flex-wrap items-center gap-3 rounded-[14px] border border-[hsl(var(--warn)_/_0.25)] bg-[hsl(var(--warn)_/_0.06)] px-4 py-3">
-          <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-[9px] bg-warn-tint text-warn">
-            <AlertTriangle className="h-[17px] w-[17px]" strokeWidth={1.6} />
-          </span>
-          <p className="flex-1 text-[13px] text-ink-2">
-            <b className="font-semibold text-ink">
-              {insights.attentionBanner.title}
-            </b>{" "}
-            {insights.attentionBanner.text}
-          </p>
-          {insights.attentionBanner.actionLabel && (
-            <Link
-              href={insights.attentionBanner.actionHref ?? "#"}
-              className="inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap text-[12.5px] font-semibold text-[#C25E26] hover:text-[#a04d1d]"
-            >
-              {insights.attentionBanner.actionLabel}
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+      <Tabs defaultValue="overview">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="structure">Structure</TabsTrigger>
+          <TabsTrigger value="billing">Billing</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          {/* ── Attention banner ───────────────────────────────── */}
+          {insights.attentionBanner && (
+            <div className="flex flex-wrap items-center gap-3 rounded-[14px] border border-[hsl(var(--warn)_/_0.25)] bg-[hsl(var(--warn)_/_0.06)] px-4 py-3">
+              <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-[9px] bg-warn-tint text-warn">
+                <AlertTriangle className="h-[17px] w-[17px]" strokeWidth={1.6} />
+              </span>
+              <p className="flex-1 text-[13px] text-ink-2">
+                <b className="font-semibold text-ink">
+                  {insights.attentionBanner.title}
+                </b>{" "}
+                {insights.attentionBanner.text}
+              </p>
+              {insights.attentionBanner.actionLabel && (
+                <Link
+                  href={insights.attentionBanner.actionHref ?? "#"}
+                  className="inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap text-[12.5px] font-semibold text-[#C25E26] hover:text-[#a04d1d]"
+                >
+                  {insights.attentionBanner.actionLabel}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              )}
+            </div>
           )}
-        </div>
-      )}
 
-      {/* ── Ownership row ──────────────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <AccountStaffCard
-          accountId={account.id}
-          kind="sales"
-          title="Sales person"
-          staff={account.salesPerson}
-          canEdit={canAssignStaff}
-        />
-        <AccountStaffCard
-          accountId={account.id}
-          kind="support"
-          title="Support staff"
-          staff={account.supportStaff}
-          canEdit={canAssignStaff}
-        />
-        <LifecycleCard lifecycle={insights.lifecycle} />
-      </div>
+          {/* ── KPI strip ──────────────────────────────────────── */}
+          <KpiStrip cols={6}>
+            <KCell label="Businesses" value={String(account.businessCount)} />
+            <KCell
+              label="Billable units"
+              value={String(insights.billing.billableUnits)}
+              sub={`${insights.billing.activeSubscriptions} active`}
+            />
+            <KCell
+              label="MRR"
+              cur={insights.billing.mrr.currency}
+              value={insights.billing.mrr.value}
+              small
+            />
+            <KCell
+              label="GMV processed"
+              cur={kpis.gmv.currency}
+              value={kpis.gmv.value}
+              sub={kpis.gmv.note}
+              small
+            />
+            <KCell label="Open trials" value={String(insights.billing.openTrials)} small />
+            <KCell label="Account age" value={age.value} sub={age.note} small />
+          </KpiStrip>
 
-      {/* ── KPI strip ──────────────────────────────────────── */}
-      <KpiStrip cols={6}>
-        <KCell label="Businesses" value={String(account.businessCount)} />
-        <KCell
-          label="Billable units"
-          value={String(insights.billing.billableUnits)}
-          sub={`${insights.billing.activeSubscriptions} active`}
-        />
-        <KCell
-          label="MRR"
-          cur={insights.billing.mrr.currency}
-          value={insights.billing.mrr.value}
-          small
-        />
-        <KCell
-          label="GMV processed"
-          cur={kpis.gmv.currency}
-          value={kpis.gmv.value}
-          sub={kpis.gmv.note}
-          small
-        />
-        <KCell label="Open trials" value={String(insights.billing.openTrials)} small />
-        <KCell label="Account age" value={age.value} sub={age.note} small />
-      </KpiStrip>
+          {/* ── Ownership row ──────────────────────────────────── */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <AccountStaffCard
+              accountId={account.id}
+              kind="sales"
+              title="Sales person"
+              staff={account.salesPerson}
+              canEdit={canAssignStaff}
+            />
+            <AccountStaffCard
+              accountId={account.id}
+              kind="support"
+              title="Support staff"
+              staff={account.supportStaff}
+              canEdit={canAssignStaff}
+            />
+            <LifecycleCard lifecycle={insights.lifecycle} />
+          </div>
 
-      {/* ── Two columns ────────────────────────────────────── */}
-      <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
-        {/* LEFT */}
-        <div className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <SectionCard title="Engagement & health" stub={stub}>
+              <DefList>
+                <DefRow
+                  label="Onboarding"
+                  icon={
+                    <DefIcon tone="pos">
+                      <MonitorCheck className="h-3.5 w-3.5" />
+                    </DefIcon>
+                  }
+                  value={insights.engagement.onboarding.value}
+                  tone={insights.engagement.onboarding.tone}
+                />
+                <DefRow
+                  label="Last active"
+                  icon={
+                    <DefIcon tone="blue">
+                      <Clock className="h-3.5 w-3.5" />
+                    </DefIcon>
+                  }
+                  value={insights.engagement.lastActive}
+                />
+                <DefRow
+                  label="First sale"
+                  icon={
+                    <DefIcon tone="warn">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                    </DefIcon>
+                  }
+                  value={insights.engagement.firstSale.value}
+                  tone={insights.engagement.firstSale.tone}
+                />
+                <DefRow
+                  label="Active terminals"
+                  icon={
+                    <DefIcon tone="neutral">
+                      <MonitorCheck className="h-3.5 w-3.5" />
+                    </DefIcon>
+                  }
+                  value={insights.engagement.terminals}
+                />
+                <DefRow
+                  label="Staff users"
+                  icon={
+                    <DefIcon tone="neutral">
+                      <User className="h-3.5 w-3.5" />
+                    </DefIcon>
+                  }
+                  value={insights.engagement.staffUsers}
+                />
+                <DefRow
+                  label="Health score"
+                  value={
+                    <>
+                      {insights.engagement.healthScore.value}{" "}
+                      <span className="font-normal text-muted-2">
+                        / {insights.engagement.healthScore.max} ·{" "}
+                        {insights.engagement.healthScore.note}
+                      </span>
+                    </>
+                  }
+                />
+              </DefList>
+            </SectionCard>
+
+            <SectionCard title="Support & success" stub={stub}>
+              <DefList>
+                <DefRow label="Open tickets" value={insights.support.openTickets} />
+                <DefRow
+                  label="Last contact"
+                  value={insights.support.lastContact.value}
+                  tone={insights.support.lastContact.tone}
+                />
+                <DefRow
+                  label="CSAT"
+                  value={insights.support.csat.value}
+                  tone={insights.support.csat.tone}
+                />
+                <DefRow
+                  label="Welcome call"
+                  value={insights.support.welcomeCall.value}
+                  tone={insights.support.welcomeCall.tone}
+                />
+              </DefList>
+              <AccountNotesCard
+                accountId={account.id}
+                notes={insights.support.notes}
+              />
+            </SectionCard>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="structure" className="space-y-4">
           <BusinessesLocationsCard
             businesses={insights.businesses}
+            structure={structure}
             stub={stub}
           />
+        </TabsContent>
+
+        <TabsContent value="billing" className="space-y-4">
+          <BillingRollupCard billing={insights.billing} stub={stub} />
+        </TabsContent>
+
+        <TabsContent value="activity" className="space-y-4">
+          <SectionCard
+            title="Activity"
+            subtitle="Onboarding & account events"
+            linkLabel="Full log"
+            stub={stub}
+          >
+            <Timeline
+              items={insights.timeline.map((t) => ({
+                text: t.text,
+                time: t.time,
+                dotColor: t.dotColor,
+              }))}
+            />
+          </SectionCard>
 
           <SectionCard title="Profile & geography">
             <p className="mb-3.5 text-[13px] font-semibold text-ink">Profile</p>
@@ -234,115 +358,6 @@ export function AccountDetailView({
             </div>
           </SectionCard>
 
-          <SectionCard
-            title="Activity"
-            subtitle="Onboarding & account events"
-            linkLabel="Full log"
-            stub={stub}
-          >
-            <Timeline
-              items={insights.timeline.map((t) => ({
-                text: t.text,
-                time: t.time,
-                dotColor: t.dotColor,
-              }))}
-            />
-          </SectionCard>
-        </div>
-
-        {/* RIGHT */}
-        <div className="space-y-4">
-          <BillingRollupCard billing={insights.billing} stub={stub} />
-
-          <SectionCard title="Engagement & health" stub={stub}>
-            <DefList>
-              <DefRow
-                label="Onboarding"
-                icon={
-                  <DefIcon tone="pos">
-                    <MonitorCheck className="h-3.5 w-3.5" />
-                  </DefIcon>
-                }
-                value={insights.engagement.onboarding.value}
-                tone={insights.engagement.onboarding.tone}
-              />
-              <DefRow
-                label="Last active"
-                icon={
-                  <DefIcon tone="blue">
-                    <Clock className="h-3.5 w-3.5" />
-                  </DefIcon>
-                }
-                value={insights.engagement.lastActive}
-              />
-              <DefRow
-                label="First sale"
-                icon={
-                  <DefIcon tone="warn">
-                    <TrendingUp className="h-3.5 w-3.5" />
-                  </DefIcon>
-                }
-                value={insights.engagement.firstSale.value}
-                tone={insights.engagement.firstSale.tone}
-              />
-              <DefRow
-                label="Active terminals"
-                icon={
-                  <DefIcon tone="neutral">
-                    <MonitorCheck className="h-3.5 w-3.5" />
-                  </DefIcon>
-                }
-                value={insights.engagement.terminals}
-              />
-              <DefRow
-                label="Staff users"
-                icon={
-                  <DefIcon tone="neutral">
-                    <User className="h-3.5 w-3.5" />
-                  </DefIcon>
-                }
-                value={insights.engagement.staffUsers}
-              />
-              <DefRow
-                label="Health score"
-                value={
-                  <>
-                    {insights.engagement.healthScore.value}{" "}
-                    <span className="font-normal text-muted-2">
-                      / {insights.engagement.healthScore.max} ·{" "}
-                      {insights.engagement.healthScore.note}
-                    </span>
-                  </>
-                }
-              />
-            </DefList>
-          </SectionCard>
-
-          <SectionCard title="Support & success" stub={stub}>
-            <DefList>
-              <DefRow label="Open tickets" value={insights.support.openTickets} />
-              <DefRow
-                label="Last contact"
-                value={insights.support.lastContact.value}
-                tone={insights.support.lastContact.tone}
-              />
-              <DefRow
-                label="CSAT"
-                value={insights.support.csat.value}
-                tone={insights.support.csat.tone}
-              />
-              <DefRow
-                label="Welcome call"
-                value={insights.support.welcomeCall.value}
-                tone={insights.support.welcomeCall.tone}
-              />
-            </DefList>
-            <AccountNotesCard
-              accountId={account.id}
-              notes={insights.support.notes}
-            />
-          </SectionCard>
-
           <SectionCard title="Timestamps">
             <DefList>
               <DefRow label="Created" value={formatDateTime(account.createdAt)} />
@@ -354,8 +369,8 @@ export function AccountDetailView({
               <DefRow label="Updated" value={formatDateTime(account.updatedAt)} />
             </DefList>
           </SectionCard>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
