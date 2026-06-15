@@ -6,6 +6,7 @@ import {
   AdminBusinessFinancialsSummary,
   AdminBusinessInventorySummary,
 } from "@/types/admin/business-operations";
+import type { EntityStockSummary, EntityType } from "@/types/admin/inventory";
 
 function inventoryClient() {
   return new ApiClient("inventory", "staff");
@@ -20,6 +21,16 @@ export async function getBusinessInventorySummary(
 ): Promise<AdminBusinessInventorySummary> {
   const data = await inventoryClient().get<AdminBusinessInventorySummary>(
     `/api/v1/admin/businesses/${businessId}/inventory-summary`,
+  );
+  return parseStringify(data);
+}
+
+export async function getEntityStockSummary(
+  entityType: EntityType,
+  entityId: string,
+): Promise<EntityStockSummary> {
+  const data = await inventoryClient().get<EntityStockSummary>(
+    `/api/v1/admin/inventory/stock-summary?locationType=${entityType}&locationId=${entityId}`,
   );
   return parseStringify(data);
 }
