@@ -94,6 +94,19 @@ export interface AdminLocationDetail extends AdminLocationListItem {
   updatedAt: string;
 }
 
+export interface AdminWarehouseDetail extends AdminWarehouseListItem {
+  businessName: string | null;
+  description: string | null;
+  updatedAt: string;
+}
+
+export interface AdminStoreDetail extends AdminStoreListItem {
+  businessName: string | null;
+  locationName: string | null;
+  description: string | null;
+  updatedAt: string;
+}
+
 export interface AdminWarehouseListItem {
   id: string;
   name: string;

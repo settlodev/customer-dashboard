@@ -7,7 +7,9 @@ import {
   AdminBusinessPage,
   AdminLocationDetail,
   AdminLocationListItem,
+  AdminStoreDetail,
   AdminStoreListItem,
+  AdminWarehouseDetail,
   AdminWarehouseListItem,
   BusinessStatusCounts,
   ListBusinessesParams,
@@ -109,6 +111,24 @@ export async function getAdminLocationDetail(
 ): Promise<AdminLocationDetail> {
   const data = await staffClient().get<AdminLocationDetail>(
     `/api/v1/admin/locations/${locationId}`,
+  );
+  return parseStringify(data);
+}
+
+export async function getAdminWarehouseDetail(
+  warehouseId: string,
+): Promise<AdminWarehouseDetail> {
+  const data = await staffClient().get<AdminWarehouseDetail>(
+    `/api/v1/admin/warehouses/${warehouseId}`,
+  );
+  return parseStringify(data);
+}
+
+export async function getAdminStoreDetail(
+  storeId: string,
+): Promise<AdminStoreDetail> {
+  const data = await staffClient().get<AdminStoreDetail>(
+    `/api/v1/admin/stores/${storeId}`,
   );
   return parseStringify(data);
 }
