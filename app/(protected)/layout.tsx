@@ -18,7 +18,6 @@ import { BusinessPropsType } from "@/types/business/business-props-type";
 import { getAuthToken } from "@/lib/auth-utils";
 import { EntitlementProvider } from "@/context/entitlementContext";
 import { getEntitlements } from "@/lib/actions/entitlement-actions";
-import { SubscriptionBanner } from "@/components/subscription/SubscriptionBanner";
 import { ExpiredTopBar } from "@/components/subscription/ExpiredTopBar";
 import { fetchAllStores, getCurrentStore } from "@/lib/actions/store-actions";
 import WhatsAppButton from "@/components/whatsapp-button";
@@ -152,7 +151,6 @@ export default async function RootLayout({
               {authToken?.impersonating && (
                 <ImpersonationBanner email={authToken.email} />
               )}
-              <SubscriptionBanner />
               <div className="flex flex-1 min-h-0 overflow-hidden">
                 <DashboardSidebarShell data={businessData} user={user} />
 
