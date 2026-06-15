@@ -30,7 +30,12 @@ function nodeFrom(
     planTier: planLabel ? planTier(planLabel) : null,
     status: item?.status ?? null,
     trialEndDate: item?.trialEndDate ?? null,
-    href: entityType === "LOCATION" ? `/locations/${raw.id}` : null,
+    href:
+      entityType === "LOCATION"
+        ? `/locations/${raw.id}`
+        : entityType === "WAREHOUSE"
+          ? `/warehouses/${raw.id}`
+          : `/stores/${raw.id}`,
   };
 }
 

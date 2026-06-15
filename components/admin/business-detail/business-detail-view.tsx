@@ -210,7 +210,7 @@ export function BusinessDetailView({
       name: w.name,
       meta: w.identifier,
       item: itemByEntity.get(w.id) ?? null,
-      href: null as string | null, // warehouse detail page lands in Phase 4
+      href: `/warehouses/${w.id}`,
     })),
     ...stores.map((s) => ({
       id: s.id,
@@ -218,7 +218,7 @@ export function BusinessDetailView({
       name: s.name,
       meta: s.identifier,
       item: itemByEntity.get(s.id) ?? null,
-      href: null as string | null, // store detail page lands in Phase 4
+      href: `/stores/${s.id}`,
     })),
   ];
 
