@@ -68,9 +68,8 @@ lowStockItems: [ { variantId: UUID, productName: String, variantName: String, av
 - **Action:** `getEntityStockSummary(entityType: "LOCATION"|"WAREHOUSE"|"STORE", entityId: string): Promise<EntityStockSummary | null>` in `lib/actions/admin/inventory.ts` (mirror the existing inventory action used by the business detail, via `ApiClient("inventory","staff")`); returns null on failure (resilient — the tab degrades to the empty state).
 - **Routes:** `locations/[id]`, `warehouses/[id]`, `stores/[id]` each fetch `getEntityStockSummary(<TYPE>, id)` (resilient `.catch(()=>null)`) and pass `stock={...}` to `EntityDetailView`. Location's Orders behaviour is unchanged.
 
-## 6. Out of scope / deferred
-- **Store orders** — `fact_orders` + `Order` have no `store_id`; would require adding store context to the order pipeline (Order service entity/events) and Reports ingestion (`fact_orders` `store_id` + V049 migration). Large, multi-service, Reports not locally buildable. **Deferred — separate workstream.** Handled now by dropping the Orders tab for stores.
-- **Warehouse orders** — N/A (warehouses are storage, not POS). Tab dropped.
+## 6. Out of scope
+- **Store & warehouse orders — N/A BY DESIGN.** Per product (confirmed 2026-06-15): **no orders can be placed at a store or warehouse** — only LOCATIONS take orders. The Orders tab is therefore **location-only, permanently** (not a deferred/blocked workstream). There is no "store orders" work to do; `fact_orders`/`Order` being location-grained matches the domain exactly. The Orders tab is dropped for warehouses/stores accordingly.
 - **Per-entity stock for the account tree / business billable-units cards** — out of scope; this design only fills the entity *detail* page's Stock & Products tab.
 - **Currency conversion** of stock value — out of scope (raw values).
 
