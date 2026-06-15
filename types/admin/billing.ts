@@ -80,6 +80,7 @@ export interface SubscriptionItemResponse {
   bundledByItemId: string | null;
   status: SubscriptionItemStatus;
   trialEndDate: string | null;
+  paidThrough: string | null;
   addedAt: string | null;
   removedAt: string | null;
 }

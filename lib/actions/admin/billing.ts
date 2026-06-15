@@ -1458,6 +1458,34 @@ export async function removePackageIncludedCredit(
   }
 }
 
+export async function extendEntityTrial(
+  businessId: string,
+  subscriptionId: string,
+  itemId: string,
+): Promise<FormResponse<SubscriptionResponse>> {
+  try {
+    const result = await staffBilling().post<
+      SubscriptionResponse,
+      Record<string, never>
+    >(
+      `/api/v1/support/billing/subscriptions/${subscriptionId}/items/${itemId}/extend-trial`,
+      {},
+    );
+    revalidateBusiness(businessId);
+    return parseStringify({
+      responseType: "success",
+      message: "Trial extended",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to extend trial",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
 export async function republishSubscriptions(
   businessId?: string,
 ): Promise<FormResponse<RepublishSubscriptionsResult>> {
