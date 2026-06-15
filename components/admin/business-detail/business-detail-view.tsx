@@ -4,6 +4,7 @@ import {
   Activity,
   ArrowLeft,
   Boxes,
+  ChevronRight,
   Clock,
   CreditCard,
   MapPin,
@@ -21,6 +22,7 @@ import { SectionCard, CardLink } from "@/components/admin/shared/section-card";
 import { DefList, DefRow } from "@/components/admin/shared/def-list";
 import { MetricGrid, MetricCell } from "@/components/admin/shared/metric-cell";
 import { PlanBadge, planTier } from "@/components/admin/shared/plan-badge";
+import { SubscriptionItemStatusBadge } from "@/components/admin/shared/subscription-item-status-badge";
 import { LogInAsButton } from "@/components/admin/account-detail/log-in-as-button";
 import { BusinessNotesPanel } from "@/components/admin/business-notes-panel";
 import {
@@ -155,34 +157,38 @@ export function BusinessDetailView({
       .join(" · ");
   })();
 
-  // Billable units = every location / warehouse / store, joined to its
-  // subscription item (its own plan) by entityId.
+  // Join the Billable-units rows to ALL non-REMOVED items (not just ACTIVE) so a
+  // PAST_DUE / trial / suspended unit shows its real plan + status, not "no plan".
+  // (Phase-2 Task 3's status rollup also consumes `liveItems`.)
+  const liveItems = (subscription?.items ?? []).filter(
+    (i) => i.status !== "REMOVED",
+  );
   const itemByEntity = new Map<string, SubscriptionItemResponse>();
-  for (const i of activeItems) itemByEntity.set(i.entityId, i);
+  for (const i of liveItems) itemByEntity.set(i.entityId, i);
   const billableUnits = [
     ...locations.map((l) => ({
       id: l.id,
       type: "Location" as const,
       name: l.name,
       meta: l.identifier,
-      active: l.active,
-      plan: itemByEntity.get(l.id)?.packageInfo?.name ?? null,
+      item: itemByEntity.get(l.id) ?? null,
+      href: `/locations/${l.id}`,
     })),
     ...warehouses.map((w) => ({
       id: w.id,
       type: "Warehouse" as const,
       name: w.name,
       meta: w.identifier,
-      active: w.active,
-      plan: itemByEntity.get(w.id)?.packageInfo?.name ?? null,
+      item: itemByEntity.get(w.id) ?? null,
+      href: null as string | null, // warehouse detail page lands in Phase 4
     })),
     ...stores.map((s) => ({
       id: s.id,
       type: "Store" as const,
       name: s.name,
       meta: s.identifier,
-      active: s.active,
-      plan: itemByEntity.get(s.id)?.packageInfo?.name ?? null,
+      item: itemByEntity.get(s.id) ?? null,
+      href: null as string | null, // store detail page lands in Phase 4
     })),
   ];
 
@@ -597,33 +603,59 @@ export function BusinessDetailView({
               <Empty>No billable units registered.</Empty>
             ) : (
               <div className="flex flex-col">
-                {billableUnits.map((u) => (
-                  <div key={u.id} className="flex items-center gap-3 border-b border-line py-3 last:border-b-0">
-                    <span className="grid h-[34px] w-[34px] flex-shrink-0 place-items-center rounded-[9px] bg-primary/12 text-[#C25E26]">
-                      {u.type === "Warehouse" ? (
-                        <Boxes className="h-[17px] w-[17px]" strokeWidth={1.5} />
-                      ) : u.type === "Store" ? (
-                        <Store className="h-[17px] w-[17px]" strokeWidth={1.5} />
-                      ) : (
-                        <MapPin className="h-[17px] w-[17px]" strokeWidth={1.5} />
-                      )}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[13.5px] font-semibold text-ink">{u.name}</div>
-                      <div className="truncate font-mono text-[11px] text-muted-foreground">
-                        {u.type} · {u.meta}
+                {billableUnits.map((u) => {
+                  const plan = u.item?.packageInfo?.name ?? null;
+                  const mrr = u.item?.packageInfo?.basePrice ?? null;
+                  const inner = (
+                    <>
+                      <span className="grid h-[34px] w-[34px] flex-shrink-0 place-items-center rounded-[9px] bg-primary/12 text-[#C25E26]">
+                        {u.type === "Warehouse" ? (
+                          <Boxes className="h-[17px] w-[17px]" strokeWidth={1.5} />
+                        ) : u.type === "Store" ? (
+                          <Store className="h-[17px] w-[17px]" strokeWidth={1.5} />
+                        ) : (
+                          <MapPin className="h-[17px] w-[17px]" strokeWidth={1.5} />
+                        )}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13.5px] font-semibold text-ink">{u.name}</div>
+                        <div className="truncate font-mono text-[11px] text-muted-foreground">
+                          {u.type} · {u.meta}
+                        </div>
                       </div>
+                      <div className="flex flex-shrink-0 items-center gap-2">
+                        {mrr != null && (
+                          <span className="hidden font-mono text-[11px] text-muted-foreground sm:inline">
+                            {currency} {amt(mrr)}
+                          </span>
+                        )}
+                        {plan ? (
+                          <PlanBadge tier={planTier(plan)} label={plan} />
+                        ) : (
+                          <span className="font-mono text-[10.5px] text-muted-2">no plan</span>
+                        )}
+                        <SubscriptionItemStatusBadge status={u.item?.status ?? null} small />
+                        {u.href && <ChevronRight className="h-4 w-4 text-muted-2" />}
+                      </div>
+                    </>
+                  );
+                  return u.href ? (
+                    <Link
+                      key={u.id}
+                      href={u.href}
+                      className="flex items-center gap-3 border-b border-line py-3 transition-colors last:border-b-0 hover:bg-black/[0.015] dark:hover:bg-white/[0.02]"
+                    >
+                      {inner}
+                    </Link>
+                  ) : (
+                    <div
+                      key={u.id}
+                      className="flex items-center gap-3 border-b border-line py-3 last:border-b-0"
+                    >
+                      {inner}
                     </div>
-                    <div className="flex flex-shrink-0 items-center gap-2">
-                      {u.plan ? (
-                        <PlanBadge tier={planTier(u.plan)} label={u.plan} />
-                      ) : (
-                        <span className="font-mono text-[10.5px] text-muted-2">no plan</span>
-                      )}
-                      <StatusBadge active={u.active} small />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </SectionCard>
