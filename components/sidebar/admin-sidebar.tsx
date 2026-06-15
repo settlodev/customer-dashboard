@@ -15,6 +15,7 @@ import {
   Layers,
   Loader2,
   LogOut,
+  MapPin,
   Menu,
   Package,
   PackagePlus,
@@ -57,6 +58,18 @@ const NAV_ITEMS: NavItem[] = [
     href: "/businesses",
     icon: Briefcase,
     roles: ["SYSTEM_ADMIN", "SUPER_ADMIN", "SUPPORT_AGENT"],
+  },
+  {
+    title: "Locations",
+    href: "/locations",
+    icon: MapPin,
+    roles: [
+      "SYSTEM_ADMIN",
+      "SUPER_ADMIN",
+      "SUPPORT_AGENT",
+      "BOARD_MEMBER",
+      "SALES_TEAM",
+    ],
   },
   {
     title: "Customers",

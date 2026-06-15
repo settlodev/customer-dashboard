@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatBillingDate } from "./shared";
+import { formatBillingDate, getSubscriptionItemStatusMeta } from "./shared";
 import type { Subscription, SubscriptionItem, EntityType } from "@/types/billing/types";
 
 interface ItemsTableProps {
@@ -52,7 +52,7 @@ export function ItemsTable({
   onChangePlan,
   onManageAddons,
 }: ItemsTableProps) {
-  const activeItems = subscription.items.filter((item) => item.status === "ACTIVE");
+  const activeItems = subscription.items.filter((item) => item.status !== "REMOVED");
 
   if (activeItems.length === 0) {
     return (
@@ -69,9 +69,10 @@ export function ItemsTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[36%]">Subscribed entity</TableHead>
-            <TableHead className="w-[24%]">Plan</TableHead>
-            <TableHead className="w-[20%]">Addons</TableHead>
+            <TableHead className="w-[28%]">Subscribed entity</TableHead>
+            <TableHead className="w-[20%]">Plan</TableHead>
+            <TableHead className="w-[16%]">Addons</TableHead>
+            <TableHead className="w-[14%]">Status</TableHead>
             <TableHead>Added</TableHead>
             <TableHead className="w-[60px] text-right">Actions</TableHead>
           </TableRow>
@@ -126,6 +127,26 @@ export function ItemsTable({
                     </div>
                   )}
                 </TableCell>
+                <TableCell>
+                  {(() => {
+                    const { label, variant } = getSubscriptionItemStatusMeta(item.status);
+                    const isOnTrial =
+                      item.status === "ACTIVE" &&
+                      item.trialEndDate !== null &&
+                      new Date(item.trialEndDate) > new Date();
+                    return (
+                      <div className="flex flex-wrap items-center gap-1">
+                        <Badge variant={variant}>{label}</Badge>
+                        {isOnTrial && (
+                          <Badge variant="soft" className="gap-1 text-[10.5px]">
+                            <Sparkles className="h-2.5 w-2.5" />
+                            Trial
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </TableCell>
                 <TableCell className="text-xs text-muted-foreground">
                   {formatBillingDate(item.addedAt)}
                 </TableCell>
@@ -136,7 +157,7 @@ export function ItemsTable({
                         size="icon"
                         variant="ghost"
                         className="h-8 w-8"
-                        disabled={disabled || item.isBundled}
+                        disabled={disabled || item.isBundled || item.status !== "ACTIVE"}
                         aria-label="Item actions"
                       >
                         <MoreHorizontal className="h-4 w-4" />

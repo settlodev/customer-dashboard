@@ -4,6 +4,13 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertTriangle,
   CheckCircle2,
   CreditCard,
@@ -17,7 +24,7 @@ import {
 } from "@/lib/actions/billing-actions";
 import { InvoiceViewDialog } from "@/components/billing/invoice-view-dialog";
 import { useToast } from "@/hooks/use-toast";
-import type { BillingInvoice } from "@/types/billing/types";
+import type { BillingInvoice, Package } from "@/types/billing/types";
 import ApiClient from "@/lib/settlo-api-client";
 
 interface EntitySubscriptionSetupProps {
@@ -40,6 +47,9 @@ export default function EntitySubscriptionSetup({
   const [pendingInvoice, setPendingInvoice] = useState<BillingInvoice | null>(null);
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
+  // Available STORE/WAREHOUSE packages for plan selection.
+  const [availablePackages, setAvailablePackages] = useState<Package[]>([]);
+  const [selectedPackageId, setSelectedPackageId] = useState<string>("");
   const { toast } = useToast();
 
   const entityLabel = entityType === "STORE" ? "store" : "warehouse";
@@ -47,7 +57,16 @@ export default function EntitySubscriptionSetup({
   const checkStatus = useCallback(async () => {
     setIsLoading(true);
     try {
-      const subscription = await getCurrentSubscription();
+      const [subscription, pkgs] = await Promise.all([
+        getCurrentSubscription(),
+        getPackages(entityType),
+      ]);
+
+      if (pkgs.length > 0) {
+        setAvailablePackages(pkgs);
+        setSelectedPackageId((prev) => prev || pkgs[0].id);
+      }
+
       if (!subscription) {
         setHasSubscription(false);
         return;
@@ -85,8 +104,10 @@ export default function EntitySubscriptionSetup({
         return;
       }
 
-      const packages = await getPackages(entityType);
-      const pkg = packages[0];
+      // Use the user-selected package; fall back to the first available one.
+      const pkg =
+        availablePackages.find((p) => p.id === selectedPackageId) ??
+        availablePackages[0];
       if (!pkg) {
         toast({ variant: "destructive", title: "No package available" });
         return;
@@ -103,6 +124,8 @@ export default function EntitySubscriptionSetup({
           entityType,
           entityId,
           packageId: pkg.id,
+          // Pass the plan code so the billing service can record the chosen tier.
+          ...(pkg.code ? { planCode: pkg.code } : {}),
         },
       );
 
@@ -163,6 +186,37 @@ export default function EntitySubscriptionSetup({
               </p>
             </div>
           </div>
+
+          {/* Plan selector — lets the user choose among available STORE/WAREHOUSE
+              packages before adding the subscription item. Defaults to the first
+              (cheapest) package; falls back silently if only one option exists. */}
+          {availablePackages.length > 1 && (
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-amber-700">
+                Choose a plan
+              </p>
+              <Select
+                value={selectedPackageId}
+                onValueChange={setSelectedPackageId}
+                disabled={isSettingUp}
+              >
+                <SelectTrigger className="h-8 text-xs bg-white border-amber-200">
+                  <SelectValue placeholder="Select plan…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availablePackages.map((p) => (
+                    <SelectItem key={p.id} value={p.id} className="text-xs">
+                      {p.name}
+                      {p.basePrice != null
+                        ? ` — ${p.basePrice.toLocaleString()} / ${p.billingInterval === "MONTHLY" ? "mo" : "yr"}`
+                        : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <Button
             size="sm"
             onClick={handleSetupSubscription}

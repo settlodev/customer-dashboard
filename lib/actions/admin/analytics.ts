@@ -6,6 +6,7 @@ import {
 } from "@/lib/reports-internal-client";
 import {
   ActivationCohort,
+  BillingRetentionCohortCell,
   ChurnPrediction,
   ChurnSummary,
   ChurnTier,
@@ -57,6 +58,15 @@ export async function getRetentionCohorts(
 ): Promise<RetentionCohortCell[]> {
   return reportsInternalGet<RetentionCohortCell[]>(
     `${PREFIX}/saas/retention/cohorts`,
+    { months },
+  );
+}
+
+export async function getBillingRetentionCohorts(
+  months = 12,
+): Promise<BillingRetentionCohortCell[]> {
+  return reportsInternalGet<BillingRetentionCohortCell[]>(
+    `${PREFIX}/saas/retention/billing/cohorts`,
     { months },
   );
 }

@@ -4,6 +4,7 @@ import {
   Activity,
   ArrowLeft,
   Boxes,
+  ChevronRight,
   Clock,
   CreditCard,
   MapPin,
@@ -21,6 +22,7 @@ import { SectionCard, CardLink } from "@/components/admin/shared/section-card";
 import { DefList, DefRow } from "@/components/admin/shared/def-list";
 import { MetricGrid, MetricCell } from "@/components/admin/shared/metric-cell";
 import { PlanBadge, planTier } from "@/components/admin/shared/plan-badge";
+import { SubscriptionItemStatusBadge } from "@/components/admin/shared/subscription-item-status-badge";
 import { LogInAsButton } from "@/components/admin/account-detail/log-in-as-button";
 import { BusinessNotesPanel } from "@/components/admin/business-notes-panel";
 import {
@@ -155,34 +157,68 @@ export function BusinessDetailView({
       .join(" · ");
   })();
 
-  // Billable units = every location / warehouse / store, joined to its
-  // subscription item (its own plan) by entityId.
+  // Join the Billable-units rows to ALL non-REMOVED items (not just ACTIVE) so a
+  // PAST_DUE / trial / suspended unit shows its real plan + status, not "no plan".
+  // (Phase-2 Task 3's status rollup also consumes `liveItems`.)
+  const liveItems = (subscription?.items ?? []).filter(
+    (i) => i.status !== "REMOVED",
+  );
+
+  // Per-item billing status rolled up across this business's units (trial =
+  // ACTIVE + a future trialEndDate). This replaces the legacy business-level
+  // "Overall status".
+  const statusRollup = (() => {
+    const order = ["Active", "Trial", "Past due", "Suspended", "Expired", "Cancelled"];
+    const m = new Map<string, number>();
+    for (const i of liveItems) {
+      const isTrial =
+        i.status === "ACTIVE" &&
+        !!i.trialEndDate &&
+        new Date(i.trialEndDate).getTime() > Date.now();
+      const label = isTrial
+        ? "Trial"
+        : i.status === "ACTIVE"
+          ? "Active"
+          : i.status === "PAST_DUE"
+            ? "Past due"
+            : i.status === "SUSPENDED"
+              ? "Suspended"
+              : i.status === "EXPIRED"
+                ? "Expired"
+                : "Cancelled";
+      m.set(label, (m.get(label) ?? 0) + 1);
+    }
+    return order
+      .filter((k) => m.has(k))
+      .map((k) => `${m.get(k)} ${k}`)
+      .join(" · ");
+  })();
   const itemByEntity = new Map<string, SubscriptionItemResponse>();
-  for (const i of activeItems) itemByEntity.set(i.entityId, i);
+  for (const i of liveItems) itemByEntity.set(i.entityId, i);
   const billableUnits = [
     ...locations.map((l) => ({
       id: l.id,
       type: "Location" as const,
       name: l.name,
       meta: l.identifier,
-      active: l.active,
-      plan: itemByEntity.get(l.id)?.packageInfo?.name ?? null,
+      item: itemByEntity.get(l.id) ?? null,
+      href: `/locations/${l.id}`,
     })),
     ...warehouses.map((w) => ({
       id: w.id,
       type: "Warehouse" as const,
       name: w.name,
       meta: w.identifier,
-      active: w.active,
-      plan: itemByEntity.get(w.id)?.packageInfo?.name ?? null,
+      item: itemByEntity.get(w.id) ?? null,
+      href: `/warehouses/${w.id}`,
     })),
     ...stores.map((s) => ({
       id: s.id,
       type: "Store" as const,
       name: s.name,
       meta: s.identifier,
-      active: s.active,
-      plan: itemByEntity.get(s.id)?.packageInfo?.name ?? null,
+      item: itemByEntity.get(s.id) ?? null,
+      href: `/stores/${s.id}`,
     })),
   ];
 
@@ -557,23 +593,29 @@ export function BusinessDetailView({
           {canBilling && (
             <SectionCard
               title="Billing & subscriptions"
-              subtitle="invoices issued here · each unit billed on its own plan"
+              subtitle="rolled up across this business's units · invoices issued here"
               action={<CardLink href={`/businesses/${business.id}/billing`}>Manage</CardLink>}
             >
               <DefList>
-                <DefRow label="Billable units" value={String(unitCount)} />
+                <DefRow label="Active subscriptions" value={String(unitCount)} />
                 <DefRow label="MRR" value={`${currency} ${amt(itemsMrr)}`} />
                 {planMixParts && (
                   <DefRow
-                    label="Plan mix"
+                    label="Active plan mix"
                     rawValue
                     value={<span className="font-mono text-[12px] text-ink">{planMixParts}</span>}
                   />
                 )}
                 <DefRow
-                  label="Overall status"
+                  label="Unit statuses"
                   rawValue
-                  value={subStatus ? <SubPill status={subStatus} trialLeft={trialLeft} /> : <span className="text-[12.5px] text-muted-2">—</span>}
+                  value={
+                    statusRollup ? (
+                      <span className="font-mono text-[12px] text-ink">{statusRollup}</span>
+                    ) : (
+                      <span className="text-[12.5px] text-muted-2">—</span>
+                    )
+                  }
                 />
                 <DefRow label="Trial window" value={subscription?.trialStartDate ? `${formatDate(subscription.trialStartDate)} → ${formatDate(subscription.trialEndDate)}` : "—"} tone={subscription?.trialStartDate ? "default" : "dim"} />
                 <DefRow label="Paid through" value={subscription?.paidThrough ? formatDate(subscription.paidThrough) : "—"} tone={subscription?.paidThrough ? "default" : "dim"} />
@@ -597,33 +639,59 @@ export function BusinessDetailView({
               <Empty>No billable units registered.</Empty>
             ) : (
               <div className="flex flex-col">
-                {billableUnits.map((u) => (
-                  <div key={u.id} className="flex items-center gap-3 border-b border-line py-3 last:border-b-0">
-                    <span className="grid h-[34px] w-[34px] flex-shrink-0 place-items-center rounded-[9px] bg-primary/12 text-[#C25E26]">
-                      {u.type === "Warehouse" ? (
-                        <Boxes className="h-[17px] w-[17px]" strokeWidth={1.5} />
-                      ) : u.type === "Store" ? (
-                        <Store className="h-[17px] w-[17px]" strokeWidth={1.5} />
-                      ) : (
-                        <MapPin className="h-[17px] w-[17px]" strokeWidth={1.5} />
-                      )}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[13.5px] font-semibold text-ink">{u.name}</div>
-                      <div className="truncate font-mono text-[11px] text-muted-foreground">
-                        {u.type} · {u.meta}
+                {billableUnits.map((u) => {
+                  const plan = u.item?.packageInfo?.name ?? null;
+                  const mrr = u.item?.packageInfo?.basePrice ?? null;
+                  const inner = (
+                    <>
+                      <span className="grid h-[34px] w-[34px] flex-shrink-0 place-items-center rounded-[9px] bg-primary/12 text-[#C25E26]">
+                        {u.type === "Warehouse" ? (
+                          <Boxes className="h-[17px] w-[17px]" strokeWidth={1.5} />
+                        ) : u.type === "Store" ? (
+                          <Store className="h-[17px] w-[17px]" strokeWidth={1.5} />
+                        ) : (
+                          <MapPin className="h-[17px] w-[17px]" strokeWidth={1.5} />
+                        )}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13.5px] font-semibold text-ink">{u.name}</div>
+                        <div className="truncate font-mono text-[11px] text-muted-foreground">
+                          {u.type} · {u.meta}
+                        </div>
                       </div>
+                      <div className="flex flex-shrink-0 items-center gap-2">
+                        {mrr != null && (
+                          <span className="hidden font-mono text-[11px] text-muted-foreground sm:inline">
+                            {currency} {amt(mrr)}
+                          </span>
+                        )}
+                        {plan ? (
+                          <PlanBadge tier={planTier(plan)} label={plan} />
+                        ) : (
+                          <span className="font-mono text-[10.5px] text-muted-2">no plan</span>
+                        )}
+                        <SubscriptionItemStatusBadge status={u.item?.status ?? null} small />
+                        {u.href && <ChevronRight className="h-4 w-4 text-muted-2" />}
+                      </div>
+                    </>
+                  );
+                  return u.href ? (
+                    <Link
+                      key={u.id}
+                      href={u.href}
+                      className="flex items-center gap-3 border-b border-line py-3 transition-colors last:border-b-0 hover:bg-black/[0.015] dark:hover:bg-white/[0.02]"
+                    >
+                      {inner}
+                    </Link>
+                  ) : (
+                    <div
+                      key={u.id}
+                      className="flex items-center gap-3 border-b border-line py-3 last:border-b-0"
+                    >
+                      {inner}
                     </div>
-                    <div className="flex flex-shrink-0 items-center gap-2">
-                      {u.plan ? (
-                        <PlanBadge tier={planTier(u.plan)} label={u.plan} />
-                      ) : (
-                        <span className="font-mono text-[10.5px] text-muted-2">no plan</span>
-                      )}
-                      <StatusBadge active={u.active} small />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </SectionCard>
@@ -681,22 +749,6 @@ function SubBadge({ status }: { status: string }) {
     <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold", cls)}>
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {s.charAt(0) + s.slice(1).toLowerCase()}
-    </span>
-  );
-}
-
-function SubPill({ status, trialLeft }: { status: string; trialLeft: number | null }) {
-  const s = status.toUpperCase();
-  const label =
-    s === "TRIAL" && trialLeft != null
-      ? trialLeft <= 0
-        ? "Trial · expired"
-        : `Trial · ${trialLeft}d left`
-      : s.charAt(0) + s.slice(1).toLowerCase();
-  const cls = s === "TRIAL" ? "bg-[#2563EB]/10 text-[#2563EB]" : s === "ACTIVE" ? "bg-pos-tint text-pos" : "bg-warn-tint text-warn";
-  return (
-    <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[11px] font-semibold", cls)}>
-      {label}
     </span>
   );
 }

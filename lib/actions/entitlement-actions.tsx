@@ -21,6 +21,10 @@ export interface EntitlementResponse {
   subscriptionId: string;
   subscriptionStatus: SubscriptionStatus;
   paidThrough: string;
+  /** ISO date string when the business trial ends. Present when the subscription
+   *  header is in a trial period; absent or null otherwise. Use this as the
+   *  primary signal for trial state (future date = actively trialing). */
+  trialEndDate?: string | null;
   active: boolean;
   /** Aggregated across all items — dashboard should ignore these and use per-entity items instead */
   limits: Record<string, number>;

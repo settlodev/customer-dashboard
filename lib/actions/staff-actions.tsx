@@ -14,6 +14,7 @@ import { ApiResponse, FormResponse } from "@/types/types";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { getCurrentLocation } from "./business/get-current-business";
+import { getCurrentDestination } from "./context";
 
 /**
  * Paginated list of staff.
@@ -141,20 +142,25 @@ export const createStaff = async (
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
+    // Register the staff member under the dashboard's active destination —
+    // a location, store, or warehouse (precedence warehouse > store >
+    // location). This is a cookie/header concept, not a JWT claim, so it
+    // must be sent explicitly; the backend validates it owns the entity.
+    const destination = await getCurrentDestination();
 
-    if (!location?.id) {
+    if (!destination) {
       return parseStringify({
         responseType: "error",
-        message: "No current location selected",
-        error: new Error("locationId missing"),
+        message: "Select a location, store, or warehouse first",
+        error: new Error("no active destination"),
       });
     }
 
     const { pin, password, ...fields } = validatedData.data;
     const payload: Record<string, unknown> = {
       ...fields,
-      locationId: location.id,
+      scopeType: destination.type,
+      scopeId: destination.id,
     };
     if (fields.dateOfBirth) payload.dateOfBirth = fields.dateOfBirth.toISOString().split("T")[0];
     if (fields.joiningDate) payload.joiningDate = fields.joiningDate.toISOString().split("T")[0];

@@ -47,6 +47,7 @@ interface BusinessWithLocationsPayload {
     longitude?: number;
     timezone?: string;
     businessTypeId?: string;
+    planCode?: string;
     settings?: {
       operatingHours?: Array<{
         dayOfWeek: string;
@@ -226,6 +227,7 @@ export const createBusinessWithLocations = async (data: {
   postalCode?: string;
   logoUrl?: string;
   baseCurrency?: string;
+  planCode?: string;
   locations: LocationInput[];
 }): Promise<FormResponse> => {
   try {
@@ -285,6 +287,7 @@ export const createBusinessWithLocations = async (data: {
           longitude: loc.longitude,
           timezone: loc.timezone,
           businessTypeId: loc.businessTypeId || data.businessTypeId,
+          planCode: data.planCode,
           settings: hasSettings ? settings : undefined,
         };
       }),

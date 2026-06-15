@@ -19,12 +19,18 @@ interface ComparisonChartProps {
   hint: string;
   primary: PackageTimeSeriesPoint[];
   comparison?: PackageTimeSeriesPoint[] | null;
-  /** Defaults to `primary.length` so we can summarise period totals. */
+  /** Header label for the summary figure (defaults to "Total"). */
   summaryLabel?: string;
-  /** Format the right-side summary (e.g. revenue → 23,400). */
-  formatSummary?: (value: number) => string;
-  /** Format y-axis ticks. */
-  formatTick?: (value: number) => string;
+  /**
+   * How the header summary is derived from the series:
+   *  - "total" (default): sum of every point — for flows like revenue.
+   *  - "average": mean per point (rendered with an "avg" suffix) — for
+   *    snapshot metrics like active subscribers, where summing daily counts
+   *    is meaningless.
+   * Serializable stand-in for the old `formatSummary` function prop: a
+   * Server Component can't pass a function across the client boundary.
+   */
+  summaryStat?: "total" | "average";
   /** Stub badge shown in the header when the series is placeholder data. */
   isLive: boolean;
   /** "area" gives the metric a soft fill (revenue); "line" keeps a clean stroke (subscribers). */
@@ -37,7 +43,7 @@ function formatShortDate(iso: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function defaultSummaryFormatter(value: number): string {
+function formatValue(value: number): string {
   return Math.round(value).toLocaleString();
 }
 
@@ -89,8 +95,7 @@ export function ComparisonChart({
   primary,
   comparison,
   summaryLabel,
-  formatSummary = defaultSummaryFormatter,
-  formatTick = defaultTickFormatter,
+  summaryStat = "total",
   isLive,
   variant = "area",
 }: ComparisonChartProps) {
@@ -99,9 +104,23 @@ export function ComparisonChart({
   const comparisonTotal = comparison
     ? comparison.reduce((s, p) => s + p.value, 0)
     : null;
+  // "average" metrics (e.g. active-subscriber snapshots) read as a per-day
+  // mean — summing daily counts would be meaningless; "total" metrics
+  // (e.g. revenue) keep the period sum.
+  const primarySummary =
+    summaryStat === "average"
+      ? primaryTotal / Math.max(1, primary.length)
+      : primaryTotal;
+  const comparisonSummary =
+    comparisonTotal === null
+      ? null
+      : summaryStat === "average"
+        ? comparisonTotal / Math.max(1, comparison?.length ?? 1)
+        : comparisonTotal;
+  const summarySuffix = summaryStat === "average" ? " avg" : "";
   const delta =
-    comparisonTotal !== null && comparisonTotal > 0
-      ? ((primaryTotal - comparisonTotal) / comparisonTotal) * 100
+    comparisonSummary !== null && comparisonSummary > 0
+      ? ((primarySummary - comparisonSummary) / comparisonSummary) * 100
       : null;
   const deltaTone =
     delta == null ? "text-muted-foreground" : delta >= 0 ? "text-pos" : "text-neg";
@@ -119,11 +138,11 @@ export function ComparisonChart({
         <div className="text-right">
           {!isLive && <StubBadge />}
           <p className="mt-1 font-mono text-[12px] text-ink tabular-nums">
-            {summaryLabel ?? "Total"}: {formatSummary(primaryTotal)}
+            {summaryLabel ?? "Total"}: {formatValue(primarySummary)}{summarySuffix}
           </p>
-          {comparisonTotal !== null && (
+          {comparisonSummary !== null && (
             <p className="font-mono text-[10.5px] text-muted-foreground tabular-nums">
-              vs {formatSummary(comparisonTotal)}
+              vs {formatValue(comparisonSummary)}{summarySuffix}
               {delta !== null && (
                 <span className={`ml-1 ${deltaTone}`}>
                   ({delta >= 0 ? "+" : ""}
@@ -171,7 +190,7 @@ export function ComparisonChart({
               tickLine={false}
               axisLine={false}
               width={48}
-              tickFormatter={formatTick}
+              tickFormatter={defaultTickFormatter}
               tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
             />
             <Tooltip
@@ -182,7 +201,7 @@ export function ComparisonChart({
                 borderRadius: 8,
                 fontSize: 12,
               }}
-              formatter={(value: number) => formatSummary(value)}
+              formatter={(value: number) => formatValue(value)}
               labelFormatter={(_label, payload) => {
                 const row = payload?.[0]?.payload;
                 if (!row) return "";

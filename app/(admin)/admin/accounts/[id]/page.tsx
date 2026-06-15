@@ -11,6 +11,7 @@ import { AccountDetailView } from "@/components/admin/account-detail/account-det
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { getAccountDetail } from "@/lib/actions/admin/accounts";
 import { getAccountInsights } from "@/lib/actions/admin/account-insights";
+import { getAccountStructure } from "@/lib/actions/admin/account-structure";
 import { AdminAccountDetail } from "@/types/admin/account";
 import { InternalRole } from "@/types/types";
 
@@ -87,6 +88,9 @@ export default async function AdminAccountDetailPage({
   // Commercial / health / support context is stubbed until the analytics
   // endpoints land — see lib/actions/admin/account-insights.ts.
   const insights = await getAccountInsights(id);
+  const structure = await getAccountStructure(
+    insights.businesses.items.map((b) => ({ id: b.id })),
+  );
 
   return (
     <AdminShell token={token}>
@@ -100,6 +104,7 @@ export default async function AdminAccountDetailPage({
         <AccountDetailView
           account={account}
           insights={insights}
+          structure={structure}
           canSuspend={canSuspend}
           canDelete={canDelete}
           canAssignStaff={canAssignStaff}

@@ -68,12 +68,14 @@ export interface RevenueSeries {
 export interface PlanMixItem {
   tier: PlanTier;
   label: string;
-  /** Businesses currently on this package (active + trial). */
+  /** Entity type (e.g. "LOCATION", "WAREHOUSE", "STORE"). */
+  entityType: string;
+  /** Businesses currently on this package. */
   businesses: number;
-  /** Paying businesses (ACTIVE/PAST_DUE — incl. those that paid during trial). */
+  /** Paying entities (ACTIVE/PAST_DUE). */
   activeCount: number;
-  /** Businesses still on an open trial of this package. */
-  trialCount: number;
+  /** Total subscription items across all entities for this package. */
+  itemCount: number;
   /** Pre-formatted MRR contribution, e.g. "TZS 1.50M". */
   mrrLabel: string;
   /** Share of the mix by business count (so bars are meaningful pre-revenue). */
@@ -192,6 +194,7 @@ export interface DashboardOverview {
   stats: StatStripItem[];
   funnel: OnboardingFunnel;
   revenue: RevenueSeries[];
+  mrrByEntityType: { name: string; value: number }[];
   planMix: { caption: string; items: PlanMixItem[] };
   trials: TrialPipelineItem[];
   regions: { caption: string; items: RegionItem[] };
@@ -221,6 +224,7 @@ export interface DashboardOverviewResponse {
     gmvPrev: number;
     nrr: number | null;
     payingCustomers: number;
+    mrrByEntityType: { entity_type: string; mrr: number }[];
   };
   stats: {
     totalAccounts: number;
@@ -250,10 +254,11 @@ export interface DashboardOverviewResponse {
   };
   planMix: {
     plan_name: string | null;
+    entity_type: string;
     tier: string | null;
     business_count: number;
+    item_count: number;
     active_count: number;
-    trial_count: number;
     mrr: number;
   }[];
   trials: {

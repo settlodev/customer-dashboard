@@ -23,6 +23,17 @@ export interface MrrMovement {
 
 // ── Retention ────────────────────────────────────────────────────────
 
+export interface BillingRetentionCohortCell {
+  cohort_month: string;
+  months_since_signup: number;
+  cohort_size: number;
+  active_businesses: number;
+  retention_rate: number;
+  invoices_in_period: number;
+  revenue_in_period: number;
+  arpa_in_period: number;
+}
+
 export interface RetentionCohortCell {
   cohort_month: string;
   months_since_signup: number;
@@ -54,6 +65,10 @@ export interface ChurnPrediction {
   is_past_due: number;
   is_in_trial: number;
   trial_days_remaining: number | null;
+  billing_status: string | null;
+  past_due_item_count: number;
+  expired_item_count: number;
+  suspended_item_count: number;
   revenue_trend_30d: number;
   top_contributing_features: string | null;
   recommended_action: string | null;

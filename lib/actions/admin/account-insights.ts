@@ -119,6 +119,32 @@ function timelineEntry(type: string): { text: string; dotColor: string } {
 }
 
 /**
+ * Priority order for the best-of billing-status rollup. A higher index wins.
+ * ACTIVE is the "best" (healthiest) state; CANCELLED is the worst.
+ */
+const STATUS_PRIORITY: Record<string, number> = {
+  CANCELLED: 0,
+  SUSPENDED: 1,
+  EXPIRED: 2,
+  PAST_DUE: 3,
+  TRIAL: 4,
+  ACTIVE: 5,
+};
+
+/**
+ * Returns the best (highest-priority) status from a set of subscription
+ * statuses. Falls back to null when the set is empty.
+ */
+function bestOfStatus(statuses: string[]): string | null {
+  if (statuses.length === 0) return null;
+  return statuses.reduce((best, s) => {
+    const bPrio = STATUS_PRIORITY[best.toUpperCase()] ?? -1;
+    const sPrio = STATUS_PRIORITY[s.toUpperCase()] ?? -1;
+    return sPrio > bPrio ? s : best;
+  });
+}
+
+/**
  * Per-unit billing rollup for an account, joined from the Billing Service.
  * Each business carries ONE subscription whose ACTIVE items are its billable
  * units (location / warehouse / store), each on its own package. The
@@ -132,6 +158,8 @@ interface BillingAgg {
   openTrials: number;
   mrr: number;
   planMix: { label: string; count: number }[];
+  /** Best-of status across all subscription items read from the Billing Service. */
+  billingStatus: string | null;
 }
 
 /**
@@ -158,15 +186,20 @@ async function aggregateBilling(
   let openTrials = 0;
   let mrr = 0;
   const planCounts = new Map<string, number>();
+  const subStatuses: string[] = [];
 
   for (const sub of live) {
     const status = (sub.status ?? "").toUpperCase();
+    if (status) subStatuses.push(status);
     for (const item of sub.items) {
       if (item.status !== "ACTIVE") continue;
       billableUnits += 1;
       if (item.entityType === "WAREHOUSE") byType.warehouses += 1;
       else if (item.entityType === "STORE") byType.stores += 1;
       else byType.locations += 1;
+      // Prefer the Billing Service's basePrice (the canonical source for MRR
+      // when fetching from Billing directly). The Reports per-item billing_mrr
+      // is used in the fallback path (Reports-only) below.
       mrr += item.packageInfo?.basePrice ?? 0;
       const plan = item.packageInfo?.name ?? "—";
       planCounts.set(plan, (planCounts.get(plan) ?? 0) + 1);
@@ -187,6 +220,7 @@ async function aggregateBilling(
     openTrials,
     mrr,
     planMix,
+    billingStatus: bestOfStatus(subStatuses),
   };
 }
 
@@ -209,6 +243,7 @@ function mapInsights(
   let billingMrr: number;
   let planMix: { label: string; count: number }[];
   let byType: { locations: number; warehouses: number; stores: number };
+  let resolvedBillingStatus: string | null;
 
   if (billingAgg) {
     billableUnits = billingAgg.billableUnits;
@@ -217,25 +252,54 @@ function mapInsights(
     billingMrr = billingAgg.mrr;
     planMix = billingAgg.planMix;
     byType = billingAgg.byType;
+    // Prefer the Billing Service rollup (most authoritative).  Fall back to
+    // the Reports backend's per-business billingStatus when available.
+    resolvedBillingStatus =
+      billingAgg.billingStatus ??
+      bestOfStatus(
+        res.businesses
+          .map((b) => b.billingStatus ?? "")
+          .filter(Boolean),
+      ) ??
+      k.billingStatus ??
+      null;
   } else {
     billableUnits = 0;
     activeSubscriptions = 0;
     openTrials = 0;
+    let reportsMrr = 0;
     const planCounts = new Map<string, number>();
+    const locationStatuses: string[] = [];
     for (const b of res.businesses) {
       for (const l of b.locations) {
         billableUnits += 1;
         const st = (l.status ?? "").toUpperCase();
+        if (st) locationStatuses.push(st);
         if (st === "ACTIVE") activeSubscriptions += 1;
         else if (st === "TRIAL") openTrials += 1;
         planCounts.set(l.planName ?? "—", (planCounts.get(l.planName ?? "—") ?? 0) + 1);
+        // Prefer per-item billing_mrr from Reports when present; otherwise
+        // fall back to the kpis.mrr aggregate (less granular).
+        if (l.billing_mrr != null) reportsMrr += l.billing_mrr;
       }
     }
     planMix = Array.from(planCounts.entries())
       .map(([label, count]) => ({ label, count }))
       .sort((a, z) => z.count - a.count);
-    billingMrr = k.mrr;
+    // Use the per-item sum when at least one item carried a billing_mrr value;
+    // fall back to the kpis aggregate when none did.
+    billingMrr = reportsMrr > 0 ? reportsMrr : k.mrr;
     byType = { locations: billableUnits, warehouses: 0, stores: 0 };
+    // Use Reports-level billingStatus fields when no Billing call succeeded.
+    resolvedBillingStatus =
+      bestOfStatus(
+        res.businesses
+          .map((b) => b.billingStatus ?? "")
+          .filter(Boolean),
+      ) ??
+      k.billingStatus ??
+      bestOfStatus(locationStatuses) ??
+      null;
   }
 
   const banner: AttentionBanner | null = !eng.firstSale &&
@@ -324,6 +388,7 @@ function mapInsights(
       activeSubscriptions,
       openTrials,
       mrr: { currency: "TZS", value: compactNumber(billingMrr) },
+      billingStatus: resolvedBillingStatus,
       planMix,
       lifetimeBilled: {
         value: tzs(sub.lifetimeBilled),

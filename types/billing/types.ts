@@ -8,6 +8,7 @@ export type FeatureType = "CORE" | "ADVANCED" | "PREMIUM" | "LIMIT";
 
 export interface Package {
   id: string;
+  code?: string;
   name: string;
   description: string | null;
   basePrice: number;
@@ -49,7 +50,13 @@ export interface Addon {
 
 // ── Subscriptions ───────────────────────────────────────────────────
 
-export type SubscriptionItemStatus = "ACTIVE" | "REMOVED";
+export type SubscriptionItemStatus =
+  | "ACTIVE"
+  | "PAST_DUE"
+  | "EXPIRED"
+  | "SUSPENDED"
+  | "CANCELLED"
+  | "REMOVED";
 
 export interface SubscriptionItem {
   id: string;
@@ -62,6 +69,7 @@ export interface SubscriptionItem {
   isBundled: boolean;
   bundledByItemId: string | null;
   status: SubscriptionItemStatus;
+  trialEndDate: string | null;
   addedAt: string;
   removedAt: string | null;
   /** Each addon mirrors the AddonResponse DTO: id, name, description, price. */

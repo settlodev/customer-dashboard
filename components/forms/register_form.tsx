@@ -461,6 +461,8 @@ function RegisterForm({ step }: { step: string }) {
         }];
       }
 
+      const planCode = (typeof window !== "undefined" ? localStorage.getItem("subscription") : null) || undefined;
+
       startTransition(async () => {
         try {
           const response = await createBusinessWithLocations({
@@ -474,6 +476,7 @@ function RegisterForm({ step }: { step: string }) {
             region: values.region || undefined,
             address: values.address || undefined,
             logoUrl: businessImageUrl || undefined,
+            planCode,
             locations: locationsList,
           });
           if (!response) { setError("Something went wrong."); return; }
@@ -494,7 +497,10 @@ function RegisterForm({ step }: { step: string }) {
               setError(response.message);
             }
           }
-          else if (response.responseType === "success") { router.push("/dashboard"); }
+          else if (response.responseType === "success") {
+            if (typeof window !== "undefined") localStorage.removeItem("subscription");
+            router.push("/dashboard");
+          }
         } catch (err: any) {
           setError(err.message || "An unexpected error occurred.");
         }

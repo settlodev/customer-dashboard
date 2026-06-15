@@ -49,10 +49,14 @@ export default function SubscriptionPage() {
   }, []);
 
   const handleSelect = (plan: Package) => {
-    // For initial onboarding, redirect to dashboard where the subscription
-    // will be set up. The billing service creates a trial subscription
-    // automatically when a location is created.
-    router.push("/dashboard");
+    const code = plan.code ?? "";
+    if (code && typeof window !== "undefined") {
+      localStorage.setItem("subscription", code);
+    }
+    // Carry the choice into business registration; the chosen planCode is read
+    // there and sent to LOCATION_CREATED. If the business already exists this
+    // is harmless (the stash is only consumed at creation).
+    router.push("/business-registration");
   };
 
   if (isLoading) {

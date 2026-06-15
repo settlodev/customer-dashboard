@@ -184,7 +184,11 @@ export function InvoiceViewDialog({
 
   const statusMeta = invoice ? getInvoiceStatusMeta(invoice.status) : null;
   const isPending = invoice?.status === "PENDING";
-  const canPay = isPending && !!businessId && !!locationId;
+  // Consolidated invoices are paid at the business level; locationId is only
+  // used for the (optional) bill-to address, never for payment. Gating canPay on
+  // locationId would wrongly disable Pay now that the Invoices tab bills to the
+  // business rather than the first subscription item.
+  const canPay = isPending && !!businessId;
   // Cancel is blocked while an attempt is INITIATING/PROCESSING (USSD push
   // could still confirm) or has already SUCCEEDED (a real customer payment
   // we can't void). Server enforces the same rule on the cancel endpoint.
@@ -284,8 +288,8 @@ export function InvoiceViewDialog({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
-                      {invoice.items.map((line) => (
-                        <tr key={line.id}>
+                      {invoice.items.map((line, idx) => (
+                        <tr key={line.id || `line-${idx}`}>
                           <td className="px-3 py-2 text-ink">
                             {line.description}
                             {line.isProration && (
@@ -436,7 +440,7 @@ export function InvoiceViewDialog({
             currency: invoice.currency,
           }}
           businessId={businessId!}
-          locationId={locationId!}
+          locationId={locationId}
           defaultEmail={defaultEmail ?? invoice.customerEmail ?? undefined}
           defaultPhone={defaultPhone ?? invoice.customerPhone ?? undefined}
           onPaid={() => {

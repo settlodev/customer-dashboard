@@ -7,6 +7,12 @@
  * before performing mutations. The UI guards (SubscriptionGuard, sidebar
  * filtering) are cosmetic — these are the real enforcement layer.
  *
+ * Each guard accepts an optional `entityId` parameter. When provided (or
+ * when an active location is found in the `currentLocation` cookie), it
+ * checks the per-entity item from `EntitlementResponse.items[]`. When no
+ * entity context is available it falls back to the business-aggregated
+ * features/limits (back-compat, permissive).
+ *
  * Usage in a server action:
  *   import { assertFeature, assertLimit } from "@/lib/feature-guard";
  *
@@ -22,8 +28,10 @@
  *   }
  */
 
+import { cookies } from "next/headers";
 import {
   getEntitlements,
+  type EntitlementItem,
   type EntitlementResponse,
 } from "@/lib/actions/entitlement-actions";
 import type { FeatureKey, LimitKey } from "@/lib/features";
@@ -84,6 +92,36 @@ export class SubscriptionInactiveError extends Error {
   }
 }
 
+// ── Active location resolver ─────────────────────────────────────────
+// Reads the `currentLocation` cookie which is set as JSON.stringify(location)
+// where the location object has an `id` field (e.g. { id: "abc", name: "..." }).
+// Matches the same cookie field read by settlo-api-client.ts's readCookieId().
+
+async function getActiveLocationId(): Promise<string | null> {
+  try {
+    const raw = (await cookies()).get("currentLocation")?.value;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return typeof parsed?.id === "string" ? parsed.id : null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Per-entity item resolver ─────────────────────────────────────────
+// Resolves the per-entity EntitlementItem for the given entityId (or the
+// active location when no entityId is passed). Returns null when no entity
+// context is available — callers fall back to the aggregate.
+
+async function resolveEntityItem(
+  ent: EntitlementResponse,
+  entityId?: string,
+): Promise<EntitlementItem | null> {
+  const id = entityId ?? (await getActiveLocationId());
+  if (!id) return null;
+  return ent.items.find((i) => i.entityId === id) ?? null;
+}
+
 // ── Per-request entitlement cache ───────────────────────────────────
 // Server actions run in a single request context. We cache the entitlement
 // response so multiple guards in the same action don't each call the
@@ -138,22 +176,34 @@ export async function assertActiveSubscription(): Promise<EntitlementResponse> {
 }
 
 /**
- * Assert that a boolean feature is enabled on the current plan.
- * Checks the aggregated features across all subscription items.
+ * Assert that a boolean feature is enabled on the active entity's plan.
+ * Checks the per-entity item for the given `entityId` (or the active
+ * location cookie), falling back to the business-aggregated features when
+ * no entity context is available.
  *
  * @throws FeatureGateError if feature is not available
  * @throws SubscriptionInactiveError if subscription is not active
  */
-export async function assertFeature(featureKey: FeatureKey): Promise<void> {
+export async function assertFeature(
+  featureKey: FeatureKey,
+  entityId?: string,
+): Promise<void> {
   const entitlements = await assertActiveSubscription();
-  if (entitlements.features[featureKey] !== true) {
+  const item = await resolveEntityItem(entitlements, entityId);
+  const enabled =
+    item !== null
+      ? item.features[featureKey] === true
+      : entitlements.features[featureKey] === true;
+  if (!enabled) {
     throw new FeatureGateError(featureKey);
   }
 }
 
 /**
  * Assert that a numeric limit has not been exceeded.
- * Uses the aggregated limits (MAX across items). -1 = unlimited.
+ * Checks the active entity's per-entity limit for the given `entityId` (or
+ * the active location cookie), falling back to the business-aggregated limit
+ * when no entity context is available. -1 = unlimited.
  *
  * @throws LimitExceededError if currentCount >= limit
  * @throws SubscriptionInactiveError if subscription is not active
@@ -161,9 +211,12 @@ export async function assertFeature(featureKey: FeatureKey): Promise<void> {
 export async function assertLimit(
   limitKey: LimitKey,
   currentCount: number,
+  entityId?: string,
 ): Promise<void> {
   const entitlements = await assertActiveSubscription();
-  const limit = entitlements.limits[limitKey];
+  const item = await resolveEntityItem(entitlements, entityId);
+  const limit =
+    item !== null ? item.limits[limitKey] : entitlements.limits[limitKey];
 
   // undefined or -1 = unlimited
   if (limit === undefined || limit === -1) return;
@@ -175,26 +228,41 @@ export async function assertLimit(
 
 /**
  * Check a feature without throwing. Returns false if not available.
+ * Checks the active entity's per-entity item for the given `entityId` (or
+ * the active location cookie), falling back to the business-aggregated
+ * features when no entity context is available.
  * Useful for conditional logic rather than hard blocking.
  */
-export async function checkFeature(featureKey: FeatureKey): Promise<boolean> {
-  if (!BILLING_SERVICE_URL) return true;
-  const entitlements = await getEntitlementsOnce();
-  if (!entitlements || !entitlements.active) return false;
-  return entitlements.features[featureKey] === true;
-}
-
-/**
- * Check a limit without throwing. Returns true if within limit.
- */
-export async function checkLimit(
-  limitKey: LimitKey,
-  currentCount: number,
+export async function checkFeature(
+  featureKey: FeatureKey,
+  entityId?: string,
 ): Promise<boolean> {
   if (!BILLING_SERVICE_URL) return true;
   const entitlements = await getEntitlementsOnce();
   if (!entitlements || !entitlements.active) return false;
-  const limit = entitlements.limits[limitKey];
+  const item = await resolveEntityItem(entitlements, entityId);
+  return item !== null
+    ? item.features[featureKey] === true
+    : entitlements.features[featureKey] === true;
+}
+
+/**
+ * Check a limit without throwing. Returns true if within limit.
+ * Checks the active entity's per-entity limit for the given `entityId` (or
+ * the active location cookie), falling back to the business-aggregated limit
+ * when no entity context is available. -1 = unlimited.
+ */
+export async function checkLimit(
+  limitKey: LimitKey,
+  currentCount: number,
+  entityId?: string,
+): Promise<boolean> {
+  if (!BILLING_SERVICE_URL) return true;
+  const entitlements = await getEntitlementsOnce();
+  if (!entitlements || !entitlements.active) return false;
+  const item = await resolveEntityItem(entitlements, entityId);
+  const limit =
+    item !== null ? item.limits[limitKey] : entitlements.limits[limitKey];
   if (limit === undefined || limit === -1) return true;
   return currentCount < limit;
 }

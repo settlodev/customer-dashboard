@@ -6,7 +6,6 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   ArrowUpCircle,
-  CheckCircle2,
   Gift,
   Link2,
   Loader2,
@@ -15,7 +14,6 @@ import {
   Plus,
   RefreshCw,
   Sparkles,
-  XCircle,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +22,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -360,9 +357,12 @@ export function BillingView({
 
         {subscription && subscription.items.length > 0 && (
           <div className="mt-5 border-t border-line pt-4">
-            <h4 className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">
+            <h4 className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
               Subscription items
             </h4>
+            <p className="mb-2 text-[12px] text-muted-foreground">
+              Plan, trial &amp; add-on actions live on each unit&apos;s detail page.
+            </p>
             <ul className="space-y-1.5">
               {subscription.items.map((item) => (
                 <li

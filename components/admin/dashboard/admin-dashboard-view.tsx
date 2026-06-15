@@ -78,6 +78,11 @@ export function AdminDashboardView({ data }: { data: DashboardOverview }) {
         </section>
       )}
 
+      {/* MRR by entity type */}
+      {data.mrrByEntityType.length > 0 && (
+        <MrrByEntityTypeCard items={data.mrrByEntityType} />
+      )}
+
       {/* Account → business → location stat strip */}
       {failed("stats") ? (
         <SectionUnavailable label="platform stats" />
@@ -239,9 +244,12 @@ function PlanMixCard({
             label={
               <>
                 {p.label}
+                <span className="ml-1.5 rounded px-1 py-px font-mono text-[10px] font-semibold uppercase tracking-wide bg-ink/[0.07] text-ink-2">
+                  {p.entityType}
+                </span>
                 <span className="ml-1 font-mono text-[11px] text-muted-2">
-                  · {p.activeCount} active
-                  {p.trialCount > 0 ? ` · ${p.trialCount} trial` : ""}
+                  · {p.activeCount} active · {p.itemCount}{" "}
+                  {p.itemCount === 1 ? "item" : "items"}
                 </span>
               </>
             }
@@ -343,6 +351,29 @@ function BillingCard({
           </div>
         </div>
       ))}
+    </SectionCard>
+  );
+}
+
+// ── MRR by entity type ───────────────────────────────────────────────
+function MrrByEntityTypeCard({
+  items,
+}: {
+  items: DashboardOverview["mrrByEntityType"];
+}) {
+  const total = items.reduce((s, r) => s + r.value, 0);
+  return (
+    <SectionCard title="MRR by entity type" subtitle="Breakdown by subscription entity">
+      <BarList>
+        {items.map((r) => (
+          <BarRow
+            key={r.name}
+            label={r.name}
+            value={r.value.toLocaleString()}
+            pct={total > 0 ? (r.value / total) * 100 : 0}
+          />
+        ))}
+      </BarList>
     </SectionCard>
   );
 }

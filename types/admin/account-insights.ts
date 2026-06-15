@@ -71,6 +71,12 @@ export interface AccountBillingRollup {
   activeSubscriptions: number;
   openTrials: number;
   mrr: { currency: string; value: string };
+  /**
+   * Best-of rollup status across all subscription items for this account.
+   * Populated from the Reports backend `billingStatus` field when available;
+   * falls back to null when the backend hasn't deployed yet (guard: optional).
+   */
+  billingStatus?: string | null;
   /** Distinct plans across the account's units, e.g. [{label:"Growth",count:2}]. */
   planMix: { label: string; count: number }[];
   lifetimeBilled: { value: string; tone: DefTone };
@@ -139,6 +145,15 @@ export interface AccountInsightsResponse {
     industry: string | null;
     statusLabel: string;
     locationCount: number;
+    /**
+     * Best-of rollup over all subscription-item statuses for this business
+     * (ACTIVE > PAST_DUE > EXPIRED > SUSPENDED > CANCELLED). Added by the
+     * Reports backend in Phase 2 of billing alignment — optional so an
+     * undeployed backend doesn't break the mapper.
+     */
+    billingStatus?: string | null;
+    /** True when every subscription item for this business is CANCELLED/EXPIRED. */
+    billingChurned?: boolean;
     locations: {
       locationId: string;
       name: string;
@@ -147,6 +162,11 @@ export interface AccountInsightsResponse {
       planName: string | null;
       status: string | null;
       trialEndDate: string | null;
+      /**
+       * Per-item monthly recurring revenue as computed by the Reports pipeline.
+       * Preferred over `packageInfo.basePrice` for MRR summation when present.
+       */
+      billing_mrr?: number;
     }[];
   }[];
   kpis: {
@@ -154,12 +174,16 @@ export interface AccountInsightsResponse {
     payingLocations: number;
     subscriptionPlan: string | null;
     subscriptionStatus: string | null;
+    /** Best-of billing status rollup across all items for this account. */
+    billingStatus?: string | null;
     mrr: number;
     gmv: number;
   };
   subscription: {
     plan: string | null;
     status: string | null;
+    /** Best-of billing status rollup across all items (preferred over `status`). */
+    billingStatus?: string | null;
     mrr: number;
     trialConvertsDate: string | null;
     paymentMethodOnFile: boolean;
