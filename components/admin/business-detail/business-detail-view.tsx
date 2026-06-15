@@ -163,6 +163,36 @@ export function BusinessDetailView({
   const liveItems = (subscription?.items ?? []).filter(
     (i) => i.status !== "REMOVED",
   );
+
+  // Per-item billing status rolled up across this business's units (trial =
+  // ACTIVE + a future trialEndDate). This replaces the legacy business-level
+  // "Overall status".
+  const statusRollup = (() => {
+    const order = ["Active", "Trial", "Past due", "Suspended", "Expired", "Cancelled"];
+    const m = new Map<string, number>();
+    for (const i of liveItems) {
+      const isTrial =
+        i.status === "ACTIVE" &&
+        !!i.trialEndDate &&
+        new Date(i.trialEndDate).getTime() > Date.now();
+      const label = isTrial
+        ? "Trial"
+        : i.status === "ACTIVE"
+          ? "Active"
+          : i.status === "PAST_DUE"
+            ? "Past due"
+            : i.status === "SUSPENDED"
+              ? "Suspended"
+              : i.status === "EXPIRED"
+                ? "Expired"
+                : "Cancelled";
+      m.set(label, (m.get(label) ?? 0) + 1);
+    }
+    return order
+      .filter((k) => m.has(k))
+      .map((k) => `${m.get(k)} ${k}`)
+      .join(" · ");
+  })();
   const itemByEntity = new Map<string, SubscriptionItemResponse>();
   for (const i of liveItems) itemByEntity.set(i.entityId, i);
   const billableUnits = [
@@ -563,11 +593,11 @@ export function BusinessDetailView({
           {canBilling && (
             <SectionCard
               title="Billing & subscriptions"
-              subtitle="invoices issued here · each unit billed on its own plan"
+              subtitle="rolled up across this business's units · invoices issued here"
               action={<CardLink href={`/businesses/${business.id}/billing`}>Manage</CardLink>}
             >
               <DefList>
-                <DefRow label="Billable units" value={String(unitCount)} />
+                <DefRow label="Active subscriptions" value={String(unitCount)} />
                 <DefRow label="MRR" value={`${currency} ${amt(itemsMrr)}`} />
                 {planMixParts && (
                   <DefRow
@@ -577,9 +607,15 @@ export function BusinessDetailView({
                   />
                 )}
                 <DefRow
-                  label="Overall status"
+                  label="Unit statuses"
                   rawValue
-                  value={subStatus ? <SubPill status={subStatus} trialLeft={trialLeft} /> : <span className="text-[12.5px] text-muted-2">—</span>}
+                  value={
+                    statusRollup ? (
+                      <span className="font-mono text-[12px] text-ink">{statusRollup}</span>
+                    ) : (
+                      <span className="text-[12.5px] text-muted-2">—</span>
+                    )
+                  }
                 />
                 <DefRow label="Trial window" value={subscription?.trialStartDate ? `${formatDate(subscription.trialStartDate)} → ${formatDate(subscription.trialEndDate)}` : "—"} tone={subscription?.trialStartDate ? "default" : "dim"} />
                 <DefRow label="Paid through" value={subscription?.paidThrough ? formatDate(subscription.paidThrough) : "—"} tone={subscription?.paidThrough ? "default" : "dim"} />
@@ -713,22 +749,6 @@ function SubBadge({ status }: { status: string }) {
     <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold", cls)}>
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {s.charAt(0) + s.slice(1).toLowerCase()}
-    </span>
-  );
-}
-
-function SubPill({ status, trialLeft }: { status: string; trialLeft: number | null }) {
-  const s = status.toUpperCase();
-  const label =
-    s === "TRIAL" && trialLeft != null
-      ? trialLeft <= 0
-        ? "Trial · expired"
-        : `Trial · ${trialLeft}d left`
-      : s.charAt(0) + s.slice(1).toLowerCase();
-  const cls = s === "TRIAL" ? "bg-[#2563EB]/10 text-[#2563EB]" : s === "ACTIVE" ? "bg-pos-tint text-pos" : "bg-warn-tint text-warn";
-  return (
-    <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[11px] font-semibold", cls)}>
-      {label}
     </span>
   );
 }
