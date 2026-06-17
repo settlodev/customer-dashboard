@@ -194,7 +194,11 @@ export async function searchProducts(
   try {
     const apiClient = new ApiClient();
     const params = new URLSearchParams();
-    if (q) params.set("name", q);
+    // Unified search param — the backend matches it (case-insensitive) across
+    // product name, tags, and each variant's name / SKU / barcode / stock
+    // serial number, scoped to the active tab via ?view=. (The old ?name= was
+    // silently ignored by the endpoint, so search did nothing.)
+    if (q) params.set("search", q);
     // Server is 0-indexed; the dashboard pager is 1-indexed.
     params.set("page", String(page ? page - 1 : 0));
     params.set("size", String(pageLimit || 10));
