@@ -8,7 +8,6 @@ import * as z from "zod";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -17,12 +16,12 @@ import {
 
 import { BusinessTimeType, FormResponse } from "@/types/types";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "../ui/button";
-import { LocationSchema } from "@/types/location/schema";
-import { Building2, Clock, Globe, Loader2Icon, Mail, MapPin } from "lucide-react";
+import { LocationSchema, OperatingHoursEntry } from "@/types/location/schema";
+import { Loader2Icon } from "lucide-react";
 import { Location } from "@/types/location/type";
-import { createLocation, updateLocation } from "@/lib/actions/location-actions";
+import { updateLocation } from "@/lib/actions/location-actions";
+import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
 import { toast } from "@/hooks/use-toast";
 import { PhoneInput } from "../ui/phone-input";
 import {
@@ -42,9 +41,171 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { createStandaloneLocation } from "@/lib/actions/auth/location";
 
-import { Separator } from "../ui/separator";
-import UploadImageWidget from "@/components/widgets/UploadImageWidget";
+// ── Days ─────────────────────────────────────────────────────────
+
+const DAYS_OF_WEEK = [
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
+] as const;
+
+const DAY_LABELS: Record<string, string> = {
+  MONDAY: "Monday",
+  TUESDAY: "Tuesday",
+  WEDNESDAY: "Wednesday",
+  THURSDAY: "Thursday",
+  FRIDAY: "Friday",
+  SATURDAY: "Saturday",
+  SUNDAY: "Sunday",
+};
+
+// ── Default hours ─────────────────────────────────────────────────
+
+function getDefaultOperatingHours(): OperatingHoursEntry[] {
+  return DAYS_OF_WEEK.map((day) => ({
+    dayOfWeek: day,
+    openTime: "08:00",
+    closeTime: "21:00",
+    closed: day === "SUNDAY",
+  }));
+}
+
+function seedOperatingHours(
+  location: Location | null | undefined,
+): OperatingHoursEntry[] {
+  const raw = (location as any)?.operatingHours as any[] | undefined;
+  if (raw && raw.length > 0) {
+    return DAYS_OF_WEEK.map((day) => {
+      const match = raw.find(
+        (h: any) => (h.dayOfWeek ?? h.day ?? "").toUpperCase() === day,
+      );
+      if (match) {
+        return {
+          dayOfWeek: day,
+          openTime: match.openTime ?? match.openingTime ?? "08:00",
+          closeTime: match.closeTime ?? match.closingTime ?? "21:00",
+          closed: match.closed ?? false,
+        };
+      }
+      return {
+        dayOfWeek: day,
+        openTime: "08:00",
+        closeTime: "21:00",
+        closed: day === "SUNDAY",
+      };
+    });
+  }
+  return getDefaultOperatingHours();
+}
+
+// ── OperatingHoursTable ───────────────────────────────────────────
+
+function OperatingHoursTable({
+  hours,
+  onChange,
+  disabled,
+}: {
+  hours: OperatingHoursEntry[];
+  onChange: (hours: OperatingHoursEntry[]) => void;
+  disabled: boolean;
+}) {
+  const update = (
+    dayOfWeek: string,
+    field: keyof OperatingHoursEntry,
+    value: string | boolean,
+  ) => {
+    onChange(
+      hours.map((h) =>
+        h.dayOfWeek === dayOfWeek ? { ...h, [field]: value } : h,
+      ),
+    );
+  };
+
+  return (
+    <div className="rounded-lg border border-gray-200 dark:border-border overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 dark:bg-muted/50 text-[10px] font-semibold text-gray-400 dark:text-muted-foreground uppercase tracking-wider">
+        <span className="w-24 shrink-0">Day</span>
+        <span className="w-10 shrink-0">Open</span>
+        <span className="flex-1">From</span>
+        <span className="flex-1">To</span>
+      </div>
+
+      {hours.map((entry) => (
+        <div
+          key={entry.dayOfWeek}
+          className={`flex items-center gap-3 px-4 py-2 border-t border-gray-100 dark:border-border ${
+            entry.closed ? "bg-gray-50/60 dark:bg-muted/40" : ""
+          }`}
+        >
+          <span className="w-24 shrink-0 text-sm font-medium text-gray-700 dark:text-foreground">
+            {DAY_LABELS[entry.dayOfWeek]}
+          </span>
+
+          <div className="w-10 shrink-0">
+            <Switch
+              checked={!entry.closed}
+              onCheckedChange={(checked) =>
+                update(entry.dayOfWeek, "closed", !checked)
+              }
+              disabled={disabled}
+            />
+          </div>
+
+          <div className="flex-1">
+            <Select
+              disabled={disabled || entry.closed}
+              value={entry.openTime}
+              onValueChange={(v) => update(entry.dayOfWeek, "openTime", v)}
+            >
+              <SelectTrigger
+                className={`h-9 text-sm ${entry.closed ? "opacity-40" : ""}`}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {businessTimes.map((t: BusinessTimeType, i: number) => (
+                  <SelectItem key={i} value={t.name}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex-1">
+            <Select
+              disabled={disabled || entry.closed}
+              value={entry.closeTime}
+              onValueChange={(v) => update(entry.dayOfWeek, "closeTime", v)}
+            >
+              <SelectTrigger
+                className={`h-9 text-sm ${entry.closed ? "opacity-40" : ""}`}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {businessTimes.map((t: BusinessTimeType, i: number) => (
+                  <SelectItem key={i} value={t.name}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── LocationForm ──────────────────────────────────────────────────
 
 export const LocationForm = ({
   item,
@@ -58,17 +219,18 @@ export const LocationForm = ({
   businessId?: string | null;
 }) => {
   const [isPending, startTransition] = useTransition();
-  const [, setResponse] = useState<FormResponse | undefined>();
   const [showStatusDialog, setShowStatusDialog] = useState(false);
-  const [imageUrl, setImageUrl] = useState("");
 
-  const formatTimeForSelect = (timeString: string | null | undefined) => {
-    if (!timeString) return undefined;
-
-    const hourAndMinutes = timeString.substring(0, 5);
-
-    return hourAndMinutes;
-  };
+  // Operating hours state — kept outside RHF to avoid deeply nested array
+  const [operatingHours, setOperatingHours] = useState<OperatingHoursEntry[]>(
+    () => seedOperatingHours(item),
+  );
+  const [continuousOperation, setContinuousOperation] = useState<boolean>(
+    () => (item as any)?.continuousOperation ?? false,
+  );
+  const [dailyCutoffTime, setDailyCutoffTime] = useState<string>(
+    () => (item as any)?.dailyCutoffTime ?? "04:00",
+  );
 
   const form = useForm<z.infer<typeof LocationSchema>>({
     resolver: zodResolver(LocationSchema),
@@ -76,57 +238,92 @@ export const LocationForm = ({
       name: item?.name ?? "",
       phone: item?.phoneNumber ?? "",
       email: item?.email ?? "",
-      description: item?.description ?? "",
-      address: item?.address ?? "",
       city: item?.region ?? "",
-      region: item?.region ?? "",
       street: item?.address ?? "",
-      website: item?.website ?? "",
-      openingTime: undefined,
-      closingTime: undefined,
+      continuousOperation: (item as any)?.continuousOperation ?? false,
+      dailyCutoffTime: (item as any)?.dailyCutoffTime ?? "04:00",
       status: item ? item.active : true,
-      image: undefined,
     },
   });
 
+  // ── Helpers ─────────────────────────────────────────────────────
+
   const onInvalid = useCallback((errors: FieldErrors) => {
-    console.log("The errors are:", errors);
+    console.log("Form errors:", errors);
     toast({
       variant: "destructive",
-      title: "Uh oh! something went wrong",
-      description:
-        typeof errors.message === "string"
-          ? errors.message
-          : "There was an issue submitting your form, please try later",
+      title: "Uh oh! Something went wrong",
+      description: "There was an issue submitting your form, please try later",
     });
   }, []);
 
-  const submitData = (values: z.infer<typeof LocationSchema>) => {
-    setResponse(undefined);
+  const validateHours = (): boolean => {
+    if (!continuousOperation && operatingHours.every((h) => h.closed)) {
+      toast({
+        variant: "destructive",
+        title: "Operating hours required",
+        description: "Your location must be open at least one day of the week.",
+      });
+      return false;
+    }
+    if (continuousOperation && !dailyCutoffTime) {
+      toast({
+        variant: "destructive",
+        title: "Cutoff time required",
+        description: "Please select a daily cutoff time for 24-hour operation.",
+      });
+      return false;
+    }
+    return true;
+  };
 
-    const locationData = {
-      ...values,
-      image: imageUrl,
-    };
+  // ── Submit: create ───────────────────────────────────────────────
+  // Uses createStandaloneLocation which handles auth-token refresh,
+  // cookie writes, and the /api/v1/locations POST correctly.
+
+  const handleCreate = (values: z.infer<typeof LocationSchema>) => {
+    if (!validateHours()) return;
 
     startTransition(async () => {
       try {
-        const response = item
-          ? await updateLocation(item.id, locationData)
-          : await createLocation(locationData, businessId || undefined);
+        const resolvedBusinessId =
+          businessId ?? (await getCurrentBusiness())?.id;
 
-        if (response) {
-          setResponse(response);
-          if (!item) {
-            window.location.href = "/locations";
-            return;
-          }
-          window.location.href = "/select-location";
+        if (!resolvedBusinessId) {
+          toast({
+            variant: "destructive",
+            title: "Business not found",
+            description:
+              "Could not determine the current business. Please try again.",
+          });
+          return;
         }
+
+        const response = await createStandaloneLocation({
+          businessId: resolvedBusinessId,
+          name: values.name,
+          phoneNumber: values.phone || undefined,
+          email: values.email || undefined,
+          region: values.city || undefined,
+          address: values.street || undefined,
+          operatingHours: continuousOperation ? undefined : operatingHours,
+        });
+
+        if (response.responseType === "error") {
+          toast({
+            variant: "destructive",
+            title: "Create failed",
+            description: response.message,
+          });
+          return;
+        }
+
+        toast({ title: "Location created successfully!" });
+        window.location.href = "/dashboard";
       } catch (error) {
         toast({
           variant: "destructive",
-          title: `${item ? "Update" : "Create"} failed`,
+          title: "Create failed",
           description:
             error instanceof Error
               ? error.message
@@ -135,6 +332,55 @@ export const LocationForm = ({
       }
     });
   };
+
+  // ── Submit: update ───────────────────────────────────────────────
+
+  const handleUpdate = (values: z.infer<typeof LocationSchema>) => {
+    if (!validateHours() || !item) return;
+
+    startTransition(async () => {
+      try {
+        const response = await updateLocation(item.id, {
+          ...values,
+          continuousOperation,
+          dailyCutoffTime: continuousOperation ? dailyCutoffTime : undefined,
+          operatingHours: continuousOperation ? undefined : operatingHours,
+        });
+
+        if (response.responseType === "error") {
+          toast({
+            variant: "destructive",
+            title: "Update failed",
+            description: response.message,
+          });
+          return;
+        }
+
+        toast({ title: "Location updated successfully!" });
+        window.location.href = "/select-location";
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Update failed",
+          description:
+            error instanceof Error
+              ? error.message
+              : "An unknown error occurred",
+        });
+      }
+    });
+  };
+
+  const submitData = (values: z.infer<typeof LocationSchema>) => {
+    if (item) {
+      handleUpdate(values);
+    } else {
+      handleCreate(values);
+    }
+  };
+
+  // ── Render ──────────────────────────────────────────────────────
+
   return (
     <Form {...form}>
       <form
@@ -143,280 +389,121 @@ export const LocationForm = ({
       >
         <Card>
           <CardContent className="pt-6 space-y-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Basic Information</h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4">
-                {/* Left col — fixed 200px width, same pattern as product form */}
-                <div className="col-span-1">
-                  <div className="flex flex-col items-center">
-                    <UploadImageWidget
-                      imagePath="location"
-                      displayStyle="default"
-                      displayImage={true}
-                      showLabel={true}
-                      label="Upload location image"
-                      setImage={setImageUrl}
-                      image={imageUrl}
-                    />
-                  </div>
-                </div>
-
-                {/* Right col — fills remaining space */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem className="sm:col-span-2">
-                        <FormLabel>Location Name</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
-                            <Input
-                              className="pl-10"
-                              {...field}
-                              disabled={isPending}
-                              placeholder="Enter location name"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                          <PhoneInput
-                            {...field}
-                            disabled={isPending}
-                            onChange={(value) => field.onChange(value)}
-                            placeholder="Enter phone number"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
-                            <Input
-                              className="pl-10"
-                              {...field}
-                              value={field.value || ""}
-                              disabled={isPending}
-                              type="email"
-                              placeholder="Enter email"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="website"
-                    render={({ field }) => (
-                      <FormItem className="sm:col-span-2">
-                        <FormLabel>Website</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
-                            <Input
-                              className="pl-10"
-                              {...field}
-                              value={field.value || ""}
-                              disabled={isPending}
-                              placeholder="https://example.com"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem className="sm:col-span-2">
-                        <FormLabel>Location Address</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
-                            <Input
-                              className="pl-10"
-                              {...field}
-                              disabled={isPending}
-                              placeholder="Enter address"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Business Hours</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* ── Basic Information ── */}
+            <div className="space-y-3">
+              {/* Row 1: Location name + City/Region */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormField
                   control={form.control}
-                  name="openingTime"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Opening Time</FormLabel>
+                      <FormLabel className="text-xs font-medium text-gray-600 dark:text-foreground/80">
+                        Location name <span className="text-red-500">*</span>
+                      </FormLabel>
                       <FormControl>
-                        <Select
+                        <Input
+                          className="h-9 text-sm"
+                          {...field}
                           disabled={isPending}
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <SelectTrigger className="pl-10">
-                            <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                            <SelectValue placeholder="Select opening time" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {businessTimes.map(
-                              (item: BusinessTimeType, index: number) => (
-                                <SelectItem key={index} value={item.name}>
-                                  {item.label}
-                                </SelectItem>
-                              ),
-                            )}
-                          </SelectContent>
-                        </Select>
+                          placeholder="e.g. Main Branch"
+                        />
                       </FormControl>
-                      <FormDescription>
-                        When do you open your business location?
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="closingTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Closing Time</FormLabel>
-                      <FormControl>
-                        <Select
-                          disabled={isPending}
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <SelectTrigger className="pl-10">
-                            <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                            <SelectValue placeholder="Select closing time" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {businessTimes.map(
-                              (item: BusinessTimeType, index: number) => (
-                                <SelectItem key={index} value={item.name}>
-                                  {item.label}
-                                </SelectItem>
-                              ),
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormDescription>
-                        When do you close your business location?
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Address Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="city"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>City / Region</FormLabel>
+                      <FormLabel className="text-xs font-medium text-gray-600 dark:text-foreground/80">
+                        City / Region
+                      </FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            placeholder="Which city do you operate?"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="street"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Street</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            value={field.value || ""}
-                            disabled={isPending}
-                            placeholder="Enter business location street"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea
+                        <Input
+                          className="h-9 text-sm"
                           {...field}
                           disabled={isPending}
+                          placeholder="e.g. Dar es Salaam"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Row 2: Street address full width */}
+              <FormField
+                control={form.control}
+                name="street"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-medium text-gray-600 dark:text-foreground/80">
+                      Street address
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        className="h-9 text-sm"
+                        {...field}
+                        value={field.value || ""}
+                        disabled={isPending}
+                        placeholder="e.g. 123 Uhuru Street"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Row 3: Phone + Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-medium text-gray-600 dark:text-foreground/80">
+                        Phone{" "}
+                        <span className="font-normal text-gray-400 dark:text-muted-foreground">
+                          (inherits from business)
+                        </span>
+                      </FormLabel>
+                      <FormControl>
+                        <PhoneInput
+                          {...field}
+                          disabled={isPending}
+                          onChange={(value) => field.onChange(value)}
+                          placeholder="Leave empty to inherit"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-medium text-gray-600 dark:text-foreground/80">
+                        Email{" "}
+                        <span className="font-normal text-gray-400 dark:text-muted-foreground">
+                          (inherits from business)
+                        </span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          className="h-9 text-sm"
+                          {...field}
                           value={field.value || ""}
-                          placeholder="Describe your business location"
-                          className="min-h-[100px]"
+                          disabled={isPending}
+                          type="email"
+                          placeholder="Leave empty to inherit"
                         />
                       </FormControl>
                       <FormMessage />
@@ -426,25 +513,81 @@ export const LocationForm = ({
               </div>
             </div>
 
-            <div className="flex justify-end pt-6">
-              {isPending ? (
-                <Button disabled className="w-full md:w-auto">
-                  <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
-                  {item ? "Updating..." : "Processing..."}
-                </Button>
+            {/* ── Business Hours ── */}
+            <div className="space-y-3">
+              {/* 24-hour toggle — matches the screenshot's clean pill row */}
+              <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-muted/50 border border-gray-200 dark:border-border px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-foreground">
+                    Open 24 hours
+                  </p>
+                </div>
+                <Switch
+                  checked={continuousOperation}
+                  onCheckedChange={setContinuousOperation}
+                  disabled={isPending}
+                />
+              </div>
+
+              {continuousOperation ? (
+                <div className="rounded-lg border border-gray-200 dark:border-border p-4 space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-foreground">
+                    Daily cutoff time <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    value={dailyCutoffTime}
+                    onValueChange={setDailyCutoffTime}
+                    disabled={isPending}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="e.g. 04:00" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {businessTimes.map((t: BusinessTimeType, i: number) => (
+                        <SelectItem key={i} value={t.name}>
+                          {t.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-400 dark:text-muted-foreground">
+                    The quiet hour when the business day rolls over (e.g. 04:00)
+                  </p>
+                </div>
               ) : (
-                <Button type="submit" className="w-full md:w-auto">
-                  {item
-                    ? "Update Location"
-                    : multipleStep
-                      ? "Complete Setup"
-                      : "Add Location"}
-                </Button>
+                <OperatingHoursTable
+                  hours={operatingHours}
+                  onChange={setOperatingHours}
+                  disabled={isPending}
+                />
               )}
+            </div>
+
+            {/* ── Submit ── */}
+            <div className="flex justify-end pt-2">
+              <Button
+                type="submit"
+                disabled={isPending}
+                className="w-full md:w-auto"
+              >
+                {isPending ? (
+                  <>
+                    <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+                    {item ? "Updating..." : "Processing..."}
+                  </>
+                ) : item ? (
+                  "Update Location"
+                ) : multipleStep ? (
+                  "Complete Setup"
+                ) : (
+                  "Add Location"
+                )}
+              </Button>
             </div>
           </CardContent>
         </Card>
 
+        {/* ── Status toggle (edit mode only) ── */}
         {item && (
           <Card className="rounded-xl border border-red-200 shadow-sm">
             <CardContent className="p-6">
@@ -458,7 +601,7 @@ export const LocationForm = ({
                         <FormLabel className="text-base">
                           Location Status
                         </FormLabel>
-                        <FormDescription>
+                        <p className="text-sm text-muted-foreground">
                           This location is currently{" "}
                           <span
                             className={
@@ -469,7 +612,7 @@ export const LocationForm = ({
                           >
                             {field.value ? "enabled" : "disabled"}
                           </span>
-                        </FormDescription>
+                        </p>
                       </div>
                       <Button
                         type="button"
