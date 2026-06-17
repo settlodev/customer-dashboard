@@ -66,6 +66,7 @@ import { Button } from "@/components/ui/button";
 import useColorMode from "@/components/hooks/useColorMode";
 import { logout } from "@/lib/actions/auth-actions";
 import { refreshBusiness } from "@/lib/actions/business/refresh";
+import { AccountSwitcher } from "./account-switcher";
 import { switchToLocation } from "@/lib/actions/destination";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { cn } from "@/lib/utils";
@@ -494,6 +495,9 @@ export function SidebarAccountMenu({
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto">
+        {/* Cross-account switch (hidden unless the user belongs to >1 account). */}
+        <AccountSwitcher />
+
         {businessList.length > 0 && (
           <div className="px-1.5 pb-1 pt-1.5">
             <div className="flex items-center justify-between px-1.5 pb-1.5 pt-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">

@@ -10,7 +10,7 @@ import * as z from "zod";
 import { getAuthToken } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
-import { ApiResponse, FormResponse } from "@/types/types";
+import { FormResponse } from "@/types/types";
 import {
   getCurrentLocation,
   getCurrentBusinessId,
@@ -45,8 +45,10 @@ const _fetchAllLocations = cache(
     if (!resolved) return [];
 
     const apiClient = new ApiClient();
+    // /me/locations is scoped server-side to the caller's accessible
+    // locations (owner → all in the business; invited → their subset).
     const locationsData = await apiClient.get<Location[] | null>(
-      `/api/v1/locations?businessId=${resolved}`,
+      `/api/v1/me/locations?businessId=${resolved}`,
     );
     return parseStringify(locationsData ?? []);
   },
@@ -56,57 +58,6 @@ export const fetchAllLocations = async (
   businessId?: string,
 ): Promise<Location[]> => {
   return _fetchAllLocations(businessId);
-};
-
-export const searchLocations = async (
-  q: string,
-  page: number,
-  pageLimit: number,
-): Promise<ApiResponse<Location>> => {
-
-  try {
-    const businessId = (await getAuthToken())?.businessId;
-    const apiClient = new ApiClient();
-
-    const query = {
-      filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "UUID_STRING",
-          value: q,
-        },
-        {
-          key: "isArchived",
-          operator: "EQUAL",
-          field_type: "BOOLEAN",
-          value: false,
-        },
-      ],
-      sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-
-    const params = new URLSearchParams();
-    if (q) params.append("search", q);
-    params.append("page", String(page ? page - 1 : 0));
-    params.append("size", String(pageLimit || 10));
-    params.append("sort", "name,asc");
-    if (businessId) params.append("businessId", businessId);
-
-    const data = await apiClient.get(`/api/v1/locations?${params.toString()}`);
-
-    return parseStringify(data);
-  } catch (error) {
-    console.error("Error in search locations:", error);
-    throw error;
-  }
 };
 
 export const createLocation = async (

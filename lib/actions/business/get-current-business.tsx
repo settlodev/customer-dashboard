@@ -138,7 +138,9 @@ export const getCurrentBusinessId = async (): Promise<string | null> => {
 // particular must not treat an API error as "no businesses created".
 const _getBusinessDropDown = cache(async (): Promise<Business[]> => {
   const apiClient = new ApiClient();
-  const data = await apiClient.get<Business[] | null>(`/api/v1/businesses`);
+  // /me/businesses is scoped server-side to what the caller can access
+  // (owner → all; invited member → their subset) — one path for every user.
+  const data = await apiClient.get<Business[] | null>(`/api/v1/me/businesses`);
   return parseStringify(data ?? []);
 });
 

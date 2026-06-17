@@ -7,7 +7,7 @@ import * as z from "zod";
 import ApiClient from "@/lib/settlo-api-client";
 import { SettloApiError } from "@/lib/settlo-api-error-handler";
 import { parseStringify } from "@/lib/utils";
-import { ApiResponse, FormResponse } from "@/types/types";
+import { FormResponse } from "@/types/types";
 import { Store } from "@/types/store/type";
 import { StoreSchema } from "@/types/store/schema";
 import { getCurrentBusinessId } from "@/lib/actions/business/get-current-business";
@@ -51,7 +51,9 @@ const _fetchAllStores = cache(
     if (businessId) params.append("businessId", businessId);
     if (locationId) params.append("locationId", locationId);
     const query = params.toString() ? `?${params.toString()}` : "";
-    const data = await apiClient.get<Store[] | null>(`/api/v1/stores${query}`);
+    // /me/stores is scoped server-side to the caller's accessible stores
+    // (owner → all; invited → their subset).
+    const data = await apiClient.get<Store[] | null>(`/api/v1/me/stores${query}`);
     return parseStringify(data ?? []);
   },
 );
@@ -64,29 +66,6 @@ export const fetchAllStores = async (
   // account's stores — and never the previous business's after a switch.
   const biz = businessId ?? (await getCurrentBusinessId()) ?? undefined;
   return _fetchAllStores(biz, locationId);
-};
-
-export const searchStores = async (
-  q: string,
-  page: number,
-  pageLimit: number,
-  businessId?: string,
-  locationId?: string,
-): Promise<ApiResponse<Store>> => {
-  try {
-    const apiClient = new ApiClient();
-    const params = new URLSearchParams();
-    if (q) params.append("search", q);
-    params.append("page", String(page ? page - 1 : 0));
-    params.append("size", String(pageLimit || 10));
-    params.append("sort", "name,asc");
-    if (businessId) params.append("businessId", businessId);
-    if (locationId) params.append("locationId", locationId);
-    const data = await apiClient.get(`/api/v1/stores?${params.toString()}`);
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
 };
 
 export const getStore = async (id: string): Promise<Store> => {

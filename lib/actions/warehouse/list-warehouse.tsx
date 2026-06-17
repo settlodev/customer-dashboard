@@ -1,7 +1,6 @@
 "use server";
 
 import { cache } from "react";
-import { z } from "zod";
 import { parseStringify } from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { FormResponse } from "@/types/types";
@@ -20,9 +19,11 @@ import { LAYOUT_TAGS } from "@/lib/cache-tags";
 const _fetchWarehouses = cache(
   async (businessId?: string): Promise<Warehouses[]> => {
     const apiClient = new ApiClient();
+    // /me/warehouses is scoped server-side to the caller's accessible
+    // warehouses (owner → all; invited → their subset).
     const url = businessId
-      ? `/api/v1/warehouses?businessId=${businessId}`
-      : `/api/v1/warehouses`;
+      ? `/api/v1/me/warehouses?businessId=${businessId}`
+      : `/api/v1/me/warehouses`;
     const data = await apiClient.get<Warehouses[] | null>(url);
     return parseStringify(data ?? []) as Warehouses[];
   },
