@@ -8,6 +8,7 @@ import { FormResponse } from "@/types/types";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
 import { getAuthToken } from "@/lib/auth-utils";
+import { getCurrentBusinessId } from "@/lib/actions/business/get-current-business";
 import { getCurrentWarehouse } from "./current-warehouse-action";
 import { LAYOUT_TAGS } from "@/lib/cache-tags";
 
@@ -29,7 +30,13 @@ const _fetchWarehouses = cache(
 
 export async function getWarehouses(businessId?: string): Promise<Warehouses[]> {
   try {
-    const biz = businessId ?? (await getAuthToken())?.businessId ?? undefined;
+    // Prefer the *selected* business (cookie) over the JWT's business_id
+    // claim, which is stale after a business switch.
+    const biz =
+      businessId ??
+      (await getCurrentBusinessId()) ??
+      (await getAuthToken())?.businessId ??
+      undefined;
     return await _fetchWarehouses(biz);
   } catch {
     return [];

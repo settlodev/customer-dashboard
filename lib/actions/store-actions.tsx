@@ -10,18 +10,32 @@ import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { Store } from "@/types/store/type";
 import { StoreSchema } from "@/types/store/schema";
+import { getCurrentBusinessId } from "@/lib/actions/business/get-current-business";
 import { LAYOUT_TAGS } from "@/lib/cache-tags";
 
 /** Reads the active store from the `currentStore` cookie, if any. */
 export const getCurrentStore = async (): Promise<Store | undefined> => {
   const cookieStore = await cookies();
   const raw = cookieStore.get("currentStore")?.value;
-  if (!raw) return undefined;
+  if (!raw || !raw.trim()) return undefined;
+
+  let store: Store;
   try {
-    return JSON.parse(raw) as Store;
+    store = JSON.parse(raw) as Store;
   } catch {
     return undefined;
   }
+
+  // The active store must belong to the active business. A store lingering
+  // from a previous business after a switch would stamp a cross-business
+  // X-Location-Id and 403 against business-scoped services. Treat a
+  // mismatch as "no active store". (Mirrors getCurrentLocation.)
+  const businessId = await getCurrentBusinessId();
+  if (businessId && store.businessId && store.businessId !== businessId) {
+    return undefined;
+  }
+
+  return store;
 };
 
 // Per-request memoisation only — `unstable_cache` can't be used here
@@ -46,7 +60,10 @@ export const fetchAllStores = async (
   businessId?: string,
   locationId?: string,
 ): Promise<Store[]> => {
-  return _fetchAllStores(businessId, locationId);
+  // Default to the *selected* business (cookie) so we don't return the whole
+  // account's stores — and never the previous business's after a switch.
+  const biz = businessId ?? (await getCurrentBusinessId()) ?? undefined;
+  return _fetchAllStores(biz, locationId);
 };
 
 export const searchStores = async (

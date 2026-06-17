@@ -7,6 +7,7 @@ import type { Store } from "@/types/store/type";
 import type { Warehouses } from "@/types/warehouse/warehouse/type";
 import { getAuthToken, updateAuthToken } from "@/lib/auth-utils";
 import { extractSubscriptionStatus } from "@/lib/jwt-utils";
+import { clearDaySessionCookie } from "./day-session-cookie-actions";
 
 // ── Unified destination switcher ────────────────────────────────────
 // A destination is exactly one of: Location, Store, or Warehouse. When
@@ -124,5 +125,11 @@ export async function switchToWarehouse(data: Warehouses): Promise<void> {
 /** Clears all destination cookies — used on logout or when a business is unset. */
 export async function clearDestination(): Promise<void> {
   await clearAllDestinationCookies();
+  // The day session is location-bound. When the whole destination context is
+  // dropped (logout, account switch, business switch) the cached session no
+  // longer applies. Per-destination switches deliberately keep it — a
+  // store/warehouse rolls up to the same parent location, enforced by the
+  // X-Day-Session-Id per-location guard in the ApiClient.
+  await clearDaySessionCookie();
   revalidatePath("/", "layout");
 }

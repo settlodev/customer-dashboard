@@ -390,8 +390,10 @@ export function SidebarAccountMenu({
       await refreshBusiness(confirmBiz);
       // Auto-pick the location only when there's a single one to choose.
       // Otherwise the merchant lands on the location-picker so they can
-      // make an explicit choice.
-      const locations = await fetchAllLocations();
+      // make an explicit choice. Scope the fetch to the just-selected
+      // business so we never auto-switch into the previous business's
+      // location (which would 403 against business-scoped services).
+      const locations = await fetchAllLocations(confirmBiz.id);
       if (locations && locations.length === 1) {
         await switchToLocation(locations[0]);
         window.location.href = "/dashboard";

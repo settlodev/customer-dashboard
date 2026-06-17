@@ -11,7 +11,10 @@ import { getAuthToken } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { ApiResponse, FormResponse } from "@/types/types";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import {
+  getCurrentLocation,
+  getCurrentBusinessId,
+} from "@/lib/actions/business/get-current-business";
 import { Location } from "@/types/location/type";
 import { LocationSchema } from "@/types/location/schema";
 import { switchToLocation } from "./destination";
@@ -28,19 +31,31 @@ import { LAYOUT_TAGS } from "@/lib/cache-tags";
 // the /select-location page — can distinguish "no locations" from
 // "couldn't reach the server" instead of incorrectly bouncing the
 // user to /business-location.
-const _fetchAllLocations = cache(async (): Promise<Location[]> => {
-  const businessId = (await getAuthToken())?.businessId;
-  if (!businessId) return [];
+const _fetchAllLocations = cache(
+  async (businessId?: string): Promise<Location[]> => {
+    // The *selected* business (currentBusiness cookie) is the source of
+    // truth — not the JWT's business_id claim, which is absent for owner
+    // tokens and never changes when the user switches business. An
+    // explicit businessId wins; the JWT is only a last-resort fallback.
+    const resolved =
+      businessId ??
+      (await getCurrentBusinessId()) ??
+      (await getAuthToken())?.businessId ??
+      undefined;
+    if (!resolved) return [];
 
-  const apiClient = new ApiClient();
-  const locationsData = await apiClient.get<Location[] | null>(
-    `/api/v1/locations?businessId=${businessId}`,
-  );
-  return parseStringify(locationsData ?? []);
-});
+    const apiClient = new ApiClient();
+    const locationsData = await apiClient.get<Location[] | null>(
+      `/api/v1/locations?businessId=${resolved}`,
+    );
+    return parseStringify(locationsData ?? []);
+  },
+);
 
-export const fetchAllLocations = async (): Promise<Location[]> => {
-  return _fetchAllLocations();
+export const fetchAllLocations = async (
+  businessId?: string,
+): Promise<Location[]> => {
+  return _fetchAllLocations(businessId);
 };
 
 export const searchLocations = async (
