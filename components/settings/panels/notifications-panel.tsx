@@ -32,22 +32,38 @@ export function NotificationsPanel({
   const { toast } = useToast();
 
   const handlePushToggle = async (enabled: boolean) => {
-    if (enabled) {
-      const swReg = await navigator.serviceWorker?.getRegistration("/firebase-messaging-sw.js");
-      const token = await requestPermissionAndGetToken(swReg ?? undefined);
-      if (!token) {
-        toast({
-          variant: "destructive",
-          title: "Couldn't enable notifications",
-          description: "Allow notifications for this site in your browser, then try again.",
-        });
-        return; // leave the toggle off
+    try {
+      if (enabled) {
+        const swReg = await navigator.serviceWorker?.getRegistration("/firebase-messaging-sw.js");
+        const token = await requestPermissionAndGetToken(swReg ?? undefined);
+        if (!token) {
+          toast({
+            variant: "destructive",
+            title: "Couldn't enable notifications",
+            description: "Allow notifications for this site in your browser, then try again.",
+          });
+          return;
+        }
+        const result = await registerPushToken({ fcmToken: token, deviceId: getOrCreateDeviceId() });
+        if (!result.ok) {
+          toast({
+            variant: "destructive",
+            title: "Couldn't enable notifications",
+            description: "Registration failed. Please try again.",
+          });
+          return;
+        }
+        p.setField("enablePushNotifications", true);
+      } else {
+        await deletePushToken(getOrCreateDeviceId());
+        p.setField("enablePushNotifications", false);
       }
-      await registerPushToken({ fcmToken: token, deviceId: getOrCreateDeviceId() });
-      p.setField("enablePushNotifications", true);
-    } else {
-      await deletePushToken(getOrCreateDeviceId());
-      p.setField("enablePushNotifications", false);
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Something went wrong",
+        description: "Couldn't update notification settings. Please try again.",
+      });
     }
   };
 
