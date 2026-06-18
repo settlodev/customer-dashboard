@@ -263,27 +263,6 @@ export async function exportSalesReportWorkbook(
     ]);
   }
 
-  // ── Overview (first tab) — what the workbook contains ─────────────
-  const overview: Cell[][] = [
-    ["Sales report"],
-    [],
-    ["Period", from === to ? from : `${from} to ${to}`],
-    ["Currency", cur],
-    [],
-    ["Sheet", "Data rows"],
-    ["By staff", staff?.staffReports?.length ?? 0],
-    ["By product", products?.items?.length ?? 0],
-    ["By category", category?.categories?.length ?? 0],
-  ];
-  if (hasDepartments)
-    overview.push(["By department", department?.departments?.length ?? 0]);
-  if (hasTables) overview.push(["By table", tableReport?.tables?.length ?? 0]);
-  const overviewWs = XLSX.utils.aoa_to_sheet(overview);
-  overviewWs["!cols"] = [{ wch: 18 }, { wch: 24 }];
-  // Prepend so Overview opens first.
-  XLSX.utils.book_append_sheet(wb, overviewWs, "Overview");
-  wb.SheetNames = ["Overview", ...wb.SheetNames.filter((n) => n !== "Overview")];
-
   const base64 = XLSX.write(wb, { type: "base64", bookType: "xlsx" });
 
   return {
