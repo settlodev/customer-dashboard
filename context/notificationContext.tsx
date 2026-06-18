@@ -6,6 +6,7 @@ import React, {
   useContext,
   useEffect,
   useReducer,
+  useRef,
 } from "react";
 import { useSession } from "next-auth/react";
 
@@ -96,9 +97,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const loadList = useCallback(async () => {
     dispatch({ type: "SET_LOADING", loading: true });
-    const res = await listNotifications(0, 20);
-    dispatch({ type: "SET_ITEMS", items: res.content ?? [] });
-    dispatch({ type: "SET_LOADING", loading: false });
+    try {
+      const res = await listNotifications(0, 20);
+      dispatch({ type: "SET_ITEMS", items: res.content ?? [] });
+    } finally {
+      dispatch({ type: "SET_LOADING", loading: false });
+    }
   }, []);
 
   const setOpen = useCallback(
@@ -106,25 +110,36 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     [],
   );
 
+  const openRef = useRef(state.open);
+  useEffect(() => {
+    openRef.current = state.open;
+  }, [state.open]);
+
   const markOneRead = useCallback(
     async (id: string) => {
       dispatch({ type: "MARK_ONE", id });
       const { ok } = await markReadAction(id);
-      if (!ok) await refreshCount();
+      if (!ok) {
+        await refreshCount();
+        if (openRef.current) await loadList();
+      }
     },
-    [refreshCount],
+    [refreshCount, loadList],
   );
 
   const markAllRead = useCallback(async () => {
     dispatch({ type: "MARK_ALL" });
     const { ok } = await markAllReadAction();
-    if (!ok) await refreshCount();
-  }, [refreshCount]);
+    if (!ok) {
+      await refreshCount();
+      if (openRef.current) await loadList();
+    }
+  }, [refreshCount, loadList]);
 
   const applyIncoming = useCallback(() => {
     void refreshCount();
-    if (state.open) void loadList();
-  }, [refreshCount, loadList, state.open]);
+    if (openRef.current) void loadList();
+  }, [refreshCount, loadList]);
 
   useEffect(() => {
     if (status === "authenticated") void refreshCount();
