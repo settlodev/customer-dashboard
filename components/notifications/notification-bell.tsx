@@ -67,7 +67,7 @@ export function NotificationBell({ className }: { className?: string }) {
                 <li key={n.id}>
                   <button
                     type="button"
-                    onClick={() => void markOneRead(n.id)}
+                    onClick={n.read ? undefined : () => void markOneRead(n.id)}
                     className={cn(
                       "flex w-full flex-col gap-1 border-t border-line px-4 py-3 text-left hover:bg-canvas",
                       !n.read && "bg-canvas/60",
