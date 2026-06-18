@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { onMessage } from "firebase/messaging";
 import { useToast } from "@/hooks/use-toast";
+import { useNotifications } from "@/context/notificationContext";
 import {
   isMessagingSupported,
   getMessagingClient,
@@ -20,6 +21,7 @@ import { registerPushToken } from "@/lib/actions/push-token-actions";
 export function FirebaseMessagingProvider() {
   const { status } = useSession();
   const { toast } = useToast();
+  const { refreshCount } = useNotifications();
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -55,6 +57,7 @@ export function FirebaseMessagingProvider() {
             title: payload.notification?.title ?? payload.data?.title ?? "Settlo",
             description: payload.notification?.body ?? payload.data?.body ?? "",
           });
+          void refreshCount();
         });
       }
     })();
@@ -63,7 +66,7 @@ export function FirebaseMessagingProvider() {
       cancelled = true;
       unsubscribe?.();
     };
-  }, [status, toast]);
+  }, [status, toast, refreshCount]);
 
   return null;
 }
