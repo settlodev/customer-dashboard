@@ -18,12 +18,12 @@ interface Props {
 }
 
 /**
- * Sales by department. The Reports Service aggregates `fact_order_items` by
- * department in ClickHouse and returns one row per department, so this tab
- * never loads individual line items — it stays fast and correct no matter how
- * many products a location has. Each sold item belongs to exactly one
- * department (its sale-time department), so the rows reconcile to the location
- * totals. Rows drill into the department detail Sales tab.
+ * Sales by department. The Reports Service aggregates from the CURRENT catalog
+ * dimension in ClickHouse (a product is attributed to every department its
+ * categories roll up to), so this never loads line items and never drops a
+ * sale to "Unassigned" once products are synced. KPI money uses the true
+ * location totals — the per-department rows multi-attribute, so they can sum to
+ * more than net (see the note). Rows drill into the department detail Sales tab.
  */
 export async function ByDepartmentTab({ from, to }: Props) {
   const [rollup, currency] = await Promise.all([
@@ -31,7 +31,7 @@ export async function ByDepartmentTab({ from, to }: Props) {
     getLocationCurrency().catch(() => "TZS"),
   ]);
 
-  const rows: DepartmentSalesRow[] = rollup.map((d) => ({
+  const rows: DepartmentSalesRow[] = rollup.departments.map((d) => ({
     id: d.departmentId ?? UNASSIGNED,
     name:
       d.departmentName ?? (d.departmentId ? "Unnamed department" : "Unassigned"),
@@ -46,14 +46,9 @@ export async function ByDepartmentTab({ from, to }: Props) {
     return <NoItems itemName="department sales for this period" />;
   }
 
-  // Single attribution → the rows sum to the location totals for the period.
   const deptCount = rows.filter((r) => r.id !== UNASSIGNED).length;
-  const totalQty = rows.reduce((s, r) => s + r.qty, 0);
-  const totalGross = rows.reduce((s, r) => s + r.gross, 0);
-  const totalNet = rows.reduce((s, r) => s + r.net, 0);
-  const totalProfit = rows.reduce((s, r) => s + r.profit, 0);
-  const margin = totalNet > 0 ? (totalProfit / totalNet) * 100 : 0;
-  const hasUnassigned = rows.some((r) => r.id === UNASSIGNED);
+  const { quantitySold, grossSales, netSales, grossProfit } = rollup.totals;
+  const margin = netSales > 0 ? (grossProfit / netSales) * 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -66,35 +61,34 @@ export async function ByDepartmentTab({ from, to }: Props) {
         <KpiCard
           icon={<Package className="h-3 w-3" />}
           label="Qty sold"
-          value={totalQty > 0 ? totalQty.toLocaleString() : "—"}
+          value={quantitySold > 0 ? quantitySold.toLocaleString() : "—"}
         />
         <KpiCard
           icon={<DollarSign className="h-3 w-3" />}
           label="Gross"
-          value={totalGross > 0 ? formatMoney(totalGross) : "—"}
-          unit={totalGross > 0 ? currency : undefined}
+          value={grossSales > 0 ? formatMoney(grossSales) : "—"}
+          unit={grossSales > 0 ? currency : undefined}
         />
         <KpiCard
           icon={<DollarSign className="h-3 w-3" />}
           label="Net"
-          value={totalNet > 0 ? formatMoney(totalNet) : "—"}
-          unit={totalNet > 0 ? currency : undefined}
+          value={netSales > 0 ? formatMoney(netSales) : "—"}
+          unit={netSales > 0 ? currency : undefined}
         />
         <KpiCard
           icon={<TrendingUp className="h-3 w-3" />}
           label="Gross profit"
-          value={totalProfit !== 0 ? formatMoney(totalProfit) : "—"}
-          unit={totalProfit !== 0 ? currency : undefined}
-          delta={totalNet > 0 ? `${margin.toFixed(1)}% margin` : undefined}
-          deltaTone={totalProfit >= 0 ? "pos" : "neg"}
+          value={grossProfit !== 0 ? formatMoney(grossProfit) : "—"}
+          unit={grossProfit !== 0 ? currency : undefined}
+          delta={netSales > 0 ? `${margin.toFixed(1)}% margin` : undefined}
+          deltaTone={grossProfit >= 0 ? "pos" : "neg"}
         />
       </KpiStrip>
 
-      {hasUnassigned && (
-        <p className="text-[11.5px] text-muted-foreground">
-          “Unassigned” groups items sold without a department.
-        </p>
-      )}
+      <p className="text-[11.5px] text-muted-foreground">
+        A product whose categories span multiple departments counts toward each,
+        so department totals can exceed the overall net above.
+      </p>
 
       <SalesByDepartmentTable data={rows} currency={currency} />
     </div>

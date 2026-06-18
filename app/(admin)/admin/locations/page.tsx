@@ -7,6 +7,7 @@ import {
   PageShell,
 } from "@/components/layouts/page-shell";
 import { LocationsSubscriptionsView } from "@/components/admin/locations/locations-subscriptions-view";
+import { SyncAllCatalogsButton } from "@/components/admin/locations/sync-all-catalogs-button";
 import { getPlatformLocations } from "@/lib/actions/admin/platform-metrics";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import type { PlatformLocationsPage } from "@/types/admin/platform-metrics";
@@ -42,6 +43,7 @@ export default async function AdminLocationsPage({
   }
 
   const role = token.internalRole;
+  const isSuperAdmin = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
   const canRead = role ? READ_ROLES.includes(role) : false;
   if (!canRead) {
     return (
@@ -89,7 +91,11 @@ export default async function AdminLocationsPage({
   return (
     <AdminShell token={token}>
       <PageShell>
-        <PageHeader title="Locations & subscriptions" subtitle={subtitle} />
+        <PageHeader
+          title="Locations & subscriptions"
+          subtitle={subtitle}
+          actions={isSuperAdmin ? <SyncAllCatalogsButton /> : undefined}
+        />
         <PageBody>
           {loadError ? (
             <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">

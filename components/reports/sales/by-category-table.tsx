@@ -12,24 +12,16 @@ import {
 
 interface Props {
   data: CategorySalesRow[];
-  pageCount: number;
-  pageNo: number;
-  total: number;
   currency: string;
 }
 
 /**
- * Client wrapper around the data-table for the sales-by-category summary.
- * Each row drills into that category's detail screen, landing on the Sales
- * tab (`?tab=sales`).
+ * Sales-by-category rollup table. The backend already aggregated to one row
+ * per category, so the table runs in `clientMode` — search, sort and paging
+ * happen in-memory with no URL plumbing. Rows drill into the category detail
+ * Sales tab.
  */
-export function SalesByCategoryTable({
-  data,
-  pageCount,
-  pageNo,
-  total,
-  currency,
-}: Props) {
+export function SalesByCategoryTable({ data, currency }: Props) {
   const router = useRouter();
   const columns = useMemo(
     () => buildSalesByCategoryColumns({ currency }),
@@ -42,10 +34,9 @@ export function SalesByCategoryTable({
         <DataTable
           columns={columns}
           data={data}
-          pageCount={pageCount}
-          pageNo={pageNo}
           searchKey="name"
-          total={total}
+          searchPlaceholder="Search categories…"
+          clientMode
           onRowClick={(item) => {
             if (item.id) router.push(`/categories/${item.id}?tab=sales`);
           }}

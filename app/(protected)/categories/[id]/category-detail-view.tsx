@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import {
   DollarSign,
   Package,
@@ -12,26 +11,23 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
+import { DepartmentProductSalesTable } from "@/components/reports/sales/department-product-sales-table";
+import { CategorySalesExportButton } from "@/components/reports/sales/category-sales-export-button";
+import { type DepartmentProductSale } from "@/components/tables/reports/department-product-sales/columns";
 import type { Category } from "@/types/category/type";
+import type {
+  CategorySalesRollup,
+  DepartmentItemSale,
+} from "@/types/item-sales/type";
 
-/** Per-product sales for one category, last 30 days. */
-export interface CategoryProductSale {
-  productId: string;
-  name: string;
-  quantitySold: number;
-  grossSales: number;
-  netSales: number;
-  totalCost: number;
-  grossProfit: number;
-  totalDiscount: number;
+export interface CategorySalesData {
+  totals: CategorySalesRollup;
+  items: DepartmentItemSale[];
+  pageCount: number;
+  /** 0-based current page index. */
+  pageNo: number;
+  total: number;
 }
 
 const TABS = [
@@ -43,15 +39,20 @@ type TabKey = (typeof TABS)[number]["key"];
 
 interface Props {
   category: Category;
-  productSales: CategoryProductSale[];
   currency: string;
+  /** Current `from`/`to` URL params (yyyy-MM-dd) driving the Sales period. */
+  from: string;
+  to: string;
+  sales: CategorySalesData;
   initialTab?: string;
 }
 
 export function CategoryDetailView({
   category,
-  productSales,
   currency,
+  from,
+  to,
+  sales,
   initialTab,
 }: Props) {
   const [tab, setTab] = useState<TabKey>(
@@ -60,9 +61,7 @@ export function CategoryDetailView({
       : "overview",
   );
 
-  const soldCount = productSales.filter(
-    (p) => p.quantitySold > 0 || p.grossSales > 0,
-  ).length;
+  const soldCount = sales.totals.products;
 
   return (
     <div className="space-y-6">
@@ -110,7 +109,14 @@ export function CategoryDetailView({
 
       {tab === "overview" && <OverviewTab category={category} />}
       {tab === "sales" && (
-        <CategorySalesTab productSales={productSales} currency={currency} />
+        <CategorySalesTab
+          sales={sales}
+          currency={currency}
+          categoryId={category.id}
+          categoryName={category.name}
+          from={from}
+          to={to}
+        />
       )}
     </div>
   );
@@ -194,159 +200,120 @@ function OverviewTab({ category }: { category: Category }) {
   );
 }
 
-// ── Sales (products in this category, last 30 days) ─────────────────
+// ── Sales (items sold in this category, selected period) ────────────
 
 function CategorySalesTab({
-  productSales,
+  sales,
   currency,
+  categoryId,
+  categoryName,
+  from,
+  to,
 }: {
-  productSales: CategoryProductSale[];
+  sales: CategorySalesData;
   currency: string;
+  categoryId: string;
+  categoryName: string;
+  from: string;
+  to: string;
 }) {
-  const withSales = productSales.filter(
-    (p) => p.quantitySold > 0 || p.grossSales > 0,
-  );
-
-  if (withSales.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <ShoppingCart className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            No sales recorded for products in this category in the last 30 days.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const { totals, items, pageCount, pageNo, total } = sales;
+  const hasSales = totals.quantitySold > 0 || totals.grossSales > 0;
 
   const fmt = (v: number) =>
     v.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  const margin =
+    totals.netSales > 0 ? (totals.grossProfit / totals.netSales) * 100 : 0;
 
-  const totalQty = withSales.reduce((s, p) => s + p.quantitySold, 0);
-  const totalGross = withSales.reduce((s, p) => s + p.grossSales, 0);
-  const totalNet = withSales.reduce((s, p) => s + p.netSales, 0);
-  const totalProfit = withSales.reduce((s, p) => s + p.grossProfit, 0);
-  const margin = totalNet > 0 ? (totalProfit / totalNet) * 100 : 0;
+  const rows: DepartmentProductSale[] = items.map((it) => ({
+    productId: it.productId,
+    name: it.itemName,
+    quantitySold: it.quantitySold,
+    grossSales: it.grossSales,
+    netSales: it.netSales,
+    totalCost: it.totalCost,
+    grossProfit: it.grossProfit,
+    totalDiscount: it.totalDiscount,
+  }));
 
   return (
     <div className="space-y-6">
-      <KpiStrip cols={6}>
-        <KpiCard
-          icon={<Package className="h-3 w-3" />}
-          label="Products sold"
-          value={withSales.length.toLocaleString()}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <OrdersDateFilter from={from} to={to} />
+        <CategorySalesExportButton
+          categoryId={categoryId}
+          categoryName={categoryName}
+          currency={currency}
+          from={from}
+          to={to}
+          disabled={total === 0}
         />
-        <KpiCard
-          icon={<ShoppingCart className="h-3 w-3" />}
-          label="Qty sold"
-          value={totalQty.toLocaleString()}
-        />
-        <KpiCard
-          icon={<DollarSign className="h-3 w-3" />}
-          label="Gross"
-          value={fmt(totalGross)}
-          unit={currency}
-        />
-        <KpiCard
-          icon={<DollarSign className="h-3 w-3" />}
-          label="Net"
-          value={fmt(totalNet)}
-          unit={currency}
-        />
-        <KpiCard
-          icon={<TrendingUp className="h-3 w-3" />}
-          label="Gross profit"
-          value={fmt(totalProfit)}
-          unit={currency}
-          deltaTone={totalProfit >= 0 ? "pos" : "neg"}
-        />
-        <KpiCard
-          icon={<Percent className="h-3 w-3" />}
-          label="Margin"
-          value={`${margin.toFixed(1)}%`}
-          deltaTone={margin >= 20 ? "pos" : margin >= 10 ? "neutral" : "neg"}
-        />
-      </KpiStrip>
+      </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <h3 className="mb-3 text-sm font-semibold">
-            Products in this category (last 30 days)
-          </h3>
-          <div className="overflow-auto rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead className="text-right">Qty sold</TableHead>
-                  <TableHead className="text-right">Gross</TableHead>
-                  <TableHead className="text-right">Discount</TableHead>
-                  <TableHead className="text-right">Net</TableHead>
-                  <TableHead className="text-right">COGS</TableHead>
-                  <TableHead className="text-right">Profit</TableHead>
-                  <TableHead className="text-right">Margin</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {withSales.map((p) => {
-                  const m =
-                    p.netSales > 0 ? (p.grossProfit / p.netSales) * 100 : 0;
-                  return (
-                    <TableRow key={p.productId}>
-                      <TableCell className="font-medium">
-                        <Link
-                          href={`/products/${p.productId}?tab=sales`}
-                          className="text-primary hover:underline"
-                        >
-                          {p.name}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {p.quantitySold.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {fmt(p.grossSales)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">
-                        {p.totalDiscount > 0 ? fmt(p.totalDiscount) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {fmt(p.netSales)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">
-                        {fmt(p.totalCost)}
-                      </TableCell>
-                      <TableCell
-                        className={`text-right font-medium tabular-nums ${
-                          p.grossProfit >= 0
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-red-600 dark:text-red-400"
-                        }`}
-                      >
-                        {fmt(p.grossProfit)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        <span
-                          className={
-                            m >= 20
-                              ? "text-green-600 dark:text-green-400"
-                              : m >= 10
-                                ? "text-amber-600 dark:text-amber-400"
-                                : "text-red-600 dark:text-red-400"
-                          }
-                        >
-                          {m.toFixed(1)}%
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+      {!hasSales ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <ShoppingCart className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              No sales recorded for products in this category in the selected
+              period.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <KpiStrip cols={6}>
+            <KpiCard
+              icon={<Package className="h-3 w-3" />}
+              label="Products sold"
+              value={totals.products.toLocaleString()}
+            />
+            <KpiCard
+              icon={<ShoppingCart className="h-3 w-3" />}
+              label="Qty sold"
+              value={fmt(totals.quantitySold)}
+            />
+            <KpiCard
+              icon={<DollarSign className="h-3 w-3" />}
+              label="Gross"
+              value={fmt(totals.grossSales)}
+              unit={currency}
+            />
+            <KpiCard
+              icon={<DollarSign className="h-3 w-3" />}
+              label="Net"
+              value={fmt(totals.netSales)}
+              unit={currency}
+            />
+            <KpiCard
+              icon={<TrendingUp className="h-3 w-3" />}
+              label="Gross profit"
+              value={fmt(totals.grossProfit)}
+              unit={currency}
+              deltaTone={totals.grossProfit >= 0 ? "pos" : "neg"}
+            />
+            <KpiCard
+              icon={<Percent className="h-3 w-3" />}
+              label="Margin"
+              value={`${margin.toFixed(1)}%`}
+              deltaTone={margin >= 20 ? "pos" : margin >= 10 ? "neutral" : "neg"}
+            />
+          </KpiStrip>
+
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold">
+              Items sold in this category
+            </h3>
+            <DepartmentProductSalesTable
+              data={rows}
+              currency={currency}
+              pageCount={pageCount}
+              pageNo={pageNo}
+              total={total}
+            />
           </div>
-        </CardContent>
-      </Card>
+        </>
+      )}
     </div>
   );
 }
