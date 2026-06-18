@@ -11,13 +11,19 @@ import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
 import { Card, CardContent } from "@/components/ui/card";
 import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
+import { VoidsFilters } from "@/components/reports/voids/voids-filters";
 import { VoidsDataTable } from "@/components/tables/orders/voids-data-table";
 import { getVoidsReport } from "@/lib/actions/order-actions";
 import { getLocationSettings } from "@/lib/actions/location-settings-actions";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import { fetchAllTables } from "@/lib/actions/space-actions";
 import { buildOrderListView } from "@/lib/orders/order-list-view";
-import { VOID_REASON_LABELS, type VoidReasonTally } from "@/types/orders/type";
+import { orderVoidedItems, summariseVoids } from "@/lib/orders/void-report";
+import {
+  VOID_REASON_LABELS,
+  type VoidReason,
+  type VoidReasonTally,
+} from "@/types/orders/type";
 
 type Params = {
   searchParams: Promise<{
@@ -26,6 +32,8 @@ type Params = {
     limit?: string;
     from?: string;
     to?: string;
+    staffId?: string;
+    reason?: string;
   }>;
 };
 
@@ -42,6 +50,8 @@ export default async function Page({ searchParams }: Params) {
   const q = resolved.search ?? "";
   const page = Number(resolved.page) || 1;
   const limit = Number(resolved.limit) || 10;
+  const staffId = resolved.staffId ?? "";
+  const reason = resolved.reason ?? "";
 
   // Default to the current month — matches the other report screens.
   const now = new Date();
@@ -56,9 +66,22 @@ export default async function Page({ searchParams }: Params) {
   ]);
 
   const summary = report?.summary;
-  const orders = report?.orders ?? [];
+  const allOrders = report?.orders ?? [];
   const tableMode = locationSettings?.orderingMode === "TABLE_MANAGEMENT";
   const currency = summary?.currency ?? "TZS";
+
+  // Staff + reason filters apply over the full voided set; search and
+  // pagination then run inside buildOrderListView.
+  const orders = allOrders.filter((o) => {
+    if (staffId && o.assignedTo !== staffId) return false;
+    if (
+      reason &&
+      !orderVoidedItems(o).some((i) => i.voidReason === (reason as VoidReason))
+    ) {
+      return false;
+    }
+    return true;
+  });
 
   const { pageData, total, pageCount, staffNames, tableNames } =
     buildOrderListView({
@@ -70,15 +93,40 @@ export default async function Page({ searchParams }: Params) {
       tables: tablesList,
     });
 
-  const hasAny = orders.length > 0;
-  const isDefaultRange = !resolved.from && !resolved.to;
-  const hasFilters = q !== "" || !isDefaultRange;
+  // Dropdown options come from the whole period so they stay stable as the
+  // filters change; staff options are the assignees present in the voids.
+  const reasonOptions = summariseVoids(allOrders).reasons.map((r) => ({
+    value: r.reason as string,
+    label: `${VOID_REASON_LABELS[r.reason]} (${r.count})`,
+  }));
+  const staffById = new Map(
+    staffList.map((s): [string, string] => [s.id, s.fullName]),
+  );
+  const seenStaff = new Set<string>();
+  const staffOptions: { value: string; label: string }[] = [];
+  for (const o of allOrders) {
+    if (o.assignedTo && !seenStaff.has(o.assignedTo)) {
+      seenStaff.add(o.assignedTo);
+      staffOptions.push({
+        value: o.assignedTo,
+        label: staffById.get(o.assignedTo) ?? "Unknown",
+      });
+    }
+  }
+  staffOptions.sort((a, b) => a.label.localeCompare(b.label));
 
-  const voidedOrders = summary?.voidedOrders ?? 0;
+  const hasAny = allOrders.length > 0;
+  const isDefaultRange = !resolved.from && !resolved.to;
+  const hasFilters =
+    q !== "" || !isDefaultRange || staffId !== "" || reason !== "";
+
+  // KPIs reflect the active filters; the rate denominator stays the period total.
+  const rollup = summariseVoids(orders);
+  const voidedOrders = rollup.voidedOrders;
   const totalOrders = summary?.totalOrders ?? 0;
-  const voidedItems = summary?.voidedItems ?? 0;
-  const voidAmount = summary?.voidAmount ?? 0;
-  const top = topReason(summary?.reasons ?? []);
+  const voidedItems = rollup.voidedItems;
+  const voidAmount = rollup.voidAmount;
+  const top = topReason(rollup.reasons);
   const rate =
     totalOrders > 0 ? Math.round((voidedOrders / totalOrders) * 100) : 0;
 
@@ -93,7 +141,13 @@ export default async function Page({ searchParams }: Params) {
       <PageHeader title="Voids report" subtitle={subtitle} />
 
       <PageBody>
-        <div className="flex flex-wrap items-center justify-end gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <VoidsFilters
+            staffId={staffId}
+            reason={reason}
+            staffOptions={staffOptions}
+            reasonOptions={reasonOptions}
+          />
           <OrdersDateFilter from={from} to={to} />
         </div>
 

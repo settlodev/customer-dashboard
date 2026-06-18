@@ -65,7 +65,7 @@ export default async function StockReportPage({ searchParams }: Params) {
   const subtitle = buildSubtitle(tab, asOf, from, to);
 
   return (
-    <PageShell maxWidth="wide">
+    <PageShell>
       <PageBreadcrumbs items={[{ title: "Stock" }]} />
       <PageHeader title="Stock report" subtitle={subtitle} />
 

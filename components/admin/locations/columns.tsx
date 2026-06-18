@@ -7,6 +7,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Monogram } from "@/components/admin/shared/monogram";
 import { formatDate } from "@/components/admin/shared/format";
+import { LocationRowActions } from "@/components/admin/locations/location-row-actions";
 import type { SubscriptionStatus } from "@/types/admin/billing";
 import type { PlatformLocationRow } from "@/types/admin/platform-metrics";
 
@@ -128,6 +129,16 @@ export function buildLocationColumns(): ColumnDef<PlatformLocationRow>[] {
           </span>
         );
       },
+    },
+    {
+      id: "actions",
+      header: "",
+      enableHiding: false,
+      cell: ({ row }) => (
+        <div className="flex justify-end">
+          <LocationRowActions locationId={row.original.locationId} />
+        </div>
+      ),
     },
   ];
 }

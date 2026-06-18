@@ -7,6 +7,7 @@ import {
   PageShell,
 } from "@/components/layouts/page-shell";
 import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
+import { SalesReportExportButton } from "@/components/reports/sales/sales-report-export-button";
 import { SalesTabNav, type SalesTab } from "@/components/reports/sales/sales-tab-nav";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { hasEntityFeature } from "@/lib/actions/entitlement-actions";
@@ -80,7 +81,7 @@ export default async function SalesReportPage({ searchParams }: Params) {
       : `Sales ${format(new Date(from), "MMM d")} – ${format(new Date(to), "MMM d, yyyy")}`;
 
   return (
-    <PageShell maxWidth="wide">
+    <PageShell>
       <PageBreadcrumbs items={[{ title: "Sales" }]} />
       <PageHeader title="Sales report" subtitle={subtitle} />
 
@@ -91,7 +92,10 @@ export default async function SalesReportPage({ searchParams }: Params) {
             tabs={validTabs}
             preservedParams={{ from: resolved.from, to: resolved.to }}
           />
-          <OrdersDateFilter from={from} to={to} />
+          <div className="flex flex-wrap items-center gap-3">
+            <OrdersDateFilter from={from} to={to} />
+            <SalesReportExportButton from={from} to={to} />
+          </div>
         </div>
 
         {tab === "staff" && (
@@ -113,15 +117,7 @@ export default async function SalesReportPage({ searchParams }: Params) {
             sortBy={sortBy}
           />
         )}
-        {tab === "category" && (
-          <ByCategoryTab
-            from={from}
-            to={to}
-            search={search}
-            page={page}
-            limit={limit}
-          />
-        )}
+        {tab === "category" && <ByCategoryTab from={from} to={to} />}
         {tab === "department" && <ByDepartmentTab from={from} to={to} />}
         {tab === "table" && (
           <ByTableTab

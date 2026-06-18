@@ -3,8 +3,8 @@
 import ApiClient from "@/lib/settlo-api-client";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import type {
-  DepartmentItemSalesResult,
-  DepartmentSalesRollupResult,
+  CategoryItemSalesResult,
+  CategorySalesRollupResult,
   PeriodSalesTotals,
 } from "@/types/item-sales/type";
 
@@ -30,31 +30,31 @@ const EMPTY_TOTALS: PeriodSalesTotals = {
 };
 
 /**
- * "Sales by department" rollup — one aggregated row per department for the
- * period. The Reports Service does the GROUP BY in ClickHouse, so this is a
- * tiny payload (a handful of rows) regardless of how many products sold.
+ * "Sales by category" rollup — true period totals + one aggregated row per
+ * category. The Reports Service derives categories from the current catalog
+ * (`dim_product.categories`) in ClickHouse, so it's uncapped and tiny.
  */
-export async function getDepartmentSalesRollup(
+export async function getCategorySalesRollup(
   from: string,
   to: string,
-): Promise<DepartmentSalesRollupResult> {
-  const empty: DepartmentSalesRollupResult = {
+): Promise<CategorySalesRollupResult> {
+  const empty: CategorySalesRollupResult = {
     totals: { ...EMPTY_TOTALS },
-    departments: [],
+    categories: [],
   };
   try {
     const location = await getCurrentLocation();
     if (!location?.id) return empty;
     const apiClient = new ApiClient("reports");
-    const data = await apiClient.get<DepartmentSalesRollupResult>(
-      `/api/v2/analytics/item-sales/departments`,
+    const data = await apiClient.get<CategorySalesRollupResult>(
+      `/api/v2/analytics/item-sales/categories`,
       { params: { locationId: location.id, startDate: from, endDate: to } },
     );
     return {
       totals: toTotals(data?.totals),
-      departments: (data?.departments ?? []).map((r) => ({
-        departmentId: r.departmentId ?? null,
-        departmentName: r.departmentName ?? null,
+      categories: (data?.categories ?? []).map((r) => ({
+        categoryId: r.categoryId ?? null,
+        categoryName: r.categoryName ?? null,
         products: num(r.products),
         quantitySold: num(r.quantitySold),
         grossSales: num(r.grossSales),
@@ -67,8 +67,8 @@ export async function getDepartmentSalesRollup(
   }
 }
 
-interface ByDepartmentParams {
-  departmentId: string;
+interface ByCategoryParams {
+  categoryId: string;
   from: string;
   to: string;
   /** 0-based page index. */
@@ -79,10 +79,10 @@ interface ByDepartmentParams {
   search?: string;
 }
 
-const EMPTY_RESULT: DepartmentItemSalesResult = {
+const EMPTY_RESULT: CategoryItemSalesResult = {
   totals: {
-    departmentId: null,
-    departmentName: null,
+    categoryId: null,
+    categoryName: null,
     products: 0,
     quantitySold: 0,
     grossSales: 0,
@@ -100,20 +100,19 @@ const EMPTY_RESULT: DepartmentItemSalesResult = {
 };
 
 /**
- * One server-paginated page of items sold in a department, plus the
- * department's whole-period totals (KPI strip). Search/sort/paging are all
- * resolved by ClickHouse, so the browser only ever holds one page.
+ * One server-paginated page of items sold in a category, plus the category's
+ * whole-period totals (KPI strip). Search/sort/paging resolved by ClickHouse.
  */
-export async function getDepartmentItemSales(
-  p: ByDepartmentParams,
-): Promise<DepartmentItemSalesResult> {
+export async function getCategoryItemSales(
+  p: ByCategoryParams,
+): Promise<CategoryItemSalesResult> {
   try {
     const location = await getCurrentLocation();
     if (!location?.id) return EMPTY_RESULT;
     const apiClient = new ApiClient("reports");
     const params: Record<string, unknown> = {
       locationId: location.id,
-      departmentId: p.departmentId,
+      categoryId: p.categoryId,
       startDate: p.from,
       endDate: p.to,
       page: p.page ?? 0,
@@ -122,16 +121,16 @@ export async function getDepartmentItemSales(
     if (p.sort) params.sort = p.sort;
     if (p.search) params.search = p.search;
 
-    const data = await apiClient.get<DepartmentItemSalesResult>(
-      `/api/v2/analytics/item-sales/by-department`,
+    const data = await apiClient.get<CategoryItemSalesResult>(
+      `/api/v2/analytics/item-sales/by-category`,
       { params },
     );
     const t = data?.totals;
     const items = data?.items;
     return {
       totals: {
-        departmentId: t?.departmentId ?? null,
-        departmentName: t?.departmentName ?? null,
+        categoryId: t?.categoryId ?? null,
+        categoryName: t?.categoryName ?? null,
         products: num(t?.products),
         quantitySold: num(t?.quantitySold),
         grossSales: num(t?.grossSales),
@@ -172,23 +171,22 @@ const slugify = (name: string): string =>
   name
     .replace(/[^a-z0-9]+/gi, "-")
     .replace(/^-+|-+$/g, "")
-    .toLowerCase() || "department";
+    .toLowerCase() || "category";
 
 /**
- * Builds the full department CSV server-side (the whole department, not just
- * the visible page) and hands back the text for the client to download. Honours
- * the current item-name search so the export matches what's filtered.
+ * Builds the full category CSV server-side (the whole category, not just the
+ * visible page). Honours the current item-name search.
  */
-export async function exportDepartmentSalesCsv(
-  departmentId: string,
-  departmentName: string,
+export async function exportCategorySalesCsv(
+  categoryId: string,
+  categoryName: string,
   from: string,
   to: string,
   currency: string,
   search?: string,
 ): Promise<{ csv: string; filename: string }> {
-  const result = await getDepartmentItemSales({
-    departmentId,
+  const result = await getCategoryItemSales({
+    categoryId,
     from,
     to,
     page: 0,
@@ -225,6 +223,6 @@ export async function exportDepartmentSalesCsv(
 
   return {
     csv,
-    filename: `${slugify(departmentName)}-sales-${from}_to_${to}.csv`,
+    filename: `${slugify(categoryName)}-sales-${from}_to_${to}.csv`,
   };
 }

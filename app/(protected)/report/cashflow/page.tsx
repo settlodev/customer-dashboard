@@ -17,6 +17,7 @@ import {
   PageShell,
 } from "@/components/layouts/page-shell";
 import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
+import { CashflowExportButton } from "@/components/reports/cashflow/cashflow-export-button";
 import {
   CashflowMethodBreakdown,
   CashflowSummaryPanel,
@@ -108,7 +109,7 @@ export default async function CashflowReportPage({ searchParams }: Params) {
     : "—";
 
   return (
-    <PageShell maxWidth="wide">
+    <PageShell>
       <PageBreadcrumbs items={[{ title: "Cashflow" }]} />
       <PageHeader
         title="Cashflow report"
@@ -121,8 +122,24 @@ export default async function CashflowReportPage({ searchParams }: Params) {
       />
 
       <PageBody>
-        <div className="flex flex-wrap items-center justify-end gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <OrdersDateFilter from={from} to={to} />
+          <CashflowExportButton
+            from={from}
+            to={to}
+            currency={currency}
+            cashIn={cashIn}
+            txnCount={txnCount}
+            cashOut={cashOut}
+            outCount={outCount}
+            expenses={expenses}
+            expenseCount={expenseCount}
+            refunds={refunds}
+            refundCount={refundCount}
+            closing={closing}
+            methodRows={methodRows}
+            disabled={!hasMovement}
+          />
         </div>
 
         <KpiStrip cols={5}>

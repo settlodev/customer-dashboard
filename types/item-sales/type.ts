@@ -72,3 +72,44 @@ export interface DepartmentItemSalesResult {
   totals: DepartmentSalesRollup;
   items: DepartmentItemSalesPage;
 }
+
+/**
+ * True location totals for the period (un-fanned). Category/department rollups
+ * are multi-attributed (a product counts toward every category/department it
+ * belongs to), so per-row sums can exceed net — the KPI strip uses these.
+ */
+export interface PeriodSalesTotals {
+  quantitySold: number;
+  grossSales: number;
+  netSales: number;
+  grossProfit: number;
+}
+
+/** "By department" rollup payload: true totals + one row per department. */
+export interface DepartmentSalesRollupResult {
+  totals: PeriodSalesTotals;
+  departments: DepartmentSalesRollup[];
+}
+
+/** One category's rollup row (the "By category" tab + category detail totals). */
+export interface CategorySalesRollup {
+  categoryId: string | null;
+  categoryName: string | null;
+  products: number;
+  quantitySold: number;
+  grossSales: number;
+  netSales: number;
+  grossProfit: number;
+}
+
+/** "By category" rollup payload: true totals + one row per category. */
+export interface CategorySalesRollupResult {
+  totals: PeriodSalesTotals;
+  categories: CategorySalesRollup[];
+}
+
+/** Category detail Sales tab payload: the category's totals + one page of items. */
+export interface CategoryItemSalesResult {
+  totals: CategorySalesRollup;
+  items: DepartmentItemSalesPage;
+}

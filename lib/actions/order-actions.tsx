@@ -116,17 +116,13 @@ export const getOrderDetail = async (id: UUID): Promise<OrderDetail | null> => {
   return parseStringify(data);
 };
 
-export const getOrderTimeline = async (
-  id: UUID,
-): Promise<OrderEvent[]> => {
+export const getOrderTimeline = async (id: UUID): Promise<OrderEvent[]> => {
   if (!id) return [];
   const data = await oms().get<OrderEvent[]>(`${ordersBase}/${id}/timeline`);
   return parseStringify(data ?? []);
 };
 
-export const closeOrder = async (
-  id: UUID,
-): Promise<FormResponse | void> => {
+export const closeOrder = async (id: UUID): Promise<FormResponse | void> => {
   try {
     await oms().post(`${ordersBase}/${id}/close`, {});
     return SettloErrorHandler.createSuccessResponse("Order closed");
@@ -138,9 +134,7 @@ export const closeOrder = async (
   }
 };
 
-export const reopenOrder = async (
-  id: UUID,
-): Promise<FormResponse | void> => {
+export const reopenOrder = async (id: UUID): Promise<FormResponse | void> => {
   try {
     await oms().post(`${ordersBase}/${id}/reopen`, {});
     return SettloErrorHandler.createSuccessResponse("Order reopened");
@@ -185,7 +179,9 @@ export const cancelOrder = async (
  */
 export const shareOrderInvoice = async (
   id: UUID,
-): Promise<{ shareToken: string; shareTokenIssuedAt: string | null } | { error: string }> => {
+): Promise<
+  { shareToken: string; shareTokenIssuedAt: string | null } | { error: string }
+> => {
   try {
     const result = await oms().post<OrderShareResponse, Record<string, never>>(
       `${ordersBase}/${id}/share`,
@@ -272,13 +268,9 @@ export const createReceiptSnapshot = async (
   }
 };
 
-export const listOrderReceipts = async (
-  id: UUID,
-): Promise<ReceiptDto[]> => {
+export const listOrderReceipts = async (id: UUID): Promise<ReceiptDto[]> => {
   try {
-    const data = await oms().get<ReceiptDto[]>(
-      `${ordersBase}/${id}/receipts`,
-    );
+    const data = await oms().get<ReceiptDto[]>(`${ordersBase}/${id}/receipts`);
     return parseStringify(data ?? []);
   } catch {
     return [];
@@ -367,12 +359,10 @@ export const creditReport = async (
   endDate?: Date,
 ): Promise<Credit | null> => {
   const apiClient = new ApiClient("reports");
-  const location = await getCurrentLocation();
   const params = { startDate, endDate };
-  const report = await apiClient.get(
-    `/api/reports/${location?.id}/credit/unpaid-orders`,
-    { params },
-  );
+  const report = await apiClient.get(`/api/v2/analytics/credit/unpaid-orders`, {
+    params,
+  });
   return parseStringify(report);
 };
 
