@@ -205,6 +205,7 @@ async function Page({ searchParams }: Params) {
                   columns={columns}
                   data={filteredData}
                   searchKey="name"
+                  searchPlaceholder="Search by name, variant, SKU, barcode, or serial…"
                   pageNo={page}
                   total={total}
                   pageCount={pageCount}

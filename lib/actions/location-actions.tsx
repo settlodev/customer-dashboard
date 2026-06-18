@@ -10,8 +10,11 @@ import * as z from "zod";
 import { getAuthToken } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
-import { ApiResponse, FormResponse } from "@/types/types";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { FormResponse } from "@/types/types";
+import {
+  getCurrentLocation,
+  getCurrentBusinessId,
+} from "@/lib/actions/business/get-current-business";
 import { Location } from "@/types/location/type";
 import { LocationSchema } from "@/types/location/schema";
 import { switchToLocation } from "./destination";
@@ -28,70 +31,33 @@ import { LAYOUT_TAGS } from "@/lib/cache-tags";
 // the /select-location page — can distinguish "no locations" from
 // "couldn't reach the server" instead of incorrectly bouncing the
 // user to /business-location.
-const _fetchAllLocations = cache(async (): Promise<Location[]> => {
-  const businessId = (await getAuthToken())?.businessId;
-  if (!businessId) return [];
+const _fetchAllLocations = cache(
+  async (businessId?: string): Promise<Location[]> => {
+    // The *selected* business (currentBusiness cookie) is the source of
+    // truth — not the JWT's business_id claim, which is absent for owner
+    // tokens and never changes when the user switches business. An
+    // explicit businessId wins; the JWT is only a last-resort fallback.
+    const resolved =
+      businessId ??
+      (await getCurrentBusinessId()) ??
+      (await getAuthToken())?.businessId ??
+      undefined;
+    if (!resolved) return [];
 
-  const apiClient = new ApiClient();
-  const locationsData = await apiClient.get<Location[] | null>(
-    `/api/v1/locations?businessId=${businessId}`,
-  );
-  return parseStringify(locationsData ?? []);
-});
-
-export const fetchAllLocations = async (): Promise<Location[]> => {
-  return _fetchAllLocations();
-};
-
-export const searchLocations = async (
-  q: string,
-  page: number,
-  pageLimit: number,
-): Promise<ApiResponse<Location>> => {
-
-  try {
-    const businessId = (await getAuthToken())?.businessId;
     const apiClient = new ApiClient();
+    // /me/locations is scoped server-side to the caller's accessible
+    // locations (owner → all in the business; invited → their subset).
+    const locationsData = await apiClient.get<Location[] | null>(
+      `/api/v1/me/locations?businessId=${resolved}`,
+    );
+    return parseStringify(locationsData ?? []);
+  },
+);
 
-    const query = {
-      filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "UUID_STRING",
-          value: q,
-        },
-        {
-          key: "isArchived",
-          operator: "EQUAL",
-          field_type: "BOOLEAN",
-          value: false,
-        },
-      ],
-      sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-
-    const params = new URLSearchParams();
-    if (q) params.append("search", q);
-    params.append("page", String(page ? page - 1 : 0));
-    params.append("size", String(pageLimit || 10));
-    params.append("sort", "name,asc");
-    if (businessId) params.append("businessId", businessId);
-
-    const data = await apiClient.get(`/api/v1/locations?${params.toString()}`);
-
-    return parseStringify(data);
-  } catch (error) {
-    console.error("Error in search locations:", error);
-    throw error;
-  }
+export const fetchAllLocations = async (
+  businessId?: string,
+): Promise<Location[]> => {
+  return _fetchAllLocations(businessId);
 };
 
 export const createLocation = async (

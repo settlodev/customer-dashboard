@@ -5,11 +5,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
-import {
-  Department,
-  DepartmentCount,
-  DepartmentReport,
-} from "@/types/department/type";
+import { Department, DepartmentCount } from "@/types/department/type";
 import { DepartmentSchema } from "@/types/department/schema";
 import { getCurrentDestination } from "@/lib/actions/context";
 
@@ -250,29 +246,5 @@ export const reactivateDepartment = async (
       message: "Failed to reactivate department",
       error: error instanceof Error ? error : new Error(String(error)),
     };
-  }
-};
-
-// ---------------------------------------------------------------------------
-// Reports
-// ---------------------------------------------------------------------------
-
-export const departmentReport = async (
-  id: string,
-  startDate?: string,
-  endDate?: string,
-): Promise<DepartmentReport> => {
-  try {
-    const apiClient = new ApiClient("reports");
-    const params = new URLSearchParams();
-    if (startDate) params.append("startDate", startDate);
-    if (endDate) params.append("endDate", endDate);
-    const query = params.toString() ? `?${params.toString()}` : "";
-    const data = await apiClient.get(
-      `/api/reports/${id}/department/summary${query}`,
-    );
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
   }
 };

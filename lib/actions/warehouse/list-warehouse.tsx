@@ -1,13 +1,13 @@
 "use server";
 
 import { cache } from "react";
-import { z } from "zod";
 import { parseStringify } from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { FormResponse } from "@/types/types";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
 import { getAuthToken } from "@/lib/auth-utils";
+import { getCurrentBusinessId } from "@/lib/actions/business/get-current-business";
 import { getCurrentWarehouse } from "./current-warehouse-action";
 import { LAYOUT_TAGS } from "@/lib/cache-tags";
 
@@ -19,9 +19,11 @@ import { LAYOUT_TAGS } from "@/lib/cache-tags";
 const _fetchWarehouses = cache(
   async (businessId?: string): Promise<Warehouses[]> => {
     const apiClient = new ApiClient();
+    // /me/warehouses is scoped server-side to the caller's accessible
+    // warehouses (owner → all; invited → their subset).
     const url = businessId
-      ? `/api/v1/warehouses?businessId=${businessId}`
-      : `/api/v1/warehouses`;
+      ? `/api/v1/me/warehouses?businessId=${businessId}`
+      : `/api/v1/me/warehouses`;
     const data = await apiClient.get<Warehouses[] | null>(url);
     return parseStringify(data ?? []) as Warehouses[];
   },
@@ -29,7 +31,13 @@ const _fetchWarehouses = cache(
 
 export async function getWarehouses(businessId?: string): Promise<Warehouses[]> {
   try {
-    const biz = businessId ?? (await getAuthToken())?.businessId ?? undefined;
+    // Prefer the *selected* business (cookie) over the JWT's business_id
+    // claim, which is stale after a business switch.
+    const biz =
+      businessId ??
+      (await getCurrentBusinessId()) ??
+      (await getAuthToken())?.businessId ??
+      undefined;
     return await _fetchWarehouses(biz);
   } catch {
     return [];

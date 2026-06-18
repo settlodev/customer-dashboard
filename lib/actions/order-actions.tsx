@@ -16,6 +16,7 @@ import {
   OrderEvent,
   OrderShareResponse,
   OrderStatus,
+  OrderVoidsResponse,
   PublicInvoice,
   ReceiptDto,
   VfdPrintResponse,
@@ -64,6 +65,43 @@ export const listOrders = async (
     `${ordersBase}${query ? `?${query}` : ""}`,
   );
   return parseStringify(data ?? []);
+};
+
+const EMPTY_VOIDS_REPORT: OrderVoidsResponse = {
+  summary: {
+    totalOrders: 0,
+    voidedOrders: 0,
+    voidedItems: 0,
+    voidAmount: 0,
+    currency: null,
+    reasons: [],
+  },
+  orders: [],
+};
+
+export interface VoidsReportParams {
+  fromDate?: string;
+  toDate?: string;
+  status?: OrderStatus | "";
+}
+
+/** Orders with >= 1 voided line item in the range, plus server-computed totals (OMS). */
+export const getVoidsReport = async (
+  params?: VoidsReportParams,
+): Promise<OrderVoidsResponse> => {
+  const location = await getCurrentLocation();
+  if (!location?.id) return EMPTY_VOIDS_REPORT;
+
+  const qs = new URLSearchParams();
+  if (params?.fromDate) qs.set("fromDate", params.fromDate);
+  if (params?.toDate) qs.set("toDate", params.toDate);
+  if (params?.status) qs.set("status", params.status);
+  const query = qs.toString();
+
+  const data = await oms().get<OrderVoidsResponse>(
+    `${ordersBase}/voids${query ? `?${query}` : ""}`,
+  );
+  return parseStringify(data ?? EMPTY_VOIDS_REPORT);
 };
 
 export const getOrder = async (id: UUID): Promise<Order | null> => {

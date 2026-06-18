@@ -84,6 +84,12 @@ const getNormalMenuItems = (
           icon: "cart",
         },
         {
+          title: "Voids report",
+          link: "/report/voids",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
           title: "Stock report",
           link: "/report/stock",
           current: args?.isCurrentItem,
@@ -95,16 +101,6 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
-        ...(hasDepartmentsModule
-          ? [
-              {
-                title: "Department report",
-                link: "/report/department",
-                current: args?.isCurrentItem,
-                icon: "cart",
-              },
-            ]
-          : []),
         {
           title: "Expense report",
           link: "/report/expense",

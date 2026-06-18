@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingCart, Tag, Users, Utensils } from "lucide-react";
+import { Building2, ShoppingCart, Tag, Users, Utensils } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-export type SalesTab = "staff" | "product" | "category" | "table";
+export type SalesTab = "staff" | "product" | "category" | "department" | "table";
 
 /** The tab shown when no `?tab=` param is present. */
 export const DEFAULT_SALES_TAB: SalesTab = "staff";
@@ -28,6 +28,7 @@ const TAB_META: Record<
   staff: { label: "By staff", icon: Users },
   product: { label: "By product", icon: ShoppingCart },
   category: { label: "By category", icon: Tag },
+  department: { label: "By department", icon: Building2 },
   table: { label: "By table", icon: Utensils },
 };
 

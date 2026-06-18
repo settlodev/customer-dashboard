@@ -41,6 +41,7 @@ const ORDER_MANAGEMENT_SERVICE_URL = requireEnv("ORDER_MANAGEMENT_SERVICE_URL");
 const BILLING_SERVICE_URL = requireEnv("BILLING_SERVICE_URL");
 const INVENTORY_SERVICE_URL = requireEnv("INVENTORY_SERVICE_URL");
 const ACCOUNTING_SERVICE_URL = requireEnv("ACCOUNTING_SERVICE_URL");
+const COMMUNICATIONS_SERVICE_URL = requireEnv("COMMUNICATIONS_SERVICE_URL");
 const IS_DEV = process.env.NODE_ENV !== "production";
 
 const sharedHttpsAgent = new https.Agent({
@@ -346,6 +347,7 @@ class ApiClient {
       | "billing"
       | "inventory"
       | "accounting"
+      | "communications"
       | boolean = "accounts",
     audience: ApiClientAudience = "user",
   ) {
@@ -367,7 +369,9 @@ class ApiClient {
                     ? INVENTORY_SERVICE_URL
                     : service === "accounting"
                       ? ACCOUNTING_SERVICE_URL
-                      : ACCOUNTS_SERVICE_URL;
+                      : service === "communications"
+                        ? COMMUNICATIONS_SERVICE_URL
+                        : ACCOUNTS_SERVICE_URL;
     }
     this.audience = audience;
     this.isPlain = false;

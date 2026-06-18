@@ -3,16 +3,28 @@ import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock/column";
-import { getStocks } from "@/lib/actions/stock-actions";
+import { searchStocks } from "@/lib/actions/stock-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import type { StockWithBalance } from "@/types/stock/type";
 
 const breadcrumbItems = [{ title: "Stock Items", link: "/warehouse-stock-variants" }];
 
-export default async function Page() {
-  const [stocks, location] = await Promise.all([
-    getStocks(),
+type Props = {
+  searchParams: Promise<{ search?: string; page?: string; limit?: string }>;
+};
+
+export default async function Page({ searchParams }: Props) {
+  const sp = await searchParams;
+  const q = sp.search || "";
+  const page = Number(sp.page) || 0;
+  const pageLimit = Number(sp.limit);
+
+  // Backend-paginated + searched active stock for this warehouse (active view
+  // = published, not archived). Search spans name / variant name / SKU /
+  // barcode / serial, and the pager works off the real total.
+  const [responseData, location] = await Promise.all([
+    searchStocks(q, page, pageLimit, "active"),
     getCurrentLocation(),
   ]);
 
@@ -22,34 +34,45 @@ export default async function Page() {
 
   const balanceMap = new Map(balances.map((b) => [b.stockVariantId, b]));
 
-  const active: StockWithBalance[] = stocks
-    .filter((s) => !s.archived)
-    .map((s) => {
-      let totalQuantity = 0;
-      let totalValue = 0;
-      let lowStock = false;
-      let outOfStock = false;
-      for (const v of s.variants) {
-        const bal = balanceMap.get(v.id);
-        if (bal) {
-          totalQuantity += bal.quantityOnHand;
-          totalValue += bal.quantityOnHand * (bal.averageCost ?? 0);
-          if (bal.lowStock) lowStock = true;
-          if (bal.outOfStock) outOfStock = true;
-        }
+  const active: StockWithBalance[] = responseData.content.map((s) => {
+    let totalQuantity = 0;
+    let totalValue = 0;
+    let lowStock = false;
+    let outOfStock = false;
+    for (const v of s.variants) {
+      const bal = balanceMap.get(v.id);
+      if (bal) {
+        totalQuantity += bal.quantityOnHand;
+        totalValue += bal.quantityOnHand * (bal.averageCost ?? 0);
+        if (bal.lowStock) lowStock = true;
+        if (bal.outOfStock) outOfStock = true;
       }
-      return { ...s, totalQuantity, totalValue, lowStock, outOfStock };
-    });
+    }
+    return { ...s, totalQuantity, totalValue, lowStock, outOfStock };
+  });
+
+  const total = responseData.totalElements;
+  const pageCount = responseData.totalPages;
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
       <div className="flex items-center justify-between gap-2">
         <BreadcrumbsNav items={breadcrumbItems} />
       </div>
-      {active.length > 0 ? (
-        <Card><CardContent className="px-2 sm:px-6 pt-6">
-          <DataTable columns={columns} data={active} searchKey="name" pageNo={0} total={active.length} pageCount={1} />
-        </CardContent></Card>
+      {total > 0 || q !== "" ? (
+        <Card>
+          <CardContent className="px-2 sm:px-6 pt-6">
+            <DataTable
+              columns={columns}
+              data={active}
+              searchKey="name"
+              searchPlaceholder="Search by name, variant, SKU, barcode, or serial…"
+              pageNo={page}
+              total={total}
+              pageCount={pageCount}
+            />
+          </CardContent>
+        </Card>
       ) : (
         <NoItems newItemUrl="/warehouse-stock-variants/new" itemName="stock items" />
       )}

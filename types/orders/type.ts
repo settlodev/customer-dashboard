@@ -709,3 +709,35 @@ export interface Credit {
   totalPaidAmount: number;
   unpaidOrders: UnpaidOrders[];
 }
+
+// ─── Voids report ────────────────────────────────────────────────────
+
+export interface VoidReasonTally {
+  reason: VoidReason;
+  count: number;
+  amount: number;
+}
+
+export interface VoidsSummary {
+  totalOrders: number;
+  voidedOrders: number;
+  voidedItems: number;
+  voidAmount: number;
+  currency: string | null;
+  reasons: VoidReasonTally[];
+}
+
+export interface OrderVoidsResponse {
+  summary: VoidsSummary;
+  orders: Order[];
+}
+
+export const VOID_REASON_LABELS: Record<VoidReason, string> = {
+  [VoidReason.CUSTOMER_REQUEST]: "Customer request",
+  [VoidReason.WRONG_ITEM]: "Wrong item",
+  [VoidReason.DUPLICATE]: "Duplicate",
+  [VoidReason.STAFF_ERROR]: "Staff error",
+  [VoidReason.QUALITY]: "Quality",
+  [VoidReason.OUT_OF_STOCK]: "Out of stock",
+  [VoidReason.OTHER]: "Other",
+};

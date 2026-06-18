@@ -11,12 +11,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bell,
   ChevronDown,
   LayoutDashboard,
   Boxes,
   Menu,
-  Search,
   ShoppingBag,
   Sliders,
   UserCog,
@@ -28,6 +26,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 import { SidebarLocationSwitcher } from "./sidebar-location-switcher";
 import { SidebarAccountMenu } from "./sidebar-account-menu";
@@ -97,6 +97,9 @@ export function MobileTopBar() {
           priority
         />
       </Link>
+      <div className="ml-auto">
+        <NotificationBell />
+      </div>
     </div>
   );
 }
@@ -203,32 +206,7 @@ function DashboardSidebarContent({
           />
         </Link>
 
-        {/*<button*/}
-        {/*  type="button"*/}
-        {/*  aria-label="Search"*/}
-        {/*  title="Search (⌘K)"*/}
-        {/*  className="grid h-8 w-8 place-items-center rounded-md text-ink-3 hover:bg-canvas hover:text-ink"*/}
-        {/*  onClick={() => {*/}
-        {/*    // TODO: open command-palette overlay. The handler is a stub*/}
-        {/*    // until the search backend lands.*/}
-        {/*  }}*/}
-        {/*>*/}
-        {/*  <Search className="h-4 w-4" />*/}
-        {/*</button>*/}
-
-        {/*<button*/}
-        {/*  type="button"*/}
-        {/*  aria-label="Notifications"*/}
-        {/*  title="Notifications"*/}
-        {/*  className="relative grid h-8 w-8 place-items-center rounded-md text-ink-3 hover:bg-canvas hover:text-ink"*/}
-        {/*  onClick={() => {*/}
-        {/*    // TODO: open notifications drawer. The orange dot below is*/}
-        {/*    // a static signal until the feed is wired up.*/}
-        {/*  }}*/}
-        {/*>*/}
-        {/*  <Bell className="h-4 w-4" />*/}
-        {/*  <span className="pointer-events-none absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full border border-card bg-primary" />*/}
-        {/*</button>*/}
+        {!isMobile && <NotificationBell />}
 
         {isMobile && (
           <Button

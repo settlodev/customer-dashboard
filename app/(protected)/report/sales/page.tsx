@@ -8,9 +8,12 @@ import {
 } from "@/components/layouts/page-shell";
 import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { SalesTabNav, type SalesTab } from "@/components/reports/sales/sales-tab-nav";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { hasEntityFeature } from "@/lib/actions/entitlement-actions";
 import { getTableStats } from "@/lib/actions/space-actions";
 import { type TopSellingSortBy } from "@/types/reports/top-selling";
 import { ByCategoryTab } from "./_tabs/by-category-tab";
+import { ByDepartmentTab } from "./_tabs/by-department-tab";
 import { ByProductTab } from "./_tabs/by-product-tab";
 import { ByStaffTab } from "./_tabs/by-staff-tab";
 import { ByTableTab } from "./_tabs/by-table-tab";
@@ -35,12 +38,22 @@ type Params = {
 export default async function SalesReportPage({ searchParams }: Params) {
   const resolved = await searchParams;
 
-  // Only surface the "By table" tab for locations that run a table system.
-  // getTableStats is light (counts only); fetching table names happens in
-  // the tab itself.
-  const tableStats = await getTableStats().catch(() => null);
+  // "By department" is gated on the DEPARTMENTS_MODULE entitlement (every
+  // location has a default department, so a count check wouldn't work). "By
+  // table" only surfaces for locations that run a table system — getTableStats
+  // is light (counts only); fetching table names happens in the tab itself.
+  const [tableStats, location] = await Promise.all([
+    getTableStats().catch(() => null),
+    getCurrentLocation().catch(() => null),
+  ]);
   const hasTables = (tableStats?.total ?? 0) > 0;
-  const validTabs: SalesTab[] = hasTables ? [...BASE_TABS, "table"] : BASE_TABS;
+  const hasDepartments = location?.id
+    ? await hasEntityFeature(location.id, "DEPARTMENTS_MODULE")
+    : true;
+
+  const validTabs: SalesTab[] = [...BASE_TABS];
+  if (hasDepartments) validTabs.push("department");
+  if (hasTables) validTabs.push("table");
 
   const tab: SalesTab = validTabs.includes(resolved.tab as SalesTab)
     ? (resolved.tab as SalesTab)
@@ -102,6 +115,15 @@ export default async function SalesReportPage({ searchParams }: Params) {
         )}
         {tab === "category" && (
           <ByCategoryTab
+            from={from}
+            to={to}
+            search={search}
+            page={page}
+            limit={limit}
+          />
+        )}
+        {tab === "department" && (
+          <ByDepartmentTab
             from={from}
             to={to}
             search={search}

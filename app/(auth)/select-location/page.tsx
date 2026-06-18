@@ -6,8 +6,10 @@ import { AlertTriangle } from "lucide-react";
 import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
 import LocationList from "@/app/(auth)/select-location/location-list";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
-import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
+import { getWarehouses } from "@/lib/actions/warehouse/list-warehouse";
+import { fetchAllStores } from "@/lib/actions/store-actions";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
+import { Store } from "@/types/store/type";
 import RetryButton from "@/app/(auth)/select-business/retry-button";
 import {
   Alert,
@@ -59,12 +61,15 @@ export default async function SelectLocationPage({ searchParams }: Params) {
     redirect("/select-business");
   }
 
-  // Locations + warehouses fan-out. A warehouse-service hiccup must
-  // not block location loading — settle them independently.
-  const [locationsResult, warehousesResult] = await Promise.allSettled([
-    fetchAllLocations(),
-    searchWarehouses(),
-  ]);
+  // Locations + warehouses + stores fan-out, every list scoped to the
+  // *selected* business. A warehouse/store-service hiccup must not block
+  // location loading — settle them independently.
+  const [locationsResult, warehousesResult, storesResult] =
+    await Promise.allSettled([
+      fetchAllLocations(business.id),
+      getWarehouses(business.id),
+      fetchAllStores(business.id),
+    ]);
 
   if (locationsResult.status === "rejected") {
     const reason = locationsResult.reason;
@@ -84,6 +89,8 @@ export default async function SelectLocationPage({ searchParams }: Params) {
   const businessLocations = locationsResult.value;
   const warehouses: Warehouses[] =
     warehousesResult.status === "fulfilled" ? warehousesResult.value : [];
+  const stores: Store[] =
+    storesResult.status === "fulfilled" ? storesResult.value : [];
 
   // Confirmed empty — user has a business but no locations yet, so
   // sending them to /business-location is the correct next step.
@@ -92,12 +99,14 @@ export default async function SelectLocationPage({ searchParams }: Params) {
   }
 
   // Pass all data to client component — auto-select logic runs there
-  // where server actions can properly set cookies.
+  // where server actions can properly set cookies. Warehouse/store tabs
+  // only appear when those lists are non-empty.
   return (
     <LocationList
       locations={businessLocations}
       businessName={business.name}
       warehouses={warehouses}
+      stores={stores}
     />
   );
 }

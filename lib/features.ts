@@ -68,7 +68,6 @@ export const ROUTE_FEATURE_MAP: Record<string, FeatureKey> = {
   "/report/refunds": Features.REPORTS,
   "/report/stock": Features.REPORTS,
   "/report/staff": Features.REPORTS,
-  "/report/department": Features.REPORTS,
   "/report/expense": Features.REPORTS,
 
   // Accounting suite — gated behind the dedicated `accounting`

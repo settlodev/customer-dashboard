@@ -26,6 +26,7 @@ import { BuildPill } from "@/components/widgets/build-pill";
 import { SettloRealtimeListener } from "@/components/realtime/settlo-realtime-listener";
 import { StockCacheRealtimeBinder } from "@/components/realtime/stock-cache-realtime-binder";
 import { CustomerCacheRealtimeBinder } from "@/components/realtime/customer-cache-realtime-binder";
+import { NotificationRealtimeBridge } from "@/components/notifications/notification-realtime-bridge";
 import { ImpersonationBanner } from "@/components/impersonation/impersonation-banner";
 import type { ExtendedUser } from "@/types/types";
 
@@ -210,6 +211,7 @@ export default async function RootLayout({
       )}
       <StockCacheRealtimeBinder locationId={currentLocation?.id} />
       <CustomerCacheRealtimeBinder businessId={currentBusiness?.id} />
+      <NotificationRealtimeBridge businessId={currentBusiness?.id} />
       <BuildPill />
     </>
   );

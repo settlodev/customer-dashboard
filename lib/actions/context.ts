@@ -19,11 +19,33 @@ export interface ActiveDestination {
   id: string;
 }
 
-async function readCookieId(name: string): Promise<string | null> {
+interface CookieEntity {
+  id: string;
+  businessId?: string;
+}
+
+async function readCookieEntity(name: string): Promise<CookieEntity | null> {
   try {
     const cookieStore = await cookies();
     const raw = cookieStore.get(name)?.value;
-    if (!raw) return null;
+    if (!raw || !raw.trim()) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.id !== "string") return null;
+    return {
+      id: parsed.id,
+      businessId:
+        typeof parsed?.businessId === "string" ? parsed.businessId : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function readCurrentBusinessId(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    const raw = cookieStore.get("currentBusiness")?.value;
+    if (!raw || !raw.trim()) return null;
     const parsed = JSON.parse(raw);
     return typeof parsed?.id === "string" ? parsed.id : null;
   } catch {
@@ -33,15 +55,32 @@ async function readCookieId(name: string): Promise<string | null> {
 
 /** Returns the active destination or `null` if no workspace context is set. */
 export async function getCurrentDestination(): Promise<ActiveDestination | null> {
-  const [warehouseId, storeId, locationId] = await Promise.all([
-    readCookieId("currentWarehouse"),
-    readCookieId("currentStore"),
-    readCookieId("currentLocation"),
+  const [businessId, warehouse, store, location] = await Promise.all([
+    readCurrentBusinessId(),
+    readCookieEntity("currentWarehouse"),
+    readCookieEntity("currentStore"),
+    readCookieEntity("currentLocation"),
   ]);
 
-  if (warehouseId) return { type: "WAREHOUSE", id: warehouseId };
-  if (storeId) return { type: "STORE", id: storeId };
-  if (locationId) return { type: "LOCATION", id: locationId };
+  // A destination must belong to the *active* business. After a business
+  // switch the previous business's destination cookie can linger; serving it
+  // would stamp a cross-business X-Location-Id on every request and earn a
+  // 403 "Not authorized to access location" from business-scoped services
+  // (the Reports Service checks dim_location.business_id == caller business).
+  // Drop any destination whose business doesn't match the active one.
+  const belongs = (d: CookieEntity | null): CookieEntity | null => {
+    if (!d) return null;
+    if (businessId && d.businessId && d.businessId !== businessId) return null;
+    return d;
+  };
+
+  const warehouseEntity = belongs(warehouse);
+  const storeEntity = belongs(store);
+  const locationEntity = belongs(location);
+
+  if (warehouseEntity) return { type: "WAREHOUSE", id: warehouseEntity.id };
+  if (storeEntity) return { type: "STORE", id: storeEntity.id };
+  if (locationEntity) return { type: "LOCATION", id: locationEntity.id };
   return null;
 }
 

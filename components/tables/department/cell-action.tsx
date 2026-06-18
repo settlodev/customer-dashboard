@@ -110,13 +110,13 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem
-            onClick={() => router.push(`/departments/reports/${data.id}`)}
+            onClick={() => router.push(`/departments/${data.id}`)}
           >
             <EyeIcon className="mr-2 h-4 w-4" />
-            View Report
+            View
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/departments/${data.id}`)}
+            onClick={() => router.push(`/departments/${data.id}/edit`)}
           >
             <EditIcon className="mr-2 h-4 w-4" />
             Edit

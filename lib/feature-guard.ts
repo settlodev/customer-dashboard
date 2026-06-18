@@ -28,7 +28,7 @@
  *   }
  */
 
-import { cookies } from "next/headers";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import {
   getEntitlements,
   type EntitlementItem,
@@ -93,19 +93,13 @@ export class SubscriptionInactiveError extends Error {
 }
 
 // ── Active location resolver ─────────────────────────────────────────
-// Reads the `currentLocation` cookie which is set as JSON.stringify(location)
-// where the location object has an `id` field (e.g. { id: "abc", name: "..." }).
-// Matches the same cookie field read by settlo-api-client.ts's readCookieId().
+// Delegates to the hardened getCurrentLocation() so feature gating resolves
+// the same business-consistent active location as the rest of the app — a
+// location lingering from a previous business resolves to null (→ aggregate
+// entitlement fallback) instead of matching a stale per-entity item.
 
 async function getActiveLocationId(): Promise<string | null> {
-  try {
-    const raw = (await cookies()).get("currentLocation")?.value;
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return typeof parsed?.id === "string" ? parsed.id : null;
-  } catch {
-    return null;
-  }
+  return (await getCurrentLocation())?.id ?? null;
 }
 
 // ── Per-entity item resolver ─────────────────────────────────────────

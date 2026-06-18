@@ -1,31 +1,48 @@
-import { isValidPhoneNumber } from "libphonenumber-js";
-import { boolean, number, object, string } from "zod";
+import * as z from "zod";
 
-export const LocationSchema = object({
-  name: string({ required_error: "Location name is required" })
-    .min(3, "Name should be at least 3 characters")
-    .max(50, "Name can not be more than 50 characters"),
-  phone: string({ required_error: "Phone number is required" })
-    .min(8, "Phone number must be more than 8 characters")
-    .max(20, "Phone number can not be more than 20 characters")
-    .refine(isValidPhoneNumber, {
-      message: "Invalid phone number",
-    }),
-  email: string({ required_error: "Email address is required" }).email(
-    "Please enter a valid email address",
-  ),
-  description: string().optional(),
-  address: string({ required_error: "Location address is required" }),
-  city: string({ required_error: "City is required" }),
-  region: string().optional().nullish(),
-  street: string().optional(),
-  latitude: number().nullable().optional(),
-  longitude: number().nullable().optional(),
-  timezone: string().optional(),
-  website: string().max(500).nullable().optional(),
-  openingTime: string().optional(),
-  closingTime: string().optional(),
-  status: boolean().optional(),
-  subscription: string().optional().nullish(),
-  image: string().nullable().optional(),
+// ── Operating hours entry ─────────────────────────────────────────
+
+export const OperatingHoursEntrySchema = z.object({
+  dayOfWeek: z.enum([
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+    "SUNDAY",
+  ]),
+  openTime: z.string(),
+  closeTime: z.string(),
+  closed: z.boolean(),
+});
+
+export type OperatingHoursEntry = z.infer<typeof OperatingHoursEntrySchema>;
+
+// ── Location schema ───────────────────────────────────────────────
+
+export const LocationSchema = z.object({
+  name: z
+    .string({ required_error: "Location name is required" })
+    .min(2, "Location name must be at least 2 characters")
+    .max(255, "Location name cannot exceed 255 characters"),
+
+  phone: z.string().optional(),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  website: z.string().optional(),
+
+  address: z.string().optional(),
+  city: z.string().optional(),
+  region: z.string().optional(),
+  street: z.string().optional(),
+
+  description: z.string().max(2000).optional(),
+
+  // ── Replaces openingTime / closingTime ──────────────────────────
+  continuousOperation: z.boolean().default(false),
+  dailyCutoffTime: z.string().optional(),
+  operatingHours: z.array(OperatingHoursEntrySchema).optional(),
+
+  status: z.boolean().default(true),
+  image: z.string().optional(),
 });

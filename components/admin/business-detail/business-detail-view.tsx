@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { subscriptionItemMrr } from "@/lib/helpers";
 import { Button } from "@/components/ui/button";
 import { KpiStrip } from "@/components/layouts/kpi-strip";
 import { SectionCard, CardLink } from "@/components/admin/shared/section-card";
@@ -142,7 +143,7 @@ export function BusinessDetailView({
   );
   const unitCount = activeItems.length;
   const itemsMrr = activeItems.reduce(
-    (s, i) => s + (i.packageInfo?.basePrice ?? 0),
+    (s, i) => s + subscriptionItemMrr(i),
     0,
   );
   const planMixParts = (() => {
@@ -641,7 +642,7 @@ export function BusinessDetailView({
               <div className="flex flex-col">
                 {billableUnits.map((u) => {
                   const plan = u.item?.packageInfo?.name ?? null;
-                  const mrr = u.item?.packageInfo?.basePrice ?? null;
+                  const mrr = u.item ? subscriptionItemMrr(u.item) : null;
                   const inner = (
                     <>
                       <span className="grid h-[34px] w-[34px] flex-shrink-0 place-items-center rounded-[9px] bg-primary/12 text-[#C25E26]">

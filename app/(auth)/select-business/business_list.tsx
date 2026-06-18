@@ -39,8 +39,10 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
       try {
         await refreshBusiness(selectedBusiness);
 
-        // Check if this business has only one location — skip select-location
-        const locations = await fetchAllLocations();
+        // Check if this business has only one location — skip select-location.
+        // Scope explicitly to the just-selected business so we never read
+        // another business's locations via a stale cookie/JWT claim.
+        const locations = await fetchAllLocations(selectedBusiness.id);
 
         if (locations && locations.length === 1) {
           // Single location — go straight to dashboard

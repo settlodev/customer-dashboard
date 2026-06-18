@@ -6,9 +6,44 @@ import { FormResponse, LoginResponse } from "@/types/types";
 import {
   createAuthTokenFromLogin,
   deleteActiveBusinessCookie,
+  getAuthToken,
 } from "@/lib/auth-utils";
 import { clearDestination } from "./destination";
 import { revalidatePath } from "next/cache";
+
+/** One account the current user can switch into — from GET /api/v1/me/accounts. */
+export interface MeAccount {
+  id: string;
+  name: string;
+  identifier: string;
+  email: string;
+  active: boolean;
+  owner: boolean;
+}
+
+/**
+ * Accounts the current user belongs to (owned + invited) plus the account
+ * their token is currently scoped to — powers the account switcher. Returns an
+ * empty list on failure so the switcher simply hides itself.
+ */
+export const getMyAccountsContext = async (): Promise<{
+  accounts: MeAccount[];
+  currentAccountId: string | null;
+}> => {
+  try {
+    const apiClient = new ApiClient(); // accounts service
+    const [data, token] = await Promise.all([
+      apiClient.get<MeAccount[] | null>(`/api/v1/me/accounts`),
+      getAuthToken(),
+    ]);
+    return {
+      accounts: parseStringify(data ?? []),
+      currentAccountId: token?.accountId ?? null,
+    };
+  } catch {
+    return { accounts: [], currentAccountId: null };
+  }
+};
 
 // Profile management actions use the Auth Service (ApiClient with useAuthService=true)
 

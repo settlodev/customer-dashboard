@@ -1,4 +1,5 @@
 import { ExtendedProduct } from "@/types/site/type";
+import type { SubscriptionItemResponse } from "@/types/admin/billing";
 
 export const DEFAULT_CURRENCY = "TZS";
 
@@ -22,6 +23,21 @@ export const formatPrice = (
   if (price == null || Number.isNaN(price)) return '—';
   const code = (currency || 'TZS').toUpperCase();
   return `${price.toLocaleString()} ${code}`;
+};
+
+/**
+ * A subscription item's monthly recurring-revenue contribution, in the
+ * subscription's currency. Prefer the Billing Service's term-normalized
+ * `monthlyAmount` (resolveTermPrice ÷ term months; 0 for bundled units).
+ * Falls back to interval-normalizing `basePrice` only for API responses that
+ * predate `monthlyAmount` — a YEARLY plan's `basePrice` is the *annual* charge,
+ * so summing it raw overstates MRR 12×.
+ */
+export const subscriptionItemMrr = (item: SubscriptionItemResponse): number => {
+  if (item.monthlyAmount != null) return item.monthlyAmount;
+  if (item.isBundled) return 0;
+  const base = item.packageInfo?.basePrice ?? 0;
+  return item.packageInfo?.billingInterval === "YEARLY" ? base / 12 : base;
 };
 
 /**

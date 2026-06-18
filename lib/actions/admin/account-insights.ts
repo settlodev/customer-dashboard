@@ -12,6 +12,7 @@ import {
   compactNumber,
   formatDateTime,
 } from "@/components/admin/shared/format";
+import { subscriptionItemMrr } from "@/lib/helpers";
 
 /**
  * Account-detail commercial / health / lifecycle insights. Pulls the live
@@ -197,10 +198,11 @@ async function aggregateBilling(
       if (item.entityType === "WAREHOUSE") byType.warehouses += 1;
       else if (item.entityType === "STORE") byType.stores += 1;
       else byType.locations += 1;
-      // Prefer the Billing Service's basePrice (the canonical source for MRR
-      // when fetching from Billing directly). The Reports per-item billing_mrr
-      // is used in the fallback path (Reports-only) below.
-      mrr += item.packageInfo?.basePrice ?? 0;
+      // Canonical MRR contribution: the Billing Service's term-normalized
+      // monthlyAmount (0 for bundled units), NOT basePrice — a YEARLY plan's
+      // basePrice is the annual charge. The Reports per-item billing_mrr is
+      // used in the fallback path (Reports-only) below.
+      mrr += subscriptionItemMrr(item);
       const plan = item.packageInfo?.name ?? "—";
       planCounts.set(plan, (planCounts.get(plan) ?? 0) + 1);
       // A unit's billing state follows its business's single subscription.

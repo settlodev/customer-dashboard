@@ -1,7 +1,7 @@
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock/column";
 import {
-  getStocks,
+  searchStocks,
   getStockCounts,
   type StockView,
 } from "@/lib/actions/stock-actions";
@@ -23,22 +23,30 @@ import { InventoryKpiStrip } from "@/components/widgets/inventory/inventory-kpi-
 import { StockVariantsHeaderActions } from "@/components/widgets/inventory/stock-variants-header-actions";
 
 type Props = {
-  searchParams: Promise<{ filter?: string }>;
+  searchParams: Promise<{
+    filter?: string;
+    search?: string;
+    page?: string;
+    limit?: string;
+  }>;
 };
 
 export default async function Page({ searchParams }: Props) {
-  const { filter = "active" } = await searchParams;
+  const sp = await searchParams;
+  const filter = sp.filter ?? "active";
   const view: StockView =
     filter === "archived" || filter === "draft" || filter === "all"
       ? filter
       : "active";
+  const q = sp.search || "";
+  const page = Number(sp.page) || 0;
+  const pageLimit = Number(sp.limit);
 
-  // One backend call returns the rows for the selected tab; a separate
-  // counts endpoint feeds every tab badge in a single round-trip — no
-  // client-side row filtering and no fetching tabs the merchant didn't
-  // open.
-  const [rows, counts, location] = await Promise.all([
-    getStocks(view),
+  // Backend-paginated + searched (one page of stock items per request) so the
+  // table pager works and search spans name / variant name / SKU / barcode /
+  // serial. A separate counts endpoint feeds every tab badge in one round-trip.
+  const [responseData, counts, location] = await Promise.all([
+    searchStocks(q, page, pageLimit, view),
     getStockCounts(),
     getCurrentLocation(),
   ]);
@@ -53,8 +61,10 @@ export default async function Page({ searchParams }: Props) {
   // Build a variant→balance lookup
   const balanceMap = new Map(balances.map((b) => [b.stockVariantId, b]));
 
-  // Enrich stocks with aggregated balance data
-  const enrich = (stock: typeof rows[number]): StockWithBalance => {
+  // Enrich the current page's stocks with aggregated balance data
+  const enrich = (
+    stock: (typeof responseData.content)[number],
+  ): StockWithBalance => {
     let totalQuantity = 0;
     let totalValue = 0;
     let lowStock = false;
@@ -73,7 +83,9 @@ export default async function Page({ searchParams }: Props) {
     return { ...stock, totalQuantity, totalValue, lowStock, outOfStock };
   };
 
-  const filtered: StockWithBalance[] = rows.map(enrich);
+  const filtered: StockWithBalance[] = responseData.content.map(enrich);
+  const total = responseData.totalElements;
+  const pageCount = responseData.totalPages;
 
   const tabs = [
     { key: "active", label: "Active", count: counts.active, href: "/stock-variants" },
@@ -97,7 +109,7 @@ export default async function Page({ searchParams }: Props) {
       />
 
       <PageBody>
-        {filtered.length > 0 && <InventoryKpiStrip summary={summary} />}
+        {total > 0 && <InventoryKpiStrip summary={summary} />}
 
         {/* Filter tabs — design's `.tabs` pill (matches Active/Archived
             on the products list). */}
@@ -136,14 +148,15 @@ export default async function Page({ searchParams }: Props) {
           })}
         </div>
 
-        {filtered.length > 0 ? (
+        {total > 0 || q !== "" ? (
           <DataTable
             columns={columns}
             data={filtered}
             searchKey="name"
-            pageNo={0}
-            total={filtered.length}
-            pageCount={1}
+            searchPlaceholder="Search by name, variant, SKU, barcode, or serial…"
+            pageNo={page}
+            total={total}
+            pageCount={pageCount}
             rowClickBasePath="/stock-variants"
           />
         ) : (

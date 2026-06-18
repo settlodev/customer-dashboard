@@ -66,6 +66,7 @@ import { Button } from "@/components/ui/button";
 import useColorMode from "@/components/hooks/useColorMode";
 import { logout } from "@/lib/actions/auth-actions";
 import { refreshBusiness } from "@/lib/actions/business/refresh";
+import { AccountSwitcher } from "./account-switcher";
 import { switchToLocation } from "@/lib/actions/destination";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { cn } from "@/lib/utils";
@@ -390,8 +391,10 @@ export function SidebarAccountMenu({
       await refreshBusiness(confirmBiz);
       // Auto-pick the location only when there's a single one to choose.
       // Otherwise the merchant lands on the location-picker so they can
-      // make an explicit choice.
-      const locations = await fetchAllLocations();
+      // make an explicit choice. Scope the fetch to the just-selected
+      // business so we never auto-switch into the previous business's
+      // location (which would 403 against business-scoped services).
+      const locations = await fetchAllLocations(confirmBiz.id);
       if (locations && locations.length === 1) {
         await switchToLocation(locations[0]);
         window.location.href = "/dashboard";
@@ -492,6 +495,9 @@ export function SidebarAccountMenu({
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto">
+        {/* Cross-account switch (hidden unless the user belongs to >1 account). */}
+        <AccountSwitcher />
+
         {businessList.length > 0 && (
           <div className="px-1.5 pb-1 pt-1.5">
             <div className="flex items-center justify-between px-1.5 pb-1.5 pt-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
