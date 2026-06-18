@@ -23,20 +23,6 @@ const formatNum = (value: number | null | undefined, max = 0) => {
   return Intl.NumberFormat("en", { maximumFractionDigits: max }).format(value);
 };
 
-/** Sortable, ghost-button column header (matches the other report tables). */
-const sortable =
-  (label: string): ColumnDef<DepartmentProductSale>["header"] =>
-  ({ column }) => (
-    <Button
-      variant="ghost"
-      className="p-0 text-left"
-      onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-    >
-      {label}
-      <ArrowUpDown className="ml-2 h-4 w-4" />
-    </Button>
-  );
-
 interface BuildColumnsOptions {
   currency: string;
 }
@@ -48,7 +34,16 @@ export function buildDepartmentProductSalesColumns({
     {
       accessorKey: "name",
       enableHiding: false,
-      header: sortable("Product"),
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          className="p-0 text-left"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Product
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
       cell: ({ row }) => (
         <span className="block min-w-0 truncate font-medium text-ink">
           {row.original.name}
@@ -57,7 +52,16 @@ export function buildDepartmentProductSalesColumns({
     },
     {
       accessorKey: "quantitySold",
-      header: sortable("Qty sold"),
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          className="p-0 text-left"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Qty sold
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
       cell: ({ row }) => (
         <span className="tabular-nums">
           {formatNum(row.original.quantitySold)}
@@ -66,7 +70,16 @@ export function buildDepartmentProductSalesColumns({
     },
     {
       accessorKey: "grossSales",
-      header: sortable("Gross"),
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          className="p-0 text-left"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Gross
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
       cell: ({ row }) => (
         <div className="flex flex-col tabular-nums">
           <span className="font-medium">
@@ -78,7 +91,16 @@ export function buildDepartmentProductSalesColumns({
     },
     {
       accessorKey: "totalDiscount",
-      header: sortable("Discount"),
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          className="p-0 text-left"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Discount
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
       cell: ({ row }) => (
         <span className="tabular-nums text-muted-foreground">
           {row.original.totalDiscount > 0
@@ -89,7 +111,16 @@ export function buildDepartmentProductSalesColumns({
     },
     {
       accessorKey: "netSales",
-      header: sortable("Net"),
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          className="p-0 text-left"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Net
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
       cell: ({ row }) => (
         <div className="flex flex-col tabular-nums">
           <span>{formatNum(row.original.netSales)}</span>
@@ -99,7 +130,16 @@ export function buildDepartmentProductSalesColumns({
     },
     {
       accessorKey: "totalCost",
-      header: sortable("COGS"),
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          className="p-0 text-left"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          COGS
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
       cell: ({ row }) => (
         <span className="tabular-nums text-muted-foreground">
           {formatNum(row.original.totalCost)}
@@ -108,7 +148,16 @@ export function buildDepartmentProductSalesColumns({
     },
     {
       accessorKey: "grossProfit",
-      header: sortable("Profit"),
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          className="p-0 text-left"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Profit
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
       cell: ({ row }) => {
         const item = row.original;
         const profit = item.grossProfit ?? 0;

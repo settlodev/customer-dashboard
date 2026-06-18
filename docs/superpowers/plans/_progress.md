@@ -11,7 +11,13 @@ Repos: OMS `/Users/Peter/Settlo/Settlo Order Management Service`, Dashboard `/Us
       Dashboard tsc baseline = 0 errors (clean, despite user WIP).
 - [x] **Task 4** — Dashboard types + `getVoidsReport` action. tsc 0 errors (verified by controller; implementer's transient "1 error" was incremental-cache flake). (uncommitted)
 - [x] **Task 5** — Dashboard `void-report.ts` helpers + `VoidsDataTable` + `buildVoidsColumns`. tsc 0 errors. (uncommitted)
-- [ ] Task 6 — Dashboard `/report/voids` page + nav entry
+- [x] **Task 6** — Dashboard `/report/voids` page + nav entry. tsc 0 errors. (uncommitted)
+
+**ALL TASKS IMPLEMENTED.**
+
+UPDATE: User committed OMS Phase 1 themselves → `10d0b0a "Add order void report endpoints"` on `alpha`, fast-forward-merged into `beta` (per reflog). OMS clean, WIP properties file untouched. Dashboard voids work remains uncommitted (Tasks 4–6).
+
+Final whole-branch review in progress, then hand off.
 
 Notes:
 - Task 1 added test-only NOT NULL fields to seed helpers (slug, daySessionId, orderType, platformType, startedBy, productVariantId, productId, unitPrice, originalUnitPrice).
