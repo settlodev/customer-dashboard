@@ -2,6 +2,7 @@
 import * as React from "react";
 import { ThemeProvider as NextThemesProvider, ThemeProviderProps } from "next-themes";
 import { CartProvider } from "@/context/cartContext";
+import { FirebaseMessagingProvider } from "@/components/firebase-messaging-provider";
 
 export interface ProvidersProps {
   children: React.ReactNode;
@@ -15,6 +16,7 @@ export function Providers({ children, themeProps }: ProvidersProps) {
       attribute='class'
       {...themeProps}>
         <CartProvider>
+        <FirebaseMessagingProvider />
         {children}
         </CartProvider>
 
