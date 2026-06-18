@@ -12,16 +12,25 @@ import {
 interface Props {
   data: DepartmentProductSale[];
   currency: string;
+  pageCount: number;
+  pageNo: number;
+  total: number;
 }
 
 /**
- * Products-in-department sales table for the department detail Sales tab.
- * The full set is already in memory (the parent fetched every product), so
- * the table runs in `clientMode` — search, pagination and column ordering
- * all happen in-memory and never touch the URL, leaving the `?from`/`?to`
- * date filter as the only URL-driven control. Rows drill into the product.
+ * Items-in-department table for the department detail Sales tab. A single
+ * department can hold thousands of sold items, so this runs **server-side**:
+ * the page (`?page`/`?limit`/`?sort`/`?search`) drives a ClickHouse query and
+ * only the current page is ever in memory. `manualSort` pushes sorting to the
+ * backend; the search box pushes `?search`. Rows drill into the product.
  */
-export function DepartmentProductSalesTable({ data, currency }: Props) {
+export function DepartmentProductSalesTable({
+  data,
+  currency,
+  pageCount,
+  pageNo,
+  total,
+}: Props) {
   const router = useRouter();
   const columns = useMemo(
     () => buildDepartmentProductSalesColumns({ currency }),
@@ -33,8 +42,11 @@ export function DepartmentProductSalesTable({ data, currency }: Props) {
       columns={columns}
       data={data}
       searchKey="name"
-      searchPlaceholder="Search products…"
-      clientMode
+      searchPlaceholder="Search items…"
+      manualSort
+      pageCount={pageCount}
+      pageNo={pageNo}
+      total={total}
       onRowClick={(item) => {
         if (item.productId)
           router.push(`/products/${item.productId}?tab=sales`);

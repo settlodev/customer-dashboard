@@ -122,15 +122,7 @@ export default async function SalesReportPage({ searchParams }: Params) {
             limit={limit}
           />
         )}
-        {tab === "department" && (
-          <ByDepartmentTab
-            from={from}
-            to={to}
-            search={search}
-            page={page}
-            limit={limit}
-          />
-        )}
+        {tab === "department" && <ByDepartmentTab from={from} to={to} />}
         {tab === "table" && (
           <ByTableTab
             from={from}
