@@ -33,7 +33,8 @@ export function FirebaseMessagingProvider() {
       let swRegistration: ServiceWorkerRegistration | undefined;
       try {
         swRegistration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-      } catch {
+      } catch (e) {
+        console.error("FCM service worker registration failed", e);
         return;
       }
       if (cancelled) return;
@@ -45,6 +46,7 @@ export function FirebaseMessagingProvider() {
           await registerPushToken({ fcmToken: token, deviceId: getOrCreateDeviceId() });
         }
       }
+      if (cancelled) return;
 
       const messaging = await getMessagingClient();
       if (messaging && !cancelled) {
