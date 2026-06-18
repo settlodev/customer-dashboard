@@ -79,6 +79,14 @@ export interface SubscriptionItemResponse {
   isBundled: boolean | null;
   bundledByItemId: string | null;
   status: SubscriptionItemStatus;
+  /**
+   * Term-normalized monthly run-rate for this unit — its MRR contribution
+   * (resolveTermPrice ÷ term months on the Billing Service; 0 for bundled
+   * units). The canonical MRR input — do NOT sum `packageInfo.basePrice`,
+   * which for a YEARLY plan is the *annual* charge. Null on older responses
+   * that predate the field. Use `subscriptionItemMrr()` from `@/lib/helpers`.
+   */
+  monthlyAmount: number | null;
   trialEndDate: string | null;
   paidThrough: string | null;
   addedAt: string | null;

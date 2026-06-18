@@ -3,7 +3,7 @@
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import { FormResponse } from "@/types/types";
+import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type {
@@ -31,6 +31,44 @@ export async function getStocks(view?: StockView): Promise<Stock[]> {
     return parseStringify(data) as Stock[];
   } catch {
     return [];
+  }
+}
+
+/**
+ * Paginated, backend-searched stock list for the /stock-variants page.
+ * Hits the dedicated `/api/v1/stocks/search` endpoint (the plain
+ * `/api/v1/stocks` list stays unpaged for fetch-all callers — dropdowns,
+ * CSV export, reference cache). `q` matches stock name, variant name, SKU,
+ * barcode, and serial number; results are scoped to the active tab via
+ * `view`. Returns a paginated `ApiResponse` (content + totalElements/
+ * totalPages) so the table pager works — unlike `getStocks`, which returns
+ * the full array.
+ */
+export async function searchStocks(
+  q: string,
+  page: number,
+  pageLimit: number,
+  view?: StockView,
+): Promise<ApiResponse<Stock>> {
+  try {
+    const apiClient = new ApiClient();
+    const params = new URLSearchParams();
+    if (q) params.set("search", q);
+    // Server is 0-indexed; the dashboard pager is 1-indexed.
+    params.set("page", String(page ? page - 1 : 0));
+    params.set("size", String(pageLimit || 10));
+    params.set("sortBy", "createdAt");
+    params.set("sortDirection", "DESC");
+    if (view) params.set("view", view.toUpperCase());
+
+    const data = await apiClient.get(
+      inventoryUrl(`/api/v1/stocks/search?${params.toString()}`),
+    );
+    return parseStringify(data);
+  } catch {
+    // Degrade to an empty page so the list renders "no items" instead of
+    // crashing on a transient backend error (mirrors getStocks's resilience).
+    return { content: [], totalElements: 0, totalPages: 0 } as unknown as ApiResponse<Stock>;
   }
 }
 
