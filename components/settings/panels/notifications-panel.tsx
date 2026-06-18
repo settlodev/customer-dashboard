@@ -5,6 +5,9 @@ import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
 import type { LocationSettings } from "@/types/location-settings/type";
+import { useToast } from "@/hooks/use-toast";
+import { getOrCreateDeviceId, requestPermissionAndGetToken } from "@/lib/firebase/messaging";
+import { registerPushToken, deletePushToken } from "@/lib/actions/push-token-actions";
 
 const KEYS = [
   "enableEmailNotifications",
@@ -26,6 +29,27 @@ export function NotificationsPanel({
 }) {
   const p = useSettingsPanel(KEYS, settings, onSaved);
   const v = p.values;
+  const { toast } = useToast();
+
+  const handlePushToggle = async (enabled: boolean) => {
+    if (enabled) {
+      const swReg = await navigator.serviceWorker?.getRegistration("/firebase-messaging-sw.js");
+      const token = await requestPermissionAndGetToken(swReg ?? undefined);
+      if (!token) {
+        toast({
+          variant: "destructive",
+          title: "Couldn't enable notifications",
+          description: "Allow notifications for this site in your browser, then try again.",
+        });
+        return; // leave the toggle off
+      }
+      await registerPushToken({ fcmToken: token, deviceId: getOrCreateDeviceId() });
+      p.setField("enablePushNotifications", true);
+    } else {
+      await deletePushToken(getOrCreateDeviceId());
+      p.setField("enablePushNotifications", false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -43,7 +67,12 @@ export function NotificationsPanel({
       >
         <SettingsSwitchRow label="Email" checked={!!v.enableEmailNotifications} onChange={(x) => p.setField("enableEmailNotifications", x)} disabled={p.isPending} />
         <SettingsSwitchRow label="SMS" checked={!!v.enableSmsNotifications} onChange={(x) => p.setField("enableSmsNotifications", x)} disabled={p.isPending} />
-        <SettingsSwitchRow label="Push" checked={!!v.enablePushNotifications} onChange={(x) => p.setField("enablePushNotifications", x)} disabled={p.isPending} />
+        <SettingsSwitchRow
+          label="Push"
+          checked={!!v.enablePushNotifications}
+          onChange={(x) => void handlePushToggle(x)}
+          disabled={p.isPending}
+        />
       </SettingsSection>
 
       <SettingsSection
