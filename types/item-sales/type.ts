@@ -25,3 +25,50 @@ export interface ItemSalesSummary {
   totalGrossProfit: number;
   items: ItemSalesAggregate[];
 }
+
+// ── Sales by department (server-aggregated) ─────────────────────────
+// Backed by the Reports Service, which groups fact_order_items by
+// department in ClickHouse — the dashboard never loads every sold line
+// item to aggregate it client-side.
+
+/** One department's rollup row (the "By department" tab + detail totals). */
+export interface DepartmentSalesRollup {
+  /** Null for items with no department — rendered as "Unassigned". */
+  departmentId: string | null;
+  departmentName: string | null;
+  /** Distinct products sold in the department. */
+  products: number;
+  quantitySold: number;
+  grossSales: number;
+  netSales: number;
+  grossProfit: number;
+}
+
+/** One sold item (product+variant) within a department. */
+export interface DepartmentItemSale {
+  productId: string;
+  variantId: string;
+  itemName: string;
+  departmentName: string | null;
+  quantitySold: number;
+  grossSales: number;
+  netSales: number;
+  totalDiscount: number;
+  totalCost: number;
+  grossProfit: number;
+}
+
+export interface DepartmentItemSalesPage {
+  content: DepartmentItemSale[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+}
+
+/** Department detail Sales tab payload: whole-period totals + one page of items. */
+export interface DepartmentItemSalesResult {
+  totals: DepartmentSalesRollup;
+  items: DepartmentItemSalesPage;
+}

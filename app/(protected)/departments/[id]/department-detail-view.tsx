@@ -16,8 +16,19 @@ import { DepartmentProductSalesTable } from "@/components/reports/sales/departme
 import { DepartmentSalesExportButton } from "@/components/reports/sales/department-sales-export-button";
 import { type DepartmentProductSale } from "@/components/tables/reports/department-product-sales/columns";
 import type { Department } from "@/types/department/type";
+import type {
+  DepartmentItemSale,
+  DepartmentSalesRollup,
+} from "@/types/item-sales/type";
 
-export type { DepartmentProductSale };
+export interface DepartmentSalesData {
+  totals: DepartmentSalesRollup;
+  items: DepartmentItemSale[];
+  pageCount: number;
+  /** 0-based current page index. */
+  pageNo: number;
+  total: number;
+}
 
 const TABS = [
   { key: "overview", label: "Overview", icon: Building2 },
@@ -28,20 +39,20 @@ type TabKey = (typeof TABS)[number]["key"];
 
 interface Props {
   department: Department;
-  productSales: DepartmentProductSale[];
   currency: string;
   /** Current `from`/`to` URL params (yyyy-MM-dd) driving the Sales period. */
   from: string;
   to: string;
+  sales: DepartmentSalesData;
   initialTab?: string;
 }
 
 export function DepartmentDetailView({
   department,
-  productSales,
   currency,
   from,
   to,
+  sales,
   initialTab,
 }: Props) {
   const [tab, setTab] = useState<TabKey>(
@@ -50,9 +61,7 @@ export function DepartmentDetailView({
       : "overview",
   );
 
-  const soldCount = productSales.filter(
-    (p) => p.quantitySold > 0 || p.grossSales > 0,
-  ).length;
+  const soldCount = sales.totals.products;
 
   return (
     <div className="space-y-6">
@@ -101,8 +110,9 @@ export function DepartmentDetailView({
       {tab === "overview" && <OverviewTab department={department} />}
       {tab === "sales" && (
         <DepartmentSalesTab
-          productSales={productSales}
+          sales={sales}
           currency={currency}
+          departmentId={department.id}
           departmentName={department.name}
           from={from}
           to={to}
@@ -199,50 +209,59 @@ function OverviewTab({ department }: { department: Department }) {
   );
 }
 
-// ── Sales (products in this department, selected period) ─────────────
+// ── Sales (items sold in this department, selected period) ──────────
 
 function DepartmentSalesTab({
-  productSales,
+  sales,
   currency,
+  departmentId,
   departmentName,
   from,
   to,
 }: {
-  productSales: DepartmentProductSale[];
+  sales: DepartmentSalesData;
   currency: string;
+  departmentId: string;
   departmentName: string;
   from: string;
   to: string;
 }) {
-  const withSales = productSales.filter(
-    (p) => p.quantitySold > 0 || p.grossSales > 0,
-  );
+  const { totals, items, pageCount, pageNo, total } = sales;
+  const hasSales = totals.quantitySold > 0 || totals.grossSales > 0;
 
   const fmt = (v: number) =>
     v.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  const margin =
+    totals.netSales > 0 ? (totals.grossProfit / totals.netSales) * 100 : 0;
 
-  const totalQty = withSales.reduce((s, p) => s + p.quantitySold, 0);
-  const totalGross = withSales.reduce((s, p) => s + p.grossSales, 0);
-  const totalNet = withSales.reduce((s, p) => s + p.netSales, 0);
-  const totalProfit = withSales.reduce((s, p) => s + p.grossProfit, 0);
-  const margin = totalNet > 0 ? (totalProfit / totalNet) * 100 : 0;
+  const rows: DepartmentProductSale[] = items.map((it) => ({
+    productId: it.productId,
+    name: it.itemName,
+    quantitySold: it.quantitySold,
+    grossSales: it.grossSales,
+    netSales: it.netSales,
+    totalCost: it.totalCost,
+    grossProfit: it.grossProfit,
+    totalDiscount: it.totalDiscount,
+  }));
 
   return (
     <div className="space-y-6">
-      {/* Period filter + export — the date range drives a server refetch;
-          search / sort / paging happen in the table itself. */}
+      {/* Period filter + export. The date range drives a server refetch;
+          search / sort / paging are resolved by the backend per page. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <OrdersDateFilter from={from} to={to} />
         <DepartmentSalesExportButton
-          rows={withSales}
+          departmentId={departmentId}
           departmentName={departmentName}
           currency={currency}
           from={from}
           to={to}
+          disabled={total === 0}
         />
       </div>
 
-      {withSales.length === 0 ? (
+      {!hasSales ? (
         <Card>
           <CardContent className="py-12 text-center">
             <ShoppingCart className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
@@ -258,31 +277,31 @@ function DepartmentSalesTab({
             <KpiCard
               icon={<Package className="h-3 w-3" />}
               label="Products sold"
-              value={withSales.length.toLocaleString()}
+              value={totals.products.toLocaleString()}
             />
             <KpiCard
               icon={<ShoppingCart className="h-3 w-3" />}
               label="Qty sold"
-              value={totalQty.toLocaleString()}
+              value={fmt(totals.quantitySold)}
             />
             <KpiCard
               icon={<DollarSign className="h-3 w-3" />}
               label="Gross"
-              value={fmt(totalGross)}
+              value={fmt(totals.grossSales)}
               unit={currency}
             />
             <KpiCard
               icon={<DollarSign className="h-3 w-3" />}
               label="Net"
-              value={fmt(totalNet)}
+              value={fmt(totals.netSales)}
               unit={currency}
             />
             <KpiCard
               icon={<TrendingUp className="h-3 w-3" />}
               label="Gross profit"
-              value={fmt(totalProfit)}
+              value={fmt(totals.grossProfit)}
               unit={currency}
-              deltaTone={totalProfit >= 0 ? "pos" : "neg"}
+              deltaTone={totals.grossProfit >= 0 ? "pos" : "neg"}
             />
             <KpiCard
               icon={<Percent className="h-3 w-3" />}
@@ -294,9 +313,15 @@ function DepartmentSalesTab({
 
           <div className="space-y-3">
             <h3 className="text-sm font-semibold">
-              Products sold in this department
+              Items sold in this department
             </h3>
-            <DepartmentProductSalesTable data={withSales} currency={currency} />
+            <DepartmentProductSalesTable
+              data={rows}
+              currency={currency}
+              pageCount={pageCount}
+              pageNo={pageNo}
+              total={total}
+            />
           </div>
         </>
       )}

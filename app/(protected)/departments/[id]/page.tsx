@@ -15,16 +15,20 @@ import { Department } from "@/types/department/type";
 import { getDepartment } from "@/lib/actions/department-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
-import { getItemSalesSummary } from "@/lib/actions/item-sales-actions";
-import { fetchAllProducts } from "@/lib/actions/product-actions";
+import { getDepartmentItemSales } from "@/lib/actions/department-sales-actions";
 import { hasEntityFeature } from "@/lib/actions/entitlement-actions";
-import {
-  DepartmentDetailView,
-  type DepartmentProductSale,
-} from "./department-detail-view";
+import { DepartmentDetailView } from "./department-detail-view";
 
 type Params = Promise<{ id: string }>;
-type SearchParams = Promise<{ tab?: string; from?: string; to?: string }>;
+type SearchParams = Promise<{
+  tab?: string;
+  from?: string;
+  to?: string;
+  page?: string;
+  limit?: string;
+  sort?: string;
+  search?: string;
+}>;
 
 export default async function DepartmentPage({
   params,
@@ -34,16 +38,12 @@ export default async function DepartmentPage({
   searchParams: SearchParams;
 }) {
   const { id } = await params;
-  const { tab, from: fromParam, to: toParam } = await searchParams;
+  const resolved = await searchParams;
+  const tab = resolved.tab;
 
   // Adding a department is a sibling route now that /departments/[id] is a
   // detail view; editing moved to /departments/[id]/edit.
   if (id === "new") redirect("/departments/new");
-
-  // Sales period — defaults to the current month, matching the report hub.
-  const now = new Date();
-  const from = fromParam ?? format(startOfMonth(now), "yyyy-MM-dd");
-  const to = toParam ?? format(endOfMonth(now), "yyyy-MM-dd");
 
   const location = await getCurrentLocation().catch(() => null);
 
@@ -79,66 +79,28 @@ export default async function DepartmentPage({
     notFound();
   }
 
-  // Sales for this department's products over the selected period. Item sales
-  // are per-product, so join to the products whose categories roll up to this
-  // department. (Multi-attribution: a product can span several departments.)
-  const currency = await getLocationCurrency().catch(() => "TZS");
+  // Sales period — defaults to the current month, matching the report hub.
+  const now = new Date();
+  const from = resolved.from ?? format(startOfMonth(now), "yyyy-MM-dd");
+  const to = resolved.to ?? format(endOfMonth(now), "yyyy-MM-dd");
+  const pageNo = Number(resolved.page) || 1; // 1-based in the URL
+  const limit = Number(resolved.limit) || 10;
 
-  const [summary, products] = await Promise.all([
-    location?.id
-      ? getItemSalesSummary(location.id, from, to)
-      : Promise.resolve(null),
-    fetchAllProducts().catch(() => []),
+  // The department's items are aggregated + paginated by the Reports Service,
+  // so the browser only loads the current page (works at any catalogue size).
+  // KPIs come from server-computed totals for the whole department.
+  const [currency, sales] = await Promise.all([
+    getLocationCurrency().catch(() => "TZS"),
+    getDepartmentItemSales({
+      departmentId: id,
+      from,
+      to,
+      page: pageNo - 1,
+      size: limit,
+      sort: resolved.sort,
+      search: resolved.search,
+    }),
   ]);
-
-  // Aggregate item sales per product.
-  const byProduct = new Map<
-    string,
-    {
-      qty: number;
-      gross: number;
-      net: number;
-      cost: number;
-      profit: number;
-      discount: number;
-    }
-  >();
-  for (const it of summary?.items ?? []) {
-    const cur = byProduct.get(it.productId) ?? {
-      qty: 0,
-      gross: 0,
-      net: 0,
-      cost: 0,
-      profit: 0,
-      discount: 0,
-    };
-    cur.qty += it.quantitySold;
-    cur.gross += it.grossSales;
-    cur.net += it.netSales;
-    cur.cost += it.totalCost;
-    cur.profit += it.grossProfit;
-    cur.discount += it.totalDiscount;
-    byProduct.set(it.productId, cur);
-  }
-
-  // Products whose categories roll up to this department, with their sales
-  // (zeros if none sold in the window).
-  const productSales: DepartmentProductSale[] = products
-    .filter((p) => (p.categories ?? []).some((c) => c.departmentId === id))
-    .map((p) => {
-      const s = byProduct.get(p.id);
-      return {
-        productId: p.id,
-        name: p.name,
-        quantitySold: s?.qty ?? 0,
-        grossSales: s?.gross ?? 0,
-        netSales: s?.net ?? 0,
-        totalCost: s?.cost ?? 0,
-        grossProfit: s?.profit ?? 0,
-        totalDiscount: s?.discount ?? 0,
-      };
-    })
-    .sort((a, b) => b.netSales - a.netSales);
 
   const statusLabel = department.active ? "Active" : "Inactive";
   const statusClass = department.active
@@ -183,10 +145,16 @@ export default async function DepartmentPage({
       <PageBody>
         <DepartmentDetailView
           department={department}
-          productSales={productSales}
           currency={currency}
           from={from}
           to={to}
+          sales={{
+            totals: sales.totals,
+            items: sales.items.content,
+            pageCount: sales.items.totalPages,
+            pageNo: pageNo - 1,
+            total: sales.items.totalElements,
+          }}
           initialTab={tab}
         />
       </PageBody>

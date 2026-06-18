@@ -100,8 +100,11 @@ export function buildTopSellingColumns({
       },
     },
     {
+      // The Reports read-model carries the product's DEPARTMENT here
+      // (`coalesce(category_name, department_name)` ← `product.getDepartmentId()`),
+      // not the catalog category taxonomy — so this column is the department.
       accessorKey: "categoryName",
-      header: "Category",
+      header: "Department",
       cell: ({ row }) => {
         const name = row.original.categoryName;
         if (!name) return <span className="text-muted-foreground">—</span>;

@@ -12,24 +12,17 @@ import {
 
 interface Props {
   data: DepartmentSalesRow[];
-  pageCount: number;
-  pageNo: number;
-  total: number;
   currency: string;
 }
 
 /**
- * Client wrapper around the data-table for the sales-by-department summary.
- * Each row drills into that department's detail screen, landing on the Sales
- * tab (`?tab=sales`).
+ * Sales-by-department rollup table. The backend already aggregated to one row
+ * per department (a handful of rows), so the table runs in `clientMode` —
+ * search, sort and paging happen in-memory with no URL plumbing. Real
+ * departments drill into their detail Sales tab; the "Unassigned" bucket has
+ * no detail page, so its row isn't clickable.
  */
-export function SalesByDepartmentTable({
-  data,
-  pageCount,
-  pageNo,
-  total,
-  currency,
-}: Props) {
+export function SalesByDepartmentTable({ data, currency }: Props) {
   const router = useRouter();
   const columns = useMemo(
     () => buildSalesByDepartmentColumns({ currency }),
@@ -42,12 +35,12 @@ export function SalesByDepartmentTable({
         <DataTable
           columns={columns}
           data={data}
-          pageCount={pageCount}
-          pageNo={pageNo}
           searchKey="name"
-          total={total}
+          searchPlaceholder="Search departments…"
+          clientMode
           onRowClick={(item) => {
-            if (item.id) router.push(`/departments/${item.id}?tab=sales`);
+            if (item.id && item.id !== "__unassigned__")
+              router.push(`/departments/${item.id}?tab=sales`);
           }}
         />
       </CardContent>
