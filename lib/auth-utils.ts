@@ -361,7 +361,7 @@ export const clearPendingVerification = async () => {
  */
 export const requireReportsReadAll = async (): Promise<void> => {
   const token = await getAuthToken();
-  if (!token?.reportsReadAll) {
+  if (token?.reportsReadAll === false) {
     redirect("/dashboard");
   }
 };
