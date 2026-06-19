@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { FormResponse } from "@/types/types";
@@ -59,8 +60,21 @@ export const inviteMember = async (data: {
   scopes?: Array<{ scopeType: string; scopeId: string }>;
 }): Promise<FormResponse<AccountMember>> => {
   try {
+    let scopes = data.scopes;
+    if (!scopes || scopes.length === 0) {
+      try {
+        const cookieStore = await cookies();
+        const raw = cookieStore.get("currentLocation")?.value;
+        const loc = raw ? JSON.parse(raw) : null;
+        if (loc?.id) {
+          scopes = [{ scopeType: "LOCATION", scopeId: loc.id }];
+        }
+      } catch {
+        // no current location → leave scopes undefined (Accounts defaults to ACCOUNT)
+      }
+    }
     const apiClient = new ApiClient();
-    const response = await apiClient.post(`/api/v1/account-members/invite`, data);
+    const response = await apiClient.post(`/api/v1/account-members/invite`, { ...data, scopes });
     revalidatePath("/team");
     return { responseType: "success", message: "Invitation sent successfully", data: parseStringify(response) };
   } catch (error) {
