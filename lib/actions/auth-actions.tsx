@@ -246,6 +246,8 @@ export const login = async (
     // /me/accounts reflects the new membership and hasInvitedAccess is correct.
     const cookieStore = await cookies();
     const pendingInvite = cookieStore.get("pendingInvite")?.value;
+    // Capture before deletion so we can use it later in the pre-select block.
+    const cameFromInvite = !!pendingInvite;
     if (pendingInvite) {
       try {
         const res = await fetch(
@@ -371,6 +373,103 @@ export const login = async (
       hasInvitedAccess,
     });
     console.log("[LOGIN] Customer session established");
+
+    // Best-effort: pre-select the invited business/location so the user
+    // lands directly in context instead of having to choose at /select-business.
+    // Only fires for invited logins that have exactly one business — for
+    // multi-business users we leave the choice to them. Any failure here is
+    // silently swallowed; the user still reaches /select-business normally.
+    if (cameFromInvite && hasInvitedAccess) {
+      try {
+        const bizHeaders: Record<string, string> = {
+          Authorization: `Bearer ${loginData.accessToken}`,
+          "Content-Type": "application/json",
+          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+        };
+
+        const bizRes = await fetch(
+          `${ACCOUNTS_SERVICE_URL}/api/v1/me/businesses`,
+          { headers: bizHeaders },
+        );
+        if (bizRes.ok) {
+          const bizzes = await bizRes.json();
+          if (Array.isArray(bizzes) && bizzes.length === 1) {
+            const biz = bizzes[0];
+            const isProduction = process.env.NODE_ENV === "production";
+            const cookieOpts = {
+              httpOnly: true,
+              secure: isProduction,
+              sameSite: isProduction ? ("strict" as const) : ("lax" as const),
+            };
+
+            // Mirror the minimalBusiness shape from lib/actions/auth/business.tsx ~line 319
+            const minimalBusiness = {
+              id: biz.id,
+              identifier: biz.identifier ?? biz.slug ?? "",
+              name: biz.name,
+              businessTypeId: biz.businessTypeId ?? "",
+              businessTypeName: biz.businessTypeName ?? "",
+              logoUrl: biz.logoUrl ?? null,
+              active: biz.active,
+              accountId: biz.accountId,
+              countryId: biz.countryId ?? "",
+            };
+
+            cookieStore.set({
+              name: "currentBusiness",
+              value: JSON.stringify(minimalBusiness),
+              ...cookieOpts,
+            });
+
+            // Fetch first location for this business
+            const locRes = await fetch(
+              `${ACCOUNTS_SERVICE_URL}/api/v1/me/locations?businessId=${biz.id}`,
+              { headers: bizHeaders },
+            );
+            if (locRes.ok) {
+              const locs = await locRes.json();
+              if (Array.isArray(locs) && locs.length >= 1) {
+                const loc = locs[0];
+                // Mirror the full location object shape from lib/actions/auth/location.tsx ~line 95
+                const locationObj = {
+                  id: loc.id,
+                  accountId: loc.accountId ?? "",
+                  businessId: loc.businessId ?? biz.id,
+                  businessName: loc.businessName ?? biz.name ?? "",
+                  identifier: loc.identifier ?? loc.id,
+                  name: loc.name,
+                  description: loc.description ?? "",
+                  phoneNumber: loc.phoneNumber ?? "",
+                  email: loc.email ?? "",
+                  active: loc.active,
+                  countryId: loc.countryId ?? "",
+                  region: loc.region ?? "",
+                  district: loc.district ?? "",
+                  ward: loc.ward ?? "",
+                  address: loc.address ?? "",
+                  postalCode: loc.postalCode ?? "",
+                  latitude: loc.latitude ?? null,
+                  longitude: loc.longitude ?? null,
+                  timezone: loc.timezone ?? "",
+                  website: loc.website ?? "",
+                  createdAt: loc.createdAt ?? "",
+                  updatedAt: loc.updatedAt ?? "",
+                };
+                cookieStore.set({
+                  name: "currentLocation",
+                  value: JSON.stringify(locationObj),
+                  ...cookieOpts,
+                });
+                console.log("[LOGIN] Pre-selected invited business/location:", biz.id, loc.id);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // Non-critical — user falls back to /select-business
+        console.warn("[LOGIN] Pre-select invited business/location failed (non-critical):", e);
+      }
+    }
 
     await setSessionPersistence(rememberMe);
 
