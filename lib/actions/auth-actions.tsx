@@ -242,6 +242,48 @@ export const login = async (
       });
     }
 
+    // Auto-accept a pending invitation BEFORE computing routing flags, so
+    // /me/accounts reflects the new membership and hasInvitedAccess is correct.
+    const cookieStore = await cookies();
+    const pendingInvite = cookieStore.get("pendingInvite")?.value;
+    if (pendingInvite) {
+      try {
+        await fetch(
+          `${ACCOUNTS_SERVICE_URL}/api/v1/account-members/${pendingInvite}/accept`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${loginData.accessToken}`,
+              "Content-Type": "application/json",
+              ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+            },
+          },
+        );
+      } catch (e) {
+        console.error("[LOGIN] auto-accept invite failed:", e);
+      } finally {
+        try { cookieStore.delete("pendingInvite"); } catch { /* ok */ }
+      }
+    }
+
+    // Determine whether the user has access to any account they don't own.
+    let hasInvitedAccess = false;
+    try {
+      const meRes = await fetch(`${ACCOUNTS_SERVICE_URL}/api/v1/me/accounts`, {
+        headers: {
+          Authorization: `Bearer ${loginData.accessToken}`,
+          "Content-Type": "application/json",
+          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+        },
+      });
+      if (meRes.ok) {
+        const accounts = (await meRes.json()) as Array<{ owner?: boolean }>;
+        hasInvitedAccess = Array.isArray(accounts) && accounts.some((a) => a?.owner === false);
+      }
+    } catch (e) {
+      console.error("[LOGIN] /me/accounts fetch failed:", e);
+    }
+
     let profileData: any = {};
     let profileFetchError:
       | { status: number; code?: string; message?: string }
@@ -323,6 +365,7 @@ export const login = async (
       countryId: profileData.countryId || profileData.country,
       countryCode: profileData.countryCode,
       theme: profileData.theme,
+      hasInvitedAccess,
     });
     console.log("[LOGIN] Customer session established");
 
