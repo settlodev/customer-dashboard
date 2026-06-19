@@ -55,6 +55,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           token.isBusinessRegistrationComplete as boolean;
         session.user.isLocationRegistrationComplete =
           token.isLocationRegistrationComplete as boolean;
+        session.user.hasInvitedAccess = token.hasInvitedAccess as boolean;
         session.user.accountId = token.accountId as string;
         session.user.countryId = token.countryId as string;
         session.user.countryCode = token.countryCode as string;
@@ -78,6 +79,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         token.emailVerified = u.emailVerified;
         token.isBusinessRegistrationComplete = u.isBusinessRegistrationComplete;
         token.isLocationRegistrationComplete = u.isLocationRegistrationComplete;
+        token.hasInvitedAccess = u.hasInvitedAccess;
         token.accountId = u.accountId;
         token.countryId = u.countryId;
         token.countryCode = u.countryCode;

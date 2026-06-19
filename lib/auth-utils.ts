@@ -138,6 +138,7 @@ export const createAuthTokenFromLogin = async (
     pictureUrl?: string | null;
     isBusinessRegistrationComplete?: boolean;
     isLocationRegistrationComplete?: boolean;
+    hasInvitedAccess?: boolean;
     countryId?: string;
     countryCode?: string;
     theme?: string | null;
@@ -159,6 +160,7 @@ export const createAuthTokenFromLogin = async (
       profileData?.isBusinessRegistrationComplete ?? false,
     isLocationRegistrationComplete:
       profileData?.isLocationRegistrationComplete ?? false,
+    hasInvitedAccess: profileData?.hasInvitedAccess ?? false,
     countryId: profileData?.countryId ?? "",
     countryCode: profileData?.countryCode ?? "",
     theme: profileData?.theme ?? null,
@@ -228,6 +230,7 @@ export const createStaffAuthToken = async (loginResponse: LoginResponse) => {
     emailVerified: true,
     isBusinessRegistrationComplete: true,
     isLocationRegistrationComplete: true,
+    hasInvitedAccess: false,
     countryId: "",
     countryCode: "",
     theme: null,
@@ -256,6 +259,7 @@ export const createAuthToken = async (user: any) => {
       user.isBusinessRegistrationComplete ?? false,
     isLocationRegistrationComplete:
       user.isLocationRegistrationComplete ?? false,
+    hasInvitedAccess: user.hasInvitedAccess ?? false,
     countryId: user.countryId ?? user.country ?? "",
     countryCode: user.countryCode ?? "",
     theme: user.theme ?? null,

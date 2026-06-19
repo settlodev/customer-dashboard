@@ -462,12 +462,12 @@ export async function middleware(request: NextRequest) {
         new URL(VERIFICATION_REDIRECT_URL, request.nextUrl),
       ));
     }
-    if (!authToken!.isBusinessRegistrationComplete) {
+    if (!authToken!.isBusinessRegistrationComplete && !authToken!.hasInvitedAccess) {
       return withRefreshedCookies(NextResponse.redirect(
         new URL(COMPLETE_BUSINESS_REGISTRATION_URL, request.nextUrl),
       ));
     }
-    if (!authToken!.isLocationRegistrationComplete) {
+    if (authToken!.isBusinessRegistrationComplete && !authToken!.isLocationRegistrationComplete) {
       return withRefreshedCookies(NextResponse.redirect(
         new URL(COMPLETE_LOCATION_REGISTRATION_URL, request.nextUrl),
       ));
@@ -496,6 +496,7 @@ export async function middleware(request: NextRequest) {
   if (
     !authToken!.isBusinessRegistrationComplete &&
     !authToken!.isLocationRegistrationComplete &&
+    !authToken!.hasInvitedAccess &&
     pathname !== COMPLETE_BUSINESS_REGISTRATION_URL
   ) {
     return withRefreshedCookies(NextResponse.redirect(

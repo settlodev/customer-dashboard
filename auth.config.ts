@@ -24,6 +24,7 @@ export default {
             emailVerified: credentials.emailVerified === "true" ? new Date() : null,
             isBusinessRegistrationComplete: credentials.isBusinessRegistrationComplete === "true",
             isLocationRegistrationComplete: credentials.isLocationRegistrationComplete === "true",
+            hasInvitedAccess: credentials.hasInvitedAccess === "true",
             countryId: credentials.countryId,
             countryCode: credentials.countryCode,
             accountId: credentials.accountId,

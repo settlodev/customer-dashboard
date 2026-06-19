@@ -11,6 +11,7 @@ export interface CustomerProfileFields {
   pictureUrl?: string | null;
   isBusinessRegistrationComplete?: boolean;
   isLocationRegistrationComplete?: boolean;
+  hasInvitedAccess?: boolean;
   countryId?: string;
   countryCode?: string;
   theme?: string | null;
@@ -51,6 +52,7 @@ export async function establishCustomerSession(
     isLocationRegistrationComplete: String(
       profile.isLocationRegistrationComplete ?? false,
     ),
+    hasInvitedAccess: String(profile.hasInvitedAccess ?? false),
     countryId: profile.countryId || "",
     countryCode: profile.countryCode || "",
     accountId: loginData.accountId || "",

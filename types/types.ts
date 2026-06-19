@@ -105,6 +105,7 @@ export declare interface AuthToken {
     impersonatorId?: string | null;
     /** True iff the user holds `reports:read_all` (location-wide reports). Derived at login. */
     reportsReadAll?: boolean;
+    hasInvitedAccess: boolean;
 }
 
 export declare interface activeBusiness {
@@ -127,6 +128,7 @@ export type ExtendedUser = DefaultSession["user"] & {
     theme: string | null;
     isBusinessRegistrationComplete: boolean;
     isLocationRegistrationComplete: boolean;
+    hasInvitedAccess: boolean;
     accountId: string;
     countryId: string;
     countryCode: string;
