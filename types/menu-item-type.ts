@@ -11,6 +11,8 @@ export declare interface MenuItemArgType {
      * still hit the upgrade gate if they navigate directly.
      */
     hasDepartmentsModule?: boolean;
+    /** When false, location-wide report nav items are filtered out (read_own users). Default true. */
+    reportsReadAll?: boolean;
 }
 
 export type MenuType = 'normal' | 'warehouse';

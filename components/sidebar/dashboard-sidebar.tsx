@@ -115,6 +115,7 @@ interface DashboardSidebarContentProps {
   user: ExtendedUser | null;
   onClose?: () => void;
   isMobile?: boolean;
+  reportsReadAll?: boolean;
 }
 
 function getSectionIcon(name: string) {
@@ -160,12 +161,14 @@ function DashboardSidebarContent({
   user,
   onClose,
   isMobile,
+  reportsReadAll = true,
 }: DashboardSidebarContentProps) {
   const pathname = usePathname();
   const sections = menuItems({
     menuType: "normal",
     isCurrentItem: false,
     hasMultipleDestinations: data.hasMultipleDestinations,
+    reportsReadAll,
   });
 
   const [openIndex, setOpenIndex] = useState<number>(-1);
@@ -345,11 +348,13 @@ function DashboardSidebarContent({
 interface DashboardSidebarShellProps {
   data: BusinessPropsType;
   user: ExtendedUser | null;
+  reportsReadAll?: boolean;
 }
 
 export function DashboardSidebarShell({
   data,
   user,
+  reportsReadAll = true,
 }: DashboardSidebarShellProps) {
   const { mobileOpen, setMobileOpen } = useSidebar();
 
@@ -357,7 +362,7 @@ export function DashboardSidebarShell({
     <>
       {/* Desktop floating sidebar */}
       <aside className="my-3 ml-3 hidden w-[296px] flex-shrink-0 overflow-hidden rounded-2xl border border-line bg-card shadow-[0_1px_0_rgba(20,17,12,0.02),0_14px_40px_-16px_rgba(20,17,12,0.10),0_4px_10px_-4px_rgba(20,17,12,0.05)] lg:flex lg:flex-col">
-        <DashboardSidebarContent data={data} user={user} />
+        <DashboardSidebarContent data={data} user={user} reportsReadAll={reportsReadAll} />
       </aside>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -374,6 +379,7 @@ export function DashboardSidebarShell({
             data={data}
             user={user}
             isMobile
+            reportsReadAll={reportsReadAll}
             onClose={() => setMobileOpen(false)}
           />
         </SheetContent>

@@ -1,5 +1,6 @@
 // types/menu_items.ts
 import { MenuItemArgType } from "@/types/menu-item-type";
+import { LOCATION_WIDE_REPORT_LINKS } from "@/lib/reports-access";
 
 export const menuItems = (
   args?: MenuItemArgType,
@@ -21,6 +22,7 @@ const getNormalMenuItems = (
   // until entitlements are known. The page-level UpgradeGate is the
   // backstop when a user clicks through with an underprivileged plan.
   const hasDepartmentsModule = args?.hasDepartmentsModule !== false;
+  const reportsReadAll = args?.reportsReadAll !== false; // default true
   return [
     // Top-level link — appears as its own row in the sidebar (no submenu).
     {
@@ -107,7 +109,7 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
-      ],
+      ].filter((it) => reportsReadAll || !LOCATION_WIDE_REPORT_LINKS.includes(it.link)),
     },
 
     // Inventory Management

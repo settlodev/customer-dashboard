@@ -153,7 +153,11 @@ export default async function RootLayout({
                 <ImpersonationBanner email={authToken.email} />
               )}
               <div className="flex flex-1 min-h-0 overflow-hidden">
-                <DashboardSidebarShell data={businessData} user={user} />
+                <DashboardSidebarShell
+                  data={businessData}
+                  user={user}
+                  reportsReadAll={authToken?.reportsReadAll ?? true}
+                />
 
                 <main className="flex flex-1 min-w-0 flex-col overflow-hidden">
                   {/* Mobile-only top bar (hamburger + logo). Lives here
