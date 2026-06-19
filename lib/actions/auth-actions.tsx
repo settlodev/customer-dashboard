@@ -248,7 +248,7 @@ export const login = async (
     const pendingInvite = cookieStore.get("pendingInvite")?.value;
     if (pendingInvite) {
       try {
-        await fetch(
+        const res = await fetch(
           `${ACCOUNTS_SERVICE_URL}/api/v1/account-members/${pendingInvite}/accept`,
           {
             method: "POST",
@@ -259,6 +259,7 @@ export const login = async (
             },
           },
         );
+        if (!res.ok) console.error("[LOGIN] auto-accept invite returned", res.status);
       } catch (e) {
         console.error("[LOGIN] auto-accept invite failed:", e);
       } finally {
@@ -279,6 +280,8 @@ export const login = async (
       if (meRes.ok) {
         const accounts = (await meRes.json()) as Array<{ owner?: boolean }>;
         hasInvitedAccess = Array.isArray(accounts) && accounts.some((a) => a?.owner === false);
+      } else {
+        console.error("[LOGIN] /me/accounts returned", meRes.status);
       }
     } catch (e) {
       console.error("[LOGIN] /me/accounts fetch failed:", e);

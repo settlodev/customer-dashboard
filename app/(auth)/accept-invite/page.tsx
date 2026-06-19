@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getPublicInvitation } from "@/lib/actions/account-member-actions";
-import { getAuthToken } from "@/lib/auth-utils";
+import { getAuthToken, deleteAuthCookie } from "@/lib/auth-utils";
 import { acceptInvitation } from "@/lib/actions/account-member-actions";
 import InvitationOutcome from "./InvitationOutcome";
 
@@ -55,8 +55,19 @@ export default async function AcceptInvitePage({
   const token = await getAuthToken();
   if (token?.accessToken && token?.emailVerified) {
     await acceptInvitation(member);
-    try { cookieStore.delete("pendingInvite"); } catch { /* ok */ }
-    redirect("/select-business");
+    const emailParam = encodeURIComponent(invitation.email || email || "");
+    // If they already have somewhere to land (own business set up) or the token
+    // already reflects invited access, go straight in.
+    if (token.isBusinessRegistrationComplete || token.hasInvitedAccess) {
+      try { cookieStore.delete("pendingInvite"); } catch { /* ok */ }
+      redirect("/select-business");
+    }
+    // Otherwise the session predates this invite AND their own account is
+    // incomplete, so middleware would trap them at /business-registration.
+    // Clear the session and send them through login so hasInvitedAccess is
+    // recomputed (pendingInvite is kept; the login re-accept is a harmless no-op).
+    await deleteAuthCookie();
+    redirect(`/login?email=${emailParam}`);
   }
 
   const emailParam = encodeURIComponent(invitation.email || email || "");
