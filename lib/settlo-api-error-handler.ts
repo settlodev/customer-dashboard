@@ -350,12 +350,20 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
         const errorDetails = getErrorDetails(error);
         const errorMetadata = getErrorMetadata(error);
 
-        if (error.code === 'ECONNABORTED' || error.code === 'NETWORK_ERROR') {
+        if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT' || error.code === 'NETWORK_ERROR') {
+            // ECONNABORTED covers axios's own request-timeout abort (the instance
+            // timeout set in ApiClient) as well as client-side cancels. Tell the
+            // two apart so a slow server reads as a timeout, not a dead connection.
+            const isTimeout =
+                error.code === 'ETIMEDOUT' ||
+                (error.code === 'ECONNABORTED' && /timeout/i.test(error.message ?? ''));
             return createErrorResponse(
                 0,
                 ErrorCodes.NETWORK_ERROR,
-                'Network error occurred. Please check your connection.',
-                { timeout: error.config?.timeout }
+                isTimeout
+                    ? 'The request timed out — the server took too long to respond. Please try again.'
+                    : 'Network error occurred. Please check your connection.',
+                { timeout: error.config?.timeout, code: error.code }
             );
         }
 

@@ -8,10 +8,13 @@ import { FormResponse } from "@/types/types";
 
 /**
  * Admin/ops: re-publish a location's product catalogue so the Reports Service
- * backfills `dim_product.categories` (powers the "Sales by category/department"
- * reports). Hits the inventory admin endpoint with the staff token — it's gated
- * on the internal admin permission, NOT the customer `PERM_inventory:update`.
- * Idempotent; safe to re-run.
+ * backfills its `dim_product` projection. One resync does BOTH in a single pass
+ * — it re-publishes the full product, so Reports captures the category/department
+ * taxonomy (powers the "Sales by category/department" reports) AND the product
+ * images (`imageUrls`/variant `imageUrl` → top-selling-items thumbnails) from the
+ * same PRODUCT_RESYNC event. Hits the inventory admin endpoint with the staff
+ * token — it's gated on the internal admin permission, NOT the customer
+ * `PERM_inventory:update`. Idempotent; safe to re-run.
  */
 export async function resyncLocationCatalog(
   locationId: string,
@@ -26,7 +29,7 @@ export async function resyncLocationCatalog(
     revalidatePath("/admin/locations");
     return parseStringify({
       responseType: "success",
-      message: `Catalog resync started — ${n.toLocaleString()} product${n === 1 ? "" : "s"} queued.`,
+      message: `Catalog resync started — ${n.toLocaleString()} product${n === 1 ? "" : "s"} queued. Reporting categories & product images will backfill.`,
       data: { count: n },
     });
   } catch (error: unknown) {
@@ -42,8 +45,10 @@ export async function resyncLocationCatalog(
 /**
  * Admin/ops: re-publish EVERY location's catalogue platform-wide. Heavy — the
  * backend gates it on `ROLE_SYSTEM_ADMIN` (super admins only), and the button
- * is hidden for everyone else. Idempotent (re-upserts each product's single
- * dim row), so safe to re-run.
+ * is hidden for everyone else. Re-publishing the full product backfills the
+ * Reports Service's `dim_product` — category/department taxonomy AND product
+ * images — in one pass. Idempotent (re-upserts each product's single dim row),
+ * so safe to re-run.
  */
 export async function resyncAllCatalogs(): Promise<
   FormResponse<{ count: number }>
@@ -58,7 +63,7 @@ export async function resyncAllCatalogs(): Promise<
     revalidatePath("/admin/locations");
     return parseStringify({
       responseType: "success",
-      message: `Platform-wide resync started — ${n.toLocaleString()} product${n === 1 ? "" : "s"} queued.`,
+      message: `Platform-wide resync started — ${n.toLocaleString()} product${n === 1 ? "" : "s"} queued. Reporting categories & product images will backfill.`,
       data: { count: n },
     });
   } catch (error: unknown) {

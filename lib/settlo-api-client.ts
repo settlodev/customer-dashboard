@@ -48,6 +48,19 @@ const sharedHttpsAgent = new https.Agent({
   rejectUnauthorized: !IS_DEV,
 });
 
+// Upper bound on how long any single upstream request may hang. Without it a
+// slow or dead backend keeps the Server Action awaiting until Vercel kills the
+// whole function — an unhandled rejection that crashes the page (exactly what
+// the catalogue resync hit). With it, axios aborts first (code ECONNABORTED)
+// and handleSettloApiError turns that into a normal error toast. Keep it BELOW
+// the route's Vercel function maxDuration so axios fires before the platform
+// kill. Tunable per-environment via SETTLO_API_TIMEOUT_MS; an individual call
+// can still override `timeout` in its request config (e.g. a long export).
+const API_TIMEOUT_MS = (() => {
+  const n = Number(process.env.SETTLO_API_TIMEOUT_MS);
+  return Number.isFinite(n) && n > 0 ? n : 30_000;
+})();
+
 // ── Module-level refresh lock ───────────────────────────────────────
 // Prevents concurrent token refreshes across ApiClient instances within
 // the same server-action invocation.
@@ -74,7 +87,7 @@ async function refreshAccessToken(currentRefreshToken: string): Promise<{
       const res = await axios.post(
         `${AUTH_SERVICE_URL}/auth/token-refresh`,
         { refreshToken: currentRefreshToken },
-        { headers, httpsAgent: sharedHttpsAgent },
+        { headers, httpsAgent: sharedHttpsAgent, timeout: API_TIMEOUT_MS },
       );
 
       const newAccess = res.data?.accessToken;
@@ -382,6 +395,7 @@ class ApiClient {
 
     this.instance = axios.create({
       httpsAgent: sharedHttpsAgent,
+      timeout: API_TIMEOUT_MS,
     });
 
     // ── Request interceptor ───────────────────────────────────────
