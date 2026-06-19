@@ -28,6 +28,7 @@ import {
   extractBusinessId,
   extractInternalPermissions,
   extractInternalRole,
+  extractPermissions,
   extractSubjectType,
   extractSubscriptionStatus,
 } from "@/lib/jwt-utils";
@@ -166,6 +167,7 @@ export const createAuthTokenFromLogin = async (
     businessId: extractBusinessId(loginResponse.accessToken),
     impersonating: opts?.impersonating ?? false,
     impersonatorId: opts?.impersonatorId ?? null,
+    reportsReadAll: extractPermissions(loginResponse.accessToken).includes("reports:read_all"),
   };
 
   await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData));
@@ -350,4 +352,16 @@ export const getPendingVerification = async () => {
 export const clearPendingVerification = async () => {
   const cookieStore = await cookies();
   cookieStore.delete("pendingVerification");
+};
+
+/**
+ * Server guard for a location-wide report page: redirects a user without
+ * `reports:read_all` back to /dashboard (they must not land on an all-staff
+ * report). Call as the first statement of each location-wide report page.
+ */
+export const requireReportsReadAll = async (): Promise<void> => {
+  const token = await getAuthToken();
+  if (!token?.reportsReadAll) {
+    redirect("/dashboard");
+  }
 };

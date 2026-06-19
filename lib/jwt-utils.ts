@@ -66,6 +66,20 @@ export function extractInternalPermissions(accessToken: string): string[] {
   return perms.filter((p): p is string => typeof p === "string");
 }
 
+/**
+ * Business-permission keys from a USER access token's `permissions` claim,
+ * e.g. ["reports:read_all", "orders:read", …]. Mirror of
+ * extractInternalPermissions (which reads the STAFF `internal_permissions`
+ * claim). Returns [] if the claim is absent or not a string array.
+ */
+export function extractPermissions(accessToken: string): string[] {
+  const claims = decodeJwtClaims(accessToken);
+  if (!claims) return [];
+  const perms = (claims as Record<string, unknown>).permissions;
+  if (!Array.isArray(perms)) return [];
+  return perms.filter((p): p is string => typeof p === "string");
+}
+
 export function extractSubjectType(accessToken: string): SubjectType | null {
   const claims = decodeJwtClaims(accessToken);
   if (!claims) return null;
