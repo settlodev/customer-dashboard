@@ -70,6 +70,13 @@ const Dashboard: React.FC<Props> = ({
   // payment-method breakdown together for the active range. Each is resilient
   // on its own so one failing source doesn't blank the others.
   const loadAll = useCallback(async (opts?: { silent?: boolean }) => {
+    // Without reports:read_all the report-backed cards aren't rendered, so skip
+    // the (now location-wide / 403'd) overview/top-selling/payment fetches
+    // entirely — for the initial load, date-range changes, and realtime refresh.
+    if (!reportsReadAll) {
+      setIsLoading(false);
+      return;
+    }
     try {
       if (!opts?.silent) setIsLoading(true);
       const { from, to } = filterRef.current;
@@ -91,7 +98,7 @@ const Dashboard: React.FC<Props> = ({
     } finally {
       if (!opts?.silent) setIsLoading(false);
     }
-  }, []);
+  }, [reportsReadAll]);
 
   useEffect(() => {
     void loadAll();
