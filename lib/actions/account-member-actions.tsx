@@ -165,6 +165,29 @@ export const acceptInvitation = async (memberId: string): Promise<FormResponse> 
   }
 };
 
+export interface PublicInvitation {
+  email: string;
+  invitedToName: string;
+  accountName: string;
+  status: "PENDING" | "ACCEPTED" | "REVOKED";
+  hasAccount: boolean;
+}
+
+export const getPublicInvitation = async (
+  memberId: string,
+): Promise<PublicInvitation | null> => {
+  try {
+    const res = await fetch(
+      `${process.env.ACCOUNTS_SERVICE_URL || process.env.SERVICE_URL || ""}/api/v1/public/account-members/invitations/${memberId}`,
+      { headers: { "Content-Type": "application/json" }, cache: "no-store" },
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as PublicInvitation;
+  } catch {
+    return null;
+  }
+};
+
 export const declineInvitation = async (memberId: string): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient();
