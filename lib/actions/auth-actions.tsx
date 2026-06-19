@@ -798,6 +798,7 @@ export const getUserById = async (
 export const register = async (
   credentials: z.infer<typeof RegisterSchema>,
   recaptchaToken?: string,
+  invitationMemberId?: string,
 ): Promise<FormResponse> => {
   const validatedData = RegisterSchema.safeParse(credentials);
 
@@ -831,6 +832,7 @@ export const register = async (
       gender: validatedData.data.gender,
       accountType: "OWNER",
       referredByCode: validatedData.data.referredByCode || undefined,
+      invitationMemberId: invitationMemberId || undefined,
     };
     if (recaptchaToken) {
       payload.recaptchaToken = recaptchaToken;

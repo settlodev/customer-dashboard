@@ -23,6 +23,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useCallback, useEffect, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import { FormResponse } from "@/types/types";
 import { FormError } from "@/components/widgets/form-error";
 import Link from "next/link";
@@ -54,13 +55,16 @@ function LoginForm() {
   const [mfaRequired, setMfaRequired] = useState<boolean>(false);
   const [mfaCode, setMfaCode] = useState<string>("");
 
+  const searchParams = useSearchParams();
+  const emailFromQuery = searchParams.get("email") ?? "";
+
   useEffect(() => {
     deleteAuthCookie();
   }, []);
 
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: emailFromQuery, password: "" },
     mode: "onSubmit",
     reValidateMode: "onChange",
     shouldUnregister: false,
