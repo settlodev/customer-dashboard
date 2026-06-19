@@ -1,5 +1,6 @@
 import { format, subDays } from "date-fns";
 import { CircleDollarSign, Receipt, TrendingDown, Wallet } from "lucide-react";
+import { requireReportsReadAll } from "@/lib/auth-utils";
 
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -25,6 +26,7 @@ export default async function ExpenseReportPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
+  await requireReportsReadAll();
   const today = format(new Date(), "yyyy-MM-dd");
   const thirtyDaysAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
   const startDate = params.startDate ?? thirtyDaysAgo;

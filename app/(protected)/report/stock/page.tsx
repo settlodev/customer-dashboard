@@ -1,4 +1,5 @@
 import { format, subDays } from "date-fns";
+import { requireReportsReadAll } from "@/lib/auth-utils";
 
 import {
   PageBody,
@@ -44,6 +45,7 @@ type Params = {
 
 export default async function StockReportPage({ searchParams }: Params) {
   const resolved = await searchParams;
+  await requireReportsReadAll();
   const tab: StockTab = VALID_TABS.includes(resolved.tab as StockTab)
     ? (resolved.tab as StockTab)
     : "overview";

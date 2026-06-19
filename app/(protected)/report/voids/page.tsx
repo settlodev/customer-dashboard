@@ -1,5 +1,6 @@
 import { endOfMonth, format, startOfMonth } from "date-fns";
 import { Ban, CircleDollarSign, ListX, Tag } from "lucide-react";
+import { requireReportsReadAll } from "@/lib/auth-utils";
 
 import {
   PageBody,
@@ -47,6 +48,7 @@ const topReason = (reasons: VoidReasonTally[]): VoidReasonTally | null =>
 
 export default async function Page({ searchParams }: Params) {
   const resolved = await searchParams;
+  await requireReportsReadAll();
   const q = resolved.search ?? "";
   const page = Number(resolved.page) || 1;
   const limit = Number(resolved.limit) || 10;
