@@ -34,6 +34,8 @@ type Props = {
   inventorySummary: RsInventoryDashboardSummary | null;
   /** Business-wide prepaid-credit summary, fetched server-side. */
   prepaid: PrepaymentAnalyticsOverview | null;
+  /** When false (read_own), the report-backed cards (overview/top-selling/payment) are hidden. */
+  reportsReadAll?: boolean;
 };
 
 const TOP_SELLING_LIMIT = 5;
@@ -42,6 +44,7 @@ const Dashboard: React.FC<Props> = ({
   locationId,
   inventorySummary,
   prepaid,
+  reportsReadAll = true,
 }) => {
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [topSelling, setTopSelling] = useState<TopSellingReport | null>(null);
@@ -117,18 +120,22 @@ const Dashboard: React.FC<Props> = ({
       />
 
       <PageBody>
-        <DashboardHeroCards overview={overview} loading={isLoading} />
-        <SalesKpiStrip
-          overview={overview}
-          topSeller={topSelling?.items?.[0] ?? null}
-          loading={isLoading}
-        />
+        {reportsReadAll && <DashboardHeroCards overview={overview} loading={isLoading} />}
+        {reportsReadAll && (
+          <SalesKpiStrip
+            overview={overview}
+            topSeller={topSelling?.items?.[0] ?? null}
+            loading={isLoading}
+          />
+        )}
         <InventoryKpiStrip summary={inventorySummary} />
         <PrepaymentKpiStrip summary={prepaid} />
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <TopSellingCard report={topSelling} loading={isLoading} />
-          <PaymentMethodsCard data={payments} loading={isLoading} />
-        </div>
+        {reportsReadAll && (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <TopSellingCard report={topSelling} loading={isLoading} />
+            <PaymentMethodsCard data={payments} loading={isLoading} />
+          </div>
+        )}
       </PageBody>
 
       {locationId && (
