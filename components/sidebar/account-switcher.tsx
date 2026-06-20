@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
+const ACCOUNT_CTX_CACHE_KEY = "settlo:accountSwitcherCtx";
+
 function accountInitials(name?: string | null) {
   if (!name) return "AC";
   const parts = name.trim().split(/\s+/);
@@ -45,11 +47,35 @@ export function AccountSwitcher() {
 
   useEffect(() => {
     let active = true;
+
+    // Try cache first — avoids a server round-trip on every popover open.
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem(ACCOUNT_CTX_CACHE_KEY);
+        if (cached) {
+          const ctx = JSON.parse(cached) as {
+            accounts: MeAccount[];
+            currentAccountId: string | null;
+          };
+          setAccounts(ctx.accounts);
+          setCurrentAccountId(ctx.currentAccountId);
+          return () => { active = false; };
+        }
+      } catch {
+        // Corrupt or missing — fall through to server fetch
+      }
+    }
+
     getMyAccountsContext()
       .then((ctx) => {
         if (!active) return;
         setAccounts(ctx.accounts);
         setCurrentAccountId(ctx.currentAccountId);
+        try {
+          sessionStorage.setItem(ACCOUNT_CTX_CACHE_KEY, JSON.stringify(ctx));
+        } catch {
+          // sessionStorage unavailable — fine, just won't cache
+        }
       })
       .catch((error) => Sentry.captureException(error));
     return () => {
@@ -63,8 +89,9 @@ export function AccountSwitcher() {
     try {
       const res = await switchAccount(confirm.id);
       if (res.responseType === "success") {
-        // New account context — send them to pick a business in it. A hard
-        // nav guarantees the re-minted token + cleared destination take hold.
+        // Invalidate the cache so the next mount re-fetches with the new
+        // current account; then hard-nav so the re-minted token takes hold.
+        try { sessionStorage.removeItem(ACCOUNT_CTX_CACHE_KEY); } catch {}
         window.location.href = "/select-business";
         return;
       }

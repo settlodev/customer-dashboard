@@ -215,19 +215,24 @@ export const switchAccount = async (accountId: string): Promise<FormResponse> =>
       // Best-effort — proceed with tokens only
     }
 
-    // Replace the auth token with the new account's tokens and profile
+    // Replace the auth token with the new account's tokens and profile.
+    // Identity fields (name/phone/picture/theme) come from the EXISTING token —
+    // the logged-in user's identity must not change across account switches.
+    // Only account-context fields (registration flags, country) change.
+    const existing = await getAuthToken();
     await createAuthTokenFromLogin(loginData, {
-      firstName: profileData.firstName,
-      lastName: profileData.lastName,
-      phoneNumber: profileData.phoneNumber,
-      pictureUrl: profileData.pictureUrl,
+      firstName: existing?.firstName || profileData.firstName,
+      lastName: existing?.lastName || profileData.lastName,
+      phoneNumber: existing?.phoneNumber || profileData.phoneNumber,
+      pictureUrl: existing?.pictureUrl ?? profileData.pictureUrl,
+      theme: existing?.theme ?? profileData.theme,
+      // account-context (the NEW account's) — these legitimately change on switch:
       isBusinessRegistrationComplete:
         profileData.isBusinessRegistrationComplete ?? false,
       isLocationRegistrationComplete:
         profileData.isLocationRegistrationComplete ?? false,
       countryId: profileData.countryId,
       countryCode: profileData.countryCode,
-      theme: profileData.theme,
     });
 
     revalidatePath("/", "layout");
