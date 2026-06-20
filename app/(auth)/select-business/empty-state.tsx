@@ -1,7 +1,7 @@
 "use client";
 
 import * as Sentry from "@sentry/nextjs";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Building2, ChevronRight, Loader2Icon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +23,8 @@ export function SelectBusinessEmptyState({
   others: MeAccount[];
 }) {
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [autoSwitching, setAutoSwitching] = useState(false);
+  const autoSwitchRan = useRef(false);
   const { toast } = useToast();
 
   const handleSwitch = async (account: MeAccount) => {
@@ -39,6 +41,7 @@ export function SelectBusinessEmptyState({
     } catch (error) {
       Sentry.captureException(error);
       setPendingId(null);
+      setAutoSwitching(false);
       toast({
         variant: "destructive",
         title: "Couldn't switch account",
@@ -46,6 +49,31 @@ export function SelectBusinessEmptyState({
       });
     }
   };
+
+  // Auto-switch into the sole other account (invited-user fast-path).
+  // Session guard prevents A↔C ping-pong when both accounts are empty.
+  useEffect(() => {
+    if (others.length !== 1 || autoSwitchRan.current) return;
+    if (typeof window !== "undefined") {
+      if (sessionStorage.getItem("invitedAutoSwitch") === "1") return;
+      sessionStorage.setItem("invitedAutoSwitch", "1");
+    }
+    autoSwitchRan.current = true;
+    setAutoSwitching(true);
+    handleSwitch(others[0]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Full-page loader while auto-switching into the sole other account.
+  if (autoSwitching) {
+    return (
+      <div className="flex items-center justify-center flex-col gap-3 py-20">
+        <Loader2Icon className="w-6 h-6 text-primary animate-spin" />
+        <p className="text-sm text-primary font-medium">
+          Taking you to {others[0]?.name}…
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full max-w-md mx-auto">
