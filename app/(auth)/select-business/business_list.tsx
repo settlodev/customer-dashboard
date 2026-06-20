@@ -47,6 +47,7 @@ const BusinessList = ({ businesses, currentAccountId }: BusinessListProps) => {
         // it first so the re-minted auth cookie is in place before the
         // subsequent server actions (refreshBusiness, fetchAllLocations) run.
         if (
+          currentAccountId &&
           selectedBusiness.accountId &&
           selectedBusiness.accountId !== currentAccountId
         ) {
