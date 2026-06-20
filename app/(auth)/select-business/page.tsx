@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/alert";
 import { getBusinessDropDown } from "@/lib/actions/business/get-current-business";
 import RetryButton from "@/app/(auth)/select-business/retry-button";
+import { getMyAccountsContext } from "@/lib/actions/profile-actions";
+import { SelectBusinessEmptyState } from "@/app/(auth)/select-business/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -62,8 +64,13 @@ async function BusinessPageContent() {
     );
   }
 
-  // Genuine "no businesses on this account" — safe to send them to registration.
   if (data.length === 0) {
+    const { accounts, currentAccountId } = await getMyAccountsContext();
+    const others = accounts.filter((a) => a.id !== currentAccountId);
+    if (others.length > 0) {
+      return <SelectBusinessEmptyState others={others} />;
+    }
+    // Genuine "no businesses and no other accounts" — new owner.
     redirect("/business-registration");
   }
 
