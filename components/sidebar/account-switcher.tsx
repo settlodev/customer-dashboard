@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-const ACCOUNT_CTX_CACHE_KEY = "settlo:accountSwitcherCtx";
+export const ACCOUNT_CTX_CACHE_KEY = "settlo:accountSwitcherCtx";
 
 function accountInitials(name?: string | null) {
   if (!name) return "AC";

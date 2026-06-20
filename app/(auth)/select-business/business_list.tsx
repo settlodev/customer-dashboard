@@ -12,6 +12,7 @@ import { refreshBusiness } from "@/lib/actions/business/refresh";
 import { switchToLocation } from "@/lib/actions/destination";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { switchAccount } from "@/lib/actions/profile-actions";
+import { ACCOUNT_CTX_CACHE_KEY } from "@/components/sidebar/account-switcher";
 
 interface BusinessListProps {
   businesses: Business[];
@@ -66,6 +67,9 @@ const BusinessList = ({ businesses, currentAccountId }: BusinessListProps) => {
             setPendingIndex(null);
             return;
           }
+          // Invalidate the account-switcher cache so the sidebar re-fetches
+          // and highlights the correct account after this cross-account switch.
+          try { sessionStorage.removeItem(ACCOUNT_CTX_CACHE_KEY); } catch { /* ok */ }
         }
 
         await refreshBusiness(selectedBusiness);
