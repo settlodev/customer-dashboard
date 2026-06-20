@@ -54,7 +54,7 @@ export const changeEmail = async (
 ): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    await apiClient.post(`/profile/email/change`, { userId, newEmail, currentPassword });
+    await apiClient.post(`/auth/profile/email/change`, { userId, newEmail, currentPassword });
     return { responseType: "success", message: "Email change initiated. Check your new email for verification." };
   } catch (error) {
     return {
@@ -68,7 +68,7 @@ export const changeEmail = async (
 export const confirmEmailChange = async (token: string): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    await apiClient.post(`/profile/email/change/confirm/token`, { token });
+    await apiClient.post(`/auth/profile/email/change/confirm/token`, { token });
     return { responseType: "success", message: "Email changed successfully" };
   } catch (error) {
     return {
@@ -85,7 +85,7 @@ export const confirmEmailChangeByCode = async (
 ): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    await apiClient.post(`/profile/email/change/confirm/code`, { userId, code });
+    await apiClient.post(`/auth/profile/email/change/confirm/code`, { userId, code });
     return { responseType: "success", message: "Email changed successfully" };
   } catch (error) {
     return {
@@ -96,10 +96,10 @@ export const confirmEmailChangeByCode = async (
   }
 };
 
-export const cancelEmailChange = async (userId: string): Promise<FormResponse> => {
+export const cancelEmailChange = async (_userId: string): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    await apiClient.delete(`/profile/email/change/${userId}`);
+    await apiClient.delete(`/auth/profile/email/change`);
     return { responseType: "success", message: "Email change cancelled" };
   } catch (error) {
     return {
@@ -117,7 +117,7 @@ export const addPhone = async (
 ): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    await apiClient.post(`/profile/phone`, { userId, phoneNumber, region });
+    await apiClient.post(`/auth/profile/phone`, { userId, phoneNumber, region });
     return { responseType: "success", message: "Phone number added. Check your phone for verification." };
   } catch (error) {
     return {
@@ -135,7 +135,7 @@ export const changePhone = async (
 ): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    await apiClient.post(`/profile/phone/change`, { userId, newPhoneNumber, region });
+    await apiClient.post(`/auth/profile/phone/change`, { userId, newPhoneNumber, region });
     return { responseType: "success", message: "Phone change initiated. Check your new phone for verification." };
   } catch (error) {
     return {
@@ -153,7 +153,7 @@ export const changePassword = async (
 ): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    await apiClient.put(`/profile/password`, { userId, currentPassword, newPassword });
+    await apiClient.put(`/auth/profile/password`, { userId, currentPassword, newPassword });
     return { responseType: "success", message: "Password changed successfully" };
   } catch (error) {
     return {
@@ -170,7 +170,7 @@ export const setPassword = async (
 ): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    await apiClient.post(`/profile/password`, { userId, newPassword });
+    await apiClient.post(`/auth/profile/password`, { userId, newPassword });
     return { responseType: "success", message: "Password set successfully" };
   } catch (error) {
     return {
