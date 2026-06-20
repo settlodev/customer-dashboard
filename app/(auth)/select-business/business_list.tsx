@@ -185,14 +185,12 @@ const BusinessList = ({ businesses, currentAccountId }: BusinessListProps) => {
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  <Globe2 className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="truncate">
-                    {!bus.owner && bus.accountName
-                      ? bus.accountName
-                      : bus.businessTypeName}
-                  </span>
-                </div>
+                {!bus.owner && bus.accountName && (
+                  <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    <Globe2 className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">{bus.accountName}</span>
+                  </div>
+                )}
               </div>
               <div className="flex-shrink-0">
                 {pendingIndex === index ? (
