@@ -12,10 +12,9 @@ import {
   AlertIcon,
   AlertTitle,
 } from "@/components/ui/alert";
-import { getBusinessDropDown } from "@/lib/actions/business/get-current-business";
+import { getAllBusinesses } from "@/lib/actions/business/get-current-business";
 import RetryButton from "@/app/(auth)/select-business/retry-button";
 import { getMyAccountsContext } from "@/lib/actions/profile-actions";
-import { SelectBusinessEmptyState } from "@/app/(auth)/select-business/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +27,9 @@ function BusinessPageLoading() {
 }
 
 async function BusinessPageContent() {
-  let data: Awaited<ReturnType<typeof getBusinessDropDown>>;
+  let data: Awaited<ReturnType<typeof getAllBusinesses>>;
   try {
-    data = await getBusinessDropDown();
+    data = await getAllBusinesses();
   } catch (error) {
     if (
       error instanceof Error &&
@@ -65,19 +64,16 @@ async function BusinessPageContent() {
   }
 
   if (data.length === 0) {
-    const { accounts, currentAccountId } = await getMyAccountsContext();
-    const others = accounts.filter((a) => a.id !== currentAccountId);
-    if (others.length > 0) {
-      return <SelectBusinessEmptyState others={others} />;
-    }
-    // Genuine "no businesses and no other accounts" — new owner.
+    // No businesses across any account → genuine new owner.
     redirect("/business-registration");
   }
 
-  // Pass all businesses to the client component.
-  // Auto-selection (single business, single location → dashboard)
-  // is handled client-side where server actions can set cookies.
-  return <BusinessSelector businesses={data} />;
+  const { currentAccountId } = await getMyAccountsContext();
+
+  // Pass all businesses (owned-first, as returned by the endpoint) to the
+  // client component. Auto-selection and cross-account switching are handled
+  // client-side where server actions can set cookies.
+  return <BusinessSelector businesses={data} currentAccountId={currentAccountId} />;
 }
 
 export default async function SelectBusinessPage() {

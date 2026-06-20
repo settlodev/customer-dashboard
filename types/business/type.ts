@@ -29,6 +29,10 @@ export declare interface Business {
   baseCurrency?: string;
   createdAt: string;
   updatedAt: string;
+  // Cross-account fields — provided by /api/v1/me/all-businesses; absent on
+  // single-account endpoints such as /me/businesses.
+  owner?: boolean;
+  accountName?: string;
 }
 
 export declare interface MinimalBusiness {

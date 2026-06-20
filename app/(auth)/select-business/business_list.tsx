@@ -11,8 +11,14 @@ import Image from "next/image";
 import { refreshBusiness } from "@/lib/actions/business/refresh";
 import { switchToLocation } from "@/lib/actions/destination";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
+import { switchAccount } from "@/lib/actions/profile-actions";
 
-const BusinessList = ({ businesses }: { businesses: Business[] }) => {
+interface BusinessListProps {
+  businesses: Business[];
+  currentAccountId: string | null;
+}
+
+const BusinessList = ({ businesses, currentAccountId }: BusinessListProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [pendingIndex, setPendingIndex] = useState<number | null>(null);
@@ -37,6 +43,30 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
       setIsRedirecting(true);
 
       try {
+        // If the selected business belongs to a different account, switch into
+        // it first so the re-minted auth cookie is in place before the
+        // subsequent server actions (refreshBusiness, fetchAllLocations) run.
+        if (
+          selectedBusiness.accountId &&
+          selectedBusiness.accountId !== currentAccountId
+        ) {
+          const switchResult = await switchAccount(selectedBusiness.accountId);
+          if (switchResult.responseType !== "success") {
+            Sentry.captureException(
+              new Error(switchResult.message || "Account switch failed"),
+            );
+            toast({
+              variant: "destructive",
+              title: "Couldn't switch account",
+              description: "Please try again in a moment.",
+            });
+            setIsRedirecting(false);
+            setIsLoading(false);
+            setPendingIndex(null);
+            return;
+          }
+        }
+
         await refreshBusiness(selectedBusiness);
 
         // Check if this business has only one location — skip select-location.
@@ -76,7 +106,7 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
         });
       }
     },
-    [isLoading, isRedirecting, toast, router],
+    [isLoading, isRedirecting, toast, router, currentAccountId],
   );
 
   // Show loading while auto-selecting single business
@@ -137,13 +167,29 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
                 )}
               </div>
               <div className="flex-grow min-w-0">
-                <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100">
-                  {bus.name}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                    {bus.name}
+                  </h3>
+                  {bus.owner !== undefined && (
+                    <span
+                      className={cn(
+                        "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none",
+                        bus.owner
+                          ? "bg-primary/10 text-primary"
+                          : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
+                      )}
+                    >
+                      {bus.owner ? "Owner" : "Invited"}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  <Globe2 className="w-3.5 h-3.5" />
-                  <span>
-                    {bus.businessTypeName}
+                  <Globe2 className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="truncate">
+                    {!bus.owner && bus.accountName
+                      ? bus.accountName
+                      : bus.businessTypeName}
                   </span>
                 </div>
               </div>
