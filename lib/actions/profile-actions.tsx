@@ -184,7 +184,7 @@ export const setPassword = async (
 export const switchAccount = async (accountId: string): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    const loginData: LoginResponse = await apiClient.post(`/switch-account`, { accountId });
+    const loginData: LoginResponse = await apiClient.post(`/auth/switch-account`, { accountId });
 
     // Clear current business/destination context — the new account has its own
     await deleteActiveBusinessCookie();
@@ -238,6 +238,7 @@ export const switchAccount = async (accountId: string): Promise<FormResponse> =>
       data: parseStringify({ accountId: loginData.accountId }),
     };
   } catch (error) {
+    console.error("[switchAccount] failed:", error);
     return {
       responseType: "error",
       message: "Failed to switch account",
