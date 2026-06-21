@@ -29,6 +29,7 @@ import {
 import { PhoneInput } from "@/components/ui/phone-input";
 import CountrySelector from "@/components/widgets/country-selector";
 import { FormError } from "@/components/widgets/form-error";
+import { executeRecaptcha } from "@/lib/recaptcha";
 import { EyeIcon, EyeOffIcon, Loader2Icon, ArrowRight } from "lucide-react";
 import {
   Card,
@@ -85,7 +86,28 @@ export default function InvitedSignupForm({
         (res.data as { emailVerificationRequired?: boolean } | undefined)
           ?.emailVerificationRequired;
       if (verificationRequired === false) {
-        const loginRes = await loginAction({ email, password: values.password });
+        // The Auth /auth/login endpoint rejects token-less logins wherever
+        // reCAPTCHA is enabled (prod/beta/uat), so mint a token for the auto
+        // sign-in exactly like the standard login form does. Returns undefined
+        // when no site key is configured (dev), which the action tolerates.
+        let recaptchaToken: string | undefined;
+        try {
+          recaptchaToken = await executeRecaptcha("login");
+        } catch (recaptchaErr) {
+          console.error("[INVITED_SIGNUP] reCAPTCHA failed:", recaptchaErr);
+          setError(
+            "Account created, but security verification failed. Please log in.",
+          );
+          window.location.href = `/login?email=${encodeURIComponent(email)}`;
+          return;
+        }
+
+        const loginRes = await loginAction(
+          { email, password: values.password },
+          undefined,
+          undefined,
+          recaptchaToken,
+        );
         if (loginRes.responseType === "success") {
           window.location.href = "/select-business";
           return;

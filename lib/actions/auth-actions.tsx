@@ -730,6 +730,53 @@ export const oauthLogin = async (
       });
     }
 
+    // Auto-accept a pending invitation BEFORE computing routing flags, so
+    // /me/accounts reflects the new membership and hasInvitedAccess is correct.
+    // Mirrors login() — without this an existing user accepting an invite via
+    // Google/Apple is never accepted and gets trapped at /business-registration.
+    const cookieStore = await cookies();
+    const pendingInvite = cookieStore.get("pendingInvite")?.value;
+    if (pendingInvite) {
+      try {
+        const res = await fetch(
+          `${ACCOUNTS_SERVICE_URL}/api/v1/account-members/${pendingInvite}/accept`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${loginData.accessToken}`,
+              "Content-Type": "application/json",
+              ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+            },
+          },
+        );
+        if (!res.ok) console.error("[OAUTH] auto-accept invite returned", res.status);
+      } catch (e) {
+        console.error("[OAUTH] auto-accept invite failed:", e);
+      } finally {
+        try { cookieStore.delete("pendingInvite"); } catch { /* ok */ }
+      }
+    }
+
+    // Determine whether the user has access to any account they don't own.
+    let hasInvitedAccess = false;
+    try {
+      const meRes = await fetch(`${ACCOUNTS_SERVICE_URL}/api/v1/me/accounts`, {
+        headers: {
+          Authorization: `Bearer ${loginData.accessToken}`,
+          "Content-Type": "application/json",
+          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+        },
+      });
+      if (meRes.ok) {
+        const accounts = (await meRes.json()) as Array<{ owner?: boolean }>;
+        hasInvitedAccess = Array.isArray(accounts) && accounts.some((a) => a?.owner === false);
+      } else {
+        console.error("[OAUTH] /me/accounts returned", meRes.status);
+      }
+    } catch (e) {
+      console.error("[OAUTH] /me/accounts fetch failed:", e);
+    }
+
     let profileData: any = {};
     let profileFetchError:
       | { status: number; code?: string; message?: string }
@@ -803,6 +850,7 @@ export const oauthLogin = async (
       countryId: profileData.countryId,
       countryCode: profileData.countryCode,
       theme: profileData.theme,
+      hasInvitedAccess,
     });
 
     await signIn("credentials", {
