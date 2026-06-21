@@ -10,7 +10,7 @@ import {
   UserMinus,
 } from "lucide-react";
 
-import DeleteModal from "@/components/tables/delete-modal";
+import { StaffDeactivateDialog } from "@/components/staff/staff-deactivate-dialog";
 import { deactivateStaff, reactivateStaff } from "@/lib/actions/staff-actions";
 import { invalidateStaffCache } from "@/lib/cache/reference-data";
 import { Staff } from "@/types/staff";
@@ -135,11 +135,11 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <DeleteModal
-        isOpen={isDeactivateOpen}
-        itemName={fullName}
-        onDelete={handleDeactivate}
-        onOpenChange={() => setDeactivateOpen(false)}
+      <StaffDeactivateDialog
+        open={isDeactivateOpen}
+        onOpenChange={setDeactivateOpen}
+        fullName={fullName}
+        onConfirm={handleDeactivate}
       />
     </>
   );

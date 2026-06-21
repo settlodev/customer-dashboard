@@ -47,6 +47,7 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
+import { StaffDeactivateDialog } from "@/components/staff/staff-deactivate-dialog";
 
 /**
  * Header action menu for the staff detail page. Surfaces every
@@ -221,40 +222,20 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
       </DropdownMenu>
 
       {/* Deactivate confirmation */}
-      <Dialog open={deactivateOpen} onOpenChange={setDeactivateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Deactivate {fullName}?</DialogTitle>
-            <DialogDescription>
-              They will lose POS and dashboard access until reactivated. Their
-              record stays so historical sales remain attributed.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeactivateOpen(false)}
-              disabled={loading === "deactivate"}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={loading === "deactivate"}
-              onClick={() =>
-                run(
-                  "deactivate",
-                  () => deactivateStaff(staff.id),
-                  "Staff deactivated",
-                  () => setDeactivateOpen(false),
-                )
-              }
-            >
-              {loading === "deactivate" ? "Deactivating…" : "Deactivate"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <StaffDeactivateDialog
+        open={deactivateOpen}
+        onOpenChange={setDeactivateOpen}
+        fullName={fullName}
+        loading={loading === "deactivate"}
+        onConfirm={() =>
+          run(
+            "deactivate",
+            () => deactivateStaff(staff.id),
+            "Staff deactivated",
+            () => setDeactivateOpen(false),
+          )
+        }
+      />
 
       {/* Grant dashboard access */}
       <Dialog open={dashboardOpen} onOpenChange={setDashboardOpen}>
