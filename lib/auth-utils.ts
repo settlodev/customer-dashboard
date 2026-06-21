@@ -21,6 +21,12 @@ import { logout } from "@/lib/actions/auth-actions";
 const COOKIE_CHUNK_SIZE = 3800; // Leave room for name + attributes
 const MAX_CHUNKS = 10;
 const AUTH_TOKEN_COOKIE = "authToken";
+// NAMING: the "staff" auth token below is for INTERNAL SETTLO OPERATORS — the
+// `admin.*` "Staff Portal", gated on the JWT `internal_role` claim. It is NOT a
+// customer business-staff session, and NOT a `SubjectType.STAFF` POS/device
+// token (those are bulk-minted, carried via X-Staff-Token, and never reach the
+// browser). Customer business staff log in as regular `SubjectType.USER`s via
+// the normal `authToken` flow. Don't conflate these three "staff" meanings.
 const STAFF_AUTH_TOKEN_COOKIE = "staffAuthToken";
 
 // authToken lifetime when no refresh-token expiry is available from login.
@@ -256,6 +262,9 @@ export const deleteStaffAuthCookie = async () => {
   }
 };
 
+// "Staff" here = internal Settlo operator (Staff Portal, gated on `internal_role`),
+// NOT customer business staff and NOT a `SubjectType.STAFF` POS token. See the
+// note on STAFF_AUTH_TOKEN_COOKIE above.
 export const createStaffAuthToken = async (loginResponse: LoginResponse) => {
   const internalRole = extractInternalRole(loginResponse.accessToken);
   const internalPermissions = extractInternalPermissions(loginResponse.accessToken);

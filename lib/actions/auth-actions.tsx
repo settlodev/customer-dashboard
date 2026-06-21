@@ -1714,9 +1714,11 @@ export const updateUser = async (
 
 // Staff-specific auth endpoints used to live here
 // (staffResetPassword / staffVerifyResetCode / staffConfirmNewPassword /
-// staffSelectBusiness) but the Auth Service retired `SubjectType.STAFF`:
-// business staff with dashboard access are now regular Users and go through
-// the same password-reset and login flows as account owners. POS-only staff
-// don't have Auth-Service credentials at all — their PIN is verified
-// locally on the paired device.
+// staffSelectBusiness). Business staff with dashboard access are regular
+// `SubjectType.USER`s and go through the same password-reset and login flows
+// as account owners. `SubjectType.STAFF` still exists in the Auth Service, but
+// it is reserved for POS/device tokens — bulk-minted, carried via X-Staff-Token,
+// and never present in the browser — so the dashboard never logs in a
+// `SubjectType.STAFF`. POS-only staff don't have Auth-Service credentials at
+// all — their PIN is verified locally on the paired device.
 
