@@ -22,10 +22,26 @@ export declare interface menuItemType {
     current: boolean | false,
     showSeparator: boolean | false,
     items: menuItem[],
+    /**
+     * Optional permission key(s) gating this whole section. When set, the
+     * section is hidden unless the current user holds (any of) the key(s).
+     * Fail-open: while permissions are still loading the section is shown
+     * (the backend @PreAuthorize is the real gate — this is UX only).
+     */
+    permission?: string;
+    permissions?: string[];
 }
 export declare interface menuItem {
     title: string,
     link: string,
     icon: ReactNode,
     current: boolean | false,
+    /**
+     * Optional permission key(s) gating this nav item. When set, the item is
+     * hidden unless the current user holds (any of) the key(s). Fail-open
+     * while permissions load — the backend @PreAuthorize remains the real
+     * security gate; this only declutters the nav for limited members.
+     */
+    permission?: string;
+    permissions?: string[];
 }

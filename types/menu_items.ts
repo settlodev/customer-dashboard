@@ -322,6 +322,8 @@ const getNormalMenuItems = (
           link: "/discounts",
           current: args?.isCurrentItem,
           icon: "percent",
+          // Owner/admin-only — backend gates the page on discounts:read.
+          permission: "discounts:read",
         },
       ],
     },
@@ -339,24 +341,32 @@ const getNormalMenuItems = (
           link: "/staff",
           current: args?.isCurrentItem,
           icon: "cart",
+          // Backend StaffController gates on staff:read.
+          permission: "staff:read",
         },
         {
           title: "Shifts",
           link: "/shifts",
           current: args?.isCurrentItem,
           icon: "cart",
+          // Backend gates on shifts:read.
+          permission: "shifts:read",
         },
         {
           title: "Account members",
           link: "/team",
           current: args?.isCurrentItem,
           icon: "cart",
+          // Mirror AccountMemberController: manage_members OR account:read.
+          permissions: ["account:manage_members", "account:read"],
         },
         {
           title: "Roles",
           link: "/roles",
           current: args?.isCurrentItem,
           icon: "cart",
+          // Backend RolesController gates on roles:read.
+          permission: "roles:read",
         },
         {
           title: "Customers",
@@ -386,18 +396,21 @@ const getNormalMenuItems = (
           link: "/day-sessions",
           current: args?.isCurrentItem,
           icon: "cart",
+          permission: "day_sessions:read",
         },
         {
           title: "Expenses",
           link: "/expenses",
           current: args?.isCurrentItem,
           icon: "cart",
+          permission: "expenses:read",
         },
         {
           title: "Vendors",
           link: "/vendors",
           current: args?.isCurrentItem,
           icon: "cart",
+          permission: "vendors:read",
         },
         {
           title: "Invoices",
@@ -422,30 +435,35 @@ const getNormalMenuItems = (
           link: "/prepayments",
           current: args?.isCurrentItem,
           icon: "cart",
+          permission: "customer_prepayments:view",
         },
         {
           title: "Journal entries",
           link: "/accounting/journal-entries",
           current: args?.isCurrentItem,
           icon: "cart",
+          permission: "journal_entries:read",
         },
         {
           title: "Fund transfers",
           link: "/accounting/fund-transfers",
           current: args?.isCurrentItem,
           icon: "cart",
+          permission: "fund_transfers:read",
         },
         {
           title: "Till reconciliation",
           link: "/accounting/till",
           current: args?.isCurrentItem,
           icon: "cart",
+          permission: "till_reconciliation:read",
         },
         {
           title: "Cash movements",
           link: "/accounting/cash-movements",
           current: args?.isCurrentItem,
           icon: "cart",
+          permission: "cash_movements:read",
         },
         {
           title: "Suspense reconciliation",
