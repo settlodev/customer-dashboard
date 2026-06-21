@@ -1,6 +1,7 @@
 import React from "react";
 import UpdateProfileForm from "@/app/(protected)/profile/update_profile_form";
 import MyPinCard from "@/app/(protected)/profile/my_pin_card";
+import PhoneCard from "@/app/(protected)/profile/phone_card";
 import MfaCard from "@/app/(protected)/profile/mfa_card";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 const breadcrumbItems = [{ title: "Profile", link: "/profile" }];
@@ -18,6 +19,9 @@ export default function Page() {
             {/* Self-service POS PIN management — only renders for users with
                 an associated StaffEntity that has POS access enabled. */}
             <MyPinCard />
+            {/* AUTH verifiable phone — add/change + SMS code verification.
+                Distinct from the read-only Accounts phone in the form above. */}
+            <PhoneCard />
             {/* Two-factor authentication (TOTP) enrollment + management. */}
             <MfaCard />
         </div>

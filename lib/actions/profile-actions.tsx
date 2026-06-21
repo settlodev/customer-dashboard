@@ -110,41 +110,13 @@ export const cancelEmailChange = async (_userId: string): Promise<FormResponse> 
   }
 };
 
-export const addPhone = async (
-  userId: string,
-  phoneNumber: string,
-  region?: string,
-): Promise<FormResponse> => {
-  try {
-    const apiClient = new ApiClient(true);
-    await apiClient.post(`/auth/profile/phone`, { userId, phoneNumber, region });
-    return { responseType: "success", message: "Phone number added. Check your phone for verification." };
-  } catch (error) {
-    return {
-      responseType: "error",
-      message: "Failed to add phone number",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
-  }
-};
-
-export const changePhone = async (
-  userId: string,
-  newPhoneNumber: string,
-  region?: string,
-): Promise<FormResponse> => {
-  try {
-    const apiClient = new ApiClient(true);
-    await apiClient.post(`/auth/profile/phone/change`, { userId, newPhoneNumber, region });
-    return { responseType: "success", message: "Phone change initiated. Check your new phone for verification." };
-  } catch (error) {
-    return {
-      responseType: "error",
-      message: "Failed to change phone number",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
-  }
-};
+// NOTE: The AUTH verifiable phone (set + SMS verify) now lives in a
+// cohesive module — see lib/actions/phone-actions.tsx (setPhone /
+// requestPhoneCode / confirmPhoneCode / getPhoneStatus), surfaced by the
+// profile PhoneCard. The previous dead addPhone/changePhone helpers here
+// posted an incorrect shape (userId in body, a non-existent
+// /auth/profile/phone/change endpoint) and were never wired up, so they
+// were removed in favour of that module.
 
 export const changePassword = async (
   userId: string,
