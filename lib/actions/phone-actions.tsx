@@ -55,47 +55,28 @@ export const getPhoneStatus = async (): Promise<FormResponse<PhoneStatus>> => {
 };
 
 /**
- * Sets or replaces the user's AUTH phone number. Stored UNVERIFIED — no
- * SMS is sent here; call {@link requestPhoneCode} afterwards to start
- * verification. `region` is the ISO country code (e.g. "TZ") the number
- * was entered for.
+ * Sets (or replaces) the user's AUTH phone number AND sends the SMS
+ * verification code in a single call — the authenticated "change" flow.
+ * The signed-in user is taken from the bearer token, so only the new
+ * number is sent. The number is stored PENDING and verified once
+ * {@link confirmPhoneCode} succeeds; this same path handles a first add.
+ *
+ * `region` is the ISO country code (e.g. "TZ") the number was entered
+ * for. A "resend" is just this call again with the same number.
+ *
+ * The backend enforces a cooldown between sends; when hit it returns a
+ * RATE_LIMITED "please wait…" message which we surface verbatim so the
+ * UI can show it (e.g. on a too-soon resend).
  */
-export const setPhone = async (
+export const submitPhone = async (
   phoneNumber: string,
   region?: string,
 ): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    await apiClient.post<void, { phoneNumber: string; region?: string }>(
-      `/auth/profile/phone`,
-      { phoneNumber, region },
-    );
-    return { responseType: "success", message: "Phone number saved" };
-  } catch (error) {
-    const message =
-      error instanceof SettloApiError
-        ? getUIErrorMessage(error.code, error.message, "Failed to save phone number")
-        : "Failed to save phone number";
-    return {
-      responseType: "error",
-      message,
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
-  }
-};
-
-/**
- * Sends an SMS verification code to the user's current AUTH phone. The
- * backend enforces a cooldown between sends; when hit it returns a
- * "please wait…" message which we surface verbatim so the UI can show
- * it (e.g. on a too-soon "resend").
- */
-export const requestPhoneCode = async (): Promise<FormResponse> => {
-  try {
-    const apiClient = new ApiClient(true);
-    await apiClient.post<void, Record<string, never>>(
-      `/auth/verify/phone/request`,
-      {},
+    await apiClient.post<void, { newPhoneNumber: string; region?: string }>(
+      `/auth/profile/phone/change`,
+      { newPhoneNumber: phoneNumber, region },
     );
     return {
       responseType: "success",
@@ -119,8 +100,10 @@ export const requestPhoneCode = async (): Promise<FormResponse> => {
 };
 
 /**
- * Confirms the SMS code and marks the AUTH phone as verified. A wrong or
- * expired code yields a 400/422 which we surface so the user can retry.
+ * Confirms the SMS code and marks the AUTH phone as verified. The JWT
+ * identifies the user, so only the code is sent. This path carries the
+ * brute-force lockout: a wrong/expired code yields a 400/422 (or a
+ * lockout message) which we surface so the user can retry.
  */
 export const confirmPhoneCode = async (
   code: string,
@@ -128,7 +111,7 @@ export const confirmPhoneCode = async (
   try {
     const apiClient = new ApiClient(true);
     await apiClient.post<void, { code: string }>(
-      `/auth/verify/phone/code`,
+      `/auth/profile/phone/change/confirm/code`,
       { code },
     );
     return { responseType: "success", message: "Phone number verified" };

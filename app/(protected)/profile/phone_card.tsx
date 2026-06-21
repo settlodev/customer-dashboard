@@ -28,8 +28,7 @@ import { FormError } from "@/components/widgets/form-error";
 import { useToast } from "@/hooks/use-toast";
 import {
   getPhoneStatus,
-  setPhone,
-  requestPhoneCode,
+  submitPhone,
   confirmPhoneCode,
 } from "@/lib/actions/phone-actions";
 
@@ -42,9 +41,9 @@ type WizardStep = "phone" | "code";
  *
  * Loads the current phone + verified state on mount and shows a
  * Verified/Unverified badge. The "Add"/"Change & re-verify" flow opens a
- * two-step wizard: enter the number (saved UNVERIFIED, then an SMS code
- * is sent) → enter the 6-digit code to verify. Resend respects the
- * backend's send cooldown (the "please wait…" message is surfaced).
+ * two-step wizard: enter the number (one call sets it pending AND texts
+ * an SMS code) → enter the 6-digit code to verify. Resend re-submits the
+ * same number; the backend's send cooldown ("please wait…") is surfaced.
  *
  * Mirrors {@link MfaCard}: a self-contained card that fetches its own
  * state and surfaces backend errors via toast + inline {@link FormError}.
@@ -112,7 +111,7 @@ export default function PhoneCard() {
     setCodeError(null);
   };
 
-  // ── Wizard: step 1 — save the number, then send a code ────────────
+  // ── Wizard: step 1 — set the number AND send a code (one call) ────
   const saveAndSend = async () => {
     if (savingPhone) return;
     const value = phoneValue?.trim();
@@ -124,32 +123,22 @@ export default function PhoneCard() {
     setSavingPhone(true);
 
     const region = parsePhoneNumber(value)?.country;
-    const saved = await setPhone(value, region);
-    if (saved.responseType !== "success") {
-      setPhoneError(saved.message);
-      toast({ variant: "destructive", title: saved.message });
-      setSavingPhone(false);
+    // The change flow both stores the pending number AND texts the code.
+    const sent = await submitPhone(value, region);
+    setSavingPhone(false);
+    if (sent.responseType !== "success") {
+      setPhoneError(sent.message);
+      toast({ variant: "destructive", title: sent.message });
       return;
     }
 
-    // Saving replaced the number — it's unverified until confirmed.
+    // The number is now pending — unverified until the code is confirmed.
     setPhoneNumber(value);
     setVerified(false);
-
-    const sent = await requestPhoneCode();
-    setSavingPhone(false);
-    if (sent.responseType === "success") {
-      setCode("");
-      setCodeError(null);
-      setStep("code");
-      toast({ variant: "success", title: sent.message });
-    } else {
-      // Number is saved; sending failed (e.g. cooldown). Surface it and
-      // let them retry the send from the code step.
-      setStep("code");
-      setCodeError(sent.message);
-      toast({ variant: "destructive", title: sent.message });
-    }
+    setCode("");
+    setCodeError(null);
+    setStep("code");
+    toast({ variant: "success", title: sent.message });
   };
 
   // ── Wizard: step 2 — confirm the SMS code ─────────────────────────
@@ -172,12 +161,15 @@ export default function PhoneCard() {
     }
   };
 
-  // ── Wizard: resend a code (respects backend cooldown) ─────────────
+  // ── Wizard: resend a code (re-submits the same number) ────────────
+  // A resend is just submitPhone again with the pending number; the
+  // backend's send cooldown surfaces as a "please wait…" message.
   const resendCode = async () => {
-    if (resending) return;
+    if (resending || !phoneNumber) return;
     setCodeError(null);
     setResending(true);
-    const res = await requestPhoneCode();
+    const region = parsePhoneNumber(phoneNumber as PhoneValue)?.country;
+    const res = await submitPhone(phoneNumber, region);
     setResending(false);
     if (res.responseType === "success") {
       toast({ variant: "success", title: res.message });

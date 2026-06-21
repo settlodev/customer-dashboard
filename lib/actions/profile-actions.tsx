@@ -111,12 +111,13 @@ export const cancelEmailChange = async (_userId: string): Promise<FormResponse> 
 };
 
 // NOTE: The AUTH verifiable phone (set + SMS verify) now lives in a
-// cohesive module — see lib/actions/phone-actions.tsx (setPhone /
-// requestPhoneCode / confirmPhoneCode / getPhoneStatus), surfaced by the
-// profile PhoneCard. The previous dead addPhone/changePhone helpers here
-// posted an incorrect shape (userId in body, a non-existent
-// /auth/profile/phone/change endpoint) and were never wired up, so they
-// were removed in favour of that module.
+// cohesive module — see lib/actions/phone-actions.tsx (submitPhone /
+// confirmPhoneCode / getPhoneStatus), surfaced by the profile PhoneCard.
+// It uses the authenticated change flow (POST /auth/profile/phone/change
+// then /auth/profile/phone/change/confirm/code), where the bearer token
+// identifies the user. The previous dead addPhone/changePhone helpers
+// here posted an incorrect shape (userId in body) and were never wired
+// up, so they were removed in favour of that module.
 
 export const changePassword = async (
   userId: string,
