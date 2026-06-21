@@ -61,3 +61,45 @@ export const isAdminHost = (host: string | null | undefined): boolean => {
   const hostname = host.split(":")[0].toLowerCase();
   return hostname === "admin.localhost" || hostname.startsWith("admin.");
 };
+
+// ── Public-route classification (single source of truth) ─────────────
+// Middleware uses a public-route ALLOW-by-omission model: anything not matched
+// here requires auth. Keep this classifier the only place the matching logic
+// lives so the runtime invariant below actually guards what middleware uses.
+export const isPublicRoute = (pathname: string): boolean =>
+  publicRoutes.some((route) => {
+    if (route.includes("[")) {
+      const pattern = route.replace(/\[.*?\]/g, "[^/]+");
+      return new RegExp(`^${pattern}$`).test(pathname);
+    }
+    return pathname === route;
+  });
+
+// ── Default-allow guard (block-list risk) ────────────────────────────
+// The route model is a block-list: a NEW protected route added without
+// touching publicRoutes is silently public. There is no unit-test harness in
+// this project, so we assert the invariant at module load in non-prod: known
+// protected segments must NOT be classified as public. If someone ever adds
+// e.g. "/dashboard" to publicRoutes (or a wildcard that swallows it), this
+// throws loudly in dev/CI builds instead of shipping an open route.
+const PROTECTED_ROUTE_INVARIANTS = [
+  "/dashboard",
+  "/dashboard/anything",
+  "/select-business",
+  "/select-location",
+  "/inventory",
+  "/warehouse",
+  "/billing",
+  "/admin/dashboard",
+];
+
+if (process.env.NODE_ENV !== "production") {
+  const leaked = PROTECTED_ROUTE_INVARIANTS.filter((p) => isPublicRoute(p));
+  if (leaked.length > 0) {
+    throw new Error(
+      `[routes] Protected route(s) classified as PUBLIC by the public-route ` +
+        `allow-list: ${leaked.join(", ")}. A protected path must never match ` +
+        `publicRoutes — remove it from publicRoutes or tighten the pattern.`,
+    );
+  }
+}

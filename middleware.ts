@@ -7,7 +7,7 @@ import {
   authRoutes,
   isAdminHost,
   isAdminPath,
-  publicRoutes,
+  isPublicRoute,
   SELECT_BUSINESS_URL,
   DEFAULT_LOGIN_REDIRECT_URL,
   specialAuthRoutes,
@@ -21,6 +21,22 @@ import { AuthToken, InternalRole, SubjectType } from "./types/types";
 // ── Cookie constants (matching auth-utils.ts) ────────────────────────
 const COOKIE_CHUNK_SIZE = 3800;
 const MAX_CHUNKS = 10;
+
+// Per-request auth-state logging leaks request flow / cookie presence and runs
+// on every request — keep it out of production. Mirrors devLog in auth-utils.ts
+// and auth-actions.tsx.
+const devLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV !== "production") console.log(...args);
+};
+
+// Auth cookies must carry `Secure` on any HTTPS deployment, not just prod
+// (kept in sync with isSecureCookie() in lib/auth-utils.ts). The middleware
+// runs at the edge and re-writes the SAME authToken/staffAuthToken cookies on
+// refresh, so its `secure` decision must match the server-action writers or an
+// HTTPS staging refresh would strip Secure.
+const COOKIE_SECURE =
+  process.env.NODE_ENV === "production" ||
+  process.env.COOKIE_SECURE === "true";
 
 /**
  * Decode a JWT payload without verifying the signature.
@@ -151,7 +167,7 @@ function applyTokenCookies(
   const isProduction = process.env.NODE_ENV === "production";
   const options = {
     httpOnly: true,
-    secure: isProduction,
+    secure: COOKIE_SECURE,
     sameSite: (isProduction ? "strict" : "lax") as "strict" | "lax",
   };
 
@@ -350,18 +366,12 @@ export async function middleware(request: NextRequest) {
 
   // ── Route classification ──────────────────────────────────────────
   const isApiAuthRoute = pathname.startsWith(apiAuthPrefix);
-  const isPublicRoute = publicRoutes.some((route) => {
-    if (route.includes("[")) {
-      const pattern = route.replace(/\[.*?\]/g, "[^/]+");
-      return new RegExp(`^${pattern}$`).test(pathname);
-    }
-    return pathname === route;
-  });
+  const publicRoute = isPublicRoute(pathname);
   const isAuthRoute = authRoutes.includes(pathname);
   const isSpecialAuthRoute = specialAuthRoutes.includes(pathname);
 
   // Always allow API auth and public routes
-  if (isApiAuthRoute || isPublicRoute) {
+  if (isApiAuthRoute || publicRoute) {
     return NextResponse.next();
   }
 
@@ -398,7 +408,7 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  console.log(`[MIDDLEWARE] ${pathname} | loggedIn=${isLoggedIn} | hasCookie=${!!request.cookies.get("authToken")?.value} | hasAccessToken=${!!authToken?.accessToken} | emailVerified=${authToken?.emailVerified} | bizComplete=${authToken?.isBusinessRegistrationComplete} | locComplete=${authToken?.isLocationRegistrationComplete}`);
+  devLog(`[MIDDLEWARE] ${pathname} | loggedIn=${isLoggedIn} | hasCookie=${!!request.cookies.get("authToken")?.value} | hasAccessToken=${!!authToken?.accessToken} | emailVerified=${authToken?.emailVerified} | bizComplete=${authToken?.isBusinessRegistrationComplete} | locComplete=${authToken?.isLocationRegistrationComplete}`);
 
   // ── Not logged in ─────────────────────────────────────────────────
   if (!isLoggedIn) {
@@ -407,7 +417,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
     // Everything else requires login
-    console.log(`[MIDDLEWARE] Not logged in, redirecting ${pathname} → /login`);
+    devLog(`[MIDDLEWARE] Not logged in, redirecting ${pathname} → /login`);
     return NextResponse.redirect(new URL("/login", request.nextUrl));
   }
 
@@ -435,10 +445,10 @@ export async function middleware(request: NextRequest) {
         subscriptionStatus: subscriptionStatus as AuthToken["subscriptionStatus"],
       };
       refreshedTokenValue = JSON.stringify(authToken);
-      console.log(`[MIDDLEWARE] ${pathname} | token refreshed proactively`);
+      devLog(`[MIDDLEWARE] ${pathname} | token refreshed proactively`);
     } else if (isAccessTokenExpired(authToken!.accessToken)) {
       // Token is fully expired AND refresh failed — session is dead
-      console.log(`[MIDDLEWARE] ${pathname} | token expired and refresh failed — forcing logout`);
+      devLog(`[MIDDLEWARE] ${pathname} | token expired and refresh failed — forcing logout`);
       return forceLogout(request);
     }
     // If only expiring soon but not yet expired, continue with old token

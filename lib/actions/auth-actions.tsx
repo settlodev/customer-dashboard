@@ -48,6 +48,20 @@ const ACCOUNTS_SERVICE_URL =
 const WHITELABEL_CLIENT_ID =
   process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID || "";
 
+// Verbose/PII-bearing auth logging (full API error bodies, account ids, the
+// auth-service URL, request flow markers) must never run in production. Gate it
+// behind non-prod; genuine unexpected failures still use console.error below.
+const devLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV !== "production") console.log(...args);
+};
+
+// Cookies must carry `Secure` on any HTTPS deployment, not just prod, so an
+// HTTPS staging/preview deploy (NODE_ENV !== production) doesn't ship auth
+// cookies without Secure. Local http dev leaves both unset → secure stays false.
+const COOKIE_SECURE =
+  process.env.NODE_ENV === "production" ||
+  process.env.COOKIE_SECURE === "true";
+
 export async function logout() {
   // Always clear local state, regardless of whether the API call succeeds
   const authToken = await getAuthToken();
@@ -171,7 +185,7 @@ export const login = async (
   await clearDestination();
 
   try {
-    console.log("[LOGIN] Attempting login to:", `${AUTH_SERVICE_URL}/auth/login`);
+    devLog("[LOGIN] Attempting login to:", `${AUTH_SERVICE_URL}/auth/login`);
 
     const loginBody: Record<string, string> = {
       email: validatedData.data.email,
@@ -194,11 +208,11 @@ export const login = async (
       body: JSON.stringify(loginBody),
     });
 
-    console.log("[LOGIN] Auth response status:", response.status);
+    devLog("[LOGIN] Auth response status:", response.status);
 
     if (!response.ok) {
       const apiError = await parseApiError(response);
-      console.log("[LOGIN] Auth error response:", JSON.stringify(apiError));
+      devLog("[LOGIN] Auth error response:", JSON.stringify(apiError));
 
       if (response.status === 412) {
         return parseStringify({
@@ -217,7 +231,7 @@ export const login = async (
     }
 
     const loginData: LoginResponse = await response.json();
-    console.log("[LOGIN] Login successful, emailVerified:", loginData.emailVerified, "userId:", loginData.userId);
+    devLog("[LOGIN] Login successful, emailVerified:", loginData.emailVerified, "userId:", loginData.userId);
 
     if (!loginData.emailVerified) {
       await storePendingVerification({
@@ -294,7 +308,7 @@ export const login = async (
       | { status: number; code?: string; message?: string }
       | null = null;
     try {
-      console.log("[LOGIN] Fetching profile from:", `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/${loginData.accountId}`);
+      devLog("[LOGIN] Fetching profile from:", `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/${loginData.accountId}`);
       const profileResponse = await fetch(
         `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/${loginData.accountId}`,
         {
@@ -305,17 +319,14 @@ export const login = async (
           },
         },
       );
-      console.log("[LOGIN] Profile response status:", profileResponse.status);
+      devLog("[LOGIN] Profile response status:", profileResponse.status);
       if (profileResponse.ok) {
         profileData = await profileResponse.json();
-        console.log("[LOGIN] Profile fetched for:", profileData.firstName, profileData.lastName);
+        devLog("[LOGIN] Profile fetched for:", profileData.firstName, profileData.lastName);
       } else {
         const apiError = await parseApiError(profileResponse);
-        console.error(
-          "[LOGIN] Profile fetch failed:",
-          profileResponse.status,
-          JSON.stringify(apiError),
-        );
+        console.error("[LOGIN] Profile fetch failed:", profileResponse.status, apiError.code);
+        devLog("[LOGIN] Profile fetch error body:", JSON.stringify(apiError));
         profileFetchError = {
           status: profileResponse.status,
           code: apiError.code,
@@ -355,7 +366,7 @@ export const login = async (
       });
     }
 
-    console.log("[LOGIN] Establishing customer session...");
+    devLog("[LOGIN] Establishing customer session...");
     await establishCustomerSession(loginData, {
       firstName: profileData.firstName,
       lastName: profileData.lastName,
@@ -372,7 +383,7 @@ export const login = async (
       theme: profileData.theme,
       hasInvitedAccess,
     });
-    console.log("[LOGIN] Customer session established");
+    devLog("[LOGIN] Customer session established");
 
     // Best-effort: pre-select the invited business/location so the user
     // lands directly in context instead of having to choose at /select-business.
@@ -398,7 +409,7 @@ export const login = async (
             const isProduction = process.env.NODE_ENV === "production";
             const cookieOpts = {
               httpOnly: true,
-              secure: isProduction,
+              secure: COOKIE_SECURE,
               sameSite: isProduction ? ("strict" as const) : ("lax" as const),
             };
 
@@ -460,7 +471,7 @@ export const login = async (
                   value: JSON.stringify(locationObj),
                   ...cookieOpts,
                 });
-                console.log("[LOGIN] Pre-selected invited business/location:", biz.id, loc.id);
+                devLog("[LOGIN] Pre-selected invited business/location:", biz.id, loc.id);
               }
             }
           }
@@ -642,7 +653,7 @@ async function setSessionPersistence(rememberMe: boolean) {
   const THIRTY_DAYS = 30 * 24 * 60 * 60;
   const cookieOpts = {
     httpOnly: true,
-    secure: isProduction,
+    secure: COOKIE_SECURE,
     sameSite: isProduction ? ("strict" as const) : ("lax" as const),
     maxAge: THIRTY_DAYS,
   };
@@ -670,7 +681,7 @@ async function setSessionPersistence(rememberMe: boolean) {
         name,
         value,
         httpOnly: true,
-        secure: isProduction,
+        secure: COOKIE_SECURE,
         sameSite: "lax",
         path: "/",
         ...(rememberMe ? { maxAge: THIRTY_DAYS } : {}),
@@ -688,7 +699,7 @@ export const oauthLogin = async (
   await clearDestination();
 
   try {
-    console.log(`[OAUTH] Attempting ${provider} login`);
+    devLog(`[OAUTH] Attempting ${provider} login`);
 
     const response = await fetch(`${AUTH_SERVICE_URL}/auth/oauth/login`, {
       method: "POST",
@@ -699,11 +710,11 @@ export const oauthLogin = async (
       body: JSON.stringify({ provider, idToken }),
     });
 
-    console.log("[OAUTH] Response status:", response.status);
+    devLog("[OAUTH] Response status:", response.status);
 
     if (!response.ok) {
       const apiError = await parseApiError(response);
-      console.log("[OAUTH] Error response:", JSON.stringify(apiError));
+      devLog("[OAUTH] Error response:", JSON.stringify(apiError));
       return parseStringify({
         responseType: "error",
         message: getUIErrorMessage(apiError.code, apiError.message, "Social sign-in failed. Please try again."),
@@ -712,7 +723,7 @@ export const oauthLogin = async (
     }
 
     const loginData: LoginResponse = await response.json();
-    console.log("[OAUTH] Login successful, emailVerified:", loginData.emailVerified, "userId:", loginData.userId);
+    devLog("[OAUTH] Login successful, emailVerified:", loginData.emailVerified, "userId:", loginData.userId);
 
     if (!loginData.emailVerified) {
       await storePendingVerification({
@@ -796,11 +807,8 @@ export const oauthLogin = async (
         profileData = await profileResponse.json();
       } else {
         const apiError = await parseApiError(profileResponse);
-        console.error(
-          "[OAUTH] Profile fetch failed:",
-          profileResponse.status,
-          JSON.stringify(apiError),
-        );
+        console.error("[OAUTH] Profile fetch failed:", profileResponse.status, apiError.code);
+        devLog("[OAUTH] Profile fetch error body:", JSON.stringify(apiError));
         profileFetchError = {
           status: profileResponse.status,
           code: apiError.code,
@@ -1003,7 +1011,7 @@ export const register = async (
 
     if (!regResponse.ok) {
       const apiError = await parseApiError(regResponse);
-      console.log("[REGISTER] Error response:", JSON.stringify(apiError));
+      devLog("[REGISTER] Error response:", JSON.stringify(apiError));
 
       if (regResponse.status === 400 && apiError.errors) {
         const fieldMessages = Object.values(apiError.errors).join(", ");
@@ -1116,7 +1124,7 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
 
       if (!response.ok) {
         const apiError = await parseApiError(response);
-        console.log("[VERIFY_EMAIL] Error response:", JSON.stringify(apiError));
+        devLog("[VERIFY_EMAIL] Error response:", JSON.stringify(apiError));
         return parseStringify({
           responseType: "error",
           message: getUIErrorMessage(apiError.code, apiError.message, "Invalid or expired verification code. Please try again."),
@@ -1146,11 +1154,8 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
           profileData = await profileResponse.json();
         } else {
           const apiError = await parseApiError(profileResponse);
-          console.error(
-            "[VERIFY_EMAIL] Profile fetch failed:",
-            profileResponse.status,
-            JSON.stringify(apiError),
-          );
+          console.error("[VERIFY_EMAIL] Profile fetch failed:", profileResponse.status, apiError.code);
+          devLog("[VERIFY_EMAIL] Profile fetch error body:", JSON.stringify(apiError));
           profileFetchError = {
             status: profileResponse.status,
             code: apiError.code,
@@ -1321,7 +1326,7 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
 
     if (!response.ok) {
       const apiError = await parseApiError(response);
-      console.log("[VERIFY_EMAIL_STANDALONE] Error response:", JSON.stringify(apiError));
+      devLog("[VERIFY_EMAIL_STANDALONE] Error response:", JSON.stringify(apiError));
       return parseStringify({
         responseType: "error",
         message: getUIErrorMessage(apiError.code, apiError.message, "Invalid or expired verification code. Please try again."),
@@ -1455,7 +1460,7 @@ export const resendVerificationCode = async (): Promise<FormResponse> => {
 
     if (!response.ok) {
       const apiError = await parseApiError(response);
-      console.log("[RESEND_CODE] Error response:", JSON.stringify(apiError));
+      devLog("[RESEND_CODE] Error response:", JSON.stringify(apiError));
       return parseStringify({
         responseType: "error",
         message: getUIErrorMessage(apiError.code, apiError.message, "Failed to resend verification code."),
@@ -1523,7 +1528,7 @@ export const resetPassword = async (
     // Only genuine infrastructure failures (5xx) should surface an error.
     if (!response.ok) {
       const apiError = await parseApiError(response);
-      console.log("[RESET_PASSWORD] Non-ok response:", JSON.stringify(apiError));
+      devLog("[RESET_PASSWORD] Non-ok response:", JSON.stringify(apiError));
       if (response.status >= 500) {
         return parseStringify({
           responseType: "error",
@@ -1564,7 +1569,7 @@ export const verifyResetCode = async (
 
     if (!response.ok) {
       const apiError = await parseApiError(response);
-      console.log("[VERIFY_RESET_CODE] Error response:", JSON.stringify(apiError));
+      devLog("[VERIFY_RESET_CODE] Error response:", JSON.stringify(apiError));
       return parseStringify({
         responseType: "error",
         message: getUIErrorMessage(apiError.code, apiError.message, "Invalid or expired code. Please try again."),
@@ -1623,7 +1628,7 @@ export const confirmNewPassword = async (
 
     if (!response.ok) {
       const apiError = await parseApiError(response);
-      console.log("[CONFIRM_PASSWORD] Error response:", JSON.stringify(apiError));
+      devLog("[CONFIRM_PASSWORD] Error response:", JSON.stringify(apiError));
       return parseStringify({
         responseType: "error",
         message: getUIErrorMessage(apiError.code, apiError.message, "Failed to reset password. Please try again."),

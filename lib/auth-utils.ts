@@ -23,6 +23,46 @@ const MAX_CHUNKS = 10;
 const AUTH_TOKEN_COOKIE = "authToken";
 const STAFF_AUTH_TOKEN_COOKIE = "staffAuthToken";
 
+// authToken lifetime when no refresh-token expiry is available from login.
+// Bounds the cookie so it can't outlive a reasonable session if the browser
+// is left open indefinitely (previously the authToken chunks had no maxAge
+// and lived for the whole browser session).
+const DEFAULT_AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+
+/**
+ * Whether auth cookies should carry the `Secure` attribute.
+ *
+ * `Secure` must be set on ANY HTTPS deployment, not just production —
+ * otherwise an HTTPS staging/preview deploy (NODE_ENV !== "production")
+ * ships auth cookies without `Secure`. We can't read the request protocol
+ * here (these run in Server Actions without the request), so deployments
+ * that are HTTPS but not NODE_ENV=production must set `COOKIE_SECURE=true`.
+ * Local http dev leaves both unset, so `secure` stays false and cookies work.
+ */
+function isSecureCookie(): boolean {
+  return (
+    process.env.NODE_ENV === "production" ||
+    process.env.COOKIE_SECURE === "true"
+  );
+}
+
+/**
+ * Derive a maxAge (seconds) for the authToken cookie from the login payload's
+ * refresh-token expiry when present, falling back to a sensible bound. Aligning
+ * with the refresh-token lifetime keeps the cookie alive exactly as long as the
+ * session is recoverable.
+ */
+function authCookieMaxAgeFromLogin(refreshTokenExpiresAt?: string): number {
+  if (refreshTokenExpiresAt) {
+    const expMs = Date.parse(refreshTokenExpiresAt);
+    if (!Number.isNaN(expMs)) {
+      const secs = Math.floor((expMs - Date.now()) / 1000);
+      if (secs > 0) return secs;
+    }
+  }
+  return DEFAULT_AUTH_COOKIE_MAX_AGE;
+}
+
 // Import for internal use — callers should import from "@/lib/jwt-utils" directly
 import {
   extractBusinessId,
@@ -37,7 +77,7 @@ function getCookieOptions() {
   const isProduction = process.env.NODE_ENV === "production";
   return {
     httpOnly: true,
-    secure: isProduction,
+    secure: isSecureCookie(),
     sameSite: isProduction ? ("strict" as const) : ("lax" as const),
   };
 }
@@ -126,7 +166,11 @@ export const updateAuthToken = async (token: AuthToken) => {
     ...token,
     businessId: token.accessToken ? extractBusinessId(token.accessToken) : null,
   };
-  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(synced));
+  // Preserve a bounded lifetime — re-saving without maxAge would silently
+  // demote the authToken back to a session-only cookie.
+  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(synced), {
+    maxAge: DEFAULT_AUTH_COOKIE_MAX_AGE,
+  });
 };
 
 export const createAuthTokenFromLogin = async (
@@ -172,7 +216,9 @@ export const createAuthTokenFromLogin = async (
     reportsReadAll: extractPermissions(loginResponse.accessToken).includes("reports:read_all"),
   };
 
-  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData));
+  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData), {
+    maxAge: authCookieMaxAgeFromLogin(loginResponse.refreshTokenExpiresAt),
+  });
   return authTokenData;
 };
 
@@ -266,7 +312,9 @@ export const createAuthToken = async (user: any) => {
     businessId: user.accessToken ? extractBusinessId(user.accessToken) : null,
   };
 
-  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData));
+  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData), {
+    maxAge: authCookieMaxAgeFromLogin(user.refreshTokenExpiresAt),
+  });
 };
 
 export const getAuthenticatedUser = async (): Promise<FormResponse | User> => {
@@ -330,7 +378,7 @@ export const storePendingVerification = async (data: {
     name: "pendingVerification",
     value: JSON.stringify(data),
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecureCookie(),
     sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     maxAge: 900, // 15 minutes
   });
