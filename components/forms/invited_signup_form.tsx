@@ -104,14 +104,16 @@ export default function InvitedSignupForm({
 
         const loginRes = await loginAction(
           { email, password: values.password },
-          undefined,
-          undefined,
+          false,
           recaptchaToken,
         );
         if (loginRes.responseType === "success") {
           window.location.href = "/select-business";
           return;
         }
+        // An MFA-enabled invitee would land here (mfa_required); the
+        // automatic sign-in can't complete the second factor inline, so we
+        // fall through to the login redirect where the MFA challenge runs.
         // Account exists but automatic sign-in failed — send them to log in.
         setError(
           loginRes.message ||

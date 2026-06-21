@@ -165,10 +165,273 @@ export async function endImpersonation(): Promise<FormResponse> {
   });
 }
 
+/**
+ * Pulls the `mfaToken` out of a 412 MFA-challenge response body. The shared
+ * `parseApiError` helper only surfaces code/message, so the login/oauth paths
+ * read the raw JSON here. Defensive against a non-JSON or already-consumed body.
+ */
+async function extractMfaToken(response: Response): Promise<string | undefined> {
+  try {
+    const body = await response.json();
+    const token = body?.mfaToken ?? body?.metadata?.mfaToken;
+    return typeof token === "string" && token.length > 0 ? token : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Shared post-login session establisher. Runs the identical work both the
+ * password-login success path and the MFA-verify path need: auto-accept a
+ * pending invite, compute `hasInvitedAccess` from /me/accounts, fetch the
+ * Accounts profile, establish the first-party customer session, pre-select an
+ * invited single business/location, and apply remember-me persistence.
+ *
+ * Returns a ready-to-return FormResponse — `success` when the session is live,
+ * or an `error` when the profile fetch fails (in which case the partial auth
+ * cookie is cleared so the user can safely retry).
+ */
+async function establishSessionFromLogin(
+  loginData: LoginResponse,
+  rememberMe: boolean = false,
+): Promise<FormResponse> {
+  // Auto-accept a pending invitation BEFORE computing routing flags, so
+  // /me/accounts reflects the new membership and hasInvitedAccess is correct.
+  const cookieStore = await cookies();
+  const pendingInvite = cookieStore.get("pendingInvite")?.value;
+  // Capture before deletion so we can use it later in the pre-select block.
+  const cameFromInvite = !!pendingInvite;
+  if (pendingInvite) {
+    try {
+      const res = await fetch(
+        `${ACCOUNTS_SERVICE_URL}/api/v1/account-members/${pendingInvite}/accept`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${loginData.accessToken}`,
+            "Content-Type": "application/json",
+            ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+          },
+        },
+      );
+      if (!res.ok) console.error("[LOGIN] auto-accept invite returned", res.status);
+    } catch (e) {
+      console.error("[LOGIN] auto-accept invite failed:", e);
+    } finally {
+      try { cookieStore.delete("pendingInvite"); } catch { /* ok */ }
+    }
+  }
+
+  // Determine whether the user has access to any account they don't own.
+  let hasInvitedAccess = false;
+  try {
+    const meRes = await fetch(`${ACCOUNTS_SERVICE_URL}/api/v1/me/accounts`, {
+      headers: {
+        Authorization: `Bearer ${loginData.accessToken}`,
+        "Content-Type": "application/json",
+        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+      },
+    });
+    if (meRes.ok) {
+      const accounts = (await meRes.json()) as Array<{ owner?: boolean }>;
+      hasInvitedAccess = Array.isArray(accounts) && accounts.some((a) => a?.owner === false);
+    } else {
+      console.error("[LOGIN] /me/accounts returned", meRes.status);
+    }
+  } catch (e) {
+    console.error("[LOGIN] /me/accounts fetch failed:", e);
+  }
+
+  let profileData: any = {};
+  let profileFetchError:
+    | { status: number; code?: string; message?: string }
+    | null = null;
+  try {
+    devLog("[LOGIN] Fetching profile from:", `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/${loginData.accountId}`);
+    const profileResponse = await fetch(
+      `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/${loginData.accountId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${loginData.accessToken}`,
+          "Content-Type": "application/json",
+          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+        },
+      },
+    );
+    devLog("[LOGIN] Profile response status:", profileResponse.status);
+    if (profileResponse.ok) {
+      profileData = await profileResponse.json();
+      devLog("[LOGIN] Profile fetched for:", profileData.firstName, profileData.lastName);
+    } else {
+      const apiError = await parseApiError(profileResponse);
+      console.error("[LOGIN] Profile fetch failed:", profileResponse.status, apiError.code);
+      devLog("[LOGIN] Profile fetch error body:", JSON.stringify(apiError));
+      profileFetchError = {
+        status: profileResponse.status,
+        code: apiError.code,
+        message: apiError.message,
+      };
+    }
+  } catch (profileErr: any) {
+    console.error("[LOGIN] Profile fetch error:", profileErr);
+    profileFetchError = {
+      status: 0,
+      code: "NETWORK_ERROR",
+      message: profileErr?.message,
+    };
+  }
+
+  // Profile fetch is required for routing decisions (business/location
+  // completion flags drive the onboarding redirect). If it failed, abort
+  // the login and surface the error so the user can retry — defaulting
+  // the flags to false sends fully-onboarded users back to the business
+  // registration screen.
+  if (profileFetchError) {
+    await deleteAuthCookie();
+    const fallback =
+      profileFetchError.status >= 500 || profileFetchError.status === 0
+        ? "We couldn't load your account right now. Please try again in a moment."
+        : "We couldn't load your account. Please try again.";
+    return parseStringify({
+      responseType: "error",
+      message: getUIErrorMessage(
+        profileFetchError.code,
+        profileFetchError.message,
+        fallback,
+      ),
+      error: new Error(
+        profileFetchError.code || `HTTP ${profileFetchError.status}`,
+      ),
+    });
+  }
+
+  devLog("[LOGIN] Establishing customer session...");
+  await establishCustomerSession(loginData, {
+    firstName: profileData.firstName,
+    lastName: profileData.lastName,
+    phoneNumber: profileData.phoneNumber,
+    pictureUrl: profileData.pictureUrl || profileData.avatar,
+    isBusinessRegistrationComplete:
+      profileData.isBusinessRegistrationComplete ??
+      profileData.businessComplete,
+    isLocationRegistrationComplete:
+      profileData.isLocationRegistrationComplete ??
+      profileData.locationComplete,
+    countryId: profileData.countryId || profileData.country,
+    countryCode: profileData.countryCode,
+    theme: profileData.theme,
+    hasInvitedAccess,
+  });
+  devLog("[LOGIN] Customer session established");
+
+  // Best-effort: pre-select the invited business/location so the user
+  // lands directly in context instead of having to choose at /select-business.
+  // Only fires for invited logins that have exactly one business — for
+  // multi-business users we leave the choice to them. Any failure here is
+  // silently swallowed; the user still reaches /select-business normally.
+  if (cameFromInvite && hasInvitedAccess) {
+    try {
+      const bizHeaders: Record<string, string> = {
+        Authorization: `Bearer ${loginData.accessToken}`,
+        "Content-Type": "application/json",
+        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+      };
+
+      const bizRes = await fetch(
+        `${ACCOUNTS_SERVICE_URL}/api/v1/me/businesses`,
+        { headers: bizHeaders },
+      );
+      if (bizRes.ok) {
+        const bizzes = await bizRes.json();
+        if (Array.isArray(bizzes) && bizzes.length === 1) {
+          const biz = bizzes[0];
+          const isProduction = process.env.NODE_ENV === "production";
+          const cookieOpts = {
+            httpOnly: true,
+            secure: COOKIE_SECURE,
+            sameSite: isProduction ? ("strict" as const) : ("lax" as const),
+          };
+
+          // Mirror the minimalBusiness shape from lib/actions/auth/business.tsx ~line 319
+          const minimalBusiness = {
+            id: biz.id,
+            identifier: biz.identifier ?? biz.slug ?? "",
+            name: biz.name,
+            businessTypeId: biz.businessTypeId ?? "",
+            businessTypeName: biz.businessTypeName ?? "",
+            logoUrl: biz.logoUrl ?? null,
+            active: biz.active,
+            accountId: biz.accountId,
+            countryId: biz.countryId ?? "",
+          };
+
+          cookieStore.set({
+            name: "currentBusiness",
+            value: JSON.stringify(minimalBusiness),
+            ...cookieOpts,
+          });
+
+          // Fetch first location for this business
+          const locRes = await fetch(
+            `${ACCOUNTS_SERVICE_URL}/api/v1/me/locations?businessId=${biz.id}`,
+            { headers: bizHeaders },
+          );
+          if (locRes.ok) {
+            const locs = await locRes.json();
+            if (Array.isArray(locs) && locs.length >= 1) {
+              const loc = locs[0];
+              // Mirror the full location object shape from lib/actions/auth/location.tsx ~line 95
+              const locationObj = {
+                id: loc.id,
+                accountId: loc.accountId ?? "",
+                businessId: loc.businessId ?? biz.id,
+                businessName: loc.businessName ?? biz.name ?? "",
+                identifier: loc.identifier ?? loc.id,
+                name: loc.name,
+                description: loc.description ?? "",
+                phoneNumber: loc.phoneNumber ?? "",
+                email: loc.email ?? "",
+                active: loc.active,
+                countryId: loc.countryId ?? "",
+                region: loc.region ?? "",
+                district: loc.district ?? "",
+                ward: loc.ward ?? "",
+                address: loc.address ?? "",
+                postalCode: loc.postalCode ?? "",
+                latitude: loc.latitude ?? null,
+                longitude: loc.longitude ?? null,
+                timezone: loc.timezone ?? "",
+                website: loc.website ?? "",
+                createdAt: loc.createdAt ?? "",
+                updatedAt: loc.updatedAt ?? "",
+              };
+              cookieStore.set({
+                name: "currentLocation",
+                value: JSON.stringify(locationObj),
+                ...cookieOpts,
+              });
+              devLog("[LOGIN] Pre-selected invited business/location:", biz.id, loc.id);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Non-critical — user falls back to /select-business
+      console.warn("[LOGIN] Pre-select invited business/location failed (non-critical):", e);
+    }
+  }
+
+  await setSessionPersistence(rememberMe);
+
+  return parseStringify({
+    responseType: "success",
+    message: "Login successful",
+  });
+}
+
 export const login = async (
   credentials: z.infer<typeof LoginSchema>,
   rememberMe: boolean = false,
-  mfaCode?: string,
   recaptchaToken?: string,
 ): Promise<FormResponse> => {
   const validatedData = LoginSchema.safeParse(credentials);
@@ -191,9 +454,6 @@ export const login = async (
       email: validatedData.data.email,
       password: validatedData.data.password,
     };
-    if (mfaCode) {
-      loginBody.mfaCode = mfaCode;
-    }
     if (recaptchaToken) {
       loginBody.recaptchaToken = recaptchaToken;
       loginBody.recaptchaAction = "login";
@@ -210,18 +470,32 @@ export const login = async (
 
     devLog("[LOGIN] Auth response status:", response.status);
 
+    // MFA challenge: the backend returns 412 with { mfaRequired, mfaToken } and
+    // does NOT issue a session. parseApiError() only surfaces code/message, so
+    // read the raw body here to pull out mfaToken and hand it to the MFA step.
+    if (response.status === 412) {
+      const mfaToken = await extractMfaToken(response);
+      devLog("[LOGIN] MFA required, mfaToken present:", !!mfaToken);
+      if (mfaToken) {
+        return parseStringify({
+          responseType: "mfa_required",
+          message: "Enter your authentication code to continue.",
+          data: { mfaToken },
+        });
+      }
+      // 412 without a usable token — surface a generic error rather than
+      // dropping the user into an MFA step we can't complete.
+      return parseStringify({
+        responseType: "error",
+        message:
+          "Multi-factor authentication is required but the challenge could not be started. Please try again.",
+        error: new Error("MFA_TOKEN_MISSING"),
+      });
+    }
+
     if (!response.ok) {
       const apiError = await parseApiError(response);
       devLog("[LOGIN] Auth error response:", JSON.stringify(apiError));
-
-      if (response.status === 412) {
-        return parseStringify({
-          responseType: "error",
-          message: getUIErrorMessage(apiError.code, apiError.message),
-          error: new Error(apiError.code || "MFA required"),
-          data: { mfaRequired: true, mfaToken: (apiError as any).mfaToken },
-        });
-      }
 
       return parseStringify({
         responseType: "error",
@@ -256,238 +530,10 @@ export const login = async (
       });
     }
 
-    // Auto-accept a pending invitation BEFORE computing routing flags, so
-    // /me/accounts reflects the new membership and hasInvitedAccess is correct.
-    const cookieStore = await cookies();
-    const pendingInvite = cookieStore.get("pendingInvite")?.value;
-    // Capture before deletion so we can use it later in the pre-select block.
-    const cameFromInvite = !!pendingInvite;
-    if (pendingInvite) {
-      try {
-        const res = await fetch(
-          `${ACCOUNTS_SERVICE_URL}/api/v1/account-members/${pendingInvite}/accept`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${loginData.accessToken}`,
-              "Content-Type": "application/json",
-              ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
-            },
-          },
-        );
-        if (!res.ok) console.error("[LOGIN] auto-accept invite returned", res.status);
-      } catch (e) {
-        console.error("[LOGIN] auto-accept invite failed:", e);
-      } finally {
-        try { cookieStore.delete("pendingInvite"); } catch { /* ok */ }
-      }
-    }
-
-    // Determine whether the user has access to any account they don't own.
-    let hasInvitedAccess = false;
-    try {
-      const meRes = await fetch(`${ACCOUNTS_SERVICE_URL}/api/v1/me/accounts`, {
-        headers: {
-          Authorization: `Bearer ${loginData.accessToken}`,
-          "Content-Type": "application/json",
-          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
-        },
-      });
-      if (meRes.ok) {
-        const accounts = (await meRes.json()) as Array<{ owner?: boolean }>;
-        hasInvitedAccess = Array.isArray(accounts) && accounts.some((a) => a?.owner === false);
-      } else {
-        console.error("[LOGIN] /me/accounts returned", meRes.status);
-      }
-    } catch (e) {
-      console.error("[LOGIN] /me/accounts fetch failed:", e);
-    }
-
-    let profileData: any = {};
-    let profileFetchError:
-      | { status: number; code?: string; message?: string }
-      | null = null;
-    try {
-      devLog("[LOGIN] Fetching profile from:", `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/${loginData.accountId}`);
-      const profileResponse = await fetch(
-        `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/${loginData.accountId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${loginData.accessToken}`,
-            "Content-Type": "application/json",
-            ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
-          },
-        },
-      );
-      devLog("[LOGIN] Profile response status:", profileResponse.status);
-      if (profileResponse.ok) {
-        profileData = await profileResponse.json();
-        devLog("[LOGIN] Profile fetched for:", profileData.firstName, profileData.lastName);
-      } else {
-        const apiError = await parseApiError(profileResponse);
-        console.error("[LOGIN] Profile fetch failed:", profileResponse.status, apiError.code);
-        devLog("[LOGIN] Profile fetch error body:", JSON.stringify(apiError));
-        profileFetchError = {
-          status: profileResponse.status,
-          code: apiError.code,
-          message: apiError.message,
-        };
-      }
-    } catch (profileErr: any) {
-      console.error("[LOGIN] Profile fetch error:", profileErr);
-      profileFetchError = {
-        status: 0,
-        code: "NETWORK_ERROR",
-        message: profileErr?.message,
-      };
-    }
-
-    // Profile fetch is required for routing decisions (business/location
-    // completion flags drive the onboarding redirect). If it failed, abort
-    // the login and surface the error so the user can retry — defaulting
-    // the flags to false sends fully-onboarded users back to the business
-    // registration screen.
-    if (profileFetchError) {
-      await deleteAuthCookie();
-      const fallback =
-        profileFetchError.status >= 500 || profileFetchError.status === 0
-          ? "We couldn't load your account right now. Please try again in a moment."
-          : "We couldn't load your account. Please try again.";
-      return parseStringify({
-        responseType: "error",
-        message: getUIErrorMessage(
-          profileFetchError.code,
-          profileFetchError.message,
-          fallback,
-        ),
-        error: new Error(
-          profileFetchError.code || `HTTP ${profileFetchError.status}`,
-        ),
-      });
-    }
-
-    devLog("[LOGIN] Establishing customer session...");
-    await establishCustomerSession(loginData, {
-      firstName: profileData.firstName,
-      lastName: profileData.lastName,
-      phoneNumber: profileData.phoneNumber,
-      pictureUrl: profileData.pictureUrl || profileData.avatar,
-      isBusinessRegistrationComplete:
-        profileData.isBusinessRegistrationComplete ??
-        profileData.businessComplete,
-      isLocationRegistrationComplete:
-        profileData.isLocationRegistrationComplete ??
-        profileData.locationComplete,
-      countryId: profileData.countryId || profileData.country,
-      countryCode: profileData.countryCode,
-      theme: profileData.theme,
-      hasInvitedAccess,
-    });
-    devLog("[LOGIN] Customer session established");
-
-    // Best-effort: pre-select the invited business/location so the user
-    // lands directly in context instead of having to choose at /select-business.
-    // Only fires for invited logins that have exactly one business — for
-    // multi-business users we leave the choice to them. Any failure here is
-    // silently swallowed; the user still reaches /select-business normally.
-    if (cameFromInvite && hasInvitedAccess) {
-      try {
-        const bizHeaders: Record<string, string> = {
-          Authorization: `Bearer ${loginData.accessToken}`,
-          "Content-Type": "application/json",
-          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
-        };
-
-        const bizRes = await fetch(
-          `${ACCOUNTS_SERVICE_URL}/api/v1/me/businesses`,
-          { headers: bizHeaders },
-        );
-        if (bizRes.ok) {
-          const bizzes = await bizRes.json();
-          if (Array.isArray(bizzes) && bizzes.length === 1) {
-            const biz = bizzes[0];
-            const isProduction = process.env.NODE_ENV === "production";
-            const cookieOpts = {
-              httpOnly: true,
-              secure: COOKIE_SECURE,
-              sameSite: isProduction ? ("strict" as const) : ("lax" as const),
-            };
-
-            // Mirror the minimalBusiness shape from lib/actions/auth/business.tsx ~line 319
-            const minimalBusiness = {
-              id: biz.id,
-              identifier: biz.identifier ?? biz.slug ?? "",
-              name: biz.name,
-              businessTypeId: biz.businessTypeId ?? "",
-              businessTypeName: biz.businessTypeName ?? "",
-              logoUrl: biz.logoUrl ?? null,
-              active: biz.active,
-              accountId: biz.accountId,
-              countryId: biz.countryId ?? "",
-            };
-
-            cookieStore.set({
-              name: "currentBusiness",
-              value: JSON.stringify(minimalBusiness),
-              ...cookieOpts,
-            });
-
-            // Fetch first location for this business
-            const locRes = await fetch(
-              `${ACCOUNTS_SERVICE_URL}/api/v1/me/locations?businessId=${biz.id}`,
-              { headers: bizHeaders },
-            );
-            if (locRes.ok) {
-              const locs = await locRes.json();
-              if (Array.isArray(locs) && locs.length >= 1) {
-                const loc = locs[0];
-                // Mirror the full location object shape from lib/actions/auth/location.tsx ~line 95
-                const locationObj = {
-                  id: loc.id,
-                  accountId: loc.accountId ?? "",
-                  businessId: loc.businessId ?? biz.id,
-                  businessName: loc.businessName ?? biz.name ?? "",
-                  identifier: loc.identifier ?? loc.id,
-                  name: loc.name,
-                  description: loc.description ?? "",
-                  phoneNumber: loc.phoneNumber ?? "",
-                  email: loc.email ?? "",
-                  active: loc.active,
-                  countryId: loc.countryId ?? "",
-                  region: loc.region ?? "",
-                  district: loc.district ?? "",
-                  ward: loc.ward ?? "",
-                  address: loc.address ?? "",
-                  postalCode: loc.postalCode ?? "",
-                  latitude: loc.latitude ?? null,
-                  longitude: loc.longitude ?? null,
-                  timezone: loc.timezone ?? "",
-                  website: loc.website ?? "",
-                  createdAt: loc.createdAt ?? "",
-                  updatedAt: loc.updatedAt ?? "",
-                };
-                cookieStore.set({
-                  name: "currentLocation",
-                  value: JSON.stringify(locationObj),
-                  ...cookieOpts,
-                });
-                devLog("[LOGIN] Pre-selected invited business/location:", biz.id, loc.id);
-              }
-            }
-          }
-        }
-      } catch (e) {
-        // Non-critical — user falls back to /select-business
-        console.warn("[LOGIN] Pre-select invited business/location failed (non-critical):", e);
-      }
-    }
-
-    await setSessionPersistence(rememberMe);
-
-    return parseStringify({
-      responseType: "success",
-      message: "Login successful",
-    });
+    // Post-login work (invite accept, hasInvitedAccess, profile fetch,
+    // session establish, invited business/location pre-select) is shared with
+    // the MFA-verify path so the resulting session is byte-for-byte identical.
+    return await establishSessionFromLogin(loginData, rememberMe);
   } catch (error: any) {
     console.error("[LOGIN] Caught error:", {
       name: error?.name,
@@ -523,6 +569,116 @@ export const login = async (
       responseType: "error",
       message: "An unexpected error occurred. Please try again.",
       error: new Error(error?.message || "Unexpected"),
+    });
+  }
+};
+
+// Error codes / statuses that mean the MFA challenge can no longer be completed
+// (token expired/revoked, account locked, rate-limited). These send the user
+// back to the credentials step rather than letting them keep retrying a code.
+const MFA_FATAL_CODES = new Set([
+  "TOKEN_EXPIRED",
+  "TOKEN_INVALID_SIGNATURE",
+  "TOKEN_MALFORMED",
+  "TOKEN_REVOKED",
+  "MFA_TOKEN_EXPIRED",
+  "MFA_TOKEN_INVALID",
+  "MFA_TOKEN_NOT_FOUND",
+  "SESSION_EXPIRED",
+  "ACCOUNT_LOCKED",
+  "RATE_LIMITED",
+]);
+
+/**
+ * Second step of an MFA login. The first step (password OR OAuth) returned a
+ * 412 with an mfaToken and issued NO session; here we POST that token plus the
+ * user's 6-digit TOTP or a recovery code to /auth/mfa/verify. On success the
+ * endpoint returns a full LoginResponse and we establish the session via the
+ * shared establishSessionFromLogin so it is identical to a normal login.
+ *
+ * A wrong code does NOT consume the mfaToken (the backend allows retries until
+ * success, lockout, or ~5min expiry), so on a retryable failure we keep the
+ * caller on the MFA step. On a fatal failure (expired token / lockout) we flag
+ * `mfaExpired` so the caller can return the user to the credentials step.
+ */
+export const verifyMfaLogin = async (
+  mfaToken: string,
+  code: string,
+  rememberMe: boolean = false,
+): Promise<FormResponse> => {
+  if (!mfaToken || !code?.trim()) {
+    return parseStringify({
+      responseType: "error",
+      message: "Please enter your verification code.",
+      error: new Error("Incomplete MFA challenge"),
+    });
+  }
+
+  try {
+    const response = await fetch(`${AUTH_SERVICE_URL}/auth/mfa/verify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+      },
+      body: JSON.stringify({ mfaToken, code: code.trim() }),
+    });
+
+    devLog("[MFA_VERIFY] Response status:", response.status);
+
+    if (!response.ok) {
+      const apiError = await parseApiError(response);
+      devLog("[MFA_VERIFY] Error response:", JSON.stringify(apiError));
+
+      // Token-level failures (expired/revoked/locked/rate-limited) can't be
+      // recovered by retrying a code — tell the caller to restart from creds.
+      const fatal =
+        (apiError.code && MFA_FATAL_CODES.has(apiError.code)) ||
+        response.status === 401 ||
+        response.status === 404 ||
+        response.status === 410 ||
+        response.status === 429;
+
+      return parseStringify({
+        responseType: "error",
+        message: getUIErrorMessage(
+          apiError.code,
+          apiError.message,
+          fatal
+            ? "Your verification session has expired. Please sign in again."
+            : "That code wasn't right. Please try again.",
+        ),
+        error: new Error(apiError.code || `HTTP ${response.status}`),
+        data: { mfaExpired: fatal },
+      });
+    }
+
+    const loginData: LoginResponse = await response.json();
+    devLog("[MFA_VERIFY] Verified, establishing session for userId:", loginData.userId);
+
+    // Mirror login()'s pre-session cleanup so a stale cookie/business never
+    // leaks into the new session.
+    await deleteAuthCookie();
+    await deleteActiveBusinessCookie();
+    await clearDestination();
+
+    return await establishSessionFromLogin(loginData, rememberMe);
+  } catch (error: any) {
+    console.error("[MFA_VERIFY] Caught error:", error?.message, error?.cause);
+
+    if (
+      error instanceof Error &&
+      "digest" in error &&
+      typeof error.digest === "string" &&
+      error.digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+
+    return parseStringify({
+      responseType: "error",
+      message: getUIErrorMessage(null, error?.message, "Could not verify the code. Please try again."),
+      error: new Error(error?.message || "MFA verification failed"),
     });
   }
 };
@@ -711,6 +867,27 @@ export const oauthLogin = async (
     });
 
     devLog("[OAUTH] Response status:", response.status);
+
+    // MFA challenge: OAuth sign-in for an MFA user now returns 412 +
+    // { mfaRequired, mfaToken } with NO session, exactly like password login.
+    // Route it into the same MFA step (verifyMfaLogin) by surfacing the token.
+    if (response.status === 412) {
+      const mfaToken = await extractMfaToken(response);
+      devLog("[OAUTH] MFA required, mfaToken present:", !!mfaToken);
+      if (mfaToken) {
+        return parseStringify({
+          responseType: "mfa_required",
+          message: "Enter your authentication code to continue.",
+          data: { mfaToken },
+        });
+      }
+      return parseStringify({
+        responseType: "error",
+        message:
+          "Multi-factor authentication is required but the challenge could not be started. Please try again.",
+        error: new Error("MFA_TOKEN_MISSING"),
+      });
+    }
 
     if (!response.ok) {
       const apiError = await parseApiError(response);

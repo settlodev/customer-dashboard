@@ -58,7 +58,7 @@ export type ApiSortResponse = {
 };
 
 export interface FormResponse<T = unknown> {
-    responseType: "success" | "error" | "needs_verification";
+    responseType: "success" | "error" | "needs_verification" | "mfa_required";
     message: string;
     error?: Error | null;
     data?: T;

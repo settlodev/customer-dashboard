@@ -11,6 +11,13 @@ interface SocialAuthButtonsProps {
   mode: "login" | "register";
   onError?: (message: string) => void;
   onNeedsVerification?: () => void;
+  /**
+   * Called when OAuth sign-in returns a 412 MFA challenge with an mfaToken.
+   * The host (e.g. the login form) should route this into its MFA step and
+   * complete it via verifyMfaLogin. If omitted (e.g. on the register page,
+   * where there is no inline MFA step) the user is asked to sign in instead.
+   */
+  onMfaRequired?: (mfaToken: string) => void;
   disabled?: boolean;
 }
 
@@ -26,6 +33,7 @@ export default function SocialAuthButtons({
   mode,
   onError,
   onNeedsVerification,
+  onMfaRequired,
   disabled = false,
 }: SocialAuthButtonsProps) {
   const [isPending, startTransition] = useTransition();
@@ -36,6 +44,23 @@ export default function SocialAuthButtons({
     startTransition(async () => {
       try {
         const data: FormResponse = await oauthLogin(provider, idToken);
+
+        // MFA-enabled user: OAuth issued no session, only an mfaToken. Hand it
+        // to the host's MFA step (login form). Where no handler is wired (e.g.
+        // the register page) we can't show the challenge inline, so direct the
+        // user to sign in, where the same challenge runs.
+        if (data.responseType === "mfa_required") {
+          const token = (data.data as { mfaToken?: string } | undefined)
+            ?.mfaToken;
+          if (token && onMfaRequired) {
+            onMfaRequired(token);
+          } else {
+            onError?.(
+              "Two-factor authentication is required. Please sign in to continue.",
+            );
+          }
+          return;
+        }
 
         if (data.responseType === "needs_verification") {
           onNeedsVerification?.();
