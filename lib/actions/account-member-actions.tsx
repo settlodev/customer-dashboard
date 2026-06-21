@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { FormResponse } from "@/types/types";
+import { SettloApiError, getUIErrorMessage } from "@/lib/settlo-api-error-handler";
 
 export interface AccountMember {
   id: string;
@@ -78,9 +79,16 @@ export const inviteMember = async (data: {
     revalidatePath("/team");
     return { responseType: "success", message: "Invitation sent successfully", data: parseStringify(response) };
   } catch (error) {
+    // Surface the backend's structured error (CONFLICT / EMAIL_EXISTS /
+    // VALIDATION_ERROR …) so duplicate-invite, already-a-member and
+    // invalid-email are distinguishable instead of a single opaque string.
+    const message =
+      error instanceof SettloApiError
+        ? getUIErrorMessage(error.code, error.message, "Failed to send invitation")
+        : "Failed to send invitation";
     return {
       responseType: "error",
-      message: "Failed to send invitation",
+      message,
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }

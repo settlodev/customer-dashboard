@@ -12,7 +12,10 @@ import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/team/columns";
 import { AccountMember, listMembers, inviteMember } from "@/lib/actions/account-member-actions";
 import { fetchAllRoles } from "@/lib/actions/role-actions";
-import { Role } from "@/types/roles/type";
+import { fetchAllLocations } from "@/lib/actions/location-actions";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { Role, RoleScope } from "@/types/roles/type";
+import { Location } from "@/types/location/type";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlusIcon, Loader2, UserPlus } from "lucide-react";
@@ -35,6 +38,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 
+// Basic RFC-5322-ish email check — good enough to catch typos client-side
+// before the request round-trips; the backend remains the source of truth.
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function TeamPage() {
   const [members, setMembers] = useState<AccountMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,6 +49,12 @@ export default function TeamPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [inviteData, setInviteData] = useState({ email: "", firstName: "", lastName: "", roleIds: [] as string[] });
   const [isInviting, setIsInviting] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  // Target location for the (LOCATION-scoped) invite. Populated from the
+  // accessible-locations list; pre-selected to the current location so the
+  // invite never silently falls back to an ACCOUNT-wide grant.
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [locationId, setLocationId] = useState<string>("");
   const { toast } = useToast();
 
   const loadMembers = useCallback(async () => {
@@ -58,19 +71,53 @@ export default function TeamPage() {
 
   useEffect(() => { loadMembers(); }, [loadMembers]);
 
+  // Invites are LOCATION-scoped, so only offer LOCATION-scoped roles —
+  // an ACCOUNT/BUSINESS role on a single-location invite is a scope mismatch.
   useEffect(() => {
-    fetchAllRoles().then(setRoles).catch(() => {});
+    fetchAllRoles(RoleScope.LOCATION).then(setRoles).catch(() => {});
+  }, []);
+
+  // Load accessible locations and default the invite target to the current
+  // location (the one the dashboard is operating under). The picker lets the
+  // inviter change it; if no location resolves the form blocks (see below).
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([fetchAllLocations(), getCurrentLocation()])
+      .then(([list, current]) => {
+        if (cancelled) return;
+        setLocations(list);
+        const preselect =
+          (current?.id && list.some((l) => l.id === current.id) && current.id) ||
+          (list.length === 1 ? list[0].id : "");
+        setLocationId(preselect);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleInvite = async () => {
-    if (!inviteData.email || !inviteData.firstName) return;
+    // Guard the same conditions the submit button disables on, so a stray
+    // Enter / programmatic call can't bypass validation.
+    if (!inviteData.firstName) return;
+    if (!EMAIL_REGEX.test(inviteData.email.trim())) {
+      setEmailError("Enter a valid email address.");
+      return;
+    }
+    if (inviteData.roleIds.length === 0) return;
+    if (!locationId) return;
+    setEmailError(null);
     setIsInviting(true);
     try {
       const result = await inviteMember({
-        email: inviteData.email,
+        email: inviteData.email.trim(),
         firstName: inviteData.firstName,
         lastName: inviteData.lastName || undefined,
         roleIds: inviteData.roleIds,
+        // Pass the scope explicitly so the invite never silently relies on
+        // (or falls back past) the currentLocation cookie into ACCOUNT scope.
+        scopes: [{ scopeType: "LOCATION", scopeId: locationId }],
       });
       toast({
         variant: result.responseType === "success" ? "success" : "destructive",
@@ -169,8 +216,13 @@ export default function TeamPage() {
                 type="email"
                 placeholder="member@example.com"
                 value={inviteData.email}
-                onChange={(e) => setInviteData((p) => ({ ...p, email: e.target.value }))}
+                aria-invalid={!!emailError}
+                onChange={(e) => {
+                  setInviteData((p) => ({ ...p, email: e.target.value }));
+                  if (emailError) setEmailError(null);
+                }}
               />
+              {emailError && <p className="text-xs text-red-500">{emailError}</p>}
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium">Roles</label>
@@ -204,12 +256,47 @@ export default function TeamPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {inviteData.roleIds.length === 0 && (
+                <p className="text-xs text-muted-foreground">Select at least one role.</p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Location <span className="text-red-500">*</span></label>
+              {locations.length > 0 ? (
+                <>
+                  <Select value={locationId} onValueChange={setLocationId}>
+                    <SelectTrigger><SelectValue placeholder="Select a location" /></SelectTrigger>
+                    <SelectContent>
+                      {locations.map((loc) => (
+                        <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {locationId ? (
+                    <p className="text-xs text-muted-foreground">
+                      Inviting to: <span className="font-medium">{locations.find((l) => l.id === locationId)?.name}</span>
+                    </p>
+                  ) : (
+                    <p className="text-xs text-red-500">Select a location to scope this invitation.</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-red-500">
+                  No location is available to scope this invitation. Select a location first, then try again.
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setShowInvite(false)}>Cancel</Button>
             <Button
-              disabled={isInviting || !inviteData.email || !inviteData.firstName}
+              disabled={
+                isInviting ||
+                !inviteData.firstName ||
+                !EMAIL_REGEX.test(inviteData.email.trim()) ||
+                inviteData.roleIds.length === 0 ||
+                !locationId
+              }
               onClick={handleInvite}
             >
               {isInviting ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" /> Sending...</> : "Send Invitation"}
