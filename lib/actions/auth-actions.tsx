@@ -1490,6 +1490,19 @@ export const resetPassword = async (
     });
   }
 
+  const emailAddress = validateEmail.data.email;
+  // Neutral, account-enumeration-safe copy. The backend always returns a
+  // uniform 200 regardless of whether the account exists, so the UX must
+  // never reveal a USER_NOT_FOUND / "no account" distinction.
+  const neutralSuccess = {
+    responseType: "success",
+    message:
+      "If an account exists for this email, a reset code has been sent.",
+    // Thread the EMAIL the user typed into the verify-code step. The backend
+    // no longer returns a userId from this endpoint.
+    data: { email: emailAddress },
+  };
+
   try {
     const response = await fetch(
       `${AUTH_SERVICE_URL}/auth/password/reset/request`,
@@ -1500,29 +1513,28 @@ export const resetPassword = async (
           ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
         },
         body: JSON.stringify({
-          identifier: validateEmail.data.email,
+          identifier: emailAddress,
         }),
       },
     );
 
+    // A USER_NOT_FOUND (or any not-ok) must still advance to the code step
+    // with the neutral message so existence of the account can't be probed.
+    // Only genuine infrastructure failures (5xx) should surface an error.
     if (!response.ok) {
       const apiError = await parseApiError(response);
-      console.log("[RESET_PASSWORD] Error response:", JSON.stringify(apiError));
-      return parseStringify({
-        responseType: "error",
-        message: getUIErrorMessage(apiError.code, apiError.message, "Failed to send password reset code."),
-        error: new Error(apiError.code || `HTTP ${response.status}`),
-      });
+      console.log("[RESET_PASSWORD] Non-ok response:", JSON.stringify(apiError));
+      if (response.status >= 500) {
+        return parseStringify({
+          responseType: "error",
+          message: getUIErrorMessage(apiError.code, apiError.message, "Failed to send password reset code."),
+          error: new Error(apiError.code || `HTTP ${response.status}`),
+        });
+      }
+      return parseStringify(neutralSuccess);
     }
 
-    const data = await response.json();
-
-    return parseStringify({
-      responseType: "success",
-      message:
-        "A password reset code has been sent to your email address.",
-      data: { userId: data.userId },
-    });
+    return parseStringify(neutralSuccess);
   } catch (error: any) {
     console.error("[RESET_PASSWORD] Caught error:", error?.message);
     return parseStringify({
@@ -1534,7 +1546,7 @@ export const resetPassword = async (
 };
 
 export const verifyResetCode = async (
-  userId: string,
+  identifier: string,
   code: string,
 ): Promise<FormResponse> => {
   try {
@@ -1546,7 +1558,7 @@ export const verifyResetCode = async (
           "Content-Type": "application/json",
           ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
         },
-        body: JSON.stringify({ userId, code }),
+        body: JSON.stringify({ identifier, code }),
       },
     );
 
