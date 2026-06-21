@@ -63,7 +63,6 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
   const [pinOpen, setPinOpen] = useState(false);
 
   const [dashboardEmail, setDashboardEmail] = useState(staff.email ?? "");
-  const [dashboardPassword, setDashboardPassword] = useState("");
 
   const [pin, setPin] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
@@ -140,7 +139,6 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
               disabled={loading !== null}
               onClick={() => {
                 setDashboardEmail(staff.email ?? "");
-                setDashboardPassword("");
                 setDashboardOpen(true);
               }}
             >
@@ -285,8 +283,8 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
           <DialogHeader>
             <DialogTitle>Grant dashboard access</DialogTitle>
             <DialogDescription>
-              Set login credentials for {fullName}. Share the password directly
-              — the staff member can rotate it after first sign-in.
+              We&apos;ll email {fullName} a secure link to set their own
+              password. Confirm the email address to send the invite.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -299,15 +297,6 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
                 onChange={(e) => setDashboardEmail(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Password</label>
-              <Input
-                type="password"
-                placeholder="Minimum 8 characters"
-                value={dashboardPassword}
-                onChange={(e) => setDashboardPassword(e.target.value)}
-              />
-            </div>
           </div>
           <DialogFooter>
             <Button
@@ -318,26 +307,17 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
               Cancel
             </Button>
             <Button
-              disabled={
-                !dashboardEmail ||
-                dashboardPassword.length < 8 ||
-                loading === "dash-grant"
-              }
+              disabled={!dashboardEmail || loading === "dash-grant"}
               onClick={() =>
                 run(
                   "dash-grant",
-                  () =>
-                    grantDashboardAccess(
-                      staff.id,
-                      dashboardEmail,
-                      dashboardPassword,
-                    ),
+                  () => grantDashboardAccess(staff.id, dashboardEmail),
                   "Dashboard access granted",
                   () => setDashboardOpen(false),
                 )
               }
             >
-              {loading === "dash-grant" ? "Granting…" : "Grant access"}
+              {loading === "dash-grant" ? "Sending…" : "Send invite"}
             </Button>
           </DialogFooter>
         </DialogContent>

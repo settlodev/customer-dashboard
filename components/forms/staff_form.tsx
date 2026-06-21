@@ -157,7 +157,6 @@ export default function StaffForm({
       posAccess: item?.posAccess ?? false,
       dashboardAccess: item?.dashboardAccess ?? false,
       pin: "",
-      password: "",
       referredByCode: "",
     },
   });
@@ -173,7 +172,6 @@ export default function StaffForm({
   const dashboardAccess = form.watch("dashboardAccess");
   const posAccess = form.watch("posAccess");
   const email = form.watch("email");
-  const password = form.watch("password");
   const color = form.watch("color");
   const roleIds = form.watch("roleIds") ?? [];
 
@@ -184,8 +182,8 @@ export default function StaffForm({
 
   // Required-field checklist. Mirrors what the Zod schema enforces
   // server-side so the readiness bar can't lie. When `dashboardAccess`
-  // is on, email + password become required (the schema also enforces
-  // this via superRefine).
+  // is on, only email becomes required — the staff member sets their own
+  // password via an emailed link, so none is collected here.
   const requiredFlags = useMemo(() => {
     const baseRequired = [
       !!firstName?.trim(),
@@ -196,7 +194,7 @@ export default function StaffForm({
       roleIds.length > 0,
     ];
     if (!isEditMode && dashboardAccess) {
-      baseRequired.push(!!email?.trim(), (password?.length ?? 0) >= 8);
+      baseRequired.push(!!email?.trim());
     }
     return baseRequired;
   }, [
@@ -209,7 +207,6 @@ export default function StaffForm({
     isEditMode,
     dashboardAccess,
     email,
-    password,
   ]);
   const completion = Math.round(
     (requiredFlags.filter(Boolean).length / requiredFlags.length) * 100,
@@ -959,57 +956,32 @@ export default function StaffForm({
                                 Dashboard credentials
                               </span>
                             </div>
-                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                              <FormField
-                                control={form.control}
-                                name="email"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel className={styles.fieldLabel}>
-                                      Login email{" "}
-                                      <span className="req">*</span>
-                                    </FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        type="email"
-                                        placeholder="staff@example.com"
-                                        disabled={isPending}
-                                        {...field}
-                                        value={field.value ?? ""}
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={form.control}
-                                name="password"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel className={styles.fieldLabel}>
-                                      Initial password{" "}
-                                      <span className="req">*</span>
-                                    </FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        type="password"
-                                        placeholder="Minimum 8 characters"
-                                        disabled={isPending}
-                                        {...field}
-                                        value={field.value ?? ""}
-                                      />
-                                    </FormControl>
-                                    <p className={styles.fieldHint}>
-                                      Share this password directly. The staff
-                                      member can rotate it after first login.
-                                    </p>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
+                            <FormField
+                              control={form.control}
+                              name="email"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className={styles.fieldLabel}>
+                                    Login email <span className="req">*</span>
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="email"
+                                      placeholder="staff@example.com"
+                                      disabled={isPending}
+                                      {...field}
+                                      value={field.value ?? ""}
+                                    />
+                                  </FormControl>
+                                  <p className={styles.fieldHint}>
+                                    We&apos;ll email this person a secure link to
+                                    set their own password — you don&apos;t need
+                                    to create one.
+                                  </p>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                           </div>
                         )}
 
@@ -1127,10 +1099,7 @@ export default function StaffForm({
                 { label: "Gender", done: requiredFlags[4] },
                 { label: "At least one role", done: requiredFlags[5] },
                 ...(!isEditMode && dashboardAccess
-                  ? [
-                      { label: "Login email", done: requiredFlags[6] },
-                      { label: "Initial password", done: requiredFlags[7] },
-                    ]
+                  ? [{ label: "Login email", done: requiredFlags[6] }]
                   : []),
               ]}
               completion={completion}

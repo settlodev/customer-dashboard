@@ -220,12 +220,13 @@ export const StaffSchema = object({
   password: preprocess((val) => (val === null || val === "" ? undefined : val), string().min(8, "Password must be at least 8 characters").optional()),
   referredByCode: preprocess((val) => (val === null || val === "" ? undefined : val), string().max(16, "Referral code cannot exceed 16 characters").optional()),
 }).superRefine((data, ctx: RefinementCtx) => {
+  // Dashboard access now requires only an email — the backend creates a
+  // passwordless user and emails a set-password link, so no initial
+  // password is collected here. (`password` stays in the schema as an
+  // ignored optional for backward compatibility with any caller.)
   if (data.dashboardAccess) {
     if (!data.email) {
       ctx.addIssue({ code: "custom", path: ["email"], message: "Email is required for dashboard access" });
-    }
-    if (!data.password) {
-      ctx.addIssue({ code: "custom", path: ["password"], message: "Password is required for dashboard access" });
     }
   }
 });

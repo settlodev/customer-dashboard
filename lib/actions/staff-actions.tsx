@@ -156,16 +156,21 @@ export const createStaff = async (
       });
     }
 
-    const { pin, password, ...fields } = validatedData.data;
+    // `password` is intentionally NOT forwarded: dashboard access is now
+    // passwordless from the dashboard's side — the backend creates the
+    // user and emails them a set-password link. We still send email +
+    // dashboardAccess + roles + PIN. (Spread excludes password by listing
+    // it among the omitted keys so no throwaway binding is created.)
+    const { pin, ...fields } = validatedData.data;
     const payload: Record<string, unknown> = {
       ...fields,
       scopeType: destination.type,
       scopeId: destination.id,
     };
+    delete payload.password;
     if (fields.dateOfBirth) payload.dateOfBirth = fields.dateOfBirth.toISOString().split("T")[0];
     if (fields.joiningDate) payload.joiningDate = fields.joiningDate.toISOString().split("T")[0];
     if (pin && fields.posAccess) payload.pin = pin;
-    if (fields.dashboardAccess && password) payload.password = password;
 
     await apiClient.post(`/api/v1/staff`, payload);
 
@@ -256,13 +261,13 @@ export const reactivateStaff = async (id: string): Promise<FormResponse> => {
 export const grantDashboardAccess = async (
   staffId: string,
   email: string,
-  password: string,
 ): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient();
+    // Passwordless grant: the backend creates the user and emails them a
+    // set-password link — we only send the login email, never a password.
     await apiClient.post(`/api/v1/staff/${staffId}/dashboard-access`, {
       email,
-      password,
     });
 
     revalidatePath("/staff");
