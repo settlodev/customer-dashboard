@@ -975,48 +975,55 @@ export const register = async (
 
     const regData: RegisterResponse = await regResponse.json();
 
-    // Auto-login to get verificationResendToken
-    try {
-      const loginResponse = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
-        },
-        body: JSON.stringify({
-          email: validatedData.data.email,
-          password: validatedData.data.password,
-        }),
-      });
-
-      if (loginResponse.ok) {
-        const loginData: LoginResponse = await loginResponse.json();
-
-        await storePendingVerification({
-          userId: loginData.userId || regData.authId,
-          email: loginData.email || regData.email,
-          verificationResendToken: loginData.verificationResendToken,
-          accessToken: loginData.accessToken,
-          refreshToken: loginData.refreshToken,
+    // Only stash a pending-verification session when the backend actually
+    // requires email verification. Invited signups are created already-verified
+    // (the invite link proved email ownership), so there is nothing to verify and
+    // storing a pending-verification session would wrongly divert them to verify.
+    if (regData.emailVerificationRequired) {
+      // Auto-login to get verificationResendToken
+      try {
+        const loginResponse = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+          },
+          body: JSON.stringify({
+            email: validatedData.data.email,
+            password: validatedData.data.password,
+          }),
         });
-      } else {
-        // Login failed after registration - store auth ID for verification
+
+        if (loginResponse.ok) {
+          const loginData: LoginResponse = await loginResponse.json();
+
+          await storePendingVerification({
+            userId: loginData.userId || regData.authId,
+            email: loginData.email || regData.email,
+            verificationResendToken: loginData.verificationResendToken,
+            accessToken: loginData.accessToken,
+            refreshToken: loginData.refreshToken,
+          });
+        } else {
+          // Login failed after registration - store auth ID for verification
+          await storePendingVerification({
+            userId: regData.authId,
+            email: regData.email,
+          });
+        }
+      } catch {
         await storePendingVerification({
           userId: regData.authId,
           email: regData.email,
         });
       }
-    } catch {
-      await storePendingVerification({
-        userId: regData.authId,
-        email: regData.email,
-      });
     }
 
     return parseStringify({
       responseType: "success",
-      message:
-        "Registration successful! Please check your email for a verification code.",
+      message: regData.emailVerificationRequired
+        ? "Registration successful! Please check your email for a verification code."
+        : "Account created successfully.",
       data: {
         userId: regData.authId,
         email: regData.email,
@@ -1132,6 +1139,53 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
         });
       }
 
+      // Defense-in-depth: an invited user who still had to verify (e.g. skip
+      // verification didn't apply) must come out with invited access, exactly
+      // like the login() path — otherwise middleware traps them at onboarding.
+      const cookieStore = await cookies();
+      const pendingInvite = cookieStore.get("pendingInvite")?.value;
+      if (pendingInvite) {
+        try {
+          const acceptRes = await fetch(
+            `${ACCOUNTS_SERVICE_URL}/api/v1/account-members/${pendingInvite}/accept`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${verifyData.accessToken}`,
+                "Content-Type": "application/json",
+                ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+              },
+            },
+          );
+          if (!acceptRes.ok)
+            console.error("[VERIFY_EMAIL] auto-accept invite returned", acceptRes.status);
+        } catch (e) {
+          console.error("[VERIFY_EMAIL] auto-accept invite failed:", e);
+        } finally {
+          try { cookieStore.delete("pendingInvite"); } catch { /* ok */ }
+        }
+      }
+
+      let hasInvitedAccess = false;
+      try {
+        const meRes = await fetch(`${ACCOUNTS_SERVICE_URL}/api/v1/me/accounts`, {
+          headers: {
+            Authorization: `Bearer ${verifyData.accessToken}`,
+            "Content-Type": "application/json",
+            ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+          },
+        });
+        if (meRes.ok) {
+          const accounts = (await meRes.json()) as Array<{ owner?: boolean }>;
+          hasInvitedAccess =
+            Array.isArray(accounts) && accounts.some((a) => a?.owner === false);
+        } else {
+          console.error("[VERIFY_EMAIL] /me/accounts returned", meRes.status);
+        }
+      } catch (e) {
+        console.error("[VERIFY_EMAIL] /me/accounts fetch failed:", e);
+      }
+
       // Clear pending verification before setting new cookies to avoid 431
       await clearPendingVerification();
 
@@ -1165,6 +1219,7 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
           countryId: profileData.countryId || profileData.country,
           countryCode: profileData.countryCode,
           theme: profileData.theme,
+          hasInvitedAccess,
         },
       );
 

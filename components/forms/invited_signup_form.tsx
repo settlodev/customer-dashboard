@@ -5,7 +5,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { RegisterSchema } from "@/types/data-schemas";
-import { register as registerAction } from "@/lib/actions/auth-actions";
+import {
+  register as registerAction,
+  login as loginAction,
+} from "@/lib/actions/auth-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -73,7 +76,31 @@ export default function InvitedSignupForm({
         setError(res.message);
         return;
       }
-      window.location.href = `/login?email=${encodeURIComponent(email)}`;
+
+      // Invited accounts are created already-verified (the invite link proved
+      // email ownership), so sign the user straight in and drop them into the
+      // invited account — no /login bounce, no email-verification detour. The
+      // login action auto-accepts the pending invite and sets hasInvitedAccess.
+      const verificationRequired =
+        (res.data as { emailVerificationRequired?: boolean } | undefined)
+          ?.emailVerificationRequired;
+      if (verificationRequired === false) {
+        const loginRes = await loginAction({ email, password: values.password });
+        if (loginRes.responseType === "success") {
+          window.location.href = "/select-business";
+          return;
+        }
+        // Account exists but automatic sign-in failed — send them to log in.
+        setError(
+          loginRes.message ||
+            "Account created, but automatic sign-in failed. Please log in.",
+        );
+        window.location.href = `/login?email=${encodeURIComponent(email)}`;
+        return;
+      }
+
+      // Fallback: backend unexpectedly still requires verification.
+      window.location.href = `/email-verification?email=${encodeURIComponent(email)}`;
     });
   };
 
