@@ -123,18 +123,14 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
             <DropdownMenuItem
               disabled={loading !== null || staff.owner}
               onClick={() =>
-                run(
-                  "dash-revoke",
-                  () => revokeDashboardAccess(staff.id),
-                  "Dashboard access revoked",
-                )
+                run("dash-revoke", () => revokeDashboardAccess(staff.id), "Dashboard access revoked")
               }
               className="text-amber-600 focus:text-amber-600"
             >
               <ShieldOff className="mr-2 h-4 w-4" />
               Revoke dashboard
             </DropdownMenuItem>
-          ) : (
+          ) : staff.active ? (
             <DropdownMenuItem
               disabled={loading !== null}
               onClick={() => {
@@ -145,7 +141,7 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
               <Shield className="mr-2 h-4 w-4" />
               Grant dashboard…
             </DropdownMenuItem>
-          )}
+          ) : null}
 
           <DropdownMenuSeparator />
           <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -153,58 +149,41 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
           </DropdownMenuLabel>
           {staff.posAccess ? (
             <>
-              <DropdownMenuItem
-                disabled={loading !== null}
-                onClick={openPinDialog}
-              >
-                <KeyRound className="mr-2 h-4 w-4" />
-                {staff.hasPin ? "Reset PIN…" : "Set PIN…"}
-              </DropdownMenuItem>
-              {staff.hasPin && (
-                <DropdownMenuItem
-                  disabled={loading !== null}
-                  onClick={() =>
-                    run(
-                      "pin-clear",
-                      () => clearStaffPin(staff.id),
-                      "PIN cleared",
-                    )
-                  }
-                >
-                  <KeyRound className="mr-2 h-4 w-4" />
-                  Clear PIN
-                </DropdownMenuItem>
+              {staff.active && (
+                <>
+                  <DropdownMenuItem disabled={loading !== null} onClick={openPinDialog}>
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    {staff.hasPin ? "Reset PIN…" : "Set PIN…"}
+                  </DropdownMenuItem>
+                  {staff.hasPin && (
+                    <DropdownMenuItem
+                      disabled={loading !== null}
+                      onClick={() => run("pin-clear", () => clearStaffPin(staff.id), "PIN cleared")}
+                    >
+                      <KeyRound className="mr-2 h-4 w-4" />
+                      Clear PIN
+                    </DropdownMenuItem>
+                  )}
+                </>
               )}
               <DropdownMenuItem
                 disabled={loading !== null || staff.owner}
-                onClick={() =>
-                  run(
-                    "pos-revoke",
-                    () => revokePosAccess(staff.id),
-                    "POS access revoked",
-                  )
-                }
+                onClick={() => run("pos-revoke", () => revokePosAccess(staff.id), "POS access revoked")}
                 className="text-amber-600 focus:text-amber-600"
               >
                 <Smartphone className="mr-2 h-4 w-4" />
                 Revoke POS
               </DropdownMenuItem>
             </>
-          ) : (
+          ) : staff.active ? (
             <DropdownMenuItem
               disabled={loading !== null}
-              onClick={() =>
-                run(
-                  "pos-grant",
-                  () => grantPosAccess(staff.id),
-                  "POS access granted",
-                )
-              }
+              onClick={() => run("pos-grant", () => grantPosAccess(staff.id), "POS access granted")}
             >
               <SmartphoneCharging className="mr-2 h-4 w-4" />
               Grant POS
             </DropdownMenuItem>
-          )}
+          ) : null}
 
           {!staff.owner && (
             <>
