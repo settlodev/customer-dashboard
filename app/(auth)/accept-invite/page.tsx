@@ -56,7 +56,10 @@ export default async function AcceptInvitePage({
     value: member,
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? "strict" : "lax",
+    // lax (not strict) so the cookie survives top-level cross-site navigations
+    // the invited flow depends on — the email-link entry and the OAuth round-trip
+    // back from the provider — where a strict cookie would not be sent.
+    sameSite: "lax",
     maxAge: 60 * 60, // 1 hour
   });
 
