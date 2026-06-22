@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  Activity as ActivityIcon,
   Award,
   Briefcase,
   CalendarDays,
@@ -43,6 +44,8 @@ interface Props {
   /** Pre-rendered Sales-tab content — the per-staff Orders/Abandoned view
    * with its date filter, KPIs, and tables, built on the server. */
   salesContent: React.ReactNode;
+  /** Pre-rendered Audit-tab content (server-fetched audit page). */
+  auditContent: React.ReactNode;
 }
 
 const TABS = [
@@ -52,6 +55,7 @@ const TABS = [
   { key: "performance", label: "Performance", icon: Trophy },
   { key: "schedule", label: "Schedule", icon: CalendarDays },
   { key: "history", label: "Activity", icon: HistoryIcon },
+  { key: "audit", label: "Audit", icon: ActivityIcon },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -61,6 +65,7 @@ export function StaffDetailView({
   detail,
   initialTab,
   salesContent,
+  auditContent,
 }: Props) {
   const [tab, setTab] = useState<TabKey>(
     TABS.some((t) => t.key === initialTab)
@@ -228,6 +233,7 @@ export function StaffDetailView({
       {tab === "history" && (
         <HistoryTab xp={gamification?.recentXpTransactions ?? []} />
       )}
+      {tab === "audit" && auditContent}
     </div>
   );
 }

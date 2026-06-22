@@ -13,6 +13,7 @@ import {
   getStaff,
   getStaffDetail,
   fetchAllStaff,
+  getStaffAudit,
 } from "@/lib/actions/staff-actions";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import { getLocationSettings } from "@/lib/actions/location-settings-actions";
@@ -24,6 +25,7 @@ import { Staff, StaffDetail } from "@/types/staff";
 import { OrdersPanel, type SalesView } from "@/components/orders/orders-panel";
 import { StaffDetailView } from "./staff-detail-view";
 import { StaffDetailActions } from "./staff-detail-actions";
+import { StaffAuditTab } from "./staff-audit-tab";
 
 type Params = Promise<{ id: string }>;
 type SearchParams = Promise<{
@@ -34,6 +36,7 @@ type SearchParams = Promise<{
   search?: string;
   page?: string;
   limit?: string;
+  auditPage?: string;
 }>;
 
 export default async function StaffPage({
@@ -52,6 +55,7 @@ export default async function StaffPage({
     search: searchParam,
     page: pageParam,
     limit: limitParam,
+    auditPage: auditPageParam,
   } = await searchParams;
 
   if (id === "new") redirect("/staff/new");
@@ -152,6 +156,13 @@ export default async function StaffPage({
     />
   );
 
+  // ── Audit tab ─────────────────────────────────────────────────────────
+  const auditPageNo = Number(auditPageParam) || 1;
+  const auditData = await getStaffAudit(staff.id, auditPageNo, 20);
+  const auditContent = (
+    <StaffAuditTab staffId={staff.id} data={auditData} page={auditPageNo} />
+  );
+
   // Land on the Sales tab when the URL carries any of its (sales-only)
   // state — a shared or reloaded link should reopen the view it
   // describes, not fall back to Overview. An explicit `?tab=` still wins.
@@ -233,6 +244,7 @@ export default async function StaffPage({
           detail={detail}
           initialTab={initialTab}
           salesContent={salesContent}
+          auditContent={auditContent}
         />
       </PageBody>
     </PageShell>
