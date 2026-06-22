@@ -1,4 +1,4 @@
-import { array, number, object, preprocess, string } from "zod";
+import { array, number, object, preprocess, string, z } from "zod";
 
 const toNumber = (val: unknown) => {
   if (typeof val === "string" && val.trim() !== "") return parseFloat(val);
@@ -12,7 +12,9 @@ export const StockTransferItemSchema = object({
 });
 
 export const StockTransferSchema = object({
-  destinationLocationType: string({ required_error: "Destination type is required" }),
+  destinationLocationType: z.enum(["LOCATION", "WAREHOUSE", "STORE"], {
+    required_error: "Destination type is required",
+  }),
   destinationLocationId: string({ required_error: "Destination is required" }).uuid(),
   transferType: string().optional(),
   transferDate: string().optional(),

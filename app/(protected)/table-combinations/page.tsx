@@ -20,6 +20,7 @@ import {
   searchTableCombinations,
 } from "@/lib/actions/space-actions";
 import { TableCombination } from "@/types/space/type";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 
 type Params = {
   searchParams: Promise<{
@@ -36,13 +37,16 @@ export default async function TableCombinationsPage({ searchParams }: Params) {
   const pageLimit = Number(resolved.limit);
 
   const [response, allTables, allCombos] = await Promise.all([
-    searchTableCombinations(q, page, pageLimit).catch(() => ({
-      content: [] as TableCombination[],
-      totalElements: 0,
-      totalPages: 0,
-      size: 0,
-      number: 0,
-    })),
+    searchTableCombinations(q, page, pageLimit).catch((e) => {
+      rethrowIfBoundary(e);
+      return {
+        content: [] as TableCombination[],
+        totalElements: 0,
+        totalPages: 0,
+        size: 0,
+        number: 0,
+      };
+    }),
     fetchAllTables().catch(() => []),
     fetchAllTableCombinations().catch(() => []),
   ]);

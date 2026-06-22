@@ -30,6 +30,7 @@ import {
 } from "@/types/product/schema";
 import { GoogleGenAI } from "@google/genai";
 import { LocationDetails } from "@/types/menu/type";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import { inventoryUrl } from "./inventory-client";
 import { getCurrentDestination } from "./context";
 import { attachBomRule } from "./bom-rule-actions";
@@ -760,6 +761,7 @@ export const listTopSellingProducts = async (
     );
     return parseStringify(data);
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("[listTopSellingProducts] request failed", error);
     return null;
   }
@@ -798,6 +800,7 @@ export const listSoldItems = async (
     );
     return parseStringify(data);
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("[listSoldItems] request failed", error);
     return null;
   }

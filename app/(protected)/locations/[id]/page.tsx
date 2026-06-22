@@ -10,7 +10,12 @@ import {
 } from "@/components/ui/card";
 import { getLocation } from "@/lib/actions/location-actions";
 import { Location } from "@/types/location/type";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import LocationClientForm from "@/components/forms/location_client_form";
 
 type Params = Promise<{ id: string }>;
@@ -29,24 +34,28 @@ export default async function LocationPage({ params }: { params: Params }) {
     }
   }
 
-  const breadcrumbItems = [
-    { title: "Locations", link: "/locations" },
-    {
-      title: isNewItem ? "New" : item?.name || "Edit",
-      link: "",
-    },
-  ];
+  const title = isNewItem ? "Create location" : item?.name || "Edit location";
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between mb-2">
-        <div className="relative flex-1 md:max-w-md">
-          <BreadcrumbsNav items={breadcrumbItems} />
-        </div>
-      </div>
-
-      <LocationCard isNewItem={isNewItem} item={item} />
-    </div>
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Locations", href: "/locations" },
+          { title: isNewItem ? "New" : item?.name || "Edit" },
+        ]}
+      />
+      <PageHeader
+        title={title}
+        subtitle={
+          isNewItem
+            ? "Add a new location to your business"
+            : "Edit location details"
+        }
+      />
+      <PageBody>
+        <LocationCard isNewItem={isNewItem} item={item} />
+      </PageBody>
+    </PageShell>
   );
 }
 

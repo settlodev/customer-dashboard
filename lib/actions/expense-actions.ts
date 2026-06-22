@@ -15,6 +15,7 @@ import type {
 import { ExpenseSchema } from "@/types/expense/schema";
 
 import { accountingUrl } from "./accounting-client";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 
 interface ListExpensesOpts {
   status?: ExpenseStatus;
@@ -45,6 +46,7 @@ export async function listExpenses(
     );
     return parseStringify(data);
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("listExpenses failed", error);
     return {
       content: [],

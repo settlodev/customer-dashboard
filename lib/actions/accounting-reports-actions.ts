@@ -1,5 +1,6 @@
 "use server";
 
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import type {
@@ -25,6 +26,7 @@ export async function fetchTrialBalance(
     );
     return parseStringify(data);
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("fetchTrialBalance failed", error);
     return null;
   }
@@ -43,6 +45,7 @@ export async function fetchProfitAndLoss(
     );
     return parseStringify(data);
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("fetchProfitAndLoss failed", error);
     return null;
   }
@@ -60,6 +63,7 @@ export async function fetchBalanceSheet(
     );
     return parseStringify(data);
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("fetchBalanceSheet failed", error);
     return null;
   }
@@ -81,6 +85,7 @@ export async function fetchGeneralLedger(
     );
     return parseStringify(data);
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("fetchGeneralLedger failed", error);
     return null;
   }
@@ -99,6 +104,7 @@ export async function fetchExpenseSummary(
     );
     return parseStringify(data);
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("fetchExpenseSummary failed", error);
     return null;
   }
@@ -116,6 +122,7 @@ export async function fetchApAging(
     );
     return parseStringify(data);
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("fetchApAging failed", error);
     return null;
   }

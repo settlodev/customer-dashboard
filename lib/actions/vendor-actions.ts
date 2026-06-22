@@ -10,6 +10,7 @@ import type { Vendor } from "@/types/vendor/type";
 import { VendorSchema } from "@/types/vendor/schema";
 
 import { accountingUrl } from "./accounting-client";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 
 export async function listVendors(
   search?: string,
@@ -27,6 +28,7 @@ export async function listVendors(
     );
     return parseStringify(data);
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("listVendors failed", error);
     return {
       content: [],

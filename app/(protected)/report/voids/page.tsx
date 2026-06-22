@@ -15,6 +15,7 @@ import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { VoidsFilters } from "@/components/reports/voids/voids-filters";
 import { VoidsDataTable } from "@/components/tables/orders/voids-data-table";
 import { getVoidsReport } from "@/lib/actions/order-actions";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import { getLocationSettings } from "@/lib/actions/location-settings-actions";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import { fetchAllTables } from "@/lib/actions/space-actions";
@@ -61,7 +62,10 @@ export default async function Page({ searchParams }: Params) {
   const to = resolved.to ?? format(endOfMonth(now), "yyyy-MM-dd");
 
   const [report, locationSettings, staffList, tablesList] = await Promise.all([
-    getVoidsReport({ fromDate: from, toDate: to }).catch(() => null),
+    getVoidsReport({ fromDate: from, toDate: to }).catch((e) => {
+      rethrowIfBoundary(e);
+      return null;
+    }),
     getLocationSettings().catch(() => null),
     fetchAllStaff().catch(() => []),
     fetchAllTables().catch(() => []),

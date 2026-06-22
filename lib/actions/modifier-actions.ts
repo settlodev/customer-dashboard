@@ -2,6 +2,7 @@
 
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import { FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { inventoryUrl } from "./inventory-client";
@@ -45,7 +46,8 @@ export async function listModifierGroups(): Promise<ModifierGroup[]> {
     const apiClient = new ApiClient();
     const data = await apiClient.get(inventoryUrl(`/api/v1/modifier-groups`));
     return parseStringify(data);
-  } catch {
+  } catch (error) {
+    rethrowIfBoundary(error);
     return [];
   }
 }

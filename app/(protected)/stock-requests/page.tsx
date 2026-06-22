@@ -2,7 +2,12 @@
 
 import {Button} from "@/components/ui/button";
 import Link from "next/link";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+    PageShell,
+    PageHeader,
+    PageBreadcrumbs,
+    PageBody,
+} from "@/components/layouts/page-shell";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
 import DataLoadError from "@/components/layouts/data-load-error";
@@ -13,18 +18,17 @@ import { columns } from "@/components/tables/stock-request/columns";
 import { softFetch } from "@/lib/list-fallback";
 
 
-const breadCrumbItems = [{title:"Stock Requests",link:"/stock-requests"}];
-type Params = { 
-    searchParams: Promise<{ 
-        search?: string; 
-        page?: string; 
-        limit?: string; 
-    }> 
+type Params = {
+    searchParams: Promise<{
+        search?: string;
+        page?: string;
+        limit?: string;
+    }>
 };
  async function Page({searchParams}:Params) {
 
     const resolvedSearchParams = await searchParams;
-    
+
     const q = resolvedSearchParams.search || "";
     const page = Number(resolvedSearchParams.page) || 0;
     const pageLimit = Number(resolvedSearchParams.limit);
@@ -36,19 +40,22 @@ type Params = {
      const pageCount = responseData?.totalPages ?? 0
 
     return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-            <div className="flex items-center justify-between mb-2">
-                <div className="relative flex-1 md:max-w-md">
-                    <BreadcrumbsNav items={breadCrumbItems} />
-                </div>
-                <div className={`flex items-center space-x-2`}>
-                    <Button>
-                        <Link href={`/stock-requests/new`}>
-                            Request Stock
-                        </Link>
-                    </Button>
-                </div>
-            </div>
+        <PageShell>
+            <PageBreadcrumbs items={[{ title: "Stock Requests" }]} />
+            <PageHeader
+                title="Stock Requests"
+                subtitle="Manage stock requests"
+                actions={
+                    <>
+                        <Button>
+                            <Link href={`/stock-requests/new`}>
+                                Request Stock
+                            </Link>
+                        </Button>
+                    </>
+                }
+            />
+            <PageBody>
             {
                 !responseData ? (
                     <DataLoadError itemName="stock requests" />
@@ -80,7 +87,8 @@ type Params = {
                         <NoItems newItemUrl={`/stock-requests/new`} itemName={`Stock Request`}/>
                     )
             }
-        </div>
+            </PageBody>
+        </PageShell>
     );
 }
 

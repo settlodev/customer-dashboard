@@ -1,5 +1,6 @@
 "use server";
 
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import type { SuspenseReconciliation } from "@/types/suspense-reconciliation/type";
@@ -21,6 +22,7 @@ export async function getSuspenseReport(
     );
     return parseStringify(data);
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("getSuspenseReport failed", error);
     return null;
   }

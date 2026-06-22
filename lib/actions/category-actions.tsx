@@ -10,6 +10,7 @@ import { Category } from "@/types/category/type";
 import { CategorySchema } from "@/types/category/schema";
 import { inventoryUrl } from "./inventory-client";
 import { getCurrentDestination } from "./context";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 
 export async function fetchAllCategories(): Promise<Category[] | null> {
   try {
@@ -17,7 +18,8 @@ export async function fetchAllCategories(): Promise<Category[] | null> {
     const data = await apiClient.get(inventoryUrl("/api/v1/categories?size=200&sortBy=sortOrder&sortDirection=ASC"));
     const page = parseStringify(data) as ApiResponse<Category>;
     return page.content;
-  } catch {
+  } catch (error) {
+    rethrowIfBoundary(error);
     return null;
   }
 }

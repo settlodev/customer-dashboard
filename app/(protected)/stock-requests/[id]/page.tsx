@@ -1,5 +1,5 @@
 import {UUID} from "node:crypto";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import { PageShell, PageHeader, PageBreadcrumbs, PageBody } from "@/components/layouts/page-shell";
 import {Card, CardContent} from "@/components/ui/card";
 import { getStockRequest } from "@/lib/actions/request-actions";
 import { StockRequests } from "@/types/stock-request/type";
@@ -23,19 +23,19 @@ export default async function StockRequestPage({params}: {params: Params}){
         }
     }
 
-    const breadCrumbItems=[{title:"Stock Requests",link:"/stock-requests"},
-        {title: isNewItem ? "New":item?.warehouseStockVariantName || "Edit",link:"/stock-requests/new"}
-    ]
-
     return(
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-            <div className={`flex items-center justify-between mb-2`}>
-                <div className={`relative flex-1 `}>
-                    <BreadcrumbsNav items={breadCrumbItems}/>
-                </div>
-            </div>
-            <StockRequestCard isNewItem={isNewItem} item={item}/>
-        </div>
+        <PageShell>
+            <PageBreadcrumbs
+                items={[
+                    { title: "Stock Requests", href: "/stock-requests" },
+                    { title: isNewItem ? "New" : item?.warehouseStockVariantName || "Edit" },
+                ]}
+            />
+            <PageHeader title={isNewItem ? "Request stock" : "Edit stock request"} />
+            <PageBody>
+                <StockRequestCard isNewItem={isNewItem} item={item}/>
+            </PageBody>
+        </PageShell>
     )
 }
 

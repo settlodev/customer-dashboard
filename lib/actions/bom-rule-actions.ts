@@ -5,6 +5,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { FormResponse } from "@/types/types";
 import { inventoryUrl } from "./inventory-client";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import {
   BomCostSnapshot,
   BomRule,
@@ -56,7 +57,8 @@ export async function getBomRules(status?: string): Promise<BomRule[]> {
       ? data
       : (data as { content?: unknown[] })?.content ?? [];
     return parseStringify(content) as BomRule[];
-  } catch {
+  } catch (error) {
+    rethrowIfBoundary(error);
     return [];
   }
 }

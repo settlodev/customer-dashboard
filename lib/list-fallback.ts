@@ -48,3 +48,16 @@ export async function softFetch<T>(promise: Promise<T>): Promise<T | null> {
     return null;
   }
 }
+
+/**
+ * Re-throw auth/permission errors, swallow everything else.
+ *
+ * For fetchers (or callers) that intentionally degrade to a safe default on
+ * failure — `catch (e) { rethrowIfBoundary(e); return []; }`. Without this, a
+ * blanket catch also eats session-expired / forbidden responses, so the page
+ * renders an empty list instead of routing to the session-expired /
+ * permission-denied screen. Auth/permission errors should always propagate.
+ */
+export function rethrowIfBoundary(error: unknown): void {
+  if (isBoundaryError(error)) throw error;
+}

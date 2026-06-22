@@ -9,6 +9,7 @@ import type {
   PrepaymentAnalyticsOverview,
   PrepaymentTrendPoint,
 } from "@/types/customer-prepayments/type";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 
 // Reports Service — ApiClient("reports") → REPORTS_SERVICE_URL.
 const ANALYTICS = "/api/v2/analytics/prepayments";
@@ -24,6 +25,7 @@ export async function getPrepaymentAnalyticsOverview(
     const data = await apiClient.get(`${ANALYTICS}/overview?${params.toString()}`);
     return parseStringify(data) as PrepaymentAnalyticsOverview;
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("getPrepaymentAnalyticsOverview failed", error);
     return null;
   }
@@ -56,6 +58,7 @@ export async function getOutstandingPrepaidLiability(
     );
     return parseStringify(data) as PrepaymentAnalyticsOverview;
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("getOutstandingPrepaidLiability failed", error);
     return null;
   }
@@ -74,6 +77,7 @@ export async function getTopCustomerPrepaidBalances(
     );
     return parseStringify(data) as CustomerPrepaymentBalance[];
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("getTopCustomerPrepaidBalances failed", error);
     return [];
   }

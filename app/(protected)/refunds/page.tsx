@@ -1,6 +1,11 @@
 
 
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+    PageShell,
+    PageHeader,
+    PageBreadcrumbs,
+    PageBody,
+} from "@/components/layouts/page-shell";
 import DataLoadError from "@/components/layouts/data-load-error";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import {DataTable} from "@/components/tables/data-table";
@@ -10,18 +15,17 @@ import { softFetch } from "@/lib/list-fallback";
 import { OrderItemRefunds } from "@/types/refunds/type";
 
 
-const breadCrumbItems = [{title:"Item refunded",link:"/refunds"}];
-type Params = { 
-    searchParams: Promise<{ 
-        search?: string; 
-        page?: string; 
-        limit?: string; 
-    }> 
+type Params = {
+    searchParams: Promise<{
+        search?: string;
+        page?: string;
+        limit?: string;
+    }>
 };
  async function Page({searchParams}:Params) {
 
     const resolvedSearchParams = await searchParams;
-    
+
     const q = resolvedSearchParams.search || "";
     const page = Number(resolvedSearchParams.page) || 0;
     const pageLimit = Number(resolvedSearchParams.limit);
@@ -33,13 +37,13 @@ type Params = {
      const pageCount = responseData?.totalPages ?? 0
 
     return (
-        <div className={`flex-1 space-y-4 md:p-8 pt-6 mt-10`}>
-            <div className={`flex items-center justify-between mb-2`}>
-                <div className={`relative flex-1 md:max-w-md`}>
-                    <BreadcrumbsNav items={breadCrumbItems} />
-                </div>
-              
-            </div>
+        <PageShell>
+            <PageBreadcrumbs items={[{ title: "Item refunded" }]} />
+            <PageHeader
+                title="Items Refunded"
+                subtitle="A list of all orders"
+            />
+            <PageBody>
             {
                 !responseData ? (
                     <DataLoadError itemName="refunds" />
@@ -56,7 +60,7 @@ type Params = {
                                        pageNo={page}
                                        total={total}
                                        pageCount={pageCount}
-                                       
+
                             />
                         </CardContent>
                     </Card>
@@ -70,7 +74,8 @@ type Params = {
                         </div>
                     )
             }
-        </div>
+            </PageBody>
+        </PageShell>
     );
 }
 

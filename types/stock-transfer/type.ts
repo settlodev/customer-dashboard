@@ -55,6 +55,19 @@ export interface StockTransferItem {
   currency: string | null;
 }
 
+/**
+ * A selectable transfer destination, flattened across the three destination
+ * kinds (location / store / warehouse) so a single picker can list them all.
+ * `subline` is a short disambiguator — region for locations, code for
+ * stores/warehouses.
+ */
+export interface DestinationOption {
+  id: string;
+  name: string;
+  type: DestinationType;
+  subline?: string;
+}
+
 export const TRANSFER_STATUS_LABELS: Record<TransferStatus, string> = {
   REQUESTED: "Requested",
   CONFIRMED: "Confirmed",

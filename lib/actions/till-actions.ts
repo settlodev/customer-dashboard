@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import type { ApiResponse, FormResponse } from "@/types/types";
@@ -30,7 +31,8 @@ export async function listCashMovements(
       ),
     );
     return (parseStringify(data) as CashMovement[]) ?? [];
-  } catch {
+  } catch (error) {
+    rethrowIfBoundary(error);
     return [];
   }
 }
@@ -107,7 +109,8 @@ export async function listTillReconciliations(
       ),
     );
     return parseStringify(data);
-  } catch {
+  } catch (error) {
+    rethrowIfBoundary(error);
     return {
       content: [],
       totalElements: 0,

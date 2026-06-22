@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import type { ApiResponse, FormResponse } from "@/types/types";
@@ -28,6 +29,7 @@ export async function listFundTransfers(
     );
     return parseStringify(data);
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("listFundTransfers failed", error);
     return {
       content: [],
