@@ -217,9 +217,13 @@ export const switchAccount = async (accountId: string): Promise<FormResponse> =>
     };
   } catch (error) {
     console.error("[switchAccount] failed:", error);
+    const backendMessage =
+      error && typeof error === "object" && "message" in error
+        ? String((error as { message?: unknown }).message ?? "")
+        : "";
     return {
       responseType: "error",
-      message: "Failed to switch account",
+      message: backendMessage || "Failed to switch account",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }

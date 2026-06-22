@@ -95,7 +95,15 @@ export function AccountSwitcher() {
         window.location.href = "/select-business";
         return;
       }
-      throw new Error(res.message || "Account switch failed");
+      // Surface the real reason instead of silently closing.
+      Sentry.captureException(new Error(res.message || "Account switch failed"));
+      setSwitching(false);
+      setConfirm(null);
+      toast({
+        variant: "destructive",
+        title: "Couldn't switch account",
+        description: res.message || "Please try again in a moment.",
+      });
     } catch (error) {
       Sentry.captureException(error);
       setSwitching(false);
@@ -103,7 +111,8 @@ export function AccountSwitcher() {
       toast({
         variant: "destructive",
         title: "Couldn't switch account",
-        description: "Please try again in a moment.",
+        description:
+          error instanceof Error ? error.message : "Please try again in a moment.",
       });
     }
   }, [confirm, toast]);
