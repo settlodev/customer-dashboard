@@ -16,7 +16,8 @@ import { resyncLocationCatalog } from "@/lib/actions/admin/inventory-operations"
 
 /**
  * Per-location admin row actions. "Resync catalog" re-publishes the location's
- * products so the Reports Service backfills the category/department taxonomy.
+ * products so the Reports Service backfills the category/department taxonomy AND
+ * product images (top-selling-items thumbnails) — one resync covers both.
  */
 export function LocationRowActions({ locationId }: { locationId: string }) {
   const router = useRouter();

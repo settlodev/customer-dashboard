@@ -48,6 +48,20 @@ const ACCOUNTS_SERVICE_URL =
 const WHITELABEL_CLIENT_ID =
   process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID || "";
 
+// Verbose/PII-bearing auth logging (full API error bodies, account ids, the
+// auth-service URL, request flow markers) must never run in production. Gate it
+// behind non-prod; genuine unexpected failures still use console.error below.
+const devLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV !== "production") console.log(...args);
+};
+
+// Cookies must carry `Secure` on any HTTPS deployment, not just prod, so an
+// HTTPS staging/preview deploy (NODE_ENV !== production) doesn't ship auth
+// cookies without Secure. Local http dev leaves both unset → secure stays false.
+const COOKIE_SECURE =
+  process.env.NODE_ENV === "production" ||
+  process.env.COOKIE_SECURE === "true";
+
 export async function logout() {
   // Always clear local state, regardless of whether the API call succeeds
   const authToken = await getAuthToken();
@@ -151,10 +165,273 @@ export async function endImpersonation(): Promise<FormResponse> {
   });
 }
 
+/**
+ * Pulls the `mfaToken` out of a 412 MFA-challenge response body. The shared
+ * `parseApiError` helper only surfaces code/message, so the login/oauth paths
+ * read the raw JSON here. Defensive against a non-JSON or already-consumed body.
+ */
+async function extractMfaToken(response: Response): Promise<string | undefined> {
+  try {
+    const body = await response.json();
+    const token = body?.mfaToken ?? body?.metadata?.mfaToken;
+    return typeof token === "string" && token.length > 0 ? token : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Shared post-login session establisher. Runs the identical work both the
+ * password-login success path and the MFA-verify path need: auto-accept a
+ * pending invite, compute `hasInvitedAccess` from /me/accounts, fetch the
+ * Accounts profile, establish the first-party customer session, pre-select an
+ * invited single business/location, and apply remember-me persistence.
+ *
+ * Returns a ready-to-return FormResponse — `success` when the session is live,
+ * or an `error` when the profile fetch fails (in which case the partial auth
+ * cookie is cleared so the user can safely retry).
+ */
+async function establishSessionFromLogin(
+  loginData: LoginResponse,
+  rememberMe: boolean = false,
+): Promise<FormResponse> {
+  // Auto-accept a pending invitation BEFORE computing routing flags, so
+  // /me/accounts reflects the new membership and hasInvitedAccess is correct.
+  const cookieStore = await cookies();
+  const pendingInvite = cookieStore.get("pendingInvite")?.value;
+  // Capture before deletion so we can use it later in the pre-select block.
+  const cameFromInvite = !!pendingInvite;
+  if (pendingInvite) {
+    try {
+      const res = await fetch(
+        `${ACCOUNTS_SERVICE_URL}/api/v1/account-members/${pendingInvite}/accept`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${loginData.accessToken}`,
+            "Content-Type": "application/json",
+            ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+          },
+        },
+      );
+      if (!res.ok) console.error("[LOGIN] auto-accept invite returned", res.status);
+    } catch (e) {
+      console.error("[LOGIN] auto-accept invite failed:", e);
+    } finally {
+      try { cookieStore.delete("pendingInvite"); } catch { /* ok */ }
+    }
+  }
+
+  // Determine whether the user has access to any account they don't own.
+  let hasInvitedAccess = false;
+  try {
+    const meRes = await fetch(`${ACCOUNTS_SERVICE_URL}/api/v1/me/accounts`, {
+      headers: {
+        Authorization: `Bearer ${loginData.accessToken}`,
+        "Content-Type": "application/json",
+        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+      },
+    });
+    if (meRes.ok) {
+      const accounts = (await meRes.json()) as Array<{ owner?: boolean }>;
+      hasInvitedAccess = Array.isArray(accounts) && accounts.some((a) => a?.owner === false);
+    } else {
+      console.error("[LOGIN] /me/accounts returned", meRes.status);
+    }
+  } catch (e) {
+    console.error("[LOGIN] /me/accounts fetch failed:", e);
+  }
+
+  let profileData: any = {};
+  let profileFetchError:
+    | { status: number; code?: string; message?: string }
+    | null = null;
+  try {
+    devLog("[LOGIN] Fetching profile from:", `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/${loginData.accountId}`);
+    const profileResponse = await fetch(
+      `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/${loginData.accountId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${loginData.accessToken}`,
+          "Content-Type": "application/json",
+          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+        },
+      },
+    );
+    devLog("[LOGIN] Profile response status:", profileResponse.status);
+    if (profileResponse.ok) {
+      profileData = await profileResponse.json();
+      devLog("[LOGIN] Profile fetched for:", profileData.firstName, profileData.lastName);
+    } else {
+      const apiError = await parseApiError(profileResponse);
+      console.error("[LOGIN] Profile fetch failed:", profileResponse.status, apiError.code);
+      devLog("[LOGIN] Profile fetch error body:", JSON.stringify(apiError));
+      profileFetchError = {
+        status: profileResponse.status,
+        code: apiError.code,
+        message: apiError.message,
+      };
+    }
+  } catch (profileErr: any) {
+    console.error("[LOGIN] Profile fetch error:", profileErr);
+    profileFetchError = {
+      status: 0,
+      code: "NETWORK_ERROR",
+      message: profileErr?.message,
+    };
+  }
+
+  // Profile fetch is required for routing decisions (business/location
+  // completion flags drive the onboarding redirect). If it failed, abort
+  // the login and surface the error so the user can retry — defaulting
+  // the flags to false sends fully-onboarded users back to the business
+  // registration screen.
+  if (profileFetchError) {
+    await deleteAuthCookie();
+    const fallback =
+      profileFetchError.status >= 500 || profileFetchError.status === 0
+        ? "We couldn't load your account right now. Please try again in a moment."
+        : "We couldn't load your account. Please try again.";
+    return parseStringify({
+      responseType: "error",
+      message: getUIErrorMessage(
+        profileFetchError.code,
+        profileFetchError.message,
+        fallback,
+      ),
+      error: new Error(
+        profileFetchError.code || `HTTP ${profileFetchError.status}`,
+      ),
+    });
+  }
+
+  devLog("[LOGIN] Establishing customer session...");
+  await establishCustomerSession(loginData, {
+    firstName: profileData.firstName,
+    lastName: profileData.lastName,
+    phoneNumber: profileData.phoneNumber,
+    pictureUrl: profileData.pictureUrl || profileData.avatar,
+    isBusinessRegistrationComplete:
+      profileData.isBusinessRegistrationComplete ??
+      profileData.businessComplete,
+    isLocationRegistrationComplete:
+      profileData.isLocationRegistrationComplete ??
+      profileData.locationComplete,
+    countryId: profileData.countryId || profileData.country,
+    countryCode: profileData.countryCode,
+    theme: profileData.theme,
+    hasInvitedAccess,
+  });
+  devLog("[LOGIN] Customer session established");
+
+  // Best-effort: pre-select the invited business/location so the user
+  // lands directly in context instead of having to choose at /select-business.
+  // Only fires for invited logins that have exactly one business — for
+  // multi-business users we leave the choice to them. Any failure here is
+  // silently swallowed; the user still reaches /select-business normally.
+  if (cameFromInvite && hasInvitedAccess) {
+    try {
+      const bizHeaders: Record<string, string> = {
+        Authorization: `Bearer ${loginData.accessToken}`,
+        "Content-Type": "application/json",
+        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+      };
+
+      const bizRes = await fetch(
+        `${ACCOUNTS_SERVICE_URL}/api/v1/me/businesses`,
+        { headers: bizHeaders },
+      );
+      if (bizRes.ok) {
+        const bizzes = await bizRes.json();
+        if (Array.isArray(bizzes) && bizzes.length === 1) {
+          const biz = bizzes[0];
+          const isProduction = process.env.NODE_ENV === "production";
+          const cookieOpts = {
+            httpOnly: true,
+            secure: COOKIE_SECURE,
+            sameSite: isProduction ? ("strict" as const) : ("lax" as const),
+          };
+
+          // Mirror the minimalBusiness shape from lib/actions/auth/business.tsx ~line 319
+          const minimalBusiness = {
+            id: biz.id,
+            identifier: biz.identifier ?? biz.slug ?? "",
+            name: biz.name,
+            businessTypeId: biz.businessTypeId ?? "",
+            businessTypeName: biz.businessTypeName ?? "",
+            logoUrl: biz.logoUrl ?? null,
+            active: biz.active,
+            accountId: biz.accountId,
+            countryId: biz.countryId ?? "",
+          };
+
+          cookieStore.set({
+            name: "currentBusiness",
+            value: JSON.stringify(minimalBusiness),
+            ...cookieOpts,
+          });
+
+          // Fetch first location for this business
+          const locRes = await fetch(
+            `${ACCOUNTS_SERVICE_URL}/api/v1/me/locations?businessId=${biz.id}`,
+            { headers: bizHeaders },
+          );
+          if (locRes.ok) {
+            const locs = await locRes.json();
+            if (Array.isArray(locs) && locs.length >= 1) {
+              const loc = locs[0];
+              // Mirror the full location object shape from lib/actions/auth/location.tsx ~line 95
+              const locationObj = {
+                id: loc.id,
+                accountId: loc.accountId ?? "",
+                businessId: loc.businessId ?? biz.id,
+                businessName: loc.businessName ?? biz.name ?? "",
+                identifier: loc.identifier ?? loc.id,
+                name: loc.name,
+                description: loc.description ?? "",
+                phoneNumber: loc.phoneNumber ?? "",
+                email: loc.email ?? "",
+                active: loc.active,
+                countryId: loc.countryId ?? "",
+                region: loc.region ?? "",
+                district: loc.district ?? "",
+                ward: loc.ward ?? "",
+                address: loc.address ?? "",
+                postalCode: loc.postalCode ?? "",
+                latitude: loc.latitude ?? null,
+                longitude: loc.longitude ?? null,
+                timezone: loc.timezone ?? "",
+                website: loc.website ?? "",
+                createdAt: loc.createdAt ?? "",
+                updatedAt: loc.updatedAt ?? "",
+              };
+              cookieStore.set({
+                name: "currentLocation",
+                value: JSON.stringify(locationObj),
+                ...cookieOpts,
+              });
+              devLog("[LOGIN] Pre-selected invited business/location:", biz.id, loc.id);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Non-critical — user falls back to /select-business
+      console.warn("[LOGIN] Pre-select invited business/location failed (non-critical):", e);
+    }
+  }
+
+  await setSessionPersistence(rememberMe);
+
+  return parseStringify({
+    responseType: "success",
+    message: "Login successful",
+  });
+}
+
 export const login = async (
   credentials: z.infer<typeof LoginSchema>,
   rememberMe: boolean = false,
-  mfaCode?: string,
   recaptchaToken?: string,
 ): Promise<FormResponse> => {
   const validatedData = LoginSchema.safeParse(credentials);
@@ -171,15 +448,12 @@ export const login = async (
   await clearDestination();
 
   try {
-    console.log("[LOGIN] Attempting login to:", `${AUTH_SERVICE_URL}/auth/login`);
+    devLog("[LOGIN] Attempting login to:", `${AUTH_SERVICE_URL}/auth/login`);
 
     const loginBody: Record<string, string> = {
       email: validatedData.data.email,
       password: validatedData.data.password,
     };
-    if (mfaCode) {
-      loginBody.mfaCode = mfaCode;
-    }
     if (recaptchaToken) {
       loginBody.recaptchaToken = recaptchaToken;
       loginBody.recaptchaAction = "login";
@@ -194,20 +468,34 @@ export const login = async (
       body: JSON.stringify(loginBody),
     });
 
-    console.log("[LOGIN] Auth response status:", response.status);
+    devLog("[LOGIN] Auth response status:", response.status);
+
+    // MFA challenge: the backend returns 412 with { mfaRequired, mfaToken } and
+    // does NOT issue a session. parseApiError() only surfaces code/message, so
+    // read the raw body here to pull out mfaToken and hand it to the MFA step.
+    if (response.status === 412) {
+      const mfaToken = await extractMfaToken(response);
+      devLog("[LOGIN] MFA required, mfaToken present:", !!mfaToken);
+      if (mfaToken) {
+        return parseStringify({
+          responseType: "mfa_required",
+          message: "Enter your authentication code to continue.",
+          data: { mfaToken },
+        });
+      }
+      // 412 without a usable token — surface a generic error rather than
+      // dropping the user into an MFA step we can't complete.
+      return parseStringify({
+        responseType: "error",
+        message:
+          "Multi-factor authentication is required but the challenge could not be started. Please try again.",
+        error: new Error("MFA_TOKEN_MISSING"),
+      });
+    }
 
     if (!response.ok) {
       const apiError = await parseApiError(response);
-      console.log("[LOGIN] Auth error response:", JSON.stringify(apiError));
-
-      if (response.status === 412) {
-        return parseStringify({
-          responseType: "error",
-          message: getUIErrorMessage(apiError.code, apiError.message),
-          error: new Error(apiError.code || "MFA required"),
-          data: { mfaRequired: true, mfaToken: (apiError as any).mfaToken },
-        });
-      }
+      devLog("[LOGIN] Auth error response:", JSON.stringify(apiError));
 
       return parseStringify({
         responseType: "error",
@@ -217,7 +505,7 @@ export const login = async (
     }
 
     const loginData: LoginResponse = await response.json();
-    console.log("[LOGIN] Login successful, emailVerified:", loginData.emailVerified, "userId:", loginData.userId);
+    devLog("[LOGIN] Login successful, emailVerified:", loginData.emailVerified, "userId:", loginData.userId);
 
     if (!loginData.emailVerified) {
       await storePendingVerification({
@@ -242,96 +530,10 @@ export const login = async (
       });
     }
 
-    let profileData: any = {};
-    let profileFetchError:
-      | { status: number; code?: string; message?: string }
-      | null = null;
-    try {
-      console.log("[LOGIN] Fetching profile from:", `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/${loginData.accountId}`);
-      const profileResponse = await fetch(
-        `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/${loginData.accountId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${loginData.accessToken}`,
-            "Content-Type": "application/json",
-            ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
-          },
-        },
-      );
-      console.log("[LOGIN] Profile response status:", profileResponse.status);
-      if (profileResponse.ok) {
-        profileData = await profileResponse.json();
-        console.log("[LOGIN] Profile fetched for:", profileData.firstName, profileData.lastName);
-      } else {
-        const apiError = await parseApiError(profileResponse);
-        console.error(
-          "[LOGIN] Profile fetch failed:",
-          profileResponse.status,
-          JSON.stringify(apiError),
-        );
-        profileFetchError = {
-          status: profileResponse.status,
-          code: apiError.code,
-          message: apiError.message,
-        };
-      }
-    } catch (profileErr: any) {
-      console.error("[LOGIN] Profile fetch error:", profileErr);
-      profileFetchError = {
-        status: 0,
-        code: "NETWORK_ERROR",
-        message: profileErr?.message,
-      };
-    }
-
-    // Profile fetch is required for routing decisions (business/location
-    // completion flags drive the onboarding redirect). If it failed, abort
-    // the login and surface the error so the user can retry — defaulting
-    // the flags to false sends fully-onboarded users back to the business
-    // registration screen.
-    if (profileFetchError) {
-      await deleteAuthCookie();
-      const fallback =
-        profileFetchError.status >= 500 || profileFetchError.status === 0
-          ? "We couldn't load your account right now. Please try again in a moment."
-          : "We couldn't load your account. Please try again.";
-      return parseStringify({
-        responseType: "error",
-        message: getUIErrorMessage(
-          profileFetchError.code,
-          profileFetchError.message,
-          fallback,
-        ),
-        error: new Error(
-          profileFetchError.code || `HTTP ${profileFetchError.status}`,
-        ),
-      });
-    }
-
-    console.log("[LOGIN] Establishing customer session...");
-    await establishCustomerSession(loginData, {
-      firstName: profileData.firstName,
-      lastName: profileData.lastName,
-      phoneNumber: profileData.phoneNumber,
-      pictureUrl: profileData.pictureUrl || profileData.avatar,
-      isBusinessRegistrationComplete:
-        profileData.isBusinessRegistrationComplete ??
-        profileData.businessComplete,
-      isLocationRegistrationComplete:
-        profileData.isLocationRegistrationComplete ??
-        profileData.locationComplete,
-      countryId: profileData.countryId || profileData.country,
-      countryCode: profileData.countryCode,
-      theme: profileData.theme,
-    });
-    console.log("[LOGIN] Customer session established");
-
-    await setSessionPersistence(rememberMe);
-
-    return parseStringify({
-      responseType: "success",
-      message: "Login successful",
-    });
+    // Post-login work (invite accept, hasInvitedAccess, profile fetch,
+    // session establish, invited business/location pre-select) is shared with
+    // the MFA-verify path so the resulting session is byte-for-byte identical.
+    return await establishSessionFromLogin(loginData, rememberMe);
   } catch (error: any) {
     console.error("[LOGIN] Caught error:", {
       name: error?.name,
@@ -367,6 +569,116 @@ export const login = async (
       responseType: "error",
       message: "An unexpected error occurred. Please try again.",
       error: new Error(error?.message || "Unexpected"),
+    });
+  }
+};
+
+// Error codes / statuses that mean the MFA challenge can no longer be completed
+// (token expired/revoked, account locked, rate-limited). These send the user
+// back to the credentials step rather than letting them keep retrying a code.
+const MFA_FATAL_CODES = new Set([
+  "TOKEN_EXPIRED",
+  "TOKEN_INVALID_SIGNATURE",
+  "TOKEN_MALFORMED",
+  "TOKEN_REVOKED",
+  "MFA_TOKEN_EXPIRED",
+  "MFA_TOKEN_INVALID",
+  "MFA_TOKEN_NOT_FOUND",
+  "SESSION_EXPIRED",
+  "ACCOUNT_LOCKED",
+  "RATE_LIMITED",
+]);
+
+/**
+ * Second step of an MFA login. The first step (password OR OAuth) returned a
+ * 412 with an mfaToken and issued NO session; here we POST that token plus the
+ * user's 6-digit TOTP or a recovery code to /auth/mfa/verify. On success the
+ * endpoint returns a full LoginResponse and we establish the session via the
+ * shared establishSessionFromLogin so it is identical to a normal login.
+ *
+ * A wrong code does NOT consume the mfaToken (the backend allows retries until
+ * success, lockout, or ~5min expiry), so on a retryable failure we keep the
+ * caller on the MFA step. On a fatal failure (expired token / lockout) we flag
+ * `mfaExpired` so the caller can return the user to the credentials step.
+ */
+export const verifyMfaLogin = async (
+  mfaToken: string,
+  code: string,
+  rememberMe: boolean = false,
+): Promise<FormResponse> => {
+  if (!mfaToken || !code?.trim()) {
+    return parseStringify({
+      responseType: "error",
+      message: "Please enter your verification code.",
+      error: new Error("Incomplete MFA challenge"),
+    });
+  }
+
+  try {
+    const response = await fetch(`${AUTH_SERVICE_URL}/auth/mfa/verify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+      },
+      body: JSON.stringify({ mfaToken, code: code.trim() }),
+    });
+
+    devLog("[MFA_VERIFY] Response status:", response.status);
+
+    if (!response.ok) {
+      const apiError = await parseApiError(response);
+      devLog("[MFA_VERIFY] Error response:", JSON.stringify(apiError));
+
+      // Token-level failures (expired/revoked/locked/rate-limited) can't be
+      // recovered by retrying a code — tell the caller to restart from creds.
+      const fatal =
+        (apiError.code && MFA_FATAL_CODES.has(apiError.code)) ||
+        response.status === 401 ||
+        response.status === 404 ||
+        response.status === 410 ||
+        response.status === 429;
+
+      return parseStringify({
+        responseType: "error",
+        message: getUIErrorMessage(
+          apiError.code,
+          apiError.message,
+          fatal
+            ? "Your verification session has expired. Please sign in again."
+            : "That code wasn't right. Please try again.",
+        ),
+        error: new Error(apiError.code || `HTTP ${response.status}`),
+        data: { mfaExpired: fatal },
+      });
+    }
+
+    const loginData: LoginResponse = await response.json();
+    devLog("[MFA_VERIFY] Verified, establishing session for userId:", loginData.userId);
+
+    // Mirror login()'s pre-session cleanup so a stale cookie/business never
+    // leaks into the new session.
+    await deleteAuthCookie();
+    await deleteActiveBusinessCookie();
+    await clearDestination();
+
+    return await establishSessionFromLogin(loginData, rememberMe);
+  } catch (error: any) {
+    console.error("[MFA_VERIFY] Caught error:", error?.message, error?.cause);
+
+    if (
+      error instanceof Error &&
+      "digest" in error &&
+      typeof error.digest === "string" &&
+      error.digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+
+    return parseStringify({
+      responseType: "error",
+      message: getUIErrorMessage(null, error?.message, "Could not verify the code. Please try again."),
+      error: new Error(error?.message || "MFA verification failed"),
     });
   }
 };
@@ -497,7 +809,7 @@ async function setSessionPersistence(rememberMe: boolean) {
   const THIRTY_DAYS = 30 * 24 * 60 * 60;
   const cookieOpts = {
     httpOnly: true,
-    secure: isProduction,
+    secure: COOKIE_SECURE,
     sameSite: isProduction ? ("strict" as const) : ("lax" as const),
     maxAge: THIRTY_DAYS,
   };
@@ -525,7 +837,7 @@ async function setSessionPersistence(rememberMe: boolean) {
         name,
         value,
         httpOnly: true,
-        secure: isProduction,
+        secure: COOKIE_SECURE,
         sameSite: "lax",
         path: "/",
         ...(rememberMe ? { maxAge: THIRTY_DAYS } : {}),
@@ -543,7 +855,7 @@ export const oauthLogin = async (
   await clearDestination();
 
   try {
-    console.log(`[OAUTH] Attempting ${provider} login`);
+    devLog(`[OAUTH] Attempting ${provider} login`);
 
     const response = await fetch(`${AUTH_SERVICE_URL}/auth/oauth/login`, {
       method: "POST",
@@ -554,11 +866,32 @@ export const oauthLogin = async (
       body: JSON.stringify({ provider, idToken }),
     });
 
-    console.log("[OAUTH] Response status:", response.status);
+    devLog("[OAUTH] Response status:", response.status);
+
+    // MFA challenge: OAuth sign-in for an MFA user now returns 412 +
+    // { mfaRequired, mfaToken } with NO session, exactly like password login.
+    // Route it into the same MFA step (verifyMfaLogin) by surfacing the token.
+    if (response.status === 412) {
+      const mfaToken = await extractMfaToken(response);
+      devLog("[OAUTH] MFA required, mfaToken present:", !!mfaToken);
+      if (mfaToken) {
+        return parseStringify({
+          responseType: "mfa_required",
+          message: "Enter your authentication code to continue.",
+          data: { mfaToken },
+        });
+      }
+      return parseStringify({
+        responseType: "error",
+        message:
+          "Multi-factor authentication is required but the challenge could not be started. Please try again.",
+        error: new Error("MFA_TOKEN_MISSING"),
+      });
+    }
 
     if (!response.ok) {
       const apiError = await parseApiError(response);
-      console.log("[OAUTH] Error response:", JSON.stringify(apiError));
+      devLog("[OAUTH] Error response:", JSON.stringify(apiError));
       return parseStringify({
         responseType: "error",
         message: getUIErrorMessage(apiError.code, apiError.message, "Social sign-in failed. Please try again."),
@@ -567,7 +900,7 @@ export const oauthLogin = async (
     }
 
     const loginData: LoginResponse = await response.json();
-    console.log("[OAUTH] Login successful, emailVerified:", loginData.emailVerified, "userId:", loginData.userId);
+    devLog("[OAUTH] Login successful, emailVerified:", loginData.emailVerified, "userId:", loginData.userId);
 
     if (!loginData.emailVerified) {
       await storePendingVerification({
@@ -583,6 +916,53 @@ export const oauthLogin = async (
         message: "Please verify your email address.",
         data: { userId: loginData.userId, email: loginData.email },
       });
+    }
+
+    // Auto-accept a pending invitation BEFORE computing routing flags, so
+    // /me/accounts reflects the new membership and hasInvitedAccess is correct.
+    // Mirrors login() — without this an existing user accepting an invite via
+    // Google/Apple is never accepted and gets trapped at /business-registration.
+    const cookieStore = await cookies();
+    const pendingInvite = cookieStore.get("pendingInvite")?.value;
+    if (pendingInvite) {
+      try {
+        const res = await fetch(
+          `${ACCOUNTS_SERVICE_URL}/api/v1/account-members/${pendingInvite}/accept`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${loginData.accessToken}`,
+              "Content-Type": "application/json",
+              ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+            },
+          },
+        );
+        if (!res.ok) console.error("[OAUTH] auto-accept invite returned", res.status);
+      } catch (e) {
+        console.error("[OAUTH] auto-accept invite failed:", e);
+      } finally {
+        try { cookieStore.delete("pendingInvite"); } catch { /* ok */ }
+      }
+    }
+
+    // Determine whether the user has access to any account they don't own.
+    let hasInvitedAccess = false;
+    try {
+      const meRes = await fetch(`${ACCOUNTS_SERVICE_URL}/api/v1/me/accounts`, {
+        headers: {
+          Authorization: `Bearer ${loginData.accessToken}`,
+          "Content-Type": "application/json",
+          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+        },
+      });
+      if (meRes.ok) {
+        const accounts = (await meRes.json()) as Array<{ owner?: boolean }>;
+        hasInvitedAccess = Array.isArray(accounts) && accounts.some((a) => a?.owner === false);
+      } else {
+        console.error("[OAUTH] /me/accounts returned", meRes.status);
+      }
+    } catch (e) {
+      console.error("[OAUTH] /me/accounts fetch failed:", e);
     }
 
     let profileData: any = {};
@@ -604,11 +984,8 @@ export const oauthLogin = async (
         profileData = await profileResponse.json();
       } else {
         const apiError = await parseApiError(profileResponse);
-        console.error(
-          "[OAUTH] Profile fetch failed:",
-          profileResponse.status,
-          JSON.stringify(apiError),
-        );
+        console.error("[OAUTH] Profile fetch failed:", profileResponse.status, apiError.code);
+        devLog("[OAUTH] Profile fetch error body:", JSON.stringify(apiError));
         profileFetchError = {
           status: profileResponse.status,
           code: apiError.code,
@@ -658,6 +1035,7 @@ export const oauthLogin = async (
       countryId: profileData.countryId,
       countryCode: profileData.countryCode,
       theme: profileData.theme,
+      hasInvitedAccess,
     });
 
     await signIn("credentials", {
@@ -755,6 +1133,7 @@ export const getUserById = async (
 export const register = async (
   credentials: z.infer<typeof RegisterSchema>,
   recaptchaToken?: string,
+  invitationMemberId?: string,
 ): Promise<FormResponse> => {
   const validatedData = RegisterSchema.safeParse(credentials);
 
@@ -788,6 +1167,7 @@ export const register = async (
       gender: validatedData.data.gender,
       accountType: "OWNER",
       referredByCode: validatedData.data.referredByCode || undefined,
+      invitationMemberId: invitationMemberId || undefined,
     };
     if (recaptchaToken) {
       payload.recaptchaToken = recaptchaToken;
@@ -808,7 +1188,7 @@ export const register = async (
 
     if (!regResponse.ok) {
       const apiError = await parseApiError(regResponse);
-      console.log("[REGISTER] Error response:", JSON.stringify(apiError));
+      devLog("[REGISTER] Error response:", JSON.stringify(apiError));
 
       if (regResponse.status === 400 && apiError.errors) {
         const fieldMessages = Object.values(apiError.errors).join(", ");
@@ -828,48 +1208,55 @@ export const register = async (
 
     const regData: RegisterResponse = await regResponse.json();
 
-    // Auto-login to get verificationResendToken
-    try {
-      const loginResponse = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
-        },
-        body: JSON.stringify({
-          email: validatedData.data.email,
-          password: validatedData.data.password,
-        }),
-      });
-
-      if (loginResponse.ok) {
-        const loginData: LoginResponse = await loginResponse.json();
-
-        await storePendingVerification({
-          userId: loginData.userId || regData.authId,
-          email: loginData.email || regData.email,
-          verificationResendToken: loginData.verificationResendToken,
-          accessToken: loginData.accessToken,
-          refreshToken: loginData.refreshToken,
+    // Only stash a pending-verification session when the backend actually
+    // requires email verification. Invited signups are created already-verified
+    // (the invite link proved email ownership), so there is nothing to verify and
+    // storing a pending-verification session would wrongly divert them to verify.
+    if (regData.emailVerificationRequired) {
+      // Auto-login to get verificationResendToken
+      try {
+        const loginResponse = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+          },
+          body: JSON.stringify({
+            email: validatedData.data.email,
+            password: validatedData.data.password,
+          }),
         });
-      } else {
-        // Login failed after registration - store auth ID for verification
+
+        if (loginResponse.ok) {
+          const loginData: LoginResponse = await loginResponse.json();
+
+          await storePendingVerification({
+            userId: loginData.userId || regData.authId,
+            email: loginData.email || regData.email,
+            verificationResendToken: loginData.verificationResendToken,
+            accessToken: loginData.accessToken,
+            refreshToken: loginData.refreshToken,
+          });
+        } else {
+          // Login failed after registration - store auth ID for verification
+          await storePendingVerification({
+            userId: regData.authId,
+            email: regData.email,
+          });
+        }
+      } catch {
         await storePendingVerification({
           userId: regData.authId,
           email: regData.email,
         });
       }
-    } catch {
-      await storePendingVerification({
-        userId: regData.authId,
-        email: regData.email,
-      });
     }
 
     return parseStringify({
       responseType: "success",
-      message:
-        "Registration successful! Please check your email for a verification code.",
+      message: regData.emailVerificationRequired
+        ? "Registration successful! Please check your email for a verification code."
+        : "Account created successfully.",
       data: {
         userId: regData.authId,
         email: regData.email,
@@ -914,7 +1301,7 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
 
       if (!response.ok) {
         const apiError = await parseApiError(response);
-        console.log("[VERIFY_EMAIL] Error response:", JSON.stringify(apiError));
+        devLog("[VERIFY_EMAIL] Error response:", JSON.stringify(apiError));
         return parseStringify({
           responseType: "error",
           message: getUIErrorMessage(apiError.code, apiError.message, "Invalid or expired verification code. Please try again."),
@@ -944,11 +1331,8 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
           profileData = await profileResponse.json();
         } else {
           const apiError = await parseApiError(profileResponse);
-          console.error(
-            "[VERIFY_EMAIL] Profile fetch failed:",
-            profileResponse.status,
-            JSON.stringify(apiError),
-          );
+          console.error("[VERIFY_EMAIL] Profile fetch failed:", profileResponse.status, apiError.code);
+          devLog("[VERIFY_EMAIL] Profile fetch error body:", JSON.stringify(apiError));
           profileFetchError = {
             status: profileResponse.status,
             code: apiError.code,
@@ -985,6 +1369,53 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
         });
       }
 
+      // Defense-in-depth: an invited user who still had to verify (e.g. skip
+      // verification didn't apply) must come out with invited access, exactly
+      // like the login() path — otherwise middleware traps them at onboarding.
+      const cookieStore = await cookies();
+      const pendingInvite = cookieStore.get("pendingInvite")?.value;
+      if (pendingInvite) {
+        try {
+          const acceptRes = await fetch(
+            `${ACCOUNTS_SERVICE_URL}/api/v1/account-members/${pendingInvite}/accept`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${verifyData.accessToken}`,
+                "Content-Type": "application/json",
+                ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+              },
+            },
+          );
+          if (!acceptRes.ok)
+            console.error("[VERIFY_EMAIL] auto-accept invite returned", acceptRes.status);
+        } catch (e) {
+          console.error("[VERIFY_EMAIL] auto-accept invite failed:", e);
+        } finally {
+          try { cookieStore.delete("pendingInvite"); } catch { /* ok */ }
+        }
+      }
+
+      let hasInvitedAccess = false;
+      try {
+        const meRes = await fetch(`${ACCOUNTS_SERVICE_URL}/api/v1/me/accounts`, {
+          headers: {
+            Authorization: `Bearer ${verifyData.accessToken}`,
+            "Content-Type": "application/json",
+            ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+          },
+        });
+        if (meRes.ok) {
+          const accounts = (await meRes.json()) as Array<{ owner?: boolean }>;
+          hasInvitedAccess =
+            Array.isArray(accounts) && accounts.some((a) => a?.owner === false);
+        } else {
+          console.error("[VERIFY_EMAIL] /me/accounts returned", meRes.status);
+        }
+      } catch (e) {
+        console.error("[VERIFY_EMAIL] /me/accounts fetch failed:", e);
+      }
+
       // Clear pending verification before setting new cookies to avoid 431
       await clearPendingVerification();
 
@@ -1018,6 +1449,7 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
           countryId: profileData.countryId || profileData.country,
           countryCode: profileData.countryCode,
           theme: profileData.theme,
+          hasInvitedAccess,
         },
       );
 
@@ -1071,7 +1503,7 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
 
     if (!response.ok) {
       const apiError = await parseApiError(response);
-      console.log("[VERIFY_EMAIL_STANDALONE] Error response:", JSON.stringify(apiError));
+      devLog("[VERIFY_EMAIL_STANDALONE] Error response:", JSON.stringify(apiError));
       return parseStringify({
         responseType: "error",
         message: getUIErrorMessage(apiError.code, apiError.message, "Invalid or expired verification code. Please try again."),
@@ -1205,7 +1637,7 @@ export const resendVerificationCode = async (): Promise<FormResponse> => {
 
     if (!response.ok) {
       const apiError = await parseApiError(response);
-      console.log("[RESEND_CODE] Error response:", JSON.stringify(apiError));
+      devLog("[RESEND_CODE] Error response:", JSON.stringify(apiError));
       return parseStringify({
         responseType: "error",
         message: getUIErrorMessage(apiError.code, apiError.message, "Failed to resend verification code."),
@@ -1240,6 +1672,19 @@ export const resetPassword = async (
     });
   }
 
+  const emailAddress = validateEmail.data.email;
+  // Neutral, account-enumeration-safe copy. The backend always returns a
+  // uniform 200 regardless of whether the account exists, so the UX must
+  // never reveal a USER_NOT_FOUND / "no account" distinction.
+  const neutralSuccess = {
+    responseType: "success",
+    message:
+      "If an account exists for this email, a reset code has been sent.",
+    // Thread the EMAIL the user typed into the verify-code step. The backend
+    // no longer returns a userId from this endpoint.
+    data: { email: emailAddress },
+  };
+
   try {
     const response = await fetch(
       `${AUTH_SERVICE_URL}/auth/password/reset/request`,
@@ -1250,29 +1695,28 @@ export const resetPassword = async (
           ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
         },
         body: JSON.stringify({
-          identifier: validateEmail.data.email,
+          identifier: emailAddress,
         }),
       },
     );
 
+    // A USER_NOT_FOUND (or any not-ok) must still advance to the code step
+    // with the neutral message so existence of the account can't be probed.
+    // Only genuine infrastructure failures (5xx) should surface an error.
     if (!response.ok) {
       const apiError = await parseApiError(response);
-      console.log("[RESET_PASSWORD] Error response:", JSON.stringify(apiError));
-      return parseStringify({
-        responseType: "error",
-        message: getUIErrorMessage(apiError.code, apiError.message, "Failed to send password reset code."),
-        error: new Error(apiError.code || `HTTP ${response.status}`),
-      });
+      devLog("[RESET_PASSWORD] Non-ok response:", JSON.stringify(apiError));
+      if (response.status >= 500) {
+        return parseStringify({
+          responseType: "error",
+          message: getUIErrorMessage(apiError.code, apiError.message, "Failed to send password reset code."),
+          error: new Error(apiError.code || `HTTP ${response.status}`),
+        });
+      }
+      return parseStringify(neutralSuccess);
     }
 
-    const data = await response.json();
-
-    return parseStringify({
-      responseType: "success",
-      message:
-        "A password reset code has been sent to your email address.",
-      data: { userId: data.userId },
-    });
+    return parseStringify(neutralSuccess);
   } catch (error: any) {
     console.error("[RESET_PASSWORD] Caught error:", error?.message);
     return parseStringify({
@@ -1284,7 +1728,7 @@ export const resetPassword = async (
 };
 
 export const verifyResetCode = async (
-  userId: string,
+  identifier: string,
   code: string,
 ): Promise<FormResponse> => {
   try {
@@ -1296,13 +1740,13 @@ export const verifyResetCode = async (
           "Content-Type": "application/json",
           ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
         },
-        body: JSON.stringify({ userId, code }),
+        body: JSON.stringify({ identifier, code }),
       },
     );
 
     if (!response.ok) {
       const apiError = await parseApiError(response);
-      console.log("[VERIFY_RESET_CODE] Error response:", JSON.stringify(apiError));
+      devLog("[VERIFY_RESET_CODE] Error response:", JSON.stringify(apiError));
       return parseStringify({
         responseType: "error",
         message: getUIErrorMessage(apiError.code, apiError.message, "Invalid or expired code. Please try again."),
@@ -1361,7 +1805,7 @@ export const confirmNewPassword = async (
 
     if (!response.ok) {
       const apiError = await parseApiError(response);
-      console.log("[CONFIRM_PASSWORD] Error response:", JSON.stringify(apiError));
+      devLog("[CONFIRM_PASSWORD] Error response:", JSON.stringify(apiError));
       return parseStringify({
         responseType: "error",
         message: getUIErrorMessage(apiError.code, apiError.message, "Failed to reset password. Please try again."),
@@ -1447,9 +1891,11 @@ export const updateUser = async (
 
 // Staff-specific auth endpoints used to live here
 // (staffResetPassword / staffVerifyResetCode / staffConfirmNewPassword /
-// staffSelectBusiness) but the Auth Service retired `SubjectType.STAFF`:
-// business staff with dashboard access are now regular Users and go through
-// the same password-reset and login flows as account owners. POS-only staff
-// don't have Auth-Service credentials at all — their PIN is verified
-// locally on the paired device.
+// staffSelectBusiness). Business staff with dashboard access are regular
+// `SubjectType.USER`s and go through the same password-reset and login flows
+// as account owners. `SubjectType.STAFF` still exists in the Auth Service, but
+// it is reserved for POS/device tokens — bulk-minted, carried via X-Staff-Token,
+// and never present in the browser — so the dashboard never logs in a
+// `SubjectType.STAFF`. POS-only staff don't have Auth-Service credentials at
+// all — their PIN is verified locally on the paired device.
 

@@ -30,6 +30,7 @@ import {
 } from "@/types/product/schema";
 import { GoogleGenAI } from "@google/genai";
 import { LocationDetails } from "@/types/menu/type";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import { inventoryUrl } from "./inventory-client";
 import { getCurrentDestination } from "./context";
 import { attachBomRule } from "./bom-rule-actions";
@@ -86,6 +87,9 @@ function mapVariant(
     active: v.active,
     pricingStrategy: v.pricingStrategy,
     price: v.price,
+    // Cost price is optional. The backend accepts 0 (@PositiveOrZero), so a
+    // 0/blank cost persists as 0; null/undefined is omitted, leaving the
+    // stored value unchanged on update (PATCH semantics).
     costPrice: v.costPrice ?? undefined,
     markupPercentage:
       v.pricingStrategy === "PERCENTAGE_MARKUP" ? v.markupPercentage ?? undefined : undefined,
@@ -504,18 +508,59 @@ export async function unarchiveProduct(id: string): Promise<void> {
 
 // ── Variants ────────────────────────────────────────────────────────
 
+/**
+ * Build a user-facing message from a caught API error.
+ *
+ * The variant CRUD endpoints emit Bean-Validation 422s whose useful detail
+ * lives in `error.details` ({field, message, rejectedValue}[]) — the top-level
+ * `message` collapses to the generic "Please check your input and try again."
+ * Prefer the field-level message(s) so the operator sees "Cost price must be
+ * positive" instead of the generic reason phrase. Falls back to the error
+ * message, then the supplied default.
+ */
+function variantErrorMessage(error: unknown, fallback: string): string {
+  const details = (error as { details?: unknown } | null)?.details;
+  if (Array.isArray(details)) {
+    const msgs = details
+      .map((d) =>
+        d && typeof d === "object" && typeof (d as { message?: unknown }).message === "string"
+          ? (d as { message: string }).message
+          : null,
+      )
+      .filter((m): m is string => !!m);
+    if (msgs.length) return msgs.join(". ");
+  }
+  const msg = (error as { message?: string } | null)?.message;
+  return msg && msg.trim() ? msg : fallback;
+}
+
+// createVariant / updateVariant / deleteVariant return a FormResponse on
+// failure rather than throwing. An uncaught throw out of a server action is
+// replaced by Next.js in production with the opaque "An error occurred in the
+// Server Components render…" digest message, hiding the real validation reason;
+// returning a structured error keeps the specific message intact in both envs.
 export async function createVariant(
   productId: string,
   variant: ProductVariantInput,
   taxTypeId: string | null | undefined,
-): Promise<void> {
-  const apiClient = new ApiClient();
-  await apiClient.post(
-    inventoryUrl(`/api/v1/products/${productId}/variants`),
-    mapVariant(variant, taxTypeId),
-  );
-  revalidatePath("/products");
-  revalidatePath(`/products/${productId}/edit`);
+): Promise<FormResponse | void> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(
+      inventoryUrl(`/api/v1/products/${productId}/variants`),
+      mapVariant(variant, taxTypeId),
+    );
+    revalidatePath("/products");
+    revalidatePath(`/products/${productId}/edit`);
+  } catch (error: unknown) {
+    return parseStringify({
+      responseType: "error",
+      message: variantErrorMessage(error, "Failed to add variant"),
+      error: error instanceof Error ? error : new Error(String(error)),
+      errorCode: (error as { code?: string })?.code,
+      metadata: (error as { metadata?: Record<string, unknown> })?.metadata,
+    });
+  }
 }
 
 export async function updateVariant(
@@ -523,28 +568,48 @@ export async function updateVariant(
   variantId: string,
   variant: ProductVariantInput,
   taxTypeId: string | null | undefined,
-): Promise<void> {
-  const apiClient = new ApiClient();
-  await apiClient.put(
-    inventoryUrl(`/api/v1/products/${productId}/variants/${variantId}`),
-    mapVariant(variant, taxTypeId),
-  );
-  revalidatePath("/products");
-  revalidatePath(`/products/${productId}/edit`);
+): Promise<FormResponse | void> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.put(
+      inventoryUrl(`/api/v1/products/${productId}/variants/${variantId}`),
+      mapVariant(variant, taxTypeId),
+    );
+    revalidatePath("/products");
+    revalidatePath(`/products/${productId}/edit`);
+  } catch (error: unknown) {
+    return parseStringify({
+      responseType: "error",
+      message: variantErrorMessage(error, "Failed to update variant"),
+      error: error instanceof Error ? error : new Error(String(error)),
+      errorCode: (error as { code?: string })?.code,
+      metadata: (error as { metadata?: Record<string, unknown> })?.metadata,
+    });
+  }
 }
 
 export async function deleteVariant(
   productId: string,
   variantId: string,
-): Promise<void> {
+): Promise<FormResponse | void> {
   if (!productId || !variantId)
     throw new Error("Product and variant IDs are required");
-  const apiClient = new ApiClient();
-  await apiClient.delete(
-    inventoryUrl(`/api/v1/products/${productId}/variants/${variantId}`),
-  );
-  revalidatePath("/products");
-  revalidatePath(`/products/${productId}/edit`);
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.delete(
+      inventoryUrl(`/api/v1/products/${productId}/variants/${variantId}`),
+    );
+    revalidatePath("/products");
+    revalidatePath(`/products/${productId}/edit`);
+  } catch (error: unknown) {
+    return parseStringify({
+      responseType: "error",
+      message: variantErrorMessage(error, "Failed to remove variant"),
+      error: error instanceof Error ? error : new Error(String(error)),
+      errorCode: (error as { code?: string })?.code,
+      metadata: (error as { metadata?: Record<string, unknown> })?.metadata,
+    });
+  }
 }
 
 export async function archiveVariant(
@@ -696,6 +761,7 @@ export const listTopSellingProducts = async (
     );
     return parseStringify(data);
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("[listTopSellingProducts] request failed", error);
     return null;
   }
@@ -734,6 +800,7 @@ export const listSoldItems = async (
     );
     return parseStringify(data);
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("[listSoldItems] request failed", error);
     return null;
   }
@@ -866,6 +933,8 @@ function mapVariantPartial(
     active: v.active,
     pricingStrategy: v.pricingStrategy,
     price: v.price ?? undefined,
+    // 0 is a valid cost on the backend (@PositiveOrZero); only null/undefined
+    // is omitted.
     costPrice: v.costPrice ?? undefined,
     markupPercentage:
       v.pricingStrategy === "PERCENTAGE_MARKUP" ? v.markupPercentage ?? undefined : undefined,

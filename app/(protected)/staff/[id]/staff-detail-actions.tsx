@@ -47,6 +47,7 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
+import { StaffDeactivateDialog } from "@/components/staff/staff-deactivate-dialog";
 
 /**
  * Header action menu for the staff detail page. Surfaces every
@@ -63,7 +64,6 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
   const [pinOpen, setPinOpen] = useState(false);
 
   const [dashboardEmail, setDashboardEmail] = useState(staff.email ?? "");
-  const [dashboardPassword, setDashboardPassword] = useState("");
 
   const [pin, setPin] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
@@ -124,30 +124,25 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
             <DropdownMenuItem
               disabled={loading !== null || staff.owner}
               onClick={() =>
-                run(
-                  "dash-revoke",
-                  () => revokeDashboardAccess(staff.id),
-                  "Dashboard access revoked",
-                )
+                run("dash-revoke", () => revokeDashboardAccess(staff.id), "Dashboard access revoked")
               }
               className="text-amber-600 focus:text-amber-600"
             >
               <ShieldOff className="mr-2 h-4 w-4" />
               Revoke dashboard
             </DropdownMenuItem>
-          ) : (
+          ) : staff.active ? (
             <DropdownMenuItem
               disabled={loading !== null}
               onClick={() => {
                 setDashboardEmail(staff.email ?? "");
-                setDashboardPassword("");
                 setDashboardOpen(true);
               }}
             >
               <Shield className="mr-2 h-4 w-4" />
               Grant dashboard…
             </DropdownMenuItem>
-          )}
+          ) : null}
 
           <DropdownMenuSeparator />
           <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -155,58 +150,41 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
           </DropdownMenuLabel>
           {staff.posAccess ? (
             <>
-              <DropdownMenuItem
-                disabled={loading !== null}
-                onClick={openPinDialog}
-              >
-                <KeyRound className="mr-2 h-4 w-4" />
-                {staff.hasPin ? "Reset PIN…" : "Set PIN…"}
-              </DropdownMenuItem>
-              {staff.hasPin && (
-                <DropdownMenuItem
-                  disabled={loading !== null}
-                  onClick={() =>
-                    run(
-                      "pin-clear",
-                      () => clearStaffPin(staff.id),
-                      "PIN cleared",
-                    )
-                  }
-                >
-                  <KeyRound className="mr-2 h-4 w-4" />
-                  Clear PIN
-                </DropdownMenuItem>
+              {staff.active && (
+                <>
+                  <DropdownMenuItem disabled={loading !== null} onClick={openPinDialog}>
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    {staff.hasPin ? "Reset PIN…" : "Set PIN…"}
+                  </DropdownMenuItem>
+                  {staff.hasPin && (
+                    <DropdownMenuItem
+                      disabled={loading !== null}
+                      onClick={() => run("pin-clear", () => clearStaffPin(staff.id), "PIN cleared")}
+                    >
+                      <KeyRound className="mr-2 h-4 w-4" />
+                      Clear PIN
+                    </DropdownMenuItem>
+                  )}
+                </>
               )}
               <DropdownMenuItem
                 disabled={loading !== null || staff.owner}
-                onClick={() =>
-                  run(
-                    "pos-revoke",
-                    () => revokePosAccess(staff.id),
-                    "POS access revoked",
-                  )
-                }
+                onClick={() => run("pos-revoke", () => revokePosAccess(staff.id), "POS access revoked")}
                 className="text-amber-600 focus:text-amber-600"
               >
                 <Smartphone className="mr-2 h-4 w-4" />
                 Revoke POS
               </DropdownMenuItem>
             </>
-          ) : (
+          ) : staff.active ? (
             <DropdownMenuItem
               disabled={loading !== null}
-              onClick={() =>
-                run(
-                  "pos-grant",
-                  () => grantPosAccess(staff.id),
-                  "POS access granted",
-                )
-              }
+              onClick={() => run("pos-grant", () => grantPosAccess(staff.id), "POS access granted")}
             >
               <SmartphoneCharging className="mr-2 h-4 w-4" />
               Grant POS
             </DropdownMenuItem>
-          )}
+          ) : null}
 
           {!staff.owner && (
             <>
@@ -244,40 +222,20 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
       </DropdownMenu>
 
       {/* Deactivate confirmation */}
-      <Dialog open={deactivateOpen} onOpenChange={setDeactivateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Deactivate {fullName}?</DialogTitle>
-            <DialogDescription>
-              They will lose POS and dashboard access until reactivated. Their
-              record stays so historical sales remain attributed.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeactivateOpen(false)}
-              disabled={loading === "deactivate"}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={loading === "deactivate"}
-              onClick={() =>
-                run(
-                  "deactivate",
-                  () => deactivateStaff(staff.id),
-                  "Staff deactivated",
-                  () => setDeactivateOpen(false),
-                )
-              }
-            >
-              {loading === "deactivate" ? "Deactivating…" : "Deactivate"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <StaffDeactivateDialog
+        open={deactivateOpen}
+        onOpenChange={setDeactivateOpen}
+        fullName={fullName}
+        loading={loading === "deactivate"}
+        onConfirm={() =>
+          run(
+            "deactivate",
+            () => deactivateStaff(staff.id),
+            "Staff deactivated",
+            () => setDeactivateOpen(false),
+          )
+        }
+      />
 
       {/* Grant dashboard access */}
       <Dialog open={dashboardOpen} onOpenChange={setDashboardOpen}>
@@ -285,8 +243,8 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
           <DialogHeader>
             <DialogTitle>Grant dashboard access</DialogTitle>
             <DialogDescription>
-              Set login credentials for {fullName}. Share the password directly
-              — the staff member can rotate it after first sign-in.
+              We&apos;ll email {fullName} a secure link to set their own
+              password. Confirm the email address to send the invite.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -299,15 +257,6 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
                 onChange={(e) => setDashboardEmail(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Password</label>
-              <Input
-                type="password"
-                placeholder="Minimum 8 characters"
-                value={dashboardPassword}
-                onChange={(e) => setDashboardPassword(e.target.value)}
-              />
-            </div>
           </div>
           <DialogFooter>
             <Button
@@ -318,26 +267,17 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
               Cancel
             </Button>
             <Button
-              disabled={
-                !dashboardEmail ||
-                dashboardPassword.length < 8 ||
-                loading === "dash-grant"
-              }
+              disabled={!dashboardEmail || loading === "dash-grant"}
               onClick={() =>
                 run(
                   "dash-grant",
-                  () =>
-                    grantDashboardAccess(
-                      staff.id,
-                      dashboardEmail,
-                      dashboardPassword,
-                    ),
+                  () => grantDashboardAccess(staff.id, dashboardEmail),
                   "Dashboard access granted",
                   () => setDashboardOpen(false),
                 )
               }
             >
-              {loading === "dash-grant" ? "Granting…" : "Grant access"}
+              {loading === "dash-grant" ? "Sending…" : "Send invite"}
             </Button>
           </DialogFooter>
         </DialogContent>

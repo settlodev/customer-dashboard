@@ -64,11 +64,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import useColorMode from "@/components/hooks/useColorMode";
+import { useToast } from "@/hooks/use-toast";
 import { logout } from "@/lib/actions/auth-actions";
 import { refreshBusiness } from "@/lib/actions/business/refresh";
-import { AccountSwitcher } from "./account-switcher";
+import { AccountSwitcher, ACCOUNT_CTX_CACHE_KEY } from "./account-switcher";
 import { switchToLocation } from "@/lib/actions/destination";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
+import { switchAccount, type MeAccount } from "@/lib/actions/profile-actions";
 import { cn } from "@/lib/utils";
 import type { Business } from "@/types/business/type";
 import type { ExtendedUser } from "@/types/types";
@@ -300,8 +302,11 @@ export function SidebarAccountMenu({
   } | null>(null);
   const [confirmBiz, setConfirmBiz] = useState<Business | null>(null);
   const [switching, setSwitching] = useState(false);
+  const [confirmAccount, setConfirmAccount] = useState<MeAccount | null>(null);
+  const [switchingAccount, setSwitchingAccount] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const { toast } = useToast();
 
   // Live subscription snapshot from the entitlements context preloaded
   // by the (protected) layout. Status / plan / paid-through come from
@@ -408,6 +413,57 @@ export function SidebarAccountMenu({
     }
   }, [confirmBiz]);
 
+  // Picking an account closes the popover and hands the chosen account to the
+  // root-level confirm dialog below. The dialog MUST live outside the popover
+  // (which unmounts on outside-click) — otherwise its Confirm button is torn
+  // down before its click fires. Mirrors the business-switch flow above.
+  const handlePickAccount = (a: MeAccount) => {
+    setConfirmAccount(a);
+    setOpen(false);
+  };
+
+  const handleConfirmAccountSwitch = useCallback(async () => {
+    if (!confirmAccount) return;
+    setSwitchingAccount(true);
+    try {
+      const res = await switchAccount(confirmAccount.id);
+      if (res.responseType === "success") {
+        // Invalidate the cached account list so the next mount re-fetches with
+        // the new current account; then hard-nav so the re-minted token sticks.
+        try {
+          sessionStorage.removeItem(ACCOUNT_CTX_CACHE_KEY);
+        } catch {
+          // sessionStorage unavailable — fine
+        }
+        window.location.href = "/select-business";
+        return;
+      }
+      // Surface the real reason instead of silently closing.
+      Sentry.captureException(
+        new Error(res.message || "Account switch failed"),
+      );
+      setSwitchingAccount(false);
+      setConfirmAccount(null);
+      toast({
+        variant: "destructive",
+        title: "Couldn't switch account",
+        description: res.message || "Please try again in a moment.",
+      });
+    } catch (error) {
+      Sentry.captureException(error);
+      setSwitchingAccount(false);
+      setConfirmAccount(null);
+      toast({
+        variant: "destructive",
+        title: "Couldn't switch account",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Please try again in a moment.",
+      });
+    }
+  }, [confirmAccount, toast]);
+
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
@@ -495,8 +551,10 @@ export function SidebarAccountMenu({
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {/* Cross-account switch (hidden unless the user belongs to >1 account). */}
-        <AccountSwitcher />
+        {/* Cross-account switch (hidden unless the user belongs to >1 account).
+            Picking an account closes this popover and opens the root-level
+            confirm dialog below — see handlePickAccount. */}
+        <AccountSwitcher onPick={handlePickAccount} />
 
         {businessList.length > 0 && (
           <div className="px-1.5 pb-1 pt-1.5">
@@ -778,6 +836,46 @@ export function SidebarAccountMenu({
               className="bg-primary text-white hover:bg-primary-dark"
             >
               {switching ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Switching...
+                </>
+              ) : (
+                "Confirm"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!confirmAccount}
+        onOpenChange={(o) => {
+          if (!o && !switchingAccount) setConfirmAccount(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Switch account</DialogTitle>
+            <DialogDescription>
+              Switch to <strong>{confirmAccount?.name}</strong>? You&apos;ll be
+              taken to choose a business in that account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmAccount(null)}
+              disabled={switchingAccount}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmAccountSwitch}
+              disabled={switchingAccount}
+              className="bg-primary text-white hover:bg-primary-dark"
+            >
+              {switchingAccount ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Switching...

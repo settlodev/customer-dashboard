@@ -8,6 +8,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { Button } from "@/components/ui/button";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
 import {
   columns,
@@ -17,6 +18,7 @@ import { getSupplierReturns } from "@/lib/actions/supplier-return-actions";
 import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getSupplierReturnKpi } from "@/lib/actions/reports-analytics-actions";
+import { softFetch } from "@/lib/list-fallback";
 import { SupplierReturnKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
 import type { SupplierReturnStatus } from "@/types/supplier-return/type";
 
@@ -43,18 +45,18 @@ export default async function Page({ searchParams }: Params) {
   const status = STATUS_VALUES.find((s) => s === resolvedParams.status);
 
   const [responseData, suppliers, location] = await Promise.all([
-    getSupplierReturns(page ? page - 1 : 0, pageLimit, status),
+    softFetch(getSupplierReturns(page ? page - 1 : 0, pageLimit, status)),
     fetchAllSuppliers(),
     getCurrentLocation(),
   ]);
   const supplierMap = Object.fromEntries(suppliers.map((s) => [s.id, s.name]));
 
-  const data: SupplierReturnRow[] = (responseData.content ?? []).map((r) => ({
+  const data: SupplierReturnRow[] = (responseData?.content ?? []).map((r) => ({
     ...r,
     supplierName: supplierMap[r.supplierId] ?? null,
   }));
-  const total = responseData.totalElements ?? 0;
-  const pageCount = responseData.totalPages ?? 0;
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   const kpi = location?.id ? await getSupplierReturnKpi(location.id) : null;
 
@@ -74,7 +76,9 @@ export default async function Page({ searchParams }: Params) {
         }
       />
       <PageBody>
-        {total > 0 || status ? (
+        {!responseData ? (
+          <DataLoadError itemName="supplier returns" />
+        ) : total > 0 || status ? (
           <>
             <SupplierReturnKpiStrip summary={kpi} />
             <DataTable

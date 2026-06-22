@@ -13,6 +13,7 @@ import { parseListStatus } from "@/components/layouts/list-status";
 import NoItems from "@/components/layouts/no-items";
 import { columns } from "@/components/tables/addon-group/columns";
 import { listAddonGroups } from "@/lib/actions/addon-actions";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import { Plus } from "lucide-react";
 
 type Params = {
@@ -30,7 +31,10 @@ async function Page({ searchParams }: Params) {
   const q = (resolvedSearchParams.search || "").trim().toLowerCase();
   const status = parseListStatus(resolvedSearchParams.status);
 
-  const all = await listAddonGroups().catch(() => []);
+  const all = await listAddonGroups().catch((e) => {
+    rethrowIfBoundary(e);
+    return [];
+  });
 
   const filtered = all
     .filter((g) =>

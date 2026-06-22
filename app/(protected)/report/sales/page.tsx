@@ -6,6 +6,7 @@ import {
   PageHeader,
   PageShell,
 } from "@/components/layouts/page-shell";
+import { requireReportsReadAll } from "@/lib/auth-utils";
 import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { SalesReportExportButton } from "@/components/reports/sales/sales-report-export-button";
 import { SalesTabNav, type SalesTab } from "@/components/reports/sales/sales-tab-nav";
@@ -38,6 +39,7 @@ type Params = {
 
 export default async function SalesReportPage({ searchParams }: Params) {
   const resolved = await searchParams;
+  await requireReportsReadAll();
 
   // "By department" is gated on the DEPARTMENTS_MODULE entitlement (every
   // location has a default department, so a count check wouldn't work). "By

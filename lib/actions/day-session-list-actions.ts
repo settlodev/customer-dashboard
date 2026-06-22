@@ -7,6 +7,7 @@ import {
   getDaySession,
   listDaySessions as listAccountsDaySessions,
 } from "./location-day-sessions-actions";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 
 /**
  * Per-session aggregate row returned by the Reports list endpoint.
@@ -100,7 +101,8 @@ export async function listDaySessions(
   let accountsRows: DaySession[] = [];
   try {
     accountsRows = await listAccountsDaySessions(filters.locationId, from, to);
-  } catch {
+  } catch (error) {
+    rethrowIfBoundary(error);
     accountsRows = [];
   }
 

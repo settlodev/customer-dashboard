@@ -14,7 +14,6 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
@@ -23,13 +22,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,6 +48,7 @@ import { createStockTransfer } from "@/lib/actions/stock-transfer-actions";
 import { StockTransferSchema } from "@/types/stock-transfer/schema";
 import { FormResponse } from "@/types/types";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
+import DestinationSelector from "@/components/widgets/destination-selector";
 
 import styles from "./styles/form-shell.module.css";
 
@@ -142,41 +135,23 @@ export default function StockTransferForm() {
               <div className={styles.fieldRow}>
                 <FormField
                   control={form.control}
-                  name="destinationLocationType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Destination type <span className="req">*</span>
-                      </FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="LOCATION">Location</SelectItem>
-                          <SelectItem value="WAREHOUSE">Warehouse</SelectItem>
-                          <SelectItem value="STORE">Store</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="destinationLocationId"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-2 min-w-0">
                       <FormLabel className={styles.fieldLabel}>
                         Destination <span className="req">*</span>
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Destination ID"
-                          {...field}
-                          disabled={isPending}
+                        <DestinationSelector
+                          value={field.value}
+                          isDisabled={isPending}
+                          onChange={(id, type) => {
+                            field.onChange(id);
+                            form.setValue("destinationLocationType", type, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                            });
+                          }}
                         />
                       </FormControl>
                       <FormMessage />

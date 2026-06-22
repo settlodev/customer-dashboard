@@ -59,6 +59,33 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Determine whether the impersonated user has access to any account they
+  // don't own. Mirrors the `login`/`oauthLogin` actions: without this the
+  // session is stamped hasInvitedAccess=false, which can trap an
+  // impersonated invited-only user (no own business) at /business-registration.
+  // We only COMPUTE + set the flag here — impersonation is not an invite-accept
+  // flow, so no pendingInvite is consumed.
+  let hasInvitedAccess = false;
+  try {
+    const meRes = await fetch(`${ACCOUNTS_SERVICE_URL}/api/v1/me/accounts`, {
+      headers: {
+        Authorization: `Bearer ${handoff.accessToken}`,
+        "Content-Type": "application/json",
+        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+      },
+      cache: "no-store",
+    });
+    if (meRes.ok) {
+      const accounts = (await meRes.json()) as Array<{ owner?: boolean }>;
+      hasInvitedAccess =
+        Array.isArray(accounts) && accounts.some((a) => a?.owner === false);
+    } else {
+      console.error("[IMPERSONATE] /me/accounts returned", meRes.status);
+    }
+  } catch (e) {
+    console.error("[IMPERSONATE] /me/accounts fetch failed:", e);
+  }
+
   const loginData: LoginResponse = {
     accessToken: handoff.accessToken,
     refreshToken: handoff.refreshToken,
@@ -89,6 +116,7 @@ export async function GET(request: NextRequest) {
       countryId: profile.countryId || profile.country,
       countryCode: profile.countryCode,
       theme: profile.theme,
+      hasInvitedAccess,
     },
     { impersonating: true, impersonatorId: handoff.impersonatorId ?? null },
   );

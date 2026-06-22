@@ -1,6 +1,11 @@
 import { notFound } from "next/navigation";
 import { UUID } from "node:crypto";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import {
   Card,
   CardContent,
@@ -24,23 +29,30 @@ export default async function ProformaInvoicePage({
 
   const item = isNewItem ? null : await fetchProforma(id as UUID);
 
-  const breadcrumbItems = [
-    { title: "Proforma Invoices", link: "/proforma-invoice" },
-    {
-      title: isNewItem ? "New" : (item?.proformaNumber ?? "Edit"),
-      link: "",
-    },
-  ];
+  const recordTitle = isNewItem ? "New" : (item?.proformaNumber ?? "Edit");
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between mb-2">
-        <div className="relative flex-1">
-          <BreadcrumbsNav items={breadcrumbItems} />
-        </div>
-      </div>
-      <ProformaInvoiceCard isNewItem={isNewItem} item={item} />
-    </div>
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Proforma Invoices", href: "/proforma-invoice" },
+          { title: recordTitle },
+        ]}
+      />
+      <PageHeader
+        title={
+          isNewItem ? "Create Proforma Invoice" : "Edit Proforma Invoice"
+        }
+        subtitle={
+          isNewItem
+            ? "Generate a proforma invoice for a customer"
+            : `Editing invoice ${item?.proformaNumber ?? ""}`
+        }
+      />
+      <PageBody>
+        <ProformaInvoiceCard isNewItem={isNewItem} item={item} />
+      </PageBody>
+    </PageShell>
   );
 }
 

@@ -11,6 +11,8 @@ import {
 import { StatusTabs } from "@/components/layouts/status-tabs";
 import { parseListStatus } from "@/components/layouts/list-status";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
+import { softFetch } from "@/lib/list-fallback";
 import { columns } from "@/components/tables/department/columns";
 import { searchDepartment } from "@/lib/actions/department-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
@@ -62,17 +64,17 @@ export default async function Page({ searchParams }: Params) {
     ? (await getEntityEntitlements(currentLocation.id))?.limits["MAX_DEPARTMENTS"]
     : undefined;
 
-  const responseData = await searchDepartment(q, page, pageLimit);
+  const responseData = await softFetch(searchDepartment(q, page, pageLimit));
 
   // Departments don't carry an `archivedAt` timestamp; the
   // `active` boolean acts as the soft-delete proxy. Treat
   // inactive rows as "archived" so the toggle still works the
   // same way as the rest of the inventory section.
-  const data = responseData.content.filter((d) =>
+  const data = (responseData?.content ?? []).filter((d) =>
     status === "archived" ? !d.active : d.active,
   );
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   return (
     <PageShell>
@@ -106,7 +108,9 @@ export default async function Page({ searchParams }: Params) {
       <PageBody>
         <StatusTabs basePath="/departments" value={status} />
 
-        {total > 0 || q !== "" ? (
+        {!responseData ? (
+          <DataLoadError itemName="departments" />
+        ) : total > 0 || q !== "" ? (
           <Card>
             <CardContent className="px-2 pt-6 sm:px-6">
               <DataTable

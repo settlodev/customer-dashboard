@@ -147,3 +147,18 @@ const _getBusinessDropDown = cache(async (): Promise<Business[]> => {
 export const getBusinessDropDown = async (): Promise<Business[]> => {
   return _getBusinessDropDown();
 };
+
+// Returns the flat cross-account business list from GET /api/v1/me/all-businesses.
+// Each item is a full Business plus `owner` (boolean) and `accountName` (string).
+// The endpoint returns owned businesses first — preserve that order.
+// Throws on transport / auth failure so the caller can show an error instead of
+// silently treating an outage as "no businesses".
+const _getAllBusinesses = cache(async (): Promise<Business[]> => {
+  const apiClient = new ApiClient();
+  const data = await apiClient.get<Business[] | null>(`/api/v1/me/all-businesses`);
+  return parseStringify(data ?? []);
+});
+
+export const getAllBusinesses = async (): Promise<Business[]> => {
+  return _getAllBusinesses();
+};

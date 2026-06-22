@@ -6,6 +6,7 @@ import { FormResponse, LoginResponse } from "@/types/types";
 import {
   createAuthTokenFromLogin,
   deleteActiveBusinessCookie,
+  deleteCurrentBusinessCookie,
   getAuthToken,
 } from "@/lib/auth-utils";
 import { clearDestination } from "./destination";
@@ -54,7 +55,7 @@ export const changeEmail = async (
 ): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    await apiClient.post(`/profile/email/change`, { userId, newEmail, currentPassword });
+    await apiClient.post(`/auth/profile/email/change`, { userId, newEmail, currentPassword });
     return { responseType: "success", message: "Email change initiated. Check your new email for verification." };
   } catch (error) {
     return {
@@ -68,7 +69,7 @@ export const changeEmail = async (
 export const confirmEmailChange = async (token: string): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    await apiClient.post(`/profile/email/change/confirm/token`, { token });
+    await apiClient.post(`/auth/profile/email/change/confirm/token`, { token });
     return { responseType: "success", message: "Email changed successfully" };
   } catch (error) {
     return {
@@ -85,7 +86,7 @@ export const confirmEmailChangeByCode = async (
 ): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    await apiClient.post(`/profile/email/change/confirm/code`, { userId, code });
+    await apiClient.post(`/auth/profile/email/change/confirm/code`, { userId, code });
     return { responseType: "success", message: "Email changed successfully" };
   } catch (error) {
     return {
@@ -96,10 +97,10 @@ export const confirmEmailChangeByCode = async (
   }
 };
 
-export const cancelEmailChange = async (userId: string): Promise<FormResponse> => {
+export const cancelEmailChange = async (_userId: string): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    await apiClient.delete(`/profile/email/change/${userId}`);
+    await apiClient.delete(`/auth/profile/email/change`);
     return { responseType: "success", message: "Email change cancelled" };
   } catch (error) {
     return {
@@ -110,41 +111,14 @@ export const cancelEmailChange = async (userId: string): Promise<FormResponse> =
   }
 };
 
-export const addPhone = async (
-  userId: string,
-  phoneNumber: string,
-  region?: string,
-): Promise<FormResponse> => {
-  try {
-    const apiClient = new ApiClient(true);
-    await apiClient.post(`/profile/phone`, { userId, phoneNumber, region });
-    return { responseType: "success", message: "Phone number added. Check your phone for verification." };
-  } catch (error) {
-    return {
-      responseType: "error",
-      message: "Failed to add phone number",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
-  }
-};
-
-export const changePhone = async (
-  userId: string,
-  newPhoneNumber: string,
-  region?: string,
-): Promise<FormResponse> => {
-  try {
-    const apiClient = new ApiClient(true);
-    await apiClient.post(`/profile/phone/change`, { userId, newPhoneNumber, region });
-    return { responseType: "success", message: "Phone change initiated. Check your new phone for verification." };
-  } catch (error) {
-    return {
-      responseType: "error",
-      message: "Failed to change phone number",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
-  }
-};
+// NOTE: The AUTH verifiable phone (set + SMS verify) now lives in a
+// cohesive module — see lib/actions/phone-actions.tsx (submitPhone /
+// confirmPhoneCode / getPhoneStatus), surfaced by the profile PhoneCard.
+// It uses the authenticated change flow (POST /auth/profile/phone/change
+// then /auth/profile/phone/change/confirm/code), where the bearer token
+// identifies the user. The previous dead addPhone/changePhone helpers
+// here posted an incorrect shape (userId in body) and were never wired
+// up, so they were removed in favour of that module.
 
 export const changePassword = async (
   userId: string,
@@ -153,7 +127,7 @@ export const changePassword = async (
 ): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    await apiClient.put(`/profile/password`, { userId, currentPassword, newPassword });
+    await apiClient.put(`/auth/profile/password`, { userId, currentPassword, newPassword });
     return { responseType: "success", message: "Password changed successfully" };
   } catch (error) {
     return {
@@ -170,7 +144,7 @@ export const setPassword = async (
 ): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    await apiClient.post(`/profile/password`, { userId, newPassword });
+    await apiClient.post(`/auth/profile/password`, { userId, newPassword });
     return { responseType: "success", message: "Password set successfully" };
   } catch (error) {
     return {
@@ -184,10 +158,14 @@ export const setPassword = async (
 export const switchAccount = async (accountId: string): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient(true);
-    const loginData: LoginResponse = await apiClient.post(`/switch-account`, { accountId });
+    const loginData: LoginResponse = await apiClient.post(`/auth/switch-account`, { accountId });
 
-    // Clear current business/destination context — the new account has its own
+    // Clear current business/destination context — the new account has its own.
+    // Both business cookies must go: the old account's business is invisible to
+    // the new caller, so a surviving `currentBusiness` cookie makes every /me/*
+    // fetch send a stale businessId and 404 ("Business not found").
     await deleteActiveBusinessCookie();
+    await deleteCurrentBusinessCookie();
     await clearDestination();
 
     // Fetch the new account's profile to populate auth token
@@ -215,19 +193,24 @@ export const switchAccount = async (accountId: string): Promise<FormResponse> =>
       // Best-effort — proceed with tokens only
     }
 
-    // Replace the auth token with the new account's tokens and profile
+    // Replace the auth token with the new account's tokens and profile.
+    // Identity fields (name/phone/picture/theme) come from the EXISTING token —
+    // the logged-in user's identity must not change across account switches.
+    // Only account-context fields (registration flags, country) change.
+    const existing = await getAuthToken();
     await createAuthTokenFromLogin(loginData, {
-      firstName: profileData.firstName,
-      lastName: profileData.lastName,
-      phoneNumber: profileData.phoneNumber,
-      pictureUrl: profileData.pictureUrl,
+      firstName: existing?.firstName || profileData.firstName,
+      lastName: existing?.lastName || profileData.lastName,
+      phoneNumber: existing?.phoneNumber || profileData.phoneNumber,
+      pictureUrl: existing?.pictureUrl ?? profileData.pictureUrl,
+      theme: existing?.theme ?? profileData.theme,
+      // account-context (the NEW account's) — these legitimately change on switch:
       isBusinessRegistrationComplete:
         profileData.isBusinessRegistrationComplete ?? false,
       isLocationRegistrationComplete:
         profileData.isLocationRegistrationComplete ?? false,
       countryId: profileData.countryId,
       countryCode: profileData.countryCode,
-      theme: profileData.theme,
     });
 
     revalidatePath("/", "layout");
@@ -238,9 +221,14 @@ export const switchAccount = async (accountId: string): Promise<FormResponse> =>
       data: parseStringify({ accountId: loginData.accountId }),
     };
   } catch (error) {
+    console.error("[switchAccount] failed:", error);
+    const backendMessage =
+      error && typeof error === "object" && "message" in error
+        ? String((error as { message?: unknown }).message ?? "")
+        : "";
     return {
       responseType: "error",
-      message: "Failed to switch account",
+      message: backendMessage || "Failed to switch account",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }

@@ -10,7 +10,12 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { ApiResponse } from "@/types/types";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+    PageShell,
+    PageHeader,
+    PageBreadcrumbs,
+    PageBody,
+} from "@/components/layouts/page-shell";
 import { Template } from "@/types/communication-templates/types";
 import { getTemplate } from "@/lib/actions/communication-templates-actions";
 import TemplateForm from "@/components/forms/communication_template_form";
@@ -33,24 +38,30 @@ export default async function TemplatePage({params}: {params: Params}) {
         }
     }
 
-    const breadcrumbItems = [
-        { title: "Communication Templates", link: "/communication-templates" },
-        {
-            title: isNewItem ? "New" : item?.content[0]?.broadcastType || "Edit",
-            link: "",
-        },
-    ];
+    const title = isNewItem
+        ? "Create template"
+        : item?.content[0]?.broadcastType || "Edit template";
 
     return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <div className="flex items-center justify-between mb-2">
-                <div className="relative flex-1 md:max-w-md">
-                    <BreadcrumbsNav items={breadcrumbItems} />
-                </div>
-            </div>
-
-            <TemplateCard isNewItem={isNewItem} item={item?.content[0]} />
-        </div>
+        <PageShell>
+            <PageBreadcrumbs
+                items={[
+                    { title: "Communication Templates", href: "/communication-templates" },
+                    { title: isNewItem ? "New" : item?.content[0]?.broadcastType || "Edit" },
+                ]}
+            />
+            <PageHeader
+                title={title}
+                subtitle={
+                    isNewItem
+                        ? "Add a new communication template for your business location"
+                        : "Edit template details"
+                }
+            />
+            <PageBody>
+                <TemplateCard isNewItem={isNewItem} item={item?.content[0]} />
+            </PageBody>
+        </PageShell>
     );
 }
 

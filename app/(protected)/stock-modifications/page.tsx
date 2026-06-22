@@ -7,9 +7,11 @@ import {
   PageBody,
 } from "@/components/layouts/page-shell";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-modification/column";
 import { searchStockModifications } from "@/lib/actions/stock-modification-actions";
+import { softFetch } from "@/lib/list-fallback";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getStockModificationKpi } from "@/lib/actions/reports-analytics-actions";
 import { StockModificationKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
@@ -38,13 +40,13 @@ export default async function Page({ searchParams }: Params) {
     : undefined;
 
   const [responseData, location] = await Promise.all([
-    searchStockModifications(page ? page - 1 : 0, pageLimit, category),
+    softFetch(searchStockModifications(page ? page - 1 : 0, pageLimit, category)),
     getCurrentLocation(),
   ]);
 
-  const data = responseData.content;
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   const kpi = location?.id ? await getStockModificationKpi(location.id) : null;
 
@@ -66,7 +68,9 @@ export default async function Page({ searchParams }: Params) {
         }
       />
       <PageBody>
-        {total > 0 || category ? (
+        {!responseData ? (
+          <DataLoadError itemName="stock modifications" />
+        ) : total > 0 || category ? (
           <>
             <StockModificationKpiStrip summary={kpi} />
             <DataTable

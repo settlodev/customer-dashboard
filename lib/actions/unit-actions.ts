@@ -17,6 +17,7 @@ import {
   UnitOfMeasureSchema,
 } from "@/types/unit/type";
 import { inventoryUrl } from "./inventory-client";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 
 // ── Reads ───────────────────────────────────────────────────────────
 
@@ -25,7 +26,8 @@ export async function getUnits(): Promise<UnitOfMeasure[]> {
     const apiClient = new ApiClient();
     const data = await apiClient.get(inventoryUrl("/api/v1/units-of-measure"));
     return (parseStringify(data) ?? []) as UnitOfMeasure[];
-  } catch {
+  } catch (error) {
+    rethrowIfBoundary(error);
     return [];
   }
 }

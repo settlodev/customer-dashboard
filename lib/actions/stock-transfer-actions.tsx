@@ -6,9 +6,17 @@ import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { StockTransfer, TransferStatus } from "@/types/stock-transfer/type";
+import type {
+  DestinationOption,
+  StockTransfer,
+  TransferStatus,
+} from "@/types/stock-transfer/type";
 import { StockTransferSchema } from "@/types/stock-transfer/schema";
 import { inventoryUrl } from "./inventory-client";
+import { getCurrentDestination } from "./context";
+import { fetchAllLocations } from "./location-actions";
+import { fetchAllStores } from "./store-actions";
+import { getWarehouses } from "./warehouse/list-warehouse";
 
 export async function searchStockTransfers(
   page: number = 0,
@@ -45,6 +53,63 @@ export async function getStockTransfer(id: string): Promise<StockTransfer | null
   }
 }
 
+/**
+ * Valid transfer destinations for the current workspace: every location, store
+ * and warehouse the caller can access in the active business, flattened into a
+ * single list and with the active source excluded (you can't transfer to
+ * yourself). Inactive destinations are dropped because the backend rejects them
+ * on create. Each source list is fetched independently so one failing service
+ * doesn't blank out the whole picker.
+ */
+export async function getTransferDestinations(): Promise<DestinationOption[]> {
+  const [source, results] = await Promise.all([
+    getCurrentDestination(),
+    Promise.allSettled([fetchAllLocations(), fetchAllStores(), getWarehouses()]),
+  ]);
+  const [locationsRes, storesRes, warehousesRes] = results;
+
+  const options: DestinationOption[] = [];
+
+  if (locationsRes.status === "fulfilled") {
+    for (const loc of locationsRes.value) {
+      if (!loc.active) continue;
+      options.push({
+        id: loc.id,
+        name: loc.name,
+        type: "LOCATION",
+        subline: loc.region || undefined,
+      });
+    }
+  }
+
+  if (warehousesRes.status === "fulfilled") {
+    for (const wh of warehousesRes.value) {
+      if (!wh.active) continue;
+      const parts = [wh.code, wh.primary ? "Primary" : null].filter(Boolean);
+      options.push({
+        id: wh.id,
+        name: wh.name,
+        type: "WAREHOUSE",
+        subline: parts.length ? parts.join(" · ") : undefined,
+      });
+    }
+  }
+
+  if (storesRes.status === "fulfilled") {
+    for (const st of storesRes.value) {
+      if (!st.active) continue;
+      options.push({
+        id: st.id,
+        name: st.name,
+        type: "STORE",
+        subline: st.code || undefined,
+      });
+    }
+  }
+
+  return source ? options.filter((o) => o.id !== source.id) : options;
+}
+
 export async function createStockTransfer(
   transfer: z.infer<typeof StockTransferSchema>,
 ): Promise<FormResponse | void> {
@@ -58,10 +123,31 @@ export async function createStockTransfer(
     });
   }
 
+  // The source is the active destination. The backend resolves the source *id*
+  // from the X-Location-Id header; we send the matching source *type* so a
+  // transfer started from a store/warehouse context isn't mislabeled as a
+  // location. Guard against transferring to the source itself.
+  const source = await getCurrentDestination();
+  if (!source) {
+    return parseStringify({
+      responseType: "error",
+      message:
+        "No active location selected. Choose a workspace before creating a transfer.",
+      error: new Error("No active destination"),
+    });
+  }
+  if (validated.data.destinationLocationId === source.id) {
+    return parseStringify({
+      responseType: "error",
+      message: "The destination must be different from the source location.",
+      error: new Error("Source and destination are the same"),
+    });
+  }
+
   try {
     const apiClient = new ApiClient();
     await apiClient.post(inventoryUrl("/api/v1/stock-transfers"), {
-      sourceLocationType: "LOCATION",
+      sourceLocationType: source.type,
       ...validated.data,
       transferDate: validated.data.transferDate || new Date().toISOString(),
     });

@@ -10,7 +10,12 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { ApiResponse } from "@/types/types";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+    PageShell,
+    PageHeader,
+    PageBreadcrumbs,
+    PageBody,
+} from "@/components/layouts/page-shell";
 import { Campaign} from "@/types/campaign/type";
 import { getCampaign} from "@/lib/actions/campaign_action";
 import CampaignForm from "@/components/forms/campaign_form";
@@ -27,30 +32,34 @@ export default async function SMSMarketingPage({params}: {params: Params}) {
             item = await getCampaign(resolvedParams.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
-            
+
             console.log(error)
             throw new Error("Failed to load template data");
         }
     }
 
-    const breadcrumbItems = [
-        { title: "Campaign", link: "/campaign" },
-        {
-            title: isNewItem ? "New" : item?.content[0]?.name || "",
-            link: "",
-        },
-    ];
+    const title = isNewItem ? "New campaign" : item?.content[0]?.name || "Campaign";
 
     return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <div className="flex items-center justify-between mb-2">
-                <div className="relative flex-1 md:max-w-md">
-                    <BreadcrumbsNav items={breadcrumbItems} />
-                </div>
-            </div>
-
-            <CampaignCard isNewItem={isNewItem} item={item?.content[0]} />
-        </div>
+        <PageShell>
+            <PageBreadcrumbs
+                items={[
+                    { title: "Campaign", href: "/campaign" },
+                    { title: isNewItem ? "New" : item?.content[0]?.name || "" },
+                ]}
+            />
+            <PageHeader
+                title={title}
+                subtitle={
+                    isNewItem
+                        ? "Broadcast Campaign towards your customers or staff"
+                        : undefined
+                }
+            />
+            <PageBody>
+                <CampaignCard isNewItem={isNewItem} item={item?.content[0]} />
+            </PageBody>
+        </PageShell>
     );
 }
 

@@ -14,6 +14,7 @@ import { getLocationSettings } from "@/lib/actions/location-settings-actions";
 import { listOrders } from "@/lib/actions/order-actions";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import { fetchAllTables } from "@/lib/actions/space-actions";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import { buildOrderListView } from "@/lib/orders/order-list-view";
 import { Order, OrderStatus } from "@/types/orders/type";
 
@@ -56,7 +57,10 @@ export default async function Page({ searchParams }: Params) {
         fromDate: from,
         toDate: to,
         status: effectiveStatus,
-      }).catch((): Order[] => []),
+      }).catch((e): Order[] => {
+        rethrowIfBoundary(e);
+        return [];
+      }),
       getCurrentLocation(),
       getLocationSettings().catch(() => null),
       fetchAllStaff().catch(() => []),

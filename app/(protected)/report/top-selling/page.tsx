@@ -5,6 +5,7 @@ import {
   Package,
   TrendingUp,
 } from "lucide-react";
+import { requireReportsReadAll } from "@/lib/auth-utils";
 
 import {
   PageBody,
@@ -18,6 +19,7 @@ import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { TopSellingSortToggle } from "@/components/reports/top-selling/top-selling-sort-toggle";
 import { TopSellingTable } from "@/components/reports/top-selling/top-selling-table";
 import { listTopSellingProducts } from "@/lib/actions/product-actions";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import {
   TOP_SELLING_SORT_LABELS,
   type TopSellingItem,
@@ -53,6 +55,7 @@ const matchesSearch = (item: TopSellingItem, q: string): boolean => {
 
 export default async function Page({ searchParams }: Params) {
   const resolved = await searchParams;
+  await requireReportsReadAll();
   const q = resolved.search ?? "";
   const page = Number(resolved.page) || 1;
   const limit = Number(resolved.limit) || 10;
@@ -74,7 +77,10 @@ export default async function Page({ searchParams }: Params) {
     toDate: to,
     sortBy,
     limit: DEFAULT_LIMIT,
-  }).catch(() => null);
+  }).catch((e) => {
+    rethrowIfBoundary(e);
+    return null;
+  });
 
   const items = report?.items ?? [];
   const currency = report?.summary.currency ?? "TZS";

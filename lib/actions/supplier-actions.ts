@@ -8,6 +8,7 @@ import type { FormResponse } from "@/types/types";
 import type { Supplier } from "@/types/supplier/type";
 import { SupplierSchema } from "@/types/supplier/schema";
 import { inventoryUrl } from "./inventory-client";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 
 // ── Reads ───────────────────────────────────────────────────────────
 
@@ -17,7 +18,8 @@ export async function fetchAllSuppliers(): Promise<Supplier[]> {
     const data = await apiClient.get(inventoryUrl("/api/v1/suppliers"));
     const list = (parseStringify(data) ?? []) as Supplier[];
     return list;
-  } catch {
+  } catch (error) {
+    rethrowIfBoundary(error);
     return [];
   }
 }

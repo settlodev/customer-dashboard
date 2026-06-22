@@ -58,7 +58,7 @@ export type ApiSortResponse = {
 };
 
 export interface FormResponse<T = unknown> {
-    responseType: "success" | "error" | "needs_verification";
+    responseType: "success" | "error" | "needs_verification" | "mfa_required";
     message: string;
     error?: Error | null;
     data?: T;
@@ -103,6 +103,9 @@ export declare interface AuthToken {
     impersonating?: boolean;
     /** Auth user id of the staff member impersonating this account. */
     impersonatorId?: string | null;
+    /** True iff the user holds `reports:read_all` (location-wide reports). Derived at login. */
+    reportsReadAll?: boolean;
+    hasInvitedAccess: boolean;
 }
 
 export declare interface activeBusiness {
@@ -125,6 +128,7 @@ export type ExtendedUser = DefaultSession["user"] & {
     theme: string | null;
     isBusinessRegistrationComplete: boolean;
     isLocationRegistrationComplete: boolean;
+    hasInvitedAccess: boolean;
     accountId: string;
     countryId: string;
     countryCode: string;

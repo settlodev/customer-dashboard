@@ -6,8 +6,10 @@ import {
 } from "@/lib/actions/business/get-current-business";
 import { getInventoryDashboardSummary } from "@/lib/actions/reports-analytics-actions";
 import { getOutstandingPrepaidLiability } from "@/lib/actions/prepayment-analytics-actions";
+import { getAuthToken } from "@/lib/auth-utils";
 
 export default async function DashboardPage() {
+    const authToken = await getAuthToken();
     const [location, business] = await Promise.all([
         getCurrentLocation(),
         getCurrentBusiness(),
@@ -27,6 +29,7 @@ export default async function DashboardPage() {
                 locationId={location?.id ?? null}
                 inventorySummary={summary}
                 prepaid={prepaid}
+                reportsReadAll={authToken?.reportsReadAll ?? true}
             />
         </PageShell>
     );

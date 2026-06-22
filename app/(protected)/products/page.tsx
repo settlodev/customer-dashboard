@@ -8,6 +8,8 @@ import {
 } from "@/components/layouts/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
+import { softFetch } from "@/lib/list-fallback";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/product/column";
 import {
@@ -139,8 +141,12 @@ async function Page({ searchParams }: Params) {
     loc?.id ? getProductsKpi(loc.id, "TZS").catch(() => null) : null,
   );
 
+  // searchProducts is the only fetch here that throws (counts/location/kpi are
+  // already resilient). softFetch swallows transient failures to null so a
+  // backend blip renders an in-page retry instead of crashing the whole page —
+  // while re-throwing auth/permission errors so error.tsx can route them.
   const [responseData, counts, location, kpi] = await Promise.all([
-    searchProducts(q, page, pageLimit, status),
+    softFetch(searchProducts(q, page, pageLimit, status)),
     getProductCounts(),
     locationPromise,
     kpiPromise,
@@ -151,7 +157,7 @@ async function Page({ searchParams }: Params) {
   // backend already excludes soft-deleted ones), regardless of archive
   // state, so an archived single-variant product still reads as
   // "Coca-Cola" rather than "Coca-Cola Default".
-  const filteredData: ProductVariantRow[] = responseData.content.flatMap((p) => {
+  const filteredData: ProductVariantRow[] = (responseData?.content ?? []).flatMap((p) => {
     const allLiveVariants = p.variants ?? [];
     if (allLiveVariants.length === 0) return [];
     const isOnlyVariant = allLiveVariants.length === 1;
@@ -159,8 +165,8 @@ async function Page({ searchParams }: Params) {
     return allLiveVariants.map((v) => enrichVariant(p, v, isOnlyVariant));
   });
 
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   return (
     <PageShell>
@@ -195,7 +201,9 @@ async function Page({ searchParams }: Params) {
       />
 
       <PageBody>
-        {total > 0 || q !== "" ? (
+        {!responseData ? (
+          <DataLoadError itemName="products" />
+        ) : total > 0 || q !== "" ? (
           <>
             <ProductsKpiStrip summary={kpi} />
             <ProductStatusTabs value={status} counts={counts} />

@@ -8,12 +8,14 @@ import {
 } from "@/components/layouts/page-shell";
 import { Button } from "@/components/ui/button";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/grn/columns";
 import { getGrns } from "@/lib/actions/grn-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getGrnKpi } from "@/lib/actions/reports-analytics-actions";
 import { GrnKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
+import { softFetch } from "@/lib/list-fallback";
 
 type Params = {
   searchParams: Promise<{
@@ -28,12 +30,12 @@ export default async function Page({ searchParams }: Params) {
   const pageLimit = Number(resolvedParams.limit) || 20;
 
   const [responseData, location] = await Promise.all([
-    getGrns(page ? page - 1 : 0, pageLimit),
+    softFetch(getGrns(page ? page - 1 : 0, pageLimit)),
     getCurrentLocation(),
   ]);
-  const data = responseData.content ?? [];
-  const total = responseData.totalElements ?? 0;
-  const pageCount = responseData.totalPages ?? 0;
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   const kpi = location?.id ? await getGrnKpi(location.id) : null;
 
@@ -53,7 +55,9 @@ export default async function Page({ searchParams }: Params) {
         }
       />
       <PageBody>
-        {total > 0 ? (
+        {!responseData ? (
+          <DataLoadError itemName="goods received notes" />
+        ) : total > 0 ? (
           <>
             <GrnKpiStrip summary={kpi} />
             <DataTable

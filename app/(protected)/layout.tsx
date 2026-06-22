@@ -16,7 +16,9 @@ import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-a
 import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { getAuthToken } from "@/lib/auth-utils";
+import { extractPermissions } from "@/lib/jwt-utils";
 import { EntitlementProvider } from "@/context/entitlementContext";
+import { PermissionsProvider } from "@/context/permissionsContext";
 import { getEntitlements } from "@/lib/actions/entitlement-actions";
 import { ExpiredTopBar } from "@/components/subscription/ExpiredTopBar";
 import { fetchAllStores, getCurrentStore } from "@/lib/actions/store-actions";
@@ -137,6 +139,17 @@ export default async function RootLayout({
       } as ExtendedUser)
     : null;
 
+  // Permission keys for client-side nav gating. The access token's
+  // `permissions` claim is the enumerated key set for the user's roles in the
+  // current account (owners hold the full catalog, so they keep the entire
+  // nav). This feeds PermissionsProvider so the sidebar can hide owner-only
+  // items from invited, limited-scope members. NOTE: UX-only — the backend
+  // @PreAuthorize is the real security gate; gating here fails open (see the
+  // sidebar's permission filter).
+  const permissions = authToken?.accessToken
+    ? extractPermissions(authToken.accessToken)
+    : [];
+
   // ── Active subscription: full dashboard layout ────────────────────
   // The redesigned shell drops the topbar entirely. The floating
   // sidebar (logo + search + bell + biz/location switchers + nav +
@@ -146,6 +159,7 @@ export default async function RootLayout({
   return (
     <>
       <EntitlementProvider initialEntitlements={entitlements}>
+        <PermissionsProvider initialPermissions={permissions}>
         <LoadingBarProvider>
           <SidebarProvider>
             <div className="flex h-screen flex-col overflow-hidden bg-canvas">
@@ -153,7 +167,11 @@ export default async function RootLayout({
                 <ImpersonationBanner email={authToken.email} />
               )}
               <div className="flex flex-1 min-h-0 overflow-hidden">
-                <DashboardSidebarShell data={businessData} user={user} />
+                <DashboardSidebarShell
+                  data={businessData}
+                  user={user}
+                  reportsReadAll={authToken?.reportsReadAll ?? true}
+                />
 
                 <main className="flex flex-1 min-w-0 flex-col overflow-hidden">
                   {/* Mobile-only top bar (hamburger + logo). Lives here
@@ -187,6 +205,7 @@ export default async function RootLayout({
             </div>
           </SidebarProvider>
         </LoadingBarProvider>
+        </PermissionsProvider>
       </EntitlementProvider>
       <WhatsAppButton
         businessName={currentBusiness?.name}

@@ -6,6 +6,7 @@ import {
   RefreshCcw,
   Wallet,
 } from "lucide-react";
+import { requireReportsReadAll } from "@/lib/auth-utils";
 
 import { SectionCard } from "@/components/admin/shared/section-card";
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
@@ -32,6 +33,7 @@ import {
   buildTrendFromDaily,
 } from "@/lib/reports/cashflow-trend";
 import { breakdownToMethodRows, fmtAmount } from "@/types/reports/cashflow";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import type OverviewResponse from "@/types/dashboard/type";
 
 type Params = {
@@ -46,6 +48,7 @@ const pluralize = (n: number, word: string) =>
 
 export default async function CashflowReportPage({ searchParams }: Params) {
   const resolved = await searchParams;
+  await requireReportsReadAll();
 
   // Default to the current month — keeps the first paint scoped, matching
   // every other reporting screen.
@@ -62,16 +65,25 @@ export default async function CashflowReportPage({ searchParams }: Params) {
       // the analytics gateway.)
       fetchOverview(from, to)
         .then((data) => data as OverviewResponse | null)
-        .catch(() => null),
+        .catch((e) => {
+          rethrowIfBoundary(e);
+          return null;
+        }),
       getLocationCurrency().catch(() => "TZS"),
       // Richer per-tender breakdown (transaction counts + server-computed
       // share). The overview reads the same transactions, so they reconcile.
       getPaymentMethodBreakdown({ startDate: from, endDate: to }).catch(
-        () => [],
+        (e) => {
+          rethrowIfBoundary(e);
+          return [];
+        },
       ),
       // Real per-day series for the trend chart. [] → fall back to a modeled
       // trend (e.g. before the endpoint is deployed).
-      cashFlowDaily(from, to).catch(() => []),
+      cashFlowDaily(from, to).catch((e) => {
+        rethrowIfBoundary(e);
+        return [];
+      }),
     ]);
 
   const cashIn = overview?.transactionsAmount ?? 0;

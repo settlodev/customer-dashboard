@@ -25,6 +25,8 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
+import { softFetch } from "@/lib/list-fallback";
 import { CustomerStatusTabs } from "@/components/tables/customer/status-tabs";
 import { Customer } from "@/types/customer/type";
 import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
@@ -71,7 +73,7 @@ export default async function CustomersPage({ searchParams }: Params) {
         withEmail: 0,
         noShowCustomers: 0,
       })),
-      searchCustomer(q, page, pageLimit, activeFilter),
+      softFetch(searchCustomer(q, page, pageLimit, activeFilter)),
       business?.id
         ? getOutstandingPrepaidLiability(business.id)
         : Promise.resolve(null),
@@ -85,12 +87,12 @@ export default async function CustomersPage({ searchParams }: Params) {
   const prepaidByCustomer = new Map(
     topBalances.map((b) => [b.customerId, b.outstandingBalance]),
   );
-  const data: Customer[] = responseData.content.map((c) => ({
+  const data: Customer[] = (responseData?.content ?? []).map((c) => ({
     ...c,
     prepaidBalance: prepaidByCustomer.get(c.id),
   }));
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   const hasAnyCustomer = counts.total > 0;
 
@@ -190,19 +192,23 @@ export default async function CustomersPage({ searchParams }: Params) {
               }}
             />
 
-            <Card>
-              <CardContent className="px-2 pt-6 sm:px-6">
-                <DataTable
-                  columns={columns}
-                  data={data}
-                  pageCount={pageCount}
-                  pageNo={page}
-                  searchKey="firstName"
-                  total={total}
-                  rowClickBasePath="/customers"
-                />
-              </CardContent>
-            </Card>
+            {!responseData ? (
+              <DataLoadError itemName="customers" />
+            ) : (
+              <Card>
+                <CardContent className="px-2 pt-6 sm:px-6">
+                  <DataTable
+                    columns={columns}
+                    data={data}
+                    pageCount={pageCount}
+                    pageNo={page}
+                    searchKey="firstName"
+                    total={total}
+                    rowClickBasePath="/customers"
+                  />
+                </CardContent>
+              </Card>
+            )}
           </>
         ) : (
           <NoItems itemName="customers" newItemUrl="/customers/new" />

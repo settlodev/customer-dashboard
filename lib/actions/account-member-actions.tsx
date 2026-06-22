@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { FormResponse } from "@/types/types";
+import { SettloApiError, getUIErrorMessage } from "@/lib/settlo-api-error-handler";
 
 export interface AccountMember {
   id: string;
@@ -59,14 +61,34 @@ export const inviteMember = async (data: {
   scopes?: Array<{ scopeType: string; scopeId: string }>;
 }): Promise<FormResponse<AccountMember>> => {
   try {
+    let scopes = data.scopes;
+    if (!scopes || scopes.length === 0) {
+      try {
+        const cookieStore = await cookies();
+        const raw = cookieStore.get("currentLocation")?.value;
+        const loc = raw ? JSON.parse(raw) : null;
+        if (loc?.id) {
+          scopes = [{ scopeType: "LOCATION", scopeId: loc.id }];
+        }
+      } catch {
+        // no current location → leave scopes undefined (Accounts defaults to ACCOUNT)
+      }
+    }
     const apiClient = new ApiClient();
-    const response = await apiClient.post(`/api/v1/account-members/invite`, data);
+    const response = await apiClient.post(`/api/v1/account-members/invite`, { ...data, scopes });
     revalidatePath("/team");
     return { responseType: "success", message: "Invitation sent successfully", data: parseStringify(response) };
   } catch (error) {
+    // Surface the backend's structured error (CONFLICT / EMAIL_EXISTS /
+    // VALIDATION_ERROR …) so duplicate-invite, already-a-member and
+    // invalid-email are distinguishable instead of a single opaque string.
+    const message =
+      error instanceof SettloApiError
+        ? getUIErrorMessage(error.code, error.message, "Failed to send invitation")
+        : "Failed to send invitation";
     return {
       responseType: "error",
-      message: "Failed to send invitation",
+      message,
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
@@ -148,6 +170,34 @@ export const acceptInvitation = async (memberId: string): Promise<FormResponse> 
       message: "Failed to accept invitation",
       error: error instanceof Error ? error : new Error(String(error)),
     };
+  }
+};
+
+export interface PublicInvitation {
+  email: string;
+  invitedToName: string;
+  accountName: string;
+  status: "PENDING" | "ACCEPTED" | "REVOKED";
+  hasAccount: boolean;
+}
+
+export const getPublicInvitation = async (
+  memberId: string,
+): Promise<PublicInvitation | null> => {
+  try {
+    const base = process.env.ACCOUNTS_SERVICE_URL || process.env.SERVICE_URL;
+    if (!base) {
+      console.warn("getPublicInvitation: ACCOUNTS_SERVICE_URL/SERVICE_URL not configured");
+      return null;
+    }
+    const res = await fetch(
+      `${base}/api/v1/public/account-members/invitations/${memberId}`,
+      { headers: { "Content-Type": "application/json" }, cache: "no-store" },
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as PublicInvitation;
+  } catch {
+    return null;
   }
 };
 

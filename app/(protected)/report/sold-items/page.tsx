@@ -20,6 +20,7 @@ import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { SoldItemsStatusToggle } from "@/components/reports/sold-items/sold-items-status-toggle";
 import { SoldItemsTable } from "@/components/reports/sold-items/sold-items-table";
 import { listSoldItems } from "@/lib/actions/product-actions";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import {
   type SoldItemLine,
   type SoldItemStatus,
@@ -86,7 +87,10 @@ export default async function Page({ searchParams }: Params) {
     toDate: to,
     status: status || undefined,
     limit: DEFAULT_LIMIT,
-  }).catch(() => null);
+  }).catch((e) => {
+    rethrowIfBoundary(e);
+    return null;
+  });
 
   const items = report?.items ?? [];
   const filtered = items.filter((item) => matchesSearch(item, q));

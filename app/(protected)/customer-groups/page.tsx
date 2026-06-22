@@ -15,6 +15,8 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
+import { softFetch } from "@/lib/list-fallback";
 import { AddGroupButton } from "@/components/widgets/customer-group/add-group-button";
 import { CustomerGroup } from "@/types/customer/type";
 
@@ -33,29 +35,24 @@ export default async function CustomerGroupsPage({ searchParams }: Params) {
   const pageLimit = Number(resolved.limit);
 
   const [allGroups, responseData] = await Promise.all([
-    fetchCustomerGroups({ includeInactive: true }).catch(
-      () => [] as CustomerGroup[],
-    ),
-    searchCustomerGroups(q, page, pageLimit).catch(() => ({
-      content: [] as CustomerGroup[],
-      totalElements: 0,
-      totalPages: 0,
-      size: 0,
-      number: 0,
-    })),
+    softFetch(fetchCustomerGroups({ includeInactive: true })),
+    softFetch(searchCustomerGroups(q, page, pageLimit)),
   ]);
 
-  const totalGroups = allGroups.length;
-  const activeGroups = allGroups.filter((g) => g.active).length;
+  const loadFailed = !allGroups || !responseData;
+
+  const groups = allGroups ?? [];
+  const totalGroups = groups.length;
+  const activeGroups = groups.filter((g) => g.active).length;
   const inactiveGroups = totalGroups - activeGroups;
-  const totalMembers = allGroups.reduce(
+  const totalMembers = groups.reduce(
     (sum, g) => sum + (g.customerCount || 0),
     0,
   );
 
-  const data: CustomerGroup[] = responseData.content;
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const data: CustomerGroup[] = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   const hasAnyGroup = totalGroups > 0;
 
@@ -69,7 +66,9 @@ export default async function CustomerGroupsPage({ searchParams }: Params) {
       />
 
       <PageBody>
-        {hasAnyGroup || q !== "" ? (
+        {loadFailed ? (
+          <DataLoadError itemName="customer groups" />
+        ) : hasAnyGroup || q !== "" ? (
           <>
             <KpiStrip cols={4}>
               <KpiCard

@@ -8,9 +8,11 @@ import {
 } from "@/components/layouts/page-shell";
 import { Button } from "@/components/ui/button";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
 import { columns, LpoRow } from "@/components/tables/lpo/columns";
 import { getLpos } from "@/lib/actions/lpo-actions";
+import { softFetch } from "@/lib/list-fallback";
 import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getPurchaseOrderKpi } from "@/lib/actions/reports-analytics-actions";
@@ -49,7 +51,7 @@ export default async function Page({ searchParams }: Params) {
   );
 
   const [responseData, suppliers, location, kpi] = await Promise.all([
-    getLpos(page ? page - 1 : 0, pageLimit, status),
+    softFetch(getLpos(page ? page - 1 : 0, pageLimit, status)),
     fetchAllSuppliers(),
     locationPromise,
     kpiPromise,
@@ -57,12 +59,12 @@ export default async function Page({ searchParams }: Params) {
 
   const supplierMap = Object.fromEntries(suppliers.map((s) => [s.id, s.name]));
 
-  const data: LpoRow[] = (responseData.content ?? []).map((l) => ({
+  const data: LpoRow[] = (responseData?.content ?? []).map((l) => ({
     ...l,
     supplierName: supplierMap[l.supplierId] ?? null,
   }));
-  const total = responseData.totalElements ?? 0;
-  const pageCount = responseData.totalPages ?? 0;
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   return (
     <PageShell>
@@ -80,7 +82,9 @@ export default async function Page({ searchParams }: Params) {
         }
       />
       <PageBody>
-        {total > 0 || status ? (
+        {!responseData ? (
+          <DataLoadError itemName="purchase orders" />
+        ) : total > 0 || status ? (
           <>
             <PurchaseOrderKpiStrip summary={kpi} />
             <DataTable

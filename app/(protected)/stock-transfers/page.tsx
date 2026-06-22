@@ -7,9 +7,11 @@ import {
   PageBody,
 } from "@/components/layouts/page-shell";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-transfer/column";
 import { searchStockTransfers } from "@/lib/actions/stock-transfer-actions";
+import { softFetch } from "@/lib/list-fallback";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getStockTransferKpi } from "@/lib/actions/reports-analytics-actions";
 import { StockTransferKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
@@ -28,13 +30,13 @@ export default async function Page({ searchParams }: Params) {
   const pageLimit = Number(resolvedParams.limit) || 20;
 
   const [responseData, location] = await Promise.all([
-    searchStockTransfers(page ? page - 1 : 0, pageLimit),
+    softFetch(searchStockTransfers(page ? page - 1 : 0, pageLimit)),
     getCurrentLocation(),
   ]);
 
-  const data = responseData.content;
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   const kpi = location?.id ? await getStockTransferKpi(location.id) : null;
 
@@ -56,7 +58,9 @@ export default async function Page({ searchParams }: Params) {
         }
       />
       <PageBody>
-        {total > 0 ? (
+        {!responseData ? (
+          <DataLoadError itemName="stock transfers" />
+        ) : total > 0 ? (
           <>
             <StockTransferKpiStrip summary={kpi} />
             <DataTable

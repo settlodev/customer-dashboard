@@ -15,9 +15,11 @@ import {
 } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/rfq/columns";
 import { getRfqs } from "@/lib/actions/rfq-actions";
+import { softFetch } from "@/lib/list-fallback";
 import { getLocationConfig } from "@/lib/actions/location-config-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getRfqKpi } from "@/lib/actions/reports-analytics-actions";
@@ -50,14 +52,14 @@ export default async function Page({ searchParams }: Params) {
   const status = STATUS_VALUES.find((s) => s === resolvedParams.status);
 
   const [responseData, config, location] = await Promise.all([
-    getRfqs(page ? page - 1 : 0, pageLimit, status),
+    softFetch(getRfqs(page ? page - 1 : 0, pageLimit, status)),
     getLocationConfig(),
     getCurrentLocation(),
   ]);
 
-  const data = responseData.content ?? [];
-  const total = responseData.totalElements ?? 0;
-  const pageCount = responseData.totalPages ?? 0;
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
   const rfqEnabled = config?.rfqEnabled ?? false;
 
   const kpi = location?.id ? await getRfqKpi(location.id) : null;
@@ -96,7 +98,9 @@ export default async function Page({ searchParams }: Params) {
           </Alert>
         )}
 
-        {total > 0 || status ? (
+        {!responseData ? (
+          <DataLoadError itemName="RFQs" />
+        ) : total > 0 || status ? (
           <>
             <RfqKpiStrip summary={kpi} />
             <DataTable

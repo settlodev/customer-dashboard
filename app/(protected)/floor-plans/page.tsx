@@ -17,6 +17,7 @@ import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
 import { AddFloorPlanButton } from "@/components/widgets/floor-plan/add-floor-plan-button";
 import { FloorPlan } from "@/types/space/type";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 
 type Params = {
   searchParams: Promise<{
@@ -34,13 +35,16 @@ export default async function FloorPlansPage({ searchParams }: Params) {
 
   const [allPlans, response] = await Promise.all([
     fetchAllFloorPlans().catch(() => [] as FloorPlan[]),
-    searchFloorPlans(q, page, pageLimit).catch(() => ({
-      content: [] as FloorPlan[],
-      totalElements: 0,
-      totalPages: 0,
-      size: 0,
-      number: 0,
-    })),
+    searchFloorPlans(q, page, pageLimit).catch((e) => {
+      rethrowIfBoundary(e);
+      return {
+        content: [] as FloorPlan[],
+        totalElements: 0,
+        totalPages: 0,
+        size: 0,
+        number: 0,
+      };
+    }),
   ]);
 
   const totalPlans = allPlans.length;

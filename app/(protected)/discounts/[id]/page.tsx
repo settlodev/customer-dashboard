@@ -1,7 +1,12 @@
 import {ApiResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import {notFound} from "next/navigation";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+    PageShell,
+    PageHeader,
+    PageBreadcrumbs,
+    PageBody,
+} from "@/components/layouts/page-shell";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import { Discount } from "@/types/discount/type";
 import { getDiscount } from "@/lib/actions/discount-actions";
@@ -25,18 +30,24 @@ export default async function DiscountPage({params}: {params: Params}){
         }
     }
 
-    const breadCrumbItems=[{title:"Discounts",link:"/discounts"},
-        {title: isNewItem ? "New":item?.content[0].name || "Edit",link:""}]
+    const title = isNewItem ? "Add Discount" : item?.content[0].name || "Edit discount details";
 
     return(
-        <div className={`flex-1 space-y-4 p-4 md:p-8 pt-6`}>
-            <div className={`flex items-center justify-between mb-2`}>
-                <div className={`relative flex-1 `}>
-                    <BreadcrumbsNav items={breadCrumbItems}/>
-                </div>
-            </div>
-            <DiscountCard isNewItem={isNewItem} item={item?.content[0]}/>
-        </div>
+        <PageShell>
+            <PageBreadcrumbs
+                items={[
+                    { title: "Discounts", href: "/discounts" },
+                    { title: isNewItem ? "New" : item?.content[0].name || "Edit" },
+                ]}
+            />
+            <PageHeader
+                title={title}
+                subtitle={isNewItem ? "Add discount to your business" : "Edit discount details"}
+            />
+            <PageBody>
+                <DiscountCard isNewItem={isNewItem} item={item?.content[0]}/>
+            </PageBody>
+        </PageShell>
     )
 }
 

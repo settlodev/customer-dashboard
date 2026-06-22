@@ -12,8 +12,9 @@ import {
   AlertIcon,
   AlertTitle,
 } from "@/components/ui/alert";
-import { getBusinessDropDown } from "@/lib/actions/business/get-current-business";
+import { getAllBusinesses } from "@/lib/actions/business/get-current-business";
 import RetryButton from "@/app/(auth)/select-business/retry-button";
+import { getMyAccountsContext } from "@/lib/actions/profile-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +27,9 @@ function BusinessPageLoading() {
 }
 
 async function BusinessPageContent() {
-  let data: Awaited<ReturnType<typeof getBusinessDropDown>>;
+  let data: Awaited<ReturnType<typeof getAllBusinesses>>;
   try {
-    data = await getBusinessDropDown();
+    data = await getAllBusinesses();
   } catch (error) {
     if (
       error instanceof Error &&
@@ -62,15 +63,17 @@ async function BusinessPageContent() {
     );
   }
 
-  // Genuine "no businesses on this account" — safe to send them to registration.
   if (data.length === 0) {
+    // No businesses across any account → genuine new owner.
     redirect("/business-registration");
   }
 
-  // Pass all businesses to the client component.
-  // Auto-selection (single business, single location → dashboard)
-  // is handled client-side where server actions can set cookies.
-  return <BusinessSelector businesses={data} />;
+  const { currentAccountId } = await getMyAccountsContext();
+
+  // Pass all businesses (owned-first, as returned by the endpoint) to the
+  // client component. Auto-selection and cross-account switching are handled
+  // client-side where server actions can set cookies.
+  return <BusinessSelector businesses={data} currentAccountId={currentAccountId} />;
 }
 
 export default async function SelectBusinessPage() {

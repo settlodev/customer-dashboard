@@ -13,6 +13,7 @@ import type {
 import { getCurrentLocation } from "./business/get-current-business";
 import { StockSchema } from "@/types/stock/schema";
 import { inventoryUrl } from "./inventory-client";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 
 // ── Stock CRUD ──────────────────────────────────────────────────────
 
@@ -65,7 +66,8 @@ export async function searchStocks(
       inventoryUrl(`/api/v1/stocks/search?${params.toString()}`),
     );
     return parseStringify(data);
-  } catch {
+  } catch (error) {
+    rethrowIfBoundary(error);
     // Degrade to an empty page so the list renders "no items" instead of
     // crashing on a transient backend error (mirrors getStocks's resilience).
     return { content: [], totalElements: 0, totalPages: 0 } as unknown as ApiResponse<Stock>;
@@ -93,7 +95,8 @@ export async function getStockCounts(): Promise<StockListCounts> {
     const apiClient = new ApiClient();
     const data = await apiClient.get(inventoryUrl("/api/v1/stocks/counts"));
     return parseStringify(data) as StockListCounts;
-  } catch {
+  } catch (error) {
+    rethrowIfBoundary(error);
     return { active: 0, archived: 0, draft: 0, all: 0 };
   }
 }

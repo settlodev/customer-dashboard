@@ -110,7 +110,15 @@ export const CellAction: React.FC<CellActionProps> = ({ data, variant }) => {
   const handleDelete = async () => {
     try {
       if (variant) {
-        await deleteVariant(data.id, variant.id);
+        const result = await deleteVariant(data.id, variant.id);
+        if (result?.responseType === "error") {
+          toast({
+            variant: "destructive",
+            title: "Failed to delete",
+            description: result.message || "Try again in a moment.",
+          });
+          return;
+        }
       } else {
         await deleteProduct(data.id);
       }

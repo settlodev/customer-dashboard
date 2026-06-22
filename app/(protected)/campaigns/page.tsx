@@ -9,48 +9,56 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+    PageShell,
+    PageHeader,
+    PageBreadcrumbs,
+    PageBody,
+} from "@/components/layouts/page-shell";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import {columns} from "@/components/tables/campaign/columns";
 import { searchCampaign} from "@/lib/actions/campaign_action";
+import { softFetch } from "@/lib/list-fallback";
 
-const breadcrumbItems = [{ title: "Campaign", link: "/campaign" }];
-
-type Params = { 
-    searchParams: Promise<{ 
-        search?: string; 
-        page?: string; 
-        limit?: string; 
-    }> 
+type Params = {
+    searchParams: Promise<{
+        search?: string;
+        page?: string;
+        limit?: string;
+    }>
 };
 
 export default async function Page({ searchParams }: Params) {
     const resolvedSearchParams = await searchParams;
-    
+
     const q = resolvedSearchParams.search || "";
     const page = Number(resolvedSearchParams.page) || 0;
     const pageLimit = Number(resolvedSearchParams.limit);
 
-    const responseData = await searchCampaign(q, page, pageLimit);
-    const data = responseData.content;
-    const total = responseData.totalElements;
-    const pageCount = responseData.totalPages;
+    const responseData = await softFetch(searchCampaign(q, page, pageLimit));
+    const data = responseData?.content ?? [];
+    const total = responseData?.totalElements ?? 0;
+    const pageCount = responseData?.totalPages ?? 0;
 
     return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <div className="flex items-center justify-between mb-2">
-                <div className="relative flex-1 md:max-w-md">
-                    <BreadcrumbsNav items={breadcrumbItems} />
-                </div>
-
-                <div className="flex items-center space-x-2">
-                    <Button>
-                        <Link key="add-sms-email" href={`/campaigns/new`}>Send Campaign</Link>
-                    </Button>
-                </div>
-            </div>
-
-            {total > 0 || q != "" ? (
+        <PageShell>
+            <PageBreadcrumbs items={[{ title: "Campaign" }]} />
+            <PageHeader
+                title="Campaign"
+                subtitle="List of all Campaign sent"
+                actions={
+                    <>
+                        <Button>
+                            <Link key="add-sms-email" href={`/campaigns/new`}>Send Campaign</Link>
+                        </Button>
+                    </>
+                }
+            />
+            <PageBody>
+            {!responseData ? (
+                <DataLoadError itemName="campaigns" />
+            ) : total > 0 || q != "" ? (
                 <Card x-chunk="data-table">
                     <CardHeader>
                         <CardTitle>Campaigns Sent</CardTitle>
@@ -70,6 +78,7 @@ export default async function Page({ searchParams }: Params) {
             ) : (
                 <NoItems itemName={`campaign`} newItemUrl={`/campaigns/new`} />
             )}
-        </div>
+            </PageBody>
+        </PageShell>
     );
 }

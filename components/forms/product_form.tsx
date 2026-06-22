@@ -458,14 +458,25 @@ export default function ProductForm({ item }: ProductFormProps) {
         }
 
         for (const v of values.variants) {
-          if (v.id) {
-            await updateVariant(item!.id, v.id, v, values.taxTypeId);
-          } else {
-            await createVariant(item!.id, v, values.taxTypeId);
+          const variantResult = v.id
+            ? await updateVariant(item!.id, v.id, v, values.taxTypeId)
+            : await createVariant(item!.id, v, values.taxTypeId);
+          if (variantResult?.responseType === "error") {
+            setResponse({
+              ...variantResult,
+              message: v.name
+                ? `${v.name}: ${variantResult.message}`
+                : variantResult.message,
+            });
+            return;
           }
         }
         for (const removedId of removedVariantIds) {
-          await deleteVariant(item!.id, removedId);
+          const removeResult = await deleteVariant(item!.id, removedId);
+          if (removeResult?.responseType === "error") {
+            setResponse(removeResult);
+            return;
+          }
         }
         setRemovedVariantIds([]);
 

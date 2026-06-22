@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import {
   PageShell,
   PageHeader,
@@ -50,6 +51,16 @@ export default async function StaffEditPage({ params }: { params: Params }) {
         title={`Edit ${fullName}`}
         subtitle="Update profile details. Manage POS / dashboard access from the detail page menu."
       />
+      {!staff.active && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
+          This staff member is <strong>deactivated</strong>. Profile edits are saved,
+          but they have no dashboard or POS access until reactivated from the{" "}
+          <Link href={`/staff/${staff.id}`} className="underline">
+            staff detail page
+          </Link>
+          .
+        </div>
+      )}
       <PageBody>
         <StaffForm
           item={staff}

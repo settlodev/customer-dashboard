@@ -4,6 +4,7 @@ import React, {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -35,6 +36,7 @@ import { SidebarAccountMenu } from "./sidebar-account-menu";
 import { menuItems } from "@/types/menu_items";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { ExtendedUser } from "@/types/types";
+import { usePermissions } from "@/context/permissionsContext";
 
 interface SidebarContextValue {
   mobileOpen: boolean;
@@ -108,6 +110,17 @@ interface MenuItemShape {
   link: string;
   title: string;
   id?: string;
+  permission?: string;
+  permissions?: string[];
+}
+
+interface MenuSectionShape {
+  label: string;
+  icon: string;
+  link?: string;
+  items: MenuItemShape[];
+  permission?: string;
+  permissions?: string[];
 }
 
 interface DashboardSidebarContentProps {
@@ -115,6 +128,7 @@ interface DashboardSidebarContentProps {
   user: ExtendedUser | null;
   onClose?: () => void;
   isMobile?: boolean;
+  reportsReadAll?: boolean;
 }
 
 function getSectionIcon(name: string) {
@@ -160,19 +174,53 @@ function DashboardSidebarContent({
   user,
   onClose,
   isMobile,
+  reportsReadAll = true,
 }: DashboardSidebarContentProps) {
   const pathname = usePathname();
+  const { hasAnyPermission, loading: permsLoading } = usePermissions();
   const sections = menuItems({
     menuType: "normal",
     isCurrentItem: false,
     hasMultipleDestinations: data.hasMultipleDestinations,
-  });
+    reportsReadAll,
+  }) as unknown as MenuSectionShape[];
+
+  // Permission-gate the nav. Fail OPEN: an entry with no permission tag, or
+  // any entry while permissions are still loading, is always shown — the
+  // backend @PreAuthorize is the real security gate, so this only declutters
+  // the nav for invited, limited-scope members (owners hold the full catalog
+  // and therefore keep every item). A tagged entry is hidden only once perms
+  // have loaded AND the user holds none of its key(s). Sections that end up
+  // with no visible items (and aren't standalone links) are dropped.
+  const canSee = (entry: { permission?: string; permissions?: string[] }) => {
+    if (permsLoading) return true;
+    const keys = entry.permissions ?? (entry.permission ? [entry.permission] : []);
+    if (keys.length === 0) return true;
+    return hasAnyPermission(keys);
+  };
+
+  const visibleSections = useMemo(() => {
+    return sections
+      .filter((section) => canSee(section))
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => canSee(item)),
+      }))
+      .filter(
+        (section) =>
+          // Keep standalone links (have a link, no items) even when empty;
+          // drop grouped sections that have no visible children left.
+          (section.link && (!section.items || section.items.length === 0)) ||
+          section.items.length > 0,
+      );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sections, permsLoading, hasAnyPermission]);
 
   const [openIndex, setOpenIndex] = useState<number>(-1);
   const prevPathRef = useRef(pathname);
   useEffect(() => {
     const findActive = () =>
-      sections.findIndex((section) =>
+      visibleSections.findIndex((section) =>
         section.items.some(
           (item: MenuItemShape) =>
             pathname === item.link || pathname.startsWith(item.link + "/"),
@@ -183,7 +231,7 @@ function DashboardSidebarContent({
     prevPathRef.current = pathname;
     const idx = findActive();
     if (idx !== -1) setOpenIndex(idx);
-  }, [pathname]);
+  }, [pathname, visibleSections]);
 
   if (!data.business) return null;
 
@@ -234,8 +282,8 @@ function DashboardSidebarContent({
 
       {/* ── Workspace nav (accordion sections) ───────────────────── */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-        {sections.map((section, sectionIndex) => {
-          const sectionLink = (section as { link?: string }).link;
+        {visibleSections.map((section, sectionIndex) => {
+          const sectionLink = section.link;
           if (sectionLink && (!section.items || section.items.length === 0)) {
             const isActive =
               pathname === sectionLink ||
@@ -345,11 +393,13 @@ function DashboardSidebarContent({
 interface DashboardSidebarShellProps {
   data: BusinessPropsType;
   user: ExtendedUser | null;
+  reportsReadAll?: boolean;
 }
 
 export function DashboardSidebarShell({
   data,
   user,
+  reportsReadAll = true,
 }: DashboardSidebarShellProps) {
   const { mobileOpen, setMobileOpen } = useSidebar();
 
@@ -357,7 +407,7 @@ export function DashboardSidebarShell({
     <>
       {/* Desktop floating sidebar */}
       <aside className="my-3 ml-3 hidden w-[296px] flex-shrink-0 overflow-hidden rounded-2xl border border-line bg-card shadow-[0_1px_0_rgba(20,17,12,0.02),0_14px_40px_-16px_rgba(20,17,12,0.10),0_4px_10px_-4px_rgba(20,17,12,0.05)] lg:flex lg:flex-col">
-        <DashboardSidebarContent data={data} user={user} />
+        <DashboardSidebarContent data={data} user={user} reportsReadAll={reportsReadAll} />
       </aside>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -374,6 +424,7 @@ export function DashboardSidebarShell({
             data={data}
             user={user}
             isMobile
+            reportsReadAll={reportsReadAll}
             onClose={() => setMobileOpen(false)}
           />
         </SheetContent>

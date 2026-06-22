@@ -67,7 +67,10 @@ function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
   const [step, setStep] = useState<ResetStep>(linkToken ? "password" : "email");
-  const [userId, setUserId] = useState<string>("");
+  // The email entered at the request step, threaded into the verify-code step.
+  // The backend no longer returns a userId; the verify endpoint keys off the
+  // identifier (email/phone) the user typed.
+  const [email, setEmail] = useState<string>("");
   const [resetToken, setResetToken] = useState<string>("");
   const [verificationCode, setVerificationCode] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -122,15 +125,21 @@ function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
         try {
           const data: FormResponse = await resetPassword(values);
 
+          // The action only returns an error for genuine infrastructure
+          // failures. USER_NOT_FOUND and friends come back as a uniform
+          // success, so we never surface a "no account" distinction here.
           if (data.responseType === "error") {
             setError(data.message);
             return;
           }
 
-          if (data.data && (data.data as any).userId) {
-            setUserId((data.data as any).userId);
-          }
-          setSuccess("A reset code has been sent to your email.");
+          // Carry the email the user typed into the verify-code step.
+          const enteredEmail =
+            (data.data && (data.data as any).email) || values.email;
+          setEmail(enteredEmail);
+          setSuccess(
+            "If an account exists for this email, a reset code has been sent.",
+          );
           setStep("code");
         } catch {
           setError("An unexpected error occurred. Please try again.");
@@ -153,7 +162,7 @@ function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
     startTransition(async () => {
       try {
         const data: FormResponse = await verifyResetCode(
-          userId,
+          email,
           verificationCode,
         );
 
@@ -171,7 +180,7 @@ function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
         setError("An unexpected error occurred. Please try again.");
       }
     });
-  }, [userId, verificationCode]);
+  }, [email, verificationCode]);
 
   // Step 3: Set new password
   const submitNewPassword = useCallback(

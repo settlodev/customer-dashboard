@@ -7,9 +7,11 @@ import {
   PageBody,
 } from "@/components/layouts/page-shell";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-usage/column";
 import { searchStockUsages } from "@/lib/actions/stock-usage-actions";
+import { softFetch } from "@/lib/list-fallback";
 import { Plus } from "lucide-react";
 import {
   USAGE_CATEGORY_OPTIONS,
@@ -57,15 +59,13 @@ export default async function Page({ searchParams }: Params) {
     to: resolved.to || undefined,
   };
 
-  const responseData = await searchStockUsages(
-    page ? page - 1 : 0,
-    pageLimit,
-    filters,
+  const responseData = await softFetch(
+    searchStockUsages(page ? page - 1 : 0, pageLimit, filters),
   );
 
-  const data = responseData.content;
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   const hasActiveFilter =
     !!(
@@ -96,7 +96,9 @@ export default async function Page({ searchParams }: Params) {
         }
       />
       <PageBody>
-        {total > 0 || hasActiveFilter ? (
+        {!responseData ? (
+          <DataLoadError itemName="stock usage" />
+        ) : total > 0 || hasActiveFilter ? (
           <DataTable
             columns={columns}
             data={data}

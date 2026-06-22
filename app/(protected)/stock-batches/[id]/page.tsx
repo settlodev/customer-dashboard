@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import { PageShell, PageHeader, PageBreadcrumbs, PageBody } from "@/components/layouts/page-shell";
 import {
   fetchBatchById,
   fetchBatchMovements,
@@ -34,13 +34,13 @@ export default async function StockBatchDetailPage({ params }: Props) {
 
   if (resolved.kind === "picker") {
     return (
-      <PageShell breadcrumbKey={decoded} showNumberAsTitle>
+      <BatchShell breadcrumbKey={decoded} showNumberAsTitle>
         <BatchPickerList
           batchNumber={decoded}
           batches={resolved.batches}
           totalElements={resolved.totalElements}
         />
-      </PageShell>
+      </BatchShell>
     );
   }
 
@@ -52,13 +52,13 @@ export default async function StockBatchDetailPage({ params }: Props) {
       : { items: [], totalElements: 0, returned: 0, truncated: false };
 
   return (
-    <PageShell breadcrumbKey={resolved.batch.batchNumber} showNumberAsTitle>
+    <BatchShell breadcrumbKey={resolved.batch.batchNumber} showNumberAsTitle>
       <BatchDetailPanel
         batch={resolved.batch}
         batchId={resolved.batch.id}
         initialMovements={movements}
       />
-    </PageShell>
+    </BatchShell>
   );
 }
 
@@ -102,7 +102,10 @@ async function resolveByBatchNumber(batchNumber: string): Promise<Resolved> {
   };
 }
 
-function PageShell({
+// Shared chrome for both the single-batch and picker branches. Renders the
+// standard PageShell so the page matches the rest of the app. (Named BatchShell
+// to avoid colliding with the imported PageShell primitive.)
+function BatchShell({
   breadcrumbKey,
   showNumberAsTitle,
   children,
@@ -111,30 +114,32 @@ function PageShell({
   showNumberAsTitle: boolean;
   children: React.ReactNode;
 }) {
-  const breadcrumbItems = [
-    { title: "Traceability", link: "/traceability" },
-    {
-      title: breadcrumbKey,
-      link: `/stock-batches/${encodeURIComponent(breadcrumbKey)}`,
-    },
-  ];
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-4">
-      <div>
-        <BreadcrumbsNav items={breadcrumbItems} />
-        <div className="mt-2 flex items-baseline gap-3">
-          {showNumberAsTitle && (
-            <h1 className="text-2xl font-bold font-mono">{breadcrumbKey}</h1>
-          )}
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Traceability", href: "/traceability" },
+          { title: breadcrumbKey },
+        ]}
+      />
+      <PageHeader
+        title={
+          showNumberAsTitle ? (
+            <span className="font-mono">{breadcrumbKey}</span>
+          ) : (
+            "Stock batch"
+          )
+        }
+        actions={
           <Link
             href="/traceability"
             className="text-sm text-muted-foreground hover:underline"
           >
             ← back to traceability
           </Link>
-        </div>
-      </div>
-      {children}
-    </div>
+        }
+      />
+      <PageBody>{children}</PageBody>
+    </PageShell>
   );
 }

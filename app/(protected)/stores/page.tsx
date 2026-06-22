@@ -19,8 +19,10 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { columns } from "@/components/tables/store/column";
 import { fetchAllStores } from "@/lib/actions/store-actions";
+import { softFetch } from "@/lib/list-fallback";
 import {
   getCurrentSubscription,
   getPendingInvoice,
@@ -34,7 +36,7 @@ export type EnrichedStore = Store & {
 
 export default async function Page() {
   const [stores, subscription] = await Promise.all([
-    fetchAllStores(),
+    softFetch(fetchAllStores()),
     getCurrentSubscription().catch(() => null),
   ]);
 
@@ -52,7 +54,7 @@ export default async function Page() {
       .map((item) => item.entityId) ?? [],
   );
 
-  const enrichedStores: EnrichedStore[] = stores.map((store) => ({
+  const enrichedStores: EnrichedStore[] = (stores ?? []).map((store) => ({
     ...store,
     subscriptionActive: activeStoreIds.has(store.id),
     hasPendingInvoice: activeStoreIds.has(store.id) && hasPendingInvoice,
@@ -85,7 +87,9 @@ export default async function Page() {
       />
 
       <PageBody>
-        {total > 0 ? (
+        {!stores ? (
+          <DataLoadError itemName="stores" />
+        ) : total > 0 ? (
           <>
             <KpiStrip cols={5}>
               <KpiCard

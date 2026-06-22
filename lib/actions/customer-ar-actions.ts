@@ -11,6 +11,7 @@ import type {
 } from "@/types/customer-ar/type";
 
 import { accountingUrl } from "./accounting-client";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 
 export async function listArBalances(
   locationId: string,
@@ -31,6 +32,7 @@ export async function listArBalances(
     );
     return parseStringify(data);
   } catch (error) {
+    rethrowIfBoundary(error);
     console.error("listArBalances failed", error);
     return {
       content: [],
