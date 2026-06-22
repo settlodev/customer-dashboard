@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import {
   Staff,
+  StaffAuditEvent,
   StaffCount,
   StaffDetail,
   StaffListEnriched,
@@ -476,5 +477,18 @@ export const staffReport = async (
   } catch (error: any) {
     throw new Error(error?.message || "Failed to fetch staff report");
   }
+};
+
+export const getStaffAudit = async (
+  staffId: string,
+  page: number,
+  size: number,
+): Promise<ApiResponse<StaffAuditEvent>> => {
+  const apiClient = new ApiClient();
+  const params = new URLSearchParams();
+  params.append("page", String(page ? page - 1 : 0));
+  params.append("size", String(size || 20));
+  const data = await apiClient.get(`/api/v1/staff/${staffId}/audit?${params.toString()}`);
+  return parseStringify(data);
 };
 

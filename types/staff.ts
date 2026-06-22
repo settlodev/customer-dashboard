@@ -141,6 +141,17 @@ export interface StaffXpTransaction {
   createdAt: string;
 }
 
+// Matches StaffAuditEventResponse from the Accounts Service.
+export interface StaffAuditEvent {
+  id: string;
+  action: string;        // e.g. "DEACTIVATED", "ROLES_ASSIGNED", "PIN_SET"
+  actorName: string | null;
+  actorType: string;     // USER | STAFF | DEVICE | SYSTEM
+  impersonated: boolean;
+  details: Record<string, unknown> | null;
+  createdAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Staff count
 // ---------------------------------------------------------------------------
