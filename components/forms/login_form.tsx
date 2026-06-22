@@ -40,6 +40,7 @@ import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
 import { motion } from "framer-motion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { deleteAuthCookie } from "@/lib/auth-utils";
+import { ACCOUNT_CTX_CACHE_KEY } from "@/components/sidebar/account-switcher";
 import { executeRecaptcha } from "@/lib/recaptcha";
 import SocialAuthButtons from "@/components/widgets/social-auth-buttons";
 import {
@@ -70,6 +71,14 @@ function LoginForm() {
 
   useEffect(() => {
     deleteAuthCookie();
+    // A fresh login must not inherit the previous user's cached account list
+    // (the switcher cache uses a fixed sessionStorage key, so it would otherwise
+    // leak across logins in the same browser). Clear it at the session boundary.
+    try {
+      sessionStorage.removeItem(ACCOUNT_CTX_CACHE_KEY);
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const form = useForm<z.infer<typeof LoginSchema>>({
