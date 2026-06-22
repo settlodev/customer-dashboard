@@ -439,28 +439,37 @@ export default function ProductForm({ item }: ProductFormProps) {
 
   const submit = (values: ProductInput) => {
     setResponse(undefined);
+    // Single-variant products keep the lone variant's name in lockstep with
+    // the product name. The variant-name field is hidden when there's only one
+    // variant (it defaults to "Default"), so editing the product name would
+    // otherwise leave the variant's name stale. Multi-variant products keep
+    // their distinct per-variant names untouched.
+    const effectiveValues: ProductInput =
+      values.variants.length === 1
+        ? { ...values, variants: [{ ...values.variants[0], name: values.name }] }
+        : values;
     startTransition(async () => {
       try {
         if (!isEditMode) {
           const result = autoCreateStock
-            ? await createProductWithStock(values, {
+            ? await createProductWithStock(effectiveValues, {
                 materialType: "FINISHED_GOOD",
               })
-            : await createProduct(values);
+            : await createProduct(effectiveValues);
           if (result?.responseType === "error") setResponse(result);
           return;
         }
 
-        const productResult = await updateProduct(item!.id, values);
+        const productResult = await updateProduct(item!.id, effectiveValues);
         if (productResult?.responseType === "error") {
           setResponse(productResult);
           return;
         }
 
-        for (const v of values.variants) {
+        for (const v of effectiveValues.variants) {
           const variantResult = v.id
-            ? await updateVariant(item!.id, v.id, v, values.taxTypeId)
-            : await createVariant(item!.id, v, values.taxTypeId);
+            ? await updateVariant(item!.id, v.id, v, effectiveValues.taxTypeId)
+            : await createVariant(item!.id, v, effectiveValues.taxTypeId);
           if (variantResult?.responseType === "error") {
             setResponse({
               ...variantResult,

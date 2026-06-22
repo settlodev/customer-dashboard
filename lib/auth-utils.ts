@@ -298,6 +298,41 @@ export const createStaffAuthToken = async (loginResponse: LoginResponse) => {
   return authTokenData;
 };
 
+/**
+ * Referral agents (external customer-onboarding partners) log in through the
+ * normal apex flow but have NO Accounts profile (sentinel accountId), so the
+ * profile fetch is skipped and we write a minimal authToken cookie. The
+ * `referralAgent` flag drives the middleware confinement to /referral; the
+ * onboarding flags are set to benign "complete" defaults so the customer state
+ * machine can never trap them even if the referral branch is ever bypassed.
+ */
+export const createReferralAuthToken = async (loginResponse: LoginResponse) => {
+  const authTokenData: AuthToken = {
+    accessToken: loginResponse.accessToken,
+    refreshToken: loginResponse.refreshToken,
+    userId: loginResponse.userId,
+    accountId: loginResponse.accountId,
+    email: loginResponse.email,
+    firstName: "",
+    lastName: "",
+    phoneNumber: "",
+    pictureUrl: null,
+    emailVerified: true,
+    isBusinessRegistrationComplete: true,
+    isLocationRegistrationComplete: true,
+    hasInvitedAccess: false,
+    countryId: "",
+    countryCode: "",
+    theme: null,
+    referralAgent: true,
+  };
+
+  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData), {
+    maxAge: authCookieMaxAgeFromLogin(loginResponse.refreshTokenExpiresAt),
+  });
+  return authTokenData;
+};
+
 export const createAuthToken = async (user: any) => {
   const authTokenData: AuthToken = {
     accessToken: user.accessToken ?? "",

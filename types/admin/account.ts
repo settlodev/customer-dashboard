@@ -127,3 +127,35 @@ export interface ListAccountsParams extends PageParams {
 export interface SearchCustomersParams extends PageParams {
   q: string;
 }
+
+/**
+ * One merged customer identity in the global, de-duplicated list — the same
+ * human collapsed across businesses/locations by phone (or email). Sourced
+ * from the Reports Service (dim_customer GROUP BY). Read-only: to edit, drill
+ * into an individual record via the "Find a record" search.
+ */
+export interface MergedCustomerRow {
+  mergeKey: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  /** Distinct businesses this person appears under. */
+  businessCount: number;
+  /** Underlying per-location customer records collapsed into this identity. */
+  recordCount: number;
+  lastSeen: string | null;
+}
+
+export interface MergedCustomerPage {
+  content: MergedCustomerRow[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface ListMergedCustomersParams {
+  search?: string;
+  page?: number;
+  size?: number;
+}

@@ -5,6 +5,8 @@ import { z } from "zod";
 
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
+import type { PresignActionResult } from "@/lib/actions/upload-actions";
+import type { UploadPresignResult } from "@/lib/uploads/types";
 import { FormResponse } from "@/types/types";
 import {
   AddonResponse,
@@ -29,6 +31,7 @@ import {
   PackageFeatureMappingResponse,
   PackageIncludedCreditResponse,
   PackageResponse,
+  PaymentMethod,
   RefundPage,
   RefundRequestDto,
   RefundResponse,
@@ -164,25 +167,44 @@ export async function cancelSupportInvoice(
   }
 }
 
-// ── Manual payment (multipart) ──────────────────────────────────────
+// ── Manual payment (presigned proof) ────────────────────────────────
+
+/**
+ * Presign a direct-to-storage upload for a manual-payment proof. The file is
+ * PUT straight to object storage by the browser; only this small metadata
+ * request crosses the server, so it's never bound by the Server Action body
+ * limit. Returns the object key to pass to {@link recordManualPayment}.
+ */
+export async function getPaymentProofPresignUrl(
+  invoiceId: string,
+  body: { filename: string; contentType: string; contentLength: number },
+): Promise<PresignActionResult> {
+  try {
+    const data = await staffBilling().post<UploadPresignResult, typeof body>(
+      `/api/v1/support/billing/invoices/${invoiceId}/payment-proof/presign`,
+      body,
+    );
+    return { ok: true, data };
+  } catch (error: any) {
+    return {
+      ok: false,
+      message: error?.message || "Failed to obtain upload URL",
+    };
+  }
+}
 
 export async function recordManualPayment(
   businessId: string,
   invoiceId: string,
-  formData: FormData,
+  payload: {
+    paymentMethod: PaymentMethod;
+    referenceNumber: string;
+    amount: number;
+    notes?: string;
+    proofKey: string;
+  },
 ): Promise<FormResponse<ManualPaymentResponse>> {
-  const paymentMethod = formData.get("paymentMethod");
-  const referenceNumber = formData.get("referenceNumber");
-  const amountRaw = formData.get("amount");
-  const notes = formData.get("notes");
-  const proof = formData.get("proof");
-
-  const parsed = RecordManualPaymentSchema.safeParse({
-    paymentMethod: typeof paymentMethod === "string" ? paymentMethod : "",
-    referenceNumber: typeof referenceNumber === "string" ? referenceNumber : "",
-    amount: typeof amountRaw === "string" ? Number(amountRaw) : NaN,
-    notes: typeof notes === "string" && notes ? notes : undefined,
-  });
+  const parsed = RecordManualPaymentSchema.safeParse(payload);
   if (!parsed.success) {
     return parseStringify({
       responseType: "error",
@@ -190,36 +212,12 @@ export async function recordManualPayment(
       error: new Error(parsed.error.message),
     });
   }
-  if (!(proof instanceof File) || proof.size === 0) {
-    return parseStringify({
-      responseType: "error",
-      message: "Proof of payment file is required",
-      error: new Error("MISSING_PROOF"),
-    });
-  }
-  if (proof.size > 10 * 1024 * 1024) {
-    return parseStringify({
-      responseType: "error",
-      message: "Proof file must be 10MB or smaller",
-      error: new Error("PROOF_TOO_LARGE"),
-    });
-  }
-
-  // Re-pack with normalized field names + the file so axios sends a clean
-  // multipart body (the inbound FormData from the client may include extra
-  // fields like React Server Action keys).
-  const upstream = new FormData();
-  upstream.append("paymentMethod", parsed.data.paymentMethod);
-  upstream.append("referenceNumber", parsed.data.referenceNumber);
-  upstream.append("amount", String(parsed.data.amount));
-  if (parsed.data.notes) upstream.append("notes", parsed.data.notes);
-  upstream.append("proof", proof);
 
   try {
-    const result = await staffBilling().post<ManualPaymentResponse, FormData>(
-      `/api/v1/support/billing/invoices/${invoiceId}/record-payment`,
-      upstream,
-    );
+    const result = await staffBilling().post<
+      ManualPaymentResponse,
+      typeof parsed.data
+    >(`/api/v1/support/billing/invoices/${invoiceId}/record-payment`, parsed.data);
     revalidateBusiness(businessId);
     return parseStringify({
       responseType: "success",

@@ -3,7 +3,7 @@
 import { useCallback, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeftIcon, ArrowRightIcon, Search } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, Pencil, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,12 +17,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { AdminCustomerSearchPage } from "@/types/admin/account";
+import {
+  AdminCustomerSearchItem,
+  AdminCustomerSearchPage,
+} from "@/types/admin/account";
+import { EditCustomerDialog } from "@/components/admin/edit-customer-dialog";
 
 interface CustomerSearchViewProps {
   initialQuery: string;
   initialPage: AdminCustomerSearchPage | null;
   error: string | null;
+  /** When true, each row gets an Edit action (gated to write roles). */
+  canEdit?: boolean;
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -42,6 +48,7 @@ export function CustomerSearchView({
   initialQuery,
   initialPage,
   error,
+  canEdit = false,
 }: CustomerSearchViewProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -49,6 +56,7 @@ export function CustomerSearchView({
   const [isPending, startTransition] = useTransition();
 
   const [input, setInput] = useState(initialQuery);
+  const [editing, setEditing] = useState<AdminCustomerSearchItem | null>(null);
 
   const updateParams = useCallback(
     (changes: Record<string, string | null>) => {
@@ -134,6 +142,7 @@ export function CustomerSearchView({
                     <TableHead>Account</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
+                    {canEdit && <TableHead className="w-[1%]" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -180,6 +189,19 @@ export function CustomerSearchView({
                       <TableCell className="font-mono text-[12px] text-muted-foreground">
                         {formatDate(customer.createdAt)}
                       </TableCell>
+                      {canEdit && (
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditing(customer)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -218,6 +240,14 @@ export function CustomerSearchView({
           )}
         </>
       ) : null}
+
+      <EditCustomerDialog
+        customer={editing}
+        open={!!editing}
+        onOpenChange={(o) => {
+          if (!o) setEditing(null);
+        }}
+      />
     </div>
   );
 }
