@@ -15,9 +15,11 @@ import {
 } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-take/columns";
 import { getStockTakes } from "@/lib/actions/stock-take-actions";
+import { softFetch } from "@/lib/list-fallback";
 import { getLocationConfig } from "@/lib/actions/location-config-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getStockTakeKpi } from "@/lib/actions/reports-analytics-actions";
@@ -52,14 +54,14 @@ export default async function Page({ searchParams }: Params) {
   const cycleCountType = CYCLE_COUNT_VALUES.find((c) => c === resolvedParams.cycleCountType);
 
   const [responseData, config, location] = await Promise.all([
-    getStockTakes(page ? page - 1 : 0, pageLimit, status, cycleCountType),
+    softFetch(getStockTakes(page ? page - 1 : 0, pageLimit, status, cycleCountType)),
     getLocationConfig(),
     getCurrentLocation(),
   ]);
 
-  const data = responseData.content ?? [];
-  const total = responseData.totalElements ?? 0;
-  const pageCount = responseData.totalPages ?? 0;
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
   const cycleCountingEnabled = config?.cycleCountingEnabled ?? false;
 
   const kpi = location?.id ? await getStockTakeKpi(location.id) : null;
@@ -102,7 +104,9 @@ export default async function Page({ searchParams }: Params) {
           </Alert>
         )}
 
-        {total > 0 || status || cycleCountType ? (
+        {!responseData ? (
+          <DataLoadError itemName="stock takes" />
+        ) : total > 0 || status || cycleCountType ? (
           <>
             <StockTakeKpiStrip summary={kpi} />
             <DataTable

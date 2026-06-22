@@ -8,9 +8,11 @@ import {
   PageBody,
 } from "@/components/layouts/page-shell";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-intake-record/columns";
 import { searchStockIntakeRecords } from "@/lib/actions/stock-intake-record-actions";
+import { softFetch } from "@/lib/list-fallback";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getStockIntakeKpi } from "@/lib/actions/reports-analytics-actions";
 import { StockIntakeKpiStrip } from "@/components/widgets/inventory/stock-intake-kpi-strip";
@@ -39,12 +41,12 @@ export default async function Page({ searchParams }: Params) {
   const status = STATUS_VALUES.find((s) => s === resolvedParams.status);
 
   const [responseData, location] = await Promise.all([
-    searchStockIntakeRecords(page ? page - 1 : 0, pageLimit, status),
+    softFetch(searchStockIntakeRecords(page ? page - 1 : 0, pageLimit, status)),
     getCurrentLocation(),
   ]);
-  const data = responseData.content ?? [];
-  const total = responseData.totalElements ?? 0;
-  const pageCount = responseData.totalPages ?? 0;
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   const kpi = location?.id ? await getStockIntakeKpi(location.id) : null;
 
@@ -66,7 +68,9 @@ export default async function Page({ searchParams }: Params) {
         }
       />
       <PageBody>
-        {total > 0 || status ? (
+        {!responseData ? (
+          <DataLoadError itemName="stock intakes" />
+        ) : total > 0 || status ? (
           <>
             <StockIntakeKpiStrip summary={kpi} />
             <DataTable

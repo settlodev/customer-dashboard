@@ -18,7 +18,9 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { searchSpaces, getSpaceStats } from "@/lib/actions/space-actions";
+import { softFetch } from "@/lib/list-fallback";
 import { spaceColumns } from "@/components/tables/space/columns";
 
 type Params = {
@@ -44,13 +46,13 @@ export default async function SpacesPage({ searchParams }: Params) {
   const pageLimit = Number(resolved.limit) || 10;
 
   const [responseData, stats] = await Promise.all([
-    searchSpaces(q, page, pageLimit),
+    softFetch(searchSpaces(q, page, pageLimit)),
     getSpaceStats().catch(() => EMPTY_STATS),
   ]);
 
-  const data = responseData.content;
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   const totalZones = stats.total;
   const activeZones = stats.active;
@@ -78,7 +80,9 @@ export default async function SpacesPage({ searchParams }: Params) {
       />
 
       <PageBody>
-        {hasAny || hasFilters ? (
+        {!responseData ? (
+          <DataLoadError itemName="spaces" />
+        ) : hasAny || hasFilters ? (
           <>
             <KpiStrip cols={4}>
               <KpiCard

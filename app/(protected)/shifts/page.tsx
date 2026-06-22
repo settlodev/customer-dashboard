@@ -10,7 +10,9 @@ import {
   PageBody,
 } from "@/components/layouts/page-shell";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { searchShift } from "@/lib/actions/shift-actions";
+import { softFetch } from "@/lib/list-fallback";
 import { columns } from "@/components/tables/shift/column";
 
 type Params = {
@@ -28,11 +30,11 @@ export default async function Page({ searchParams }: Params) {
   const page = Number(resolvedSearchParams.page) || 0;
   const pageLimit = Number(resolvedSearchParams.limit);
 
-  const responseData = await searchShift(q, page, pageLimit);
+  const responseData = await softFetch(searchShift(q, page, pageLimit));
 
-  const data = responseData.content;
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   return (
     <PageShell>
@@ -50,7 +52,9 @@ export default async function Page({ searchParams }: Params) {
         }
       />
       <PageBody>
-        {total > 0 || q !== "" ? (
+        {!responseData ? (
+          <DataLoadError itemName="shifts" />
+        ) : total > 0 || q !== "" ? (
           <Card>
             <CardContent className="px-2 sm:px-6 pt-6">
               <DataTable

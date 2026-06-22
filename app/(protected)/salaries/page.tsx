@@ -11,8 +11,10 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { columns } from "@/components/tables/salary/column";
 import { searchSalary } from "@/lib/actions/salary-actions";
+import { softFetch } from "@/lib/list-fallback";
 
 const breadcrumbItems = [{ title: "Salaries", link: "/salaries" }];
 
@@ -32,11 +34,11 @@ export default async function Page({ searchParams }: Params) {
     const page = Number(resolvedSearchParams.page) || 0;
     const pageLimit = Number(resolvedSearchParams.limit)
 
-    const responseData = await searchSalary(q, page, pageLimit);
+    const responseData = await softFetch(searchSalary(q, page, pageLimit));
 
-    const data = responseData.content;
-    const total = responseData.totalElements;
-    const pageCount = responseData.totalPages;
+    const data = responseData?.content ?? [];
+    const total = responseData?.totalElements ?? 0;
+    const pageCount = responseData?.totalPages ?? 0;
 
     return (
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 mt-10">
@@ -52,7 +54,9 @@ export default async function Page({ searchParams }: Params) {
                 </div>
             </div>
 
-            {total > 0 || q != "" ? (
+            {!responseData ? (
+                <DataLoadError itemName="salaries" />
+            ) : total > 0 || q != "" ? (
                 <Card x-chunk="data-table">
                     <CardHeader>
                         <CardTitle>Salary</CardTitle>

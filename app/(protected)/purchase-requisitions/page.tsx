@@ -8,9 +8,11 @@ import {
 } from "@/components/layouts/page-shell";
 import { Button } from "@/components/ui/button";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/requisition/columns";
 import { getRequisitions } from "@/lib/actions/requisition-actions";
+import { softFetch } from "@/lib/list-fallback";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getPurchaseRequisitionKpi } from "@/lib/actions/reports-analytics-actions";
 import { PurchaseRequisitionKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
@@ -40,13 +42,13 @@ export default async function Page({ searchParams }: Params) {
   const status = STATUS_VALUES.find((s) => s === resolvedParams.status);
 
   const [responseData, location] = await Promise.all([
-    getRequisitions(page ? page - 1 : 0, pageLimit, status),
+    softFetch(getRequisitions(page ? page - 1 : 0, pageLimit, status)),
     getCurrentLocation(),
   ]);
 
-  const data = responseData.content ?? [];
-  const total = responseData.totalElements ?? 0;
-  const pageCount = responseData.totalPages ?? 0;
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   const kpi = location?.id ? await getPurchaseRequisitionKpi(location.id) : null;
 
@@ -66,7 +68,9 @@ export default async function Page({ searchParams }: Params) {
         }
       />
       <PageBody>
-        {total > 0 || status ? (
+        {!responseData ? (
+          <DataLoadError itemName="purchase requisitions" />
+        ) : total > 0 || status ? (
           <>
             <PurchaseRequisitionKpiStrip summary={kpi} />
             <DataTable

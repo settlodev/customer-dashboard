@@ -17,7 +17,9 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { StaffStatusTabs } from "@/components/tables/staff/status-tabs";
+import { softFetch } from "@/lib/list-fallback";
 import type { StaffListEnriched } from "@/types/staff";
 
 type Params = {
@@ -63,9 +65,13 @@ export default async function Page({ searchParams }: Params) {
     inactive: 0,
   }));
 
-  let rows: EnrichedRow[];
-  let total: number;
-  let pageCount: number;
+  let rows: EnrichedRow[] = [];
+  let total = 0;
+  let pageCount = 1;
+  // A transient backend failure on the primary list/search fetch degrades
+  // only the table area (DataLoadError) instead of crashing the page; the
+  // counts above are already call-site guarded.
+  let loadFailed = false;
   // POS / Dashboard adoption summary — derived from whatever page we
   // load. Acceptable approximation; if the merchant needs exact numbers
   // they can flip to `?status=all` and the next render computes against
@@ -77,15 +83,19 @@ export default async function Page({ searchParams }: Params) {
   if (q) {
     // Search returns plain Staff (no enrichment) — wrap each result in
     // an empty enriched envelope so the columns still render.
-    const results = await searchStaffByName(q);
-    rows = results.map((s) => ({
-      id: s.id,
-      staff: s,
-      gamificationSummary: null as unknown as StaffListEnriched["gamificationSummary"],
-      loyaltyPoints: 0,
-    }));
-    total = results.length;
-    pageCount = 1;
+    const results = await softFetch(searchStaffByName(q));
+    if (!results) {
+      loadFailed = true;
+    } else {
+      rows = results.map((s) => ({
+        id: s.id,
+        staff: s,
+        gamificationSummary: null as unknown as StaffListEnriched["gamificationSummary"],
+        loyaltyPoints: 0,
+      }));
+      total = results.length;
+      pageCount = 1;
+    }
   } else {
     // Single source of truth: the dedicated by-location endpoint
     // unions staff anchored at the current location with those
@@ -94,17 +104,23 @@ export default async function Page({ searchParams }: Params) {
     // recompute totals on the client.
     const activeFilter =
       status === "all" ? undefined : status === "active";
-    const response = await getStaffAtLocation(page, pageLimit, activeFilter);
-    const content = response.content ?? [];
+    const response = await softFetch(
+      getStaffAtLocation(page, pageLimit, activeFilter),
+    );
+    if (!response) {
+      loadFailed = true;
+    } else {
+      const content = response.content ?? [];
 
-    rows = withId(content);
-    total = response.totalElements ?? rows.length;
-    pageCount = response.totalPages ?? 1;
+      rows = withId(content);
+      total = response.totalElements ?? rows.length;
+      pageCount = response.totalPages ?? 1;
 
-    for (const r of content) {
-      if (r.staff.posAccess) posCount += 1;
-      if (r.staff.dashboardAccess) dashboardCount += 1;
-      if (r.staff.hasPin) pinSetCount += 1;
+      for (const r of content) {
+        if (r.staff.posAccess) posCount += 1;
+        if (r.staff.dashboardAccess) dashboardCount += 1;
+        if (r.staff.hasPin) pinSetCount += 1;
+      }
     }
   }
 
@@ -127,7 +143,9 @@ export default async function Page({ searchParams }: Params) {
       />
 
       <PageBody>
-        {hasAnyStaff || q !== "" ? (
+        {loadFailed ? (
+          <DataLoadError itemName="staff" />
+        ) : hasAnyStaff || q !== "" ? (
           <>
             <KpiStrip cols={5}>
               <KpiCard

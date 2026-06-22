@@ -13,9 +13,11 @@ import {
 } from "@/components/layouts/page-shell";
 import { Role } from "@/types/roles/type";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
+import { softFetch } from "@/lib/list-fallback";
 
 export default async function Page() {
-  const roles: Role[] = await fetchAllRoles();
+  const roles: Role[] | null = await softFetch(fetchAllRoles());
 
   return (
     <PageShell>
@@ -33,7 +35,9 @@ export default async function Page() {
         }
       />
       <PageBody>
-        {roles.length > 0 ? (
+        {!roles ? (
+          <DataLoadError itemName="roles" />
+        ) : roles.length > 0 ? (
           <Card>
             <CardContent className="px-2 sm:px-6 pt-6">
               <DataTable

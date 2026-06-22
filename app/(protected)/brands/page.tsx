@@ -11,8 +11,10 @@ import {
 import { StatusTabs } from "@/components/layouts/status-tabs";
 import { parseListStatus } from "@/components/layouts/list-status";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { columns } from "@/components/tables/brand/column";
 import { searchBrand } from "@/lib/actions/brand-actions";
+import { softFetch } from "@/lib/list-fallback";
 import { Brand } from "@/types/brand/type";
 import { Plus } from "lucide-react";
 
@@ -33,13 +35,13 @@ async function Page({ searchParams }: Params) {
   const pageLimit = Number(resolvedSearchParams.limit);
   const status = parseListStatus(resolvedSearchParams.status);
 
-  const responseData = await searchBrand(q, page, pageLimit);
+  const responseData = await softFetch(searchBrand(q, page, pageLimit));
 
-  const data: Brand[] = responseData.content.filter((b) =>
+  const data: Brand[] = (responseData?.content ?? []).filter((b) =>
     status === "archived" ? b.archivedAt != null : b.archivedAt == null,
   );
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   return (
     <PageShell>
@@ -60,7 +62,9 @@ async function Page({ searchParams }: Params) {
       <PageBody>
         <StatusTabs basePath="/brands" value={status} />
 
-        {total > 0 || q !== "" ? (
+        {!responseData ? (
+          <DataLoadError itemName="brands" />
+        ) : total > 0 || q !== "" ? (
           <Card>
             <CardContent className="px-2 pt-6 sm:px-6">
               <DataTable

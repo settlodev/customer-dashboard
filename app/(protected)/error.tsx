@@ -43,6 +43,14 @@ export default function Error({
     });
   };
 
+  // Transient backend failures (gateway 502/503/504 → SERVICE_UNAVAILABLE,
+  // timeouts/connection drops → NETWORK_ERROR). digest survives the RSC
+  // boundary — SettloApiError sets it to err.code. Give these an accurate,
+  // reassuring message instead of the generic "something went wrong", since a
+  // retry usually fixes them and the user's data is fine.
+  const isTransient =
+    error.digest === "SERVICE_UNAVAILABLE" || error.digest === "NETWORK_ERROR";
+
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4">
       <div className="w-full max-w-md text-center space-y-6">
@@ -54,11 +62,12 @@ export default function Error({
         {/* Text */}
         <div className="space-y-2">
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            Something went wrong
+            {isTransient ? "Service temporarily unavailable" : "Something went wrong"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            An unexpected error occurred while processing your request. Please
-            try again or return to the dashboard.
+            {isTransient
+              ? "We couldn't reach the server just now. This is usually temporary and your data is safe — please try again in a moment."
+              : "An unexpected error occurred while processing your request. Please try again or return to the dashboard."}
           </p>
         </div>
 

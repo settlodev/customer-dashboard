@@ -6,6 +6,7 @@ import { FormResponse, LoginResponse } from "@/types/types";
 import {
   createAuthTokenFromLogin,
   deleteActiveBusinessCookie,
+  deleteCurrentBusinessCookie,
   getAuthToken,
 } from "@/lib/auth-utils";
 import { clearDestination } from "./destination";
@@ -159,8 +160,12 @@ export const switchAccount = async (accountId: string): Promise<FormResponse> =>
     const apiClient = new ApiClient(true);
     const loginData: LoginResponse = await apiClient.post(`/auth/switch-account`, { accountId });
 
-    // Clear current business/destination context — the new account has its own
+    // Clear current business/destination context — the new account has its own.
+    // Both business cookies must go: the old account's business is invisible to
+    // the new caller, so a surviving `currentBusiness` cookie makes every /me/*
+    // fetch send a stale businessId and 404 ("Business not found").
     await deleteActiveBusinessCookie();
+    await deleteCurrentBusinessCookie();
     await clearDestination();
 
     // Fetch the new account's profile to populate auth token

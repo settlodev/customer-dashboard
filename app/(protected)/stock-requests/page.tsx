@@ -5,10 +5,12 @@ import Link from "next/link";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import {DataTable} from "@/components/tables/data-table";
 import { searchStockRequests } from "@/lib/actions/request-actions";
 import { StockRequests } from "@/types/stock-request/type";
 import { columns } from "@/components/tables/stock-request/columns";
+import { softFetch } from "@/lib/list-fallback";
 
 
 const breadCrumbItems = [{title:"Stock Requests",link:"/stock-requests"}];
@@ -27,11 +29,11 @@ type Params = {
     const page = Number(resolvedSearchParams.page) || 0;
     const pageLimit = Number(resolvedSearchParams.limit);
 
-     const responseData = await searchStockRequests(q,page,pageLimit);
+     const responseData = await softFetch(searchStockRequests(q,page,pageLimit));
 
-     const data:StockRequests[]=responseData.content;
-     const total =responseData.totalElements;
-     const pageCount = responseData.totalPages
+     const data:StockRequests[]=responseData?.content ?? [];
+     const total =responseData?.totalElements ?? 0;
+     const pageCount = responseData?.totalPages ?? 0
 
     return (
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
@@ -48,7 +50,9 @@ type Params = {
                 </div>
             </div>
             {
-                total > 0 || q != "" ? (
+                !responseData ? (
+                    <DataLoadError itemName="stock requests" />
+                ) : total > 0 || q != "" ? (
                     <Card x-chunk="data-table">
                         <CardHeader>
                             <CardTitle>Stock Requests</CardTitle>

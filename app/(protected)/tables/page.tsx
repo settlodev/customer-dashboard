@@ -20,7 +20,9 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { searchTables, getTableStats } from "@/lib/actions/space-actions";
+import { softFetch } from "@/lib/list-fallback";
 
 type Params = {
   searchParams: Promise<{
@@ -45,13 +47,13 @@ export default async function TablesPage({ searchParams }: Params) {
   const pageLimit = Number(resolved.limit) || 10;
 
   const [responseData, stats] = await Promise.all([
-    searchTables(q, page, pageLimit),
+    softFetch(searchTables(q, page, pageLimit)),
     getTableStats().catch(() => EMPTY_STATS),
   ]);
 
-  const data = responseData.content;
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   const totalTables = stats.total;
   const inactiveTables = stats.inactive;
@@ -79,7 +81,9 @@ export default async function TablesPage({ searchParams }: Params) {
       />
 
       <PageBody>
-        {hasAny || hasFilters ? (
+        {!responseData ? (
+          <DataLoadError itemName="tables" />
+        ) : hasAny || hasFilters ? (
           <>
             <KpiStrip cols={4}>
               <KpiCard

@@ -1,10 +1,12 @@
 
 
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import DataLoadError from "@/components/layouts/data-load-error";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import {DataTable} from "@/components/tables/data-table";
 import {columns} from '@/components/tables/payslip/column'
 import { searchPayslip } from "@/lib/actions/payslip-actions";
+import { softFetch } from "@/lib/list-fallback";
 import { Payslip } from "@/types/payslip/type";
 
 
@@ -24,11 +26,11 @@ type Params = {
     const page = Number(resolvedSearchParams.page) || 0;
     const pageLimit = Number(resolvedSearchParams.limit);
 
-     const responseData = await searchPayslip(q,page,pageLimit);
+     const responseData = await softFetch(searchPayslip(q,page,pageLimit));
 
-     const data:Payslip[]=responseData.content;
-     const total =responseData.totalElements;
-     const pageCount = responseData.totalPages
+     const data:Payslip[]=responseData?.content ?? [];
+     const total =responseData?.totalElements ?? 0;
+     const pageCount = responseData?.totalPages ?? 0
 
     return (
         <div className={`flex-1 space-y-4 md:p-8 pt-6`}>
@@ -39,7 +41,9 @@ type Params = {
               
             </div>
             {
-                total > 0 || q != "" ? (
+                !responseData ? (
+                    <DataLoadError itemName="payslips" />
+                ) : total > 0 || q != "" ? (
                     <Card x-chunk="data-table">
                         <CardHeader>
                             <CardTitle>Payslips</CardTitle>

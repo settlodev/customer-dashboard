@@ -362,6 +362,18 @@ export const deleteActiveBusinessCookie = async () => {
   cookieStore.delete("activeBusiness");
 };
 
+// `currentBusiness` is the *canonical* selected-business cookie — the one
+// `getCurrentBusinessId` / ApiClient read for the X-Business-Id header and the
+// `businessId` query param on every /me/* fetch. It is a SEPARATE cookie from
+// `activeBusiness`, so resetting business context means clearing both. Kept as
+// its own helper (rather than folding it into deleteActiveBusinessCookie)
+// because some callers — e.g. the public menu fetch — intentionally drop only
+// `activeBusiness` and must keep the user's selected business intact.
+export const deleteCurrentBusinessCookie = async () => {
+  const cookieStore = await cookies();
+  cookieStore.delete("currentBusiness");
+};
+
 export const getActiveBusiness = async (): Promise<activeBusiness | null> => {
   const cookieStore = await cookies();
 

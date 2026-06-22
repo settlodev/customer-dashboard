@@ -11,8 +11,10 @@ import {
 import { StatusTabs } from "@/components/layouts/status-tabs";
 import { parseListStatus } from "@/components/layouts/list-status";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { columns } from "@/components/tables/product-collection/column";
 import { searchProductCollections } from "@/lib/actions/product-collection-actions";
+import { softFetch } from "@/lib/list-fallback";
 import { ProductCollection } from "@/types/product-collection/type";
 import { Plus } from "lucide-react";
 
@@ -33,13 +35,15 @@ export default async function Page({ searchParams }: Params) {
   const pageLimit = Number(resolvedSearchParams.limit);
   const status = parseListStatus(resolvedSearchParams.status);
 
-  const responseData = await searchProductCollections(q, page, pageLimit);
+  const responseData = await softFetch(
+    searchProductCollections(q, page, pageLimit),
+  );
 
-  const data: ProductCollection[] = responseData.content.filter((c) =>
+  const data: ProductCollection[] = (responseData?.content ?? []).filter((c) =>
     status === "archived" ? c.archivedAt != null : c.archivedAt == null,
   );
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   return (
     <PageShell>
@@ -60,7 +64,9 @@ export default async function Page({ searchParams }: Params) {
       <PageBody>
         <StatusTabs basePath="/product-collections" value={status} />
 
-        {total > 0 || q !== "" ? (
+        {!responseData ? (
+          <DataLoadError itemName="bundles" />
+        ) : total > 0 || q !== "" ? (
           <Card>
             <CardContent className="px-2 pt-6 sm:px-6">
               <DataTable

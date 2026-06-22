@@ -9,9 +9,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/proforma-invoice/column";
 import { searchProformaInvoices } from "@/lib/actions/proforma-actions";
+import { softFetch } from "@/lib/list-fallback";
 import { Proforma } from "@/types/proforma/type";
 
 const breadCrumbItems = [
@@ -33,11 +35,13 @@ async function Page({ searchParams }: Params) {
   const page = Number(resolvedSearchParams.page) || 0;
   const pageLimit = Number(resolvedSearchParams.limit);
 
-  const responseData = await searchProformaInvoices(q, page, pageLimit);
+  const responseData = await softFetch(
+    searchProformaInvoices(q, page, pageLimit),
+  );
 
-  const data: Proforma[] = responseData.content;
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const data: Proforma[] = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
   return (
     <div className="flex-1 space-y-4 md:p-8 pt-6 mt-10">
@@ -51,7 +55,9 @@ async function Page({ searchParams }: Params) {
           </Button>
         </div>
       </div>
-      {total > 0 || q !== "" ? (
+      {!responseData ? (
+        <DataLoadError itemName="proforma invoices" />
+      ) : total > 0 || q !== "" ? (
         <Card x-chunk="data-table">
           <CardHeader>
             <CardTitle>Proforma Invoices</CardTitle>

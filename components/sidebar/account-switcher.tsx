@@ -1,23 +1,13 @@
 "use client";
 
 import * as Sentry from "@sentry/nextjs";
-import { useCallback, useEffect, useState } from "react";
-import { ArrowRight, Check, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
 import {
   getMyAccountsContext,
-  switchAccount,
   type MeAccount,
 } from "@/lib/actions/profile-actions";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 
 export const ACCOUNT_CTX_CACHE_KEY = "settlo:accountSwitcherCtx";
 
@@ -30,20 +20,30 @@ function accountInitials(name?: string | null) {
   return (first + second).toUpperCase() || "AC";
 }
 
+interface AccountSwitcherProps {
+  /**
+   * Invoked when the user picks a (non-current) account. The parent owns the
+   * confirm dialog and the switch flow, and renders the dialog at the account
+   * menu's root — see `SidebarAccountMenu`. Keeping the dialog OUT of this
+   * component is load-bearing: this list lives inside the account-menu popover,
+   * which unmounts on outside-click. A dialog mounted here would be torn down
+   * (along with its confirm button's click handler) the instant the user
+   * pressed Confirm, so the switch would silently never fire.
+   */
+  onPick: (account: MeAccount) => void;
+}
+
 /**
  * "Switch account" section for the sidebar account menu. A user can belong to
  * several accounts — their own plus any they were invited into (e.g. a
  * director across businesses owned by different people). Renders nothing when
  * the user has only one account. Fetches lazily (it only mounts when the
- * account-menu popover opens), then drives the existing `switchAccount` action
- * which re-mints the token for the chosen account.
+ * account-menu popover opens). Picking an account is delegated upward via
+ * `onPick`; the parent confirms and drives the `switchAccount` action.
  */
-export function AccountSwitcher() {
+export function AccountSwitcher({ onPick }: AccountSwitcherProps) {
   const [accounts, setAccounts] = useState<MeAccount[]>([]);
   const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<MeAccount | null>(null);
-  const [switching, setSwitching] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     let active = true;
@@ -83,40 +83,6 @@ export function AccountSwitcher() {
     };
   }, []);
 
-  const handleConfirm = useCallback(async () => {
-    if (!confirm) return;
-    setSwitching(true);
-    try {
-      const res = await switchAccount(confirm.id);
-      if (res.responseType === "success") {
-        // Invalidate the cache so the next mount re-fetches with the new
-        // current account; then hard-nav so the re-minted token takes hold.
-        try { sessionStorage.removeItem(ACCOUNT_CTX_CACHE_KEY); } catch {}
-        window.location.href = "/select-business";
-        return;
-      }
-      // Surface the real reason instead of silently closing.
-      Sentry.captureException(new Error(res.message || "Account switch failed"));
-      setSwitching(false);
-      setConfirm(null);
-      toast({
-        variant: "destructive",
-        title: "Couldn't switch account",
-        description: res.message || "Please try again in a moment.",
-      });
-    } catch (error) {
-      Sentry.captureException(error);
-      setSwitching(false);
-      setConfirm(null);
-      toast({
-        variant: "destructive",
-        title: "Couldn't switch account",
-        description:
-          error instanceof Error ? error.message : "Please try again in a moment.",
-      });
-    }
-  }, [confirm, toast]);
-
   // Only meaningful when the user belongs to more than one account.
   if (accounts.length <= 1) return null;
 
@@ -137,7 +103,7 @@ export function AccountSwitcher() {
                 key={a.id}
                 type="button"
                 onClick={() => {
-                  if (!isCurrent) setConfirm(a);
+                  if (!isCurrent) onPick(a);
                 }}
                 disabled={isCurrent}
                 className={cn(
@@ -175,46 +141,6 @@ export function AccountSwitcher() {
         </div>
       </div>
       <div className="mx-2 my-1 h-px bg-line" />
-
-      <Dialog
-        open={!!confirm}
-        onOpenChange={(o) => {
-          if (!o && !switching) setConfirm(null);
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Switch account</DialogTitle>
-            <DialogDescription>
-              Switch to <strong>{confirm?.name}</strong>? You&apos;ll be taken
-              to choose a business in that account.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => setConfirm(null)}
-              disabled={switching}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConfirm}
-              disabled={switching}
-              className="bg-primary hover:bg-primary/90 text-white"
-            >
-              {switching ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Switching...
-                </>
-              ) : (
-                "Confirm"
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
