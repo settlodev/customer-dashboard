@@ -21,7 +21,8 @@ import { listOrders } from "@/lib/actions/order-actions";
 import { buildOrderListView } from "@/lib/orders/order-list-view";
 import { fetchAllTables } from "@/lib/actions/space-actions";
 import { Order, OrderStatus } from "@/types/orders/type";
-import { Staff, StaffDetail } from "@/types/staff";
+import { Staff, StaffDetail, StaffAuditEvent } from "@/types/staff";
+import { ApiResponse } from "@/types/types";
 import { OrdersPanel, type SalesView } from "@/components/orders/orders-panel";
 import { StaffDetailView } from "./staff-detail-view";
 import { StaffDetailActions } from "./staff-detail-actions";
@@ -158,7 +159,9 @@ export default async function StaffPage({
 
   // ── Audit tab ─────────────────────────────────────────────────────────
   const auditPageNo = Number(auditPageParam) || 1;
-  const auditData = await getStaffAudit(staff.id, auditPageNo, 20);
+  const auditData = await getStaffAudit(staff.id, auditPageNo, 20).catch(
+    () => ({ content: [], totalElements: 0, totalPages: 1 } as unknown as ApiResponse<StaffAuditEvent>),
+  );
   const auditContent = (
     <StaffAuditTab staffId={staff.id} data={auditData} page={auditPageNo} />
   );
