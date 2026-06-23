@@ -11,8 +11,7 @@ import { Business } from "@/types/business/type";
 import { Location } from "@/types/location/type";
 import { revalidatePath } from "next/cache";
 
-const AUTH_SERVICE_URL =
-  process.env.AUTH_SERVICE_URL || process.env.SERVICE_URL || "";
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || "";
 
 interface BusinessWithLocationsPayload {
   business: {

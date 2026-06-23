@@ -9,8 +9,7 @@ import { LoginResponse } from "@/types/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ACCOUNTS_SERVICE_URL =
-  process.env.ACCOUNTS_SERVICE_URL || process.env.SERVICE_URL || "";
+const ACCOUNTS_SERVICE_URL = process.env.ACCOUNTS_SERVICE_URL || "";
 const WHITELABEL_CLIENT_ID = process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID || "";
 
 /**

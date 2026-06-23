@@ -7,8 +7,7 @@ import { sealHandoff } from "@/lib/impersonation-handoff";
 import { parseStringify } from "@/lib/utils";
 import { FormResponse, InternalRole, LoginResponse } from "@/types/types";
 
-const AUTH_SERVICE_URL =
-  process.env.AUTH_SERVICE_URL || process.env.SERVICE_URL || "";
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || "";
 const WHITELABEL_CLIENT_ID = process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID || "";
 
 /**

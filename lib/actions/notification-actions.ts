@@ -1,13 +1,36 @@
 "use server";
 
 import ApiClient from "@/lib/settlo-api-client";
+import { getCurrentBusinessId } from "@/lib/actions/business/get-current-business";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse } from "@/types/types";
 import { OwnerNotification } from "@/types/notification";
 
 const comms = () => new ApiClient("communications");
 
+const emptyNotificationPage = (
+  page: number,
+  size: number,
+): ApiResponse<OwnerNotification> =>
+  ({
+    content: [],
+    totalElements: 0,
+    totalPages: 0,
+    number: page,
+    size,
+    first: true,
+    last: true,
+  }) as unknown as ApiResponse<OwnerNotification>;
+
 export async function getUnreadCount(): Promise<number> {
+  // Defense in depth: the communications service requires a `business_id` JWT
+  // claim, which only exists once a business is selected. The notification
+  // providers are scoped to the authenticated shells (see
+  // AppNotificationProviders), so this shouldn't be called pre-selection — but
+  // guard anyway so any stray/early caller no-ops instead of 400ing ("Missing
+  // required JWT claim: business_id"). currentBusiness is the same cookie
+  // ApiClient reads for the X-Business-Id header, so it tracks the claim.
+  if (!(await getCurrentBusinessId())) return 0;
   try {
     const data = await comms().get<{ count: number }>(
       "/api/v1/notifications/unread-count",
@@ -23,6 +46,8 @@ export async function listNotifications(
   page = 0,
   size = 20,
 ): Promise<ApiResponse<OwnerNotification>> {
+  // No active business → no business_id claim → comm 400s. See getUnreadCount.
+  if (!(await getCurrentBusinessId())) return emptyNotificationPage(page, size);
   try {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     const data = await comms().get<ApiResponse<OwnerNotification>>(
@@ -31,15 +56,7 @@ export async function listNotifications(
     return parseStringify(data);
   } catch (error) {
     console.error("listNotifications failed", error);
-    return {
-      content: [],
-      totalElements: 0,
-      totalPages: 0,
-      number: page,
-      size,
-      first: true,
-      last: true,
-    } as unknown as ApiResponse<OwnerNotification>;
+    return emptyNotificationPage(page, size);
   }
 }
 

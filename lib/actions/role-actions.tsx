@@ -9,6 +9,7 @@ import { getAuthToken } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 
 // ---------------------------------------------------------------------------
 // Scope resolution
@@ -44,27 +45,38 @@ async function resolveScopeId(
 // List
 // ---------------------------------------------------------------------------
 
-export const fetchAllRoles = async (
-  scope?: RoleScope,
-  scopeId?: string,
+// Low-level scoped fetch. Both args are required, so a role list can never be
+// fetched unscoped (i.e. across every location/store/warehouse) by accident.
+export const fetchRolesByScope = async (
+  scope: RoleScope,
+  scopeId: string,
 ): Promise<Role[]> => {
   const apiClient = new ApiClient();
-  const params = new URLSearchParams();
-  if (scope) params.append("scope", scope);
-  if (scopeId) params.append("scopeId", scopeId);
-  const query = params.toString() ? `?${params.toString()}` : "";
-  const data = await apiClient.get(`/api/v1/roles${query}`);
+  const params = new URLSearchParams({ scope, scopeId });
+  const data = await apiClient.get(`/api/v1/roles?${params.toString()}`);
   return parseStringify(data);
 };
 
-export const getRolesByScope = async (
-  scope: RoleScope,
-  scopeId?: string,
-): Promise<Role[]> => {
+// Account-wide roles (Owner / Manager). These have a null scopeId and apply
+// everywhere, so they're fetched on their own rather than via a destination.
+export const fetchAccountRoles = async (): Promise<Role[]> => {
   const apiClient = new ApiClient();
-  const query = scopeId ? `?scopeId=${scopeId}` : "";
-  const data = await apiClient.get(`/api/v1/roles/by-scope/${scope}${query}`);
+  const data = await apiClient.get(`/api/v1/roles?scope=${RoleScope.ACCOUNT}`);
   return parseStringify(data);
+};
+
+// Roles for the active workspace destination (location / store / warehouse),
+// optionally merged with the account-wide roles. When no destination is active
+// it returns just the account roles (or [] when those aren't requested) — it
+// never falls back to an unscoped, cross-destination list.
+export const fetchRolesForCurrentDestination = async (
+  opts?: { includeAccountRoles?: boolean },
+): Promise<Role[]> => {
+  const destination = await getCurrentDestination();
+  const accountRoles = opts?.includeAccountRoles ? await fetchAccountRoles() : [];
+  if (!destination) return accountRoles;
+  const scopedRoles = await fetchRolesByScope(RoleScope[destination.type], destination.id);
+  return [...accountRoles, ...scopedRoles];
 };
 
 // ---------------------------------------------------------------------------

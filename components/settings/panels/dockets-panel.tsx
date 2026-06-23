@@ -13,6 +13,7 @@ const KEYS = [
   "showPriceOnDocket",
   "autoPrintDockets",
   "allowDuplicateDocketPrinting",
+  "useModernPrintTemplate",
   "orderPrintsCountEnabled",
 ] as const;
 
@@ -38,6 +39,13 @@ export function DocketsPanel({
         isPending={p.isPending}
         isDirty={p.isDirty}
       >
+        <SettingsSwitchRow
+          label="Modern print layout"
+          description="Use the new designed print layout (images) for dockets and bills. Turn off for the classic text layout (legacy)."
+          checked={!!v.useModernPrintTemplate}
+          onChange={(x) => p.setField("useModernPrintTemplate", x)}
+          disabled={p.isPending}
+        />
         <SettingsSwitchRow
           label="Show amount on dockets"
           description="Shows the order amount on the printed docket."
