@@ -3,16 +3,20 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  AtSign,
   CheckCircle2,
   FlaskConical,
   Mail,
   PauseCircle,
+  Pencil,
   RefreshCw,
   Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { AccountActionDialog } from "@/components/admin/account-action-dialog";
+import { EditAccountDialog } from "@/components/admin/account-detail/edit-account-dialog";
+import { ChangeEmailDialog } from "@/components/admin/account-detail/change-email-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { setAccountInternal } from "@/lib/actions/admin/accounts";
 import {
@@ -54,6 +58,7 @@ type ActionKind =
   | "suspend"
   | "reactivate"
   | "delete"
+  | "purge"
   | "resend-verification"
   | "republish";
 
@@ -68,6 +73,8 @@ export function AccountDetailActions({
   const { toast } = useToast();
   const [active, setActive] = useState<ActionKind | null>(null);
   const [markingInternal, startMarkInternal] = useTransition();
+  const [editOpen, setEditOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
 
   const toggleInternal = () => {
     startMarkInternal(async () => {
@@ -83,6 +90,18 @@ export function AccountDetailActions({
 
   return (
     <>
+      {canManage && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setEditOpen(true)}
+        >
+          <Pencil className="mr-1.5 h-4 w-4" />
+          Edit details
+        </Button>
+      )}
+
       {canSuspend &&
         (account.active ? (
           <Button
@@ -118,6 +137,19 @@ export function AccountDetailActions({
         >
           <Mail className="mr-1.5 h-4 w-4" />
           Resend verification
+        </Button>
+      )}
+
+      {canResend && !account.emailVerified && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setEmailOpen(true)}
+          className="text-sky-700 hover:bg-sky-50 hover:text-sky-800 dark:text-sky-300 dark:hover:bg-sky-500/10"
+        >
+          <AtSign className="mr-1.5 h-4 w-4" />
+          Change email
         </Button>
       )}
 
@@ -161,6 +193,21 @@ export function AccountDetailActions({
         </Button>
       )}
 
+      {/* Hard-purge: physically removes an EMPTY account (no orders / stock /
+          paid invoices). The backend verifies emptiness and 409s otherwise. */}
+      {canDelete && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setActive("purge")}
+          className="border-destructive/40 text-destructive hover:bg-destructive/10"
+        >
+          <Trash2 className="mr-1.5 h-4 w-4" />
+          Purge permanently
+        </Button>
+      )}
+
       {active && (
         <AccountActionDialog
           kind={active}
@@ -173,7 +220,7 @@ export function AccountDetailActions({
             setActive(null);
             // If deleted, send the user back to the list; otherwise just
             // refresh the detail view so the badge/state flips.
-            if (active === "delete") {
+            if (active === "delete" || active === "purge") {
               router.push("/accounts");
             } else {
               router.refresh();
@@ -181,6 +228,18 @@ export function AccountDetailActions({
           }}
         />
       )}
+
+      <EditAccountDialog
+        account={account}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+      <ChangeEmailDialog
+        accountId={account.id}
+        currentEmail={account.email}
+        open={emailOpen}
+        onOpenChange={setEmailOpen}
+      />
     </>
   );
 }

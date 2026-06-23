@@ -25,6 +25,7 @@ import { MetricGrid, MetricCell } from "@/components/admin/shared/metric-cell";
 import { PlanBadge, planTier } from "@/components/admin/shared/plan-badge";
 import { SubscriptionItemStatusBadge } from "@/components/admin/shared/subscription-item-status-badge";
 import { LogInAsButton } from "@/components/admin/account-detail/log-in-as-button";
+import { EditBusinessButton } from "@/components/admin/business-detail/edit-business-dialog";
 import { BusinessNotesPanel } from "@/components/admin/business-notes-panel";
 import {
   compactNumber,
@@ -128,6 +129,8 @@ export function BusinessDetailView({
   currentUserRole,
 }: BusinessDetailViewProps) {
   const currency = business.baseCurrency || "TZS";
+  const canEdit =
+    currentUserRole === "SYSTEM_ADMIN" || currentUserRole === "SUPER_ADMIN";
   const industry = locations.find((l) => l.businessTypeName)?.businessTypeName ?? null;
   const plan = lifecycle?.current_package_name ?? null;
   const subStatus = subscription?.status ?? null;
@@ -297,6 +300,7 @@ export function BusinessDetailView({
               Units
             </a>
           </Button>
+          {canEdit && <EditBusinessButton business={business} />}
           <LogInAsButton accountId={business.accountId} />
           {canBilling && (
             <Button asChild variant="accent" size="sm">

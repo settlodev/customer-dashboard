@@ -67,6 +67,15 @@ export function extractInternalPermissions(accessToken: string): string[] {
 }
 
 /**
+ * True when the token carries the `referral_agent` claim — an external referral
+ * partner (customer-onboarding agent), distinct from internal Settlo staff.
+ */
+export function extractReferralAgent(accessToken: string): boolean {
+  const claims = decodeJwtClaims(accessToken);
+  return claims?.referral_agent === true;
+}
+
+/**
  * Business-permission keys from a USER access token's `permissions` claim,
  * e.g. ["reports:read_all", "orders:read", …]. Mirror of
  * extractInternalPermissions (which reads the STAFF `internal_permissions`

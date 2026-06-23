@@ -23,6 +23,7 @@ import { parseStringify } from "@/lib/utils";
 import {
   createAuthTokenFromLogin,
   createStaffAuthToken,
+  createReferralAuthToken,
   deleteActiveBusinessCookie,
   deleteAuthCookie,
   deleteStaffAuthCookie,
@@ -33,7 +34,7 @@ import {
   clearPendingVerification,
   updateAuthToken,
 } from "@/lib/auth-utils";
-import { isStaffToken } from "@/lib/jwt-utils";
+import { isStaffToken, extractReferralAgent } from "@/lib/jwt-utils";
 import { establishCustomerSession } from "@/lib/customer-session";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseApiError, getUIErrorMessage } from "@/lib/settlo-api-error-handler";
@@ -527,6 +528,18 @@ export const login = async (
           userId: loginData.userId,
           email: loginData.email,
         },
+      });
+    }
+
+    // External referral agents have no Accounts profile (sentinel accountId),
+    // so the shared profile fetch would 404 and abort the login (same as staff).
+    // Skip it: write a minimal referral cookie; middleware confines them to
+    // /referral. No NextAuth session — the surface reads the authToken cookie.
+    if (extractReferralAgent(loginData.accessToken)) {
+      await createReferralAuthToken(loginData);
+      return parseStringify({
+        responseType: "success",
+        message: "Login successful",
       });
     }
 

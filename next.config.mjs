@@ -7,7 +7,13 @@ if (process.env.NODE_ENV !== "production") {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverActions: true,
+    serverActions: {
+      // Manual-payment proof uploads (record-payment-dialog) stream a file
+      // up to 10MB through the recordManualPayment Server Action. Next's
+      // default Server Action body limit is 1MB, so raise it with headroom
+      // for the multipart boundary + the other form fields.
+      bodySizeLimit: "12mb",
+    },
   },
   images: {
     remotePatterns: [

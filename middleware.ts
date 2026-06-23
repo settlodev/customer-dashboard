@@ -463,6 +463,20 @@ export async function middleware(request: NextRequest) {
     return response;
   };
 
+  // ── Referral agents: confined to /referral ────────────────────────
+  // External referral partners (customer-onboarding agents) have no tenant
+  // account, so they must bypass the entire customer onboarding/subscription
+  // state machine. Their only surface is /referral; send everything else there.
+  if (authToken!.referralAgent) {
+    const onReferral =
+      pathname === "/referral" || pathname.startsWith("/referral/");
+    return withRefreshedCookies(
+      onReferral
+        ? NextResponse.next()
+        : NextResponse.redirect(new URL("/referral", request.nextUrl)),
+    );
+  }
+
   // ── Auth routes for logged-in users ─────────────────────────────
   // Redirect them to wherever they need to be in the onboarding flow
   // rather than showing login again.

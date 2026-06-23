@@ -8,6 +8,7 @@ import {
   PageShell,
 } from "@/components/layouts/page-shell";
 import { EntityDetailView } from "@/components/admin/entity-detail/entity-detail-view";
+import { EditWarehouseButton } from "@/components/admin/entity-detail/edit-warehouse-dialog";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { getAdminWarehouseDetail } from "@/lib/actions/admin/businesses";
 import { getBusinessSubscription } from "@/lib/actions/admin/billing";
@@ -52,6 +53,7 @@ export default async function WarehouseDetailPage({
   }
 
   const canBilling = role === "SYSTEM_ADMIN" || role === "SUPPORT_AGENT";
+  const canEdit = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
   const { id } = await params;
 
   let warehouse: Awaited<ReturnType<typeof getAdminWarehouseDetail>>;
@@ -94,6 +96,7 @@ export default async function WarehouseDetailPage({
         <PageHeader
           title={warehouse.name}
           subtitle={[warehouse.code, warehouse.businessName].filter(Boolean).join(" · ") || undefined}
+          actions={canEdit ? <EditWarehouseButton warehouse={warehouse} /> : undefined}
         />
         <PageBody>
           <EntityDetailView

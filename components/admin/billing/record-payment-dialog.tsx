@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,8 +24,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { FormError } from "@/components/widgets/form-error";
 import { useToast } from "@/hooks/use-toast";
+import { useUpload } from "@/lib/uploads/use-upload";
 
-import { recordManualPayment } from "@/lib/actions/admin/billing";
+import {
+  getPaymentProofPresignUrl,
+  recordManualPayment,
+} from "@/lib/actions/admin/billing";
 import { InvoiceResponse, PaymentMethod } from "@/types/admin/billing";
 
 interface RecordPaymentDialogProps {
@@ -55,7 +59,10 @@ export function RecordPaymentDialog({
   onRecorded,
 }: RecordPaymentDialogProps) {
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
+  const { upload, progress, isUploading } = useUpload();
+  const [isRecording, setIsRecording] = useState(false);
+  // Drives every disabled state below: busy while the proof uploads or records.
+  const isPending = isUploading || isRecording;
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">(
     "MOBILE_MONEY",
   );
@@ -80,7 +87,7 @@ export function RecordPaymentDialog({
     }
   }, [open, invoice.totalAmount]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -106,15 +113,25 @@ export function RecordPaymentDialog({
       return;
     }
 
-    const fd = new FormData();
-    fd.append("paymentMethod", paymentMethod);
-    fd.append("referenceNumber", referenceNumber.trim());
-    fd.append("amount", String(amountNum));
-    if (notes.trim()) fd.append("notes", notes.trim());
-    fd.append("proof", file);
+    try {
+      // 1. Upload the proof straight to object storage via a presigned URL —
+      //    the bytes never pass through the Next.js server (no body limit).
+      const uploaded = await upload({
+        file,
+        presign: (meta) => getPaymentProofPresignUrl(invoice.id, meta),
+      });
 
-    startTransition(async () => {
-      const result = await recordManualPayment(businessId, invoice.id, fd);
+      // 2. Record the payment, referencing the proof by its storage key.
+      setIsRecording(true);
+      const result = await recordManualPayment(businessId, invoice.id, {
+        paymentMethod,
+        referenceNumber: referenceNumber.trim(),
+        amount: amountNum,
+        notes: notes.trim() || undefined,
+        proofKey: uploaded.key,
+      });
+      setIsRecording(false);
+
       if (result.responseType === "error") {
         setError(result.message);
         return;
@@ -125,7 +142,10 @@ export function RecordPaymentDialog({
       });
       onRecorded();
       onOpenChange(false);
-    });
+    } catch (err) {
+      setIsRecording(false);
+      setError(err instanceof Error ? err.message : "Failed to upload proof");
+    }
   };
 
   return (
@@ -238,7 +258,12 @@ export function RecordPaymentDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? (
+              {isUploading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Uploading{progress ? ` ${progress.percent}%` : "…"}
+                </span>
+              ) : isRecording ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Recording…
