@@ -24,10 +24,10 @@ import type {
  */
 export class UploadService {
   async upload(options: UploadOptions): Promise<UploadResult> {
-    const { file, purpose, onProgress, signal } = options;
+    const { file, onProgress, signal } = options;
     signal?.throwIfAborted();
 
-    const presign = await this.requestPresign(file, purpose);
+    const presign = await this.requestPresign(options);
     signal?.throwIfAborted();
 
     await this.putToBucket(presign, file, onProgress, signal);
@@ -42,15 +42,23 @@ export class UploadService {
   }
 
   private async requestPresign(
-    file: File,
-    purpose: UploadOptions["purpose"],
+    options: UploadOptions,
   ): Promise<UploadPresignResult> {
-    const result = await getUploadPresignUrl({
-      purpose,
+    const { file, purpose, presign } = options;
+    const metadata = {
       filename: file.name,
       contentType: file.type || "application/octet-stream",
       contentLength: file.size,
-    });
+    };
+    if (!presign && !purpose) {
+      throw new UploadError(
+        "upload requires either a purpose or a custom presign resolver",
+      );
+    }
+    // A custom resolver wins; otherwise route by purpose to the owning service.
+    const result = presign
+      ? await presign(metadata)
+      : await getUploadPresignUrl({ purpose: purpose!, ...metadata });
     if (!result.ok) {
       throw new UploadError(result.message);
     }

@@ -8,8 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Role } from "@/types/roles/type";
-import { fetchAllRoles } from "@/lib/actions/role-actions";
+import { Role, RoleScope } from "@/types/roles/type";
+import { fetchRolesByScope, fetchRolesForCurrentDestination } from "@/lib/actions/role-actions";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 
@@ -22,6 +22,14 @@ interface Props {
   multiple?: boolean;
   value?: string | string[];
   onChange: (value: string | string[]) => void;
+  /**
+   * Restrict the offered roles to a specific scope target. When both are given,
+   * only that destination's roles are shown; otherwise the selector falls back
+   * to the active workspace destination. Either way it never lists roles from
+   * another location/store/warehouse.
+   */
+  scope?: RoleScope;
+  scopeId?: string;
 }
 
 const RoleSelector: React.FC<Props> = ({
@@ -32,6 +40,8 @@ const RoleSelector: React.FC<Props> = ({
   description,
   onChange,
   multiple = false,
+  scope,
+  scopeId,
 }) => {
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -40,7 +50,10 @@ const RoleSelector: React.FC<Props> = ({
     async function loadRoles() {
       try {
         setIsLoading(true);
-        const fetched = await fetchAllRoles();
+        const fetched =
+          scope && scopeId
+            ? await fetchRolesByScope(scope, scopeId)
+            : await fetchRolesForCurrentDestination();
         setRoles(fetched);
       } catch {
         // Failed to load roles
@@ -49,7 +62,7 @@ const RoleSelector: React.FC<Props> = ({
       }
     }
     loadRoles();
-  }, []);
+  }, [scope, scopeId]);
 
   if (multiple) {
     const selectedIds = Array.isArray(value) ? value : value ? [value] : [];

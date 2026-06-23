@@ -9,8 +9,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { OperatingHoursEntry } from "./business";
 
-const AUTH_SERVICE_URL =
-  process.env.AUTH_SERVICE_URL || process.env.SERVICE_URL || "";
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || "";
 
 interface ApiLocationResponse {
   id: string;

@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/team/columns";
 import { AccountMember, listMembers, inviteMember } from "@/lib/actions/account-member-actions";
-import { fetchAllRoles } from "@/lib/actions/role-actions";
+import { fetchRolesByScope } from "@/lib/actions/role-actions";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { Role, RoleScope } from "@/types/roles/type";
@@ -71,11 +71,19 @@ export default function TeamPage() {
 
   useEffect(() => { loadMembers(); }, [loadMembers]);
 
-  // Invites are LOCATION-scoped, so only offer LOCATION-scoped roles —
-  // an ACCOUNT/BUSINESS role on a single-location invite is a scope mismatch.
+  // Invites are LOCATION-scoped, so offer only the SELECTED location's roles,
+  // refetched whenever the target location changes. This keeps the role choices
+  // consistent with the invite target — the backend now rejects a role from a
+  // different location, so a stale cross-location selection would 400.
   useEffect(() => {
-    fetchAllRoles(RoleScope.LOCATION).then(setRoles).catch(() => {});
-  }, []);
+    if (!locationId) {
+      setRoles([]);
+      return;
+    }
+    // Target location changed — drop any now-mismatched role selections.
+    setInviteData((p) => ({ ...p, roleIds: [] }));
+    fetchRolesByScope(RoleScope.LOCATION, locationId).then(setRoles).catch(() => setRoles([]));
+  }, [locationId]);
 
   // Load accessible locations and default the invite target to the current
   // location (the one the dashboard is operating under). The picker lets the

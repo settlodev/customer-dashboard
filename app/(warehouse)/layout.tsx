@@ -11,6 +11,7 @@ import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { fetchAllStores, getCurrentStore } from "@/lib/actions/store-actions";
 import { SettloRealtimeListener } from "@/components/realtime/settlo-realtime-listener";
+import { AppNotificationProviders } from "@/components/providers/app-notification-providers";
 import type { BusinessPropsType } from "@/types/business/business-props-type";
 
 export default async function RootLayout({children}: {
@@ -58,6 +59,7 @@ export default async function RootLayout({children}: {
 
     return (
         <SessionProvider session={session}>
+            <AppNotificationProviders>
             <div className="flex h-screen overflow-hidden bg-canvas">
                 <SidebarWrapper data={businessData} menuType="warehouse"/>
 
@@ -93,6 +95,7 @@ export default async function RootLayout({children}: {
                     ]}
                 />
             )}
+            </AppNotificationProviders>
         </SessionProvider>
     );
 }

@@ -8,6 +8,7 @@ import {
   PageShell,
 } from "@/components/layouts/page-shell";
 import { EntityDetailView } from "@/components/admin/entity-detail/entity-detail-view";
+import { EditStoreButton } from "@/components/admin/entity-detail/edit-store-dialog";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { getAdminStoreDetail } from "@/lib/actions/admin/businesses";
 import { getBusinessSubscription } from "@/lib/actions/admin/billing";
@@ -52,6 +53,7 @@ export default async function StoreDetailPage({
   }
 
   const canBilling = role === "SYSTEM_ADMIN" || role === "SUPPORT_AGENT";
+  const canEdit = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
   const { id } = await params;
 
   let store: Awaited<ReturnType<typeof getAdminStoreDetail>>;
@@ -94,6 +96,7 @@ export default async function StoreDetailPage({
         <PageHeader
           title={store.name}
           subtitle={[store.locationName, store.businessName].filter(Boolean).join(" · ") || undefined}
+          actions={canEdit ? <EditStoreButton store={store} /> : undefined}
         />
         <PageBody>
           <EntityDetailView

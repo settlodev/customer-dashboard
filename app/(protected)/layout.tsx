@@ -29,6 +29,7 @@ import { SettloRealtimeListener } from "@/components/realtime/settlo-realtime-li
 import { StockCacheRealtimeBinder } from "@/components/realtime/stock-cache-realtime-binder";
 import { CustomerCacheRealtimeBinder } from "@/components/realtime/customer-cache-realtime-binder";
 import { NotificationRealtimeBridge } from "@/components/notifications/notification-realtime-bridge";
+import { AppNotificationProviders } from "@/components/providers/app-notification-providers";
 import { ImpersonationBanner } from "@/components/impersonation/impersonation-banner";
 import type { ExtendedUser } from "@/types/types";
 
@@ -157,7 +158,7 @@ export default async function RootLayout({
   // (breadcrumbs, title, actions) lives inside each page via
   // `<PageShell>` — see components/layouts/page-shell.tsx.
   return (
-    <>
+    <AppNotificationProviders>
       <EntitlementProvider initialEntitlements={entitlements}>
         <PermissionsProvider initialPermissions={permissions}>
         <LoadingBarProvider>
@@ -232,6 +233,6 @@ export default async function RootLayout({
       <CustomerCacheRealtimeBinder businessId={currentBusiness?.id} />
       <NotificationRealtimeBridge businessId={currentBusiness?.id} />
       <BuildPill />
-    </>
+    </AppNotificationProviders>
   );
 }

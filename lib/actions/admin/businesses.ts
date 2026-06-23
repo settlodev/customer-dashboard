@@ -1,7 +1,10 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
+import { FormResponse } from "@/types/types";
 import {
   AdminBusinessDetail,
   AdminBusinessPage,
@@ -14,6 +17,13 @@ import {
   BusinessStatusCounts,
   ListBusinessesParams,
 } from "@/types/admin/business";
+import type { z } from "zod";
+import type {
+  UpdateBusinessSchema,
+  UpdateLocationSchema,
+  UpdateStoreSchema,
+  UpdateWarehouseSchema,
+} from "@/types/admin/schemas";
 
 function staffClient() {
   return new ApiClient("accounts", "staff");
@@ -131,4 +141,104 @@ export async function getAdminStoreDetail(
     `/api/v1/admin/stores/${storeId}`,
   );
   return parseStringify(data);
+}
+
+// ── Cross-tenant entity edits (internal staff) ──────────────────────
+
+export async function updateAdminBusiness(
+  businessId: string,
+  values: z.infer<typeof UpdateBusinessSchema>,
+): Promise<FormResponse<AdminBusinessDetail>> {
+  try {
+    const result = await staffClient().put<
+      AdminBusinessDetail,
+      z.infer<typeof UpdateBusinessSchema>
+    >(`/api/v1/admin/businesses/${businessId}`, values);
+    revalidatePath("/admin/businesses");
+    revalidatePath(`/admin/businesses/${businessId}`);
+    return parseStringify({
+      responseType: "success",
+      message: "Business updated",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to update business",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function updateAdminLocation(
+  locationId: string,
+  values: z.infer<typeof UpdateLocationSchema>,
+): Promise<FormResponse<AdminLocationDetail>> {
+  try {
+    const result = await staffClient().put<
+      AdminLocationDetail,
+      z.infer<typeof UpdateLocationSchema>
+    >(`/api/v1/admin/locations/${locationId}`, values);
+    revalidatePath("/admin/locations");
+    revalidatePath(`/admin/locations/${locationId}`);
+    return parseStringify({
+      responseType: "success",
+      message: "Location updated",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to update location",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function updateAdminStore(
+  storeId: string,
+  values: z.infer<typeof UpdateStoreSchema>,
+): Promise<FormResponse<AdminStoreDetail>> {
+  try {
+    const result = await staffClient().put<
+      AdminStoreDetail,
+      z.infer<typeof UpdateStoreSchema>
+    >(`/api/v1/admin/stores/${storeId}`, values);
+    revalidatePath(`/admin/stores/${storeId}`);
+    return parseStringify({
+      responseType: "success",
+      message: "Store updated",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to update store",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function updateAdminWarehouse(
+  warehouseId: string,
+  values: z.infer<typeof UpdateWarehouseSchema>,
+): Promise<FormResponse<AdminWarehouseDetail>> {
+  try {
+    const result = await staffClient().put<
+      AdminWarehouseDetail,
+      z.infer<typeof UpdateWarehouseSchema>
+    >(`/api/v1/admin/warehouses/${warehouseId}`, values);
+    revalidatePath(`/admin/warehouses/${warehouseId}`);
+    return parseStringify({
+      responseType: "success",
+      message: "Warehouse updated",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to update warehouse",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
 }

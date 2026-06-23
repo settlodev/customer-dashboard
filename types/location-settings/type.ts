@@ -48,6 +48,7 @@ export interface LocationSettings {
   showPriceOnDocket: boolean;
   autoPrintDockets: boolean;
   allowDuplicateDocketPrinting: boolean;
+  useModernPrintTemplate: boolean;
 
   // Stock deduction
   deductStockOnItemChange: boolean;

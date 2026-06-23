@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/roles/columns";
-import { fetchAllRoles } from "@/lib/actions/role-actions";
+import { fetchRolesForCurrentDestination } from "@/lib/actions/role-actions";
 import {
   PageShell,
   PageHeader,
@@ -17,7 +17,12 @@ import DataLoadError from "@/components/layouts/data-load-error";
 import { softFetch } from "@/lib/list-fallback";
 
 export default async function Page() {
-  const roles: Role[] | null = await softFetch(fetchAllRoles());
+  // Scope to the active destination (location/store/warehouse) plus the
+  // account-wide roles — never the unfiltered, cross-location list that made
+  // per-location roles look duplicated.
+  const roles: Role[] | null = await softFetch(
+    fetchRolesForCurrentDestination({ includeAccountRoles: true }),
+  );
 
   return (
     <PageShell>

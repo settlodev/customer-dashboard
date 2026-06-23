@@ -10,6 +10,7 @@ import {
   AccountStatusUpdateRequest,
   AdminAccountDetail,
   AdminAccountListPage,
+  AdminCustomerSearchItem,
   AdminCustomerSearchPage,
   AssignedStaffInfo,
   ListAccountsParams,
@@ -20,6 +21,11 @@ import type {
   AssignStaffRequest,
   InternalStaffSummary,
 } from "@/types/admin/internal-staff";
+import type { z } from "zod";
+import type {
+  UpdateAccountSchema,
+  UpdateCustomerSchema,
+} from "@/types/admin/schemas";
 
 function staffClient() {
   return new ApiClient("accounts", "staff");
@@ -236,6 +242,32 @@ export async function deleteAccount(
   }
 }
 
+/**
+ * Hard-purge (permanently, irreversibly delete) a FRESH account — one that never
+ * created a business. The backend returns 409 if the account owns any
+ * operational unit; in that case fall back to soft-delete.
+ */
+export async function purgeAccount(
+  accountId: string,
+): Promise<FormResponse<void>> {
+  try {
+    await staffClient().delete<void>(`/api/v1/admin/accounts/${accountId}/purge`);
+    revalidatePath("/admin/accounts");
+    return parseStringify({
+      responseType: "success",
+      message: "Account permanently purged",
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message:
+        error?.message ||
+        "Failed to purge account — it may have data; use soft-delete instead.",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
 export async function searchCustomers(
   params: SearchCustomersParams,
 ): Promise<AdminCustomerSearchPage> {
@@ -366,6 +398,126 @@ export async function sendAccountEmail(
     return parseStringify({
       responseType: "error",
       message: error?.message || "Failed to send email",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+// ── Cross-tenant edits (internal staff) ─────────────────────────────
+
+/**
+ * Update an account owner's profile fields. Email/phone are NOT updated here —
+ * use changeAccountEmail/changeAccountPhone (fresh unverified accounts only).
+ */
+export async function updateAccountProfile(
+  accountId: string,
+  values: z.infer<typeof UpdateAccountSchema>,
+): Promise<FormResponse<AdminAccountDetail>> {
+  try {
+    const result = await staffClient().patch<
+      AdminAccountDetail,
+      z.infer<typeof UpdateAccountSchema>
+    >(`/api/v1/admin/accounts/${accountId}/profile`, values);
+    revalidatePath("/admin/accounts");
+    revalidatePath(`/admin/accounts/${accountId}`);
+    return parseStringify({
+      responseType: "success",
+      message: "Account details updated",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to update account",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+/**
+ * Change a FRESH, UNVERIFIED account owner's email and re-send verification.
+ * The backend (Auth) rejects this if the account is already verified.
+ */
+export async function changeAccountEmail(
+  accountId: string,
+  email: string,
+): Promise<FormResponse<{ message: string }>> {
+  try {
+    const result = await staffClient().patch<
+      { message: string },
+      { email: string }
+    >(`/api/v1/admin/accounts/${accountId}/email`, { email });
+    revalidatePath("/admin/accounts");
+    revalidatePath(`/admin/accounts/${accountId}`);
+    return parseStringify({
+      responseType: "success",
+      message: result?.message ?? "Email updated; verification sent",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to change email",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+/**
+ * Change a FRESH, UNVERIFIED account owner's phone and re-send verification.
+ */
+export async function changeAccountPhone(
+  accountId: string,
+  phoneNumber: string,
+  region?: string,
+): Promise<FormResponse<{ message: string }>> {
+  try {
+    const result = await staffClient().patch<
+      { message: string },
+      { phoneNumber: string; region?: string }
+    >(`/api/v1/admin/accounts/${accountId}/phone`, {
+      phoneNumber,
+      ...(region ? { region } : {}),
+    });
+    revalidatePath("/admin/accounts");
+    revalidatePath(`/admin/accounts/${accountId}`);
+    return parseStringify({
+      responseType: "success",
+      message: result?.message ?? "Phone updated; verification sent",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to change phone",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+/**
+ * Update a single (per-location) customer record. The merged customers list is
+ * read-only — edits target the underlying record by id.
+ */
+export async function updateAdminCustomer(
+  customerId: string,
+  values: z.infer<typeof UpdateCustomerSchema>,
+): Promise<FormResponse<AdminCustomerSearchItem>> {
+  try {
+    const result = await staffClient().put<
+      AdminCustomerSearchItem,
+      z.infer<typeof UpdateCustomerSchema>
+    >(`/api/v1/admin/customers/${customerId}`, values);
+    revalidatePath("/admin/customers");
+    return parseStringify({
+      responseType: "success",
+      message: "Customer updated",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to update customer",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }

@@ -23,6 +23,7 @@ import { parseStringify } from "@/lib/utils";
 import {
   createAuthTokenFromLogin,
   createStaffAuthToken,
+  createReferralAuthToken,
   deleteActiveBusinessCookie,
   deleteAuthCookie,
   deleteStaffAuthCookie,
@@ -33,7 +34,7 @@ import {
   clearPendingVerification,
   updateAuthToken,
 } from "@/lib/auth-utils";
-import { isStaffToken } from "@/lib/jwt-utils";
+import { isStaffToken, extractReferralAgent } from "@/lib/jwt-utils";
 import { establishCustomerSession } from "@/lib/customer-session";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseApiError, getUIErrorMessage } from "@/lib/settlo-api-error-handler";
@@ -41,10 +42,8 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { clearDestination } from "./destination";
 
-const AUTH_SERVICE_URL =
-  process.env.AUTH_SERVICE_URL || process.env.SERVICE_URL || "";
-const ACCOUNTS_SERVICE_URL =
-  process.env.ACCOUNTS_SERVICE_URL || process.env.SERVICE_URL || "";
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || "";
+const ACCOUNTS_SERVICE_URL = process.env.ACCOUNTS_SERVICE_URL || "";
 const WHITELABEL_CLIENT_ID =
   process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID || "";
 
@@ -62,7 +61,26 @@ const COOKIE_SECURE =
   process.env.NODE_ENV === "production" ||
   process.env.COOKIE_SECURE === "true";
 
+/**
+ * Sign out the current (wrong-account) session, then return to the invite link
+ * so it is re-evaluated for the invited address. Backs the "Sign out & accept
+ * as …" action on the /accept-invite "different address" screen. `member`/`email`
+ * only ever shape an internal /accept-invite URL, never an arbitrary redirect.
+ */
+export async function signOutToAcceptInvite(formData: FormData) {
+  const member = String(formData.get("member") ?? "");
+  const email = String(formData.get("email") ?? "");
+  const dest = member
+    ? `/accept-invite?member=${encodeURIComponent(member)}&email=${encodeURIComponent(email)}`
+    : "/login";
+  await performLogout(dest);
+}
+
 export async function logout() {
+  await performLogout("/login");
+}
+
+async function performLogout(redirectTo: string) {
   // Always clear local state, regardless of whether the API call succeeds
   const authToken = await getAuthToken();
 
@@ -97,9 +115,9 @@ export async function logout() {
     // Cookie deletion might fail in some contexts — continue anyway
   }
 
-  // Sign out from NextAuth and redirect to login
+  // Sign out from NextAuth and redirect (defaults to /login).
   try {
-    await signOut({ redirectTo: "/login" });
+    await signOut({ redirectTo });
   } catch (error) {
     if (
       error instanceof Error &&
@@ -527,6 +545,18 @@ export const login = async (
           userId: loginData.userId,
           email: loginData.email,
         },
+      });
+    }
+
+    // External referral agents have no Accounts profile (sentinel accountId),
+    // so the shared profile fetch would 404 and abort the login (same as staff).
+    // Skip it: write a minimal referral cookie; middleware confines them to
+    // /referral. No NextAuth session — the surface reads the authToken cookie.
+    if (extractReferralAgent(loginData.accessToken)) {
+      await createReferralAuthToken(loginData);
+      return parseStringify({
+        responseType: "success",
+        message: "Login successful",
       });
     }
 

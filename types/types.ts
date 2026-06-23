@@ -15,6 +15,8 @@ export declare interface LoginResponse {
     emailVerified: boolean;
     systemAdmin?: boolean;
     supportAgent?: boolean;
+    /** True when this is an external referral-agent login (not internal staff). */
+    referralAgent?: boolean;
     verificationResendToken?: string;
     verificationResendTokenExpiresAt?: string;
     mfaRequired?: boolean;
@@ -99,6 +101,8 @@ export declare interface AuthToken {
     internalRole?: InternalRole | null;
     internalPermissions?: string[];
     subjectType?: SubjectType;
+    /** True when this session belongs to an external referral agent (not internal staff). */
+    referralAgent?: boolean;
     /** True when this customer session was minted by staff impersonation. */
     impersonating?: boolean;
     /** Auth user id of the staff member impersonating this account. */

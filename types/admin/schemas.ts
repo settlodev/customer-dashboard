@@ -63,6 +63,7 @@ export const RecordManualPaymentSchema = z.object({
   referenceNumber: z.string().min(1, "Reference number is required"),
   amount: z.number().positive("Amount must be positive"),
   notes: z.string().max(500).optional(),
+  proofKey: z.string().min(1, "Payment proof is required"),
 });
 
 export const CreateRefundSchema = z.object({
@@ -295,4 +296,84 @@ export const SetPackageIncludedCreditSchema = z.object({
     .number()
     .int("Must be a whole number")
     .min(0, "Cannot be negative"),
+});
+
+// ── Cross-tenant entity edits (Accounts Service, internal staff) ─────
+//
+// PATCH/PUT semantics: an empty string clears the field. Email/phone of the
+// ACCOUNT owner are deliberately NOT here — those are identity fields changed
+// via ChangeEmailSchema/ChangePhoneSchema (fresh unverified accounts only).
+
+const optionalShort = z.string().max(255).optional().or(z.literal(""));
+const optionalLong = z.string().max(2000).optional().or(z.literal(""));
+
+export const UpdateAccountSchema = z.object({
+  firstName: z.string().min(1, "First name is required").max(255),
+  lastName: z.string().min(1, "Last name is required").max(255),
+  region: optionalShort,
+  district: optionalShort,
+  ward: optionalShort,
+  areaCode: z.string().max(10).optional().or(z.literal("")),
+  municipal: optionalShort,
+  bio: optionalLong,
+});
+
+export const ChangeEmailSchema = z.object({
+  email: z.string().email("Enter a valid email address"),
+});
+
+export const ChangePhoneSchema = z.object({
+  phoneNumber: z.string().min(5, "Enter a valid phone number").max(20),
+});
+
+export const UpdateBusinessSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255),
+  description: optionalLong,
+  phoneNumber: z.string().max(20).optional().or(z.literal("")),
+  email: z.string().email("Enter a valid email").optional().or(z.literal("")),
+  website: optionalShort,
+  region: optionalShort,
+  district: optionalShort,
+  ward: optionalShort,
+  address: z.string().max(500).optional().or(z.literal("")),
+  postalCode: z.string().max(10).optional().or(z.literal("")),
+});
+
+export const UpdateLocationSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255),
+  description: optionalLong,
+  phoneNumber: z.string().max(20).optional().or(z.literal("")),
+  email: z.string().email("Enter a valid email").optional().or(z.literal("")),
+  region: optionalShort,
+  district: optionalShort,
+  ward: optionalShort,
+  address: z.string().max(500).optional().or(z.literal("")),
+  postalCode: z.string().max(10).optional().or(z.literal("")),
+  timezone: z.string().max(64).optional().or(z.literal("")),
+});
+
+export const UpdateStoreSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255),
+  description: optionalLong,
+  code: z.string().max(50).optional().or(z.literal("")),
+});
+
+export const UpdateWarehouseSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255),
+  description: optionalLong,
+  code: z.string().max(50).optional().or(z.literal("")),
+  capacity: z.coerce
+    .number()
+    .int("Must be a whole number")
+    .nonnegative("Cannot be negative")
+    .optional(),
+  primary: z.boolean().optional(),
+});
+
+export const UpdateCustomerSchema = z.object({
+  firstName: z.string().min(1, "First name is required").max(255),
+  lastName: z.string().max(255).optional().or(z.literal("")),
+  phoneNumber: z.string().min(5, "Enter a valid phone number").max(20),
+  email: z.string().email("Enter a valid email").optional().or(z.literal("")),
+  notes: optionalLong,
 });

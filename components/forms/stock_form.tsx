@@ -319,15 +319,24 @@ export default function StockForm({ item, balances }: StockFormProps) {
   };
 
   const runSubmit = (values: z.infer<typeof StockSchema>) => {
+    // Single-variant stock items keep the lone variant's name in lockstep with
+    // the stock item name — the variant-name field is hidden/auto-filled when
+    // there's only one variant. The create flow live-syncs via the effect
+    // above, but edit does not, so enforce it here too so a rename propagates
+    // to the variant on save. Multi-variant items keep their distinct names.
+    const effectiveValues: z.infer<typeof StockSchema> =
+      values.variants.length === 1
+        ? { ...values, variants: [{ ...values.variants[0], name: values.name }] }
+        : values;
     startTransition(() => {
       if (item) {
         const currentIds = new Set(
-          values.variants.map((v) => v.id).filter(Boolean),
+          effectiveValues.variants.map((v) => v.id).filter(Boolean),
         );
         const removed = (item.variants || [])
           .map((v) => v.id)
           .filter((vid) => !currentIds.has(vid));
-        updateStock(item.id, values, removed).then((d) => {
+        updateStock(item.id, effectiveValues, removed).then((d) => {
           if (businessDayGuard.catch(d, () => runSubmit(values))) return;
           if (d) {
             setResponse(d);
@@ -335,7 +344,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
           }
         });
       } else if (autoCreateProduct) {
-        createStockWithProduct(values, { categoryIds }).then((d) => {
+        createStockWithProduct(effectiveValues, { categoryIds }).then((d) => {
           if (businessDayGuard.catch(d, () => runSubmit(values))) return;
           if (d) {
             setResponse(d);
@@ -343,7 +352,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
           }
         });
       } else {
-        createStock(values).then((d) => {
+        createStock(effectiveValues).then((d) => {
           if (businessDayGuard.catch(d, () => runSubmit(values))) return;
           if (d) {
             setResponse(d);

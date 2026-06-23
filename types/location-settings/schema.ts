@@ -125,6 +125,7 @@ export const LocationSettingsSchema = z.object({
   showPriceOnDocket: z.boolean().optional(),
   autoPrintDockets: z.boolean().optional(),
   allowDuplicateDocketPrinting: z.boolean().optional(),
+  useModernPrintTemplate: z.boolean().optional(),
   orderPrintsCountEnabled: z.boolean().optional(),
 
   // Receipt

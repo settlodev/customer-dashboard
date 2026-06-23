@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import {
   deleteAccount,
+  purgeAccount,
   reactivateAccount,
   republishAccountEvents,
   resendVerificationEmail,
@@ -37,7 +38,13 @@ import {
 import { AdminAccountListItem } from "@/types/admin/account";
 
 interface AccountActionDialogProps {
-  kind: "suspend" | "reactivate" | "delete" | "resend-verification" | "republish";
+  kind:
+    | "suspend"
+    | "reactivate"
+    | "delete"
+    | "purge"
+    | "resend-verification"
+    | "republish";
   account: AdminAccountListItem;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -57,11 +64,12 @@ export function AccountActionDialog({
   const { toast } = useToast();
 
   const accountLabel = account.fullName || account.email;
+  const isDestructive = kind === "delete" || kind === "purge";
   const tone =
-    kind === "delete" ? "danger" : kind === "suspend" ? "warning" : "success";
+    isDestructive ? "danger" : kind === "suspend" ? "warning" : "success";
 
   const icon =
-    kind === "delete" ? (
+    isDestructive ? (
       <Trash2 className="h-5 w-5" />
     ) : kind === "suspend" ? (
       <PauseCircle className="h-5 w-5" />
@@ -76,7 +84,9 @@ export function AccountActionDialog({
   const title =
     kind === "delete"
       ? "Delete this account?"
-      : kind === "suspend"
+      : kind === "purge"
+        ? "Permanently purge this account?"
+        : kind === "suspend"
         ? "Suspend this account?"
         : kind === "resend-verification"
           ? "Resend verification email?"
@@ -90,6 +100,14 @@ export function AccountActionDialog({
         This soft-deletes <strong>{accountLabel}</strong> and revokes all of
         their sessions. Related data (businesses, locations, staff) will be
         cascade-archived. Type the account email to confirm.
+      </>
+    ) : kind === "purge" ? (
+      <>
+        This <strong>permanently and irreversibly</strong> deletes{" "}
+        <strong>{accountLabel}</strong> and its login — there is no recovery and
+        no 30-day grace. Only for an empty account — no orders, stock or paid
+        invoices (the server re-checks and refuses otherwise). Type the account
+        email to confirm.
       </>
     ) : kind === "suspend" ? (
       <>
@@ -118,7 +136,9 @@ export function AccountActionDialog({
   const confirmLabel =
     kind === "delete"
       ? "Delete account"
-      : kind === "suspend"
+      : kind === "purge"
+        ? "Purge permanently"
+        : kind === "suspend"
         ? "Suspend"
         : kind === "resend-verification"
           ? "Send email"
@@ -139,7 +159,9 @@ export function AccountActionDialog({
       const result =
         kind === "delete"
           ? await deleteAccount(account.id)
-          : kind === "suspend"
+          : kind === "purge"
+            ? await purgeAccount(account.id)
+            : kind === "suspend"
             ? await suspendAccount(account.id, reason.trim() || undefined)
             : kind === "resend-verification"
               ? await resendVerificationEmail(account.id)
@@ -156,7 +178,9 @@ export function AccountActionDialog({
         title:
           kind === "delete"
             ? "Account deleted"
-            : kind === "suspend"
+            : kind === "purge"
+              ? "Account purged"
+              : kind === "suspend"
               ? "Account suspended"
               : kind === "resend-verification"
                 ? "Verification email sent"
@@ -173,7 +197,7 @@ export function AccountActionDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent
         tone={tone}
-        requireText={kind === "delete" ? account.email : undefined}
+        requireText={isDestructive ? account.email : undefined}
       >
         <AlertDialogIcon>{icon}</AlertDialogIcon>
         <AlertDialogHeader>
@@ -200,7 +224,7 @@ export function AccountActionDialog({
           </div>
         )}
 
-        {kind === "delete" && <AlertDialogRequireText />}
+        {isDestructive && <AlertDialogRequireText />}
 
         {error && <FormError message={error} />}
 
