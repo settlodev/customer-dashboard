@@ -185,9 +185,9 @@ export const getPublicInvitation = async (
   memberId: string,
 ): Promise<PublicInvitation | null> => {
   try {
-    const base = process.env.ACCOUNTS_SERVICE_URL || process.env.SERVICE_URL;
+    const base = process.env.ACCOUNTS_SERVICE_URL;
     if (!base) {
-      console.warn("getPublicInvitation: ACCOUNTS_SERVICE_URL/SERVICE_URL not configured");
+      console.warn("getPublicInvitation: ACCOUNTS_SERVICE_URL not configured");
       return null;
     }
     const res = await fetch(

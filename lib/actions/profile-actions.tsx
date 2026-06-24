@@ -169,8 +169,7 @@ export const switchAccount = async (accountId: string): Promise<FormResponse> =>
     await clearDestination();
 
     // Fetch the new account's profile to populate auth token
-    const ACCOUNTS_SERVICE_URL =
-      process.env.ACCOUNTS_SERVICE_URL || process.env.SERVICE_URL || "";
+    const ACCOUNTS_SERVICE_URL = process.env.ACCOUNTS_SERVICE_URL || "";
     const WHITELABEL_CLIENT_ID =
       process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID || "";
 

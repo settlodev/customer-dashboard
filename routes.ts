@@ -17,11 +17,10 @@ export const publicRoutes = [
   "/pr/[token]",
   "/rfq/[token]",
   "/sr/[token]",
-  // Staff-impersonation handoff landing — establishes the customer session
-  // from a sealed blob, so it must be reachable before any customer cookie.
   "/impersonate/consume",
   "/accept-invite",
   "/accept-invite/create",
+  "/accept-invite/continue",
 ];
 
 export const authRoutes = ["/login", "/register"];
@@ -53,7 +52,8 @@ export const ADMIN_DEFAULT_REDIRECT_URL = "/admin/dashboard";
 export const adminAuthRoutes = [ADMIN_LOGIN_URL];
 
 export const isAdminPath = (pathname: string): boolean =>
-  pathname === ADMIN_ROUTE_PREFIX || pathname.startsWith(`${ADMIN_ROUTE_PREFIX}/`);
+  pathname === ADMIN_ROUTE_PREFIX ||
+  pathname.startsWith(`${ADMIN_ROUTE_PREFIX}/`);
 
 export const isAdminHost = (host: string | null | undefined): boolean => {
   if (!host) return false;
@@ -76,12 +76,6 @@ export const isPublicRoute = (pathname: string): boolean =>
   });
 
 // ── Default-allow guard (block-list risk) ────────────────────────────
-// The route model is a block-list: a NEW protected route added without
-// touching publicRoutes is silently public. There is no unit-test harness in
-// this project, so we assert the invariant at module load in non-prod: known
-// protected segments must NOT be classified as public. If someone ever adds
-// e.g. "/dashboard" to publicRoutes (or a wildcard that swallows it), this
-// throws loudly in dev/CI builds instead of shipping an open route.
 const PROTECTED_ROUTE_INVARIANTS = [
   "/dashboard",
   "/dashboard/anything",

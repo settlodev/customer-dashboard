@@ -48,8 +48,7 @@ async function refreshTokenForDestination(): Promise<void> {
     const authToken = await getAuthToken();
     if (!authToken?.refreshToken) return;
 
-    const AUTH_SERVICE_URL =
-      process.env.AUTH_SERVICE_URL || process.env.SERVICE_URL || "";
+    const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || "";
     const clientId = process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID;
     const headers: Record<string, string> = {
       "Content-Type": "application/json",

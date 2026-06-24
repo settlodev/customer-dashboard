@@ -18,8 +18,7 @@ import { ErrorResponseType } from "@/types/types";
  * Reports filter doesn't expect.
  */
 
-const REPORTS_SERVICE_URL =
-  process.env.REPORTS_SERVICE_URL || process.env.SERVICE_URL || "";
+const REPORTS_SERVICE_URL = process.env.REPORTS_SERVICE_URL || "";
 const REPORTS_INTERNAL_SECRET = process.env.REPORTS_INTERNAL_SECRET || "";
 
 function requireConfig() {
