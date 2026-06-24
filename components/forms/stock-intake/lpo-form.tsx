@@ -1,4 +1,3 @@
-// components/forms/stock-intake-lpo-form.tsx
 "use client";
 
 import { useState } from "react";
@@ -16,6 +15,8 @@ export interface LpoPrefill {
   stockIntakePurchaseOrderId?: string;
   stockIntakes: {
     stockVariant: string;
+    stockName: string;
+    stockVariantName?: string;
     quantity: number;
     value: number;
     orderDate: string;
@@ -34,6 +35,8 @@ function lpoToPrefill(lpo: StockPurchase): LpoPrefill {
     stockIntakePurchaseOrderId: lpo.id,
     stockIntakes: lpo.stockIntakePurchaseOrderItems.map((item) => ({
       stockVariant: item.stockVariant,
+      stockName: item.stockName,
+      stockVariantName: item.stockVariantName,
       quantity: item.quantity,
       value: item.quantity * (item.unitCost ?? 0),
       orderDate: lpo.dateCreated ?? lpo.deliveryDate,
@@ -101,6 +104,8 @@ export default function StockIntakeLpoForm({
 
   // ── Step 2: StockIntakeForm pre-filled from the selected LPO ───────────────
   const prefill = lpoToPrefill(selectedLpo);
+
+  console.log("The prefill is " + prefill);
 
   return (
     <div className="space-y-5">
