@@ -251,14 +251,29 @@ function StockIntakeForm({
 
   // ── stockVariantId query-param pre-selection ─────────────────────────────────
 
+  // useEffect(() => {
+  //   if (!stockVariantId) return;
+  //   form.setValue("stockIntakes.0.stockVariant", stockVariantId);
+  //   getStockVariantById(stockVariantId)
+  //     .then((info) => updateLineState(0, { variantInfo: info }))
+  //     .catch(console.error);
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [stockVariantId]);
+
   useEffect(() => {
-    if (!stockVariantId) return;
-    form.setValue("stockIntakes.0.stockVariant", stockVariantId);
-    getStockVariantById(stockVariantId)
-      .then((info) => updateLineState(0, { variantInfo: info }))
-      .catch(console.error);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stockVariantId]);
+    if (!prefill) return;
+    prefill.stockIntakes.forEach((line, index) => {
+      if (!line.stockVariant) return;
+      updateLineState(index, {
+        variantInfo: {
+          stockName: line.stockName,
+          variant: line.stockVariantName
+            ? { name: line.stockVariantName }
+            : undefined,
+        },
+      });
+    });
+  }, [prefill]);
 
   // ── Cross-field date validation (live) ──────────────────────────────────────
 
