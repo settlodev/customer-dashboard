@@ -74,6 +74,20 @@ async function refreshTokenForDestination(): Promise<void> {
   }
 }
 
+/**
+ * Re-mints the access token after a payment/activation so its `subscription_status`
+ * claim catches up. The middleware gate reads that cached claim, NOT live billing, so
+ * without this a freshly-activated/paid subscription can leave the user pinned to
+ * /billing even though billing already shows ACTIVE (issue 4). Best-effort: a failure
+ * is non-fatal (the next destination switch / proactive refresh will catch up), and
+ * billing now emits SUBSCRIPTION_UPDATED on activation so the re-minted token reflects
+ * the new status.
+ */
+export async function refreshSubscriptionToken(): Promise<void> {
+  await refreshTokenForDestination();
+  revalidatePath("/", "layout");
+}
+
 // ── Switch actions ──────────────────────────────────────────────────
 
 export async function switchToLocation(data: Location): Promise<void> {

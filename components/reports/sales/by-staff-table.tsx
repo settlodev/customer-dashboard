@@ -45,7 +45,11 @@ export function SalesByStaffTable({
           searchKey="name"
           total={total}
           onRowClick={(item) => {
-            if (item.id) router.push(`/staff/${item.id}?tab=sales`);
+            // Rows whose seller couldn't be resolved to a staff record (blank
+            // name — the order was attributed to a non-staff actor id) have no
+            // staff detail page to open; don't drill into a dead route.
+            if (item.id && item.name.trim())
+              router.push(`/staff/${item.id}?tab=sales`);
           }}
         />
       </CardContent>
