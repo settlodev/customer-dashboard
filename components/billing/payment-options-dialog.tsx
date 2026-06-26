@@ -32,6 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePaymentPolling } from "@/hooks/usePaymentPolling";
 
 import { initiatePayment } from "@/lib/actions/payment-actions";
+import { refreshSubscriptionToken } from "@/lib/actions/destination";
 import PaymentStatusModal from "@/components/widgets/paymentStatusModal";
 
 import {
@@ -158,9 +159,19 @@ export function PaymentOptionsDialog({
         title: "Payment successful",
         description: `Invoice ${invoice.invoiceNumber} is paid.`,
       });
-      const t = setTimeout(() => {
+      const t = setTimeout(async () => {
         setStatusOpen(false);
         setPaymentRefId(null);
+        // Re-mint the access token so its subscription_status claim catches up to the
+        // just-activated subscription. The middleware gate reads that claim (not live
+        // billing), so without this the user can stay pinned to /billing after paying
+        // and the app does not "open" on its own (issue 4). Best-effort — onPaid's
+        // refresh below still runs if this fails.
+        try {
+          await refreshSubscriptionToken();
+        } catch {
+          // non-fatal — next navigation refreshes the token reactively
+        }
         onOpenChangeRef.current?.(false);
         onPaidRef.current?.();
       }, 1500);

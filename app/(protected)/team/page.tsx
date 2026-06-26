@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   PageShell,
   PageHeader,
@@ -9,7 +9,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/team/columns";
+import { getColumns } from "@/components/tables/team/columns";
 import { AccountMember, listMembers, inviteMember } from "@/lib/actions/account-member-actions";
 import { fetchRolesByScope } from "@/lib/actions/role-actions";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
@@ -141,6 +141,14 @@ export default function TeamPage() {
     }
   };
 
+  // Resolve member scopes to location names and let row actions reload the
+  // list after an inline edit/removal. Memoized so the table isn't handed a
+  // fresh column array on every keystroke/render.
+  const memberColumns = useMemo(
+    () => getColumns({ locations, onChanged: loadMembers }),
+    [locations, loadMembers],
+  );
+
   return (
     <PageShell>
       <PageBreadcrumbs items={[{ title: "Account members" }]} />
@@ -166,7 +174,7 @@ export default function TeamPage() {
           <Card>
             <CardContent className="px-2 sm:px-6 pt-6">
               <DataTable
-                columns={columns}
+                columns={memberColumns}
                 data={members}
                 searchKey="firstName"
                 pageNo={0}

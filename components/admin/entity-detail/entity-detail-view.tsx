@@ -32,6 +32,8 @@ export interface EntityDetailViewProps {
   ordersRow: BusinessLocationBreakdownRow | null;
   rangeLabel: string;
   canBilling: boolean;
+  /** SYSTEM_ADMIN (billing's super admin) — may override-extend a paid/used entity's trial. */
+  isSuperAdmin: boolean;
   stock: EntityStockSummary | null;
 }
 
@@ -52,6 +54,7 @@ export function EntityDetailView({
   ordersRow,
   rangeLabel,
   canBilling,
+  isSuperAdmin,
   stock,
 }: EntityDetailViewProps) {
   const router = useRouter();
@@ -70,7 +73,11 @@ export function EntityDetailView({
 
   function handleExtendTrial() {
     if (!item || !subscriptionId) return;
-    if (!confirm(`Extend this ${entityLabel}'s trial?`)) return;
+    const overriding = item.paidThrough != null;
+    const confirmMsg = overriding
+      ? `Override: this ${entityLabel} has already paid or started using. Extend its trial anyway?`
+      : `Extend this ${entityLabel}'s trial?`;
+    if (!confirm(confirmMsg)) return;
     startTransition(async () => {
       const res = await extendEntityTrial(businessId, subscriptionId, item.id);
       if (res.responseType === "success") {
@@ -93,7 +100,13 @@ export function EntityDetailView({
   }
 
   const showActions = canBilling && !!subscriptionId && !!item;
-  const canExtendTrial = item?.paidThrough == null && item?.status !== "CANCELLED";
+  // Normally only a never-paid, non-cancelled entity can be extended. A super admin
+  // (SYSTEM_ADMIN) may override the paid/used block; billing remains authoritative and
+  // still enforces the live-subscription + bundled/cancelled rules.
+  const itemPaidOrUsed = item?.paidThrough != null;
+  const canExtendTrial =
+    item?.status !== "CANCELLED" && (!itemPaidOrUsed || isSuperAdmin);
+  const isOverrideExtend = canExtendTrial && itemPaidOrUsed;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -178,7 +191,7 @@ export function EntityDetailView({
                       ) : (
                         <CalendarPlus className="mr-1.5 h-4 w-4" />
                       )}
-                      Extend trial
+                      {isOverrideExtend ? "Override extend trial" : "Extend trial"}
                     </Button>
                   )}
                   <Button

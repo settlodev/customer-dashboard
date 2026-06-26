@@ -51,24 +51,37 @@ export function buildSalesByStaffColumns({
       ),
       cell: ({ row }) => {
         const item = row.original;
+        // Sales can be attributed to an actor id with no staff record (an
+        // owner/device/user subject — see resolveActorStaffId on the backend),
+        // so the Reports rollup hands us a blank name. Show an honest
+        // placeholder rather than an empty cell, and skip the broken avatar.
+        const resolved = item.name.trim();
+        const displayName = resolved || "Unknown staff";
         return (
           <div className="flex min-w-0 items-center gap-3">
             <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-canvas">
               {isValidImage(item.image) ? (
                 <Image
                   src={item.image}
-                  alt={item.name}
+                  alt={displayName}
                   fill
                   sizes="36px"
                   className="object-cover"
                 />
               ) : (
                 <span className="font-mono text-[11px] font-medium text-muted-foreground">
-                  {initials(item.name)}
+                  {resolved ? initials(resolved) : "—"}
                 </span>
               )}
             </div>
-            <span className="truncate font-medium text-ink">{item.name}</span>
+            <span
+              className={cn(
+                "truncate font-medium",
+                resolved ? "text-ink" : "italic text-muted-foreground",
+              )}
+            >
+              {displayName}
+            </span>
           </div>
         );
       },

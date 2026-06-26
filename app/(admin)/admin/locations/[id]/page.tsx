@@ -69,6 +69,9 @@ export default async function LocationDetailPage({
 
   const canBilling = role === "SYSTEM_ADMIN" || role === "SUPPORT_AGENT";
   const canEdit = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
+  // SYSTEM_ADMIN maps to billing's ROLE_SYSTEM_ADMIN (system_admin claim) — the only
+  // caller allowed to override-extend a paid/used entity's trial.
+  const isSuperAdmin = role === "SYSTEM_ADMIN";
   const { id } = await params;
 
   let location: Awaited<ReturnType<typeof getAdminLocationDetail>>;
@@ -137,6 +140,7 @@ export default async function LocationDetailPage({
             ordersRow={ordersRow}
             rangeLabel={rangeLabel}
             canBilling={canBilling}
+            isSuperAdmin={isSuperAdmin}
             stock={stock}
           />
         </PageBody>
