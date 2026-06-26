@@ -93,7 +93,9 @@ export const getEnrichedStaff = async (
   }
   params.append("page", String(page ? page - 1 : 0));
   params.append("size", String(size || 10));
-  const data = await apiClient.get(`/api/v1/staff/enriched?${params.toString()}`);
+  const data = await apiClient.get(
+    `/api/v1/staff/enriched?${params.toString()}`,
+  );
   return parseStringify(data);
 };
 
@@ -169,14 +171,19 @@ export const createStaff = async (
       scopeId: destination.id,
     };
     delete payload.password;
-    if (fields.dateOfBirth) payload.dateOfBirth = fields.dateOfBirth.toISOString().split("T")[0];
-    if (fields.joiningDate) payload.joiningDate = fields.joiningDate.toISOString().split("T")[0];
+    if (fields.dateOfBirth)
+      payload.dateOfBirth = fields.dateOfBirth.toISOString().split("T")[0];
+    if (fields.joiningDate)
+      payload.joiningDate = fields.joiningDate.toISOString().split("T")[0];
     if (pin && fields.posAccess) payload.pin = pin;
 
     await apiClient.post(`/api/v1/staff`, payload);
 
     revalidatePath("/staff");
-    return parseStringify({ responseType: "success", message: "Staff created successfully" });
+    return parseStringify({
+      responseType: "success",
+      message: "Staff created successfully",
+    });
   } catch (error: any) {
     return parseStringify({
       responseType: "error",
@@ -202,16 +209,29 @@ export const updateStaff = async (
   try {
     const apiClient = new ApiClient();
 
-    const { pin, password, posAccess, dashboardAccess, email, referredByCode, ...fields } = validatedData.data;
+    const {
+      pin,
+      password,
+      posAccess,
+      dashboardAccess,
+      email,
+      referredByCode,
+      ...fields
+    } = validatedData.data;
     const payload: Record<string, unknown> = { ...fields };
-    if (fields.dateOfBirth) payload.dateOfBirth = fields.dateOfBirth.toISOString().split("T")[0];
-    if (fields.joiningDate) payload.joiningDate = fields.joiningDate.toISOString().split("T")[0];
+    if (fields.dateOfBirth)
+      payload.dateOfBirth = fields.dateOfBirth.toISOString().split("T")[0];
+    if (fields.joiningDate)
+      payload.joiningDate = fields.joiningDate.toISOString().split("T")[0];
 
     await apiClient.put(`/api/v1/staff/${id}`, payload);
 
     revalidatePath("/staff");
     revalidatePath(`/staff/${id}`);
-    return parseStringify({ responseType: "success", message: "Staff updated successfully" });
+    return parseStringify({
+      responseType: "success",
+      message: "Staff updated successfully",
+    });
   } catch (error: any) {
     return parseStringify({
       responseType: "error",
@@ -230,7 +250,10 @@ export const deactivateStaff = async (id: string): Promise<FormResponse> => {
     const apiClient = new ApiClient();
     await apiClient.post(`/api/v1/staff/${id}/deactivate`, {});
     revalidatePath("/staff");
-    return { responseType: "success", message: "Staff deactivated successfully" };
+    return {
+      responseType: "success",
+      message: "Staff deactivated successfully",
+    };
   } catch (error: any) {
     return {
       responseType: "error",
@@ -245,7 +268,10 @@ export const reactivateStaff = async (id: string): Promise<FormResponse> => {
     const apiClient = new ApiClient();
     await apiClient.post(`/api/v1/staff/${id}/reactivate`, {});
     revalidatePath("/staff");
-    return { responseType: "success", message: "Staff reactivated successfully" };
+    return {
+      responseType: "success",
+      message: "Staff reactivated successfully",
+    };
   } catch (error: any) {
     return {
       responseType: "error",
@@ -283,7 +309,9 @@ export const grantDashboardAccess = async (
   }
 };
 
-export const revokeDashboardAccess = async (staffId: string): Promise<FormResponse> => {
+export const revokeDashboardAccess = async (
+  staffId: string,
+): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient();
     await apiClient.delete(`/api/v1/staff/${staffId}/dashboard-access`);
@@ -302,7 +330,9 @@ export const revokeDashboardAccess = async (staffId: string): Promise<FormRespon
 // POS Access
 // ---------------------------------------------------------------------------
 
-export const grantPosAccess = async (staffId: string): Promise<FormResponse> => {
+export const grantPosAccess = async (
+  staffId: string,
+): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient();
     await apiClient.post(`/api/v1/staff/${staffId}/pos-access`, {});
@@ -317,7 +347,9 @@ export const grantPosAccess = async (staffId: string): Promise<FormResponse> => 
   }
 };
 
-export const revokePosAccess = async (staffId: string): Promise<FormResponse> => {
+export const revokePosAccess = async (
+  staffId: string,
+): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient();
     await apiClient.delete(`/api/v1/staff/${staffId}/pos-access`);
@@ -350,7 +382,11 @@ export const setStaffPin = async (
 ): Promise<FormResponse> => {
   const validationError = validatePin(pin);
   if (validationError) {
-    return { responseType: "error", message: validationError, error: new Error(validationError) };
+    return {
+      responseType: "error",
+      message: validationError,
+      error: new Error(validationError),
+    };
   }
   try {
     const apiClient = new ApiClient();
@@ -384,7 +420,11 @@ export const clearStaffPin = async (staffId: string): Promise<FormResponse> => {
 export const setMyPin = async (pin: string): Promise<FormResponse> => {
   const validationError = validatePin(pin);
   if (validationError) {
-    return { responseType: "error", message: validationError, error: new Error(validationError) };
+    return {
+      responseType: "error",
+      message: validationError,
+      error: new Error(validationError),
+    };
   }
   try {
     const apiClient = new ApiClient();
@@ -473,6 +513,7 @@ export const staffReport = async (
       totalGrossProfit: Number(r.totalGrossProfit ?? 0),
     }));
 
+    console.log("The staffReports is", staffReports);
     return parseStringify({ staffReports });
   } catch (error: any) {
     throw new Error(error?.message || "Failed to fetch staff report");
@@ -488,7 +529,8 @@ export const getStaffAudit = async (
   const params = new URLSearchParams();
   params.append("page", String(page ? page - 1 : 0));
   params.append("size", String(size || 20));
-  const data = await apiClient.get(`/api/v1/staff/${staffId}/audit?${params.toString()}`);
+  const data = await apiClient.get(
+    `/api/v1/staff/${staffId}/audit?${params.toString()}`,
+  );
   return parseStringify(data);
 };
-

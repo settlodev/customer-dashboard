@@ -1,47 +1,47 @@
-import { UUID } from "crypto"
+import { UUID } from "crypto";
 
 export interface OrderItemRefunds {
-    id: UUID
-    quantity: number
-    dateOfReturn: string
-    reason: string
-    order: UUID
-    orderNumber: string
-    orderItem: UUID
-    orderItemNetAmount: UUID
-    orderItemName: string
-    staff: UUID
-    staffName: string
-    approvedBy: string
-    approvedByName: string
-    stockReturned: boolean
-    locationId: string
-    status: boolean
-    canDelete: boolean
-    isArchived: boolean    
+  id: UUID;
+  quantity: number;
+  dateOfReturn: string;
+  reason: string;
+  order: UUID;
+  orderNumber: string;
+  orderItem: UUID;
+  orderItemNetAmount: UUID;
+  orderItemName: string;
+  staff: UUID;
+  staffName: string;
+  approvedBy: string;
+  approvedByName: string;
+  stockReturned: boolean;
+  locationId: string;
+  status: boolean;
+  canDelete: boolean;
+  isArchived: boolean;
+  refundAmount: number;
+  returnedCost: number;
+  latestRefunded: Date;
+  earliestRefunded: Date;
 }
 
-export interface RefundReport{
-    startDate: Date
-    endDate: Date
-    totalRefunds: number
-    totalRefundsAmount: number
-    totalReturnedCost: number
-    refundedItems: ItemRefunds[]
-
+export interface RefundReport {
+  startDate: Date;
+  endDate: Date;
+  totalRefunds: number;
+  totalRefundsAmount: number;
+  totalReturnedCost: number;
+  refundedItems: ItemRefunds[];
 }
 
-export interface ItemRefunds{
-    orderItemName: string
-    staffName: string
-    quantity: number
-    refundAmount: number
-    returnedCost: number
-    latestRefunded:Date
-    earliestRefunded:Date
+export interface ItemRefunds {
+  orderItemName: string;
+  staffName: string;
+  quantity: number;
+  refundAmount: number;
+  returnedCost: number;
+  latestRefunded: Date;
+  earliestRefunded: Date;
+  stockReturned: boolean;
+  dateOfReturn: Date;
 }
-
-
-
-
-

@@ -13,6 +13,7 @@ import type {
 } from "@/types/reports/type";
 
 import { accountingUrl } from "./accounting-client";
+import { error } from "@smithy/core/schema";
 
 export async function fetchTrialBalance(
   locationId: string,
@@ -102,6 +103,7 @@ export async function fetchExpenseSummary(
     const data = await apiClient.get(
       accountingUrl(`/api/v1/reports/expense-summary?${params.toString()}`),
     );
+    console.log("fetchExpenseSummary ", data);
     return parseStringify(data);
   } catch (error) {
     rethrowIfBoundary(error);

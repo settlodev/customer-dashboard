@@ -3,10 +3,9 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { CellAction } from "@/components/tables/refunds/cell-action";
-import { OrderItemRefunds } from "@/types/refunds/type";
+import { ItemRefunds } from "@/types/refunds/type";
 
-export const columns: ColumnDef<OrderItemRefunds>[] = [
+export const columns: ColumnDef<ItemRefunds>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -88,9 +87,5 @@ export const columns: ColumnDef<OrderItemRefunds>[] = [
       }).format(new Date(date));
       return <div>{formattedDate}</div>;
     },
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => <CellAction data={row.original} />,
   },
 ];
