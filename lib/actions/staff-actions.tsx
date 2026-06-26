@@ -512,8 +512,6 @@ export const staffReport = async (
       totalNetAmount: Number(r.totalNetAmount ?? 0),
       totalGrossProfit: Number(r.totalGrossProfit ?? 0),
     }));
-
-    console.log("The staffReports is", staffReports);
     return parseStringify({ staffReports });
   } catch (error: any) {
     throw new Error(error?.message || "Failed to fetch staff report");
