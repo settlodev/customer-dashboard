@@ -22,6 +22,7 @@ interface RefundsPageProps {
   searchParams: Promise<{
     status?: string;
     page?: string;
+    limit?: string;
   }>;
 }
 
@@ -57,7 +58,11 @@ export default async function AdminRefundsPage({
 
   const params = await searchParams;
   const status = parseStatus(params.status);
-  const page = Math.max(0, Number.parseInt(params.page ?? "0", 10) || 0);
+  // The shared DataTable owns pagination via a 1-based `?page` + `?limit`;
+  // convert to the backend's 0-based index.
+  const pageOneIndexed = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
+  const backendPage = pageOneIndexed - 1;
+  const size = Math.max(1, Number.parseInt(params.limit ?? "20", 10) || 20);
 
   let queue: RefundPage | null = null;
   let pendingCount = 0;
@@ -79,7 +84,7 @@ export default async function AdminRefundsPage({
         : (status as "PENDING" | "PROCESSED" | "REJECTED");
     const [pageData, pendingPage, processedPage, rejectedPage, allPage] =
       await Promise.all([
-        listRefunds({ status: listStatus, page, size: 20 }),
+        listRefunds({ status: listStatus, page: backendPage, size }),
         listRefunds({ status: "PENDING", size: 1 }),
         listRefunds({ status: "PROCESSED", size: 1 }),
         listRefunds({ status: "REJECTED", size: 1 }),

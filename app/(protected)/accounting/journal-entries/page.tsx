@@ -4,6 +4,7 @@ import { BookOpen, Plus, ShieldCheck, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/tables/data-table";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import {
   PageBody,
   PageBreadcrumbs,
@@ -35,11 +36,17 @@ export default async function JournalEntriesPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const page = Number(params.page) || 0;
-  const size = Number(params.limit) || 20;
+  // The shared DataTable writes a 1-based `?page` and defaults its rows-per-page
+  // control to 10. Mirror both: convert to the backend's 0-based page index, and
+  // default the fetch size to 10 so the "Rows: 10" label matches what's actually
+  // loaded. (Fetching 20 against a 10 label collapsed the pager to 1/1 and made
+  // every entry render on one page, and the missing -1 skipped the 2nd page.)
+  const pageParam = Math.max(1, Number(params.page) || 1);
+  const apiPage = pageParam - 1;
+  const size = Number(params.limit) || DEFAULT_PAGE_SIZE;
 
   const response = await listJournalEntries({
-    page,
+    page: apiPage,
     size,
     status: params.status,
   });
@@ -101,7 +108,8 @@ export default async function JournalEntriesPage({
                   columns={columns}
                   data={data}
                   pageCount={pageCount}
-                  pageNo={page}
+                  defaultPageSize={size}
+                  pageNo={apiPage}
                   total={total}
                   searchKey="entryNumber"
                   filterKey="status"

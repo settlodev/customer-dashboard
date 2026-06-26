@@ -175,6 +175,7 @@ export default function TeamPage() {
             <CardContent className="px-2 sm:px-6 pt-6">
               <DataTable
                 columns={memberColumns}
+                clientMode
                 data={members}
                 searchKey="firstName"
                 pageNo={0}

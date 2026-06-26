@@ -11,6 +11,9 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
+import { DataTable } from "@/components/tables/data-table";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { columns } from "@/components/tables/fund-transfer/columns";
 import { listFundTransfers } from "@/lib/actions/fund-transfer-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 
@@ -23,15 +26,19 @@ export default async function FundTransfersPage({
   searchParams: Promise<{ page?: string; limit?: string }>;
 }) {
   const params = await searchParams;
-  const page = Number(params.page) || 0;
-  const size = Number(params.limit) || 20;
+  // DataTable writes a 1-based `?page` and defaults its rows-per-page control
+  // to 10 — convert to the backend's 0-based index and match the size default.
+  const pageParam = Math.max(1, Number(params.page) || 1);
+  const apiPage = pageParam - 1;
+  const size = Number(params.limit) || DEFAULT_PAGE_SIZE;
 
   const location = await getCurrentLocation();
   const response = location?.id
-    ? await listFundTransfers(location.id, page, size)
+    ? await listFundTransfers(location.id, apiPage, size)
     : null;
   const data = response?.content ?? [];
   const total = response?.totalElements ?? 0;
+  const pageCount = response?.totalPages ?? 0;
   const sumOnPage = data.reduce((s, t) => s + (t.amount ?? 0), 0);
 
   return (
@@ -76,42 +83,16 @@ export default async function FundTransfersPage({
             </KpiStrip>
             <Card>
               <CardContent className="px-2 pt-6 sm:px-6">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-gray-50/60 text-left text-xs font-semibold uppercase text-gray-400">
-                        <th className="px-4 py-3">Date</th>
-                        <th className="px-4 py-3">From</th>
-                        <th className="px-4 py-3">To</th>
-                        <th className="px-4 py-3">Description</th>
-                        <th className="px-4 py-3 text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {data.map((t) => (
-                        <tr key={t.id} className="hover:bg-gray-50/50">
-                          <td className="px-4 py-3 font-mono text-xs">
-                            {new Intl.DateTimeFormat("en", {
-                              dateStyle: "medium",
-                            }).format(new Date(t.transferDate))}
-                          </td>
-                          <td className="px-4 py-3">
-                            {t.fromAccountName ?? t.fromAccountCode ?? "—"}
-                          </td>
-                          <td className="px-4 py-3">
-                            {t.toAccountName ?? t.toAccountCode ?? "—"}
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground">
-                            {t.description ?? "—"}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono tabular-nums">
-                            {fmt(t.amount)} {t.currencyCode}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTable
+                  columns={columns}
+                  data={data}
+                  pageCount={pageCount}
+                  defaultPageSize={size}
+                  pageNo={apiPage}
+                  total={total}
+                  searchKey="transferDate"
+                  hideSearch
+                />
               </CardContent>
             </Card>
           </>

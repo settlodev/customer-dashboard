@@ -68,6 +68,7 @@ async function Page({ searchParams }: Params) {
             <CardContent className="px-2 pt-6 sm:px-6">
               <DataTable
                 columns={columns}
+                clientMode
                 data={filtered}
                 searchKey="name"
                 pageNo={0}

@@ -42,6 +42,7 @@ export default async function BomRulesPage() {
             <BomRulesKpiStrip summary={kpi} />
             <DataTable
               columns={columns}
+              clientMode
               data={rules}
               searchKey="name"
               pageNo={0}

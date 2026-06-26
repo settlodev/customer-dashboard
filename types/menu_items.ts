@@ -414,9 +414,15 @@ const getNormalMenuItems = (
         },
         {
           title: "Invoices",
-          link: "/proforma-invoice",
+          link: "/invoices",
           current: args?.isCurrentItem,
-          icon: "rotate-ccw",
+          icon: "cart",
+        },
+        {
+          title: "Proforma invoices",
+          link: "/proforma-invoices",
+          current: args?.isCurrentItem,
+          icon: "cart",
         },
         {
           title: "Creditors",

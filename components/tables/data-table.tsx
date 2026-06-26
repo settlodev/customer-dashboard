@@ -53,6 +53,7 @@ import {
 } from "../ui/dropdown-menu";
 import Loading from "@/components/ui/loading";
 import { usePaginationState } from "@/hooks/usePaginationState";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import StockExport from "../widgets/export-stock";
 import StockIntakeExport from "../widgets/export-intake";
 import { BulkArchive } from "../widgets/bulk-archive";
@@ -131,6 +132,13 @@ interface DataTableProps<TData, TValue> {
   total?: number;
   pageSizeOptions?: number[];
   pageCount?: number;
+  /**
+   * Rows-per-page to assume before the URL carries a `?limit`. Pass the same
+   * value the parent fetched with (`defaultPageSize={size}`) so the pager label
+   * can never disagree with the number of rows actually loaded. Defaults to
+   * {@link DEFAULT_PAGE_SIZE}.
+   */
+  defaultPageSize?: number;
   searchParams?: {
     [key: string]: string | string[] | undefined;
   };
@@ -192,6 +200,7 @@ export function DataTable<TData, TValue>({
   searchKey,
   pageCount,
   pageSizeOptions = [10, 20, 30, 40, 50, 100],
+  defaultPageSize = DEFAULT_PAGE_SIZE,
   filterKey,
   filterOptions,
   extraFilters,
@@ -216,9 +225,12 @@ export function DataTable<TData, TValue>({
   const pageAsNumber = Number(page);
   const fallbackPage =
     isNaN(pageAsNumber) || pageAsNumber < 1 ? 1 : pageAsNumber;
-  const per_page = searchParams?.get("limit") ?? "10";
+  const per_page = searchParams?.get("limit") ?? String(defaultPageSize);
   const perPageAsNumber = Number(per_page);
-  const fallbackPerPage = isNaN(perPageAsNumber) ? 10 : perPageAsNumber;
+  const fallbackPerPage =
+    Number.isFinite(perPageAsNumber) && perPageAsNumber > 0
+      ? perPageAsNumber
+      : defaultPageSize;
 
   // Seed sorting from `?sort=field,dir` once on mount when server-side
   // sorting is enabled, so the header arrow matches the URL on first paint.

@@ -32,6 +32,12 @@ interface CustomerProps {
   isDisabled?: boolean;
   description?: string;
   onChange: (value: string) => void;
+  /**
+   * Fires with the full customer record when the user picks one (not on
+   * mount-hydration). Lets a form prefill name/phone/email/TIN. Optional —
+   * existing callers that only need the id are unaffected.
+   */
+  onSelectCustomer?: (customer: Customer) => void;
   onBlur?: () => void;
 }
 
@@ -66,6 +72,7 @@ function CustomerSelector({
   value,
   isDisabled,
   onChange,
+  onSelectCustomer,
 }: CustomerProps) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Customer | null>(null);
@@ -143,6 +150,7 @@ function CustomerSelector({
   const handleSelect = (customer: Customer) => {
     setSelected(customer);
     onChange(customer.id);
+    onSelectCustomer?.(customer);
     setOpen(false);
     setQuery("");
     setResults([]);

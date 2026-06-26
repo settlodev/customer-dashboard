@@ -9,12 +9,11 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
+import { DataTable } from "@/components/tables/data-table";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { columns } from "@/components/tables/debtor/columns";
 import { listArBalances } from "@/lib/actions/customer-ar-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
-import {
-  AGING_BUCKET_LABELS,
-  AGING_BUCKET_TONES,
-} from "@/types/customer-ar/type";
 
 interface SearchParams {
   page?: string;
@@ -28,17 +27,21 @@ export default async function DebtorsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const page = Number(params.page) || 0;
-  const size = Number(params.limit) || 20;
+  // DataTable writes a 1-based `?page` and defaults its rows-per-page control
+  // to 10 — convert to the backend's 0-based index and match the size default.
+  const pageParam = Math.max(1, Number(params.page) || 1);
+  const apiPage = pageParam - 1;
+  const size = Number(params.limit) || DEFAULT_PAGE_SIZE;
   const minOutstanding = Number(params.minOutstanding) || 0;
 
   const location = await getCurrentLocation();
   const response = location?.id
-    ? await listArBalances(location.id, minOutstanding, page, size)
+    ? await listArBalances(location.id, minOutstanding, apiPage, size)
     : null;
 
   const data = response?.content ?? [];
   const total = response?.totalElements ?? 0;
+  const pageCount = response?.totalPages ?? 0;
 
   const totalOutstanding = data.reduce(
     (s, c) => s + (c.outstandingBalance ?? 0),
@@ -86,48 +89,16 @@ export default async function DebtorsPage({
 
             <Card>
               <CardContent className="px-2 pt-6 sm:px-6">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-gray-50/60 text-left text-xs font-semibold uppercase text-gray-400">
-                        <th className="px-4 py-3">Customer</th>
-                        <th className="px-4 py-3 text-right">Outstanding</th>
-                        <th className="px-4 py-3 text-right">Orders</th>
-                        <th className="px-4 py-3">Oldest unsettled</th>
-                        <th className="px-4 py-3">Aging</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {data.map((c) => (
-                        <tr key={c.customerId} className="hover:bg-gray-50/50">
-                          <td className="px-4 py-3 font-mono text-xs">
-                            {c.customerName ?? c.customerId.slice(0, 8) + "…"}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono tabular-nums font-medium">
-                            {fmt(c.outstandingBalance)} {c.currency}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono tabular-nums">
-                            {c.outstandingOrderCount}
-                          </td>
-                          <td className="px-4 py-3 font-mono text-xs">
-                            {c.oldestUnsettledAt
-                              ? new Intl.DateTimeFormat("en", {
-                                  dateStyle: "medium",
-                                }).format(new Date(c.oldestUnsettledAt))
-                              : "—"}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${AGING_BUCKET_TONES[c.agingBucket]}`}
-                            >
-                              {AGING_BUCKET_LABELS[c.agingBucket]}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTable
+                  columns={columns}
+                  data={data}
+                  pageCount={pageCount}
+                  defaultPageSize={size}
+                  pageNo={apiPage}
+                  total={total}
+                  searchKey="customerName"
+                  hideSearch
+                />
               </CardContent>
             </Card>
           </>

@@ -35,6 +35,7 @@ interface CustomersPageProps {
     q?: string;
     search?: string;
     page?: string;
+    limit?: string;
   }>;
 }
 
@@ -64,7 +65,11 @@ export default async function AdminCustomersPage({
   const canEdit = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
   const params = await searchParams;
   const view = params.view === "records" ? "records" : "merged";
-  const page = Math.max(0, Number.parseInt(params.page ?? "0", 10) || 0);
+  // The shared DataTable owns pagination via a 1-based `?page` + `?limit`;
+  // convert to the backend's 0-based index.
+  const pageOneIndexed = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
+  const backendPage = pageOneIndexed - 1;
+  const size = Math.max(1, Number.parseInt(params.limit ?? "20", 10) || 20);
 
   // "All customers" (merged) tab — the default global, de-duplicated list.
   let mergedPage: MergedCustomerPage | null = null;
@@ -80,15 +85,15 @@ export default async function AdminCustomersPage({
     try {
       mergedPage = await listMergedCustomers({
         search: mergedSearch,
-        page,
-        size: 20,
+        page: backendPage,
+        size,
       });
     } catch (error: any) {
       mergedError = error?.message ?? "Failed to load customers.";
     }
   } else if (q.length > 0) {
     try {
-      recordsPage = await searchCustomers({ q, page, size: 20 });
+      recordsPage = await searchCustomers({ q, page: backendPage, size });
     } catch (error: any) {
       recordsError = error?.message ?? "Failed to search customers.";
     }

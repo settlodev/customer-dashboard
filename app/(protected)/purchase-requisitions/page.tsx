@@ -80,6 +80,7 @@ export default async function Page({ searchParams }: Params) {
               pageNo={page}
               total={total}
               pageCount={pageCount}
+              defaultPageSize={pageLimit}
               disableArchive
               filterKey="status"
               filterOptions={STATUS_VALUES.map((s) => ({

@@ -106,6 +106,7 @@ export default async function Page({ searchParams }: Params) {
             pageNo={page}
             total={total}
             pageCount={pageCount}
+            defaultPageSize={pageLimit}
             disableArchive
             rowClickBasePath="/stock-usages"
             filterKey="category"

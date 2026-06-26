@@ -37,7 +37,7 @@ const BILLING_ROLES: InternalRole[] = ["SYSTEM_ADMIN", "SUPPORT_AGENT"];
 
 interface BusinessBillingPageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; limit?: string }>;
 }
 
 export default async function AdminBusinessBillingPage({
@@ -67,8 +67,12 @@ export default async function AdminBusinessBillingPage({
   }
 
   const { id } = await params;
-  const { page: pageParam } = await searchParams;
-  const page = Math.max(0, Number.parseInt(pageParam ?? "0", 10) || 0);
+  const { page: pageParam, limit: limitParam } = await searchParams;
+  // The shared DataTable owns pagination via a 1-based `?page` + `?limit`;
+  // convert to the backend's 0-based index.
+  const pageOneIndexed = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
+  const backendPage = pageOneIndexed - 1;
+  const size = Math.max(1, Number.parseInt(limitParam ?? "20", 10) || 20);
 
   // Load the business first so the header carries context. A missing
   // business 404s — there's no reason to render the billing view
@@ -99,7 +103,7 @@ export default async function AdminBusinessBillingPage({
   // surface in the corresponding panel.
   const results = await Promise.allSettled([
     getBusinessSubscription(id),
-    listBusinessInvoices(id, page, 20),
+    listBusinessInvoices(id, backendPage, size),
     listBusinessActiveDiscounts(id),
     listAvailableDiscounts(),
   ]);

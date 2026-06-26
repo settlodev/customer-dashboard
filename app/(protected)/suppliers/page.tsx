@@ -79,6 +79,7 @@ export default async function SuppliersPage({ searchParams }: Props) {
                 columns={columns}
                 data={data}
                 pageCount={pageCount}
+                defaultPageSize={pageLimit}
                 pageNo={page}
                 searchKey="name"
                 total={total}

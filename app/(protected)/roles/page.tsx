@@ -47,6 +47,7 @@ export default async function Page() {
             <CardContent className="px-2 sm:px-6 pt-6">
               <DataTable
                 columns={columns}
+                clientMode
                 data={roles}
                 pageCount={1}
                 pageNo={0}
