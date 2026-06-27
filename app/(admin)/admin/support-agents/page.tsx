@@ -13,7 +13,7 @@ import type { SupportAgentPage } from "@/types/admin/support-agent";
 import type { InternalRole } from "@/types/types";
 
 export const metadata = {
-  title: "Support agents",
+  title: "External agents",
 };
 
 const MANAGE_ROLES: InternalRole[] = ["SYSTEM_ADMIN", "SUPER_ADMIN"];
@@ -38,7 +38,7 @@ export default async function AdminSupportAgentsPage({
       <AdminShell token={token}>
         <PageShell>
           <PageHeader
-            title="Support agents"
+            title="External agents"
             subtitle="Restricted to System Admins and Super Admins."
           />
         </PageShell>
@@ -65,8 +65,8 @@ export default async function AdminSupportAgentsPage({
     <AdminShell token={token}>
       <PageShell>
         <PageHeader
-          title="Support agents"
-          subtitle="External agents with referral codes for customer onboarding."
+          title="External / referral agents"
+          subtitle="External agents (e.g. influencers/affiliates) with referral codes — assignable as an account's sales person. Support staff is internal."
         />
         <PageBody>
           {loadError ? (

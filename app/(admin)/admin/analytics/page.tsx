@@ -27,11 +27,12 @@ export const metadata = {
   title: "Analytics",
 };
 
+// SaaS analytics is platform-wide (no per-account dimension), so it's not shown
+// to sales reps, whose admin views are scoped to their assigned accounts.
 const STATS_ROLES: InternalRole[] = [
   "SYSTEM_ADMIN",
   "SUPER_ADMIN",
   "BOARD_MEMBER",
-  "SALES_TEAM",
 ];
 
 interface AnalyticsPageProps {

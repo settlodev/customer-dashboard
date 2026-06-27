@@ -20,6 +20,7 @@ import {
   Package,
   PackagePlus,
   RotateCcw,
+  ShieldCheck,
   Sparkles,
   Ticket,
   UserCog,
@@ -51,13 +52,13 @@ const NAV_ITEMS: NavItem[] = [
     title: "Accounts",
     href: "/accounts",
     icon: Building2,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN", "SUPPORT_AGENT"],
+    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN", "SUPPORT_AGENT", "SALES_TEAM"],
   },
   {
     title: "Businesses",
     href: "/businesses",
     icon: Briefcase,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN", "SUPPORT_AGENT"],
+    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN", "SUPPORT_AGENT", "SALES_TEAM"],
   },
   {
     title: "Locations",
@@ -129,7 +130,9 @@ const NAV_ITEMS: NavItem[] = [
     title: "Analytics",
     href: "/analytics",
     icon: BarChart3,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN", "BOARD_MEMBER", "SALES_TEAM"],
+    // SaaS analytics (MRR/churn/cohorts) is platform-wide with no per-account
+    // dimension, so it isn't shown to sales reps (whose views are account-scoped).
+    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN", "BOARD_MEMBER"],
   },
   {
     title: "Internal Users",
@@ -138,7 +141,13 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["SYSTEM_ADMIN", "SUPER_ADMIN"],
   },
   {
-    title: "Support Agents",
+    title: "Roles",
+    href: "/roles",
+    icon: ShieldCheck,
+    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN"],
+  },
+  {
+    title: "External Agents",
     href: "/support-agents",
     icon: Headset,
     roles: ["SYSTEM_ADMIN", "SUPER_ADMIN"],

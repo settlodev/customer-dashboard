@@ -6,27 +6,22 @@ import {
   PageHeader,
   PageShell,
 } from "@/components/layouts/page-shell";
-import { InternalUsersView } from "@/components/admin/internal-users-view";
+import { RolesView } from "@/components/admin/roles-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import {
-  listInternalRoles,
-  listInternalStaffProfiles,
-  listInternalUsers,
-} from "@/lib/actions/admin/internal-users";
-import {
-  InternalUserResponse,
-  RolePermissionsResponse,
-} from "@/types/admin/internal-user";
-import { InternalStaffSummary } from "@/types/admin/internal-staff";
+  listInternalRoleDefinitions,
+  listPermissionCatalog,
+} from "@/lib/actions/admin/internal-roles";
+import { InternalRoleResponse } from "@/types/admin/internal-role";
 import { InternalRole } from "@/types/types";
 
 export const metadata = {
-  title: "Internal Users",
+  title: "Roles",
 };
 
 const ALLOWED_ROLES: InternalRole[] = ["SYSTEM_ADMIN", "SUPER_ADMIN"];
 
-export default async function AdminInternalUsersPage() {
+export default async function AdminRolesPage() {
   const token = await getStaffAuthToken();
   if (!token?.accessToken) {
     redirect("/login");
@@ -34,20 +29,18 @@ export default async function AdminInternalUsersPage() {
 
   const role = token.internalRole;
   const isAuthorized = role ? ALLOWED_ROLES.includes(role) : false;
-  const canMutate = role === "SYSTEM_ADMIN";
 
   if (!isAuthorized) {
     return (
       <AdminShell token={token}>
         <PageShell>
           <PageHeader
-            title="Internal Users"
+            title="Roles"
             subtitle="You don't have permission to view this page."
           />
           <PageBody>
             <p className="font-mono text-[13px] text-muted-foreground">
-              Internal user management is restricted to System Admins and Super
-              Admins.
+              Role management is restricted to System Admins and Super Admins.
             </p>
           </PageBody>
         </PageShell>
@@ -55,35 +48,25 @@ export default async function AdminInternalUsersPage() {
     );
   }
 
-  let users: InternalUserResponse[] = [];
-  let roles: RolePermissionsResponse[] = [];
-  let profiles: InternalStaffSummary[] = [];
+  let roles: InternalRoleResponse[] = [];
+  let permissionCatalog: string[] = [];
   let loadError: string | null = null;
 
   try {
-    [users, roles] = await Promise.all([
-      listInternalUsers(),
-      listInternalRoles(),
+    [roles, permissionCatalog] = await Promise.all([
+      listInternalRoleDefinitions(),
+      listPermissionCatalog(),
     ]);
   } catch (error: any) {
-    loadError =
-      error?.message ?? "Failed to load internal users. Please try again.";
-  }
-
-  // Non-fatal: the rich profiles (names + HRM details) overlay the Auth list.
-  // If the Accounts call fails, the page still renders with names as "—".
-  try {
-    profiles = await listInternalStaffProfiles();
-  } catch {
-    profiles = [];
+    loadError = error?.message ?? "Failed to load roles. Please try again.";
   }
 
   return (
     <AdminShell token={token}>
       <PageShell>
         <PageHeader
-          title="Internal Users"
-          subtitle="Manage Settlo staff with access to this portal."
+          title="Roles"
+          subtitle="Define internal staff roles, their permissions, and account-assignment capability."
         />
         <PageBody>
           {loadError ? (
@@ -91,12 +74,10 @@ export default async function AdminInternalUsersPage() {
               {loadError}
             </p>
           ) : (
-            <InternalUsersView
-              users={users}
+            <RolesView
               roles={roles}
-              profiles={profiles}
-              canMutate={canMutate}
-              currentUserId={token.userId}
+              permissionCatalog={permissionCatalog}
+              canManage={isAuthorized}
             />
           )}
         </PageBody>

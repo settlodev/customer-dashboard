@@ -35,6 +35,7 @@ const READ_ROLES: InternalRole[] = [
   "SYSTEM_ADMIN",
   "SUPER_ADMIN",
   "SUPPORT_AGENT",
+  "SALES_TEAM",
 ];
 
 const ONBOARDING_STATES: OnboardingState[] = [

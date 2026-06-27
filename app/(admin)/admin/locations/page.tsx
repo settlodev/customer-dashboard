@@ -8,7 +8,11 @@ import {
 } from "@/components/layouts/page-shell";
 import { LocationsSubscriptionsView } from "@/components/admin/locations/locations-subscriptions-view";
 import { SyncAllCatalogsButton } from "@/components/admin/locations/sync-all-catalogs-button";
-import { getPlatformLocations } from "@/lib/actions/admin/platform-metrics";
+import {
+  getPlatformLocations,
+  type StaffScope,
+} from "@/lib/actions/admin/platform-metrics";
+import { getMyInternalStaffProfile } from "@/lib/actions/admin/accounts";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import type { PlatformLocationsPage } from "@/types/admin/platform-metrics";
 import type { InternalRole } from "@/types/types";
@@ -69,15 +73,27 @@ export default async function AdminLocationsPage({
   const search = params.search?.trim() || undefined;
   const status = params.status?.trim() || undefined;
 
+  // Sales/support staff see only locations under accounts assigned to them.
+  const me = await getMyInternalStaffProfile();
+  const scope: StaffScope | undefined =
+    me?.assignableAs === "SALES"
+      ? { assignedSalesStaffId: me.id }
+      : me?.assignableAs === "SUPPORT"
+        ? { assignedSupportStaffId: me.id }
+        : undefined;
+
   let pageData: PlatformLocationsPage | null = null;
   let loadError: string | null = null;
   try {
-    pageData = await getPlatformLocations({
-      page: backendPage,
-      size,
-      search,
-      status,
-    });
+    pageData = await getPlatformLocations(
+      {
+        page: backendPage,
+        size,
+        search,
+        status,
+      },
+      scope,
+    );
   } catch (error: any) {
     loadError = error?.message ?? "Failed to load locations.";
   }

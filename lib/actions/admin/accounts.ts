@@ -292,9 +292,36 @@ export async function getPlatformStats(): Promise<PlatformStatsResponse> {
 
 // ── Staff assignment ────────────────────────────────────────────────
 
-export async function listActiveInternalStaff(): Promise<InternalStaffSummary[]> {
+/**
+ * List active internal staff for the assignment pickers. Pass a capability
+ * (SALES for the sales-person picker, SUPPORT for support staff) so the two
+ * can't be cross-assigned; omit it to list all active staff. Capability-based
+ * so dynamic/custom roles work, not just SALES_TEAM/SUPPORT_AGENT.
+ */
+/**
+ * The calling internal user's own staff profile (id + assignment capability),
+ * used to scope admin reports/dashboards to their accounts. Returns null when
+ * the caller has no profile (treated as unrestricted by callers).
+ */
+export async function getMyInternalStaffProfile(): Promise<InternalStaffSummary | null> {
+  try {
+    const data = await staffClient().get<InternalStaffSummary>(
+      "/api/v1/admin/internal-staff/me",
+    );
+    return parseStringify(data);
+  } catch {
+    return null;
+  }
+}
+
+export async function listActiveInternalStaff(
+  assignableAs?: string,
+): Promise<InternalStaffSummary[]> {
+  const qs = assignableAs
+    ? `?assignableAs=${encodeURIComponent(assignableAs)}`
+    : "";
   const data = await staffClient().get<InternalStaffSummary[]>(
-    "/api/v1/admin/internal-staff",
+    `/api/v1/admin/internal-staff${qs}`,
   );
   return parseStringify(data);
 }
@@ -303,9 +330,13 @@ async function patchStaffAssignment(
   accountId: string,
   segment: "sales-person" | "support-staff",
   staffId: string,
+  assigneeType?: "INTERNAL_STAFF" | "EXTERNAL_AGENT",
 ): Promise<FormResponse<AssignedStaffInfo>> {
   try {
-    const body: AssignStaffRequest = { staffId };
+    const body: AssignStaffRequest = {
+      staffId,
+      ...(assigneeType ? { assigneeType } : {}),
+    };
     const result = await staffClient().patch<
       AssignedStaffInfo,
       AssignStaffRequest
@@ -356,8 +387,22 @@ async function deleteStaffAssignment(
 export async function assignSalesPerson(
   accountId: string,
   staffId: string,
+  assigneeType?: "INTERNAL_STAFF" | "EXTERNAL_AGENT",
 ): Promise<FormResponse<AssignedStaffInfo>> {
-  return patchStaffAssignment(accountId, "sales-person", staffId);
+  return patchStaffAssignment(accountId, "sales-person", staffId, assigneeType);
+}
+
+/**
+ * Active external agents (influencers/affiliates) assignable as an account's
+ * sales person. Returned as AssignedStaffInfo (type EXTERNAL_AGENT).
+ */
+export async function listAssignableExternalAgents(): Promise<
+  AssignedStaffInfo[]
+> {
+  const data = await staffClient().get<AssignedStaffInfo[]>(
+    "/api/v1/admin/accounts/assignable-external-agents",
+  );
+  return parseStringify(data);
 }
 
 export async function assignSupportStaff(

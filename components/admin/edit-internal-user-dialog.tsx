@@ -39,7 +39,6 @@ import {
   InternalUserResponse,
   RolePermissionsResponse,
 } from "@/types/admin/internal-user";
-import { InternalRole } from "@/types/types";
 
 interface EditInternalUserDialogProps {
   user: InternalUserResponse;
@@ -49,7 +48,7 @@ interface EditInternalUserDialogProps {
   onUpdated: () => void;
 }
 
-function roleLabel(role: InternalRole): string {
+function roleLabel(role: string): string {
   return role.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) =>
     c.toUpperCase(),
   );
@@ -68,19 +67,19 @@ export function EditInternalUserDialog({
 
   const form = useForm<z.infer<typeof UpdateInternalRoleSchema>>({
     resolver: zodResolver(UpdateInternalRoleSchema),
-    defaultValues: { role: user.internalRole },
+    defaultValues: { role: user.roleCode ?? "" },
   });
 
   useEffect(() => {
     if (open) {
-      form.reset({ role: user.internalRole });
+      form.reset({ role: user.roleCode ?? "" });
       setError("");
     }
-  }, [open, user.internalRole, form]);
+  }, [open, user.roleCode, form]);
 
   const onSubmit = useCallback(
     (values: z.infer<typeof UpdateInternalRoleSchema>) => {
-      if (values.role === user.internalRole) {
+      if (values.role === user.roleCode) {
         onOpenChange(false);
         return;
       }
@@ -91,15 +90,18 @@ export function EditInternalUserDialog({
           setError(result.message);
           return;
         }
+        const newRoleName =
+          roles.find((r) => r.role === values.role)?.name ??
+          roleLabel(values.role);
         toast({
           title: "Role updated",
-          description: `${user.email} is now a ${roleLabel(values.role)}.`,
+          description: `${user.email} is now a ${newRoleName}.`,
         });
         onUpdated();
         onOpenChange(false);
       });
     },
-    [onOpenChange, onUpdated, toast, user.email, user.id, user.internalRole],
+    [onOpenChange, onUpdated, toast, user.email, user.id, user.roleCode, roles],
   );
 
   return (
@@ -143,9 +145,7 @@ export function EditInternalUserDialog({
                       {roles.map((r) => (
                         <SelectItem key={r.role} value={r.role}>
                           <div className="flex flex-col">
-                            <span className="font-medium">
-                              {roleLabel(r.role)}
-                            </span>
+                            <span className="font-medium">{r.name}</span>
                             {r.description && (
                               <span className="text-xs text-muted-foreground">
                                 {r.description}
