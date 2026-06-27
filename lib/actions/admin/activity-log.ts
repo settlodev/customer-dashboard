@@ -18,7 +18,7 @@ export async function listClientActivity(
 ): Promise<ClientActivityPage> {
   const query: Record<string, string | number | undefined> = {
     page: Math.max(0, params.page ?? 0),
-    size: params.size ?? 50,
+    size: params.size ?? 20,
     // Free-text search maps to the OMS `order` param (UUID → exact target_id,
     // otherwise a case-insensitive order_number substring trace).
     order: params.search?.trim() || undefined,

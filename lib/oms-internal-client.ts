@@ -1,5 +1,4 @@
-"use server";
-
+// Server-only: imported only by server actions/components; never a client component.
 import { SettloApiError } from "@/lib/settlo-api-error-handler";
 import { ErrorResponseType } from "@/types/types";
 
