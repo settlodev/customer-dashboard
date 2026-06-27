@@ -8,6 +8,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { AccountsListView } from "@/components/admin/accounts-list-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import {
   getAccountOnboardingCounts,
   listAccounts,
@@ -17,7 +18,6 @@ import {
   AdminAccountListPage,
   OnboardingState,
 } from "@/types/admin/account";
-import { InternalRole } from "@/types/types";
 
 // This page is driven entirely by URL search params — page/limit, sort, search,
 // and the onboarding/status/date filters. Force dynamic rendering so every param
@@ -30,13 +30,6 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Accounts",
 };
-
-const READ_ROLES: InternalRole[] = [
-  "SYSTEM_ADMIN",
-  "SUPER_ADMIN",
-  "SUPPORT_AGENT",
-  "SALES_TEAM",
-];
 
 const ONBOARDING_STATES: OnboardingState[] = [
   "EMAIL_UNVERIFIED",
@@ -111,10 +104,9 @@ export default async function AdminAccountsPage({
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const canRead = role ? READ_ROLES.includes(role) : false;
-  const canSuspend = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
-  const canDelete = role === "SYSTEM_ADMIN";
+  const canRead = hasInternalPermission(token, PERM.ACCOUNTS_READ);
+  const canSuspend = hasInternalPermission(token, PERM.ACCOUNTS_SUSPEND);
+  const canDelete = hasInternalPermission(token, PERM.ACCOUNTS_DELETE);
 
   if (!canRead) {
     return (

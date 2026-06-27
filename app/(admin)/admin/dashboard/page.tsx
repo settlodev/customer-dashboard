@@ -28,19 +28,12 @@ import {
   resolveComparisonRange,
 } from "@/lib/admin/period-range";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import type { PackageDateRange } from "@/types/admin/billing";
-import type { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Admin Dashboard",
 };
-
-const STATS_ROLES: InternalRole[] = [
-  "SYSTEM_ADMIN",
-  "SUPER_ADMIN",
-  "BOARD_MEMBER",
-  "SALES_TEAM",
-];
 
 interface AdminDashboardPageProps {
   searchParams: Promise<{ from?: string; to?: string; compare?: string }>;
@@ -114,7 +107,7 @@ export default async function AdminDashboardPage({
   }
 
   const role = token.internalRole;
-  const canViewStats = role ? STATS_ROLES.includes(role) : false;
+  const canViewStats = hasInternalPermission(token, PERM.SAAS_METRICS_READ);
 
   const subtitle = token?.email
     ? `Signed in as ${token.email}${role ? ` · ${role.replace(/_/g, " ")}` : ""}`

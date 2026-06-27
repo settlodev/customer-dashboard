@@ -8,15 +8,13 @@ import {
 } from "@/components/layouts/page-shell";
 import { RefundsQueueView } from "@/components/admin/billing/refunds-queue-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { listRefunds } from "@/lib/actions/admin/billing";
 import type { RefundPage, RefundStatus } from "@/types/admin/billing";
-import type { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Refunds",
 };
-
-const REFUND_ROLES: InternalRole[] = ["SYSTEM_ADMIN", "SUPPORT_AGENT"];
 
 interface RefundsPageProps {
   searchParams: Promise<{
@@ -41,8 +39,7 @@ export default async function AdminRefundsPage({
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const canRead = role ? REFUND_ROLES.includes(role) : false;
+  const canRead = hasInternalPermission(token, PERM.SUPPORT_TICKETS_MANAGE);
   if (!canRead) {
     return (
       <AdminShell token={token}>

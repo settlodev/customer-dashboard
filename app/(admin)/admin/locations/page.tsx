@@ -14,20 +14,12 @@ import {
 } from "@/lib/actions/admin/platform-metrics";
 import { getMyInternalStaffProfile } from "@/lib/actions/admin/accounts";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import type { PlatformLocationsPage } from "@/types/admin/platform-metrics";
-import type { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Locations & subscriptions",
 };
-
-const READ_ROLES: InternalRole[] = [
-  "SYSTEM_ADMIN",
-  "SUPER_ADMIN",
-  "SUPPORT_AGENT",
-  "BOARD_MEMBER",
-  "SALES_TEAM",
-];
 
 interface LocationsPageProps {
   searchParams: Promise<{
@@ -46,9 +38,8 @@ export default async function AdminLocationsPage({
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const isSuperAdmin = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
-  const canRead = role ? READ_ROLES.includes(role) : false;
+  const isSuperAdmin = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
+  const canRead = hasInternalPermission(token, PERM.BUSINESS_ANALYTICS_READ);
   if (!canRead) {
     return (
       <AdminShell token={token}>

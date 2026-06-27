@@ -8,6 +8,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { BusinessesListView } from "@/components/admin/businesses-list-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import {
   getBusinessStatusCounts,
   listAdminBusinesses,
@@ -18,18 +19,10 @@ import type {
   BusinessStatusCounts,
 } from "@/types/admin/business";
 import type { BusinessLifecycleSnapshot } from "@/types/admin/business-intel";
-import type { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Businesses",
 };
-
-const READ_ROLES: InternalRole[] = [
-  "SYSTEM_ADMIN",
-  "SUPER_ADMIN",
-  "SUPPORT_AGENT",
-  "SALES_TEAM",
-];
 
 interface BusinessesPageProps {
   searchParams: Promise<{
@@ -49,8 +42,7 @@ export default async function AdminBusinessesPage({
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const canRead = role ? READ_ROLES.includes(role) : false;
+  const canRead = hasInternalPermission(token, PERM.ACCOUNTS_READ);
   if (!canRead) {
     return (
       <AdminShell token={token}>

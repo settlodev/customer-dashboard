@@ -9,21 +9,15 @@ import {
 } from "@/components/layouts/page-shell";
 import { AccountDetailView } from "@/components/admin/account-detail/account-detail-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { getAccountDetail } from "@/lib/actions/admin/accounts";
 import { getAccountInsights } from "@/lib/actions/admin/account-insights";
 import { getAccountStructure } from "@/lib/actions/admin/account-structure";
 import { AdminAccountDetail } from "@/types/admin/account";
-import { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Account detail",
 };
-
-const READ_ROLES: InternalRole[] = [
-  "SYSTEM_ADMIN",
-  "SUPER_ADMIN",
-  "SUPPORT_AGENT",
-];
 
 interface DetailPageProps {
   params: Promise<{ id: string }>;
@@ -37,14 +31,13 @@ export default async function AdminAccountDetailPage({
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const canRead = role ? READ_ROLES.includes(role) : false;
-  const canSuspend = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
-  const canDelete = role === "SYSTEM_ADMIN";
-  const canAssignStaff = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
+  const canRead = hasInternalPermission(token, PERM.ACCOUNTS_READ);
+  const canSuspend = hasInternalPermission(token, PERM.ACCOUNTS_SUSPEND);
+  const canDelete = hasInternalPermission(token, PERM.ACCOUNTS_DELETE);
+  const canAssignStaff = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
   // Marking an account internal hides it from platform metrics — same gate as
   // suspend/manage (backend: INTERNAL_internal:accounts:manage).
-  const canManage = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
+  const canManage = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
   // Resend verification mirrors the backend's :read authority — every internal
   // role that can open this page (incl. SUPPORT_AGENT) may resend.
   const canResend = canRead;

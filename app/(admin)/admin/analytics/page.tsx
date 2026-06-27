@@ -21,19 +21,11 @@ import {
   getRetentionCohorts,
   getTrialConversion,
 } from "@/lib/actions/admin/analytics";
-import type { InternalRole } from "@/types/types";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 
 export const metadata = {
   title: "Analytics",
 };
-
-// SaaS analytics is platform-wide (no per-account dimension), so it's not shown
-// to sales reps, whose admin views are scoped to their assigned accounts.
-const STATS_ROLES: InternalRole[] = [
-  "SYSTEM_ADMIN",
-  "SUPER_ADMIN",
-  "BOARD_MEMBER",
-];
 
 interface AnalyticsPageProps {
   searchParams: Promise<{ tab?: string }>;
@@ -47,9 +39,10 @@ export default async function AdminAnalyticsPage({
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const canRead = role ? STATS_ROLES.includes(role) : false;
-  const canRecompute = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
+  // SaaS analytics is platform-wide (no per-account dimension); saas:revenue:read
+  // is held by admins + board, not sales (whose views are account-scoped).
+  const canRead = hasInternalPermission(token, PERM.SAAS_REVENUE_READ);
+  const canRecompute = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
 
   if (!canRead) {
     return (

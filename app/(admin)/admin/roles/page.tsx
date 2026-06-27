@@ -8,18 +8,16 @@ import {
 } from "@/components/layouts/page-shell";
 import { RolesView } from "@/components/admin/roles-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import {
   listInternalRoleDefinitions,
   listPermissionCatalog,
 } from "@/lib/actions/admin/internal-roles";
 import { InternalRoleResponse } from "@/types/admin/internal-role";
-import { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Roles",
 };
-
-const ALLOWED_ROLES: InternalRole[] = ["SYSTEM_ADMIN", "SUPER_ADMIN"];
 
 export default async function AdminRolesPage() {
   const token = await getStaffAuthToken();
@@ -27,8 +25,7 @@ export default async function AdminRolesPage() {
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const isAuthorized = role ? ALLOWED_ROLES.includes(role) : false;
+  const isAuthorized = hasInternalPermission(token, PERM.ROLES_MANAGE);
 
   if (!isAuthorized) {
     return (

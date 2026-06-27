@@ -8,6 +8,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { InternalUsersView } from "@/components/admin/internal-users-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import {
   listInternalRoles,
   listInternalStaffProfiles,
@@ -18,13 +19,10 @@ import {
   RolePermissionsResponse,
 } from "@/types/admin/internal-user";
 import { InternalStaffSummary } from "@/types/admin/internal-staff";
-import { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Internal Users",
 };
-
-const ALLOWED_ROLES: InternalRole[] = ["SYSTEM_ADMIN", "SUPER_ADMIN"];
 
 export default async function AdminInternalUsersPage() {
   const token = await getStaffAuthToken();
@@ -32,9 +30,8 @@ export default async function AdminInternalUsersPage() {
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const isAuthorized = role ? ALLOWED_ROLES.includes(role) : false;
-  const canMutate = role === "SYSTEM_ADMIN";
+  const isAuthorized = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
+  const canMutate = hasInternalPermission(token, PERM.USERS_MANAGE_INTERNAL);
 
   if (!isAuthorized) {
     return (
