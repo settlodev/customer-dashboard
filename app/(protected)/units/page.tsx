@@ -132,6 +132,7 @@ export default async function UnitsPage({ searchParams }: Props) {
         {data.length > 0 ? (
           <DataTable
             columns={columns}
+            clientMode
             data={data}
             searchKey="name"
             pageNo={0}

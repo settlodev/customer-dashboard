@@ -4,6 +4,7 @@ import { CalendarCheck, CircleDollarSign, Hourglass, Plus, ShieldCheck } from "l
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/tables/data-table";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import {
   PageBody,
   PageBreadcrumbs,
@@ -37,11 +38,15 @@ export default async function ExpensesPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const page = Number(params.page) || 0;
-  const size = Number(params.limit) || 20;
+  // DataTable writes a 1-based `?page` and defaults its rows-per-page control
+  // to 10 — convert to the backend's 0-based index and match the size default,
+  // otherwise the pager skips a page and the "10" label undercounts the rows.
+  const pageParam = Math.max(1, Number(params.page) || 1);
+  const apiPage = pageParam - 1;
+  const size = Number(params.limit) || DEFAULT_PAGE_SIZE;
 
   const response = await listExpenses({
-    page,
+    page: apiPage,
     size,
     status: params.status,
     paymentStatus: params.paymentStatus,
@@ -118,7 +123,8 @@ export default async function ExpensesPage({
                   columns={columns}
                   data={data}
                   pageCount={pageCount}
-                  pageNo={page}
+                  defaultPageSize={size}
+                  pageNo={apiPage}
                   total={total}
                   searchKey="description"
                   filterKey="status"

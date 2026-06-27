@@ -1,27 +1,14 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
-import Link from "next/link";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeftIcon, ArrowRightIcon, Pencil, Search } from "lucide-react";
+import { Search } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-
-import {
-  AdminCustomerSearchItem,
-  AdminCustomerSearchPage,
-} from "@/types/admin/account";
-import { EditCustomerDialog } from "@/components/admin/edit-customer-dialog";
+import { DataTable } from "@/components/tables/data-table";
+import { buildCustomerSearchColumns } from "@/components/tables/admin-customer-search/column";
+import { AdminCustomerSearchPage } from "@/types/admin/account";
 
 interface CustomerSearchViewProps {
   initialQuery: string;
@@ -29,19 +16,6 @@ interface CustomerSearchViewProps {
   error: string | null;
   /** When true, each row gets an Edit action (gated to write roles). */
   canEdit?: boolean;
-}
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
-  try {
-    return new Date(value).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return value;
-  }
 }
 
 export function CustomerSearchView({
@@ -54,26 +28,25 @@ export function CustomerSearchView({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
-
   const [input, setInput] = useState(initialQuery);
-  const [editing, setEditing] = useState<AdminCustomerSearchItem | null>(null);
+
+  const columns = useMemo(
+    () => buildCustomerSearchColumns({ canEdit }),
+    [canEdit],
+  );
 
   const updateParams = useCallback(
     (changes: Record<string, string | null>) => {
       const next = new URLSearchParams(searchParams.toString());
       for (const [key, value] of Object.entries(changes)) {
-        if (value === null || value === "") {
-          next.delete(key);
-        } else {
-          next.set(key, value);
-        }
+        if (value === null || value === "") next.delete(key);
+        else next.set(key, value);
       }
       const queryString = next.toString();
       startTransition(() => {
-        router.push(
-          queryString ? `${pathname}?${queryString}` : pathname,
-          { scroll: false },
-        );
+        router.push(queryString ? `${pathname}?${queryString}` : pathname, {
+          scroll: false,
+        });
       });
     },
     [pathname, router, searchParams],
@@ -81,12 +54,7 @@ export function CustomerSearchView({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = input.trim();
-    updateParams({ q: trimmed || null, page: null });
-  };
-
-  const goToPage = (page: number) => {
-    updateParams({ page: page > 0 ? String(page) : null });
+    updateParams({ q: input.trim() || null, page: null });
   };
 
   return (
@@ -132,122 +100,20 @@ export function CustomerSearchView({
           </p>
 
           {initialPage.totalElements > 0 && (
-            <div className="overflow-hidden rounded-lg border border-line">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Account</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
-                    {canEdit && <TableHead className="w-[1%]" />}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {initialPage.content.map((customer) => (
-                    <TableRow key={customer.id}>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium text-ink">
-                            {customer.fullName ||
-                              `${customer.firstName} ${customer.lastName}`.trim() ||
-                              "—"}
-                          </span>
-                          <span className="font-mono text-[11px] text-muted-foreground">
-                            {customer.customerAccountNumber || customer.id}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono text-[12px]">
-                        {customer.phoneNumber || "—"}
-                      </TableCell>
-                      <TableCell className="font-mono text-[12px]">
-                        {customer.email || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Link
-                          href={`/accounts/${customer.accountId}`}
-                          className="font-mono text-[12px] text-primary hover:underline"
-                        >
-                          View account
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            customer.active
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20"
-                              : "border-muted bg-muted text-muted-foreground"
-                          }
-                        >
-                          {customer.active ? "Active" : "Archived"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-[12px] text-muted-foreground">
-                        {formatDate(customer.createdAt)}
-                      </TableCell>
-                      {canEdit && (
-                        <TableCell className="text-right">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setEditing(customer)}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                            Edit
-                          </Button>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-
-          {initialPage.totalPages > 1 && (
-            <div className="flex items-center justify-between gap-2">
-              <p className="font-mono text-[12px] text-muted-foreground">
-                Page {initialPage.number + 1} of {initialPage.totalPages}
-              </p>
-              <div className="flex items-center gap-1.5">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => goToPage(initialPage.number - 1)}
-                  disabled={initialPage.first || isPending}
-                >
-                  <ArrowLeftIcon className="mr-1 h-3.5 w-3.5" />
-                  Previous
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => goToPage(initialPage.number + 1)}
-                  disabled={initialPage.last || isPending}
-                >
-                  Next
-                  <ArrowRightIcon className="ml-1 h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
+            <DataTable
+              columns={columns}
+              data={initialPage.content}
+              searchKey="fullName"
+              hideSearch
+              pageNo={initialPage.number}
+              total={initialPage.totalElements}
+              pageCount={Math.max(1, initialPage.totalPages)}
+              defaultPageSize={initialPage.size ?? 20}
+              disableArchive
+            />
           )}
         </>
       ) : null}
-
-      <EditCustomerDialog
-        customer={editing}
-        open={!!editing}
-        onOpenChange={(o) => {
-          if (!o) setEditing(null);
-        }}
-      />
     </div>
   );
 }

@@ -1,131 +1,80 @@
-import { format, subDays } from "date-fns";
-import { CircleDollarSign, Receipt, TrendingDown, Wallet } from "lucide-react";
-import { requireReportsReadAll } from "@/lib/auth-utils";
+import { endOfMonth, format, startOfMonth } from "date-fns";
 
-import { Card, CardContent } from "@/components/ui/card";
 import {
   PageBody,
   PageBreadcrumbs,
   PageHeader,
   PageShell,
 } from "@/components/layouts/page-shell";
-import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
-import NoItems from "@/components/layouts/no-items";
-import { fetchExpenseSummary } from "@/lib/actions/accounting-reports-actions";
+import { requireReportsReadAll } from "@/lib/auth-utils";
+import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
+import { ExpenseReportExportButton } from "@/components/reports/expenses/expense-report-export-button";
+import {
+  ExpenseTabNav,
+  type ExpenseTab,
+} from "@/components/reports/expenses/expense-tab-nav";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
-import type { ExpenseSummaryReport } from "@/types/reports/type";
+import { ByCategoryTab } from "./_tabs/by-category-tab";
+import { ByStatusTab } from "./_tabs/by-status-tab";
 
-interface SearchParams {
-  startDate?: string;
-  endDate?: string;
-}
+const TABS: ExpenseTab[] = ["category", "status"];
 
-export default async function ExpenseReportPage({
-  searchParams,
-}: {
-  searchParams: Promise<SearchParams>;
-}) {
-  const params = await searchParams;
+type Params = {
+  searchParams: Promise<{
+    tab?: string;
+    from?: string;
+    to?: string;
+  }>;
+};
+
+export default async function ExpenseReportPage({ searchParams }: Params) {
+  const resolved = await searchParams;
   await requireReportsReadAll();
-  const today = format(new Date(), "yyyy-MM-dd");
-  const thirtyDaysAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
-  const startDate = params.startDate ?? thirtyDaysAgo;
-  const endDate = params.endDate ?? today;
 
-  const location = await getCurrentLocation();
-  const report: ExpenseSummaryReport | null = location?.id
-    ? await fetchExpenseSummary(location.id, startDate, endDate)
-    : null;
+  const tab: ExpenseTab = TABS.includes(resolved.tab as ExpenseTab)
+    ? (resolved.tab as ExpenseTab)
+    : "category";
 
-  const fmt = (n: number) =>
-    n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  // Default to the current month — matches the Sales report's default window.
+  const now = new Date();
+  const from = resolved.from ?? format(startOfMonth(now), "yyyy-MM-dd");
+  const to = resolved.to ?? format(endOfMonth(now), "yyyy-MM-dd");
+
+  const location = await getCurrentLocation().catch(() => null);
+
+  const subtitle =
+    from === to
+      ? `Expenses on ${format(new Date(from), "MMM d, yyyy")}`
+      : `Expenses ${format(new Date(from), "MMM d")} – ${format(new Date(to), "MMM d, yyyy")}`;
 
   return (
     <PageShell>
       <PageBreadcrumbs
         items={[
           { title: "Reports", href: "/dashboard" },
-          { title: "Expense summary" },
+          { title: "Expense report" },
         ]}
       />
-      <PageHeader
-        title="Expense summary"
-        subtitle={`From ${startDate} to ${endDate}. Aggregates approved expenses by category.`}
-      />
-      <PageBody>
-        {!report || report.totalExpenseCount === 0 ? (
-          <NoItems itemName="expenses in this window" />
-        ) : (
-          <>
-            <KpiStrip cols={4}>
-              <KpiCard
-                icon={<CircleDollarSign className="h-3 w-3" />}
-                label="Total expenses"
-                value={fmt(report.totalExpenseAmount)}
-                unit={report.currencyCode}
-                delta={`${report.totalExpenseCount} entries`}
-                deltaTone="neutral"
-              />
-              <KpiCard
-                icon={<Wallet className="h-3 w-3" />}
-                label="Paid"
-                value={fmt(report.totalPaidAmount)}
-                unit={report.currencyCode}
-                deltaTone="pos"
-              />
-              <KpiCard
-                icon={<TrendingDown className="h-3 w-3" />}
-                label="Unpaid"
-                value={fmt(report.totalUnpaidAmount)}
-                unit={report.currencyCode}
-                deltaTone={report.totalUnpaidAmount > 0 ? "neg" : "pos"}
-              />
-              <KpiCard
-                icon={<Receipt className="h-3 w-3" />}
-                label="Categories"
-                value={String(report.categorySummaries.length)}
-              />
-            </KpiStrip>
+      <PageHeader title="Expense report" subtitle={subtitle} />
 
-            <Card>
-              <CardContent className="px-2 pt-6 sm:px-6">
-                <h3 className="mb-4 text-lg font-medium">By category</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-gray-50/60 text-left text-xs font-semibold uppercase text-gray-400">
-                        <th className="px-4 py-3">Category</th>
-                        <th className="px-4 py-3 text-right">Count</th>
-                        <th className="px-4 py-3 text-right">Amount</th>
-                        <th className="px-4 py-3 text-right">Share</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {report.categorySummaries.map((c) => (
-                        <tr
-                          key={c.categoryId ?? "uncategorized"}
-                          className="hover:bg-gray-50/50"
-                        >
-                          <td className="px-4 py-3 font-medium">
-                            {c.categoryName}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono tabular-nums">
-                            {c.expenseCount}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono tabular-nums">
-                            {fmt(c.amount)} {report.currencyCode}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono tabular-nums">
-                            {c.percentage.toFixed(1)}%
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </>
+      <PageBody>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <ExpenseTabNav
+            active={tab}
+            tabs={TABS}
+            preservedParams={{ from: resolved.from, to: resolved.to }}
+          />
+          <div className="flex flex-wrap items-center gap-3">
+            <OrdersDateFilter from={from} to={to} />
+            <ExpenseReportExportButton from={from} to={to} />
+          </div>
+        </div>
+
+        {tab === "category" && (
+          <ByCategoryTab from={from} to={to} locationId={location?.id} />
+        )}
+        {tab === "status" && (
+          <ByStatusTab from={from} to={to} locationId={location?.id} />
         )}
       </PageBody>
     </PageShell>

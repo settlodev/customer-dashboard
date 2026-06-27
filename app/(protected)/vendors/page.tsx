@@ -4,6 +4,7 @@ import { Building2, CheckCircle2, Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/tables/data-table";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import {
   PageBody,
   PageBreadcrumbs,
@@ -27,10 +28,14 @@ export default async function VendorsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const page = Number(params.page) || 0;
-  const size = Number(params.limit) || 20;
+  // DataTable writes a 1-based `?page` and defaults its rows-per-page control
+  // to 10 — convert to the backend's 0-based index and match the size default,
+  // otherwise the pager skips a page and the "10" label undercounts the rows.
+  const pageParam = Math.max(1, Number(params.page) || 1);
+  const apiPage = pageParam - 1;
+  const size = Number(params.limit) || DEFAULT_PAGE_SIZE;
 
-  const response = await listVendors(params.search, page, size);
+  const response = await listVendors(params.search, apiPage, size);
   const data = response.content ?? [];
   const total = response.totalElements ?? 0;
   const pageCount = response.totalPages ?? 0;
@@ -87,7 +92,8 @@ export default async function VendorsPage({
                   columns={columns}
                   data={data}
                   pageCount={pageCount}
-                  pageNo={page}
+                  defaultPageSize={size}
+                  pageNo={apiPage}
                   total={total}
                   searchKey="name"
                   rowClickBasePath="/vendors"

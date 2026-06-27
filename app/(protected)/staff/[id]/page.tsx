@@ -20,6 +20,7 @@ import { getLocationSettings } from "@/lib/actions/location-settings-actions";
 import { listOrders } from "@/lib/actions/order-actions";
 import { buildOrderListView } from "@/lib/orders/order-list-view";
 import { fetchAllTables } from "@/lib/actions/space-actions";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import { Order, OrderStatus } from "@/types/orders/type";
 import { Staff, StaffDetail, StaffAuditEvent } from "@/types/staff";
 import { ApiResponse } from "@/types/types";
@@ -64,21 +65,31 @@ export default async function StaffPage({
   let staff: Staff | null = null;
   let detail: StaffDetail | null = null;
 
+  // Try the enriched detail first — it bundles gamification, loyalty, and
+  // attendance in one round-trip. If the detail endpoint isn't available
+  // (e.g. permission, location not selected) we degrade to the basic staff
+  // record so the page still renders the profile. Auth/permission errors are
+  // re-thrown so (protected)/error.tsx can route them; everything else falls
+  // through to the notFound() below.
   try {
-    // Try the enriched detail first — it bundles gamification, loyalty,
-    // and attendance in one round-trip. If the detail endpoint isn't
-    // available (e.g. permission, location not selected) we degrade to
-    // the basic staff record so the page still renders the profile.
+    detail = await getStaffDetail(id);
+    staff = detail?.profile ?? null;
+  } catch (e) {
+    rethrowIfBoundary(e);
     try {
-      detail = await getStaffDetail(id);
-      staff = detail?.profile ?? null;
-    } catch {
       staff = await getStaff(id);
+    } catch (err) {
+      rethrowIfBoundary(err);
+      staff = null;
     }
-    if (!staff) notFound();
-  } catch {
-    throw new Error("Failed to load staff data");
   }
+
+  // Unknown / non-existent id — e.g. a "Sales by staff" row whose order was
+  // attributed to a non-staff actor id (an owner/device/user subject that has
+  // no staff record). Render the standard 404 page instead of throwing and
+  // crashing the whole Server Component render. notFound() stays OUTSIDE the
+  // try above so its control-flow signal isn't swallowed into a 500.
+  if (!staff) notFound();
 
   // ── Per-staff Sales tab — the Orders list scoped to this staff ──────
   // Mirrors the per-table Sales tab: no per-staff orders endpoint exists,

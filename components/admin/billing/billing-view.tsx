@@ -1,15 +1,12 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
   ArrowUpCircle,
   Gift,
   Link2,
   Loader2,
-  MoreHorizontal,
   PackagePlus,
   Plus,
   RefreshCw,
@@ -18,20 +15,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataTable } from "@/components/tables/data-table";
 import { useToast } from "@/hooks/use-toast";
 
 import { AddAddonDialog } from "@/components/admin/billing/add-addon-dialog";
@@ -40,13 +24,13 @@ import { AttachInvoiceDialog } from "@/components/admin/billing/attach-invoice-d
 import { GenerateInvoiceDialog } from "@/components/admin/billing/generate-invoice-dialog";
 import { GrantFreeSubscriptionDialog } from "@/components/admin/billing/grant-free-subscription-dialog";
 import { InvoiceActionsDialog } from "@/components/admin/billing/invoice-actions-dialog";
+import { buildInvoiceColumns } from "@/components/tables/admin-invoices/column";
 import { UpgradePlanDialog } from "@/components/admin/billing/upgrade-plan-dialog";
 import { republishSubscriptions, revokeDiscount } from "@/lib/actions/admin/billing";
 import {
   DiscountResponse,
   InvoicePage,
   InvoiceResponse,
-  InvoiceStatus,
   SubscriptionDiscountResponse,
   SubscriptionResponse,
   SubscriptionStatus,
@@ -103,40 +87,6 @@ const SUBSCRIPTION_STATUS_BADGE: Record<
   },
 };
 
-const INVOICE_STATUS_BADGE: Record<
-  InvoiceStatus,
-  { label: string; className: string }
-> = {
-  DRAFT: {
-    label: "Draft",
-    className: "border-muted bg-muted text-muted-foreground",
-  },
-  PENDING: {
-    label: "Pending",
-    className:
-      "border-sky-200 bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/20",
-  },
-  PAID: {
-    label: "Paid",
-    className:
-      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20",
-  },
-  FAILED: {
-    label: "Failed",
-    className:
-      "border-rose-200 bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20",
-  },
-  CANCELLED: {
-    label: "Cancelled",
-    className: "border-muted bg-muted text-muted-foreground",
-  },
-  REFUNDED: {
-    label: "Refunded",
-    className:
-      "border-violet-200 bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20",
-  },
-};
-
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
   try {
@@ -175,6 +125,11 @@ export function BillingView({
   const [attachOpen, setAttachOpen] = useState(false);
   const [invoiceTarget, setInvoiceTarget] = useState<InvoiceResponse | null>(
     null,
+  );
+
+  const invoiceColumns = useMemo(
+    () => buildInvoiceColumns({ onView: setInvoiceTarget }),
+    [],
   );
 
   const handleRepublish = useCallback(() => {
@@ -449,121 +404,17 @@ export function BillingView({
             No invoices on file for this business.
           </p>
         ) : (
-          <>
-            <div className="overflow-hidden rounded-md border border-line">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Invoice</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead>Issued</TableHead>
-                    <TableHead>Due</TableHead>
-                    <TableHead>Paid</TableHead>
-                    <TableHead className="w-[60px] text-right">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {invoicePage.content.map((inv) => (
-                    <TableRow key={inv.id}>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium text-ink">
-                            {inv.invoiceNumber}
-                          </span>
-                          <span className="font-mono text-[11px] text-muted-foreground">
-                            {inv.lineItems.length} line
-                            {inv.lineItems.length === 1 ? "" : "s"}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={INVOICE_STATUS_BADGE[inv.status].className}
-                        >
-                          {INVOICE_STATUS_BADGE[inv.status].label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums font-medium">
-                        {formatMoney(inv.totalAmount)}
-                      </TableCell>
-                      <TableCell className="font-mono text-[12px] text-muted-foreground">
-                        {formatDate(inv.invoiceDate)}
-                      </TableCell>
-                      <TableCell className="font-mono text-[12px] text-muted-foreground">
-                        {formatDate(inv.dueDate)}
-                      </TableCell>
-                      <TableCell className="font-mono text-[12px] text-muted-foreground">
-                        {formatDate(inv.paidAt)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              aria-label={`Actions for ${inv.invoiceNumber}`}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onSelect={() => setInvoiceTarget(inv)}
-                            >
-                              View / actions
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
-            {invoicePage.totalPages > 1 && (
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <p className="font-mono text-[12px] text-muted-foreground">
-                  Page {invoicePage.number + 1} of {invoicePage.totalPages}
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      router.push(
-                        `/businesses/${businessId}/billing?page=${invoicePage.number - 1}`,
-                      );
-                    }}
-                    disabled={invoicePage.first || isPending}
-                  >
-                    <ArrowLeftIcon className="mr-1 h-3.5 w-3.5" />
-                    Previous
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      router.push(
-                        `/businesses/${businessId}/billing?page=${invoicePage.number + 1}`,
-                      );
-                    }}
-                    disabled={invoicePage.last || isPending}
-                  >
-                    Next
-                    <ArrowRightIcon className="ml-1 h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
+          <DataTable
+            columns={invoiceColumns}
+            data={invoicePage.content}
+            searchKey="invoiceNumber"
+            hideSearch
+            pageNo={invoicePage.number}
+            total={invoicePage.totalElements}
+            pageCount={Math.max(1, invoicePage.totalPages)}
+            defaultPageSize={invoicePage.size ?? 20}
+            disableArchive
+          />
         )}
       </div>
 

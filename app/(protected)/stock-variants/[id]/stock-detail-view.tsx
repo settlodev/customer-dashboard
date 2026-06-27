@@ -972,7 +972,9 @@ function MovementsTab({
                     <TableHead>Date &amp; Time</TableHead>
                     <TableHead>Source</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Before</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">After</TableHead>
                     <TableHead className="text-right">Unit Cost</TableHead>
                     <TableHead className="text-right">Total Cost</TableHead>
                   </TableRow>
@@ -1043,6 +1045,23 @@ function MovementsTab({
                             ] ?? m.movementType}
                           </span>
                         </TableCell>
+                        {/* Balance before → Qty → balance after. Both balances are
+                            backend values (previousBalance / newBalance, captured at
+                            write-time); never recomputed here — this view only holds
+                            the latest 100 movements in a 30-day window, so a tally
+                            from zero would be wrong. The newest row's "after" is the
+                            current on-hand. Red = negative (oversold anomaly). */}
+                        <TableCell
+                          className={`text-right whitespace-nowrap ${
+                            m.previousBalance != null && m.previousBalance < 0
+                              ? "text-red-600 dark:text-red-400"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {m.previousBalance != null
+                            ? m.previousBalance.toLocaleString()
+                            : "—"}
+                        </TableCell>
                         <TableCell
                           className={`text-right font-medium ${
                             isIn
@@ -1052,6 +1071,17 @@ function MovementsTab({
                         >
                           {isIn ? "+" : "-"}
                           {qtyDisplay.toLocaleString()}
+                        </TableCell>
+                        <TableCell
+                          className={`text-right font-medium whitespace-nowrap ${
+                            m.newBalance != null && m.newBalance < 0
+                              ? "text-red-600 dark:text-red-400"
+                              : ""
+                          }`}
+                        >
+                          {m.newBalance != null
+                            ? m.newBalance.toLocaleString()
+                            : "—"}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
                           {m.unitCost != null

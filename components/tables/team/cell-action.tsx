@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { MoreVertical, Mail, Trash2 } from "lucide-react";
+import { MoreVertical, Mail, Trash2, Pencil } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AccountMember, removeMember, resendInvitation } from "@/lib/actions/account-member-actions";
+import { Location } from "@/types/location/type";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,13 +14,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import DeleteModal from "@/components/tables/delete-modal";
+import { EditMemberDialog } from "@/components/tables/team/edit-member-dialog";
 
 interface CellActionProps {
   data: AccountMember;
+  /** Accessible locations, passed through to the edit dialog. */
+  locations: Location[];
+  /** Reload the members list after an edit or removal. */
+  onChanged: () => void;
 }
 
-export const CellAction: React.FC<CellActionProps> = ({ data }) => {
+export const CellAction: React.FC<CellActionProps> = ({ data, locations, onChanged }) => {
   const [isDeleteOpen, setDeleteOpen] = useState(false);
+  const [isEditOpen, setEditOpen] = useState(false);
 
   const handleResend = async () => {
     const result = await resendInvitation(data.id);
@@ -33,6 +40,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     try {
       const result = await removeMember(data.id);
       toast({ variant: result.responseType === "success" ? "success" : "destructive", title: result.message });
+      if (result.responseType === "success") onChanged();
     } finally {
       setDeleteOpen(false);
     }
@@ -47,6 +55,10 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setEditOpen(true)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit roles & access
+          </DropdownMenuItem>
           {data.pending && (
             <DropdownMenuItem onClick={handleResend}>
               <Mail className="mr-2 h-4 w-4" />
@@ -60,6 +72,14 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <EditMemberDialog
+        member={data}
+        locations={locations}
+        open={isEditOpen}
+        onOpenChange={setEditOpen}
+        onUpdated={onChanged}
+      />
 
       <DeleteModal
         isOpen={isDeleteOpen}

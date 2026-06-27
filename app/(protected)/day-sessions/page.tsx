@@ -8,6 +8,7 @@ import { format, endOfMonth, startOfMonth } from "date-fns";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/tables/data-table";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import {
   PageBody,
   PageBreadcrumbs,
@@ -42,8 +43,12 @@ export default async function DaySessionsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const page = Number(params.page) || 0;
-  const size = Number(params.limit) || 20;
+  // DataTable writes a 1-based `?page` and defaults its rows-per-page control
+  // to 10 — convert to the action's 0-based slice index and match the size
+  // default, otherwise the pager skips a page and the "10" label undercounts.
+  const pageParam = Math.max(1, Number(params.page) || 1);
+  const apiPage = pageParam - 1;
+  const size = Number(params.limit) || DEFAULT_PAGE_SIZE;
 
   // Default to the calendar month so the operator lands on "this
   // month's sessions" without picking a range. The OrdersDateFilter
@@ -81,7 +86,7 @@ export default async function DaySessionsPage({
     from,
     to,
     status: params.status,
-    page,
+    page: apiPage,
     size,
   });
 
@@ -152,7 +157,8 @@ export default async function DaySessionsPage({
                   columns={columns}
                   data={data}
                   pageCount={pageCount}
-                  pageNo={page}
+                  defaultPageSize={size}
+                  pageNo={apiPage}
                   total={total}
                   searchKey="businessDate"
                   filterKey="status"

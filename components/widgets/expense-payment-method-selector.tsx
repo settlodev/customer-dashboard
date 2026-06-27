@@ -16,7 +16,9 @@ interface Props {
   value?: string;
   placeholder?: string;
   isDisabled?: boolean;
-  onChange: (value: string, label: string) => void;
+  /** `code` is the method's canonical code (e.g. CASH/MPESA) — callers that
+   *  only need id+label can ignore it. */
+  onChange: (value: string, label: string, code: string) => void;
 }
 
 interface FlatOption {
@@ -79,7 +81,7 @@ export function ExpensePaymentMethodSelector({
       value={value ?? ""}
       onValueChange={(v) => {
         const opt = options.find((o) => o.id === v);
-        onChange(v, opt?.label ?? "");
+        onChange(v, opt?.label ?? "", opt?.code ?? "");
       }}
       disabled={isDisabled || loading}
     >

@@ -1,5 +1,14 @@
 import { Gender } from "@/types/enums";
-import { boolean, nativeEnum, object, preprocess, string, array, date, RefinementCtx } from "zod";
+import {
+  boolean,
+  nativeEnum,
+  object,
+  preprocess,
+  string,
+  array,
+  date,
+  RefinementCtx,
+} from "zod";
 import { isValidPhoneNumber } from "libphonenumber-js";
 
 // ---------------------------------------------------------------------------
@@ -144,9 +153,9 @@ export interface StaffXpTransaction {
 // Matches StaffAuditEventResponse from the Accounts Service.
 export interface StaffAuditEvent {
   id: string;
-  action: string;        // e.g. "DEACTIVATED", "ROLES_ASSIGNED", "PIN_SET"
+  action: string; // e.g. "DEACTIVATED", "ROLES_ASSIGNED", "PIN_SET"
   actorName: string | null;
-  actorType: string;     // USER | STAFF | DEVICE | SYSTEM
+  actorType: string; // USER | STAFF | DEVICE | SYSTEM
   impersonated: boolean;
   details: Record<string, unknown> | null;
   createdAt: string;
@@ -187,8 +196,14 @@ export interface StaffReportItem {
 // ---------------------------------------------------------------------------
 
 export const StaffSchema = object({
-  firstName: string({ required_error: "First name is required" }).min(1, "Enter a valid first name"),
-  lastName: string({ required_error: "Last name is required" }).min(1, "Enter a valid last name"),
+  firstName: string({ required_error: "First name is required" }).min(
+    1,
+    "Enter a valid first name",
+  ),
+  lastName: string({ required_error: "Last name is required" }).min(
+    1,
+    "Enter a valid last name",
+  ),
   // Required on the dashboard for reachability — backend keeps it
   // optional, so the dashboard tightens the contract without breaking
   // any service-to-service caller. Validated against libphonenumber so
@@ -203,12 +218,23 @@ export const StaffSchema = object({
     string().email("Enter a valid email").optional(),
   ),
   gender: nativeEnum(Gender, { required_error: "Gender is required" }),
-  jobTitle: string({ required_error: "Job title is required" }).min(1, "Enter a job title"),
-  departmentId: string({ required_error: "Department is required" }).uuid("Select a department"),
+  jobTitle: string({ required_error: "Job title is required" }).min(
+    1,
+    "Enter a job title",
+  ),
+  departmentId: string({ required_error: "Department is required" }).uuid(
+    "Select a department",
+  ),
   departmentIds: array(string().uuid()).optional(),
   roleIds: array(string().uuid()).min(1, "Select at least one role"),
-  color: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
-  employeeNumber: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
+  color: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().optional(),
+  ),
+  employeeNumber: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().optional(),
+  ),
   dateOfBirth: preprocess((val) => {
     if (!val || val === "") return undefined;
     if (typeof val === "string") return new Date(val);
@@ -219,17 +245,46 @@ export const StaffSchema = object({
     if (typeof val === "string") return new Date(val);
     return val;
   }, date().optional()),
-  nationalityId: preprocess((val) => (val === null || val === "" ? undefined : val), string().uuid().optional()),
-  address: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
-  notes: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
-  emergencyName: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
-  emergencyNumber: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
-  emergencyRelationship: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
+  nationalityId: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().uuid().optional(),
+  ),
+  address: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().optional(),
+  ),
+  notes: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().optional(),
+  ),
+  emergencyName: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().optional(),
+  ),
+  emergencyNumber: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().optional(),
+  ),
+  emergencyRelationship: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().optional(),
+  ),
   posAccess: boolean().optional(),
   dashboardAccess: boolean().optional(),
-  pin: preprocess((val) => (val === null || val === "" ? undefined : val), string().regex(/^\d{4,6}$/, "PIN must be 4-6 digits").optional()),
-  password: preprocess((val) => (val === null || val === "" ? undefined : val), string().min(8, "Password must be at least 8 characters").optional()),
-  referredByCode: preprocess((val) => (val === null || val === "" ? undefined : val), string().max(16, "Referral code cannot exceed 16 characters").optional()),
+  pin: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string()
+      .regex(/^\d{4,6}$/, "PIN must be 4-6 digits")
+      .optional(),
+  ),
+  password: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().min(8, "Password must be at least 8 characters").optional(),
+  ),
+  referredByCode: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().max(16, "Referral code cannot exceed 16 characters").optional(),
+  ),
 }).superRefine((data, ctx: RefinementCtx) => {
   // Dashboard access now requires only an email — the backend creates a
   // passwordless user and emails a set-password link, so no initial
@@ -237,7 +292,20 @@ export const StaffSchema = object({
   // ignored optional for backward compatibility with any caller.)
   if (data.dashboardAccess) {
     if (!data.email) {
-      ctx.addIssue({ code: "custom", path: ["email"], message: "Email is required for dashboard access" });
+      ctx.addIssue({
+        code: "custom",
+        path: ["email"],
+        message: "Email is required for dashboard access",
+      });
     }
   }
 });
+export interface StaffSummaryReportRow {
+  name: string;
+  totalOrdersCompleted: number;
+  totalItemsSold: number;
+  totalStockIntakePerformed: number;
+  totalGrossAmount: number;
+  totalNetAmount: number;
+  totalGrossProfit: number;
+}

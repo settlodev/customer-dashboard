@@ -302,7 +302,7 @@ export function SubscriptionItemStatusBadge({
 ---
 
 ## Deferred (documented, NOT built this phase)
-- **Business-list billing column (spec §6 "optional / nice-to-have").** `components/tables/admin-businesses/column.tsx` rows are `AdminBusinessListItem`, which carries `locationCount`/`activeLocationCount` (already shown as the "Locations" column) but **no subscription/billing data**. A unit-count-across-types or billing-status column would require either an N+1 `getBusinessSubscription` per listed business or a new backend aggregate (e.g., `billableUnitCount` + `billingStatus` on `AdminBusinessListItem`). Out of scope for a frontend-first phase; revisit if/when the list endpoint exposes a billing rollup.
+- **Business-list billing column (spec §6 "optional / nice-to-have").** `components/tables/admin-businesses/report-column.tsx` rows are `AdminBusinessListItem`, which carries `locationCount`/`activeLocationCount` (already shown as the "Locations" column) but **no subscription/billing data**. A unit-count-across-types or billing-status column would require either an N+1 `getBusinessSubscription` per listed business or a new backend aggregate (e.g., `billableUnitCount` + `billingStatus` on `AdminBusinessListItem`). Out of scope for a frontend-first phase; revisit if/when the list endpoint exposes a billing rollup.
 - **Stripping per-entity actions off the billing page** → deferred to Phase 4 (see Execution Note decision #2).
 
 ---

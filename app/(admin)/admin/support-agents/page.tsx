@@ -19,7 +19,7 @@ export const metadata = {
 const MANAGE_ROLES: InternalRole[] = ["SYSTEM_ADMIN", "SUPER_ADMIN"];
 
 interface SupportAgentsPageProps {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; limit?: string }>;
 }
 
 export default async function AdminSupportAgentsPage({
@@ -47,12 +47,16 @@ export default async function AdminSupportAgentsPage({
   }
 
   const params = await searchParams;
-  const page = Math.max(0, Number.parseInt(params.page ?? "0", 10) || 0);
+  // The shared DataTable owns pagination via a 1-based `?page` + `?limit`;
+  // convert to the backend's 0-based index.
+  const pageOneIndexed = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
+  const backendPage = pageOneIndexed - 1;
+  const size = Math.max(1, Number.parseInt(params.limit ?? "20", 10) || 20);
 
   let pageData: SupportAgentPage | null = null;
   let loadError: string | null = null;
   try {
-    pageData = await listSupportAgents(page, 20);
+    pageData = await listSupportAgents(backendPage, size);
   } catch (error: any) {
     loadError = error?.message ?? "Failed to load support agents.";
   }
