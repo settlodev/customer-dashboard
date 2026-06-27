@@ -35,11 +35,15 @@ export interface AccountOnboardingCounts {
   complete: number;
 }
 
+export type StaffAssigneeType = "INTERNAL_STAFF" | "EXTERNAL_AGENT";
+
 export interface AssignedStaffInfo {
   id: string;
   fullName: string;
   email: string;
   role: string;
+  /** Sales person may be an internal staffer or an external agent; support is always internal. */
+  type?: StaffAssigneeType;
 }
 
 export interface AdminAccountDetail {

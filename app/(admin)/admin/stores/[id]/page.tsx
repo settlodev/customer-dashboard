@@ -10,20 +10,14 @@ import {
 import { EntityDetailView } from "@/components/admin/entity-detail/entity-detail-view";
 import { EditStoreButton } from "@/components/admin/entity-detail/edit-store-dialog";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { getAdminStoreDetail } from "@/lib/actions/admin/businesses";
 import { getBusinessSubscription } from "@/lib/actions/admin/billing";
 import { getEntityStockSummary } from "@/lib/actions/admin/business-operations";
-import type { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Store detail",
 };
-
-const READ_ROLES: InternalRole[] = [
-  "SYSTEM_ADMIN",
-  "SUPER_ADMIN",
-  "SUPPORT_AGENT",
-];
 
 interface StoreDetailPageProps {
   params: Promise<{ id: string }>;
@@ -38,7 +32,7 @@ export default async function StoreDetailPage({
   }
 
   const role = token.internalRole;
-  const canRead = role ? READ_ROLES.includes(role) : false;
+  const canRead = hasInternalPermission(token, PERM.ACCOUNTS_READ);
   if (!canRead) {
     return (
       <AdminShell token={token}>
@@ -52,8 +46,8 @@ export default async function StoreDetailPage({
     );
   }
 
-  const canBilling = role === "SYSTEM_ADMIN" || role === "SUPPORT_AGENT";
-  const canEdit = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
+  const canBilling = hasInternalPermission(token, PERM.SUPPORT_TICKETS_MANAGE);
+  const canEdit = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
   // SYSTEM_ADMIN maps to billing's ROLE_SYSTEM_ADMIN (system_admin claim) — the only
   // caller allowed to override-extend a paid/used entity's trial.
   const isSuperAdmin = role === "SYSTEM_ADMIN";

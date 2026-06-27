@@ -8,6 +8,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { CreditPacksView } from "@/components/admin/catalog/credit-packs-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import {
   listCreditPacks,
   listCreditTypes,
@@ -18,13 +19,10 @@ import type {
   CreditTypeResponse,
   PackageResponse,
 } from "@/types/admin/billing";
-import type { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Credit packs",
 };
-
-const CATALOG_ROLES: InternalRole[] = ["SYSTEM_ADMIN", "SUPER_ADMIN"];
 
 export default async function AdminCreditPacksPage() {
   const token = await getStaffAuthToken();
@@ -32,8 +30,7 @@ export default async function AdminCreditPacksPage() {
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const canManage = role ? CATALOG_ROLES.includes(role) : false;
+  const canManage = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
   if (!canManage) {
     return (
       <AdminShell token={token}>

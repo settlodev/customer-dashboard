@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BillingView } from "@/components/admin/billing/billing-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { getAdminBusinessDetail } from "@/lib/actions/admin/businesses";
 import {
   getBusinessSubscription,
@@ -27,13 +28,10 @@ import type {
   SubscriptionResponse,
 } from "@/types/admin/billing";
 import type { AdminBusinessDetail } from "@/types/admin/business";
-import type { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Business billing",
 };
-
-const BILLING_ROLES: InternalRole[] = ["SYSTEM_ADMIN", "SUPPORT_AGENT"];
 
 interface BusinessBillingPageProps {
   params: Promise<{ id: string }>;
@@ -50,7 +48,7 @@ export default async function AdminBusinessBillingPage({
   }
 
   const role = token.internalRole;
-  const canBilling = role ? BILLING_ROLES.includes(role) : false;
+  const canBilling = hasInternalPermission(token, PERM.SUPPORT_TICKETS_MANAGE);
   const canGrantFree = role === "SYSTEM_ADMIN";
 
   if (!canBilling) {

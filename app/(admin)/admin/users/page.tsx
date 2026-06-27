@@ -8,21 +8,21 @@ import {
 } from "@/components/layouts/page-shell";
 import { InternalUsersView } from "@/components/admin/internal-users-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import {
   listInternalRoles,
+  listInternalStaffProfiles,
   listInternalUsers,
 } from "@/lib/actions/admin/internal-users";
 import {
   InternalUserResponse,
   RolePermissionsResponse,
 } from "@/types/admin/internal-user";
-import { InternalRole } from "@/types/types";
+import { InternalStaffSummary } from "@/types/admin/internal-staff";
 
 export const metadata = {
   title: "Internal Users",
 };
-
-const ALLOWED_ROLES: InternalRole[] = ["SYSTEM_ADMIN", "SUPER_ADMIN"];
 
 export default async function AdminInternalUsersPage() {
   const token = await getStaffAuthToken();
@@ -30,9 +30,8 @@ export default async function AdminInternalUsersPage() {
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const isAuthorized = role ? ALLOWED_ROLES.includes(role) : false;
-  const canMutate = role === "SYSTEM_ADMIN";
+  const isAuthorized = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
+  const canMutate = hasInternalPermission(token, PERM.USERS_MANAGE_INTERNAL);
 
   if (!isAuthorized) {
     return (
@@ -55,6 +54,7 @@ export default async function AdminInternalUsersPage() {
 
   let users: InternalUserResponse[] = [];
   let roles: RolePermissionsResponse[] = [];
+  let profiles: InternalStaffSummary[] = [];
   let loadError: string | null = null;
 
   try {
@@ -65,6 +65,14 @@ export default async function AdminInternalUsersPage() {
   } catch (error: any) {
     loadError =
       error?.message ?? "Failed to load internal users. Please try again.";
+  }
+
+  // Non-fatal: the rich profiles (names + HRM details) overlay the Auth list.
+  // If the Accounts call fails, the page still renders with names as "—".
+  try {
+    profiles = await listInternalStaffProfiles();
+  } catch {
+    profiles = [];
   }
 
   return (
@@ -83,6 +91,7 @@ export default async function AdminInternalUsersPage() {
             <InternalUsersView
               users={users}
               roles={roles}
+              profiles={profiles}
               canMutate={canMutate}
               currentUserId={token.userId}
             />

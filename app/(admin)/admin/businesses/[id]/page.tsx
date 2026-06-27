@@ -9,6 +9,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { BusinessDetailView } from "@/components/admin/business-detail/business-detail-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import {
   getAdminBusinessDetail,
   listAdminBusinessLocations,
@@ -54,17 +55,10 @@ import type {
   AdminBusinessInventorySummary,
 } from "@/types/admin/business-operations";
 import type { BusinessNotePage } from "@/types/admin/business-note";
-import type { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Business detail",
 };
-
-const READ_ROLES: InternalRole[] = [
-  "SYSTEM_ADMIN",
-  "SUPER_ADMIN",
-  "SUPPORT_AGENT",
-];
 
 interface BusinessDetailPageProps {
   params: Promise<{ id: string }>;
@@ -89,8 +83,7 @@ export default async function AdminBusinessDetailPage({
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const canRead = role ? READ_ROLES.includes(role) : false;
+  const canRead = hasInternalPermission(token, PERM.ACCOUNTS_READ);
   if (!canRead) {
     return (
       <AdminShell token={token}>
@@ -104,7 +97,7 @@ export default async function AdminBusinessDetailPage({
     );
   }
 
-  const canBilling = role === "SYSTEM_ADMIN" || role === "SUPPORT_AGENT";
+  const canBilling = hasInternalPermission(token, PERM.SUPPORT_TICKETS_MANAGE);
   const { id } = await params;
 
   let business: AdminBusinessDetail;

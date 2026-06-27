@@ -32,6 +32,7 @@ import {
 
 import { CreateInternalUserDialog } from "@/components/admin/create-internal-user-dialog";
 import { EditInternalUserDialog } from "@/components/admin/edit-internal-user-dialog";
+import { EditInternalStaffDetailsDialog } from "@/components/admin/edit-internal-staff-details-dialog";
 import { DeactivateInternalUserDialog } from "@/components/admin/deactivate-internal-user-dialog";
 
 import {
@@ -39,11 +40,16 @@ import {
   InternalUserStatus,
   RolePermissionsResponse,
 } from "@/types/admin/internal-user";
-import { InternalRole } from "@/types/types";
+import { InternalStaffSummary } from "@/types/admin/internal-staff";
 
 interface InternalUsersViewProps {
   users: InternalUserResponse[];
   roles: RolePermissionsResponse[];
+  /**
+   * Rich internal-staff profiles (Accounts Service), keyed by authUserId, that
+   * carry the name + HRM details overlaid onto the Auth identity list.
+   */
+  profiles: InternalStaffSummary[];
   canMutate: boolean;
   currentUserId: string | null | undefined;
 }
@@ -82,7 +88,7 @@ const STATUS_BADGE: Record<
   },
 };
 
-function roleLabel(role: InternalRole): string {
+function roleLabel(role: string): string {
   return role.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) =>
     c.toUpperCase(),
   );
@@ -126,35 +132,51 @@ function formatRelative(value: string | null | undefined): string {
 export function InternalUsersView({
   users,
   roles,
+  profiles,
   canMutate,
   currentUserId,
 }: InternalUsersViewProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<InternalRole | typeof ROLE_FILTER_ALL>(
-    ROLE_FILTER_ALL,
-  );
+  const [roleFilter, setRoleFilter] = useState<string>(ROLE_FILTER_ALL);
   const [statusFilter, setStatusFilter] = useState<
     InternalUserStatus | typeof STATUS_FILTER_ALL
   >(STATUS_FILTER_ALL);
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<InternalUserResponse | null>(null);
+  const [detailsTarget, setDetailsTarget] =
+    useState<InternalStaffSummary | null>(null);
   const [deactivateTarget, setDeactivateTarget] =
     useState<InternalUserResponse | null>(null);
+
+  // Auth user id == Accounts profile authUserId — the join key.
+  const profileByAuthId = useMemo(() => {
+    const map = new Map<string, InternalStaffSummary>();
+    for (const p of profiles) map.set(p.authUserId, p);
+    return map;
+  }, [profiles]);
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return users.filter((u) => {
-      if (roleFilter !== ROLE_FILTER_ALL && u.internalRole !== roleFilter) {
+      if (roleFilter !== ROLE_FILTER_ALL && (u.roleCode ?? "") !== roleFilter) {
         return false;
       }
       if (statusFilter !== STATUS_FILTER_ALL && u.status !== statusFilter) {
         return false;
       }
-      if (needle && !u.email.toLowerCase().includes(needle)) return false;
+      if (needle) {
+        const name = profileByAuthId.get(u.id)?.fullName ?? "";
+        if (
+          !u.email.toLowerCase().includes(needle) &&
+          !name.toLowerCase().includes(needle)
+        ) {
+          return false;
+        }
+      }
       return true;
     });
-  }, [users, search, roleFilter, statusFilter]);
+  }, [users, search, roleFilter, statusFilter, profileByAuthId]);
 
   const handleMutated = () => {
     // Server actions already revalidate /admin/users — refresh fetches the new data.
@@ -169,7 +191,7 @@ export function InternalUsersView({
           <div className="relative w-full md:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search by email…"
+              placeholder="Search by name or email…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -179,7 +201,7 @@ export function InternalUsersView({
           <Select
             value={roleFilter}
             onValueChange={(v) =>
-              setRoleFilter(v === ROLE_FILTER_ALL ? ROLE_FILTER_ALL : (v as InternalRole))
+              setRoleFilter(v)
             }
           >
             <SelectTrigger className="w-full md:w-[180px]">
@@ -189,7 +211,7 @@ export function InternalUsersView({
               <SelectItem value={ROLE_FILTER_ALL}>All roles</SelectItem>
               {roles.map((r) => (
                 <SelectItem key={r.role} value={r.role}>
-                  {roleLabel(r.role)}
+                  {r.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -232,6 +254,7 @@ export function InternalUsersView({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
@@ -244,7 +267,7 @@ export function InternalUsersView({
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="py-10 text-center text-sm text-muted-foreground"
                 >
                   {users.length === 0
@@ -256,11 +279,17 @@ export function InternalUsersView({
               filtered.map((user) => {
                 const badge = STATUS_BADGE[user.status];
                 const isSelf = currentUserId === user.id;
+                const profile = profileByAuthId.get(user.id);
+                const name = profile?.fullName?.trim();
                 return (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium text-ink">
                       <div className="flex items-center gap-2">
-                        <span>{user.email}</span>
+                        {name ? (
+                          <span>{name}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                         {isSelf && (
                           <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[10px] uppercase text-muted-foreground">
                             you
@@ -268,7 +297,12 @@ export function InternalUsersView({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{roleLabel(user.internalRole)}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {user.email}
+                    </TableCell>
+                    <TableCell>
+                      {user.roleName ?? roleLabel(user.roleCode ?? "—")}
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
@@ -297,6 +331,14 @@ export function InternalUsersView({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onSelect={() => {
+                                if (profile) setDetailsTarget(profile);
+                              }}
+                              disabled={!profile}
+                            >
+                              Edit details
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               onSelect={() => setEditTarget(user)}
                               disabled={isSelf}
@@ -341,6 +383,16 @@ export function InternalUsersView({
           open={!!editTarget}
           onOpenChange={(open) => {
             if (!open) setEditTarget(null);
+          }}
+          onUpdated={handleMutated}
+        />
+      )}
+      {canMutate && detailsTarget && (
+        <EditInternalStaffDetailsDialog
+          profile={detailsTarget}
+          open={!!detailsTarget}
+          onOpenChange={(open) => {
+            if (!open) setDetailsTarget(null);
           }}
           onUpdated={handleMutated}
         />

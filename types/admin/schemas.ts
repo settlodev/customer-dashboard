@@ -1,32 +1,57 @@
 import { z } from "zod";
 
-import { InternalRole } from "@/types/types";
-
 // ── Internal users (Auth Service) ───────────────────────────────────
-
-const INTERNAL_ROLES = [
-  "SYSTEM_ADMIN",
-  "SUPER_ADMIN",
-  "SUPPORT_AGENT",
-  "BOARD_MEMBER",
-  "SALES_TEAM",
-] as const satisfies readonly InternalRole[];
+// Roles are dynamic (managed in the role manager), so `role` is any non-empty
+// role CODE rather than a fixed enum.
 
 export const CreateInternalUserSchema = z.object({
+  firstName: z.string().min(1, "First name is required").max(255),
+  lastName: z.string().min(1, "Last name is required").max(255),
   email: z.string().email("Enter a valid email address"),
   password: z
     .string()
     .min(12, "Password must be at least 12 characters")
     .max(100, "Password is too long"),
-  role: z.enum(INTERNAL_ROLES, {
-    errorMap: () => ({ message: "Select a role" }),
-  }),
+  role: z.string().min(1, "Select a role").max(100),
 });
 
 export const UpdateInternalRoleSchema = z.object({
-  role: z.enum(INTERNAL_ROLES, {
-    errorMap: () => ({ message: "Select a role" }),
-  }),
+  role: z.string().min(1, "Select a role").max(100),
+});
+
+// ── Internal roles (RBAC role manager) ──────────────────────────────
+
+const ASSIGNABLE_AS = ["", "SALES", "SUPPORT"] as const;
+
+export const CreateInternalRoleSchema = z.object({
+  code: z
+    .string()
+    .min(2, "Code must be at least 2 characters")
+    .max(100)
+    .regex(/^[A-Za-z0-9_]+$/, "Use letters, numbers and underscore only"),
+  name: z.string().min(1, "Name is required").max(150),
+  description: z.string().max(2000).optional().or(z.literal("")),
+  assignableAs: z.enum(ASSIGNABLE_AS).optional(),
+  permissions: z.array(z.string()).default([]),
+});
+
+export const UpdateInternalRoleDefinitionSchema = z.object({
+  name: z.string().min(1, "Name is required").max(150),
+  description: z.string().max(2000).optional().or(z.literal("")),
+  assignableAs: z.enum(ASSIGNABLE_AS).optional(),
+  permissions: z.array(z.string()).default([]),
+  active: z.boolean().optional(),
+});
+
+// Edit an internal staff member's name + HRM-seed details (Accounts Service).
+// Empty string clears the optional fields; names are required.
+export const UpdateInternalStaffSchema = z.object({
+  firstName: z.string().min(1, "First name is required").max(255),
+  lastName: z.string().min(1, "Last name is required").max(255),
+  phoneNumber: z.string().max(20).optional().or(z.literal("")),
+  jobTitle: z.string().max(120).optional().or(z.literal("")),
+  joiningDate: z.string().optional().or(z.literal("")),
+  notes: z.string().max(2000).optional().or(z.literal("")),
 });
 
 // ── Support agents (Accounts Service) ───────────────────────────────

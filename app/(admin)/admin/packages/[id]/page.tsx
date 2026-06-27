@@ -26,6 +26,7 @@ import {
 } from "@/components/admin/catalog/package-detail/package-overview-panels";
 
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import {
   getPackage,
   listPackageFeatures,
@@ -43,9 +44,6 @@ import type {
   PackageResponse,
   WhitelabelSummary,
 } from "@/types/admin/billing";
-import type { InternalRole } from "@/types/types";
-
-const CATALOG_ROLES: InternalRole[] = ["SYSTEM_ADMIN", "SUPER_ADMIN"];
 
 interface PackageDetailPageProps {
   params: Promise<{ id: string }>;
@@ -112,8 +110,7 @@ export default async function AdminPackageDetailPage({
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const canManage = role ? CATALOG_ROLES.includes(role) : false;
+  const canManage = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
   if (!canManage) {
     return (
       <AdminShell token={token}>

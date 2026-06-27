@@ -19,26 +19,21 @@ import {
   getPlatformAccounts,
   getPlatformOrders,
   getPlatformStockMovement,
+  type StaffScope,
 } from "@/lib/actions/admin/platform-metrics";
+import { getMyInternalStaffProfile } from "@/lib/actions/admin/accounts";
 import {
   parseComparison,
   parseRange,
   resolveComparisonRange,
 } from "@/lib/admin/period-range";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import type { PackageDateRange } from "@/types/admin/billing";
-import type { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Admin Dashboard",
 };
-
-const STATS_ROLES: InternalRole[] = [
-  "SYSTEM_ADMIN",
-  "SUPER_ADMIN",
-  "BOARD_MEMBER",
-  "SALES_TEAM",
-];
 
 interface AdminDashboardPageProps {
   searchParams: Promise<{ from?: string; to?: string; compare?: string }>;
@@ -78,20 +73,25 @@ async function loadMetric<T>(
 async function loadOperations(
   range: PackageDateRange,
   comparison: PackageDateRange | null,
+  scope?: StaffScope,
 ): Promise<OperationsData> {
   const [orders, accounts, stock] = await Promise.all([
     loadMetric(
-      getPlatformOrders(range.from, range.to),
-      comparison ? getPlatformOrders(comparison.from, comparison.to) : null,
-    ),
-    loadMetric(
-      getPlatformAccounts(range.from, range.to),
-      comparison ? getPlatformAccounts(comparison.from, comparison.to) : null,
-    ),
-    loadMetric(
-      getPlatformStockMovement(range.from, range.to),
+      getPlatformOrders(range.from, range.to, scope),
       comparison
-        ? getPlatformStockMovement(comparison.from, comparison.to)
+        ? getPlatformOrders(comparison.from, comparison.to, scope)
+        : null,
+    ),
+    loadMetric(
+      getPlatformAccounts(range.from, range.to, scope),
+      comparison
+        ? getPlatformAccounts(comparison.from, comparison.to, scope)
+        : null,
+    ),
+    loadMetric(
+      getPlatformStockMovement(range.from, range.to, scope),
+      comparison
+        ? getPlatformStockMovement(comparison.from, comparison.to, scope)
         : null,
     ),
   ]);
@@ -107,7 +107,7 @@ export default async function AdminDashboardPage({
   }
 
   const role = token.internalRole;
-  const canViewStats = role ? STATS_ROLES.includes(role) : false;
+  const canViewStats = hasInternalPermission(token, PERM.SAAS_METRICS_READ);
 
   const subtitle = token?.email
     ? `Signed in as ${token.email}${role ? ` · ${role.replace(/_/g, " ")}` : ""}`
@@ -129,14 +129,27 @@ export default async function AdminDashboardPage({
     );
   }
 
+  // Sales/support staff see metrics for only their assigned accounts. Admins /
+  // board are unrestricted. (Only SALES reaches here; support isn't in STATS_ROLES.)
+  const me = await getMyInternalStaffProfile();
+  const scope: StaffScope | undefined =
+    me?.assignableAs === "SALES"
+      ? { assignedSalesStaffId: me.id }
+      : me?.assignableAs === "SUPPORT"
+        ? { assignedSupportStaffId: me.id }
+        : undefined;
+  const isScoped = scope !== undefined;
+
   const { from, to, compare } = await searchParams;
   const range = parseRange(from, to);
   const comparisonMode = parseComparison(compare);
   const comparisonRange = resolveComparisonRange(range, comparisonMode);
 
+  // The platform-wide SaaS snapshot (MRR/funnel/plans/etc.) has no per-account
+  // dimension, so a scoped rep sees only their accounts' operations band.
   const [overview, operations] = await Promise.all([
-    getDashboardOverview(),
-    loadOperations(range, comparisonRange),
+    isScoped ? Promise.resolve(null) : getDashboardOverview(),
+    loadOperations(range, comparisonRange, scope),
   ]);
 
   return (
@@ -144,7 +157,9 @@ export default async function AdminDashboardPage({
       <PageShell>
         <PageHeader
           title="Admin Dashboard"
-          subtitle={subtitle}
+          subtitle={
+            isScoped ? `${subtitle} · your assigned accounts` : subtitle
+          }
           actions={<SystemsStatusPill />}
         />
         <PageBody>
@@ -156,12 +171,16 @@ export default async function AdminDashboardPage({
           />
           <OperationsBand data={operations} range={range} />
 
-          {/* Live platform snapshot (not period-scoped). */}
-          <AdminDashboardView data={overview} />
-          <p className="text-center font-mono text-[11px] text-muted-2">
-            Snapshot · {formatTimestamp(overview.generatedAt)} · figures refresh
-            every 15 min
-          </p>
+          {/* Live platform snapshot (not period-scoped) — admins/board only. */}
+          {overview && (
+            <>
+              <AdminDashboardView data={overview} />
+              <p className="text-center font-mono text-[11px] text-muted-2">
+                Snapshot · {formatTimestamp(overview.generatedAt)} · figures
+                refresh every 15 min
+              </p>
+            </>
+          )}
         </PageBody>
       </PageShell>
     </AdminShell>

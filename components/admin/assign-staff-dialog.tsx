@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -27,13 +29,11 @@ import {
   assignSalesPerson,
   assignSupportStaff,
   listActiveInternalStaff,
+  listAssignableExternalAgents,
   unassignSalesPerson,
   unassignSupportStaff,
 } from "@/lib/actions/admin/accounts";
-import {
-  AssignedStaffInfo,
-} from "@/types/admin/account";
-import { InternalStaffSummary } from "@/types/admin/internal-staff";
+import { AssignedStaffInfo, StaffAssigneeType } from "@/types/admin/account";
 
 interface AssignStaffDialogProps {
   accountId: string;
@@ -44,10 +44,24 @@ interface AssignStaffDialogProps {
   onDone: () => void;
 }
 
+interface AssignOption {
+  /** Encoded `${type}:${id}` — disambiguates internal staff vs external agent ids. */
+  value: string;
+  id: string;
+  type: StaffAssigneeType;
+  fullName: string;
+  email: string;
+  role: string;
+}
+
 function roleLabel(role: string): string {
   return role.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) =>
     c.toUpperCase(),
   );
+}
+
+function optionValue(type: StaffAssigneeType, id: string): string {
+  return `${type}:${id}`;
 }
 
 export function AssignStaffDialog({
@@ -59,58 +73,105 @@ export function AssignStaffDialog({
   onDone,
 }: AssignStaffDialogProps) {
   const { toast } = useToast();
-  const [staff, setStaff] = useState<InternalStaffSummary[]>([]);
-  const [selectedId, setSelectedId] = useState<string>(current?.id ?? "");
-  const [loadingStaff, setLoadingStaff] = useState(false);
-  const [staffError, setStaffError] = useState<string | null>(null);
+  const [options, setOptions] = useState<AssignOption[]>([]);
+  const currentValue = current
+    ? optionValue(current.type ?? "INTERNAL_STAFF", current.id)
+    : "";
+  const [selectedValue, setSelectedValue] = useState<string>(currentValue);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
   const [isSaving, startSave] = useTransition();
   const [isRemoving, startRemove] = useTransition();
 
-  const title =
-    kind === "sales" ? "Assign sales person" : "Assign support staff";
-  const fieldLabel = kind === "sales" ? "Sales person" : "Support staff";
+  const isSales = kind === "sales";
+  const title = isSales ? "Assign sales person" : "Assign support staff";
+  const fieldLabel = isSales ? "Sales person" : "Support staff";
+  // Internal candidates are scoped by role CAPABILITY (works for dynamic roles):
+  // SALES for the sales picker, SUPPORT for support (also enforced server-side).
+  // Sales additionally allows external agents (influencers); support is internal-only.
+  const eligibleCapability = isSales ? "SALES" : "SUPPORT";
 
   useEffect(() => {
     if (!open) {
       setError("");
-      setSelectedId(current?.id ?? "");
+      setSelectedValue(currentValue);
       return;
     }
     let cancelled = false;
-    setLoadingStaff(true);
-    setStaffError(null);
-    listActiveInternalStaff()
-      .then((list) => {
+    setLoading(true);
+    setLoadError(null);
+    Promise.all([
+      listActiveInternalStaff(eligibleCapability),
+      isSales
+        ? listAssignableExternalAgents()
+        : Promise.resolve<AssignedStaffInfo[]>([]),
+    ])
+      .then(([internal, external]) => {
         if (cancelled) return;
-        setStaff(list);
-        setSelectedId(current?.id ?? "");
+        const internalOptions: AssignOption[] = internal
+          // Server scopes by capability; filter again so a not-yet-deployed
+          // backend (ignoring the param) can't surface the wrong staff.
+          .filter((s) => s.assignableAs === eligibleCapability)
+          .map((s) => ({
+            value: optionValue("INTERNAL_STAFF", s.id),
+            id: s.id,
+            type: "INTERNAL_STAFF" as const,
+            fullName: s.fullName,
+            email: s.email,
+            role: s.internalRole,
+          }));
+        const externalOptions: AssignOption[] = external.map((a) => ({
+          value: optionValue("EXTERNAL_AGENT", a.id),
+          id: a.id,
+          type: "EXTERNAL_AGENT" as const,
+          fullName: a.fullName,
+          email: a.email,
+          role: a.role || "EXTERNAL_AGENT",
+        }));
+        setOptions([...internalOptions, ...externalOptions]);
+        setSelectedValue(currentValue);
       })
       .catch((err: any) => {
         if (cancelled) return;
-        setStaffError(err?.message ?? "Failed to load internal staff.");
+        setLoadError(err?.message ?? "Failed to load candidates.");
       })
       .finally(() => {
-        if (!cancelled) setLoadingStaff(false);
+        if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [open, current?.id]);
+    // currentValue derives from current.id/type; depend on the primitives.
+  }, [open, current?.id, current?.type, eligibleCapability, isSales]);
+
+  const internalOptions = useMemo(
+    () => options.filter((o) => o.type === "INTERNAL_STAFF"),
+    [options],
+  );
+  const externalOptions = useMemo(
+    () => options.filter((o) => o.type === "EXTERNAL_AGENT"),
+    [options],
+  );
 
   const handleSave = () => {
     setError("");
-    if (!selectedId) {
-      setError("Choose a staff member");
+    if (!selectedValue) {
+      setError("Choose someone to assign");
       return;
     }
-    if (selectedId === current?.id) {
+    if (selectedValue === currentValue) {
       onOpenChange(false);
       return;
     }
+    const sep = selectedValue.indexOf(":");
+    const type = selectedValue.slice(0, sep) as StaffAssigneeType;
+    const id = selectedValue.slice(sep + 1);
+
     startSave(async () => {
-      const fn = kind === "sales" ? assignSalesPerson : assignSupportStaff;
-      const result = await fn(accountId, selectedId);
+      const result = isSales
+        ? await assignSalesPerson(accountId, id, type)
+        : await assignSupportStaff(accountId, id);
       if (result.responseType === "error") {
         setError(result.message);
         return;
@@ -124,7 +185,7 @@ export function AssignStaffDialog({
   const handleRemove = () => {
     setError("");
     startRemove(async () => {
-      const fn = kind === "sales" ? unassignSalesPerson : unassignSupportStaff;
+      const fn = isSales ? unassignSalesPerson : unassignSupportStaff;
       const result = await fn(accountId);
       if (result.responseType === "error") {
         setError(result.message);
@@ -136,6 +197,17 @@ export function AssignStaffDialog({
     });
   };
 
+  const renderOption = (o: AssignOption) => (
+    <SelectItem key={o.value} value={o.value}>
+      <div className="flex flex-col">
+        <span className="font-medium">{o.fullName}</span>
+        <span className="text-xs text-muted-foreground">
+          {roleLabel(o.role)} · {o.email}
+        </span>
+      </div>
+    </SelectItem>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[460px]">
@@ -144,44 +216,68 @@ export function AssignStaffDialog({
           <DialogDescription>
             {current
               ? `Currently assigned: ${current.fullName} (${current.email}).`
-              : "No one is currently assigned."}
+              : isSales
+                ? "Assign an internal sales-team member or an external agent."
+                : "No one is currently assigned."}
           </DialogDescription>
         </DialogHeader>
 
-        {(error || staffError) && (
-          <FormError message={error || staffError || ""} />
+        {(error || loadError) && (
+          <FormError message={error || loadError || ""} />
         )}
 
         <div className="space-y-2">
           <Label className="text-xs">{fieldLabel}</Label>
           <Select
-            value={selectedId}
-            onValueChange={setSelectedId}
-            disabled={loadingStaff || isSaving || isRemoving}
+            value={selectedValue}
+            onValueChange={setSelectedValue}
+            disabled={loading || isSaving || isRemoving}
           >
             <SelectTrigger>
               <SelectValue
-                placeholder={loadingStaff ? "Loading…" : "Choose a staff member"}
+                placeholder={loading ? "Loading…" : "Choose someone to assign"}
               />
             </SelectTrigger>
             <SelectContent>
-              {staff.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{s.fullName}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {roleLabel(s.internalRole)} · {s.email}
-                    </span>
-                  </div>
-                </SelectItem>
-              ))}
-              {staff.length === 0 && !loadingStaff && (
-                <p className="px-3 py-2 text-sm text-muted-foreground">
-                  No active internal staff available.
-                </p>
+              {isSales ? (
+                <>
+                  <SelectGroup>
+                    <SelectLabel>Internal sales team</SelectLabel>
+                    {internalOptions.map(renderOption)}
+                    {internalOptions.length === 0 && (
+                      <p className="px-3 py-1.5 text-xs text-muted-foreground">
+                        No active sales-team staff.
+                      </p>
+                    )}
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>External agents</SelectLabel>
+                    {externalOptions.map(renderOption)}
+                    {externalOptions.length === 0 && (
+                      <p className="px-3 py-1.5 text-xs text-muted-foreground">
+                        No active external agents.
+                      </p>
+                    )}
+                  </SelectGroup>
+                </>
+              ) : (
+                <>
+                  {internalOptions.map(renderOption)}
+                  {internalOptions.length === 0 && !loading && (
+                    <p className="px-3 py-2 text-sm text-muted-foreground">
+                      No active support agents available.
+                    </p>
+                  )}
+                </>
               )}
             </SelectContent>
           </Select>
+          {isSales && (
+            <p className="text-[11px] text-muted-foreground">
+              External agents (e.g. influencers) can be the sales person; support
+              staff is always internal.
+            </p>
+          )}
         </div>
 
         <DialogFooter className="gap-2">
@@ -214,14 +310,14 @@ export function AssignStaffDialog({
           <Button
             type="button"
             onClick={handleSave}
-            disabled={isSaving || isRemoving || !selectedId}
+            disabled={isSaving || isRemoving || !selectedValue}
           >
             {isSaving ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Saving…
               </span>
-            ) : current?.id === selectedId ? (
+            ) : selectedValue === currentValue ? (
               "Close"
             ) : (
               "Save"

@@ -37,19 +37,12 @@ import { useToast } from "@/hooks/use-toast";
 import { createInternalUser } from "@/lib/actions/admin/internal-users";
 import { CreateInternalUserSchema } from "@/types/admin/schemas";
 import { RolePermissionsResponse } from "@/types/admin/internal-user";
-import { InternalRole } from "@/types/types";
 
 interface CreateInternalUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   roles: RolePermissionsResponse[];
   onCreated: () => void;
-}
-
-function roleLabel(role: InternalRole): string {
-  return role.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) =>
-    c.toUpperCase(),
-  );
 }
 
 export function CreateInternalUserDialog({
@@ -66,9 +59,11 @@ export function CreateInternalUserDialog({
   const form = useForm<z.infer<typeof CreateInternalUserSchema>>({
     resolver: zodResolver(CreateInternalUserSchema),
     defaultValues: {
+      firstName: "",
+      lastName: "",
       email: "",
       password: "",
-      role: undefined as unknown as InternalRole,
+      role: "",
     },
   });
 
@@ -91,7 +86,7 @@ export function CreateInternalUserDialog({
         }
         toast({
           title: "Internal user created",
-          description: `${values.email} can now sign in to the staff portal.`,
+          description: `${values.firstName} ${values.lastName} (${values.email}) can now sign in to the staff portal.`,
         });
         onCreated();
         onOpenChange(false);
@@ -122,6 +117,46 @@ export function CreateInternalUserDialog({
             }}
             noValidate
           >
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>First name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Jane"
+                        autoComplete="off"
+                        disabled={isPending}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Doe"
+                        autoComplete="off"
+                        disabled={isPending}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="email"
@@ -198,9 +233,7 @@ export function CreateInternalUserDialog({
                       {roles.map((r) => (
                         <SelectItem key={r.role} value={r.role}>
                           <div className="flex flex-col">
-                            <span className="font-medium">
-                              {roleLabel(r.role)}
-                            </span>
+                            <span className="font-medium">{r.name}</span>
                             {r.description && (
                               <span className="text-xs text-muted-foreground">
                                 {r.description}

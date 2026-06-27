@@ -10,6 +10,7 @@ import {
 import { EntityDetailView } from "@/components/admin/entity-detail/entity-detail-view";
 import { EditLocationButton } from "@/components/admin/entity-detail/edit-location-dialog";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { getAdminLocationDetail } from "@/lib/actions/admin/businesses";
 import { getBusinessSubscription } from "@/lib/actions/admin/billing";
 import {
@@ -17,17 +18,10 @@ import {
   getDefaultIntelRange,
 } from "@/lib/actions/admin/business-intel";
 import { getEntityStockSummary } from "@/lib/actions/admin/business-operations";
-import type { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Location detail",
 };
-
-const READ_ROLES: InternalRole[] = [
-  "SYSTEM_ADMIN",
-  "SUPER_ADMIN",
-  "SUPPORT_AGENT",
-];
 
 interface LocationDetailPageProps {
   params: Promise<{ id: string }>;
@@ -53,7 +47,7 @@ export default async function LocationDetailPage({
   }
 
   const role = token.internalRole;
-  const canRead = role ? READ_ROLES.includes(role) : false;
+  const canRead = hasInternalPermission(token, PERM.ACCOUNTS_READ);
   if (!canRead) {
     return (
       <AdminShell token={token}>
@@ -67,8 +61,8 @@ export default async function LocationDetailPage({
     );
   }
 
-  const canBilling = role === "SYSTEM_ADMIN" || role === "SUPPORT_AGENT";
-  const canEdit = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
+  const canBilling = hasInternalPermission(token, PERM.SUPPORT_TICKETS_MANAGE);
+  const canEdit = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
   // SYSTEM_ADMIN maps to billing's ROLE_SYSTEM_ADMIN (system_admin claim) — the only
   // caller allowed to override-extend a paid/used entity's trial.
   const isSuperAdmin = role === "SYSTEM_ADMIN";

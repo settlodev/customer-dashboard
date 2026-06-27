@@ -20,6 +20,15 @@ import type {
 
 const PREFIX = "/api/v2/internal/metrics/platform";
 
+/**
+ * Restrict platform metrics to the accounts assigned to a sales/support staff
+ * member. Omit (or pass {}) for admins/board → unrestricted, platform-wide.
+ */
+export interface StaffScope {
+  assignedSalesStaffId?: string;
+  assignedSupportStaffId?: string;
+}
+
 /** Coerce a possibly-string ClickHouse scalar to a finite number. */
 function num(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value);
@@ -36,10 +45,12 @@ function str(value: unknown): string | null {
 export async function getPlatformOrders(
   startDate: string,
   endDate: string,
+  scope?: StaffScope,
 ): Promise<PlatformOrders> {
   const r = await reportsInternalGet<Record<string, unknown>>(`${PREFIX}/orders`, {
     startDate,
     endDate,
+    ...scope,
   });
   return {
     startDate,
@@ -60,10 +71,11 @@ export async function getPlatformOrders(
 export async function getPlatformAccounts(
   startDate: string,
   endDate: string,
+  scope?: StaffScope,
 ): Promise<PlatformAccounts> {
   const r = await reportsInternalGet<Record<string, unknown>>(
     `${PREFIX}/accounts`,
-    { startDate, endDate },
+    { startDate, endDate, ...scope },
   );
   const daily = Array.isArray(r.daily)
     ? (r.daily as Record<string, unknown>[]).map((p) => ({
@@ -84,10 +96,11 @@ export async function getPlatformAccounts(
 export async function getPlatformStockMovement(
   startDate: string,
   endDate: string,
+  scope?: StaffScope,
 ): Promise<PlatformStockMovement> {
   const r = await reportsInternalGet<Record<string, unknown>>(
     `${PREFIX}/stock-movements`,
-    { startDate, endDate },
+    { startDate, endDate, ...scope },
   );
   const byType = Array.isArray(r.byType)
     ? (r.byType as Record<string, unknown>[]).map((t) => ({
@@ -114,6 +127,7 @@ export async function getPlatformStockMovement(
 
 export async function getPlatformLocations(
   query: PlatformLocationsQuery = {},
+  scope?: StaffScope,
 ): Promise<PlatformLocationsPage> {
   const r = await reportsInternalGet<Record<string, unknown>>(
     `${PREFIX}/locations`,
@@ -122,6 +136,7 @@ export async function getPlatformLocations(
       search: query.search,
       page: query.page ?? 0,
       size: query.size ?? 20,
+      ...scope,
     },
   );
   const rows = Array.isArray(r.content)

@@ -8,18 +8,16 @@ import {
 } from "@/components/layouts/page-shell";
 import { FeaturesView } from "@/components/admin/catalog/features-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { listFeatures, listPackages } from "@/lib/actions/admin/billing";
 import type {
   FeatureResponse,
   PackageResponse,
 } from "@/types/admin/billing";
-import type { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Features",
 };
-
-const CATALOG_ROLES: InternalRole[] = ["SYSTEM_ADMIN", "SUPER_ADMIN"];
 
 export default async function AdminFeaturesPage() {
   const token = await getStaffAuthToken();
@@ -27,8 +25,7 @@ export default async function AdminFeaturesPage() {
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const canManage = role ? CATALOG_ROLES.includes(role) : false;
+  const canManage = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
   if (!canManage) {
     return (
       <AdminShell token={token}>

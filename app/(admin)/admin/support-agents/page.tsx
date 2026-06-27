@@ -8,15 +8,13 @@ import {
 } from "@/components/layouts/page-shell";
 import { SupportAgentsView } from "@/components/admin/support-agents-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { listSupportAgents } from "@/lib/actions/admin/support-agents";
 import type { SupportAgentPage } from "@/types/admin/support-agent";
-import type { InternalRole } from "@/types/types";
 
 export const metadata = {
-  title: "Support agents",
+  title: "External agents",
 };
-
-const MANAGE_ROLES: InternalRole[] = ["SYSTEM_ADMIN", "SUPER_ADMIN"];
 
 interface SupportAgentsPageProps {
   searchParams: Promise<{ page?: string; limit?: string }>;
@@ -30,15 +28,14 @@ export default async function AdminSupportAgentsPage({
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const canManage = role ? MANAGE_ROLES.includes(role) : false;
+  const canManage = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
 
   if (!canManage) {
     return (
       <AdminShell token={token}>
         <PageShell>
           <PageHeader
-            title="Support agents"
+            title="External agents"
             subtitle="Restricted to System Admins and Super Admins."
           />
         </PageShell>
@@ -65,8 +62,8 @@ export default async function AdminSupportAgentsPage({
     <AdminShell token={token}>
       <PageShell>
         <PageHeader
-          title="Support agents"
-          subtitle="External agents with referral codes for customer onboarding."
+          title="External / referral agents"
+          subtitle="External agents (e.g. influencers/affiliates) with referral codes — assignable as an account's sales person. Support staff is internal."
         />
         <PageBody>
           {loadError ? (

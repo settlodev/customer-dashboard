@@ -10,6 +10,7 @@ import {
 import { CustomerSearchView } from "@/components/admin/customer-search-view";
 import { MergedCustomersView } from "@/components/admin/merged-customers-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { searchCustomers } from "@/lib/actions/admin/accounts";
 import { listMergedCustomers } from "@/lib/actions/admin/merged-customers";
 import { cn } from "@/lib/utils";
@@ -17,17 +18,10 @@ import type {
   AdminCustomerSearchPage,
   MergedCustomerPage,
 } from "@/types/admin/account";
-import type { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Customers",
 };
-
-const READ_ROLES: InternalRole[] = [
-  "SYSTEM_ADMIN",
-  "SUPER_ADMIN",
-  "SUPPORT_AGENT",
-];
 
 interface CustomersPageProps {
   searchParams: Promise<{
@@ -47,8 +41,7 @@ export default async function AdminCustomersPage({
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const canRead = role ? READ_ROLES.includes(role) : false;
+  const canRead = hasInternalPermission(token, PERM.USERS_IMPERSONATE);
   if (!canRead) {
     return (
       <AdminShell token={token}>
@@ -62,7 +55,7 @@ export default async function AdminCustomersPage({
     );
   }
 
-  const canEdit = role === "SYSTEM_ADMIN" || role === "SUPER_ADMIN";
+  const canEdit = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
   const params = await searchParams;
   const view = params.view === "records" ? "records" : "merged";
   // The shared DataTable owns pagination via a 1-based `?page` + `?limit`;

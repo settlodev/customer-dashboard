@@ -8,6 +8,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { WhitelabelPricingView } from "@/components/admin/catalog/whitelabel-pricing-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { listAddons, listPackages } from "@/lib/actions/admin/billing";
 import { listWhitelabels } from "@/lib/actions/admin/whitelabels";
 import type {
@@ -15,13 +16,10 @@ import type {
   PackageResponse,
   WhitelabelSummary,
 } from "@/types/admin/billing";
-import type { InternalRole } from "@/types/types";
 
 export const metadata = {
   title: "Whitelabel pricing",
 };
-
-const CATALOG_ROLES: InternalRole[] = ["SYSTEM_ADMIN", "SUPER_ADMIN"];
 
 interface WhitelabelPricingPageProps {
   searchParams: Promise<{ whitelabelId?: string }>;
@@ -35,8 +33,7 @@ export default async function AdminWhitelabelPricingPage({
     redirect("/login");
   }
 
-  const role = token.internalRole;
-  const canManage = role ? CATALOG_ROLES.includes(role) : false;
+  const canManage = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
   if (!canManage) {
     return (
       <AdminShell token={token}>

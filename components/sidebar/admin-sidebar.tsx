@@ -20,6 +20,7 @@ import {
   Package,
   PackagePlus,
   RotateCcw,
+  ShieldCheck,
   Sparkles,
   Ticket,
   UserCog,
@@ -31,14 +32,18 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { logoutStaff } from "@/lib/actions/auth-actions";
-import { AuthToken, InternalRole } from "@/types/types";
+import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
+import { AuthToken } from "@/types/types";
 
 interface NavItem {
   title: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  /** Roles allowed to see this item. Empty = visible to all internal roles. */
-  roles?: InternalRole[];
+  /**
+   * Internal permissions that grant access (ANY-of). Omitted/empty = visible to
+   * all internal staff. Capability-based so custom roles work, not role names.
+   */
+  permissions?: string[];
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -51,97 +56,99 @@ const NAV_ITEMS: NavItem[] = [
     title: "Accounts",
     href: "/accounts",
     icon: Building2,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN", "SUPPORT_AGENT"],
+    permissions: [PERM.ACCOUNTS_READ],
   },
   {
     title: "Businesses",
     href: "/businesses",
     icon: Briefcase,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN", "SUPPORT_AGENT"],
+    permissions: [PERM.ACCOUNTS_READ],
   },
   {
     title: "Locations",
     href: "/locations",
     icon: MapPin,
-    roles: [
-      "SYSTEM_ADMIN",
-      "SUPER_ADMIN",
-      "SUPPORT_AGENT",
-      "BOARD_MEMBER",
-      "SALES_TEAM",
-    ],
+    permissions: [PERM.BUSINESS_ANALYTICS_READ],
   },
   {
     title: "Customers",
     href: "/customers",
     icon: Users,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN", "SUPPORT_AGENT"],
+    permissions: [PERM.USERS_IMPERSONATE],
   },
   {
     title: "Refunds",
     href: "/refunds",
     icon: RotateCcw,
-    roles: ["SYSTEM_ADMIN", "SUPPORT_AGENT"],
+    permissions: [PERM.SUPPORT_TICKETS_MANAGE],
   },
   {
     title: "Packages",
     href: "/packages",
     icon: Package,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN"],
+    permissions: [PERM.ACCOUNTS_MANAGE],
   },
   {
     title: "Addons",
     href: "/addons",
     icon: PackagePlus,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN"],
+    permissions: [PERM.ACCOUNTS_MANAGE],
   },
   {
     title: "Features",
     href: "/features",
     icon: Layers,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN"],
+    permissions: [PERM.ACCOUNTS_MANAGE],
   },
   {
     title: "Discounts",
     href: "/discounts",
     icon: Sparkles,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN", "SUPPORT_AGENT"],
+    permissions: [PERM.SUPPORT_TICKETS_MANAGE],
   },
   {
     title: "Coupons",
     href: "/coupons",
     icon: Ticket,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN"],
+    permissions: [PERM.ACCOUNTS_MANAGE],
   },
   {
     title: "Credit packs",
     href: "/credit-packs",
     icon: Coins,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN"],
+    permissions: [PERM.ACCOUNTS_MANAGE],
   },
   {
     title: "Whitelabel pricing",
     href: "/whitelabel-pricing",
     icon: Globe,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN"],
+    permissions: [PERM.ACCOUNTS_MANAGE],
   },
   {
     title: "Analytics",
     href: "/analytics",
     icon: BarChart3,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN", "BOARD_MEMBER", "SALES_TEAM"],
+    // SaaS analytics (MRR/churn/cohorts) is platform-wide with no per-account
+    // dimension; saas:revenue:read is held by admins + board, not sales.
+    permissions: [PERM.SAAS_REVENUE_READ],
   },
   {
     title: "Internal Users",
     href: "/users",
     icon: UserCog,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN"],
+    permissions: [PERM.ACCOUNTS_MANAGE],
   },
   {
-    title: "Support Agents",
+    title: "Roles",
+    href: "/roles",
+    icon: ShieldCheck,
+    permissions: [PERM.ROLES_MANAGE],
+  },
+  {
+    title: "External Agents",
     href: "/support-agents",
     icon: Headset,
-    roles: ["SYSTEM_ADMIN", "SUPER_ADMIN"],
+    permissions: [PERM.ACCOUNTS_MANAGE],
   },
 ];
 
@@ -151,10 +158,10 @@ interface AdminSidebarProps {
   onClose?: () => void;
 }
 
-function visibleNavItems(role: InternalRole | null | undefined): NavItem[] {
+function visibleNavItems(token: AuthToken | null | undefined): NavItem[] {
   return NAV_ITEMS.filter((item) => {
-    if (!item.roles || item.roles.length === 0) return true;
-    return role ? item.roles.includes(role) : false;
+    if (!item.permissions || item.permissions.length === 0) return true;
+    return hasInternalPermission(token, ...item.permissions);
   });
 }
 
@@ -164,11 +171,12 @@ function pathMatches(href: string, pathname: string): boolean {
 
 function AdminSidebarContent({ token, isMobile, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
-  const role = token?.internalRole ?? null;
-  const items = visibleNavItems(role);
+  const items = visibleNavItems(token);
   const [isLoggingOut, startLogout] = useTransition();
 
-  const roleLabel = role ? role.replace(/_/g, " ").toLowerCase() : "";
+  const roleLabel = token?.internalRole
+    ? token.internalRole.replace(/_/g, " ").toLowerCase()
+    : "";
 
   const handleLogout = () => {
     startLogout(async () => {
