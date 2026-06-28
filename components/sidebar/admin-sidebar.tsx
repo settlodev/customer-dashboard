@@ -26,6 +26,7 @@ import {
   Ticket,
   UserCog,
   Users,
+  WifiOff,
   X,
 } from "lucide-react";
 
@@ -75,6 +76,12 @@ const NAV_ITEMS: NavItem[] = [
     title: "Activity Log",
     href: "/activity-log",
     icon: ScrollText,
+    permissions: [PERM.ACTIVITY_LOG_READ],
+  },
+  {
+    title: "Stuck Writes",
+    href: "/stuck-writes",
+    icon: WifiOff,
     permissions: [PERM.ACTIVITY_LOG_READ],
   },
   {
