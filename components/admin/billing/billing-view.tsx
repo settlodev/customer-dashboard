@@ -132,6 +132,11 @@ export function BillingView({
     [],
   );
 
+  // ACTIVE + degraded units, so Change plan can target an expired entity (a business whose
+  // subscription has lapsed). Entitlement/MRR still read `items`. Falls back on pre-deploy
+  // responses that don't carry manageableItems yet.
+  const manageableItems = subscription?.manageableItems ?? subscription?.items ?? [];
+
   const handleRepublish = useCallback(() => {
     if (
       !confirm(
@@ -193,10 +198,10 @@ export function BillingView({
           size="sm"
           variant="outline"
           onClick={() => setUpgradeOpen(true)}
-          disabled={!subscription || subscription.items.length === 0}
+          disabled={!subscription || manageableItems.length === 0}
         >
           <ArrowUpCircle className="mr-1.5 h-4 w-4" />
-          Upgrade plan
+          Change plan
         </Button>
         <Button
           size="sm"
@@ -310,16 +315,17 @@ export function BillingView({
           </div>
         )}
 
-        {subscription && subscription.items.length > 0 && (
+        {subscription && manageableItems.length > 0 && (
           <div className="mt-5 border-t border-line pt-4">
             <h4 className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
               Subscription items
             </h4>
             <p className="mb-2 text-[12px] text-muted-foreground">
-              Plan, trial &amp; add-on actions live on each unit&apos;s detail page.
+              Includes lapsed units (expired/suspended) so their plan can be changed before the
+              business pays to reactivate.
             </p>
             <ul className="space-y-1.5">
-              {subscription.items.map((item) => (
+              {manageableItems.map((item) => (
                 <li
                   key={item.id}
                   className="flex items-center justify-between text-[13px]"
@@ -447,7 +453,7 @@ export function BillingView({
       {subscription && (
         <UpgradePlanDialog
           businessId={businessId}
-          items={subscription.items}
+          items={manageableItems}
           open={upgradeOpen}
           onOpenChange={setUpgradeOpen}
           onUpgraded={refresh}

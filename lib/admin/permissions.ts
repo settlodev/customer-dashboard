@@ -19,6 +19,9 @@ export const PERM = {
   SAAS_REVENUE_READ: "internal:saas:revenue:read",
   BUSINESS_ANALYTICS_READ: "internal:business:analytics:read",
   SUPPORT_TICKETS_MANAGE: "internal:support:tickets:manage",
+  ACTIVITY_LOG_READ: "internal:activity:read",
+  REPAIR_EXECUTE: "internal:repair:execute",
+  REPAIR_APPROVE: "internal:repair:approve",
 } as const;
 
 export type InternalPermission = (typeof PERM)[keyof typeof PERM];

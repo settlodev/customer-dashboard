@@ -71,10 +71,13 @@ export function UpgradePlanDialog({
   const [packagesError, setPackagesError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Bundled units inherit the parent's plan — never selectable for a plan change.
+  const selectableItems = useMemo(() => items.filter((i) => !i.isBundled), [items]);
+
   const form = useForm<z.infer<typeof UpgradePlanSchema>>({
     resolver: zodResolver(UpgradePlanSchema),
     defaultValues: {
-      subscriptionItemId: items[0]?.id ?? "",
+      subscriptionItemId: selectableItems[0]?.id ?? "",
       newPackageId: "",
     },
   });
@@ -84,7 +87,7 @@ export function UpgradePlanDialog({
   useEffect(() => {
     if (!open) {
       form.reset({
-        subscriptionItemId: items[0]?.id ?? "",
+        subscriptionItemId: selectableItems[0]?.id ?? "",
         newPackageId: "",
       });
       setError("");
@@ -110,7 +113,7 @@ export function UpgradePlanDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, items, form]);
+  }, [open, selectableItems, form]);
 
   const onSubmit = (values: z.infer<typeof UpgradePlanSchema>) => {
     setError("");
@@ -136,15 +139,29 @@ export function UpgradePlanDialog({
     [packages, form],
   );
 
+  // Clear the chosen package when the unit changes — the eligible set is entity-type-specific.
+  const watchedItemId = form.watch("subscriptionItemId");
+  useEffect(() => {
+    form.setValue("newPackageId", "");
+  }, [watchedItemId, form]);
+
+  // Only packages matching the selected unit's entity type — a LOCATION can't take a
+  // WAREHOUSE/STORE package and vice-versa.
+  const eligiblePackages = useMemo(
+    () => (packages ?? []).filter((p) => !selectedItem || p.entityType === selectedItem.entityType),
+    [packages, selectedItem],
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Upgrade subscription plan</DialogTitle>
+          <DialogTitle>Change subscription plan</DialogTitle>
           <DialogDescription>
-            Switch a subscription item to a different package. The billing
-            service auto-generates a prorated invoice for the remaining
-            cycle — no need to issue one manually.
+            Switch a subscription item to a different package. If the unit has
+            paid for the current cycle the difference is prorated; if it&apos;s
+            unpaid or expired, the outstanding invoice is re-issued at the new
+            plan for the business to pay.
           </DialogDescription>
         </DialogHeader>
 
@@ -177,7 +194,7 @@ export function UpgradePlanDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {items.map((item) => (
+                      {selectableItems.map((item) => (
                         <SelectItem key={item.id} value={item.id}>
                           {item.packageInfo?.name ?? item.entityType} ·{" "}
                           {item.status}
@@ -216,7 +233,7 @@ export function UpgradePlanDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {packages?.map((pkg) => (
+                      {eligiblePackages.map((pkg) => (
                         <SelectItem key={pkg.id} value={pkg.id}>
                           {pkg.name} · {pkg.entityType} ·{" "}
                           {formatMoney(pkg.basePrice)}
@@ -236,6 +253,15 @@ export function UpgradePlanDialog({
               )}
             />
 
+            {selectedItem && (
+              <div className="rounded-md border border-line bg-muted/30 p-2.5 text-[12px] text-muted-foreground">
+                {!!selectedItem.paidThrough &&
+                new Date(selectedItem.paidThrough) > new Date()
+                  ? "Paid mid-cycle — the billing service generates a prorated invoice for the difference."
+                  : "This unit is unpaid or expired — the outstanding invoice is re-issued at the new plan (no proration). The business pays it to reactivate on the new plan."}
+              </div>
+            )}
+
             <DialogFooter className="gap-2">
               <Button
                 type="button"
@@ -249,10 +275,10 @@ export function UpgradePlanDialog({
                 {isPending ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Upgrading…
+                    Saving…
                   </span>
                 ) : (
-                  "Upgrade plan"
+                  "Change plan"
                 )}
               </Button>
             </DialogFooter>

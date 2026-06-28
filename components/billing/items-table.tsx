@@ -52,7 +52,11 @@ export function ItemsTable({
   onChangePlan,
   onManageAddons,
 }: ItemsTableProps) {
-  const activeItems = subscription.items.filter((item) => item.status !== "REMOVED");
+  // Source from manageableItems (ACTIVE + degraded) so an owner can re-pick a plan on a
+  // lapsed entity before paying to reactivate. Falls back to items on pre-deploy responses.
+  const activeItems = (subscription.manageableItems ?? subscription.items).filter(
+    (item) => item.status !== "REMOVED" && item.status !== "CANCELLED",
+  );
 
   if (activeItems.length === 0) {
     return (
@@ -157,7 +161,12 @@ export function ItemsTable({
                         size="icon"
                         variant="ghost"
                         className="h-8 w-8"
-                        disabled={disabled || item.isBundled || item.status !== "ACTIVE"}
+                        disabled={
+                          disabled ||
+                          item.isBundled ||
+                          item.status === "CANCELLED" ||
+                          item.status === "REMOVED"
+                        }
                         aria-label="Item actions"
                       >
                         <MoreHorizontal className="h-4 w-4" />
@@ -166,11 +175,17 @@ export function ItemsTable({
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Manage {ENTITY_LABEL[item.entityType].toLowerCase()}</DropdownMenuLabel>
                       <DropdownMenuSeparator />
+                      {/* Change plan stays available on lapsed/expired units so the owner can
+                          re-pick a package before paying to reactivate. */}
                       <DropdownMenuItem onSelect={() => onChangePlan(item)}>
                         <ArrowLeftRight className="mr-2 h-3.5 w-3.5" />
                         Change plan
                       </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => onManageAddons(item)}>
+                      {/* Add-on proration only applies to a paid, active cycle. */}
+                      <DropdownMenuItem
+                        onSelect={() => onManageAddons(item)}
+                        disabled={item.status !== "ACTIVE"}
+                      >
                         <Sparkles className="mr-2 h-3.5 w-3.5" />
                         Manage addons
                       </DropdownMenuItem>

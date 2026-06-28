@@ -78,7 +78,8 @@ export default async function WarehouseDetailPage({
   const subscription = canBilling
     ? await getBusinessSubscription(businessId).catch(() => null)
     : null;
-  const item = subscription?.items.find((i) => i.entityId === id) ?? null;
+  const item =
+    (subscription?.manageableItems ?? subscription?.items)?.find((i) => i.entityId === id) ?? null;
   const stock = await getEntityStockSummary("WAREHOUSE", id).catch(() => null);
 
   return (

@@ -19,6 +19,7 @@ import type {
   CreditBalance,
   CreditTransaction,
   Page,
+  PlanChangePreview,
 } from "@/types/billing/types";
 import type { Business } from "@/types/business/type";
 import type { Location } from "@/types/location/type";
@@ -104,6 +105,29 @@ export async function changeItemPlan(
   );
   revalidateTag(LAYOUT_TAGS.entitlements);
   return result;
+}
+
+/**
+ * Preview a plan change before applying it. Returns either the prorated delta (paid,
+ * mid-cycle) or — for the unpaid/expired "change before paying" regime — `repriceMode: true`
+ * with `outstandingAfterChange`, the pre-discount amount the re-issued invoice will carry at
+ * the new plan. Read-only; never mutates. Returns null if the service is unreachable.
+ */
+export async function previewPlanChange(
+  subscriptionId: string,
+  itemId: string,
+  targetPackageId: string,
+): Promise<PlanChangePreview | null> {
+  if (!BILLING_SERVICE_URL) return null;
+  try {
+    const apiClient = new ApiClient();
+    return await apiClient.post<PlanChangePreview, { targetPackageId: string }>(
+      billingUrl(`/api/v1/subscriptions/${subscriptionId}/items/${itemId}/plan-change-preview`),
+      { targetPackageId },
+    );
+  } catch {
+    return null;
+  }
 }
 
 export async function addItemAddon(

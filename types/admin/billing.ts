@@ -129,6 +129,13 @@ export interface SubscriptionResponse {
   updatedAt: string;
   cancelledAt: string | null;
   items: SubscriptionItemResponse[];
+  /**
+   * Every non-cancelled item (ACTIVE plus degraded PAST_DUE/EXPIRED/SUSPENDED), for the
+   * "change plan" surfaces — lets staff re-pick a package on a lapsed entity before the
+   * business pays to reactivate. `items` stays ACTIVE-only (entitlement/MRR). Optional for
+   * responses that predate the field.
+   */
+  manageableItems?: SubscriptionItemResponse[];
   activeDiscounts: SubscriptionDiscountResponse[];
 }
 

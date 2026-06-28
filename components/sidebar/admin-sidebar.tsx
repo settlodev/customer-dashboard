@@ -20,11 +20,13 @@ import {
   Package,
   PackagePlus,
   RotateCcw,
+  ScrollText,
   ShieldCheck,
   Sparkles,
   Ticket,
   UserCog,
   Users,
+  WifiOff,
   X,
 } from "lucide-react";
 
@@ -69,6 +71,18 @@ const NAV_ITEMS: NavItem[] = [
     href: "/locations",
     icon: MapPin,
     permissions: [PERM.BUSINESS_ANALYTICS_READ],
+  },
+  {
+    title: "Activity Log",
+    href: "/activity-log",
+    icon: ScrollText,
+    permissions: [PERM.ACTIVITY_LOG_READ],
+  },
+  {
+    title: "Stuck Writes",
+    href: "/stuck-writes",
+    icon: WifiOff,
+    permissions: [PERM.ACTIVITY_LOG_READ],
   },
   {
     title: "Customers",
