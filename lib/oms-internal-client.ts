@@ -92,3 +92,24 @@ export async function omsInternalGet<T>(
   if (!res.ok) await rejectWithApiError(res, path);
   return (await res.json()) as T;
 }
+
+export async function omsInternalPost<T>(
+  path: string,
+  body?: unknown,
+  query?: Record<string, string | number | undefined | null>,
+): Promise<T> {
+  const url = buildUrl(path, query);
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-Internal-Secret": OMS_ADMIN_INTERNAL_SECRET,
+    },
+    cache: "no-store",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) await rejectWithApiError(res, path);
+  if (res.status === 204) return undefined as unknown as T;
+  return (await res.json()) as T;
+}
