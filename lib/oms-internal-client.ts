@@ -110,6 +110,6 @@ export async function omsInternalPost<T>(
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) await rejectWithApiError(res, path);
-  if (res.status === 204) return undefined as unknown as T;
+  if (res.status === 204) return null as unknown as T;
   return (await res.json()) as T;
 }

@@ -76,6 +76,9 @@ export async function createRepairCommand(
   body: Omit<CreateRepairCommandBody, "requesterId">,
 ): Promise<RepairCommandRow> {
   const operatorId = await requireOperatorPermission(PERM.REPAIR_EXECUTE);
+  if (body.verb === "DISCARD_MUTATION" && (!body.reason || !body.reason.trim())) {
+    throw new Error("A reason is required when discarding a mutation.");
+  }
   const payload: CreateRepairCommandBody = {
     ...body,
     requesterId: operatorId,

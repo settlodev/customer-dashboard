@@ -23,7 +23,7 @@ export interface DeadLetterRow {
   /** Row UUID. */
   id: string;
   /** Stable key used to target RETRY_MUTATION / DISCARD_MUTATION. */
-  idempotencyKey: string;
+  idempotencyKey: string | null;
   /** Mutation op type, e.g. "CREATE_ORDER", "ADD_ITEMS". */
   opType: string;
   /**
