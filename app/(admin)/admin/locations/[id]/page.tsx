@@ -102,7 +102,8 @@ export default async function LocationDetailPage({
 
   const subscription = value(results[0]);
   const breakdown = value(results[1]) ?? [];
-  const item = subscription?.items.find((i) => i.entityId === id) ?? null;
+  const item =
+    (subscription?.manageableItems ?? subscription?.items)?.find((i) => i.entityId === id) ?? null;
   const ordersRow = breakdown.find((r) => r.location_id === id) ?? null;
   const rangeLabel = `${shortDay(startDate)} → ${shortDay(endDate)}`;
   const stock = await getEntityStockSummary("LOCATION", id).catch(() => null);

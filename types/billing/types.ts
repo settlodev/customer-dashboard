@@ -70,6 +70,9 @@ export interface SubscriptionItem {
   bundledByItemId: string | null;
   status: SubscriptionItemStatus;
   trialEndDate: string | null;
+  /** When this entity is paid through; null while trialing / never-paid. Drives the
+   *  paid-vs-unpaid plan-change regime. */
+  paidThrough: string | null;
   addedAt: string;
   removedAt: string | null;
   /** Each addon mirrors the AddonResponse DTO: id, name, description, price. */
@@ -101,6 +104,10 @@ export interface Subscription {
   isFreeSubscription: boolean;
   cancelledAt: string | null;
   items: SubscriptionItem[];
+  /** Every non-cancelled item (ACTIVE + degraded), for the "change plan" surface so an
+   *  owner can re-pick a package on a lapsed entity before paying. `items` stays
+   *  ACTIVE-only. Optional for responses that predate the field. */
+  manageableItems?: SubscriptionItem[];
   activeDiscounts: SubscriptionDiscount[];
   createdAt: string;
   updatedAt: string;
@@ -108,6 +115,28 @@ export interface Subscription {
    *  call which still needs a currency code. Always falls back to TZS at the
    *  call site. */
   currency?: string;
+}
+
+// ── Plan change preview ─────────────────────────────────────────────
+
+export interface PlanChangeLimitViolation {
+  limitKey: string;
+  limit: number;
+  current: number;
+}
+
+export interface PlanChangePreview {
+  currentPlan: string;
+  targetPlan: string;
+  /** Prorated charge (+) / credit (−) for the remaining PAID cycle. 0 in reprice mode. */
+  proratedDelta: number;
+  /** True for the unpaid/expired regime: the outstanding invoice is re-priced, not prorated. */
+  repriceMode: boolean;
+  /** Pre-discount amount the re-issued invoice will carry at the new plan (reprice mode only). */
+  outstandingAfterChange: number | null;
+  /** True when the change is allowed (no cap violations). */
+  grandfathered: boolean;
+  violations: PlanChangeLimitViolation[];
 }
 
 // ── Invoices ────────────────────────────────────────────────────────

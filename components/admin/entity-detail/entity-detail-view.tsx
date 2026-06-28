@@ -99,7 +99,8 @@ export function EntityDetailView({
     });
   }
 
-  const showActions = canBilling && !!subscriptionId && !!item;
+  // Bundled units inherit the parent's plan/addons — no independent billing actions.
+  const showActions = canBilling && !!subscriptionId && !!item && !item.isBundled;
   // Normally only a never-paid, non-cancelled entity can be extended. A super admin
   // (SYSTEM_ADMIN) may override the paid/used block; billing remains authoritative and
   // still enforces the live-subscription + bundled/cancelled rules.
