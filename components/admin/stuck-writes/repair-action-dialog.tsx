@@ -77,6 +77,7 @@ export function RepairActionDialog({
       try {
         await createRepairCommand({
           locationId: row.locationId,
+          businessId: row.businessId,
           deviceId: row.deviceId,
           verb: activeVerb,
           idempotencyKey:

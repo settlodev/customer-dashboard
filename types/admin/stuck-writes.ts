@@ -87,6 +87,7 @@ export interface ListDeadLettersParams {
 /** Request body for `POST /api/v1/admin/dead-letters/repair`. */
 export interface CreateRepairCommandBody {
   locationId: string;
+  businessId: string | null;
   deviceId: string;
   verb: RepairVerb;
   /** Required for RETRY_MUTATION and DISCARD_MUTATION. */
