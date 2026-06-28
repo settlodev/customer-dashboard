@@ -112,7 +112,7 @@ export function RepairActionDialog({
 
   const confirmDisabled =
     isPending ||
-    (activeVerb === "DISCARD_MUTATION" && isMoneyDiscard && !reason.trim());
+    (activeVerb === "DISCARD_MUTATION" && !reason.trim());
 
   const dialogTitle = activeVerb ? VERB_META[activeVerb].label : "";
 
@@ -195,7 +195,7 @@ export function RepairActionDialog({
           {activeVerb === "DISCARD_MUTATION" && (
             <div className="space-y-1.5 py-1">
               <Label htmlFor="repair-reason" className="text-[13px]">
-                Reason{isMoneyDiscard ? " (required)" : " (optional)"}
+                Reason (required)
               </Label>
               <Textarea
                 id="repair-reason"
@@ -204,6 +204,7 @@ export function RepairActionDialog({
                 placeholder="Why should this mutation be discarded?"
                 rows={3}
                 disabled={isPending}
+                aria-required={true}
                 className="text-[13px]"
               />
             </div>
