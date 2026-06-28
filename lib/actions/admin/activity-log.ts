@@ -1,5 +1,7 @@
 "use server";
 
+import { requireOperatorPermission } from "@/lib/admin/operator-auth";
+import { PERM } from "@/lib/admin/permissions";
 import { omsInternalGet } from "@/lib/oms-internal-client";
 import { parseStringify } from "@/lib/utils";
 import type {
@@ -16,6 +18,7 @@ import type {
 export async function listClientActivity(
   params: ListClientActivityParams = {},
 ): Promise<ClientActivityPage> {
+  await requireOperatorPermission(PERM.ACTIVITY_LOG_READ);
   const query: Record<string, string | number | undefined> = {
     page: Math.max(0, params.page ?? 0),
     size: params.size ?? 20,
