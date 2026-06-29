@@ -56,14 +56,12 @@ export async function archiveEntity({
 
           break;
         case "stock":
-          await apiClient.put(
-            `/api/stock-variants/${actualLocationId}/archive`,
+          await apiClient.put(inventoryUrl(`/api/v1/stocks/archive-multiple`), {
             ids,
-          );
+          });
           break;
         case "staff":
           await apiClient.put(`/api/staff/${actualLocationId}/archive`, ids);
-
           break;
 
         case "stock-intake":
