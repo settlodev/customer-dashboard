@@ -14,7 +14,9 @@ import {
 } from "@/components/ui/dialog";
 import { formatDateTime, timeSince } from "@/components/admin/shared/format";
 import { getAdminDevice } from "@/lib/actions/admin/devices";
+import { getAdminStaff } from "@/lib/actions/admin/staff";
 import type { AdminDeviceSummary } from "@/types/admin/device";
+import type { AdminStaffSummary } from "@/types/admin/staff";
 import type { DeadLetterRow } from "@/types/admin/stuck-writes";
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -74,28 +76,45 @@ function BoolChip({ value }: { value: boolean }) {
   );
 }
 
-// ── device label ───────────────────────────────────────────────────────────
+// ── actor details (device + staff, fetched together on open) ───────────────
 
-function useDeviceName(deviceId: string, open: boolean) {
+function useActorDetails(
+  deviceId: string,
+  staffId: string | null,
+  open: boolean,
+) {
   const [device, setDevice] = useState<AdminDeviceSummary | null>(null);
+  const [staff, setStaff] = useState<AdminStaffSummary | null>(null);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
     if (!open) return;
     setDevice(null);
+    setStaff(null);
     startTransition(async () => {
-      const result = await getAdminDevice(deviceId);
-      setDevice(result);
+      const [deviceResult, staffResult] = await Promise.all([
+        getAdminDevice(deviceId),
+        staffId ? getAdminStaff(staffId) : Promise.resolve(null),
+      ]);
+      setDevice(deviceResult);
+      setStaff(staffResult);
     });
-  }, [deviceId, open]);
+  }, [deviceId, staffId, open]);
 
-  const displayName =
-    device?.customName ?? device?.name ?? null;
+  const deviceDisplayName = device?.customName ?? device?.name ?? null;
+
+  // While loading or on failure, staffResult stays null → falls back to shortId.
+  const staffDisplayName = staffId
+    ? (staff?.fullName ??
+        (`${staff?.firstName ?? ""} ${staff?.lastName ?? ""}`.trim() || null) ??
+        shortId(staffId))
+    : null;
 
   return {
-    displayName,
+    deviceDisplayName,
     lastActiveAt: device?.lastActiveAt ?? null,
     appVersion: device?.appVersion ?? null,
+    staffDisplayName,
   };
 }
 
@@ -107,10 +126,11 @@ interface DeadLetterDetailsDialogProps {
 
 export function DeadLetterDetailsDialog({ row }: DeadLetterDetailsDialogProps) {
   const [open, setOpen] = useState(false);
-  const { displayName, lastActiveAt, appVersion } = useDeviceName(row.deviceId, open);
+  const { deviceDisplayName, lastActiveAt, appVersion, staffDisplayName } =
+    useActorDetails(row.deviceId, row.staffId, open);
 
-  const deviceLabel = displayName
-    ? `${displayName} (${shortId(row.deviceId)})`
+  const deviceLabel = deviceDisplayName
+    ? `${deviceDisplayName} (${shortId(row.deviceId)})`
     : shortId(row.deviceId);
 
   const payloadText = prettyJson(row.payload);
@@ -196,6 +216,16 @@ export function DeadLetterDetailsDialog({ row }: DeadLetterDetailsDialogProps) {
                   }
                 />
                 <Field label="App version" value={appVersion ?? "—"} mono />
+                <Field
+                  label="Staff"
+                  value={
+                    row.staffId ? (
+                      <span title={row.staffId}>{staffDisplayName}</span>
+                    ) : (
+                      "System"
+                    )
+                  }
+                />
                 <Field label="Staff id" value={row.staffId} mono />
                 <Field label="Location id" value={row.locationId} mono />
                 <Field label="Business id" value={row.businessId} mono />
