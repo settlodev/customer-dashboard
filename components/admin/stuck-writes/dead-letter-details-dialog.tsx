@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatDateTime } from "@/components/admin/shared/format";
+import { formatDateTime, timeSince } from "@/components/admin/shared/format";
 import { getAdminDevice } from "@/lib/actions/admin/devices";
 import type { AdminDeviceSummary } from "@/types/admin/device";
 import type { DeadLetterRow } from "@/types/admin/stuck-writes";
@@ -92,7 +92,11 @@ function useDeviceName(deviceId: string, open: boolean) {
   const displayName =
     device?.customName ?? device?.name ?? null;
 
-  return { displayName };
+  return {
+    displayName,
+    lastActiveAt: device?.lastActiveAt ?? null,
+    appVersion: device?.appVersion ?? null,
+  };
 }
 
 // ── main component ─────────────────────────────────────────────────────────
@@ -103,7 +107,7 @@ interface DeadLetterDetailsDialogProps {
 
 export function DeadLetterDetailsDialog({ row }: DeadLetterDetailsDialogProps) {
   const [open, setOpen] = useState(false);
-  const { displayName } = useDeviceName(row.deviceId, open);
+  const { displayName, lastActiveAt, appVersion } = useDeviceName(row.deviceId, open);
 
   const deviceLabel = displayName
     ? `${displayName} (${shortId(row.deviceId)})`
@@ -183,6 +187,15 @@ export function DeadLetterDetailsDialog({ row }: DeadLetterDetailsDialogProps) {
                   }
                 />
                 <Field label="Device id" value={row.deviceId} mono />
+                <Field
+                  label="Last seen"
+                  value={
+                    lastActiveAt
+                      ? `${formatDateTime(lastActiveAt)} (${timeSince(lastActiveAt)})`
+                      : "—"
+                  }
+                />
+                <Field label="App version" value={appVersion ?? "—"} mono />
                 <Field label="Staff id" value={row.staffId} mono />
                 <Field label="Location id" value={row.locationId} mono />
                 <Field label="Business id" value={row.businessId} mono />

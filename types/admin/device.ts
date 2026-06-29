@@ -11,4 +11,8 @@ export interface AdminDeviceSummary {
   customName: string | null;
   /** System-generated or hardware name (e.g. "Sunmi T2 Mini"). */
   name: string | null;
+  /** ISO-8601 timestamp of the device's last telemetry heartbeat. May be null. */
+  lastActiveAt: string | null;
+  /** App version string reported by the device (e.g. "1.301"). May be null. */
+  appVersion: string | null;
 }
