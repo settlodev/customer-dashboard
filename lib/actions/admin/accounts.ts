@@ -223,6 +223,39 @@ export async function republishAccountEvents(
   }
 }
 
+/**
+ * One-off backfill: re-emit ACCOUNT_UPDATED for every non-deleted account so
+ * Reports' dim_account recovers created_at (the admin "Accounts created" card
+ * reads zero until this runs). Re-emits ACCOUNT_UPDATED only — sends no
+ * welcome/verification emails — and is idempotent. The Reports Service must be
+ * deployed with the created-date fix first, or the re-emit re-writes nulls.
+ */
+export async function republishAllAccounts(): Promise<
+  FormResponse<{ accountsReemitted: number; pagesProcessed: number }>
+> {
+  try {
+    const result = await staffClient().post<
+      { accountsReemitted: number; pagesProcessed: number },
+      Record<string, never>
+    >(`/api/v1/admin/accounts/republish-all`, {});
+
+    const n = result?.accountsReemitted ?? 0;
+    revalidatePath("/admin/accounts");
+    revalidatePath("/admin/dashboard");
+    return parseStringify({
+      responseType: "success",
+      message: `Re-emitted events for ${n} account${n === 1 ? "" : "s"}. Analytics will reflect created dates once events drain.`,
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to republish accounts",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
 export async function deleteAccount(
   accountId: string,
 ): Promise<FormResponse<void>> {

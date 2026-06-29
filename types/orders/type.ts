@@ -741,3 +741,14 @@ export const VOID_REASON_LABELS: Record<VoidReason, string> = {
   [VoidReason.OUT_OF_STOCK]: "Out of stock",
   [VoidReason.OTHER]: "Other",
 };
+
+export const CANCELLATION_REASON_LABELS: Record<CancellationReason, string> = {
+  [CancellationReason.CUSTOMER_REQUEST]: "Customer request",
+  [CancellationReason.OUT_OF_STOCK]: "Out of stock",
+  [CancellationReason.KITCHEN_ISSUE]: "Kitchen issue",
+  [CancellationReason.PAYMENT_FAILED]: "Payment failed",
+  [CancellationReason.DUPLICATE]: "Duplicate",
+  [CancellationReason.FRAUD]: "Fraud",
+  [CancellationReason.STAFF_ERROR]: "Staff error",
+  [CancellationReason.OTHER]: "Other",
+};

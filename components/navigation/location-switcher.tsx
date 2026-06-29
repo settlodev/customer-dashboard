@@ -142,8 +142,9 @@ export const LocationSwitcher = ({
           : "/select-location";
       } else if (confirm.kind === "store") {
         const st = confirm.data;
+        // Stores have no sales/analytics dashboard — land on Stock items.
         window.location.href = st.active
-          ? "/dashboard"
+          ? "/stock-variants"
           : "/select-location";
       } else {
         const loc = confirm.data;

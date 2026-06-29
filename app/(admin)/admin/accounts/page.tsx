@@ -7,6 +7,7 @@ import {
   PageShell,
 } from "@/components/layouts/page-shell";
 import { AccountsListView } from "@/components/admin/accounts-list-view";
+import { BulkRepublishButton } from "@/components/admin/bulk-republish-button";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import {
@@ -105,6 +106,7 @@ export default async function AdminAccountsPage({
   }
 
   const canRead = hasInternalPermission(token, PERM.ACCOUNTS_READ);
+  const canManage = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
   const canSuspend = hasInternalPermission(token, PERM.ACCOUNTS_SUSPEND);
   const canDelete = hasInternalPermission(token, PERM.ACCOUNTS_DELETE);
 
@@ -176,6 +178,7 @@ export default async function AdminAccountsPage({
         <PageHeader
           title="Accounts"
           subtitle="Filter by onboarding state and registration date to triage stalled signups across whitelabels."
+          actions={canManage ? <BulkRepublishButton /> : undefined}
         />
         <PageBody>
           {loadError ? (

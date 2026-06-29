@@ -7,10 +7,20 @@ import {
   PageBody,
 } from "@/components/layouts/page-shell";
 import { isProtectedRole, Role } from "@/types/roles/type";
+import { Permission } from "@/types/permissions/type";
 import { getRole } from "@/lib/actions/role-actions";
+import { fetchAllPermissions } from "@/lib/actions/permissions-actions";
+import { groupByDomain, resolveKeys } from "@/lib/permissions/grouping";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Edit, Shield, CheckCircle2, Info, Lock } from "lucide-react";
+import {
+  Edit,
+  Shield,
+  CheckCircle2,
+  Info,
+  Lock,
+  ChevronRight,
+} from "lucide-react";
 
 type Params = Promise<{ id: string }>;
 
@@ -22,37 +32,33 @@ export default async function RolesPage({ params }: { params: Params }) {
   }
 
   let role: Role | null = null;
+  let catalog: Permission[] = [];
 
   try {
-    role = await getRole(resolvedParams.id);
-    if (!role) notFound();
+    // The role only carries permission *keys*; fetch the account catalog in
+    // parallel so we can resolve each key to its human-readable name, domain,
+    // and description. The catalog is best-effort — if it fails we still render
+    // the keys (humanized) rather than break the page.
+    const [loadedRole, list] = await Promise.all([
+      getRole(resolvedParams.id),
+      fetchAllPermissions().catch(() => null),
+    ]);
+    role = loadedRole;
+    catalog = list?.all ?? [];
   } catch {
     throw new Error("Failed to load role data");
   }
 
-  // Group permission keys by category (prefix before ":")
-  const permissionsByCategory: Record<string, string[]> = {};
-  (role.permissionKeys ?? []).forEach((key) => {
-    const [category, action] = key.split(":");
-    const cat = category || "other";
-    if (!permissionsByCategory[cat]) permissionsByCategory[cat] = [];
-    permissionsByCategory[cat].push(action || key);
-  });
+  if (!role) notFound();
 
-  const sortedCategories = Object.keys(permissionsByCategory).sort((a, b) =>
-    a.localeCompare(b),
-  );
-  sortedCategories.forEach((cat) => {
-    permissionsByCategory[cat].sort((a, b) => a.localeCompare(b));
-  });
+  const domains = groupByDomain(resolveKeys(role.permissionKeys ?? [], catalog));
+  const totalPermissions =
+    role.permissionCount ?? role.permissionKeys?.length ?? 0;
 
   return (
     <PageShell>
       <PageBreadcrumbs
-        items={[
-          { title: "Roles", href: "/roles" },
-          { title: role.name },
-        ]}
+        items={[{ title: "Roles", href: "/roles" }, { title: role.name }]}
       />
       <PageHeader
         title={role.name}
@@ -107,9 +113,11 @@ export default async function RolesPage({ params }: { params: Params }) {
                 </p>
               </div>
               <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Total Permissions</span>
+                <span className="text-xs text-muted-foreground">
+                  Total Permissions
+                </span>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {role.permissionCount ?? role.permissionKeys?.length ?? 0}
+                  {totalPermissions}
                 </p>
               </div>
             </div>
@@ -122,34 +130,55 @@ export default async function RolesPage({ params }: { params: Params }) {
               <Shield className="h-4 w-4 text-muted-foreground" />
               Permissions
             </CardTitle>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Grouped by area. Hover any permission to see what it allows.
+            </p>
           </CardHeader>
           <CardContent>
-            {sortedCategories.length > 0 ? (
-              <div className="space-y-4">
-                {sortedCategories.map((category) => (
-                  <div
-                    key={category}
-                    className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden"
+            {domains.length > 0 ? (
+              <div className="space-y-3">
+                {domains.map((domain) => (
+                  <details
+                    key={domain.domain}
+                    open
+                    className="group rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden"
                   >
-                    <div className="px-4 py-3 bg-muted/50 border-b border-border">
-                      <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 capitalize">
-                        {category}
-                      </h4>
-                    </div>
-                    <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                      {permissionsByCategory[category].map((action) => (
+                    <summary className="flex items-center justify-between gap-2 px-4 py-3 bg-muted/50 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                      <span className="flex items-center gap-2">
+                        <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
+                        <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                          {domain.domain}
+                        </span>
+                      </span>
+                      <span className="inline-flex items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-medium px-2 py-0.5">
+                        {domain.count}
+                      </span>
+                    </summary>
+                    <div className="divide-y divide-border border-t border-border">
+                      {domain.resources.map((resource) => (
                         <div
-                          key={action}
-                          className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20"
+                          key={resource.category}
+                          className="px-4 py-3 sm:flex sm:gap-4"
                         >
-                          <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
-                          <span className="text-xs font-medium text-primary">
-                            {action}
-                          </span>
+                          <div className="text-xs font-medium text-muted-foreground mb-2 sm:mb-0 sm:w-40 sm:shrink-0 sm:pt-1">
+                            {resource.label}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {resource.permissions.map((perm) => (
+                              <span
+                                key={perm.key}
+                                title={perm.description ?? undefined}
+                                className="inline-flex items-center gap-1.5 rounded-md bg-primary/5 border border-primary/15 px-2 py-1 text-xs font-medium text-foreground"
+                              >
+                                <CheckCircle2 className="h-3 w-3 text-primary shrink-0" />
+                                {perm.name}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </details>
                 ))}
               </div>
             ) : (

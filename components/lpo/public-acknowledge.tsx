@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { acknowledgePublicLpo } from "@/lib/actions/lpo-actions";
+import {
+  ActionBarSpacer,
+  PublicActionBar,
+} from "@/components/documents/PublicActionBar";
 
 type Decision = "ACCEPTED" | "REJECTED";
 
@@ -46,22 +50,26 @@ export function PublicLpoAcknowledge({
   if (done) {
     const accepted = done === "ACCEPTED";
     return (
-      <div className="mx-auto mt-6 flex w-full max-w-[210mm] items-center gap-3 rounded-xl border bg-white px-5 py-4 shadow-sm print:hidden">
-        {accepted ? (
-          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-        ) : (
-          <XCircle className="h-5 w-5 text-red-600" />
-        )}
-        <p className="text-sm">
-          You have {accepted ? "accepted" : "rejected"} {lpoNumber}.
-        </p>
-      </div>
+      <>
+        <ActionBarSpacer />
+        <PublicActionBar className="flex items-center gap-3">
+          {accepted ? (
+            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+          ) : (
+            <XCircle className="h-5 w-5 text-red-600" />
+          )}
+          <p className="text-sm">
+            You have {accepted ? "accepted" : "rejected"} {lpoNumber}.
+          </p>
+        </PublicActionBar>
+      </>
     );
   }
 
   return (
     <>
-      <div className="mx-auto mt-6 flex w-full max-w-[210mm] flex-col gap-3 rounded-xl border bg-white px-5 py-4 shadow-sm print:hidden sm:flex-row sm:items-center sm:justify-between">
+      <ActionBarSpacer />
+      <PublicActionBar className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-medium text-slate-900">
             Confirm this purchase order
@@ -90,7 +98,7 @@ export function PublicLpoAcknowledge({
             Accept
           </Button>
         </div>
-      </div>
+      </PublicActionBar>
 
       {decision && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

@@ -1,23 +1,27 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import {
-  AlertCircle,
-  CheckCircle2,
-  FileText,
-  Loader2,
-  Printer,
-} from "lucide-react";
+import { AlertCircle, CheckCircle2, FileText, Loader2 } from "lucide-react";
 
+import { PrintableDocument } from "@/components/documents";
+import type {
+  BusinessDocumentData,
+  BusinessIdentity,
+  LineItem,
+} from "@/components/documents";
+import {
+  ActionBarSpacer,
+  PublicActionBar,
+} from "@/components/documents/PublicActionBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatMoney } from "@/lib/helpers";
-import {
-  acceptPublicProforma,
-} from "@/lib/actions/invoicing-public-actions";
+import { DEFAULT_CURRENCY, formatMoney } from "@/lib/helpers";
+import { acceptPublicProforma } from "@/lib/actions/invoicing-public-actions";
 import {
   INVOICE_PAYMENT_STATUS_LABELS,
   PROFORMA_STATUS_LABELS,
+  type InvoicePaymentStatus,
+  type ProformaStatus,
   type PublicArInvoice,
   type PublicProforma,
 } from "@/types/invoicing/type";
@@ -27,13 +31,168 @@ interface Props {
   initial: PublicProforma;
 }
 
-const dt = (d?: string | null) =>
-  d ? new Intl.DateTimeFormat("en", { dateStyle: "long" }).format(new Date(d)) : null;
+const SETTLO_PRIMARY = "#ED7B40";
+const SETTLO_SECONDARY = "#1E293B";
+const THEME = { primaryColor: SETTLO_PRIMARY, secondaryColor: SETTLO_SECONDARY };
+
+type Tone = "neutral" | "success" | "warning" | "danger" | "info";
+
+const PROFORMA_TONE: Record<ProformaStatus, Tone> = {
+  DRAFT: "neutral",
+  SENT: "info",
+  ACCEPTED: "success",
+  CONVERTED: "success",
+  DECLINED: "danger",
+  EXPIRED: "warning",
+  CANCELLED: "neutral",
+};
+
+const PAYMENT_TONE: Record<InvoicePaymentStatus, Tone> = {
+  UNPAID: "danger",
+  PARTIALLY_PAID: "warning",
+  PAID: "success",
+};
+
+const num = (v: number | null | undefined) => Number(v ?? 0);
+
+const composeAddress = (raw?: string | null): string[] =>
+  raw
+    ? raw
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean)
+    : [];
+
+function issuerFrom(d: {
+  businessName?: string | null;
+  businessTin?: string | null;
+  businessVrn?: string | null;
+  locationName?: string | null;
+  locationAddress?: string | null;
+}): BusinessIdentity {
+  return {
+    // Prefer the location's identity (name + address + tax IDs); fall back to
+    // the business name only when the location name is missing.
+    name: d.locationName?.trim() || d.businessName?.trim() || "Business",
+    addressLines: composeAddress(d.locationAddress),
+    tin: d.businessTin ?? undefined,
+    vrn: d.businessVrn ?? undefined,
+  };
+}
+
+function proformaToData(p: PublicProforma): BusinessDocumentData {
+  const items: LineItem[] = p.lines.map((l) => ({
+    name: l.description || "—",
+    quantity: num(l.quantity),
+    unitPrice: num(l.unitPrice),
+    amount: num(l.lineTotal),
+  }));
+  return {
+    meta: {
+      type: "quote",
+      titleOverride: "PROFORMA INVOICE",
+      documentNumber: p.proformaNumber,
+      issueDate: p.issueDate || p.validUntil || "",
+      dueDate: p.validUntil ?? undefined,
+      status: {
+        label: PROFORMA_STATUS_LABELS[p.status],
+        tone: PROFORMA_TONE[p.status],
+      },
+    },
+    issuer: issuerFrom(p),
+    recipient: p.customerName
+      ? {
+          name: p.customerName,
+          phone: p.customerPhone ?? undefined,
+          email: p.customerEmail ?? undefined,
+          tin: p.customerTin ?? undefined,
+        }
+      : undefined,
+    items,
+    totals: {
+      subtotal: num(p.subtotalAmount),
+      taxes:
+        num(p.taxAmount) > 0
+          ? [{ label: "Tax", rate: 0, amount: num(p.taxAmount) }]
+          : undefined,
+      discount:
+        num(p.discountAmount) > 0
+          ? { label: "Discount", amount: num(p.discountAmount) }
+          : undefined,
+      total: num(p.totalAmount),
+      amountDue: num(p.totalAmount),
+    },
+    currency: p.currencyCode || DEFAULT_CURRENCY,
+    notes: p.notes ?? undefined,
+    footerMessage: "This is a proforma invoice and is not a tax invoice.",
+  };
+}
+
+function invoiceToData(inv: PublicArInvoice): BusinessDocumentData {
+  const items: LineItem[] = inv.lines.map((l) => ({
+    name: l.description || "—",
+    quantity: num(l.quantity),
+    unitPrice: num(l.unitPrice),
+    amount: num(l.lineTotal),
+  }));
+  const notes = [inv.paymentInstructionsText, inv.paymentDetailsText]
+    .filter((s): s is string => Boolean(s && s.trim()))
+    .join("\n\n");
+  return {
+    meta: {
+      type: "invoice",
+      documentNumber: inv.invoiceNumber,
+      issueDate: inv.issueDate,
+      dueDate: inv.dueDate ?? undefined,
+      status: {
+        label: INVOICE_PAYMENT_STATUS_LABELS[inv.paymentStatus],
+        tone: PAYMENT_TONE[inv.paymentStatus],
+      },
+    },
+    issuer: issuerFrom(inv),
+    recipient: inv.customerName
+      ? {
+          name: inv.customerName,
+          phone: inv.customerPhone ?? undefined,
+          email: inv.customerEmail ?? undefined,
+          tin: inv.customerTin ?? undefined,
+        }
+      : undefined,
+    items,
+    totals: {
+      subtotal: num(inv.subtotalAmount),
+      taxes:
+        num(inv.taxAmount) > 0
+          ? [{ label: "Tax", rate: 0, amount: num(inv.taxAmount) }]
+          : undefined,
+      discount:
+        num(inv.discountAmount) > 0
+          ? { label: "Discount", amount: num(inv.discountAmount) }
+          : undefined,
+      total: num(inv.totalAmount),
+      payments:
+        num(inv.paidAmount) > 0
+          ? [
+              {
+                date: inv.issueDate,
+                method: "Payments received",
+                amount: num(inv.paidAmount),
+              },
+            ]
+          : undefined,
+      amountDue: num(inv.balanceDue),
+    },
+    currency: inv.currencyCode || DEFAULT_CURRENCY,
+    notes: notes || undefined,
+    footerMessage: "Thank you for your business and continued support",
+  };
+}
 
 export function PublicProformaView({ token, initial }: Props) {
   const [invoice, setInvoice] = useState<PublicArInvoice | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const accept = () =>
@@ -47,312 +206,157 @@ export function PublicProformaView({ token, initial }: Props) {
       }
     });
 
-  // Once accepted, show the resulting invoice.
+  // Once accepted, the proforma becomes an invoice — show that document.
   if (invoice) {
+    const title = `${invoice.businessName?.trim() || invoice.locationName?.trim() || "Settlo"} - Invoice`;
     return (
-      <PaperShell>
-        <div className="mb-6 flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-800">
-          <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-          Accepted — here is your invoice {invoice.invoiceNumber}.
-        </div>
-        <InvoiceDocument invoice={invoice} />
-      </PaperShell>
+      <>
+        <PrintableDocument
+          data={invoiceToData(invoice)}
+          theme={THEME}
+          documentTitle={title}
+        />
+        <ActionBarSpacer />
+        <PublicActionBar className="flex items-center gap-3 py-3.5">
+          <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600" />
+          <p className="text-sm text-slate-700">
+            Accepted — this proforma is now invoice{" "}
+            <span className="font-semibold">{invoice.invoiceNumber}</span>.
+          </p>
+        </PublicActionBar>
+      </>
     );
   }
 
-  const currency = initial.currencyCode;
+  const title = `${initial.businessName?.trim() || initial.locationName?.trim() || "Settlo"} - Proforma Invoice`;
   const canAccept = initial.status === "SENT";
   const alreadyConverted = initial.status === "CONVERTED";
 
   return (
-    <PaperShell>
-      {/* Header */}
-      <div className="flex flex-col gap-2 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-            Proforma invoice
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-            {initial.proformaNumber}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Prepared for {initial.customerName}
-          </p>
-        </div>
-        <div className="text-left sm:text-right">
-          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-            {PROFORMA_STATUS_LABELS[initial.status]}
-          </span>
-          {dt(initial.validUntil) && (
-            <p className="mt-2 text-xs text-slate-500">
-              Valid until {dt(initial.validUntil)}
+    <>
+      <PrintableDocument
+        data={proformaToData(initial)}
+        theme={THEME}
+        documentTitle={title}
+      />
+      <ActionBarSpacer />
+
+      {/* Always-visible action bar — floats above the document, never prints. */}
+      <PublicActionBar className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        {canAccept ? (
+            <>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900">
+                  Accept this proforma
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Total{" "}
+                  <span className="font-medium text-slate-700">
+                    {formatMoney(num(initial.totalAmount), initial.currencyCode)}
+                  </span>{" "}
+                  · accepting generates an invoice with payment details
+                </p>
+              </div>
+              <Button
+                size="lg"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  setError(null);
+                  setShowConfirm(true);
+                }}
+                disabled={isPending}
+              >
+                <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                Accept &amp; get invoice
+              </Button>
+            </>
+          ) : alreadyConverted ? (
+            <>
+              <p className="text-sm text-slate-600">
+                This proforma has already been accepted.
+              </p>
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={accept}
+                disabled={isPending}
+              >
+                {isPending ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="mr-1.5 h-4 w-4" />
+                )}
+                View invoice
+              </Button>
+            </>
+          ) : (
+            <p className="text-sm text-slate-500">
+              This proforma is{" "}
+              {PROFORMA_STATUS_LABELS[initial.status].toLowerCase()} and can no
+              longer be accepted — contact the business for an updated quote.
             </p>
           )}
-        </div>
-      </div>
+      </PublicActionBar>
 
-      <LineTable
-        currency={currency}
-        lines={initial.lines}
-        subtotal={initial.subtotalAmount}
-        discount={initial.discountAmount}
-        tax={initial.taxAmount}
-        total={initial.totalAmount}
-      />
-
-      {initial.notes && (
-        <div className="mt-6 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Notes
-          </p>
-          <p className="whitespace-pre-wrap">{initial.notes}</p>
-        </div>
-      )}
-
-      {/* Accept / status panel */}
-      <div className="mt-8 border-t border-slate-200 pt-6 print:hidden">
-        {canAccept ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-            <h2 className="text-sm font-semibold text-slate-800">
-              Accept this proforma
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Accepting generates an invoice for{" "}
-              <span className="font-medium text-slate-700">
-                {formatMoney(initial.totalAmount, currency)}
-              </span>{" "}
-              with payment details.
-            </p>
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+      {/* Confirmation modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={!isPending ? () => setShowConfirm(false) : undefined}
+          />
+          <div className="relative w-full max-w-md space-y-5 rounded-2xl bg-white p-6 shadow-xl sm:p-8">
+            <div className="flex justify-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
+                <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+              </div>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-slate-900">
+                Accept {initial.proformaNumber}?
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                This generates an invoice for{" "}
+                {formatMoney(num(initial.totalAmount), initial.currencyCode)} with
+                payment details.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-600">
+                Your name (optional)
+              </label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Your name (optional)"
+                placeholder="e.g. Jane Doe"
                 disabled={isPending}
-                className="bg-white"
+                className="mt-1"
               />
-              <Button onClick={accept} disabled={isPending} className="sm:w-44">
+            </div>
+            {error && (
+              <p className="flex items-center gap-1.5 text-sm text-red-600">
+                <AlertCircle className="h-4 w-4" />
+                {error}
+              </p>
+            )}
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowConfirm(false)}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+              <Button onClick={accept} disabled={isPending}>
                 {isPending ? (
                   <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                 ) : (
                   <CheckCircle2 className="mr-1.5 h-4 w-4" />
                 )}
-                Accept &amp; get invoice
+                Confirm &amp; accept
               </Button>
             </div>
-            {error && (
-              <p className="mt-3 flex items-center gap-1.5 text-sm text-red-600">
-                <AlertCircle className="h-4 w-4" />
-                {error}
-              </p>
-            )}
           </div>
-        ) : alreadyConverted ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-sm text-slate-600">
-              This proforma has already been accepted.
-            </p>
-            <Button
-              onClick={accept}
-              disabled={isPending}
-              variant="outline"
-              className="mt-3"
-            >
-              {isPending ? (
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-              ) : (
-                <FileText className="mr-1.5 h-4 w-4" />
-              )}
-              View invoice
-            </Button>
-            {error && (
-              <p className="mt-3 flex items-center gap-1.5 text-sm text-red-600">
-                <AlertCircle className="h-4 w-4" />
-                {error}
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
-            This proforma is {PROFORMA_STATUS_LABELS[initial.status].toLowerCase()}{" "}
-            and can no longer be accepted. Please contact the business for an
-            updated quote.
-          </div>
-        )}
-      </div>
-    </PaperShell>
-  );
-}
-
-// ── Shared paper shell + document pieces ──────────────────────────────
-
-function PaperShell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-10 print:shadow-none print:ring-0">
-        {children}
-      </div>
-      <div className="mt-4 flex justify-center print:hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-slate-500"
-          onClick={() => window.print()}
-        >
-          <Printer className="mr-1.5 h-3.5 w-3.5" />
-          Print / save as PDF
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function LineTable({
-  currency,
-  lines,
-  subtotal,
-  discount,
-  tax,
-  total,
-  paid,
-  balanceDue,
-}: {
-  currency: string;
-  lines: { description: string; quantity: number; unitPrice: number; lineTotal: number }[];
-  subtotal: number;
-  discount: number;
-  tax: number;
-  total: number;
-  paid?: number;
-  balanceDue?: number;
-}) {
-  return (
-    <>
-      <div className="mt-6 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase text-slate-400">
-              <th className="py-2 pr-3">Description</th>
-              <th className="py-2 px-3 text-right">Qty</th>
-              <th className="py-2 px-3 text-right">Unit price</th>
-              <th className="py-2 pl-3 text-right">Amount</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {lines.map((l, i) => (
-              <tr key={i}>
-                <td className="py-3 pr-3 text-slate-700">{l.description}</td>
-                <td className="py-3 px-3 text-right font-mono tabular-nums text-slate-600">
-                  {l.quantity}
-                </td>
-                <td className="py-3 px-3 text-right font-mono tabular-nums text-slate-600">
-                  {formatMoney(l.unitPrice, currency)}
-                </td>
-                <td className="py-3 pl-3 text-right font-mono font-medium tabular-nums text-slate-800">
-                  {formatMoney(l.lineTotal, currency)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-5 flex justify-end">
-        <dl className="w-full max-w-xs space-y-1.5 font-mono text-sm tabular-nums">
-          <div className="flex justify-between text-slate-500">
-            <dt>Subtotal</dt>
-            <dd>{formatMoney(subtotal, currency)}</dd>
-          </div>
-          {discount > 0 && (
-            <div className="flex justify-between text-slate-500">
-              <dt>Discount</dt>
-              <dd>−{formatMoney(discount, currency)}</dd>
-            </div>
-          )}
-          <div className="flex justify-between text-slate-500">
-            <dt>Tax</dt>
-            <dd>{formatMoney(tax, currency)}</dd>
-          </div>
-          <div className="flex justify-between border-t border-slate-200 pt-1.5 text-base font-semibold text-slate-900">
-            <dt>Total</dt>
-            <dd>{formatMoney(total, currency)}</dd>
-          </div>
-          {paid != null && paid > 0 && (
-            <div className="flex justify-between text-slate-500">
-              <dt>Paid</dt>
-              <dd>{formatMoney(paid, currency)}</dd>
-            </div>
-          )}
-          {balanceDue != null && (
-            <div className="flex justify-between font-semibold text-slate-900">
-              <dt>Balance due</dt>
-              <dd>{formatMoney(balanceDue, currency)}</dd>
-            </div>
-          )}
-        </dl>
-      </div>
-    </>
-  );
-}
-
-function InvoiceDocument({ invoice }: { invoice: PublicArInvoice }) {
-  const currency = invoice.currencyCode;
-  return (
-    <>
-      <div className="flex flex-col gap-2 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-            Invoice
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-            {invoice.invoiceNumber}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Billed to {invoice.customerName}
-          </p>
-        </div>
-        <div className="text-left sm:text-right">
-          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-            {INVOICE_PAYMENT_STATUS_LABELS[invoice.paymentStatus]}
-          </span>
-          <p className="mt-2 text-xs text-slate-500">
-            Issued {dt(invoice.issueDate)}
-            {dt(invoice.dueDate) ? ` · Due ${dt(invoice.dueDate)}` : ""}
-          </p>
-        </div>
-      </div>
-
-      <LineTable
-        currency={currency}
-        lines={invoice.lines}
-        subtotal={invoice.subtotalAmount}
-        discount={invoice.discountAmount}
-        tax={invoice.taxAmount}
-        total={invoice.totalAmount}
-        paid={invoice.paidAmount}
-        balanceDue={invoice.balanceDue}
-      />
-
-      {(invoice.paymentInstructionsText || invoice.paymentDetailsText) && (
-        <div className="mt-6 space-y-3 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
-          {invoice.paymentInstructionsText && (
-            <div>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Payment terms
-              </p>
-              <p className="whitespace-pre-wrap">
-                {invoice.paymentInstructionsText}
-              </p>
-            </div>
-          )}
-          {invoice.paymentDetailsText && (
-            <div>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Payment details
-              </p>
-              <p className="whitespace-pre-wrap">{invoice.paymentDetailsText}</p>
-            </div>
-          )}
         </div>
       )}
     </>

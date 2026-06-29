@@ -13,7 +13,7 @@ import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-intake-record/columns";
 import { searchStockIntakeRecords } from "@/lib/actions/stock-intake-record-actions";
 import { softFetch } from "@/lib/list-fallback";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { getStockIntakeKpi } from "@/lib/actions/reports-analytics-actions";
 import { StockIntakeKpiStrip } from "@/components/widgets/inventory/stock-intake-kpi-strip";
 import {
@@ -42,7 +42,7 @@ export default async function Page({ searchParams }: Params) {
 
   const [responseData, location] = await Promise.all([
     softFetch(searchStockIntakeRecords(page ? page - 1 : 0, pageLimit, status)),
-    getCurrentLocation(),
+    getCurrentDestination(),
   ]);
   const data = responseData?.content ?? [];
   const total = responseData?.totalElements ?? 0;

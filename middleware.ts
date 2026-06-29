@@ -545,6 +545,7 @@ export async function middleware(request: NextRequest) {
   const currentBusinessToken = request.cookies.get("currentBusiness");
   const currentWarehouseToken = request.cookies.get("currentWarehouse");
   const currentLocationToken = request.cookies.get("currentLocation");
+  const currentStoreToken = request.cookies.get("currentStore");
 
   if (!currentBusinessToken?.value && pathname !== SELECT_BUSINESS_URL) {
     return withRefreshedCookies(NextResponse.redirect(
@@ -552,11 +553,15 @@ export async function middleware(request: NextRequest) {
     ));
   }
 
-  // Must have selected a location or warehouse
+  // Must have selected a destination — a location, store, or warehouse.
+  // Stores were missing here: switchToStore sets only `currentStore` and
+  // clears location/warehouse, so an active store fell through this gate and
+  // bounced straight back to /select-location in an infinite loop.
   if (
     currentBusinessToken?.value &&
     !currentWarehouseToken?.value &&
     !currentLocationToken?.value &&
+    !currentStoreToken?.value &&
     pathname !== SELECT_BUSINESS_LOCATION_URL
   ) {
     return withRefreshedCookies(NextResponse.redirect(

@@ -1,6 +1,6 @@
 import NoItems from "@/components/layouts/no-items";
 import { StockLevelsTable } from "@/components/reports/stock/stock-levels-table";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import type { InventoryBalance } from "@/types/inventory-balance/type";
@@ -18,8 +18,10 @@ import type { InventoryBalance } from "@/types/inventory-balance/type";
  * `dim_inventory_snapshot`; today's view always reflects current balances.
  */
 export async function LevelsTab() {
-  const location = await getCurrentLocation();
-  const locationId = location?.id ?? null;
+  // Follow the active destination (location OR store), not just the location —
+  // in store mode getCurrentLocation() is null, which would blank the report.
+  const destination = await getCurrentDestination();
+  const locationId = destination?.id ?? null;
 
   const [currency, balances] = await Promise.all([
     getLocationCurrency(),

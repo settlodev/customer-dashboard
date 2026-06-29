@@ -1,5 +1,5 @@
 import { endOfMonth, format, startOfMonth } from "date-fns";
-import { Ban, CircleDollarSign, ListX, Tag } from "lucide-react";
+import { Ban, CircleDollarSign, ListX } from "lucide-react";
 import { requireReportsReadAll } from "@/lib/auth-utils";
 
 import {
@@ -10,22 +10,23 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
-import { Card, CardContent } from "@/components/ui/card";
 import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { VoidsFilters } from "@/components/reports/voids/voids-filters";
-import { VoidsDataTable } from "@/components/tables/orders/voids-data-table";
-import { getVoidsReport } from "@/lib/actions/order-actions";
+import { VoidsTypeToggle } from "@/components/reports/voids/voids-type-toggle";
+import { VoidEventsTable } from "@/components/reports/voids/voids-events-table";
+import { getVoidsReport, listOrders } from "@/lib/actions/order-actions";
 import { rethrowIfBoundary } from "@/lib/list-fallback";
-import { getLocationSettings } from "@/lib/actions/location-settings-actions";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import { fetchAllTables } from "@/lib/actions/space-actions";
-import { buildOrderListView } from "@/lib/orders/order-list-view";
-import { orderVoidedItems, summariseVoids } from "@/lib/orders/void-report";
 import {
-  VOID_REASON_LABELS,
-  type VoidReason,
-  type VoidReasonTally,
-} from "@/types/orders/type";
+  buildVoidEvents,
+  buildVoidReasonOptions,
+  buildVoidStaffOptions,
+  summariseVoidEvents,
+  voidEventMatchesSearch,
+  type VoidEventTypeFilter,
+} from "@/lib/orders/void-events";
+import { OrderStatus } from "@/types/orders/type";
 
 type Params = {
   searchParams: Promise<{
@@ -36,16 +37,12 @@ type Params = {
     to?: string;
     staffId?: string;
     reason?: string;
+    type?: string;
   }>;
 };
 
 const formatMoney = (value: number) =>
   Intl.NumberFormat("en", { maximumFractionDigits: 0 }).format(value);
-
-const topReason = (reasons: VoidReasonTally[]): VoidReasonTally | null =>
-  reasons.length === 0
-    ? null
-    : reasons.reduce((max, r) => (r.count > max.count ? r : max), reasons[0]);
 
 export default async function Page({ searchParams }: Params) {
   const resolved = await searchParams;
@@ -55,105 +52,114 @@ export default async function Page({ searchParams }: Params) {
   const limit = Number(resolved.limit) || 10;
   const staffId = resolved.staffId ?? "";
   const reason = resolved.reason ?? "";
+  const type: VoidEventTypeFilter =
+    resolved.type === "cancel" || resolved.type === "item" ? resolved.type : "";
 
   // Default to the current month — matches the other report screens.
   const now = new Date();
   const from = resolved.from ?? format(startOfMonth(now), "yyyy-MM-dd");
   const to = resolved.to ?? format(endOfMonth(now), "yyyy-MM-dd");
 
-  const [report, locationSettings, staffList, tablesList] = await Promise.all([
+  // Two sources: orders with voided line items (the /voids endpoint) and whole
+  // cancelled orders (the standard list, status-filtered). Cancellations don't
+  // flow through /voids, which is why they were missing from the report before.
+  const [report, cancelled, staffList, tablesList] = await Promise.all([
     getVoidsReport({ fromDate: from, toDate: to }).catch((e) => {
       rethrowIfBoundary(e);
       return null;
     }),
-    getLocationSettings().catch(() => null),
+    listOrders({
+      status: OrderStatus.CANCELLED,
+      fromDate: from,
+      toDate: to,
+    }).catch((e) => {
+      rethrowIfBoundary(e);
+      return [];
+    }),
     fetchAllStaff().catch(() => []),
     fetchAllTables().catch(() => []),
   ]);
 
   const summary = report?.summary;
-  const allOrders = report?.orders ?? [];
-  const tableMode = locationSettings?.orderingMode === "TABLE_MANAGEMENT";
   const currency = summary?.currency ?? "TZS";
+  const totalOrders = summary?.totalOrders ?? 0;
 
-  // Staff + reason filters apply over the full voided set; search and
-  // pagination then run inside buildOrderListView.
-  const orders = allOrders.filter((o) => {
-    if (staffId && o.assignedTo !== staffId) return false;
-    if (
-      reason &&
-      !orderVoidedItems(o).some((i) => i.voidReason === (reason as VoidReason))
-    ) {
-      return false;
-    }
-    return true;
-  });
-
-  const { pageData, total, pageCount, staffNames, tableNames } =
-    buildOrderListView({
-      orders,
-      search: q,
-      page,
-      limit,
-      staff: staffList,
-      tables: tablesList,
-    });
-
-  // Dropdown options come from the whole period so they stay stable as the
-  // filters change; staff options are the assignees present in the voids.
-  const reasonOptions = summariseVoids(allOrders).reasons.map((r) => ({
-    value: r.reason as string,
-    label: `${VOID_REASON_LABELS[r.reason]} (${r.count})`,
-  }));
   const staffById = new Map(
     staffList.map((s): [string, string] => [s.id, s.fullName]),
   );
-  const seenStaff = new Set<string>();
-  const staffOptions: { value: string; label: string }[] = [];
-  for (const o of allOrders) {
-    if (o.assignedTo && !seenStaff.has(o.assignedTo)) {
-      seenStaff.add(o.assignedTo);
-      staffOptions.push({
-        value: o.assignedTo,
-        label: staffById.get(o.assignedTo) ?? "Unknown",
-      });
-    }
-  }
-  staffOptions.sort((a, b) => a.label.localeCompare(b.label));
+  const tableById = new Map(
+    tablesList.map((t): [string, string] => [t.id, t.name]),
+  );
 
-  const hasAny = allOrders.length > 0;
+  const allEvents = buildVoidEvents({
+    voidedOrders: report?.orders ?? [],
+    cancelledOrders: cancelled ?? [],
+    staffById,
+    tableById,
+  });
+
+  // Type / reason / staff filters scope the KPI set; search + pagination then
+  // run over that scoped set so the KPIs track the dropdowns but not the search.
+  const scoped = allEvents.filter((e) => {
+    if (type === "cancel" && e.kind !== "ORDER_CANCEL") return false;
+    if (type === "item" && e.kind !== "ITEM_VOID") return false;
+    if (reason && e.reasonCode !== reason) return false;
+    if (staffId && e.staffId !== staffId) return false;
+    return true;
+  });
+
+  const needle = q.toLowerCase();
+  const filtered = needle
+    ? scoped.filter((e) => voidEventMatchesSearch(e, needle))
+    : scoped;
+  const total = filtered.length;
+  const pageCount = Math.max(1, Math.ceil(total / limit));
+  const start = (page - 1) * limit;
+  const pageData = filtered.slice(start, start + limit);
+
+  // Dropdown options come from the whole period so they stay stable as the
+  // filters change.
+  const reasonOptions = buildVoidReasonOptions(allEvents);
+  const staffOptions = buildVoidStaffOptions(allEvents);
+
+  const hasAny = allEvents.length > 0;
   const isDefaultRange = !resolved.from && !resolved.to;
   const hasFilters =
-    q !== "" || !isDefaultRange || staffId !== "" || reason !== "";
+    q !== "" ||
+    !isDefaultRange ||
+    staffId !== "" ||
+    reason !== "" ||
+    type !== "";
 
-  // KPIs reflect the active filters; the rate denominator stays the period total.
-  const rollup = summariseVoids(orders);
-  const voidedOrders = rollup.voidedOrders;
-  const totalOrders = summary?.totalOrders ?? 0;
-  const voidedItems = rollup.voidedItems;
-  const voidAmount = rollup.voidAmount;
-  const top = topReason(rollup.reasons);
+  // KPIs reflect the active type/reason/staff filters; the cancel-rate
+  // denominator stays the period's total order count.
+  const rollup = summariseVoidEvents(scoped);
   const rate =
-    totalOrders > 0 ? Math.round((voidedOrders / totalOrders) * 100) : 0;
+    totalOrders > 0
+      ? Math.round((rollup.cancelledOrders / totalOrders) * 100)
+      : 0;
 
   const subtitle =
     from === to
-      ? `Voids on ${format(new Date(from), "MMM d, yyyy")}`
-      : `Voids ${format(new Date(from), "MMM d")} – ${format(new Date(to), "MMM d, yyyy")}`;
+      ? `Voids & cancellations on ${format(new Date(from), "MMM d, yyyy")}`
+      : `Voids & cancellations ${format(new Date(from), "MMM d")} – ${format(new Date(to), "MMM d, yyyy")}`;
 
   return (
     <PageShell maxWidth="wide">
       <PageBreadcrumbs items={[{ title: "Voids" }]} />
-      <PageHeader title="Voids report" subtitle={subtitle} />
+      <PageHeader title="Voids & cancellations" subtitle={subtitle} />
 
       <PageBody>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <VoidsFilters
-            staffId={staffId}
-            reason={reason}
-            staffOptions={staffOptions}
-            reasonOptions={reasonOptions}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <VoidsTypeToggle active={type} />
+            <VoidsFilters
+              staffId={staffId}
+              reason={reason}
+              staffOptions={staffOptions}
+              reasonOptions={reasonOptions}
+            />
+          </div>
           <OrdersDateFilter from={from} to={to} />
         </div>
 
@@ -162,8 +168,12 @@ export default async function Page({ searchParams }: Params) {
             <KpiStrip cols={4}>
               <KpiCard
                 icon={<Ban className="h-3 w-3" />}
-                label="Voided orders"
-                value={voidedOrders > 0 ? voidedOrders.toLocaleString() : "—"}
+                label="Cancelled orders"
+                value={
+                  rollup.cancelledOrders > 0
+                    ? rollup.cancelledOrders.toLocaleString()
+                    : "—"
+                }
                 delta={
                   totalOrders > 0
                     ? `${rate}% of ${totalOrders.toLocaleString()} orders`
@@ -174,45 +184,42 @@ export default async function Page({ searchParams }: Params) {
               <KpiCard
                 icon={<ListX className="h-3 w-3" />}
                 label="Voided items"
-                value={voidedItems > 0 ? voidedItems.toLocaleString() : "—"}
+                value={
+                  rollup.voidedItems > 0
+                    ? rollup.voidedItems.toLocaleString()
+                    : "—"
+                }
                 deltaTone="neutral"
               />
               <KpiCard
                 icon={<CircleDollarSign className="h-3 w-3" />}
-                label="Void amount"
-                value={voidAmount > 0 ? formatMoney(voidAmount) : "—"}
+                label="Voided value"
+                value={rollup.voidValue > 0 ? formatMoney(rollup.voidValue) : "—"}
                 unit={currency}
                 deltaTone="neg"
               />
               <KpiCard
-                icon={<Tag className="h-3 w-3" />}
-                label="Top reason"
-                value={top ? VOID_REASON_LABELS[top.reason] : "—"}
-                delta={
-                  top && voidedItems > 0
-                    ? `${Math.round((top.count / voidedItems) * 100)}% of items`
-                    : undefined
+                icon={<CircleDollarSign className="h-3 w-3" />}
+                label="Cancelled value"
+                value={
+                  rollup.cancelledValue > 0
+                    ? formatMoney(rollup.cancelledValue)
+                    : "—"
                 }
-                deltaTone="neutral"
+                unit={currency}
+                deltaTone="neg"
               />
             </KpiStrip>
 
-            <Card>
-              <CardContent className="px-2 pt-6 sm:px-6">
-                <VoidsDataTable
-                  data={pageData}
-                  pageCount={pageCount}
-                  pageNo={page - 1}
-                  total={total}
-                  tableMode={tableMode}
-                  staffNames={staffNames}
-                  tableNames={tableNames}
-                />
-              </CardContent>
-            </Card>
+            <VoidEventsTable
+              data={pageData}
+              pageCount={pageCount}
+              pageNo={page - 1}
+              total={total}
+            />
           </>
         ) : (
-          <NoItems itemName="voided orders" />
+          <NoItems itemName="voids or cancellations" />
         )}
       </PageBody>
     </PageShell>

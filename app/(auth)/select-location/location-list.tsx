@@ -12,6 +12,7 @@ import {
 import { Location } from "@/types/location/type";
 import { Store } from "@/types/store/type";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
+import type { SubscriptionItemStatus } from "@/types/billing/types";
 import { clearBusiness } from "@/lib/actions/business/refresh";
 import {
   switchToLocation,
@@ -45,16 +46,56 @@ const TAB_META: Record<
   store: { label: "Stores", singular: "store", Icon: StoreIcon },
 };
 
+// A lapsed subscription is the headline signal on each destination tile. A
+// deactivated entity with no status row falls back to a plain "Inactive".
+const PAYMENT_BADGE: Partial<
+  Record<SubscriptionItemStatus, { label: string; className: string }>
+> = {
+  EXPIRED: { label: "Payment expired", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+  PAST_DUE: { label: "Payment due", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+  SUSPENDED: { label: "Suspended", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+  CANCELLED: { label: "Cancelled", className: "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300" },
+};
+
+function getStatusBadge(
+  item: DestItem,
+  status?: SubscriptionItemStatus,
+): { label: string; className: string } | null {
+  const lapsed = status ? PAYMENT_BADGE[status] : undefined;
+  if (lapsed) return lapsed;
+  if (item.active === false) {
+    return {
+      label: "Inactive",
+      className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+    };
+  }
+  return null;
+}
+
+// Selection should land on /billing (renew) rather than the workspace when
+// payment has lapsed or the entity is deactivated.
+function isBillingBlocked(item: DestItem, status?: SubscriptionItemStatus): boolean {
+  return (
+    item.active === false ||
+    status === "EXPIRED" ||
+    status === "PAST_DUE" ||
+    status === "SUSPENDED" ||
+    status === "CANCELLED"
+  );
+}
+
 const LocationList = ({
   locations,
   businessName,
   warehouses,
   stores,
+  entityStatuses = {},
 }: {
   locations: Location[];
   businessName: string;
   warehouses: Warehouses[];
   stores: Store[];
+  entityStatuses?: Record<string, SubscriptionItemStatus>;
 }) => {
   const [pendingIndex, setPendingIndex] = useState<number | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -90,14 +131,25 @@ const LocationList = ({
       // go to their landing page and the per-destination subscription claim
       // is enforced downstream by middleware; an inactive one is bounced to
       // the right recovery flow.
+      const status = entityStatuses[item.id];
       if (kind === "warehouse") {
         await switchToWarehouse(item as unknown as Warehouses);
-        window.location.href = item.active ? "/warehouse" : "/select-location";
+        window.location.href = isBillingBlocked(item, status)
+          ? "/billing"
+          : "/warehouse";
       } else if (kind === "store") {
         await switchToStore(item as unknown as Store);
-        window.location.href = item.active ? "/dashboard" : "/select-location";
+        // A store always ships with a plan, so a blocked store means a lapsed
+        // payment → send them to /billing to renew instead of bouncing back
+        // here (previously /select-location, an infinite loop). Otherwise land
+        // on Stock items — a store has no sales/analytics dashboard.
+        window.location.href = isBillingBlocked(item, status)
+          ? "/billing"
+          : "/stock-variants";
       } else {
         await switchToLocation(item as unknown as Location);
+        // Locations keep the onboarding-recovery path: an inactive location may
+        // simply have no plan yet (→ plan picker).
         window.location.href = item.active
           ? "/dashboard"
           : `/subscription?location=${item.id}`;
@@ -200,6 +252,7 @@ const LocationList = ({
             displayedItems.map((item, index) => {
               const subtitle = getSubtitle(item, activeTab);
               const isWarehouse = activeTab === "warehouse";
+              const badge = getStatusBadge(item, entityStatuses[item.id]);
               return (
                 <button
                   key={item.id}
@@ -232,9 +285,14 @@ const LocationList = ({
                       <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
                         {item.name}
                       </h3>
-                      {item.active === false && (
-                        <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                          Inactive
+                      {badge && (
+                        <span
+                          className={cn(
+                            "text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full",
+                            badge.className,
+                          )}
+                        >
+                          {badge.label}
                         </span>
                       )}
                     </div>

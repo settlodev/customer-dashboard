@@ -12,7 +12,12 @@ export type TransferStatus =
   | "RETURNED"
   | "CANCELLED";
 
-export type TransferType = "SUPPLY" | "RETURN" | "RETURN_TO_STORE" | "INTER_LOCATION";
+export type TransferType =
+  | "SUPPLY"
+  | "RETURN"
+  | "RETURN_TO_STORE"
+  | "INTER_LOCATION"
+  | "INTER_STORE";
 
 export interface StockTransfer {
   id: string;

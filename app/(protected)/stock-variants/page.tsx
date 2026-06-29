@@ -5,7 +5,7 @@ import {
   getStockCounts,
   type StockView,
 } from "@/lib/actions/stock-actions";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import { getInventoryDashboardSummary } from "@/lib/actions/reports-analytics-actions";
 import type { StockWithBalance } from "@/types/stock/type";
@@ -45,16 +45,19 @@ export default async function Page({ searchParams }: Props) {
   // Backend-paginated + searched (one page of stock items per request) so the
   // table pager works and search spans name / variant name / SKU / barcode /
   // serial. A separate counts endpoint feeds every tab badge in one round-trip.
-  const [responseData, counts, location] = await Promise.all([
+  // Active destination (location OR store). getCurrentLocation() is null in
+  // store mode, which would blank a store's balances + KPI; the stock list /
+  // counts already follow the X-Location-Id header (the active destination).
+  const [responseData, counts, destination] = await Promise.all([
     searchStocks(q, page, pageLimit, view),
     getStockCounts(),
-    getCurrentLocation(),
+    getCurrentDestination(),
   ]);
 
-  const [balances, summary] = location?.id
+  const [balances, summary] = destination?.id
     ? await Promise.all([
-        getBalancesByLocation(location.id),
-        getInventoryDashboardSummary(location.id, "TZS"),
+        getBalancesByLocation(destination.id),
+        getInventoryDashboardSummary(destination.id, "TZS"),
       ])
     : [[], null as RsInventoryDashboardSummary | null];
 

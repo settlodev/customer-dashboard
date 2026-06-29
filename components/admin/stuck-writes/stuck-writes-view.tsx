@@ -9,6 +9,10 @@ import { DateRange } from "react-day-picker";
 import { DataTable } from "@/components/tables/data-table";
 import { buildDeadLetterColumns } from "@/components/tables/admin-stuck-writes/columns";
 import { buildApprovalsColumns } from "@/components/tables/admin-stuck-writes/approvals-columns";
+import {
+  LocationCombobox,
+  locationDisplayLabel,
+} from "@/components/admin/shared/location-combobox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -119,7 +123,7 @@ export function StuckWritesView({
   const locationNameById = useMemo(() => {
     const map: Record<string, string> = {};
     for (const loc of locations) {
-      if (loc.locationId) map[loc.locationId] = loc.locationName;
+      if (loc.locationId) map[loc.locationId] = locationDisplayLabel(loc);
     }
     return map;
   }, [locations]);
@@ -208,24 +212,16 @@ export function StuckWritesView({
       {/* ── Stuck Mutations tab ── */}
       <TabsContent value="mutations" className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={initialLocationId || "all"}
-            onValueChange={(v) =>
-              updateParams({ locationId: v === "all" ? null : v, page: "1" })
+          <LocationCombobox
+            locations={locations}
+            value={
+              initialLocationId && initialLocationId !== "all"
+                ? initialLocationId
+                : null
             }
-          >
-            <SelectTrigger className="h-9 w-[200px] text-[12.5px]">
-              <SelectValue placeholder="All locations" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All locations</SelectItem>
-              {locations.map((loc) => (
-                <SelectItem key={loc.locationId} value={loc.locationId}>
-                  {loc.locationName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onChange={(v) => updateParams({ locationId: v, page: "1" })}
+            className="w-[230px]"
+          />
 
           <Select
             value={initialClassification || "all"}
@@ -349,11 +345,14 @@ export function StuckWritesView({
           </span>
         </div>
 
+        {/* Search box is hidden: order/resource-ID search is driven by the
+            `orderId` input above (server-side via `?orderId`), and the backend
+            has no generic `?search` param. */}
         <DataTable
           columns={deadLetterCols}
           data={dlContent}
-          searchKey="resourceId"
-          searchPlaceholder="Search by order / resource ID…"
+          searchKey="order"
+          hideSearch
           pageNo={dlPage}
           total={dlTotal}
           pageCount={Math.max(1, dlPages)}
@@ -375,11 +374,13 @@ export function StuckWritesView({
                 : `${appTotal.toLocaleString()} pending`}
             </span>
           </div>
+          {/* Single-page fetch (up to 100 pending) with no backend search —
+              hide the non-functional search box. */}
           <DataTable
             columns={approvalsCols}
             data={appContent}
-            searchKey="commandId"
-            searchPlaceholder="Search by command ID…"
+            searchKey="target"
+            hideSearch
             pageNo={appPage}
             total={appTotal}
             pageCount={Math.max(1, appPages)}

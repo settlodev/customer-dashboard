@@ -15,7 +15,7 @@ import {
   QtyOnHandChart,
   StockValueChart,
 } from "@/components/widgets/inventory/stock-item-charts";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import {
@@ -49,8 +49,10 @@ const fmt = (value: number) =>
  * No day-session anywhere — every figure is purely time-driven.
  */
 export async function OverviewTab({ asOf: _asOf, from, to }: Props) {
-  const location = await getCurrentLocation();
-  const locationId = location?.id ?? null;
+  // Follow the active destination (location OR store), not just the location —
+  // in store mode getCurrentLocation() is null, which would blank the report.
+  const destination = await getCurrentDestination();
+  const locationId = destination?.id ?? null;
 
   // 7-day lookahead matches the inventory service's BATCH_EXPIRY_APPROACHING
   // scheduler window — same horizon the operator already sees in alerts.

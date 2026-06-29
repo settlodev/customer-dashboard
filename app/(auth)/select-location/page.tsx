@@ -8,8 +8,10 @@ import LocationList from "@/app/(auth)/select-location/location-list";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { getWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { fetchAllStores } from "@/lib/actions/store-actions";
+import { getBusinessSubscription } from "@/lib/actions/billing-actions";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
 import { Store } from "@/types/store/type";
+import type { SubscriptionItemStatus } from "@/types/billing/types";
 import RetryButton from "@/app/(auth)/select-business/retry-button";
 import {
   Alert,
@@ -64,11 +66,15 @@ export default async function SelectLocationPage({ searchParams }: Params) {
   // Locations + warehouses + stores fan-out, every list scoped to the
   // *selected* business. A warehouse/store-service hiccup must not block
   // location loading — settle them independently.
-  const [locationsResult, warehousesResult, storesResult] =
+  const [locationsResult, warehousesResult, storesResult, subscriptionResult] =
     await Promise.allSettled([
       fetchAllLocations(business.id),
       getWarehouses(business.id),
       fetchAllStores(business.id),
+      // Per-entity subscription status so the picker can flag a location/
+      // store/warehouse whose payment has lapsed (expired/past-due/suspended).
+      // Best-effort — a billing hiccup must not block destination selection.
+      getBusinessSubscription(business.id),
     ]);
 
   if (locationsResult.status === "rejected") {
@@ -92,6 +98,20 @@ export default async function SelectLocationPage({ searchParams }: Params) {
   const stores: Store[] =
     storesResult.status === "fulfilled" ? storesResult.value : [];
 
+  // entityId → subscription status. Built from manageableItems (which keeps
+  // degraded rows: PAST_DUE/EXPIRED/SUSPENDED) with the ACTIVE-only `items`
+  // overlaid on top so a paid entity always reads ACTIVE. Empty when billing
+  // is unreachable — the picker then falls back to the entity's `active` flag.
+  const subscription =
+    subscriptionResult.status === "fulfilled" ? subscriptionResult.value : null;
+  const entityStatuses: Record<string, SubscriptionItemStatus> = {};
+  for (const it of subscription?.manageableItems ?? []) {
+    entityStatuses[it.entityId] = it.status;
+  }
+  for (const it of subscription?.items ?? []) {
+    entityStatuses[it.entityId] = it.status;
+  }
+
   // Confirmed empty — user has a business but no locations yet, so
   // sending them to /business-location is the correct next step.
   if (businessLocations.length === 0) {
@@ -107,6 +127,7 @@ export default async function SelectLocationPage({ searchParams }: Params) {
       businessName={business.name}
       warehouses={warehouses}
       stores={stores}
+      entityStatuses={entityStatuses}
     />
   );
 }

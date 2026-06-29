@@ -178,11 +178,17 @@ function DashboardSidebarContent({
 }: DashboardSidebarContentProps) {
   const pathname = usePathname();
   const { hasAnyPermission, loading: permsLoading } = usePermissions();
+  // When the active destination is a store, collapse to the store menu (no
+  // sales/accounting/catalogue). Warehouses live in their own route group, so
+  // inside (protected) an active store is the only thing that shifts the menu.
+  const activeStoreId = data.currentStore?.id;
+  const menuType = activeStoreId ? "store" : "normal";
   const sections = menuItems({
-    menuType: "normal",
+    menuType,
     isCurrentItem: false,
     hasMultipleDestinations: data.hasMultipleDestinations,
     reportsReadAll,
+    currentStoreId: activeStoreId,
   }) as unknown as MenuSectionShape[];
 
   // Permission-gate the nav. Fail OPEN: an entry with no permission tag, or

@@ -186,14 +186,24 @@ export interface PublicProforma {
   proformaNumber: string;
   status: ProformaStatus;
   customerName: string;
+  customerPhone?: string | null;
+  customerEmail?: string | null;
+  customerTin?: string | null;
   currencyCode: string;
   validUntil?: string | null;
+  issueDate?: string | null;
   lines: PublicProformaLine[];
   subtotalAmount: number;
   discountAmount: number;
   taxAmount: number;
   totalAmount: number;
   notes?: string | null;
+  // Issuer identity (resolved server-side from the business/location).
+  businessName?: string | null;
+  businessTin?: string | null;
+  businessVrn?: string | null;
+  locationName?: string | null;
+  locationAddress?: string | null;
 }
 
 export interface PublicInvoiceLine {
@@ -208,6 +218,9 @@ export interface PublicArInvoice {
   status: InvoiceStatus;
   paymentStatus: InvoicePaymentStatus;
   customerName: string;
+  customerPhone?: string | null;
+  customerEmail?: string | null;
+  customerTin?: string | null;
   currencyCode: string;
   issueDate: string;
   dueDate?: string | null;
@@ -222,6 +235,12 @@ export interface PublicArInvoice {
   paymentDetailsText?: string | null;
   paymentInstructionsText?: string | null;
   accepted: boolean;
+  // Issuer snapshot frozen on the invoice.
+  businessName?: string | null;
+  businessTin?: string | null;
+  businessVrn?: string | null;
+  locationName?: string | null;
+  locationAddress?: string | null;
 }
 
 // ── Labels & tones ────────────────────────────────────────────────────

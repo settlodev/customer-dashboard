@@ -12,7 +12,7 @@ import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-transfer/column";
 import { searchStockTransfers } from "@/lib/actions/stock-transfer-actions";
 import { softFetch } from "@/lib/list-fallback";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { getStockTransferKpi } from "@/lib/actions/reports-analytics-actions";
 import { StockTransferKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
 import { Plus } from "lucide-react";
@@ -31,7 +31,7 @@ export default async function Page({ searchParams }: Params) {
 
   const [responseData, location] = await Promise.all([
     softFetch(searchStockTransfers(page ? page - 1 : 0, pageLimit)),
-    getCurrentLocation(),
+    getCurrentDestination(),
   ]);
 
   const data = responseData?.content ?? [];

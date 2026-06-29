@@ -1,22 +1,19 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Ban,
   Check,
-  CircleDollarSign,
   Copy,
   ExternalLink,
   FileCheck2,
   FileText,
-  ListChecks,
   Send,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -28,10 +25,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/helpers";
+import { ProformaTotalsRows } from "@/components/invoicing/totals-rows";
 import ProformaForm from "@/components/forms/proforma-form";
+import formStyles from "@/components/forms/styles/form-shell.module.css";
 import {
   cancelProforma,
   convertProforma,
@@ -42,6 +41,9 @@ import {
   isProformaConvertible,
   isProformaEditable,
   isProformaShareable,
+  PROFORMA_STATUS_LABELS,
+  PROFORMA_STATUS_TONES,
+  type DocTotals,
   type InvoicingEvent,
   type Proforma,
 } from "@/types/invoicing/type";
@@ -64,6 +66,13 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
 
   const currency = proforma.currencyCode;
   const canEdit = isProformaEditable(proforma.status);
+
+  const totals: DocTotals = {
+    subtotalAmount: proforma.subtotalAmount,
+    discountAmount: proforma.discountAmount,
+    taxAmount: proforma.taxAmount,
+    totalAmount: proforma.totalAmount,
+  };
 
   const run = (fn: () => Promise<{ responseType: string; message: string }>) =>
     startTransition(async () => {
@@ -105,44 +114,14 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
     }
   };
 
-  return (
+  // The rail cards beneath the live/saved "Total due" card — document actions,
+  // details, customer link, cancel. Same content across every tab.
+  const railExtra = (
     <>
-      <KpiStrip cols={4}>
-        <KpiCard
-          icon={<CircleDollarSign className="h-3 w-3" />}
-          label="Total"
-          value={proforma.totalAmount.toLocaleString(undefined, {
-            maximumFractionDigits: 0,
-          })}
-          unit={currency}
-        />
-        <KpiCard
-          icon={<CircleDollarSign className="h-3 w-3" />}
-          label="Tax"
-          value={proforma.taxAmount.toLocaleString(undefined, {
-            maximumFractionDigits: 0,
-          })}
-          unit={currency}
-          deltaTone="neutral"
-        />
-        <KpiCard
-          icon={<ListChecks className="h-3 w-3" />}
-          label="Line items"
-          value={String(proforma.lines?.length ?? 0)}
-        />
-        <KpiCard
-          icon={<FileText className="h-3 w-3" />}
-          label="Valid until"
-          value={dt(proforma.validUntil)}
-          deltaTone="neutral"
-        />
-      </KpiStrip>
-
-      {/* Action bar */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="space-y-2 rounded-xl border border-line bg-card p-4">
         {isProformaShareable(proforma.status) && (
           <Button
-            size="sm"
+            className="w-full justify-center"
             disabled={isPending}
             onClick={() => run(() => shareProforma(proforma.id))}
           >
@@ -152,8 +131,8 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
         )}
         {isProformaConvertible(proforma.status) && (
           <Button
-            size="sm"
             variant="outline"
+            className="w-full justify-center"
             disabled={isPending}
             onClick={() => setConfirmConvert(true)}
           >
@@ -162,57 +141,90 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
           </Button>
         )}
         {proforma.convertedInvoiceId && (
-          <Button asChild size="sm" variant="outline">
+          <Button asChild variant="outline" className="w-full justify-center">
             <Link href={`/invoices/${proforma.convertedInvoiceId}`}>
               <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
               View invoice
             </Link>
           </Button>
         )}
-        {isProformaCancellable(proforma.status) && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="ml-auto text-red-600 hover:text-red-700"
-            disabled={isPending}
-            onClick={() => setConfirmCancel(true)}
-          >
-            <Ban className="mr-1.5 h-3.5 w-3.5" />
-            Cancel
-          </Button>
-        )}
       </div>
 
-      {/* Public share link */}
+      <div className="rounded-xl border border-line bg-card p-4">
+        <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+          Details
+        </div>
+        <div className="space-y-2.5">
+          <RailRow label="Status" value={<StatusPill status={proforma.status} />} />
+          <RailRow label="Valid until" value={dt(proforma.validUntil)} />
+          <RailRow label="Line items" value={String(proforma.lines?.length ?? 0)} />
+          <RailRow label="Currency" value={currency} />
+        </div>
+      </div>
+
       {shareUrl && (
-        <Card>
-          <CardContent className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
-                Customer link
-              </p>
-              <p className="truncate font-mono text-xs text-ink">{shareUrl}</p>
-            </div>
-            <div className="flex flex-shrink-0 items-center gap-2">
-              <Button size="sm" variant="outline" onClick={copyLink}>
-                {copied ? (
-                  <Check className="mr-1.5 h-3.5 w-3.5 text-green-600" />
-                ) : (
-                  <Copy className="mr-1.5 h-3.5 w-3.5" />
-                )}
-                {copied ? "Copied" : "Copy"}
-              </Button>
-              <Button asChild size="sm" variant="ghost">
-                <a href={shareUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                  Open
-                </a>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-xl border border-line bg-card p-4">
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+            Customer link
+          </div>
+          <p className="break-all font-mono text-[11.5px] leading-relaxed text-ink-2">
+            {shareUrl}
+          </p>
+          <div className="mt-2.5 flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 justify-center"
+              onClick={copyLink}
+            >
+              {copied ? (
+                <Check className="mr-1.5 h-3.5 w-3.5 text-green-600" />
+              ) : (
+                <Copy className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              {copied ? "Copied" : "Copy"}
+            </Button>
+            <Button asChild size="sm" variant="ghost" className="flex-1 justify-center">
+              <a href={shareUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                Open
+              </a>
+            </Button>
+          </div>
+        </div>
       )}
 
+      {isProformaCancellable(proforma.status) && (
+        <Button
+          variant="ghost"
+          className="w-full justify-center text-neg hover:bg-neg/10 hover:text-neg"
+          disabled={isPending}
+          onClick={() => setConfirmCancel(true)}
+        >
+          <Ban className="mr-1.5 h-3.5 w-3.5" />
+          Cancel proforma
+        </Button>
+      )}
+    </>
+  );
+
+  // Static rail (Summary / Timeline tabs) — saved total + the shared cards.
+  const staticRail = (
+    <aside
+      className={cn(formStyles.formStack, "lg:sticky lg:top-4 lg:self-start")}
+    >
+      <div className="rounded-xl border border-ink bg-ink p-4 text-white">
+        <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.1em] text-white/55">
+          Total due
+        </div>
+        <ProformaTotalsRows totals={totals} currency={currency} accent />
+      </div>
+      {railExtra}
+    </aside>
+  );
+
+  return (
+    <>
       <Tabs defaultValue={canEdit ? "edit" : "summary"}>
         <TabsList>
           {canEdit && <TabsTrigger value="edit">Edit</TabsTrigger>}
@@ -221,109 +233,110 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
         </TabsList>
 
         {canEdit && (
-          <TabsContent value="edit" className="mt-4">
-            <ProformaForm item={proforma} defaultCurrency={currency} />
+          <TabsContent value="edit" className="mt-5">
+            <ProformaForm
+              item={proforma}
+              defaultCurrency={currency}
+              railExtra={railExtra}
+            />
           </TabsContent>
         )}
 
-        <TabsContent value="summary" className="mt-4 space-y-4">
-          <Card>
-            <CardContent className="grid grid-cols-1 gap-4 pt-6 text-sm sm:grid-cols-2 lg:grid-cols-4">
-              <DetailItem label="Customer" value={proforma.customerName} />
-              <DetailItem label="Phone" value={proforma.customerPhone ?? "—"} />
-              <DetailItem label="Email" value={proforma.customerEmail ?? "—"} />
-              <DetailItem label="TIN" value={proforma.customerTin ?? "—"} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="px-2 pt-6 sm:px-6">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-gray-50/60 text-left text-xs font-semibold uppercase text-gray-400">
-                      <th className="px-4 py-3">Description</th>
-                      <th className="px-4 py-3 text-right">Qty</th>
-                      <th className="px-4 py-3 text-right">Unit price</th>
-                      <th className="px-4 py-3 text-right">Discount</th>
-                      <th className="px-4 py-3 text-right">Tax</th>
-                      <th className="px-4 py-3 text-right">Line total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {proforma.lines?.map((l) => (
-                      <tr key={l.id ?? l.description} className="hover:bg-gray-50/50">
-                        <td className="px-4 py-3">{l.description}</td>
-                        <td className="px-4 py-3 text-right font-mono tabular-nums">
-                          {l.quantity}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono tabular-nums">
-                          {formatMoney(l.unitPrice, currency)}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono tabular-nums">
-                          {l.lineDiscountAmount
-                            ? formatMoney(l.lineDiscountAmount, currency)
-                            : "—"}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono tabular-nums">
-                          {l.taxAmount ? formatMoney(l.taxAmount, currency) : "—"}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono font-medium tabular-nums">
-                          {formatMoney(l.lineTotal ?? 0, currency)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        <TabsContent value="summary" className="mt-5">
+          <div className={formStyles.formGrid}>
+            <div className={formStyles.formStack}>
+              <div className="rounded-xl border border-line bg-card p-4 sm:p-5">
+                <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
+                  <RoField label="Customer" value={proforma.customerName} />
+                  <RoField label="Phone" value={proforma.customerPhone ?? "—"} />
+                  <RoField label="Email" value={proforma.customerEmail ?? "—"} />
+                  <RoField label="TIN" value={proforma.customerTin ?? "—"} />
+                </div>
               </div>
 
-              <div className="mt-4 flex justify-end">
-                <dl className="w-full max-w-xs space-y-1 font-mono text-sm tabular-nums">
-                  <Row label="Subtotal" value={formatMoney(proforma.subtotalAmount, currency)} />
-                  {proforma.discountAmount > 0 && (
-                    <Row
-                      label="Discount"
-                      value={`−${formatMoney(proforma.discountAmount, currency)}`}
-                    />
-                  )}
-                  <Row label="Tax" value={formatMoney(proforma.taxAmount, currency)} />
-                  <div className="flex justify-between border-t border-line pt-1 text-base font-semibold text-ink">
-                    <dt>Total</dt>
-                    <dd>{formatMoney(proforma.totalAmount, currency)}</dd>
-                  </div>
-                </dl>
+              <div className="overflow-hidden rounded-xl border border-line bg-card">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-line bg-surface/60 text-left text-xs font-semibold uppercase text-muted-foreground">
+                        <th className="px-4 py-3">Description</th>
+                        <th className="px-4 py-3 text-right">Qty</th>
+                        <th className="px-4 py-3 text-right">Unit price</th>
+                        <th className="px-4 py-3 text-right">Discount</th>
+                        <th className="px-4 py-3 text-right">Tax</th>
+                        <th className="px-4 py-3 text-right">Line total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line">
+                      {proforma.lines?.map((l) => (
+                        <tr key={l.id ?? l.description}>
+                          <td className="px-4 py-3 font-medium">{l.description}</td>
+                          <td className="px-4 py-3 text-right font-mono tabular-nums">
+                            {l.quantity}
+                          </td>
+                          <td className="px-4 py-3 text-right font-mono tabular-nums">
+                            {formatMoney(l.unitPrice, currency)}
+                          </td>
+                          <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-2">
+                            {l.lineDiscountAmount
+                              ? formatMoney(l.lineDiscountAmount, currency)
+                              : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-2">
+                            {l.taxAmount ? formatMoney(l.taxAmount, currency) : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums">
+                            {formatMoney(l.lineTotal ?? 0, currency)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {proforma.notes && (
-                <div className="mt-4 rounded-lg bg-surface/50 p-3 text-sm">
-                  <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+                <div className="rounded-xl border border-line bg-card p-4 text-sm">
+                  <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
                     Notes
                   </p>
-                  <p className="mt-1 whitespace-pre-wrap">{proforma.notes}</p>
+                  <p className="whitespace-pre-wrap text-ink-2">{proforma.notes}</p>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+            {staticRail}
+          </div>
         </TabsContent>
 
-        <TabsContent value="timeline" className="mt-4">
-          <Card>
-            <CardContent className="pt-6">
+        <TabsContent value="timeline" className="mt-5">
+          <div className={formStyles.formGrid}>
+            <div className="min-w-0 rounded-xl border border-line bg-card p-4 sm:p-5">
               {timeline.length === 0 ? (
                 <div className="py-12 text-center text-sm text-muted-foreground">
                   No events yet.
                 </div>
               ) : (
-                <ol className="space-y-3">
-                  {timeline.map((e) => (
-                    <li key={e.id} className="flex gap-3">
-                      <FileText className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm">
-                          <span className="font-medium">{e.eventType}</span>
-                          {e.description ? ` — ${e.description}` : ""}
+                <ol className="space-y-1">
+                  {timeline.map((e, i) => (
+                    <li key={e.id} className="flex gap-3.5">
+                      <div className="flex flex-col items-center">
+                        <span className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-lg border border-line bg-canvas text-ink-2">
+                          <FileText className="h-3.5 w-3.5" />
+                        </span>
+                        {i < timeline.length - 1 && (
+                          <span className="my-1 w-px flex-1 bg-line" />
+                        )}
+                      </div>
+                      <div className="flex-1 pb-4 pt-0.5">
+                        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                          {e.eventType}
                         </div>
-                        <div className="font-mono text-[11px] text-muted-foreground">
+                        {e.description && (
+                          <div className="mt-1 text-sm font-medium text-ink">
+                            {e.description}
+                          </div>
+                        )}
+                        <div className="mt-1 font-mono text-[11px] text-muted-foreground">
                           {new Date(e.occurredAt).toLocaleString()}
                         </div>
                       </div>
@@ -331,8 +344,9 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
                   ))}
                 </ol>
               )}
-            </CardContent>
-          </Card>
+            </div>
+            {staticRail}
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -380,22 +394,37 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
   );
 }
 
-function DetailItem({ label, value }: { label: string; value: string }) {
+function RailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div>
-      <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 truncate text-sm">{value}</p>
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="font-mono text-[12.5px] font-semibold text-ink-2">
+        {value}
+      </span>
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function RoField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between text-muted-foreground">
-      <dt>{label}</dt>
-      <dd>{value}</dd>
+    <div className="min-w-0">
+      <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1.5 truncate text-sm font-medium text-ink">{value}</p>
     </div>
+  );
+}
+
+function StatusPill({ status }: { status: Proforma["status"] }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+        PROFORMA_STATUS_TONES[status],
+      )}
+    >
+      {PROFORMA_STATUS_LABELS[status]}
+    </span>
   );
 }
