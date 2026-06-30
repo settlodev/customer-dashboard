@@ -17,6 +17,7 @@ import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { getAuthToken } from "@/lib/auth-utils";
 import { extractPermissions } from "@/lib/jwt-utils";
+import { getMyPermissions } from "@/lib/actions/permissions-actions";
 import { EntitlementProvider } from "@/context/entitlementContext";
 import { PermissionsProvider } from "@/context/permissionsContext";
 import { getEntitlements } from "@/lib/actions/entitlement-actions";
@@ -48,6 +49,15 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const authToken = await getAuthToken();
+
+  // Fetch the caller's permission keys concurrently with the layout data below
+  // (this runs on every protected page render). `GET /api/v1/permissions/me` is
+  // server-authoritative — it resolves the token's perm_ids via the catalog — so
+  // the dashboard no longer decodes the token's `permissions` claim itself and
+  // keeps working after that claim is dropped from minted tokens.
+  const permissionsPromise: Promise<string[] | null> = authToken?.accessToken
+    ? getMyPermissions().catch(() => null)
+    : Promise.resolve(null);
 
   // When the location's subscription is expired/cancelled, show a minimal
   // layout with just a top bar and logout — no sidebar, no full dashboard.
@@ -140,16 +150,14 @@ export default async function RootLayout({
       } as ExtendedUser)
     : null;
 
-  // Permission keys for client-side nav gating. The access token's
-  // `permissions` claim is the enumerated key set for the user's roles in the
-  // current account (owners hold the full catalog, so they keep the entire
-  // nav). This feeds PermissionsProvider so the sidebar can hide owner-only
-  // items from invited, limited-scope members. NOTE: UX-only — the backend
-  // @PreAuthorize is the real security gate; gating here fails open (see the
-  // sidebar's permission filter).
-  const permissions = authToken?.accessToken
-    ? extractPermissions(authToken.accessToken)
-    : [];
+  // Permission keys for client-side nav gating — resolved server-side (above).
+  // Falls back to the token's legacy `permissions` strings if the /me call
+  // failed, so gating still fails OPEN (prior behaviour) during the transition
+  // or on a transient error. UX-only — the backend @PreAuthorize is the real
+  // security gate; this only hides owner-only nav from limited-scope members.
+  const permissions =
+    (await permissionsPromise) ??
+    (authToken?.accessToken ? extractPermissions(authToken.accessToken) : []);
 
   // ── Active subscription: full dashboard layout ────────────────────
   // The redesigned shell drops the topbar entirely. The floating

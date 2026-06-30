@@ -27,6 +27,24 @@ export const fetchAllPermissions = async (
 };
 
 // ---------------------------------------------------------------------------
+// Current user's resolved permissions
+// ---------------------------------------------------------------------------
+
+/**
+ * The authenticated caller's resolved permission KEYS (their own), from
+ * `GET /api/v1/permissions/me`. Server-authoritative — the backend resolves the
+ * token's perm_ids via the catalog (with legacy-string fallback) — so the
+ * dashboard never decodes the JWT's permission claim or needs the int catalog.
+ * This is the source of truth for client-side nav gating; it keeps working after
+ * the `permissions` string claim is dropped from minted tokens.
+ */
+export const getMyPermissions = async (): Promise<string[]> => {
+  const apiClient = new ApiClient();
+  const data = await apiClient.get(`/api/v1/permissions/me`);
+  return parseStringify(data);
+};
+
+// ---------------------------------------------------------------------------
 // Get by ID / Key
 // ---------------------------------------------------------------------------
 
