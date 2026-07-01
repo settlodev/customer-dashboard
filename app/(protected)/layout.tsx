@@ -16,8 +16,7 @@ import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-a
 import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { getAuthToken } from "@/lib/auth-utils";
-import { extractPermissions } from "@/lib/jwt-utils";
-import { getMyPermissions } from "@/lib/actions/permissions-actions";
+import { getMyPermissionsCached, hasReportsReadAll } from "@/lib/permissions/me";
 import { EntitlementProvider } from "@/context/entitlementContext";
 import { PermissionsProvider } from "@/context/permissionsContext";
 import { getEntitlements } from "@/lib/actions/entitlement-actions";
@@ -56,7 +55,7 @@ export default async function RootLayout({
   // the dashboard no longer decodes the token's `permissions` claim itself and
   // keeps working after that claim is dropped from minted tokens.
   const permissionsPromise: Promise<string[] | null> = authToken?.accessToken
-    ? getMyPermissions().catch(() => null)
+    ? getMyPermissionsCached()
     : Promise.resolve(null);
 
   // When the location's subscription is expired/cancelled, show a minimal
@@ -150,14 +149,20 @@ export default async function RootLayout({
       } as ExtendedUser)
     : null;
 
-  // Permission keys for client-side nav gating — resolved server-side (above).
-  // Falls back to the token's legacy `permissions` strings if the /me call
-  // failed, so gating still fails OPEN (prior behaviour) during the transition
-  // or on a transient error. UX-only — the backend @PreAuthorize is the real
-  // security gate; this only hides owner-only nav from limited-scope members.
-  const permissions =
-    (await permissionsPromise) ??
-    (authToken?.accessToken ? extractPermissions(authToken.accessToken) : []);
+  // Permission keys for client-side nav gating — resolved server-side from /me
+  // (above). When /me is unavailable for a logged-in caller we fail OPEN (grant
+  // all) via PermissionsProvider rather than read the token: post-slim the token
+  // carries `perm_ids` (ints the browser can't resolve without the catalog) plus
+  // only residual strings, so a token read under-reports and would wrongly HIDE
+  // owner nav. UX-only — the backend @PreAuthorize is the real gate — so
+  // fail-open on a transient outage is the safe failure (matches hasReportsReadAll).
+  const mePermissions = await permissionsPromise;
+  const permissionsUnavailable = !!authToken?.accessToken && mePermissions === null;
+  const permissions = mePermissions ?? [];
+
+  // Location-wide reports gate — resolved from /me (shares the call above),
+  // not the retired JWT permissions claim.
+  const reportsReadAll = await hasReportsReadAll();
 
   // ── Active subscription: full dashboard layout ────────────────────
   // The redesigned shell drops the topbar entirely. The floating
@@ -168,7 +173,7 @@ export default async function RootLayout({
   return (
     <AppNotificationProviders>
       <EntitlementProvider initialEntitlements={entitlements}>
-        <PermissionsProvider initialPermissions={permissions}>
+        <PermissionsProvider initialPermissions={permissions} failOpen={permissionsUnavailable}>
         <LoadingBarProvider>
           <SidebarProvider>
             <div className="flex h-screen flex-col overflow-hidden bg-canvas">
@@ -179,7 +184,7 @@ export default async function RootLayout({
                 <DashboardSidebarShell
                   data={businessData}
                   user={user}
-                  reportsReadAll={authToken?.reportsReadAll ?? true}
+                  reportsReadAll={reportsReadAll}
                 />
 
                 <main className="flex flex-1 min-w-0 flex-col overflow-hidden">

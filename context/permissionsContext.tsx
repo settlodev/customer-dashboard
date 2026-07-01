@@ -22,12 +22,23 @@ const PermissionsContext = createContext<PermissionsContextType>({
 export function PermissionsProvider({
   children,
   initialPermissions = [],
+  failOpen = false,
 }: {
   children: React.ReactNode;
   initialPermissions?: PermissionKey[];
+  /**
+   * The permission source (`/me`) was unavailable, so we can't know the caller's
+   * keys. Grant-all for client gating — it's UX-only (the backend @PreAuthorize
+   * is the real gate), and hiding owner nav/actions on a transient outage is the
+   * worse failure. Set by the layout only when a logged-in caller's `/me` fetch
+   * failed. Note the token is NOT a usable fallback: post-slim it carries
+   * `perm_ids` (ints the browser can't resolve without the catalog) plus only
+   * residual strings, so reading it would under-report and wrongly fail closed.
+   */
+  failOpen?: boolean;
 }) {
   const [permissions, setPermissions] = useState<PermissionKey[]>(initialPermissions);
-  const [loading, setLoading] = useState(!initialPermissions.length);
+  const [loading, setLoading] = useState(!failOpen && !initialPermissions.length);
 
   useEffect(() => {
     if (initialPermissions.length > 0) {
@@ -37,18 +48,18 @@ export function PermissionsProvider({
   }, [initialPermissions]);
 
   const hasPermission = useCallback(
-    (key: PermissionKey) => permissions.includes(key),
-    [permissions],
+    (key: PermissionKey) => failOpen || permissions.includes(key),
+    [permissions, failOpen],
   );
 
   const hasAnyPermission = useCallback(
-    (keys: PermissionKey[]) => keys.some((key) => permissions.includes(key)),
-    [permissions],
+    (keys: PermissionKey[]) => failOpen || keys.some((key) => permissions.includes(key)),
+    [permissions, failOpen],
   );
 
   const hasAllPermissions = useCallback(
-    (keys: PermissionKey[]) => keys.every((key) => permissions.includes(key)),
-    [permissions],
+    (keys: PermissionKey[]) => failOpen || keys.every((key) => permissions.includes(key)),
+    [permissions, failOpen],
   );
 
   return (
