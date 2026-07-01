@@ -7,16 +7,22 @@ import {
   PageShell,
 } from "@/components/layouts/page-shell";
 import NoItems from "@/components/layouts/no-items";
-import { OrdersPanel, type SalesView } from "@/components/orders/orders-panel";
+import {
+  OrdersPanel,
+  type OrdersKpis,
+  type SalesView,
+} from "@/components/orders/orders-panel";
 import { OrdersRealtimeBridge } from "@/components/realtime/orders-realtime-bridge";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getLocationCurrency } from "@/lib/actions/currency-actions";
+import { fetchOverview } from "@/lib/actions/dashboard-action";
 import { getLocationSettings } from "@/lib/actions/location-settings-actions";
-import { listOrders } from "@/lib/actions/order-actions";
+import { searchOrders } from "@/lib/actions/order-actions";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import { fetchAllTables } from "@/lib/actions/space-actions";
-import { rethrowIfBoundary } from "@/lib/list-fallback";
-import { buildOrderListView } from "@/lib/orders/order-list-view";
-import { Order, OrderStatus } from "@/types/orders/type";
+import { resolveOrderRowNames } from "@/lib/orders/order-list-view";
+import { OrderStatus } from "@/types/orders/type";
+import type OverviewResponse from "@/types/dashboard/type";
 
 type Params = {
   searchParams: Promise<{
@@ -51,54 +57,73 @@ export default async function Page({ searchParams }: Params) {
   const effectiveStatus: OrderStatus | undefined =
     tab === "abandoned" ? OrderStatus.ABANDONED : statusParam || undefined;
 
-  const [orders, currentLocation, locationSettings, staffList, tablesList] =
-    await Promise.all([
-      listOrders({
-        fromDate: from,
-        toDate: to,
-        status: effectiveStatus,
-      }).catch((e): Order[] => {
-        rethrowIfBoundary(e);
-        return [];
-      }),
-      getCurrentLocation(),
-      getLocationSettings().catch(() => null),
-      fetchAllStaff().catch(() => []),
-      fetchAllTables().catch(() => []),
-    ]);
+  // One server page of orders + the KPI strip (Reports overview) in parallel.
+  // The OMS does the filtering, search, and paging; the strip totals come from
+  // ClickHouse — so neither scales with the location's order volume. The
+  // overview excludes ABANDONED, so it's only fetched for the Orders tab.
+  const [
+    ordersPage,
+    overview,
+    currentLocation,
+    locationSettings,
+    staffList,
+    tablesList,
+    currency,
+  ] = await Promise.all([
+    searchOrders({
+      fromDate: from,
+      toDate: to,
+      status: effectiveStatus,
+      excludeAbandoned: tab === "orders",
+      search: q || undefined,
+      page,
+      limit,
+    }),
+    tab === "orders"
+      ? fetchOverview(from, to).catch(() => null)
+      : Promise.resolve(null),
+    getCurrentLocation(),
+    getLocationSettings().catch(() => null),
+    fetchAllStaff().catch(() => []),
+    fetchAllTables().catch(() => []),
+    getLocationCurrency().catch(() => "TZS"),
+  ]);
+
+  const pageData = ordersPage.content ?? [];
+  const total = ordersPage.totalElements ?? 0;
+  const pageCount = ordersPage.totalPages ?? 0;
+
+  // Resolve assigned-to / closed-by / table names for just this page's rows.
+  const { staffNames, tableNames } = resolveOrderRowNames(
+    pageData,
+    staffList,
+    tablesList,
+  );
 
   // Table-based ordering swaps the lead column to the table name; the
   // standard mode keeps the order number in front.
   const tableMode = locationSettings?.orderingMode === "TABLE_MANAGEMENT";
 
-  // Abandoned orders have their own tab. When the main list runs without
-  // an explicit status filter the OMS hands back every status, so strip
-  // ABANDONED here to stop it bleeding into the orders list.
-  const scopedOrders =
-    tab === "orders"
-      ? orders.filter((o) => o.orderStatus !== OrderStatus.ABANDONED)
-      : orders;
+  const ov = overview as OverviewResponse | null;
+  const kpis: OrdersKpis | undefined = ov
+    ? {
+        totalOrders: ov.totalOrders ?? 0,
+        openOrders: ov.openOrders ?? 0,
+        closedOrders: ov.completedOrders ?? 0,
+        grossSales: ov.grossSales ?? 0,
+        unpaidOrders: ov.unpaidOrders ?? 0,
+      }
+    : undefined;
 
-  const { pageData, total, pageCount, staffNames, tableNames } =
-    buildOrderListView({
-      orders: scopedOrders,
-      search: q,
-      page,
-      limit,
-      staff: staffList,
-      tables: tablesList,
-    });
-
-  const currency =
-    scopedOrders.find((o) => o.settlementCurrency)?.settlementCurrency ?? "TZS";
-  const totalOrders = scopedOrders.length;
-  const hasAny = totalOrders > 0;
   // The default current-month range shouldn't count as a "user filter" —
   // we want first-time locations to land on the empty state, not on a
   // populated table-shell with no rows. A URL-supplied from/to does.
   const isDefaultRange = !resolved.from && !resolved.to;
   const hasFilters =
     q !== "" || (tab === "orders" && !!statusParam) || !isDefaultRange;
+  // Range has orders if either the overview (Orders tab) or the paged total
+  // (Abandoned tab, or overview unavailable) reports any.
+  const hasAny = (ov?.totalOrders ?? total) > 0 || total > 0;
 
   const subtitle =
     from === to
@@ -120,7 +145,7 @@ export default async function Page({ searchParams }: Params) {
           view={tab}
           from={from}
           to={to}
-          scoped={scopedOrders}
+          kpis={tab === "orders" ? kpis : undefined}
           pageData={pageData}
           pageCount={pageCount}
           pageNo={page - 1}

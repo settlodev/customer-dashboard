@@ -18,6 +18,39 @@ import { getCurrentLocation } from "./business/get-current-business";
 import { getCurrentDestination } from "./context";
 
 /**
+ * Public (unauthenticated) staff invitation context for the set-password
+ * landing page. Mirrors getPublicInvitation for account members: fetched by
+ * staff id from the Accounts service public endpoint, returns null on any
+ * failure so the landing falls back to generic copy.
+ */
+export interface PublicStaffInvitation {
+  firstName: string | null;
+  accountName: string | null;
+  businessName: string | null;
+  roleName: string | null;
+}
+
+export const getPublicStaffInvitation = async (
+  staffId: string,
+): Promise<PublicStaffInvitation | null> => {
+  try {
+    const base = process.env.ACCOUNTS_SERVICE_URL;
+    if (!base) {
+      console.warn("getPublicStaffInvitation: ACCOUNTS_SERVICE_URL not configured");
+      return null;
+    }
+    const res = await fetch(
+      `${base}/api/v1/public/staff/invitations/${staffId}`,
+      { headers: { "Content-Type": "application/json" }, cache: "no-store" },
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as PublicStaffInvitation;
+  } catch {
+    return null;
+  }
+};
+
+/**
  * Paginated list of staff.
  */
 export const fetchStaffPage = async (
@@ -321,6 +354,95 @@ export const revokeDashboardAccess = async (
     return {
       responseType: "error",
       message: error?.message || "Failed to revoke dashboard access",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+/**
+ * Re-send the set-password invite email to a dashboard-staff member (their 24h
+ * token expired or the email was lost). Re-mints a fresh token server-side.
+ */
+export const resendStaffInvite = async (
+  staffId: string,
+): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/staff/${staffId}/resend-invite`, {});
+    revalidatePath(`/staff/${staffId}`);
+    return { responseType: "success", message: "Invite email re-sent" };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message || "Failed to resend invite",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Multi-location assignments
+// ---------------------------------------------------------------------------
+
+export interface StaffAssignmentDto {
+  id: string;
+  scopeType: "LOCATION" | "STORE" | "WAREHOUSE";
+  scopeId: string;
+  roleId: string;
+  roleName: string | null;
+  active: boolean;
+  primary: boolean;
+}
+
+export const getStaffAssignments = async (
+  staffId: string,
+): Promise<StaffAssignmentDto[]> => {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get<StaffAssignmentDto[] | null>(
+      `/api/v1/staff/${staffId}/assignments`,
+    );
+    return parseStringify(data ?? []);
+  } catch {
+    return [];
+  }
+};
+
+export const addStaffAssignment = async (
+  staffId: string,
+  input: {
+    scopeType: "LOCATION" | "STORE" | "WAREHOUSE";
+    scopeId: string;
+    roleId: string;
+  },
+): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/staff/${staffId}/assignments`, input);
+    revalidatePath(`/staff/${staffId}`);
+    return { responseType: "success", message: "Assignment added" };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message || "Failed to add assignment",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+export const removeStaffAssignment = async (
+  staffId: string,
+  assignmentId: string,
+): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.delete(`/api/v1/staff/${staffId}/assignments/${assignmentId}`);
+    revalidatePath(`/staff/${staffId}`);
+    return { responseType: "success", message: "Assignment removed" };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message || "Failed to remove assignment",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }

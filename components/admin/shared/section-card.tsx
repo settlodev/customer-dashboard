@@ -12,9 +12,9 @@ import { StubBadge } from "@/components/admin/catalog/package-detail/stub-badge"
  * `.card` + `.card-head` rules (16px radius, hairline border, 20px padding).
  */
 
-// Orange-deep accent for inline "→" links. NB: we can't use the Tailwind
-// `text-primary-dark` token here — that maps to a legacy purple in
-// tailwind.config; the design link colour is #C25E26.
+// Orange-deep accent for inline "→" links. Pinned to the exact design link
+// colour #C25E26 (the `text-primary-dark` token now resolves to the same
+// burnt orange via --primary-dark, but this keeps the admin link value exact).
 export const ACCENT_LINK =
   "inline-flex items-center gap-1 text-[12.5px] font-semibold text-[#C25E26] transition-colors hover:text-[#a04d1d]";
 

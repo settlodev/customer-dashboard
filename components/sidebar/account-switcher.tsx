@@ -126,7 +126,11 @@ export function AccountSwitcher({ onPick }: AccountSwitcherProps) {
                     {a.name}
                   </div>
                   <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                    {a.owner ? "Owner" : "Member"}
+                    {a.relationship === "OWNER" || (a.relationship == null && a.owner)
+                      ? "Owner"
+                      : a.relationship === "STAFF"
+                        ? "Staff"
+                        : "Member"}
                     {a.identifier ? ` · ${a.identifier}` : ""}
                   </div>
                 </div>

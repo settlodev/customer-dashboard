@@ -169,6 +169,12 @@ export interface StaffCount {
   total: number;
   active: number;
   inactive: number;
+  /** Account-wide count of staff with POS access (server-computed, not page-derived). */
+  posAccess: number;
+  /** Account-wide count of staff with dashboard access. */
+  dashboardAccess: number;
+  /** Account-wide count of staff with an offline PIN set. */
+  pinSet: number;
 }
 
 // ---------------------------------------------------------------------------

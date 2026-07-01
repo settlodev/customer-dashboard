@@ -107,8 +107,6 @@ export declare interface AuthToken {
     impersonating?: boolean;
     /** Auth user id of the staff member impersonating this account. */
     impersonatorId?: string | null;
-    /** True iff the user holds `reports:read_all` (location-wide reports). Derived at login. */
-    reportsReadAll?: boolean;
     hasInvitedAccess: boolean;
 }
 

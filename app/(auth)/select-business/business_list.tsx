@@ -176,16 +176,22 @@ const BusinessList = ({ businesses, currentAccountId }: BusinessListProps) => {
                   <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100">
                     {bus.name}
                   </h3>
-                  {bus.owner !== undefined && (
+                  {(bus.relationship != null || bus.owner !== undefined) && (
                     <span
                       className={cn(
                         "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none",
-                        bus.owner
+                        bus.relationship === "OWNER" ||
+                          (bus.relationship == null && bus.owner)
                           ? "bg-primary/10 text-primary"
                           : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
                       )}
                     >
-                      {bus.owner ? "Owner" : "Invited"}
+                      {bus.relationship === "OWNER" ||
+                      (bus.relationship == null && bus.owner)
+                        ? "Owner"
+                        : bus.relationship === "STAFF"
+                          ? "Staff"
+                          : "Invited"}
                     </span>
                   )}
                 </div>

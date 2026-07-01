@@ -35,6 +35,7 @@ function buildFilterQuery(params: ListAccountsParams): URLSearchParams {
   const qs = new URLSearchParams();
   if (params.search) qs.set("search", params.search);
   if (typeof params.active === "boolean") qs.set("active", String(params.active));
+  if (typeof params.deleted === "boolean") qs.set("deleted", String(params.deleted));
   if (params.onboardingState) qs.set("onboardingState", params.onboardingState);
   if (params.createdFrom) qs.set("createdFrom", params.createdFrom);
   if (params.createdTo) qs.set("createdTo", params.createdTo);
@@ -338,10 +339,14 @@ export async function getPlatformStats(): Promise<PlatformStatsResponse> {
  */
 export async function getMyInternalStaffProfile(): Promise<InternalStaffSummary | null> {
   try {
-    const data = await staffClient().get<InternalStaffSummary>(
+    const data = await staffClient().get<InternalStaffSummary | null>(
       "/api/v1/admin/internal-staff/me",
     );
-    return parseStringify(data);
+    // A caller with no mirrored profile (unrestricted admin) now comes back as
+    // 204 No Content, which axios surfaces as "" — normalize any empty/falsy
+    // response to null so callers get a clean "unrestricted" signal. (Older
+    // backends returned 404, still caught below.)
+    return data ? parseStringify(data) : null;
   } catch {
     return null;
   }
@@ -542,7 +547,9 @@ export async function changeAccountEmail(
 }
 
 /**
- * Change a FRESH, UNVERIFIED account owner's phone and re-send verification.
+ * Change an account owner's phone while the phone is unverified, and re-send
+ * verification. The backend (Auth) rejects this once the phone is verified.
+ * Unlike change-email this can apply to a live (email-verified) account.
  */
 export async function changeAccountPhone(
   accountId: string,
@@ -568,6 +575,35 @@ export async function changeAccountPhone(
     return parseStringify({
       responseType: "error",
       message: error?.message || "Failed to change phone",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+/**
+ * Re-send the account owner's phone-verification SMS (Auth → Communications →
+ * Beem). Rate-limited in Auth; silently no-ops if the phone is already verified.
+ */
+export async function resendPhoneVerification(
+  accountId: string,
+): Promise<FormResponse<{ message: string }>> {
+  try {
+    const result = await staffClient().post<
+      { message: string },
+      Record<string, never>
+    >(`/api/v1/admin/accounts/${accountId}/resend-verification-phone`, {});
+
+    revalidatePath("/admin/accounts");
+    revalidatePath(`/admin/accounts/${accountId}`);
+    return parseStringify({
+      responseType: "success",
+      message: result?.message ?? "Verification SMS sent",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to send verification SMS",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }

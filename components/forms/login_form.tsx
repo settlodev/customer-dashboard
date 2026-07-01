@@ -56,6 +56,11 @@ function LoginForm() {
   const [error, setError] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [rememberMe, setRememberMe] = useState<boolean>(false);
+  // Until this client component hydrates, the onSubmit handlers below aren't
+  // attached, so a click/Enter falls back to a NATIVE browser submit — which
+  // serializes email+password into the URL (visible, and written to the access
+  // logs). Gate the submit button on this flag so the JS path owns the submit.
+  const [mounted, setMounted] = useState<boolean>(false);
 
   // MFA challenge state (new model): the credentials step returns an mfaToken
   // and issues no session; the user completes the second factor separately via
@@ -71,6 +76,7 @@ function LoginForm() {
 
   useEffect(() => {
     deleteAuthCookie();
+    setMounted(true);
     // A fresh login must not inherit the previous user's cached account list
     // (the switcher cache uses a fixed sessionStorage key, so it would otherwise
     // leak across logins in the same browser). Clear it at the session boundary.
@@ -237,6 +243,7 @@ function LoginForm() {
             {isMfaStep ? (
               <form
                 className="space-y-5"
+                method="post"
                 onSubmit={(e) => {
                   e.preventDefault();
                   submitMfa();
@@ -335,6 +342,10 @@ function LoginForm() {
                 <Form {...form}>
                   <form
                     className="space-y-4"
+                    // Defense-in-depth for the pre-hydration window: if a native
+                    // submit slips through, POST keeps the credentials in the
+                    // request body instead of leaking them into the URL/logs.
+                    method="post"
                     onSubmit={(e) => {
                       e.preventDefault();
                       form.handleSubmit(submitData)(e);
@@ -430,7 +441,7 @@ function LoginForm() {
 
                     <Button
                       type="submit"
-                      disabled={isPending}
+                      disabled={isPending || !mounted}
                       className="w-full h-11 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-200 shadow-md shadow-primary/20"
                     >
                       {isPending ? (

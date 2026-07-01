@@ -5,8 +5,12 @@ import {
   AlertTriangle,
   Ban,
   Building2,
+  Check,
+  Copy,
   CreditCard,
+  ExternalLink,
   FileText,
+  Receipt,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -28,7 +32,10 @@ import { formatMoney } from "@/lib/helpers";
 import { ProformaTotalsRows } from "@/components/invoicing/totals-rows";
 import formStyles from "@/components/forms/styles/form-shell.module.css";
 import InvoicePaymentForm from "@/components/forms/invoice-payment-form";
-import { voidInvoice } from "@/lib/actions/invoicing-invoice-actions";
+import {
+  shareInvoiceReceipt,
+  voidInvoice,
+} from "@/lib/actions/invoicing-invoice-actions";
 import {
   INVOICE_PAYMENT_STATUS_LABELS,
   INVOICE_PAYMENT_STATUS_TONES,
@@ -60,9 +67,18 @@ export function InvoiceDetailClient({ invoice, timeline, autoOpenPay }: Props) {
 
   const canPay = invoice.status === "ISSUED" && invoice.paymentStatus !== "PAID";
   const canVoid = invoice.status === "ISSUED" && invoice.paymentStatus === "UNPAID";
+  // A receipt only makes sense once the money is in — mirror the backend gate.
+  const canShareReceipt =
+    invoice.status === "ISSUED" && invoice.paymentStatus === "PAID";
 
   const [paySheetOpen, setPaySheetOpen] = useState(!!autoOpenPay && canPay);
   const [confirmVoid, setConfirmVoid] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl =
+    invoice.shareToken && typeof window !== "undefined"
+      ? `${window.location.origin}/receipt/${invoice.shareToken}`
+      : null;
 
   const docTotals: DocTotals = {
     subtotalAmount: invoice.subtotalAmount,
@@ -81,6 +97,28 @@ export function InvoiceDetailClient({ invoice, timeline, autoOpenPay }: Props) {
       });
       if (result.responseType === "success") router.refresh();
     });
+
+  const shareReceipt = () =>
+    startTransition(async () => {
+      const result = await shareInvoiceReceipt(invoice.id);
+      toast({
+        variant: result.responseType === "success" ? "success" : "destructive",
+        title: result.responseType === "success" ? "Success" : "Error",
+        description: result.message,
+      });
+      if (result.responseType === "success") router.refresh();
+    });
+
+  const copyLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard may be unavailable */
+    }
+  };
 
   // Sticky rail — payment standing (accent), actions, details. Shared per tab.
   const rail = (
@@ -103,7 +141,7 @@ export function InvoiceDetailClient({ invoice, timeline, autoOpenPay }: Props) {
         </div>
       </div>
 
-      {(canPay || canVoid) && (
+      {(canPay || canVoid || canShareReceipt) && (
         <div className="space-y-2 rounded-xl border border-line bg-card p-4">
           {canPay && (
             <Button
@@ -113,6 +151,16 @@ export function InvoiceDetailClient({ invoice, timeline, autoOpenPay }: Props) {
             >
               <CreditCard className="mr-1.5 h-3.5 w-3.5" />
               Record payment
+            </Button>
+          )}
+          {canShareReceipt && (
+            <Button
+              className="w-full justify-center"
+              disabled={isPending}
+              onClick={shareReceipt}
+            >
+              <Receipt className="mr-1.5 h-3.5 w-3.5" />
+              {invoice.shareToken ? "Re-share receipt" : "Share receipt"}
             </Button>
           )}
           {canVoid && (
@@ -126,6 +174,38 @@ export function InvoiceDetailClient({ invoice, timeline, autoOpenPay }: Props) {
               Void invoice
             </Button>
           )}
+        </div>
+      )}
+
+      {shareUrl && (
+        <div className="rounded-xl border border-line bg-card p-4">
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+            Receipt link
+          </div>
+          <p className="break-all font-mono text-[11.5px] leading-relaxed text-ink-2">
+            {shareUrl}
+          </p>
+          <div className="mt-2.5 flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 justify-center"
+              onClick={copyLink}
+            >
+              {copied ? (
+                <Check className="mr-1.5 h-3.5 w-3.5 text-green-600" />
+              ) : (
+                <Copy className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              {copied ? "Copied" : "Copy"}
+            </Button>
+            <Button asChild size="sm" variant="ghost" className="flex-1 justify-center">
+              <a href={shareUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                Open
+              </a>
+            </Button>
+          </div>
         </div>
       )}
 
@@ -200,6 +280,28 @@ export function InvoiceDetailClient({ invoice, timeline, autoOpenPay }: Props) {
                   {invoice.locationAddress && (
                     <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                       {invoice.locationAddress}
+                    </p>
+                  )}
+                  {[
+                    invoice.locationCity,
+                    invoice.locationRegion,
+                    invoice.issuerCountry,
+                  ].some(Boolean) && (
+                    <p className="text-sm text-muted-foreground">
+                      {[
+                        invoice.locationCity,
+                        invoice.locationRegion,
+                        invoice.issuerCountry,
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </p>
+                  )}
+                  {(invoice.issuerPhone || invoice.issuerEmail) && (
+                    <p className="text-sm text-muted-foreground">
+                      {[invoice.issuerPhone, invoice.issuerEmail]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                   )}
                   {(invoice.businessTin || invoice.businessVrn) && (

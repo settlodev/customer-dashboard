@@ -19,7 +19,10 @@ import {
 import { AuthToken, InternalRole, SubjectType } from "./types/types";
 
 // ── Cookie constants (matching auth-utils.ts) ────────────────────────
-const COOKIE_CHUNK_SIZE = 3800;
+// Keep in sync with lib/auth-utils.ts. Chunk below the ~4096B browser per-cookie
+// cap measured on the URL-ENCODED value (see the note there) — 3800 raw could
+// encode past 4096 and be dropped, breaking token-refresh writes at the edge.
+const COOKIE_CHUNK_SIZE = 3000;
 const MAX_CHUNKS = 10;
 
 // Per-request auth-state logging leaks request flow / cookie presence and runs
@@ -259,6 +262,14 @@ async function handleAdminMiddleware(
   request: NextRequest,
   pathname: string,
 ): Promise<NextResponse> {
+  // API route handlers are never part of the /admin/* page tree — rewriting
+  // them into it would 404. They authenticate themselves, and /api/clear-token
+  // in particular is the session-recovery endpoint that must run even when the
+  // staff session is dead. Let all /api/* through untouched.
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
+
   // The route group lives at app/(admin)/admin/* — internal paths always
   // start with /admin. Rewrite any inbound path that isn't already prefixed.
   const needsRewrite = !isAdminPath(pathname);
@@ -293,6 +304,10 @@ async function handleAdminMiddleware(
     ? pathname.slice(ADMIN_ROUTE_PREFIX.length) || "/"
     : pathname;
   const isLoginPath = normalizedPath === "/login";
+  // The admin subdomain has no index page — `/` and a bare `/admin` both
+  // normalize to "/". Logged-in staff are redirected to the dashboard below;
+  // logged-out staff fall through to the /login redirect.
+  const isRootPath = normalizedPath === "/";
 
   // ── Not logged in ──────────────────────────────────────────────────
   if (!isStaffLoggedIn) {
@@ -302,6 +317,23 @@ async function handleAdminMiddleware(
         : NextResponse.next();
     }
     return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // ── Unrecoverable session: expired access token, no refresh token ───
+  // Mirror of the customer branch's dead-session guard (see middleware()). An
+  // expired staffAuthToken still carries accessToken + internalRole, so
+  // isStaffLoggedIn stays true; without this guard it sails through to a
+  // rewrite and the admin page renders with a dead token. forceStaffLogout is
+  // the only thing that can clear the cookie at the edge — the ApiClient's
+  // clearToken() silently no-ops during render — so reaching it here is what
+  // breaks the "stuck on a 404 until cookies are cleared" loop. When a refresh
+  // token exists the block below attempts a refresh and logs out only if it
+  // fails.
+  if (
+    !staffToken!.refreshToken &&
+    isAccessTokenExpired(staffToken!.accessToken)
+  ) {
+    return forceStaffLogout(request);
   }
 
   // ── Token expiry / refresh ─────────────────────────────────────────
@@ -335,6 +367,16 @@ async function handleAdminMiddleware(
     }
     return response;
   };
+
+  // ── Logged in: the admin root has no index page ────────────────────
+  // `/` (and a bare `/admin`) would otherwise be rewritten to `/admin/`, which
+  // has no route and falls through to the customer root 404. Send staff to the
+  // dashboard instead.
+  if (isRootPath) {
+    return withRefreshedStaffCookies(
+      NextResponse.redirect(new URL("/dashboard", request.url)),
+    );
+  }
 
   // ── Logged in: keep them off /login ────────────────────────────────
   if (isLoginPath) {

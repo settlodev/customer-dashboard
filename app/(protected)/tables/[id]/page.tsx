@@ -19,10 +19,10 @@ import {
 } from "@/lib/actions/space-actions";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import { getLocationSettings } from "@/lib/actions/location-settings-actions";
-import { listOrders } from "@/lib/actions/order-actions";
-import { buildOrderListView } from "@/lib/orders/order-list-view";
+import { ordersSummary, searchOrders } from "@/lib/actions/order-actions";
+import { resolveOrderRowNames } from "@/lib/orders/order-list-view";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
-import { Order, OrderStatus } from "@/types/orders/type";
+import { OrderStatus } from "@/types/orders/type";
 import { SpaceDetailView } from "@/app/(protected)/spaces/[id]/space-detail-view";
 import { OrdersPanel, type SalesView } from "@/components/orders/orders-panel";
 
@@ -33,6 +33,7 @@ type SearchParams = Promise<{
   from?: string;
   to?: string;
   search?: string;
+  status?: string;
   page?: string;
   limit?: string;
 }>;
@@ -51,6 +52,7 @@ export default async function TablePage({
     from: fromParam,
     to: toParam,
     search: searchParam,
+    status: statusFilterParam,
     page: pageParam,
     limit: limitParam,
   } = await searchParams;
@@ -85,10 +87,34 @@ export default async function TablePage({
   const pageNo = Number(pageParam) || 1;
   const limit = Number(limitParam) || 10;
   const view: SalesView = viewParam === "abandoned" ? "abandoned" : "orders";
+  const statusParam = (statusFilterParam ?? "") as OrderStatus | "";
+  const effectiveStatus: OrderStatus | undefined =
+    view === "abandoned" ? OrderStatus.ABANDONED : statusParam || undefined;
 
-  const [allOrders, locationSettings, staffList, tablesList, currency] =
+  // Server-paginated and scoped to this table. KPIs come from the OMS summary
+  // with the same scope, so they match the list. The Abandoned sub-tab fixes
+  // status to ABANDONED and uses the paged total for its single count.
+  const [ordersPage, kpis, locationSettings, staffList, tablesList, currency] =
     await Promise.all([
-      listOrders({ fromDate: from, toDate: to }).catch((): Order[] => []),
+      searchOrders({
+        fromDate: from,
+        toDate: to,
+        status: effectiveStatus,
+        excludeAbandoned: view === "orders",
+        tableId: String(space.id),
+        search: q || undefined,
+        page: pageNo,
+        limit,
+      }),
+      view === "orders"
+        ? ordersSummary({
+            fromDate: from,
+            toDate: to,
+            status: effectiveStatus,
+            excludeAbandoned: true,
+            tableId: String(space.id),
+          })
+        : Promise.resolve(null),
       getLocationSettings().catch(() => null),
       fetchAllStaff().catch(() => []),
       fetchAllTables().catch(() => []),
@@ -98,26 +124,14 @@ export default async function TablePage({
   // Table-based ordering swaps the lead column to the table name.
   const tableMode = locationSettings?.orderingMode === "TABLE_MANAGEMENT";
 
-  // Scope to this table, then split: the Abandoned sub-tab gets the
-  // empty-draft auto-cancels, the Orders sub-tab gets everything else
-  // (so the Status column / filter stay meaningful, as on /orders).
-  const tableOrders = allOrders.filter(
-    (o) => String(o.tableId) === String(space.id),
+  const pageData = ordersPage.content ?? [];
+  const total = ordersPage.totalElements ?? 0;
+  const pageCount = ordersPage.totalPages ?? 0;
+  const { staffNames, tableNames } = resolveOrderRowNames(
+    pageData,
+    staffList,
+    tablesList,
   );
-  const scoped =
-    view === "abandoned"
-      ? tableOrders.filter((o) => o.orderStatus === OrderStatus.ABANDONED)
-      : tableOrders.filter((o) => o.orderStatus !== OrderStatus.ABANDONED);
-
-  const { pageData, total, pageCount, staffNames, tableNames } =
-    buildOrderListView({
-      orders: scoped,
-      search: q,
-      page: pageNo,
-      limit,
-      staff: staffList,
-      tables: tablesList,
-    });
 
   const salesContent = (
     // Keyed because this element is created here but rendered among
@@ -130,7 +144,7 @@ export default async function TablePage({
       view={view}
       from={from}
       to={to}
-      scoped={scoped}
+      kpis={view === "orders" ? (kpis ?? undefined) : undefined}
       pageData={pageData}
       pageCount={pageCount}
       pageNo={pageNo - 1}
@@ -139,10 +153,12 @@ export default async function TablePage({
       staffNames={staffNames}
       tableNames={tableNames}
       currency={currency}
+      statusParam={statusParam}
       preservedParams={{
         from: fromParam,
         to: toParam,
         search: searchParam,
+        status: statusFilterParam,
         limit: limitParam,
         tab,
       }}
@@ -158,6 +174,7 @@ export default async function TablePage({
     toParam ||
     viewParam ||
     searchParam ||
+    statusFilterParam ||
     pageParam ||
     limitParam
   );

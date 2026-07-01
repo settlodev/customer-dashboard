@@ -7,6 +7,11 @@ import {
 import { getInventoryDashboardSummary } from "@/lib/actions/reports-analytics-actions";
 import { getOutstandingPrepaidLiability } from "@/lib/actions/prepayment-analytics-actions";
 import { getAuthToken } from "@/lib/auth-utils";
+import { LOANS_ENABLED } from "@/lib/loans/config";
+import { getLoan, getLoanEligibility } from "@/lib/actions/loans-actions";
+import { getLoanAccess } from "@/lib/loans/access";
+import { hasReportsReadAll } from "@/lib/permissions/me";
+import { EligibilityHero } from "@/components/loans/eligibility-hero";
 
 export default async function DashboardPage() {
     const authToken = await getAuthToken();
@@ -23,13 +28,44 @@ export default async function DashboardPage() {
             : Promise.resolve(null),
     ]);
 
+    // Loans eligibility hero (feature-flagged + permission-gated). Shown only
+    // to users who hold loans:read; the Apply CTA needs loans:apply.
+    const loanAccess = LOANS_ENABLED ? await getLoanAccess() : null;
+    const loanEligibility =
+        LOANS_ENABLED && loanAccess?.canRead ? await getLoanEligibility() : null;
+    const activeLoan =
+        loanEligibility?.hasActiveLoan && loanEligibility.activeLoanId
+            ? await getLoan(loanEligibility.activeLoanId)
+            : null;
+
+    const placeName = location?.name ?? business?.name ?? "your business";
+    const firstName = authToken?.firstName?.trim() || "there";
+    const dateLabel = new Intl.DateTimeFormat("en", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+    }).format(new Date());
+
+    const reportsReadAll = await hasReportsReadAll();
+
     return (
         <PageShell>
             <Dashboard
                 locationId={location?.id ?? null}
                 inventorySummary={summary}
                 prepaid={prepaid}
-                reportsReadAll={authToken?.reportsReadAll ?? true}
+                reportsReadAll={reportsReadAll}
+                greetingTitle={`Habari, ${firstName} 👋`}
+                greetingSubtitle={`Here's how ${placeName} is doing today — ${dateLabel}`}
+                financingSlot={
+                    LOANS_ENABLED && loanAccess?.canRead && loanEligibility ? (
+                        <EligibilityHero
+                            eligibility={loanEligibility}
+                            activeLoan={activeLoan}
+                            canApply={loanAccess.canApply}
+                        />
+                    ) : null
+                }
             />
         </PageShell>
     );

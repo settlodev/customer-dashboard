@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Loader2,
   Mail,
+  MessageSquare,
   PauseCircle,
   RefreshCw,
   Trash2,
@@ -32,6 +33,7 @@ import {
   purgeAccount,
   reactivateAccount,
   republishAccountEvents,
+  resendPhoneVerification,
   resendVerificationEmail,
   suspendAccount,
 } from "@/lib/actions/admin/accounts";
@@ -44,6 +46,7 @@ interface AccountActionDialogProps {
     | "delete"
     | "purge"
     | "resend-verification"
+    | "resend-phone-verification"
     | "republish";
   account: AdminAccountListItem;
   open: boolean;
@@ -75,6 +78,8 @@ export function AccountActionDialog({
       <PauseCircle className="h-5 w-5" />
     ) : kind === "resend-verification" ? (
       <Mail className="h-5 w-5" />
+    ) : kind === "resend-phone-verification" ? (
+      <MessageSquare className="h-5 w-5" />
     ) : kind === "republish" ? (
       <RefreshCw className="h-5 w-5" />
     ) : (
@@ -90,9 +95,11 @@ export function AccountActionDialog({
         ? "Suspend this account?"
         : kind === "resend-verification"
           ? "Resend verification email?"
-          : kind === "republish"
-            ? "Republish account events?"
-            : "Reactivate this account?";
+          : kind === "resend-phone-verification"
+            ? "Send phone verification SMS?"
+            : kind === "republish"
+              ? "Republish account events?"
+              : "Reactivate this account?";
 
   const description =
     kind === "delete" ? (
@@ -119,6 +126,13 @@ export function AccountActionDialog({
         A new verification link and code will be emailed to{" "}
         <strong>{account.email}</strong>. Any previous link will stop working.
       </>
+    ) : kind === "resend-phone-verification" ? (
+      <>
+        A verification code will be sent by SMS to{" "}
+        <strong>{account.phoneNumber || "the number on file"}</strong>. The
+        owner enters it to confirm their phone. Rate-limited; any previous code
+        stops working.
+      </>
     ) : kind === "republish" ? (
       <>
         Re-broadcasts the current state of <strong>{accountLabel}</strong>{" "}
@@ -142,9 +156,11 @@ export function AccountActionDialog({
         ? "Suspend"
         : kind === "resend-verification"
           ? "Send email"
-          : kind === "republish"
-            ? "Republish"
-            : "Reactivate";
+          : kind === "resend-phone-verification"
+            ? "Send SMS"
+            : kind === "republish"
+              ? "Republish"
+              : "Reactivate";
 
   useEffect(() => {
     if (!open) {
@@ -165,9 +181,11 @@ export function AccountActionDialog({
             ? await suspendAccount(account.id, reason.trim() || undefined)
             : kind === "resend-verification"
               ? await resendVerificationEmail(account.id)
-              : kind === "republish"
-                ? await republishAccountEvents(account.id)
-                : await reactivateAccount(account.id);
+              : kind === "resend-phone-verification"
+                ? await resendPhoneVerification(account.id)
+                : kind === "republish"
+                  ? await republishAccountEvents(account.id)
+                  : await reactivateAccount(account.id);
 
       if (result.responseType === "error") {
         setError(result.message);
@@ -184,9 +202,11 @@ export function AccountActionDialog({
               ? "Account suspended"
               : kind === "resend-verification"
                 ? "Verification email sent"
-                : kind === "republish"
-                  ? "Events republished"
-                  : "Account reactivated",
+                : kind === "resend-phone-verification"
+                  ? "Verification SMS sent"
+                  : kind === "republish"
+                    ? "Events republished"
+                    : "Account reactivated",
         description: result.message,
       });
       onDone();

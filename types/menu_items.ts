@@ -1,6 +1,7 @@
 // types/menu_items.ts
 import { MenuItemArgType } from "@/types/menu-item-type";
 import { LOCATION_WIDE_REPORT_LINKS } from "@/lib/reports-access";
+import { LOANS_ENABLED } from "@/lib/loans/config";
 
 export const menuItems = (
   args?: MenuItemArgType,
@@ -513,6 +514,36 @@ const getNormalMenuItems = (
         },
       ],
     },
+
+    // Financing — feature-flagged via NEXT_PUBLIC_LOANS_ENABLED (see
+    // lib/loans/config.ts). Hidden entirely until the module is switched on.
+    ...(LOANS_ENABLED
+      ? [
+          {
+            label: "Financing",
+            showSeparator: true,
+            collapsible: false,
+            current: args?.isCurrentItem,
+            icon: "general",
+            items: [
+              {
+                title: "Loans",
+                link: "/loans",
+                current: args?.isCurrentItem,
+                icon: "cart",
+                permission: "loans:read",
+              },
+              {
+                title: "Apply for a loan",
+                link: "/loans/apply",
+                current: args?.isCurrentItem,
+                icon: "cart",
+                permission: "loans:apply",
+              },
+            ],
+          },
+        ]
+      : []),
 
     // Business Operations
     {

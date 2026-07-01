@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   ArchiveRestore,
   KeyRound,
+  Mail,
   MoreVertical,
   Shield,
   ShieldOff,
@@ -20,6 +21,7 @@ import {
   grantDashboardAccess,
   grantPosAccess,
   reactivateStaff,
+  resendStaffInvite,
   revokeDashboardAccess,
   revokePosAccess,
   setStaffPin,
@@ -121,16 +123,27 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
             Dashboard access
           </DropdownMenuLabel>
           {staff.dashboardAccess ? (
-            <DropdownMenuItem
-              disabled={loading !== null || staff.owner}
-              onClick={() =>
-                run("dash-revoke", () => revokeDashboardAccess(staff.id), "Dashboard access revoked")
-              }
-              className="text-amber-600 focus:text-amber-600"
-            >
-              <ShieldOff className="mr-2 h-4 w-4" />
-              Revoke dashboard
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuItem
+                disabled={loading !== null}
+                onClick={() =>
+                  run("dash-resend", () => resendStaffInvite(staff.id), "Invite email re-sent")
+                }
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                Resend invite
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={loading !== null || staff.owner}
+                onClick={() =>
+                  run("dash-revoke", () => revokeDashboardAccess(staff.id), "Dashboard access revoked")
+                }
+                className="text-amber-600 focus:text-amber-600"
+              >
+                <ShieldOff className="mr-2 h-4 w-4" />
+                Revoke dashboard
+              </DropdownMenuItem>
+            </>
           ) : staff.active ? (
             <DropdownMenuItem
               disabled={loading !== null}

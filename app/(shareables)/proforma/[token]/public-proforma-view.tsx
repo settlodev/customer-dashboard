@@ -69,14 +69,30 @@ function issuerFrom(d: {
   businessVrn?: string | null;
   locationName?: string | null;
   locationAddress?: string | null;
+  issuerPhone?: string | null;
+  issuerEmail?: string | null;
+  locationCity?: string | null;
+  locationRegion?: string | null;
+  issuerCountry?: string | null;
 }): BusinessIdentity {
+  // Address block: the stored address lines, then a "City, Region, Country" line.
+  const addressLines = composeAddress(d.locationAddress);
+  const locale = [d.locationCity, d.locationRegion, d.issuerCountry]
+    .map((s) => s?.trim())
+    .filter(Boolean)
+    .join(", ");
+  if (locale) addressLines.push(locale);
+
   return {
     // Prefer the location's identity (name + address + tax IDs); fall back to
     // the business name only when the location name is missing.
     name: d.locationName?.trim() || d.businessName?.trim() || "Business",
-    addressLines: composeAddress(d.locationAddress),
+    addressLines,
     tin: d.businessTin ?? undefined,
     vrn: d.businessVrn ?? undefined,
+    // Contact resolved location-first with a business fallback on the server.
+    phone: d.issuerPhone?.trim() || undefined,
+    email: d.issuerEmail?.trim() || undefined,
   };
 }
 

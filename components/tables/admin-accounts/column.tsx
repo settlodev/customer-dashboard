@@ -106,7 +106,17 @@ export function buildAccountColumns({
       header: "Status",
       enableHiding: true,
       cell: ({ row }) => {
-        const active = row.original.active;
+        const { active, deletedAt } = row.original;
+        // A soft-deleted account is also inactive, so check deleted first —
+        // otherwise it would render as a plain "Suspended" and read as live.
+        if (deletedAt) {
+          return (
+            <span className="inline-flex items-center gap-1.5 text-[13px] text-destructive">
+              <span className="h-[7px] w-[7px] rounded-full bg-destructive" />
+              Deleted
+            </span>
+          );
+        }
         return (
           <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
             <span

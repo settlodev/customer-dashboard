@@ -83,6 +83,8 @@ export const ErrorCodes = {
     REFRESH_TOKEN_EXPIRED: 'REFRESH_TOKEN_EXPIRED',
     EMAIL_ALREADY_EXISTS: 'EMAIL_ALREADY_EXISTS',
     PHONE_ALREADY_EXISTS: 'PHONE_ALREADY_EXISTS',
+    EMAIL_ROLE_CONFLICT: 'EMAIL_ROLE_CONFLICT',
+    DESTINATION_NOT_IN_SCOPE: 'DESTINATION_NOT_IN_SCOPE',
     USER_NOT_FOUND: 'USER_NOT_FOUND',
     SUBSCRIPTION_EXPIRED: 'SUBSCRIPTION_EXPIRED',
     SUBSCRIPTION_SUSPENDED: 'SUBSCRIPTION_SUSPENDED',
@@ -103,6 +105,13 @@ const UI_ERROR_MESSAGES: Record<string, string> = {
     ACCOUNT_DISABLED: "Your account has been disabled. Please contact support for assistance.",
     ACCOUNT_NOT_VERIFIED: "Your email address has not been verified. Please check your inbox for a verification code.",
     EMAIL_ALREADY_EXISTS: "An account with this email address already exists. Please log in or use a different email.",
+    // A person can be dashboard staff OR an account member on an account, never both.
+    // The backend returns a direction-specific message (already staff / already a member);
+    // this is only the fallback if that message is missing.
+    EMAIL_ROLE_CONFLICT: "This email is already used in another role on this account. A person can be a staff member or an account member, not both.",
+    // Per-request destination-scope enforcement (staff/member scoped to specific
+    // locations). The active location isn't one they're assigned to.
+    DESTINATION_NOT_IN_SCOPE: "You're not assigned to this location. Switch to a location you have access to.",
     PHONE_ALREADY_EXISTS: "An account with this phone number already exists. Please use a different number.",
     USER_NOT_FOUND: "No account found with this email address.",
     MFA_REQUIRED: "Multi-factor authentication is required. Please enter your verification code.",

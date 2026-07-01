@@ -135,6 +135,10 @@ export default async function AdminAccountsPage({
   const size = Math.max(1, Number.parseInt(params.limit ?? "10", 10) || 10);
   const search = params.search?.trim() || undefined;
   const active = parseActive(params.active, params.status);
+  // "Deleted" is its own lifecycle bucket (soft-deleted accounts drop out of the
+  // default list). When selected we show ONLY deleted accounts and ignore the
+  // active/suspended axis (every deleted account is inactive anyway).
+  const deleted = params.status === "deleted" ? true : undefined;
   const onboardingState = parseOnboardingState(params.state);
   const sort = parseSort(params.sort);
   const { fromIso, toIso } = dayBounds(params.from, params.to);
@@ -156,6 +160,7 @@ export default async function AdminAccountsPage({
         sort,
         search,
         active,
+        deleted,
         onboardingState,
         createdFrom: fromIso,
         createdTo: toIso,
@@ -163,6 +168,7 @@ export default async function AdminAccountsPage({
       getAccountOnboardingCounts({
         search,
         active,
+        deleted,
         createdFrom: fromIso,
         createdTo: toIso,
       }),
@@ -190,11 +196,13 @@ export default async function AdminAccountsPage({
               initialPage={pageData!}
               counts={counts}
               initialStatus={
-                active === undefined
-                  ? "all"
-                  : active
-                    ? "active"
-                    : "inactive"
+                deleted
+                  ? "deleted"
+                  : active === undefined
+                    ? "all"
+                    : active
+                      ? "active"
+                      : "inactive"
               }
               initialOnboardingState={onboardingState ?? "all"}
               initialFrom={params.from ?? null}

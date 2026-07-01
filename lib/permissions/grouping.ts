@@ -23,6 +23,7 @@ export const DOMAIN_ORDER: string[] = [
   "Inventory",
   "Back Office",
   "Accounting",
+  "Financing",
   "Reservations",
   "Gift Cards",
   "Customer Prepayments",

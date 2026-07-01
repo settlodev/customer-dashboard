@@ -10,9 +10,11 @@ export const dynamic = "force-dynamic";
  * Cookie-mutating continuation for the invite flow. The /accept-invite page is a
  * Server Component and cannot write cookies during render, so it hands off here
  * once it has validated the invite and inspected the session:
- *   - to=create / to=login: remember which invite to accept after auth
- *     (pendingInvite cookie) then route the unauthenticated invitee on to the
- *     invited-signup form (new) or sign-in (existing account).
+ *   - to=create / to=login / to=setpassword: remember which invite to accept
+ *     after auth (pendingInvite cookie) then route the unauthenticated invitee to
+ *     the invited-signup form (new account), sign-in (existing account with a
+ *     password), or set-password (existing PASSWORDLESS identity — e.g. an invited
+ *     staff member who never set one, whom /login would dead-end).
  *   - to=refresh: a signed-in invitee just accepted (or had already accepted)
  *     the invite, so flip the hasInvitedAccess flag the middleware reads — this
  *     stops it trapping an invited-only user at /business-registration — then
@@ -38,10 +40,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/select-business", request.url));
   }
 
-  const dest =
-    to === "login"
-      ? `/login${emailQ}`
-      : `/accept-invite/create?member=${encodeURIComponent(member)}&email=${encodeURIComponent(email)}`;
+  let dest: string;
+  if (to === "login") {
+    dest = `/login${emailQ}`;
+  } else if (to === "setpassword") {
+    // The invited email already has a PASSWORDLESS Settlo identity (e.g. a
+    // dashboard-staff invite that was never completed). Send them to set a
+    // password; the pendingInvite cookie set below means the invite auto-accepts
+    // once they set one and log in — no dead-end at /login.
+    dest = `/reset-password?action=create${email ? `&email=${encodeURIComponent(email)}` : ""}`;
+  } else {
+    dest = `/accept-invite/create?member=${encodeURIComponent(member)}&email=${encodeURIComponent(email)}`;
+  }
 
   const res = NextResponse.redirect(new URL(dest, request.url));
   if (member) {

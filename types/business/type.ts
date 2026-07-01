@@ -33,6 +33,7 @@ export declare interface Business {
   // single-account endpoints such as /me/businesses.
   owner?: boolean;
   accountName?: string;
+  relationship?: "OWNER" | "MEMBER" | "STAFF";
 }
 
 export declare interface MinimalBusiness {

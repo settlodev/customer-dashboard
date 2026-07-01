@@ -10,6 +10,14 @@ export async function GET() {
         cookieStore.delete(`authToken.${i}`);
     }
 
+    // Clear internal-staff (admin portal) session cookies. SessionExpired hits
+    // this route to recover a dead session; on the admin subdomain the session
+    // lives entirely in staffAuthToken, so it must be cleared here too.
+    cookieStore.delete("staffAuthToken");
+    for (let i = 0; i < 10; i++) {
+        cookieStore.delete(`staffAuthToken.${i}`);
+    }
+
     // Clear session cookies
     cookieStore.delete("next-auth.session-token");
     cookieStore.delete("next-auth.csrf-token");

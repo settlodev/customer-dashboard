@@ -747,6 +747,21 @@ export const loginAsStaff = async (
       body: JSON.stringify(loginBody),
     });
 
+    // MFA challenge: Auth returns 412 with { mfaRequired, mfaToken } and issues
+    // NO session. Unlike the customer login() there is no second-factor step on
+    // the staff portal, so we can't complete the challenge here. Surface a
+    // precise message — otherwise a 412 falls through to the generic
+    // !response.ok branch below and renders "Authentication failed", which is
+    // indistinguishable from a wrong password even though the credentials were correct.
+    if (response.status === 412) {
+      return parseStringify({
+        responseType: "error",
+        message:
+          "This account has two-factor authentication enabled, which the staff portal doesn't support yet. Disable 2FA on the account or ask an administrator for help.",
+        error: new Error("MFA_REQUIRED"),
+      });
+    }
+
     if (!response.ok) {
       const apiError = await parseApiError(response);
       return parseStringify({

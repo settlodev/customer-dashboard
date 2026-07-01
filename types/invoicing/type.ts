@@ -117,6 +117,11 @@ export interface Invoice {
   businessVrn?: string | null;
   locationName?: string | null;
   locationAddress?: string | null;
+  issuerPhone?: string | null;
+  issuerEmail?: string | null;
+  locationCity?: string | null;
+  locationRegion?: string | null;
+  issuerCountry?: string | null;
   paymentDetailsText?: string | null;
   paymentInstructionsText?: string | null;
   taxLabel?: string | null;
@@ -204,6 +209,13 @@ export interface PublicProforma {
   businessVrn?: string | null;
   locationName?: string | null;
   locationAddress?: string | null;
+  // Issuer contact + locale — location-first, business as fallback (resolved
+  // server-side). No country name upstream (business carries only a UUID).
+  issuerPhone?: string | null;
+  issuerEmail?: string | null;
+  locationCity?: string | null;
+  locationRegion?: string | null;
+  issuerCountry?: string | null;
 }
 
 export interface PublicInvoiceLine {
@@ -241,6 +253,11 @@ export interface PublicArInvoice {
   businessVrn?: string | null;
   locationName?: string | null;
   locationAddress?: string | null;
+  issuerPhone?: string | null;
+  issuerEmail?: string | null;
+  locationCity?: string | null;
+  locationRegion?: string | null;
+  issuerCountry?: string | null;
 }
 
 // ── Labels & tones ────────────────────────────────────────────────────

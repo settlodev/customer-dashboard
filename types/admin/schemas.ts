@@ -327,7 +327,8 @@ export const SetPackageIncludedCreditSchema = z.object({
 //
 // PATCH/PUT semantics: an empty string clears the field. Email/phone of the
 // ACCOUNT owner are deliberately NOT here — those are identity fields changed
-// via ChangeEmailSchema/ChangePhoneSchema (fresh unverified accounts only).
+// via ChangeEmailSchema (while the email is unverified) / ChangePhoneSchema
+// (while the phone is unverified).
 
 const optionalShort = z.string().max(255).optional().or(z.literal(""));
 const optionalLong = z.string().max(2000).optional().or(z.literal(""));

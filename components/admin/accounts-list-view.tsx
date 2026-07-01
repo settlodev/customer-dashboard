@@ -137,7 +137,11 @@ export function AccountsListView({
 
   const onStatusChange = (value: string) => {
     updateParams({
-      active: value === "all" ? null : value === "active" ? "true" : "false",
+      // Route the whole lifecycle filter (active | inactive | deleted) through a
+      // single `status` param and drop the legacy `active` param so a stale
+      // `?active=` can't fight the new selection. page.tsx reads `status`.
+      status: value === "all" ? null : value,
+      active: null,
       page: "1",
     });
   };
@@ -166,7 +170,9 @@ export function AccountsListView({
 
   const hasDateFilter = !!initialFrom;
   const statusValue =
-    initialStatus === "active" || initialStatus === "inactive"
+    initialStatus === "active" ||
+    initialStatus === "inactive" ||
+    initialStatus === "deleted"
       ? initialStatus
       : "all";
   const activeTabKey: TabConfig["key"] =
@@ -231,6 +237,7 @@ export function AccountsListView({
             <SelectItem value="all">All accounts</SelectItem>
             <SelectItem value="active">Active only</SelectItem>
             <SelectItem value="inactive">Suspended only</SelectItem>
+            <SelectItem value="deleted">Deleted</SelectItem>
           </SelectContent>
         </Select>
 
