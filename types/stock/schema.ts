@@ -35,7 +35,7 @@ export const StockVariantSchema = object({
   lowStockThreshold: preprocess(toNumber, number().nonnegative().optional()),
   overstockThreshold: preprocess(toNumber, number().nonnegative().optional()),
   depositValue: preprocess(toNumber, number().nonnegative().optional()),
-  depositCurrency: string().optional().nullish(),
+  depositCurrency: string().length(3, "Currency must be a 3-letter ISO code").optional().nullish(),
   returnableContainers: array(
     object({
       containerStockVariantId: string().uuid(),
