@@ -6,10 +6,7 @@ import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type {
-  Stock,
-  CsvImportJobResponse,
-} from "@/types/stock/type";
+import type { Stock } from "@/types/stock/type";
 import { getCurrentLocation } from "./business/get-current-business";
 import { StockSchema } from "@/types/stock/schema";
 import { inventoryUrl } from "./inventory-client";
@@ -380,46 +377,6 @@ export async function unarchiveStockVariant(
     {},
   );
   revalidatePath("/stock-variants");
-}
-
-// ── CSV Import (async, Java service) ────────────────────────────────
-
-export async function startStockImport(
-  fileContent: string,
-  fileName: string,
-): Promise<CsvImportJobResponse | FormResponse> {
-  try {
-    const apiClient = new ApiClient();
-    const blob = new Blob([fileContent], { type: "text/csv" });
-    const formData = new FormData();
-    formData.append("file", blob, fileName);
-
-    const result = await apiClient.post(
-      inventoryUrl("/api/v1/stocks/import-csv"),
-      formData,
-    );
-    return parseStringify(result) as CsvImportJobResponse;
-  } catch (error: any) {
-    return parseStringify({
-      responseType: "error",
-      message: error?.message ?? "Failed to start import",
-      error: error instanceof Error ? error : new Error(String(error)),
-    });
-  }
-}
-
-export async function getImportJobStatus(
-  jobId: string,
-): Promise<CsvImportJobResponse | null> {
-  try {
-    const apiClient = new ApiClient();
-    const result = await apiClient.get(
-      inventoryUrl(`/api/v1/stocks/import-csv/${jobId}`),
-    );
-    return parseStringify(result) as CsvImportJobResponse;
-  } catch {
-    return null;
-  }
 }
 
 // ── CSV Export (local generation) ───────────────────────────────────

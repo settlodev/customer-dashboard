@@ -74,21 +74,3 @@ export interface StockWithBalance extends Stock {
   outOfStock: boolean;
 }
 
-/** Response from the async CSV import job endpoint */
-export interface CsvImportJobResponse {
-  jobId: string;
-  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
-  totalRows: number;
-  stocksCreated: number;
-  variantsCreated: number;
-  failureCount: number;
-  created: { id: string; name: string; variantCount: number }[];
-  errors: { row: number; message: string }[];
-  openingStockId: string | null;
-  openingStockReference: string | null;
-  openingStockItems: number;
-  startedAt: string | null;
-  completedAt: string | null;
-  errorMessage: string | null;
-}
-
