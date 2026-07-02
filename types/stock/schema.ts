@@ -41,7 +41,7 @@ export const StockVariantSchema = object({
       containerStockVariantId: string().uuid(),
       quantityPerUnit: preprocess(toNumber, number().positive()),
     }),
-  ).optional().default([]),
+  ).optional(),
 }).superRefine((val, ctx) => {
   if (
     val.lowStockThreshold != null &&
