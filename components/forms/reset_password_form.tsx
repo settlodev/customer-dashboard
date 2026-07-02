@@ -52,6 +52,7 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
+import type { PublicStaffInvitation } from "@/lib/actions/staff-actions";
 
 type ResetStep = "email" | "code" | "password" | "done";
 
@@ -60,9 +61,18 @@ interface ResetPasswordFormProps {
   linkToken?: string | null;
   /** "create" when setting a password for the first time (e.g. staff invite) */
   action?: string | null;
+  /** Staff set-password invites carry greeting context (name / business / role). */
+  staffContext?: PublicStaffInvitation | null;
+  /** Prefill the email step (e.g. an invited passwordless user setting a password). */
+  initialEmail?: string | null;
 }
 
-function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
+function ResetPasswordForm({
+  linkToken,
+  action,
+  staffContext,
+  initialEmail,
+}: ResetPasswordFormProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
@@ -70,7 +80,7 @@ function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
   // The email entered at the request step, threaded into the verify-code step.
   // The backend no longer returns a userId; the verify endpoint keys off the
   // identifier (email/phone) the user typed.
-  const [email, setEmail] = useState<string>("");
+  const [email, setEmail] = useState<string>(initialEmail ?? "");
   const [resetToken, setResetToken] = useState<string>("");
   const [verificationCode, setVerificationCode] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -105,7 +115,7 @@ function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
 
   const emailForm = useForm<z.infer<typeof ResetPasswordSchema>>({
     resolver: zodResolver(ResetPasswordSchema),
-    defaultValues: { email: "" },
+    defaultValues: { email: initialEmail ?? "" },
     mode: "onSubmit",
   });
 
@@ -229,6 +239,15 @@ function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
 
   const isCreateAction = action === "create";
 
+  // Staff set-password invites resolve greeting context (name / business / role)
+  // from the public staff-invitation endpoint so the page welcomes them instead
+  // of showing a bare "create password" box. Absent for ordinary resets.
+  const staffFirstName = staffContext?.firstName || null;
+  const staffBusiness =
+    staffContext?.businessName || staffContext?.accountName || null;
+  const staffRole = staffContext?.roleName || null;
+  const hasStaffContext = !!(staffFirstName || staffBusiness);
+
   const getTitle = () => {
     switch (step) {
       case "email":
@@ -236,6 +255,7 @@ function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
       case "code":
         return "Enter Verification Code";
       case "password":
+        if (isCreateAction && staffFirstName) return `Welcome, ${staffFirstName}!`;
         return isCreateAction ? "Create Your Password" : "Set New Password";
       case "done":
         return isCreateAction ? "Password Created!" : "Password Updated!";
@@ -249,6 +269,9 @@ function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
       case "code":
         return "Enter the 6-digit code sent to your email";
       case "password":
+        if (isCreateAction && staffBusiness) {
+          return `Set a password to access ${staffBusiness}${staffRole ? ` as ${staffRole}` : ""} on the Settlo dashboard.`;
+        }
         return isCreateAction
           ? "Set up a secure password to protect your account"
           : "Choose a strong new password for your account";
@@ -443,6 +466,25 @@ function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
                   >
                     Didn&#39;t receive the code? Try again
                   </Button>
+                </div>
+              )}
+
+              {/* Staff invite context banner */}
+              {step === "password" && hasStaffContext && (
+                <div className="mb-6 rounded-lg border border-orange-200 bg-orange-50 p-4 text-left">
+                  <p className="text-sm text-orange-800">
+                    You&#39;ve been added to{" "}
+                    <span className="font-semibold">
+                      {staffBusiness ?? "a team"}
+                    </span>
+                    {staffRole ? (
+                      <>
+                        {" "}
+                        as <span className="font-semibold">{staffRole}</span>
+                      </>
+                    ) : null}
+                    . Set a password below to access the Settlo dashboard.
+                  </p>
                 </div>
               )}
 

@@ -384,7 +384,10 @@ const config: Config = {
         primary: {
           DEFAULT: "#EB7F44",
           light: "#F8F0E9",
-          dark: "#3700b3",
+          // Burnt-orange deepen for hovers/accents. Sourced from the
+          // --primary-dark CSS var (matches button.tsx). Was a stray
+          // #3700b3 (Material Design purple) that leaked into the brand.
+          dark: "hsl(var(--primary-dark))",
           foreground: "#FFFFFF",
         },
         secondary: {

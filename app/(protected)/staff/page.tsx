@@ -63,6 +63,9 @@ export default async function Page({ searchParams }: Params) {
     total: 0,
     active: 0,
     inactive: 0,
+    posAccess: 0,
+    dashboardAccess: 0,
+    pinSet: 0,
   }));
 
   let rows: EnrichedRow[] = [];
@@ -72,13 +75,6 @@ export default async function Page({ searchParams }: Params) {
   // only the table area (DataLoadError) instead of crashing the page; the
   // counts above are already call-site guarded.
   let loadFailed = false;
-  // POS / Dashboard adoption summary — derived from whatever page we
-  // load. Acceptable approximation; if the merchant needs exact numbers
-  // they can flip to `?status=all` and the next render computes against
-  // the full set.
-  let posCount = 0;
-  let dashboardCount = 0;
-  let pinSetCount = 0;
 
   if (q) {
     // Search returns plain Staff (no enrichment) — wrap each result in
@@ -115,12 +111,6 @@ export default async function Page({ searchParams }: Params) {
       rows = withId(content);
       total = response.totalElements ?? rows.length;
       pageCount = response.totalPages ?? 1;
-
-      for (const r of content) {
-        if (r.staff.posAccess) posCount += 1;
-        if (r.staff.dashboardAccess) dashboardCount += 1;
-        if (r.staff.hasPin) pinSetCount += 1;
-      }
     }
   }
 
@@ -170,16 +160,18 @@ export default async function Page({ searchParams }: Params) {
               <KpiCard
                 icon={<KeyRound className="h-3 w-3" />}
                 label="POS access"
-                value={posCount > 0 ? posCount.toLocaleString() : "—"}
+                value={
+                  counts.posAccess > 0 ? counts.posAccess.toLocaleString() : "—"
+                }
                 delta={
-                  posCount > 0
-                    ? `${pinSetCount}/${posCount} PIN set`
+                  counts.posAccess > 0
+                    ? `${counts.pinSet}/${counts.posAccess} PIN set`
                     : undefined
                 }
                 deltaTone={
-                  posCount === 0
+                  counts.posAccess === 0
                     ? "neutral"
-                    : pinSetCount === posCount
+                    : counts.pinSet === counts.posAccess
                       ? "pos"
                       : "neg"
                 }
@@ -188,7 +180,9 @@ export default async function Page({ searchParams }: Params) {
                 icon={<Shield className="h-3 w-3" />}
                 label="Dashboard"
                 value={
-                  dashboardCount > 0 ? dashboardCount.toLocaleString() : "—"
+                  counts.dashboardAccess > 0
+                    ? counts.dashboardAccess.toLocaleString()
+                    : "—"
                 }
               />
             </KpiStrip>

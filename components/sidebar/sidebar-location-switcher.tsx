@@ -713,10 +713,12 @@ export function SidebarLocationSwitcher({
       }
       if (confirm.kind === "warehouse") {
         const wh = confirm.data;
-        window.location.href = wh.active ? "/warehouse" : "/select-location";
+        window.location.href = wh.active ? "/warehouse" : "/billing";
       } else if (confirm.kind === "store") {
         const st = confirm.data;
-        window.location.href = st.active ? "/dashboard" : "/select-location";
+        // Active store → Stock items (no sales/analytics dashboard). An
+        // inactive store has a lapsed plan → /billing to renew.
+        window.location.href = st.active ? "/stock-variants" : "/billing";
       } else {
         const loc = confirm.data;
         window.location.href = loc.active
@@ -724,6 +726,9 @@ export function SidebarLocationSwitcher({
           : `/subscription?location=${loc.id}`;
       }
     } catch (error) {
+      // Surface the failure — a switch that closes the modal without
+      // navigating is otherwise invisible to debug.
+      console.error("Destination switch failed:", error);
       Sentry.captureException(error);
       setLoadingId(null);
       setConfirm(null);

@@ -36,6 +36,12 @@ type Props = {
   prepaid: PrepaymentAnalyticsOverview | null;
   /** When false (read_own), the report-backed cards (overview/top-selling/payment) are hidden. */
   reportsReadAll?: boolean;
+  /** Personalised greeting, shown in place of the generic "Dashboard" title. */
+  greetingTitle?: string;
+  greetingSubtitle?: string;
+  /** Financing eligibility hero (or null when the Loans flag is off). Rendered
+   *  at the top of the body, beneath the header's date picker. */
+  financingSlot?: React.ReactNode;
 };
 
 const TOP_SELLING_LIMIT = 5;
@@ -45,6 +51,9 @@ const Dashboard: React.FC<Props> = ({
   inventorySummary,
   prepaid,
   reportsReadAll = true,
+  greetingTitle,
+  greetingSubtitle,
+  financingSlot,
 }) => {
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [topSelling, setTopSelling] = useState<TopSellingReport | null>(null);
@@ -121,12 +130,13 @@ const Dashboard: React.FC<Props> = ({
   return (
     <>
       <PageHeader
-        title="Dashboard"
-        subtitle="Financial overview and sales performance"
+        title={greetingTitle ?? "Dashboard"}
+        subtitle={greetingSubtitle ?? "Financial overview and sales performance"}
         actions={<DateRangePicker onFilterChange={handleFilterChange} />}
       />
 
       <PageBody>
+        {financingSlot}
         {reportsReadAll && <DashboardHeroCards overview={overview} loading={isLoading} />}
         {reportsReadAll && (
           <SalesKpiStrip

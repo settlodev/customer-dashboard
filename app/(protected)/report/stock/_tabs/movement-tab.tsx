@@ -12,7 +12,7 @@ import {
   MovementMixChart,
   MovementTypeBreakdownChart,
 } from "@/components/widgets/inventory/stock-item-charts";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import { getLocationSnapshotRange } from "@/lib/actions/inventory-snapshot-actions";
 import { getLocationMovementSummary } from "@/lib/actions/reports-analytics-actions";
@@ -36,8 +36,10 @@ const fmt = (value: number) =>
  * endpoints — no day-session coupling.
  */
 export async function MovementTab({ from, to }: Props) {
-  const location = await getCurrentLocation();
-  const locationId = location?.id ?? null;
+  // Follow the active destination (location OR store), not just the location —
+  // in store mode getCurrentLocation() is null, which would blank the report.
+  const destination = await getCurrentDestination();
+  const locationId = destination?.id ?? null;
 
   const [currency, summary, snapshots] = await Promise.all([
     getLocationCurrency(),

@@ -7,9 +7,9 @@
     "@radix-ui/react-primitive": "2.1.4"
   },
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "NODE_OPTIONS=--max-http-header-size=65536 next dev --turbopack",
     "build": "next build",
-    "start": "next start",
+    "start": "NODE_OPTIONS=--max-http-header-size=65536 next start",
     "lint": "next lint"
   },
   "dependencies": {

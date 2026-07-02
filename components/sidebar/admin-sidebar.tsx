@@ -8,10 +8,13 @@ import {
   BarChart3,
   Briefcase,
   Building2,
+  ClipboardCheck,
   Coins,
   Globe,
+  HandCoins,
   Headset,
   LayoutDashboard,
+  Landmark,
   Layers,
   Loader2,
   LogOut,
@@ -26,6 +29,7 @@ import {
   Ticket,
   UserCog,
   Users,
+  Wallet,
   WifiOff,
   X,
 } from "lucide-react";
@@ -163,6 +167,30 @@ const NAV_ITEMS: NavItem[] = [
     href: "/support-agents",
     icon: Headset,
     permissions: [PERM.ACCOUNTS_MANAGE],
+  },
+  {
+    title: "Loan products",
+    href: "/loans/products",
+    icon: Landmark,
+    permissions: [PERM.LOANS_READ, PERM.LOANS_PRODUCT_MANAGE],
+  },
+  {
+    title: "Loan applications",
+    href: "/loans/applications",
+    icon: ClipboardCheck,
+    permissions: [PERM.LOANS_APPLICATIONS_READ],
+  },
+  {
+    title: "Loans",
+    href: "/loans/portfolio",
+    icon: HandCoins,
+    permissions: [PERM.LOANS_APPLICATIONS_READ],
+  },
+  {
+    title: "Funding sources",
+    href: "/loans/funding-sources",
+    icon: Wallet,
+    permissions: [PERM.LOANS_FUNDING_MANAGE],
   },
 ];
 

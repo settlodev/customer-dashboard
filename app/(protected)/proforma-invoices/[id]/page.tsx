@@ -47,7 +47,22 @@ export default async function ProformaDetailPage({
           subtitle="Saved as a draft — share it or convert to an invoice once accepted."
         />
         <PageBody>
-          <ProformaForm item={null} defaultCurrency={defaultCurrency} />
+          <ProformaForm
+            item={null}
+            defaultCurrency={defaultCurrency}
+            railExtra={
+              <div className="rounded-xl border border-line bg-card p-4">
+                <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                  Tips
+                </div>
+                <p className="text-[12.5px] leading-relaxed text-ink-3">
+                  Link a stock item to a line to reserve inventory when the
+                  quote converts to an invoice. The proforma auto-expires if it
+                  isn&apos;t accepted by its &ldquo;valid until&rdquo; date.
+                </p>
+              </div>
+            }
+          />
         </PageBody>
       </PageShell>
     );

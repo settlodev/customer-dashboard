@@ -47,7 +47,7 @@ interface Props {
 /**
  * Status-aware action buttons for stock transfers. The lifecycle depends on
  * `transferType`:
- *   - SUPPLY / RETURN / RETURN_TO_STORE:
+ *   - SUPPLY / RETURN / RETURN_TO_STORE / INTER_STORE:
  *       REQUESTED → CONFIRMED → DISPATCHED → (PARTIALLY_)RECEIVED / CANCELLED
  *   - INTER_LOCATION:
  *       REQUESTED → ACCEPTED → CONFIRMED → DISPATCHED → RECEIVED

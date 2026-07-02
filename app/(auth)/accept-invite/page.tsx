@@ -136,7 +136,16 @@ export default async function AcceptInvitePage({
   // Not authenticated. Cookies can't be written during render, so hand off to
   // the route handler, which remembers the invite (pendingInvite cookie) and
   // routes on to sign-in (existing account) or the invited-signup form.
-  const to = invitation.hasAccount ? "login" : "create";
+  // Route by identity state:
+  //  - no Auth identity            → create (invited-signup form)
+  //  - identity WITHOUT a password → set-password (a passwordless invited-staff
+  //    identity: routing to /login would dead-end since they can't sign in yet)
+  //  - identity WITH a password    → login
+  const to = !invitation.hasAccount
+    ? "create"
+    : invitation.hasPassword === false
+      ? "setpassword"
+      : "login";
   redirect(
     `/accept-invite/continue?to=${to}&member=${encodeURIComponent(member)}&email=${emailParam}`,
   );

@@ -42,6 +42,10 @@ const BILLING_SERVICE_URL = requireEnv("BILLING_SERVICE_URL");
 const INVENTORY_SERVICE_URL = requireEnv("INVENTORY_SERVICE_URL");
 const ACCOUNTING_SERVICE_URL = requireEnv("ACCOUNTING_SERVICE_URL");
 const COMMUNICATIONS_SERVICE_URL = requireEnv("COMMUNICATIONS_SERVICE_URL");
+// Loan Management Service. NOT requireEnv — only the (new, admin-gated) loans
+// section calls it, so a missing var degrades those pages instead of crashing
+// every server action at import time. Set LOAN_MANAGEMENT_SERVICE_URL to enable.
+const LOAN_MANAGEMENT_SERVICE_URL = process.env.LOAN_MANAGEMENT_SERVICE_URL ?? "";
 const IS_DEV = process.env.NODE_ENV !== "production";
 
 const sharedHttpsAgent = new https.Agent({
@@ -361,6 +365,7 @@ class ApiClient {
       | "inventory"
       | "accounting"
       | "communications"
+      | "loans"
       | boolean = "accounts",
     audience: ApiClientAudience = "user",
   ) {
@@ -384,7 +389,9 @@ class ApiClient {
                       ? ACCOUNTING_SERVICE_URL
                       : service === "communications"
                         ? COMMUNICATIONS_SERVICE_URL
-                        : ACCOUNTS_SERVICE_URL;
+                        : service === "loans"
+                          ? LOAN_MANAGEMENT_SERVICE_URL
+                          : ACCOUNTS_SERVICE_URL;
     }
     this.audience = audience;
     this.isPlain = false;

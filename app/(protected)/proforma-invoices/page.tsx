@@ -17,10 +17,8 @@ import DataLoadError from "@/components/layouts/data-load-error";
 import { softFetch } from "@/lib/list-fallback";
 import { columns } from "@/components/tables/proforma/columns";
 import { listProformas } from "@/lib/actions/invoicing-proforma-actions";
-import {
-  PROFORMA_STATUS_FILTERS,
-  type Proforma,
-} from "@/types/invoicing/type";
+import { type Proforma } from "@/types/invoicing/type";
+import { ProformaStatusTabs } from "@/components/tables/proforma/status-tabs";
 
 interface SearchParams {
   page?: string;
@@ -104,6 +102,8 @@ export default async function ProformaInvoicesPage({
               />
             </KpiStrip>
 
+            <ProformaStatusTabs />
+
             <Card>
               <CardContent className="px-2 pt-6 sm:px-6">
                 <DataTable
@@ -115,9 +115,6 @@ export default async function ProformaInvoicesPage({
                   total={total}
                   searchKey="proformaNumber"
                   hideSearch
-                  manualFilter
-                  filterKey="status"
-                  filterOptions={PROFORMA_STATUS_FILTERS}
                   rowClickBasePath="/proforma-invoices"
                 />
               </CardContent>

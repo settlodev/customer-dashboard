@@ -7,7 +7,6 @@ import { z } from "zod";
 import { ArrowRight, EyeIcon, EyeOffIcon, Loader2, ShieldCheck } from "lucide-react";
 
 import { LoginSchema } from "@/types/data-schemas";
-import { loginAsStaff } from "@/lib/actions/auth-actions";
 import { ADMIN_DEFAULT_REDIRECT_URL } from "@/routes";
 import { deleteStaffAuthCookie } from "@/lib/auth-utils";
 import { executeRecaptcha } from "@/lib/recaptcha";
@@ -36,9 +35,16 @@ export default function StaffLoginForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
+  // Until this client component hydrates, the onSubmit handler below isn't
+  // attached, so a click/Enter falls back to a NATIVE browser submit — which
+  // serializes email+password into the URL (visible, and written to the access
+  // logs) and never runs loginAsStaff, so the sign-in silently no-ops. Gate the
+  // submit button on this flag so the JS path is guaranteed to own the submit.
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     deleteStaffAuthCookie();
+    setMounted(true);
   }, []);
 
   const form = useForm<z.infer<typeof LoginSchema>>({
@@ -59,7 +65,17 @@ export default function StaffLoginForm() {
           // reCAPTCHA is best-effort for staff — surface but don't block.
         }
 
-        const data: FormResponse = await loginAsStaff(values, recaptchaToken);
+        // Post to the /api/staff/login Route Handler rather than calling the
+        // server action directly. The admin subdomain rewrites /login →
+        // /admin/login, and in Next 15 a Set-Cookie from a server action is
+        // dropped across that middleware rewrite — so the session cookie never
+        // persisted. /api/* is passed through un-rewritten, so it survives.
+        const res = await fetch("/api/staff/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...values, recaptchaToken }),
+        });
+        const data: FormResponse = await res.json();
         if (!data) return;
 
         if (data.responseType === "error") {
@@ -97,6 +113,11 @@ export default function StaffLoginForm() {
           <Form {...form}>
             <form
               className="space-y-4"
+              // Defense-in-depth for the pre-hydration window: if a native
+              // submit ever slips through (e.g. Enter before mount), POST keeps
+              // the credentials in the request body instead of leaking them into
+              // the URL query string (and thus the server access logs).
+              method="post"
               onSubmit={(e) => {
                 e.preventDefault();
                 form.handleSubmit(onSubmit)(e);
@@ -161,7 +182,7 @@ export default function StaffLoginForm() {
 
               <Button
                 type="submit"
-                disabled={isPending}
+                disabled={isPending || !mounted}
                 className="h-11 w-full rounded-lg bg-gradient-to-r from-primary to-orange-600 font-medium text-white shadow-md shadow-primary/20 transition-all hover:from-orange-600 hover:to-orange-700"
               >
                 {isPending ? (

@@ -26,6 +26,21 @@ const formatMoney = (value: number) =>
 
 export type SalesView = "orders" | "abandoned";
 
+/**
+ * Server-sourced KPI values for the Orders strip, fetched from the Reports
+ * Service (`/api/v2/analytics/overview`) rather than derived in-memory from the
+ * full order set. Used by the standalone Orders page now that the list is
+ * server-paginated and no longer holds every order client-side.
+ */
+export interface OrdersKpis {
+  totalOrders: number;
+  openOrders: number;
+  closedOrders: number;
+  grossSales: number;
+  /** Count of orders not fully paid. */
+  unpaidOrders: number;
+}
+
 interface Props {
   /** `/tables/{id}` or `/staff/{id}` — the route the sub-tab links and
    * filters live on. */
@@ -36,11 +51,18 @@ interface Props {
   from: string;
   to: string;
   /**
-   * The full scoped set for the active sub-tab BEFORE search and
-   * pagination — KPIs derive from this so the totals don't jump when the
-   * user types in the search box.
+   * Legacy in-memory mode (the staff/table Sales tabs): the full scoped set
+   * for the active sub-tab BEFORE search/pagination — KPIs derive from this so
+   * the totals don't jump when the user types in the search box. Omitted in
+   * server-pagination mode (the standalone Orders page), where `kpis` is passed
+   * instead and the list arrives one page at a time.
    */
-  scoped: Order[];
+  scoped?: Order[];
+  /**
+   * Server-sourced KPI strip (Reports overview). Preferred; when present it
+   * drives the Orders KPIs instead of reducing over `scoped`.
+   */
+  kpis?: OrdersKpis;
   /** The current page's rows (already sliced server-side). */
   pageData: Order[];
   pageCount: number;
@@ -89,6 +111,7 @@ export function OrdersPanel({
   from,
   to,
   scoped,
+  kpis,
   pageData,
   pageCount,
   pageNo,
@@ -119,6 +142,7 @@ export function OrdersPanel({
         (view === "orders" ? (
           <OrdersView
             scoped={scoped}
+            kpis={kpis}
             pageData={pageData}
             pageCount={pageCount}
             pageNo={pageNo}
@@ -148,6 +172,7 @@ export function OrdersPanel({
 
 function OrdersView({
   scoped,
+  kpis,
   pageData,
   pageCount,
   pageNo,
@@ -158,7 +183,8 @@ function OrdersView({
   tableNames,
   statusParam,
 }: {
-  scoped: Order[];
+  scoped?: Order[];
+  kpis?: OrdersKpis;
   pageData: Order[];
   pageCount: number;
   pageNo: number;
@@ -169,20 +195,25 @@ function OrdersView({
   tableNames: Record<string, string>;
   statusParam?: OrderStatus | "";
 }) {
-  const openCount = scoped.filter(
-    (o) => o.orderStatus === OrderStatus.OPEN,
-  ).length;
-  const closedCount = scoped.filter(
-    (o) => o.orderStatus === OrderStatus.CLOSED,
-  ).length;
-  const grossTotal = scoped.reduce((sum, o) => sum + (o.grossAmount ?? 0), 0);
-  const unpaidTotal = scoped.reduce(
-    (sum, o) => sum + (o.unpaidAmount ?? 0),
-    0,
-  );
-  const unpaidCount = scoped.filter(
-    (o) => o.paymentStatus && o.paymentStatus !== PaymentStatus.PAID,
-  ).length;
+  // Server-pagination mode (standalone Orders page): KPIs come from the Reports
+  // overview. Legacy mode (staff/table Sales tabs): derive them from the full
+  // in-memory set, exactly as before.
+  const rows = scoped ?? [];
+  const k: OrdersKpis = kpis ?? {
+    totalOrders: rows.length,
+    openOrders: rows.filter((o) => o.orderStatus === OrderStatus.OPEN).length,
+    closedOrders: rows.filter((o) => o.orderStatus === OrderStatus.CLOSED)
+      .length,
+    grossSales: rows.reduce((sum, o) => sum + (o.grossAmount ?? 0), 0),
+    unpaidOrders: rows.filter(
+      (o) => o.paymentStatus && o.paymentStatus !== PaymentStatus.PAID,
+    ).length,
+  };
+  // Legacy mode still surfaces the unpaid *amount* (it holds the full set);
+  // server mode has only the count and shows that instead.
+  const unpaidAmount = kpis
+    ? null
+    : rows.reduce((sum, o) => sum + (o.unpaidAmount ?? 0), 0);
 
   return (
     <>
@@ -190,7 +221,7 @@ function OrdersView({
         <KpiCard
           icon={<ReceiptText className="h-3 w-3" />}
           label="Orders"
-          value={scoped.length.toLocaleString()}
+          value={k.totalOrders.toLocaleString()}
           delta={
             statusParam ? `Filtered: ${statusParam}` : "Across all statuses"
           }
@@ -199,33 +230,45 @@ function OrdersView({
         <KpiCard
           icon={<Receipt className="h-3 w-3" />}
           label="Open"
-          value={openCount > 0 ? openCount.toLocaleString() : "—"}
+          value={k.openOrders > 0 ? k.openOrders.toLocaleString() : "—"}
           deltaTone="neutral"
         />
         <KpiCard
           icon={<Coins className="h-3 w-3" />}
           label="Closed"
-          value={closedCount > 0 ? closedCount.toLocaleString() : "—"}
+          value={k.closedOrders > 0 ? k.closedOrders.toLocaleString() : "—"}
           deltaTone="pos"
         />
         <KpiCard
           icon={<CircleDollarSign className="h-3 w-3" />}
           label="Gross"
-          value={grossTotal > 0 ? formatMoney(grossTotal) : "—"}
+          value={k.grossSales > 0 ? formatMoney(k.grossSales) : "—"}
           unit={currency}
           deltaTone="neutral"
         />
         <KpiCard
           icon={<Banknote className="h-3 w-3" />}
           label="Unpaid"
-          value={unpaidTotal > 0 ? formatMoney(unpaidTotal) : "—"}
-          unit={currency}
-          delta={
-            unpaidCount > 0
-              ? `${unpaidCount.toLocaleString()} order${unpaidCount === 1 ? "" : "s"}`
-              : undefined
+          value={
+            unpaidAmount != null
+              ? unpaidAmount > 0
+                ? formatMoney(unpaidAmount)
+                : "—"
+              : k.unpaidOrders > 0
+                ? k.unpaidOrders.toLocaleString()
+                : "—"
           }
-          deltaTone={unpaidTotal > 0 ? "neg" : "neutral"}
+          unit={unpaidAmount != null ? currency : undefined}
+          delta={
+            unpaidAmount != null
+              ? k.unpaidOrders > 0
+                ? `${k.unpaidOrders.toLocaleString()} order${k.unpaidOrders === 1 ? "" : "s"}`
+                : undefined
+              : k.unpaidOrders > 0
+                ? "Awaiting payment"
+                : undefined
+          }
+          deltaTone={k.unpaidOrders > 0 ? "neg" : "neutral"}
         />
       </KpiStrip>
 
@@ -257,7 +300,7 @@ function AbandonedView({
   tableNames,
   scope,
 }: {
-  scoped: Order[];
+  scoped?: Order[];
   pageData: Order[];
   pageCount: number;
   pageNo: number;
@@ -267,50 +310,64 @@ function AbandonedView({
   tableNames: Record<string, string>;
   scope: "location" | "entity";
 }) {
-  // Same split as the Orders page: auto-cancels from the end-of-day
-  // sweep vs. a manual cancel of an empty order. "Tied to a table" is
-  // dropped here — scoped to a single entity it isn't a useful ratio.
-  const totalAbandoned = scoped.length;
-  const autoAbandoned = scoped.filter((o) =>
+  // Legacy in-memory mode (staff/table tabs) can break the abandoned count
+  // into auto-sweep vs manual vs tied-to-a-table. Server mode (the standalone
+  // Orders page) only knows the range total, so it shows that single number.
+  const legacy = scoped != null;
+  const rows = scoped ?? [];
+  const totalAbandoned = legacy ? rows.length : total;
+  const autoAbandoned = rows.filter((o) =>
     (o.cancellationReason ?? "").toLowerCase().startsWith("auto-cancelled"),
   ).length;
   const manualAbandoned = totalAbandoned - autoAbandoned;
-  const withTable = scoped.filter((o) => !!o.tableId).length;
+  const withTable = rows.filter((o) => !!o.tableId).length;
 
   return (
     <>
-      <KpiStrip cols={scope === "location" ? 4 : 3}>
-        <KpiCard
-          icon={<Ban className="h-3 w-3" />}
-          label="Abandoned"
-          value={totalAbandoned.toLocaleString()}
-          delta="Orders never built out"
-          deltaTone="neutral"
-        />
-        <KpiCard
-          icon={<Clock className="h-3 w-3" />}
-          label="Auto"
-          value={autoAbandoned > 0 ? autoAbandoned.toLocaleString() : "—"}
-          delta="End-of-day sweep"
-          deltaTone="neutral"
-        />
-        <KpiCard
-          icon={<Trash2 className="h-3 w-3" />}
-          label="Manual"
-          value={manualAbandoned > 0 ? manualAbandoned.toLocaleString() : "—"}
-          delta="Cancelled with no items"
-          deltaTone="neutral"
-        />
-        {scope === "location" ? (
+      {legacy ? (
+        <KpiStrip cols={scope === "location" ? 4 : 3}>
           <KpiCard
-            icon={<Receipt className="h-3 w-3" />}
-            label="Tied to a table"
-            value={withTable > 0 ? withTable.toLocaleString() : "—"}
-            delta="Likely claim auto-release"
+            icon={<Ban className="h-3 w-3" />}
+            label="Abandoned"
+            value={totalAbandoned.toLocaleString()}
+            delta="Orders never built out"
             deltaTone="neutral"
           />
-        ) : null}
-      </KpiStrip>
+          <KpiCard
+            icon={<Clock className="h-3 w-3" />}
+            label="Auto"
+            value={autoAbandoned > 0 ? autoAbandoned.toLocaleString() : "—"}
+            delta="End-of-day sweep"
+            deltaTone="neutral"
+          />
+          <KpiCard
+            icon={<Trash2 className="h-3 w-3" />}
+            label="Manual"
+            value={manualAbandoned > 0 ? manualAbandoned.toLocaleString() : "—"}
+            delta="Cancelled with no items"
+            deltaTone="neutral"
+          />
+          {scope === "location" ? (
+            <KpiCard
+              icon={<Receipt className="h-3 w-3" />}
+              label="Tied to a table"
+              value={withTable > 0 ? withTable.toLocaleString() : "—"}
+              delta="Likely claim auto-release"
+              deltaTone="neutral"
+            />
+          ) : null}
+        </KpiStrip>
+      ) : (
+        <KpiStrip cols={2}>
+          <KpiCard
+            icon={<Ban className="h-3 w-3" />}
+            label="Abandoned"
+            value={totalAbandoned.toLocaleString()}
+            delta="Orders never built out"
+            deltaTone="neutral"
+          />
+        </KpiStrip>
+      )}
 
       <Card>
         <CardContent className="px-2 pt-6 sm:px-6">

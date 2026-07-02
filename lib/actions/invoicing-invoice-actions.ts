@@ -134,6 +134,33 @@ export async function voidInvoice(id: string): Promise<FormResponse<Invoice>> {
   }
 }
 
+/**
+ * Issue (or re-issue) the public receipt link for a fully-paid invoice. The
+ * Accounting Service mints the share token (gated on PAID) and returns the
+ * invoice with `shareToken` set; the customer-facing snapshot lives at
+ * `/receipt/{shareToken}`. Mirrors {@link shareProforma}.
+ */
+export async function shareInvoiceReceipt(
+  id: string,
+): Promise<FormResponse<Invoice>> {
+  try {
+    const apiClient = new ApiClient();
+    const data = (await apiClient.post(
+      accountingUrl(`/api/v1/invoices/${id}/share`),
+      {},
+    )) as Invoice;
+    revalidatePath("/invoices");
+    revalidatePath(`/invoices/${id}`);
+    return {
+      responseType: "success",
+      message: "Receipt link is ready",
+      data: parseStringify(data),
+    };
+  } catch (error: unknown) {
+    return errorResponse<Invoice>(error, "Failed to share receipt");
+  }
+}
+
 function errorResponse<T>(error: unknown, fallback: string): FormResponse<T> {
   console.error(fallback, error);
   return {

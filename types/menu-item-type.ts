@@ -13,9 +13,15 @@ export declare interface MenuItemArgType {
     hasDepartmentsModule?: boolean;
     /** When false, location-wide report nav items are filtered out (read_own users). Default true. */
     reportsReadAll?: boolean;
+    /**
+     * Active store id when operating in store mode. Used to deep-link the
+     * "Store profile" entry to the active store's detail page. Ignored in
+     * the normal / warehouse menus.
+     */
+    currentStoreId?: string;
 }
 
-export type MenuType = 'normal' | 'warehouse';
+export type MenuType = 'normal' | 'warehouse' | 'store';
 export declare interface menuItemType {
     label: string,
     icon: ReactNode,

@@ -19,7 +19,9 @@ import NoItems from "@/components/layouts/no-items";
 import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { SoldItemsStatusToggle } from "@/components/reports/sold-items/sold-items-status-toggle";
 import { SoldItemsTable } from "@/components/reports/sold-items/sold-items-table";
+import { getLocationSettings } from "@/lib/actions/location-settings-actions";
 import { listSoldItems } from "@/lib/actions/product-actions";
+import { fetchAllTables } from "@/lib/actions/space-actions";
 import { rethrowIfBoundary } from "@/lib/list-fallback";
 import {
   type SoldItemLine,
@@ -49,18 +51,25 @@ const formatNum = (value: number) =>
   Intl.NumberFormat("en", { maximumFractionDigits: 0 }).format(value);
 
 /**
- * Multi-field search matcher — covers product name, variant, category
- * and the order number. Keeps `?search=` working as a single global
- * filter across the table without depending on the column-key search.
+ * Multi-field search matcher — covers product name, variant, category,
+ * the order number and the resolved table name. Keeps `?search=` working
+ * as a single global filter across the table without depending on the
+ * column-key search.
  */
-const matchesSearch = (item: SoldItemLine, q: string): boolean => {
+const matchesSearch = (
+  item: SoldItemLine,
+  q: string,
+  tableNames: Record<string, string>,
+): boolean => {
   if (!q) return true;
   const needle = q.toLowerCase();
+  const tableName = item.tableId ? (tableNames[item.tableId] ?? "") : "";
   return (
     item.productName.toLowerCase().includes(needle) ||
     (item.variantName ?? "").toLowerCase().includes(needle) ||
     (item.categoryName ?? "").toLowerCase().includes(needle) ||
-    item.orderNumber.toLowerCase().includes(needle)
+    item.orderNumber.toLowerCase().includes(needle) ||
+    tableName.toLowerCase().includes(needle)
   );
 };
 
@@ -82,18 +91,32 @@ export default async function Page({ searchParams }: Params) {
   const from = resolved.from ?? format(startOfMonth(now), "yyyy-MM-dd");
   const to = resolved.to ?? format(endOfMonth(now), "yyyy-MM-dd");
 
-  const report = await listSoldItems({
-    fromDate: from,
-    toDate: to,
-    status: status || undefined,
-    limit: DEFAULT_LIMIT,
-  }).catch((e) => {
-    rethrowIfBoundary(e);
-    return null;
-  });
+  const [report, tables, locationSettings] = await Promise.all([
+    listSoldItems({
+      fromDate: from,
+      toDate: to,
+      status: status || undefined,
+      limit: DEFAULT_LIMIT,
+    }).catch((e) => {
+      rethrowIfBoundary(e);
+      return null;
+    }),
+    // Each line carries only a table_id (the Reports Service stores no
+    // table names); resolve the display names from the OMS tables list,
+    // same as the orders list and the Sales → By table report.
+    fetchAllTables().catch(() => []),
+    getLocationSettings().catch(() => null),
+  ]);
+
+  const tableNames: Record<string, string> = {};
+  for (const t of tables) tableNames[t.id] = t.name;
+
+  // Table-based ordering leads the Order column with the table name; the
+  // standard mode keeps the order number in front (same as /orders).
+  const tableMode = locationSettings?.orderingMode === "TABLE_MANAGEMENT";
 
   const items = report?.items ?? [];
-  const filtered = items.filter((item) => matchesSearch(item, q));
+  const filtered = items.filter((item) => matchesSearch(item, q, tableNames));
   const total = filtered.length;
   const pageCount = Math.max(1, Math.ceil(total / limit));
   const start = (page - 1) * limit;
@@ -126,6 +149,8 @@ export default async function Page({ searchParams }: Params) {
             pageCount={pageCount}
             pageNo={page - 1}
             total={total}
+            tableMode={tableMode}
+            tableNames={tableNames}
           />
         ) : (
           <NoItems itemName="sold items" />
@@ -141,12 +166,16 @@ function ReportBody({
   pageCount,
   pageNo,
   total,
+  tableMode,
+  tableNames,
 }: {
   report: Awaited<ReturnType<typeof listSoldItems>>;
   pageData: SoldItemLine[];
   pageCount: number;
   pageNo: number;
   total: number;
+  tableMode: boolean;
+  tableNames: Record<string, string>;
 }) {
   // KPIs are derived from the server-side summary so they stay stable
   // when the client paginates / searches. Empty fields fall back to "—"
@@ -219,6 +248,8 @@ function ReportBody({
         pageCount={pageCount}
         pageNo={pageNo}
         total={total}
+        tableMode={tableMode}
+        tableNames={tableNames}
       />
     </>
   );

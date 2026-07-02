@@ -11,6 +11,10 @@ import {
   getInventoryBusinessDashboardSummary,
   getProductsBusinessKpi,
 } from "@/lib/actions/reports-analytics-actions";
+import { LOANS_ENABLED } from "@/lib/loans/config";
+import { getLoan, getLoanEligibility } from "@/lib/actions/loans-actions";
+import { getLoanAccess } from "@/lib/loans/access";
+import { EligibilityHero } from "@/components/loans/eligibility-hero";
 
 const CURRENCY = "TZS";
 
@@ -34,6 +38,16 @@ export default async function BusinessOverviewPage() {
     getProductsBusinessKpi(business.id, CURRENCY),
   ]);
 
+  // Financing eligibility (feature-flagged + permission-gated). Shown only to
+  // users with loans:read; the Apply CTA needs loans:apply.
+  const loanAccess = LOANS_ENABLED ? await getLoanAccess() : null;
+  const loanEligibility =
+    LOANS_ENABLED && loanAccess?.canRead ? await getLoanEligibility() : null;
+  const activeLoan =
+    loanEligibility?.hasActiveLoan && loanEligibility.activeLoanId
+      ? await getLoan(loanEligibility.activeLoanId)
+      : null;
+
   return (
     <PageShell>
       <PageBreadcrumbs items={[{ title: "Business overview" }]} />
@@ -43,6 +57,13 @@ export default async function BusinessOverviewPage() {
       />
 
       <PageBody>
+        {LOANS_ENABLED && loanAccess?.canRead && loanEligibility && (
+          <EligibilityHero
+            eligibility={loanEligibility}
+            activeLoan={activeLoan}
+            canApply={loanAccess.canApply}
+          />
+        )}
         <InventoryKpiStrip summary={summary} />
         <ProductsKpiStrip summary={productsKpi} />
       </PageBody>

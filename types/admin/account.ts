@@ -25,6 +25,8 @@ export interface AdminAccountListItem {
   assignedSalesStaffId: string | null;
   assignedSupportStaffId: string | null;
   createdAt: string;
+  /** Set once the account is soft-deleted; drives the "Deleted" status badge. */
+  deletedAt?: string | null;
 }
 
 export interface AccountOnboardingCounts {
@@ -74,6 +76,8 @@ export interface AdminAccountDetail {
   isBusinessRegistrationComplete: boolean | null;
   isLocationRegistrationComplete: boolean | null;
   emailVerified: boolean | null;
+  /** Projected from Auth via PHONE_VERIFIED; gates the change/verify-phone actions. */
+  phoneVerified: boolean | null;
   onboardingState: OnboardingState | null;
   salesPerson: AssignedStaffInfo | null;
   supportStaff: AssignedStaffInfo | null;
@@ -81,6 +85,8 @@ export interface AdminAccountDetail {
   staffCount: number;
   createdAt: string;
   updatedAt: string;
+  /** Set once soft-deleted; the detail page stays reachable so the account can be purged. */
+  deletedAt?: string | null;
 }
 
 export interface AccountStatusUpdateRequest {
@@ -123,6 +129,8 @@ export interface PageParams {
 export interface ListAccountsParams extends PageParams {
   search?: string;
   active?: boolean;
+  /** true = only soft-deleted accounts (so they can be found and purged); omitted = only live accounts. */
+  deleted?: boolean;
   onboardingState?: OnboardingState;
   createdFrom?: string;
   createdTo?: string;

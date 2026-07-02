@@ -17,16 +17,17 @@ import {
 } from "@/lib/actions/staff-actions";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import { getLocationSettings } from "@/lib/actions/location-settings-actions";
-import { listOrders } from "@/lib/actions/order-actions";
-import { buildOrderListView } from "@/lib/orders/order-list-view";
+import { ordersSummary, searchOrders } from "@/lib/actions/order-actions";
+import { resolveOrderRowNames } from "@/lib/orders/order-list-view";
 import { fetchAllTables } from "@/lib/actions/space-actions";
 import { rethrowIfBoundary } from "@/lib/list-fallback";
-import { Order, OrderStatus } from "@/types/orders/type";
+import { OrderStatus } from "@/types/orders/type";
 import { Staff, StaffDetail, StaffAuditEvent } from "@/types/staff";
 import { ApiResponse } from "@/types/types";
 import { OrdersPanel, type SalesView } from "@/components/orders/orders-panel";
 import { StaffDetailView } from "./staff-detail-view";
 import { StaffDetailActions } from "./staff-detail-actions";
+import { StaffAssignmentsSection } from "@/components/staff/staff-assignments-section";
 import { StaffAuditTab } from "./staff-audit-tab";
 
 type Params = Promise<{ id: string }>;
@@ -36,6 +37,7 @@ type SearchParams = Promise<{
   from?: string;
   to?: string;
   search?: string;
+  status?: string;
   page?: string;
   limit?: string;
   auditPage?: string;
@@ -55,6 +57,7 @@ export default async function StaffPage({
     from: fromParam,
     to: toParam,
     search: searchParam,
+    status: statusFilterParam,
     page: pageParam,
     limit: limitParam,
     auditPage: auditPageParam,
@@ -104,10 +107,35 @@ export default async function StaffPage({
   const pageNo = Number(pageParam) || 1;
   const limit = Number(limitParam) || 10;
   const view: SalesView = viewParam === "abandoned" ? "abandoned" : "orders";
+  const statusParam = (statusFilterParam ?? "") as OrderStatus | "";
+  const effectiveStatus: OrderStatus | undefined =
+    view === "abandoned" ? OrderStatus.ABANDONED : statusParam || undefined;
 
-  const [allOrders, locationSettings, staffList, tablesList, currency] =
+  // Server-paginated and scoped to this staff member (orders they're assigned
+  // to OR finished). KPIs come from the OMS summary with the same scope, so
+  // they match the list. The Abandoned sub-tab fixes status to ABANDONED and
+  // uses the paged total for its single count.
+  const [ordersPage, kpis, locationSettings, staffList, tablesList, currency] =
     await Promise.all([
-      listOrders({ fromDate: from, toDate: to }).catch((): Order[] => []),
+      searchOrders({
+        fromDate: from,
+        toDate: to,
+        status: effectiveStatus,
+        excludeAbandoned: view === "orders",
+        staffId: id,
+        search: q || undefined,
+        page: pageNo,
+        limit,
+      }),
+      view === "orders"
+        ? ordersSummary({
+            fromDate: from,
+            toDate: to,
+            status: effectiveStatus,
+            excludeAbandoned: true,
+            staffId: id,
+          })
+        : Promise.resolve(null),
       getLocationSettings().catch(() => null),
       fetchAllStaff().catch(() => []),
       fetchAllTables().catch(() => []),
@@ -117,27 +145,14 @@ export default async function StaffPage({
   // Table-based ordering swaps the lead column to the table name.
   const tableMode = locationSettings?.orderingMode === "TABLE_MANAGEMENT";
 
-  // Scope to this staff member — orders they're assigned to or closed —
-  // then split: the Abandoned sub-tab gets the empty-draft auto-cancels,
-  // the Orders sub-tab gets everything else (so the Status column /
-  // filter stay meaningful, as on /orders).
-  const staffOrders = allOrders.filter(
-    (o) => o.assignedTo === id || o.finishedBy === id,
+  const pageData = ordersPage.content ?? [];
+  const total = ordersPage.totalElements ?? 0;
+  const pageCount = ordersPage.totalPages ?? 0;
+  const { staffNames, tableNames } = resolveOrderRowNames(
+    pageData,
+    staffList,
+    tablesList,
   );
-  const scoped =
-    view === "abandoned"
-      ? staffOrders.filter((o) => o.orderStatus === OrderStatus.ABANDONED)
-      : staffOrders.filter((o) => o.orderStatus !== OrderStatus.ABANDONED);
-
-  const { pageData, total, pageCount, staffNames, tableNames } =
-    buildOrderListView({
-      orders: scoped,
-      search: q,
-      page: pageNo,
-      limit,
-      staff: staffList,
-      tables: tablesList,
-    });
 
   const salesContent = (
     // Keyed because this element is created here but rendered among
@@ -149,7 +164,7 @@ export default async function StaffPage({
       view={view}
       from={from}
       to={to}
-      scoped={scoped}
+      kpis={view === "orders" ? (kpis ?? undefined) : undefined}
       pageData={pageData}
       pageCount={pageCount}
       pageNo={pageNo - 1}
@@ -158,10 +173,12 @@ export default async function StaffPage({
       staffNames={staffNames}
       tableNames={tableNames}
       currency={currency}
+      statusParam={statusParam}
       preservedParams={{
         from: fromParam,
         to: toParam,
         search: searchParam,
+        status: statusFilterParam,
         limit: limitParam,
         tab,
       }}
@@ -185,6 +202,7 @@ export default async function StaffPage({
     toParam ||
     viewParam ||
     searchParam ||
+    statusFilterParam ||
     pageParam ||
     limitParam
   );
@@ -260,6 +278,14 @@ export default async function StaffPage({
           salesContent={salesContent}
           auditContent={auditContent}
         />
+        {!staff.owner && (
+          <div className="mt-6 rounded-lg border bg-card p-4">
+            <StaffAssignmentsSection
+              staffId={staff.id}
+              primaryLocationId={staff.locationId}
+            />
+          </div>
+        )}
       </PageBody>
     </PageShell>
   );

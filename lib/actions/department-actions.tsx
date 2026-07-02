@@ -59,20 +59,21 @@ export const searchDepartmentByName = async (
 };
 
 /**
- * Fetch the active departments for the user's current location/store
- * destination. Used by the category form to drive the auto-select vs
- * dropdown decision: a single result means "auto-pick", several mean
- * "show a picker".
+ * Fetch the active departments attached to an EXPLICIT location id.
+ * Departments live on a location, so a store has none of its own — a store
+ * context must pass its PARENT location id (a store id returns nothing). For
+ * the active location/store destination, prefer
+ * {@link fetchDepartmentsForCurrentLocation}.
  */
-export const fetchDepartmentsForCurrentLocation = async (
+export const fetchDepartmentsByLocation = async (
+  locationId: string,
   activeOnly: boolean = true,
 ): Promise<Department[]> => {
-  const destination = await getCurrentDestination();
-  if (!destination) return [];
+  if (!locationId) return [];
   try {
     const apiClient = new ApiClient();
     const params = new URLSearchParams({
-      locationId: destination.id,
+      locationId,
       activeOnly: String(activeOnly),
     });
     const data = await apiClient.get(
@@ -82,6 +83,22 @@ export const fetchDepartmentsForCurrentLocation = async (
   } catch (error) {
     throw error;
   }
+};
+
+/**
+ * Fetch the active departments for the user's current location/store
+ * destination. Used by the category form to drive the auto-select vs
+ * dropdown decision: a single result means "auto-pick", several mean
+ * "show a picker". NOTE: in a STORE context this passes the store id, which
+ * owns no departments — surfaces that need the store's parent-location
+ * departments must resolve the parent and call {@link fetchDepartmentsByLocation}.
+ */
+export const fetchDepartmentsForCurrentLocation = async (
+  activeOnly: boolean = true,
+): Promise<Department[]> => {
+  const destination = await getCurrentDestination();
+  if (!destination) return [];
+  return fetchDepartmentsByLocation(destination.id, activeOnly);
 };
 
 export const getDepartmentList = async (

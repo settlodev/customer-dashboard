@@ -5,6 +5,7 @@ import { AlertTriangle, DollarSign } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { formatDateTime, timeSince } from "@/components/admin/shared/format";
+import { DeadLetterDetailsDialog } from "@/components/admin/stuck-writes/dead-letter-details-dialog";
 import { RepairActionDialog } from "@/components/admin/stuck-writes/repair-action-dialog";
 import type { DeadLetterRow } from "@/types/admin/stuck-writes";
 
@@ -160,14 +161,18 @@ export function buildDeadLetterColumns({
     {
       id: "actions",
       header: "",
-      cell: ({ row }) =>
-        canExecute ? (
-          <RepairActionDialog
-            row={row.original}
-            requesterId={requesterId}
-            onActionDone={onActionDone}
-          />
-        ) : null,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1">
+          <DeadLetterDetailsDialog row={row.original} />
+          {canExecute && (
+            <RepairActionDialog
+              row={row.original}
+              requesterId={requesterId}
+              onActionDone={onActionDone}
+            />
+          )}
+        </div>
+      ),
     },
   ];
 }

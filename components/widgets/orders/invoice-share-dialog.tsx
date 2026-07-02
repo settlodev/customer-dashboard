@@ -65,7 +65,7 @@ export function OrderInvoiceShareButton({
       if ("error" in result) {
         toast({
           variant: "destructive",
-          title: "Couldn't create invoice link",
+          title: "Couldn't create bill link",
           description: result.error,
         });
         setOpen(false);
@@ -106,7 +106,7 @@ export function OrderInvoiceShareButton({
       }
       setToken(null);
       setIssuedAt(null);
-      toast({ title: "Invoice link revoked" });
+      toast({ title: "Bill link revoked" });
       setOpen(false);
     });
   };
@@ -115,13 +115,13 @@ export function OrderInvoiceShareButton({
     <>
       <Button onClick={handleOpen} variant="outline" size="sm">
         <Share2 className="mr-1.5 h-4 w-4" />
-        Share invoice
+        Share bill
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Share invoice</DialogTitle>
+            <DialogTitle>Share bill</DialogTitle>
             <DialogDescription asChild>
               <div className="space-y-2">
                 <p>

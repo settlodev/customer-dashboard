@@ -207,7 +207,9 @@ const DeviceSettings = () => {
   const isUnlimited =
     maxDevices === undefined || maxDevices === -1 || entitlementsLoading;
   const atCapacity =
-    !isUnlimited && typeof maxDevices === "number" && occupiedSeats >= maxDevices;
+    !isUnlimited &&
+    typeof maxDevices === "number" &&
+    occupiedSeats >= maxDevices;
 
   const refresh = useCallback(
     async (locId: string) => {
@@ -492,7 +494,9 @@ const DeviceSettings = () => {
               {seatSummary && (
                 <>
                   {" · "}
-                  <span className={atCapacity ? "text-amber-700 font-medium" : ""}>
+                  <span
+                    className={atCapacity ? "text-amber-700 font-medium" : ""}
+                  >
                     {seatSummary}
                   </span>
                 </>
@@ -502,7 +506,8 @@ const DeviceSettings = () => {
                   {" · "}
                   <span className="text-muted-foreground">
                     {loggedOutCount} logged-out{" "}
-                    {loggedOutCount === 1 ? "device doesn't" : "devices don't"} count
+                    {loggedOutCount === 1 ? "device doesn't" : "devices don't"}{" "}
+                    count
                   </span>
                 </>
               )}
@@ -517,8 +522,8 @@ const DeviceSettings = () => {
                 </TooltipTrigger>
                 <TooltipContent side="bottom" align="end" className="max-w-xs">
                   You&apos;re at the device cap for this location. Log out an
-                  active device to free a seat — its row stays in the list.
-                  Or upgrade the plan.
+                  active device to free a seat — its row stays in the list. Or
+                  upgrade the plan.
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -759,8 +764,8 @@ function DeviceRow({
 
             {isLoggedOut && (
               <p className="mt-2 text-[11px] text-muted-foreground italic">
-                Free seat. Generate a new pairing code to bring this device —
-                or a different one — back online here.
+                Free seat. Generate a new pairing code to bring this device — or
+                a different one — back online here.
               </p>
             )}
           </div>
@@ -1000,10 +1005,15 @@ function PairDeviceDialog({
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={onClose} disabled={isGenerating}>
+            <DialogFooter className="gap-3">
+              <Button
+                variant="outline"
+                onClick={onClose}
+                disabled={isGenerating}
+              >
                 Cancel
               </Button>
+
               <Button onClick={generate} disabled={isGenerating}>
                 {isGenerating && (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1099,7 +1109,9 @@ function formatCountdown(totalSeconds: number): string {
 function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-4 py-1.5">
-      <span className="flex-shrink-0 text-xs text-muted-foreground">{label}</span>
+      <span className="flex-shrink-0 text-xs text-muted-foreground">
+        {label}
+      </span>
       <span className="break-all text-right text-xs font-medium">{value}</span>
     </div>
   );
@@ -1169,7 +1181,10 @@ function DeviceDetailsDialog({
                   : "—"
               }
             />
-            <DetailRow label="Suspended" value={device.suspended ? "Yes" : "No"} />
+            <DetailRow
+              label="Suspended"
+              value={device.suspended ? "Yes" : "No"}
+            />
             <DetailRow
               label="PIN required"
               value={device.pinRequired ? "Yes" : "No"}
@@ -1188,7 +1203,8 @@ function DeviceDetailsDialog({
                     ) : (
                       <Battery className="h-3.5 w-3.5" />
                     )}
-                    {device.batteryLevel}%{device.isCharging ? " · charging" : ""}
+                    {device.batteryLevel}%
+                    {device.isCharging ? " · charging" : ""}
                   </span>
                 ) : (
                   "—"
@@ -1217,9 +1233,15 @@ function DeviceDetailsDialog({
             <DetailRow label="Brand" value={dash(device.brand)} />
             <DetailRow label="Model" value={dash(device.model)} />
             <DetailRow label="OS" value={dash(osLine || null)} />
-            <DetailRow label="Serial number" value={dash(device.serialNumber)} />
+            <DetailRow
+              label="Serial number"
+              value={dash(device.serialNumber)}
+            />
             {device.ramInGB != null && (
-              <DetailRow label="RAM" value={`${device.ramInGB.toFixed(1)} GB`} />
+              <DetailRow
+                label="RAM"
+                value={`${device.ramInGB.toFixed(1)} GB`}
+              />
             )}
             {device.storageInGB != null && (
               <DetailRow
@@ -1276,12 +1298,21 @@ function DeviceDetailsDialog({
 
           <DetailSection title="Lifecycle">
             <DetailRow label="Paired" value={formatAbsolute(device.pairedAt)} />
-            <DetailRow label="First added" value={formatAbsolute(device.createdAt)} />
-            <DetailRow label="Last updated" value={formatAbsolute(device.updatedAt)} />
+            <DetailRow
+              label="First added"
+              value={formatAbsolute(device.createdAt)}
+            />
+            <DetailRow
+              label="Last updated"
+              value={formatAbsolute(device.updatedAt)}
+            />
           </DetailSection>
 
           <DetailSection title="Identifiers">
-            <DetailRow label="Device name (reported)" value={dash(device.name)} />
+            <DetailRow
+              label="Device name (reported)"
+              value={dash(device.name)}
+            />
             <DetailRow label="Device ID" value={dash(device.id)} />
             <DetailRow label="Fingerprint" value={dash(device.fingerprint)} />
           </DetailSection>
@@ -1429,9 +1460,9 @@ function ConfirmLogoutDialog({
           <DialogDescription>
             Tokens are revoked immediately and the device stops syncing.
             <span className="block mt-2">
-              The seat frees up right away. The row stays in the list — to
-              bring this device back online (or pair a replacement on the same
-              seat), generate a new pairing code.
+              The seat frees up right away. The row stays in the list — to bring
+              this device back online (or pair a replacement on the same seat),
+              generate a new pairing code.
             </span>
           </DialogDescription>
         </DialogHeader>
@@ -1442,7 +1473,11 @@ function ConfirmLogoutDialog({
           <Button
             variant="destructive"
             disabled={isPending}
-            onClick={() => startTransition(async () => { await onConfirm(); })}
+            onClick={() =>
+              startTransition(async () => {
+                await onConfirm();
+              })
+            }
           >
             {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Log out
@@ -1476,8 +1511,8 @@ function ConfirmDeleteDialog({
           <DialogTitle>Delete {name} from the list?</DialogTitle>
           <DialogDescription>
             This hides the row from the device list. The seat is already free
-            because the device is logged out — delete only if you don&apos;t want
-            this entry around anymore.
+            because the device is logged out — delete only if you don&apos;t
+            want this entry around anymore.
             <span className="block mt-2 text-xs">
               Audit history is preserved either way. Re-pairing the same
               hardware after this will create a brand new entry rather than

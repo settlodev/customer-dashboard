@@ -6,7 +6,7 @@ import {
   PageBody,
 } from "@/components/layouts/page-shell";
 import { getStock } from "@/lib/actions/stock-actions";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import StockForm from "@/components/forms/stock_form";
 
@@ -22,7 +22,7 @@ export default async function EditStockPage({
   // the edit page TTFB tracks the slowest of the three rather than
   // their sum. Balances chains off the location promise (since it needs
   // location.id), but still kicks off as soon as location resolves.
-  const locationPromise = getCurrentLocation();
+  const locationPromise = getCurrentDestination();
   const balancesPromise = locationPromise.then((loc) =>
     loc?.id ? getBalancesByLocation(loc.id).catch(() => []) : [],
   );

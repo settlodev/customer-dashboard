@@ -74,6 +74,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data, variant }) => {
       });
       router.refresh();
     } catch (error) {
+      console.error("The error occurred while archiving product", error);
       toast({
         variant: "destructive",
         title: "Failed to archive",

@@ -1,66 +1,87 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import ApiClient from "../settlo-api-client";
 import { getCurrentLocation } from "./business/get-current-business";
+import { inventoryUrl } from "@/lib/actions/inventory-client";
+import ApiClient from "@/lib/settlo-api-client";
 
 interface ArchiveEntityProps {
   ids: string[];
-  entityType: 'product' | 'stock' | 'staff' |'stock-intake' | 'customer' | 'supplier' | 'category';
+  entityType:
+    | "product"
+    | "stock"
+    | "staff"
+    | "stock-intake"
+    | "customer"
+    | "supplier"
+    | "category";
   locationId?: string;
 }
 
-export async function archiveEntity({ 
-  ids, 
+export async function archiveEntity({
+  ids,
   entityType,
-  locationId
+  locationId,
 }: ArchiveEntityProps): Promise<{ success: boolean; message: string }> {
-
-  
-    
+  console.log("Archive entity type", entityType);
+  console.log("Archiving ids are", ids);
   try {
     if (!ids || ids.length === 0) {
       return { success: false, message: "No items selected for archiving" };
     }
 
     const apiClient = new ApiClient();
-    
-   
-const location = locationId ? { id: locationId } : await getCurrentLocation();
-const actualLocationId = locationId || location?.id;
- 
 
-if (!actualLocationId) {
-  return { success: false, message: "Location ID is required but not available" };
-}
+    const location = locationId
+      ? { id: locationId }
+      : await getCurrentLocation();
+    const actualLocationId = locationId || location?.id;
+
+    if (!actualLocationId) {
+      return {
+        success: false,
+        message: "Location ID is required but not available",
+      };
+    }
 
     try {
-      
       switch (entityType) {
-        case 'product':
-          await apiClient.put(`/api/products/${actualLocationId}/archive`, ids);
-          
+        case "product":
+          await apiClient.put(
+            inventoryUrl(`/api/v1/products/archive-multiple`),
+            {
+              ids,
+            },
+          );
+
           break;
-        case 'stock':
-          await apiClient.put(`/api/stock-variants/${actualLocationId}/archive`, ids);
+        case "stock":
+          await apiClient.put(inventoryUrl(`/api/v1/stocks/archive-multiple`), {
+            ids,
+          });
           break;
-        case 'staff':
+        case "staff":
           await apiClient.put(`/api/staff/${actualLocationId}/archive`, ids);
-         
           break;
-         
-          case 'stock-intake':
-           await apiClient.put(`/api/stock-intakes/${actualLocationId}/all/archive`, ids);
-            break;  
-   
+
+        case "stock-intake":
+          await apiClient.put(
+            `/api/stock-intakes/${actualLocationId}/all/archive`,
+            ids,
+          );
+          break;
+
         default:
-          return { success: false, message: `Unsupported entity type: ${entityType}` };
+          return {
+            success: false,
+            message: `Unsupported entity type: ${entityType}`,
+          };
       }
     } catch (error) {
       console.error(`API error archiving ${entityType}:`, error);
-      return { 
-        success: false, 
-        message: `Failed to archive ${entityType}(s): ${(error as Error).message || "API error"}` 
+      return {
+        success: false,
+        message: `Failed to archive ${entityType}(s): ${(error as Error).message || "API error"}`,
       };
     }
 
@@ -74,20 +95,20 @@ if (!actualLocationId) {
       customer: "/customers",
       stockIntake: "/stock-intakes",
     };
-    
+
     if (paths[entityType]) {
       revalidatePath(paths[entityType]);
     }
 
-    return { 
-      success: true, 
-      message: `${ids.length} ${entityType}(s) archived successfully` 
+    return {
+      success: true,
+      message: `${ids.length} ${entityType}(s) archived successfully`,
     };
   } catch (error) {
     console.error(`Error archiving ${entityType}:`, error);
-    return { 
-      success: false, 
-      message: `Failed to archive ${entityType}(s): ${(error as Error).message || "Unknown error"}` 
+    return {
+      success: false,
+      message: `Failed to archive ${entityType}(s): ${(error as Error).message || "Unknown error"}`,
     };
   }
 }

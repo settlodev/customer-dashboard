@@ -59,8 +59,9 @@ export function OrdersDataTable({
       searchKey="orderNumber"
       searchPlaceholder="Search order #, table, staff…"
       total={total}
-      filterKey="orderStatus"
+      filterKey="status"
       filterOptions={ORDERS_TAB_FILTER_OPTIONS}
+      manualFilter
       rowClickBasePath="/orders"
     />
   );

@@ -19,6 +19,18 @@ function decodeJwtClaims(token: string): Record<string, unknown> | null {
 }
 
 /**
+ * True when a JWT access token's `exp` claim has passed (or can't be read).
+ * The signature is NOT verified — this only reads the expiry claim, so it is
+ * safe in the edge/browser. A token with no usable `exp` is treated as expired.
+ */
+export function isAccessTokenExpired(accessToken: string): boolean {
+  const claims = decodeJwtClaims(accessToken);
+  const exp = claims?.exp;
+  if (typeof exp !== "number") return true;
+  return Date.now() / 1000 > exp;
+}
+
+/**
  * Extract subscription_status from a JWT access token.
  */
 export function extractSubscriptionStatus(accessToken: string): SubscriptionStatus {

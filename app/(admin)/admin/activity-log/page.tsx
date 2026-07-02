@@ -140,6 +140,7 @@ export default async function AdminActivityLogPage({
               initialStaffId={params.staffId ?? null}
               initialFrom={params.from ?? null}
               initialTo={params.to ?? null}
+              initialSearch={params.search ?? null}
               defaultPageSize={size}
             />
           )}

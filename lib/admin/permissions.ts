@@ -22,6 +22,16 @@ export const PERM = {
   ACTIVITY_LOG_READ: "internal:activity:read",
   REPAIR_EXECUTE: "internal:repair:execute",
   REPAIR_APPROVE: "internal:repair:approve",
+  // Loans / Financing — lender/operator (admin.localhost). Deliberately the
+  // unprefixed `loans:*` keys (NOT `internal:*`) so they match the Loan
+  // Management Service's PERM_loans:* @PreAuthorize — see Auth InternalPermissions.
+  LOANS_READ: "loans:read",
+  LOANS_APPLICATIONS_READ: "loans:applications:read",
+  LOANS_APPROVE: "loans:approve",
+  LOANS_DISBURSE: "loans:disburse",
+  LOANS_FUNDING_MANAGE: "loans:funding_manage",
+  LOANS_PRODUCT_MANAGE: "loans:product_manage",
+  LOANS_WRITE_OFF: "loans:write_off",
 } as const;
 
 export type InternalPermission = (typeof PERM)[keyof typeof PERM];

@@ -21,7 +21,7 @@ import { columns } from "@/components/tables/stock-take/columns";
 import { getStockTakes } from "@/lib/actions/stock-take-actions";
 import { softFetch } from "@/lib/list-fallback";
 import { getLocationConfig } from "@/lib/actions/location-config-actions";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { getStockTakeKpi } from "@/lib/actions/reports-analytics-actions";
 import { StockTakeKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
 import type { CycleCountType, StockTakeStatus } from "@/types/stock-take/type";
@@ -56,7 +56,7 @@ export default async function Page({ searchParams }: Params) {
   const [responseData, config, location] = await Promise.all([
     softFetch(getStockTakes(page ? page - 1 : 0, pageLimit, status, cycleCountType)),
     getLocationConfig(),
-    getCurrentLocation(),
+    getCurrentDestination(),
   ]);
 
   const data = responseData?.content ?? [];

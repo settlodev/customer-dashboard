@@ -31,6 +31,9 @@ export function AccountRowActions({
 }: AccountRowActionsProps) {
   const router = useRouter();
   const [activeAction, setActiveAction] = useState<ActionKind | null>(null);
+  // On a deleted row the lifecycle actions don't apply — leave only "View
+  // details", which opens the detail page where the account can be purged.
+  const isDeleted = !!account.deletedAt;
 
   return (
     <>
@@ -52,7 +55,7 @@ export function AccountRowActions({
               View details
             </Link>
           </DropdownMenuItem>
-          {canSuspend && (
+          {canSuspend && !isDeleted && (
             <>
               <DropdownMenuSeparator />
               {account.active ? (
@@ -72,7 +75,7 @@ export function AccountRowActions({
               )}
             </>
           )}
-          {canDelete && (
+          {canDelete && !isDeleted && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem

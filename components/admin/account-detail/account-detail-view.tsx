@@ -7,6 +7,7 @@ import {
   Clock,
   MonitorCheck,
   Store,
+  Trash2,
   TrendingUp,
   User,
 } from "lucide-react";
@@ -76,6 +77,7 @@ export function AccountDetailView({
   const whitelabel = account.whitelabelAppCode ?? "SETTLO";
   const age = accountAge(account.createdAt);
   const { kpis } = insights;
+  const deleted = !!account.deletedAt;
 
   return (
     <div className="space-y-4">
@@ -88,7 +90,7 @@ export function AccountDetailView({
               <h1 className="text-[25px] font-bold tracking-[-0.03em] text-ink">
                 {name}
               </h1>
-              <StatusBadge active={account.active} />
+              <StatusBadge active={account.active} deleted={deleted} />
               {account.internal && <InternalBadge />}
               <OnboardingBadge state={account.onboardingState} />
             </div>
@@ -132,6 +134,27 @@ export function AccountDetailView({
           />
         </div>
       </div>
+
+      {/* ── Deleted banner ─────────────────────────────────────── */}
+      {deleted && (
+        <div className="flex flex-wrap items-center gap-3 rounded-[14px] border border-destructive/25 bg-destructive/[0.06] px-4 py-3">
+          <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-[9px] bg-destructive/10 text-destructive">
+            <Trash2 className="h-[17px] w-[17px]" strokeWidth={1.6} />
+          </span>
+          <p className="flex-1 text-[13px] text-ink-2">
+            <b className="font-semibold text-ink">
+              This account was deleted
+              {account.deletedAt ? ` ${timeSince(account.deletedAt)}` : ""}.
+            </b>{" "}
+            It&apos;s hidden from the main accounts list and its owner can no
+            longer sign in. Soft-deleted accounts are anonymised after 30 days
+            but their records remain. If it has no orders, stock or paid
+            invoices, use{" "}
+            <b className="font-semibold text-ink">Purge permanently</b> to
+            remove it for good.
+          </p>
+        </div>
+      )}
 
       <Tabs defaultValue="overview">
         <TabsList>
@@ -366,6 +389,23 @@ export function AccountDetailView({
                 value={account.emailVerified ? "Yes" : "No"}
                 tone={account.emailVerified ? "pos" : "warn"}
               />
+              <DefRow
+                label="Phone verified"
+                value={
+                  account.phoneNumber
+                    ? account.phoneVerified
+                      ? "Yes"
+                      : "No"
+                    : "—"
+                }
+                tone={
+                  account.phoneVerified
+                    ? "pos"
+                    : account.phoneNumber
+                      ? "warn"
+                      : undefined
+                }
+              />
               <DefRow label="Updated" value={formatDateTime(account.updatedAt)} />
             </DefList>
           </SectionCard>
@@ -388,16 +428,23 @@ function InternalBadge() {
 }
 
 // ── Header status badge ──────────────────────────────────────────────
-function StatusBadge({ active }: { active: boolean }) {
+// Deleted takes precedence over active/suspended — a soft-deleted account is
+// also inactive, but "Deleted" is the state that matters here.
+function StatusBadge({ active, deleted }: { active: boolean; deleted?: boolean }) {
+  const label = deleted ? "Deleted" : active ? "Active" : "Suspended";
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold",
-        active ? "bg-pos-tint text-pos" : "bg-neg-tint text-neg",
+        deleted
+          ? "bg-destructive/10 text-destructive"
+          : active
+            ? "bg-pos-tint text-pos"
+            : "bg-neg-tint text-neg",
       )}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
-      {active ? "Active" : "Suspended"}
+      {label}
     </span>
   );
 }

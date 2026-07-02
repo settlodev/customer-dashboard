@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 
@@ -24,6 +24,7 @@ import { Role, RoleScope } from "@/types/roles/type";
 import { Permission, PermissionListResponse } from "@/types/permissions/type";
 import { Input } from "../ui/input";
 import { fetchAllPermissions } from "@/lib/actions/permissions-actions";
+import { groupByDomain } from "@/lib/permissions/grouping";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Textarea } from "../ui/textarea";
@@ -42,7 +43,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
-  const [permissionsByCategory, setPermissionsByCategory] = useState<Record<string, Permission[]>>({});
+  const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
@@ -75,7 +76,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
         setIsLoadingPermissions(true);
         try {
           const data: PermissionListResponse = await fetchAllPermissions();
-          setPermissionsByCategory(data.byCategory ?? {});
+          setAllPermissions(data.all ?? []);
         } catch {
           // Permissions unavailable
         }
@@ -124,20 +125,23 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
     });
   };
 
+  const domains = useMemo(() => groupByDomain(allPermissions), [allPermissions]);
+
   const toggleKey = (key: string) => {
     setSelectedKeys((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
     );
   };
 
-  const toggleCategory = (category: string) => {
-    const categoryKeys = (permissionsByCategory[category] ?? []).map((p) => p.key);
-    const allSelected = categoryKeys.every((k) => selectedKeys.includes(k));
-    if (allSelected) {
-      setSelectedKeys((prev) => prev.filter((k) => !categoryKeys.includes(k)));
-    } else {
-      setSelectedKeys((prev) => [...new Set([...prev, ...categoryKeys])]);
-    }
+  // Toggle a batch of keys (a whole domain or resource): if every key is already
+  // selected, clear them all; otherwise add the missing ones.
+  const toggleMany = (keys: string[]) => {
+    setSelectedKeys((prev) => {
+      const allSelected = keys.every((k) => prev.includes(k));
+      return allSelected
+        ? prev.filter((k) => !keys.includes(k))
+        : [...new Set([...prev, ...keys])];
+    });
   };
 
   const scopeOptions = [
@@ -278,62 +282,106 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
               </div>
             ) : (
               <div className="space-y-4">
-                {Object.entries(permissionsByCategory)
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([category, permissions]) => {
-                    const categoryKeys = permissions.map((p) => p.key);
-                    const allSelected = categoryKeys.every((k) => selectedKeys.includes(k));
-                    const someSelected = categoryKeys.some((k) => selectedKeys.includes(k));
+                {domains.map((domain) => {
+                  const domainKeys = domain.resources.flatMap((r) =>
+                    r.permissions.map((p) => p.key),
+                  );
+                  const domainSelected = domainKeys.filter((k) =>
+                    selectedKeys.includes(k),
+                  ).length;
+                  const domainAll =
+                    domainKeys.length > 0 && domainSelected === domainKeys.length;
+                  const domainSome = domainSelected > 0 && !domainAll;
 
-                    return (
-                      <div key={category} className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
-                        <div className="px-4 py-3 bg-muted/50 border-b border-border flex items-center justify-between">
-                          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 capitalize">
-                            {category}
-                          </h4>
-                          <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground">
-                            <input
-                              type="checkbox"
-                              checked={allSelected}
-                              ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
-                              onChange={() => toggleCategory(category)}
-                              className="h-3.5 w-3.5 rounded border-gray-300"
-                            />
-                            Select all
-                          </label>
-                        </div>
-                        <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                          {permissions
-                            .sort((a, b) => a.name.localeCompare(b.name))
-                            .map((perm) => {
-                              const selected = selectedKeys.includes(perm.key);
-                              const action = perm.key.split(":")[1] || perm.name;
-                              return (
-                                <label
-                                  key={perm.key}
-                                  title={perm.description || perm.name}
-                                  className={`flex items-center gap-2.5 p-2.5 rounded-lg cursor-pointer transition-all text-sm ${
-                                    selected
-                                      ? "bg-primary/5 border border-primary/20"
-                                      : "hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent"
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={selected}
-                                    onChange={() => toggleKey(perm.key)}
-                                    className="h-4 w-4 shrink-0 appearance-none rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 checked:bg-primary checked:border-primary bg-[length:12px_12px] bg-center bg-no-repeat checked:bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%2220%206%209%2017%204%2012%22%2F%3E%3C%2Fsvg%3E')]"
-                                  />
-                                  <span className={`text-xs font-medium ${selected ? "text-primary" : "text-gray-700 dark:text-gray-300"}`}>
-                                    {action}
-                                  </span>
-                                </label>
-                              );
-                            })}
-                        </div>
+                  return (
+                    <div
+                      key={domain.domain}
+                      className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden"
+                    >
+                      {/* Domain header */}
+                      <div className="px-4 py-3 bg-muted/50 border-b border-border flex items-center justify-between gap-3">
+                        <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                          {domain.domain}
+                          <span className="ml-2 font-normal text-muted-foreground">
+                            {domainSelected}/{domainKeys.length}
+                          </span>
+                        </h4>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={domainAll}
+                            ref={(el) => {
+                              if (el) el.indeterminate = domainSome;
+                            }}
+                            onChange={() => toggleMany(domainKeys)}
+                            className="h-3.5 w-3.5 rounded border-gray-300"
+                          />
+                          Select all
+                        </label>
                       </div>
-                    );
-                  })}
+
+                      {/* Resources within the domain */}
+                      <div className="divide-y divide-border">
+                        {domain.resources.map((resource) => {
+                          const resourceKeys = resource.permissions.map((p) => p.key);
+                          const resourceAll = resourceKeys.every((k) =>
+                            selectedKeys.includes(k),
+                          );
+                          const resourceSome =
+                            !resourceAll &&
+                            resourceKeys.some((k) => selectedKeys.includes(k));
+
+                          return (
+                            <div key={resource.category} className="p-3 sm:p-4">
+                              <label className="flex w-fit items-center gap-2 cursor-pointer mb-2">
+                                <input
+                                  type="checkbox"
+                                  checked={resourceAll}
+                                  ref={(el) => {
+                                    if (el) el.indeterminate = resourceSome;
+                                  }}
+                                  onChange={() => toggleMany(resourceKeys)}
+                                  className="h-3.5 w-3.5 rounded border-gray-300"
+                                />
+                                <span className="text-xs font-medium text-muted-foreground">
+                                  {resource.label}
+                                </span>
+                              </label>
+                              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                {resource.permissions.map((perm) => {
+                                  const selected = selectedKeys.includes(perm.key);
+                                  return (
+                                    <label
+                                      key={perm.key}
+                                      title={perm.description || perm.name}
+                                      className={`flex items-center gap-2.5 p-2.5 rounded-lg cursor-pointer transition-all text-sm ${
+                                        selected
+                                          ? "bg-primary/5 border border-primary/20"
+                                          : "hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent"
+                                      }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={selected}
+                                        onChange={() => toggleKey(perm.key)}
+                                        className="h-4 w-4 shrink-0 appearance-none rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 checked:bg-primary checked:border-primary bg-[length:12px_12px] bg-center bg-no-repeat checked:bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%2220%206%209%2017%204%2012%22%2F%3E%3C%2Fsvg%3E')]"
+                                      />
+                                      <span
+                                        className={`text-xs font-medium ${selected ? "text-primary" : "text-gray-700 dark:text-gray-300"}`}
+                                      >
+                                        {perm.name}
+                                      </span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>

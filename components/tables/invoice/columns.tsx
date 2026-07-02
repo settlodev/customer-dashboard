@@ -16,6 +16,7 @@ import {
   isInvoiceOverdue,
   type Invoice,
 } from "@/types/invoicing/type";
+import { initialsFor, thumbColor } from "@/components/tables/shared/table-avatar";
 
 import { InvoiceCellAction } from "./cell-action";
 
@@ -51,7 +52,7 @@ export const columns: ColumnDef<Invoice>[] = [
     cell: ({ row }) => (
       <Link
         href={`/invoices/${row.original.id}`}
-        className="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs font-semibold text-gray-700 hover:underline"
+        className="font-mono text-[12.5px] font-semibold text-ink hover:underline"
       >
         {row.original.invoiceNumber}
       </Link>
@@ -60,18 +61,27 @@ export const columns: ColumnDef<Invoice>[] = [
   {
     accessorKey: "customerName",
     header: "Customer",
-    cell: ({ row }) => (
-      <div className="max-w-[240px]">
-        <div className="truncate text-sm font-medium">
-          {row.original.customerName || "—"}
-        </div>
-        {row.original.customerPhone && (
-          <div className="truncate text-xs text-muted-foreground">
-            {row.original.customerPhone}
+    cell: ({ row }) => {
+      const name = row.original.customerName || "—";
+      return (
+        <div className="flex max-w-[260px] items-center gap-2.5">
+          <span
+            className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-lg font-mono text-[11px] font-semibold text-white"
+            style={{ background: thumbColor(name) }}
+          >
+            {initialsFor(name)}
+          </span>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-medium">{name}</div>
+            {row.original.customerPhone && (
+              <div className="truncate text-xs text-muted-foreground">
+                {row.original.customerPhone}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    ),
+        </div>
+      );
+    },
   },
   {
     accessorKey: "issueDate",

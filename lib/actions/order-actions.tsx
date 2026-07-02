@@ -5,7 +5,9 @@ import { UUID } from "node:crypto";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { SettloErrorHandler } from "@/lib/settlo-error-handler";
-import { FormResponse } from "@/types/types";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
+import type { OrdersKpis } from "@/components/orders/orders-panel";
+import { ApiResponse, FormResponse } from "@/types/types";
 import { CartState } from "@/context/cartContext";
 import {
   CashFlow,
@@ -65,6 +67,115 @@ export const listOrders = async (
     `${ordersBase}${query ? `?${query}` : ""}`,
   );
   return parseStringify(data ?? []);
+};
+
+export interface SearchOrdersParams {
+  fromDate?: string;
+  toDate?: string;
+  status?: OrderStatus | "";
+  /** Drop ABANDONED rows (the Orders tab). The Abandoned tab passes status instead. */
+  excludeAbandoned?: boolean;
+  /** Scope to a single table (the /tables/[id] sales tab). */
+  tableId?: string;
+  /** Scope to orders a staff member is assigned to or finished (the /staff/[id] tab). */
+  staffId?: string;
+  search?: string;
+  /** 1-based page from the URL; converted to the OMS's 0-based `page` here. */
+  page?: number;
+  limit?: number;
+}
+
+/** Minimal empty Spring page so list pages degrade to an empty table on a backend blip. */
+const emptyOrderPage = (): ApiResponse<Order> =>
+  ({
+    content: [],
+    totalElements: 0,
+    totalPages: 0,
+    number: 0,
+    size: 0,
+    first: true,
+    last: true,
+    empty: true,
+  }) as unknown as ApiResponse<Order>;
+
+/**
+ * Server-side paginated, searchable orders feed — backs the dashboard Orders
+ * list. Hits the OMS `GET /api/v1/orders/search`, which returns a lightweight
+ * Spring `Page<OrderSummaryDto>` (only the columns the table renders) instead
+ * of the whole month of fully-hydrated orders. The page slug, search, and
+ * status filter ride the URL and are forwarded here, so the OMS does the
+ * filtering, searching, and paging — no in-memory slice, no per-order child
+ * fan-out, no "Connection closed" timeouts on busy locations.
+ */
+export const searchOrders = async (
+  params: SearchOrdersParams,
+): Promise<ApiResponse<Order>> => {
+  try {
+    const location = await getCurrentLocation();
+    if (!location?.id) return emptyOrderPage();
+
+    const qs = new URLSearchParams();
+    if (params.fromDate) qs.set("fromDate", params.fromDate);
+    if (params.toDate) qs.set("toDate", params.toDate);
+    if (params.status) qs.set("status", params.status);
+    if (params.excludeAbandoned) qs.set("excludeAbandoned", "true");
+    if (params.tableId) qs.set("tableId", params.tableId);
+    if (params.staffId) qs.set("staffId", params.staffId);
+    if (params.search) qs.set("search", params.search);
+    // OMS is 0-indexed; the dashboard pager is 1-indexed.
+    qs.set("page", String(params.page && params.page > 0 ? params.page - 1 : 0));
+    qs.set("size", String(params.limit || 10));
+
+    const data = await oms().get<ApiResponse<Order>>(
+      `${ordersBase}/search?${qs.toString()}`,
+    );
+    return parseStringify(data ?? emptyOrderPage());
+  } catch (error) {
+    rethrowIfBoundary(error);
+    return emptyOrderPage();
+  }
+};
+
+export interface OrdersSummaryParams {
+  fromDate?: string;
+  toDate?: string;
+  status?: OrderStatus | "";
+  excludeAbandoned?: boolean;
+  tableId?: string;
+  staffId?: string;
+}
+
+/**
+ * KPI strip aggregate for the orders list — order count, open/closed counts,
+ * gross total, unpaid-order count — scoped exactly like {@link searchOrders}
+ * (minus search). Backs the /staff/[id] and /tables/[id] Sales tabs, whose
+ * assigned-or-finished / single-table scope the Reports overview can't express,
+ * so the numbers come from the OMS and match the list. Returns null on a blip
+ * so the strip degrades to dashes rather than crashing the page.
+ */
+export const ordersSummary = async (
+  params: OrdersSummaryParams,
+): Promise<OrdersKpis | null> => {
+  try {
+    const location = await getCurrentLocation();
+    if (!location?.id) return null;
+
+    const qs = new URLSearchParams();
+    if (params.fromDate) qs.set("fromDate", params.fromDate);
+    if (params.toDate) qs.set("toDate", params.toDate);
+    if (params.status) qs.set("status", params.status);
+    if (params.excludeAbandoned) qs.set("excludeAbandoned", "true");
+    if (params.tableId) qs.set("tableId", params.tableId);
+    if (params.staffId) qs.set("staffId", params.staffId);
+
+    const data = await oms().get<OrdersKpis>(
+      `${ordersBase}/summary?${qs.toString()}`,
+    );
+    return parseStringify(data);
+  } catch (error) {
+    rethrowIfBoundary(error);
+    return null;
+  }
 };
 
 const EMPTY_VOIDS_REPORT: OrderVoidsResponse = {

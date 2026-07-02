@@ -3,7 +3,7 @@ import { Lock } from "lucide-react";
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
 import { ReservationsTable } from "@/components/reports/stock/reservations-table";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { searchStockReservations } from "@/lib/actions/stock-reservation-actions";
 import type {
   StockReservationPage,
@@ -35,8 +35,10 @@ const fmt = (value: number) =>
  * snappy.
  */
 export async function ReservationsTab({ page, limit, status }: Props) {
-  const location = await getCurrentLocation();
-  const locationId = location?.id ?? null;
+  // Follow the active destination (location OR store), not just the location —
+  // in store mode getCurrentLocation() is null, which would blank the report.
+  const destination = await getCurrentDestination();
+  const locationId = destination?.id ?? null;
   const effectiveStatus = VALID_STATUSES.includes(
     status as StockReservationStatus,
   )

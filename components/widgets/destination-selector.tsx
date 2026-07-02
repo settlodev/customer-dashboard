@@ -34,6 +34,13 @@ interface Props {
   placeholder?: string;
   /** Emits the picked destination's id *and* type so the form can set both. */
   onChange: (id: string, type: DestinationType) => void;
+  /**
+   * Loader for the selectable options. Defaults to `getTransferDestinations`
+   * (the stock-transfer picker). The stock-*request* form passes
+   * `getRequestSources` so the same widget lists only valid request sources for
+   * the active destination.
+   */
+  loadOptions?: () => Promise<DestinationOption[]>;
 }
 
 const TYPE_META: Record<
@@ -53,6 +60,7 @@ const DestinationSelector: React.FC<Props> = ({
   isDisabled,
   placeholder = "Select destination",
   onChange,
+  loadOptions,
 }) => {
   const [open, setOpen] = useState(false);
   const [options, setOptions] = useState<DestinationOption[]>([]);
@@ -78,10 +86,13 @@ const DestinationSelector: React.FC<Props> = ({
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
     setIsLoading(true);
-    getTransferDestinations()
+    (loadOptions ?? getTransferDestinations)()
       .then(setOptions)
       .catch(() => setOptions([]))
       .finally(() => setIsLoading(false));
+    // The hasFetchedRef guard fixes the loader to its first value (forms never
+    // swap loaders), so this intentionally runs once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const grouped = useMemo(() => {

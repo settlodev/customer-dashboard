@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +16,7 @@ import {
   FileText,
   ListPlus,
   Loader2,
+  Plus,
   Receipt,
   Trash2,
   User,
@@ -47,12 +54,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { formatMoney } from "@/lib/helpers";
 
 import CustomerSelector from "@/components/widgets/customer-selector";
 import CurrencySelector from "@/components/widgets/currency-selector";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { PhoneInput } from "@/components/ui/phone-input";
+import QuickCustomerDialog from "@/components/widgets/quick-customer-dialog";
+import type { Customer } from "@/types/customer/type";
 import {
   Select,
   SelectContent,
@@ -74,12 +83,15 @@ import {
   isProformaEditable,
   type Proforma,
 } from "@/types/invoicing/type";
+import { ProformaTotalsRows } from "@/components/invoicing/totals-rows";
 
 import styles from "./styles/form-shell.module.css";
 
 interface Props {
   item: Proforma | null;
   defaultCurrency: string;
+  /** Cards injected below the live "Total due" card in the right rail. */
+  railExtra?: ReactNode;
 }
 
 const blankLine = {
@@ -93,7 +105,7 @@ const blankLine = {
   taxInclusive: false,
 };
 
-export default function ProformaForm({ item, defaultCurrency }: Props) {
+export default function ProformaForm({ item, defaultCurrency, railExtra }: Props) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -177,13 +189,14 @@ export default function ProformaForm({ item, defaultCurrency }: Props) {
   // Default any line that has no tax to the standard rate once the types load.
   // New proformas: every line. Edits: only lines appended after mount (index >=
   // the count we loaded) — existing lines keep their stored rates. Re-runs when
-  // a line is added and is idempotent (only fills nulls), so a freshly-appended
-  // line still gets the default even if the tax types hadn't loaded yet at the
-  // moment it was added.
-  const originalLineCount = useRef(item?.lines?.length ?? 0);
+  // a line is added and is idempotent (only fills nulls).
+  // Derived from the stable `item` prop (not a ref) so it can't go stale across
+  // Fast Refresh or a reused form instance — a stale value here would make the
+  // effect skip newly-added edit-mode lines and leave their tax blank.
+  const originalLineCount = item?.lines?.length ?? 0;
   useEffect(() => {
     if (defaultTaxRate == null) return;
-    const startIdx = isEdit ? originalLineCount.current : 0;
+    const startIdx = isEdit ? originalLineCount : 0;
     (form.getValues("lines") ?? []).forEach((l, i) => {
       if (i >= startIdx && l?.taxRate == null) {
         form.setValue(`lines.${i}.taxRate`, defaultTaxRate, {
@@ -191,7 +204,26 @@ export default function ProformaForm({ item, defaultCurrency }: Props) {
         });
       }
     });
-  }, [defaultTaxRate, isEdit, form, fields.length]);
+  }, [defaultTaxRate, isEdit, originalLineCount, form, fields.length]);
+
+  // Quick-create customer — bumping `customerListKey` after a create remounts
+  // the CustomerSelector so the new customer shows in its list.
+  const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
+  const [customerListKey, setCustomerListKey] = useState(0);
+  const populateCustomer = (c: Customer) => {
+    form.setValue("customerId", c.id, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    form.setValue(
+      "customerName",
+      c.fullName || [c.firstName, c.lastName].filter(Boolean).join(" "),
+      { shouldValidate: true },
+    );
+    form.setValue("customerPhone", c.phoneNumber ?? "");
+    form.setValue("customerEmail", c.email ?? "");
+    form.setValue("customerTin", c.tinNumber ?? "");
+  };
 
   const currency = form.watch("currencyCode") || defaultCurrency;
   const watchedLines = form.watch("lines");
@@ -234,59 +266,52 @@ export default function ProformaForm({ item, defaultCurrency }: Props) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(submit)} className={styles.formRoot}>
-        <div className={styles.formStack}>
-          {/* ── 01. Customer ─────────────────────────────────────── */}
-          <section className={styles.formCard}>
-            <header className={styles.formCardHead}>
-              <div className={styles.icoBox}>
-                <User className="h-3.5 w-3.5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3>Customer</h3>
-                <p className={styles.formCardHeadDesc}>
-                  Who is this proforma for? Pick a customer to prefill their
-                  details.
-                </p>
-              </div>
-              <div className={styles.formCardActions}>
-                <span className={styles.stepBadge}>STEP 01</span>
-              </div>
-            </header>
-            <div className={styles.formBody}>
+        <div className={styles.formGrid}>
+          <div className={styles.formStack}>
+            {/* Customer */}
+            <SectionCard
+              icon={<User className="h-4 w-4" />}
+              title="Customer"
+              subtitle="Who is this proforma for?"
+            >
               <FormField
                 control={form.control}
                 name="customerId"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="mb-4">
                     <FormLabel className={styles.fieldLabel}>
                       Customer <span className="req">*</span>
                     </FormLabel>
-                    <FormControl>
-                      <CustomerSelector
-                        placeholder="Search customers…"
-                        value={field.value}
-                        isDisabled={isPending || isLocked}
-                        onChange={(v) => field.onChange(v)}
-                        onSelectCustomer={(c) => {
-                          form.setValue(
-                            "customerName",
-                            c.fullName ||
-                              [c.firstName, c.lastName]
-                                .filter(Boolean)
-                                .join(" "),
-                            { shouldValidate: true },
-                          );
-                          form.setValue("customerPhone", c.phoneNumber ?? "");
-                          form.setValue("customerEmail", c.email ?? "");
-                          form.setValue("customerTin", c.tinNumber ?? "");
-                        }}
-                      />
-                    </FormControl>
+                    <div className="flex items-center gap-2">
+                      <div className="min-w-0 flex-1">
+                        <CustomerSelector
+                          key={customerListKey}
+                          placeholder="Search customers…"
+                          value={field.value}
+                          isDisabled={isPending || isLocked}
+                          showOnOpen
+                          onChange={(v) => field.onChange(v)}
+                          onSelectCustomer={populateCustomer}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-10 w-10 shrink-0"
+                        onClick={() => setQuickCustomerOpen(true)}
+                        disabled={isPending || isLocked}
+                        title="Create a new customer"
+                        aria-label="Create a new customer"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
-              <div className="mt-3.5 grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-4">
                 <FormField
                   control={form.control}
                   name="customerName"
@@ -315,11 +340,11 @@ export default function ProformaForm({ item, defaultCurrency }: Props) {
                         Phone <span className="opt">OPTIONAL</span>
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          {...field}
+                        <PhoneInput
+                          placeholder="Enter phone number"
                           value={field.value ?? ""}
+                          onChange={(v) => field.onChange(v ?? "")}
                           disabled={isPending || isLocked}
-                          placeholder="07xx xxx xxx"
                         />
                       </FormControl>
                       <FormMessage className="text-xs" />
@@ -368,27 +393,14 @@ export default function ProformaForm({ item, defaultCurrency }: Props) {
                   )}
                 />
               </div>
-            </div>
-          </section>
+            </SectionCard>
 
-          {/* ── 02. Line items ───────────────────────────────────── */}
-          <section className={styles.formCard}>
-            <header className={styles.formCardHead}>
-              <div className={styles.icoBox}>
-                <Receipt className="h-3.5 w-3.5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3>Line items</h3>
-                <p className={styles.formCardHeadDesc}>
-                  Add what you&apos;re quoting. Link a stock item to reserve
-                  inventory, or just describe it.
-                </p>
-              </div>
-              <div className={styles.formCardActions}>
-                <span className={styles.stepBadge}>STEP 02</span>
-              </div>
-            </header>
-            <div className={styles.formBody}>
+            {/* Line items */}
+            <SectionCard
+              icon={<Receipt className="h-4 w-4" />}
+              title="Line items"
+              subtitle="Add what you're quoting. Link a stock item to reserve inventory."
+            >
               <div className="space-y-3">
                 {fields.map((fieldRow, index) => {
                   const line = watchedLines?.[index];
@@ -396,208 +408,196 @@ export default function ProformaForm({ item, defaultCurrency }: Props) {
                     quantity: line?.quantity,
                     unitPrice: line?.unitPrice,
                     lineDiscountAmount: line?.lineDiscountAmount,
-                    taxRate: line?.taxRate != null ? Number(line.taxRate) / 100 : 0,
+                    taxRate:
+                      line?.taxRate != null ? Number(line.taxRate) / 100 : 0,
                     taxInclusive: line?.taxInclusive,
                   }).lineTotal;
 
                   return (
                     <div
                       key={fieldRow.id}
-                      className="rounded-lg border border-line bg-surface/40 p-3"
+                      className="rounded-xl border border-line bg-surface/50 p-4 sm:p-5"
                     >
-                      <div className="flex items-start gap-2">
-                        <div className="grid flex-1 grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-12">
-                          {/* Stock link (optional) */}
-                          <div className="sm:col-span-5">
-                            <FormField
-                              control={form.control}
-                              name={`lines.${index}.stockVariantId`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className={styles.fieldLabel}>
-                                    Stock item{" "}
-                                    <span className="opt">OPTIONAL</span>
-                                  </FormLabel>
-                                  <FormControl>
-                                    <StockVariantSelector
-                                      value={field.value || ""}
-                                      isDisabled={isPending || isLocked}
-                                      placeholder="Link to inventory…"
-                                      onChange={(v) => field.onChange(v)}
-                                      onVariantMeta={(meta) => {
-                                        if (
-                                          meta &&
-                                          !form.getValues(
-                                            `lines.${index}.description`,
-                                          )
-                                        ) {
-                                          form.setValue(
-                                            `lines.${index}.description`,
-                                            meta.displayName,
-                                            { shouldValidate: true },
-                                          );
-                                        }
-                                      }}
-                                    />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          {/* Description */}
-                          <div className="sm:col-span-7">
-                            <FormField
-                              control={form.control}
-                              name={`lines.${index}.description`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className={styles.fieldLabel}>
-                                    Description <span className="req">*</span>
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      disabled={isPending || isLocked}
-                                      placeholder="What is being quoted?"
-                                    />
-                                  </FormControl>
-                                  <FormMessage className="text-xs" />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          {/* Qty */}
-                          <div className="sm:col-span-3">
-                            <FormField
-                              control={form.control}
-                              name={`lines.${index}.quantity`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className={styles.fieldLabel}>
-                                    Qty <span className="req">*</span>
-                                  </FormLabel>
-                                  <FormControl>
-                                    <NumericInput
-                                      value={field.value}
-                                      onChange={field.onChange}
-                                      disabled={isPending || isLocked}
-                                      placeholder="1"
-                                    />
-                                  </FormControl>
-                                  <FormMessage className="text-xs" />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          {/* Unit price */}
-                          <div className="sm:col-span-3">
-                            <FormField
-                              control={form.control}
-                              name={`lines.${index}.unitPrice`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className={styles.fieldLabel}>
-                                    Unit price <span className="req">*</span>
-                                  </FormLabel>
-                                  <FormControl>
-                                    <NumericInput
-                                      value={field.value}
-                                      onChange={field.onChange}
-                                      disabled={isPending || isLocked}
-                                      placeholder="0.00"
-                                    />
-                                  </FormControl>
-                                  <FormMessage className="text-xs" />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          {/* Discount */}
-                          <div className="sm:col-span-3">
-                            <FormField
-                              control={form.control}
-                              name={`lines.${index}.lineDiscountAmount`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className={styles.fieldLabel}>
-                                    Discount{" "}
-                                    <span className="opt">AMOUNT</span>
-                                  </FormLabel>
-                                  <FormControl>
-                                    <NumericInput
-                                      value={field.value}
-                                      onChange={field.onChange}
-                                      disabled={isPending || isLocked}
-                                      placeholder="0.00"
-                                    />
-                                  </FormControl>
-                                  <FormMessage className="text-xs" />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          {/* Tax */}
-                          <div className="sm:col-span-3">
-                            <FormField
-                              control={form.control}
-                              name={`lines.${index}.taxRate`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className={styles.fieldLabel}>
-                                    Tax
-                                  </FormLabel>
-                                  <FormControl>
-                                    <TaxTypeSelect
-                                      taxTypes={taxTypes}
-                                      value={field.value}
-                                      onChange={field.onChange}
-                                      disabled={isPending || isLocked}
-                                    />
-                                  </FormControl>
-                                  <FormMessage className="text-xs" />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          {/* Tax inclusive + line total */}
-                          <div className="flex items-center justify-between gap-3 sm:col-span-12">
-                            <FormField
-                              control={form.control}
-                              name={`lines.${index}.taxInclusive`}
-                              render={({ field }) => (
-                                <FormItem className="flex flex-row items-center gap-2 space-y-0">
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value}
-                                      onCheckedChange={field.onChange}
-                                      disabled={isPending || isLocked}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="!mt-0 text-xs font-normal text-muted-foreground">
-                                    Price includes tax
-                                  </FormLabel>
-                                </FormItem>
-                              )}
-                            />
-                            <div className="font-mono text-xs tabular-nums text-muted-foreground">
-                              Line total{" "}
-                              <span className="font-semibold text-ink">
-                                {formatMoney(lineTotal, currency)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="mt-5 flex-shrink-0 text-red-500 hover:text-red-600"
-                          disabled={isPending || isLocked || fields.length === 1}
-                          onClick={() => remove(index)}
-                          aria-label="Remove line"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                      <div className="mb-4 flex items-center justify-between gap-3 border-b border-dashed border-line-2 pb-3">
+                        <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                          Line {index + 1}
+                        </span>
+                        {fields.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1.5 px-2 text-xs font-medium text-neg hover:bg-neg/10 hover:text-neg"
+                            disabled={isPending || isLocked}
+                            onClick={() => remove(index)}
+                            aria-label="Remove line"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                        <FormField
+                          control={form.control}
+                          name={`lines.${index}.stockVariantId`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className={styles.fieldLabel}>
+                                Stock item <span className="opt">OPTIONAL</span>
+                              </FormLabel>
+                              <FormControl>
+                                <StockVariantSelector
+                                  value={field.value || ""}
+                                  isDisabled={isPending || isLocked}
+                                  placeholder="Link to inventory…"
+                                  onChange={(v) => field.onChange(v)}
+                                  onVariantMeta={(meta) => {
+                                    if (
+                                      meta &&
+                                      !form.getValues(
+                                        `lines.${index}.description`,
+                                      )
+                                    ) {
+                                      form.setValue(
+                                        `lines.${index}.description`,
+                                        meta.displayName,
+                                        { shouldValidate: true },
+                                      );
+                                    }
+                                  }}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`lines.${index}.description`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className={styles.fieldLabel}>
+                                Description <span className="req">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  disabled={isPending || isLocked}
+                                  placeholder="What is being quoted?"
+                                />
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-3.5 sm:grid-cols-4">
+                        <FormField
+                          control={form.control}
+                          name={`lines.${index}.quantity`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className={styles.fieldLabel}>
+                                Qty <span className="req">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <NumericInput
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  disabled={isPending || isLocked}
+                                  placeholder="1"
+                                />
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`lines.${index}.unitPrice`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className={styles.fieldLabel}>
+                                Unit price <span className="req">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <NumericInput
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  disabled={isPending || isLocked}
+                                  placeholder="0.00"
+                                />
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`lines.${index}.lineDiscountAmount`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className={styles.fieldLabel}>
+                                Discount
+                              </FormLabel>
+                              <FormControl>
+                                <NumericInput
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  disabled={isPending || isLocked}
+                                  placeholder="0.00"
+                                />
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`lines.${index}.taxRate`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className={styles.fieldLabel}>
+                                Tax
+                              </FormLabel>
+                              <FormControl>
+                                <TaxTypeSelect
+                                  taxTypes={taxTypes}
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  disabled={isPending || isLocked}
+                                />
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-3 border-t border-dashed border-line-2 pt-3">
+                        <FormField
+                          control={form.control}
+                          name={`lines.${index}.taxInclusive`}
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  disabled={isPending || isLocked}
+                                />
+                              </FormControl>
+                              <FormLabel className="!mt-0 text-xs font-normal text-muted-foreground">
+                                Price includes tax
+                              </FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                        <span className="text-[13px] text-muted-foreground">
+                          Line total{" "}
+                          <b className="ml-1.5 font-mono text-sm font-semibold tabular-nums text-ink">
+                            {fmtMoney(lineTotal, currency)}
+                          </b>
+                        </span>
                       </div>
                     </div>
                   );
@@ -621,50 +621,14 @@ export default function ProformaForm({ item, defaultCurrency }: Props) {
                 <ListPlus className="mr-1.5 h-3.5 w-3.5" />
                 Add line
               </Button>
+            </SectionCard>
 
-              {/* Totals preview */}
-              <div className="mt-4 flex justify-end">
-                <dl className="w-full max-w-xs space-y-1 font-mono text-sm tabular-nums">
-                  <div className="flex justify-between text-muted-foreground">
-                    <dt>Subtotal</dt>
-                    <dd>{formatMoney(totals.subtotalAmount, currency)}</dd>
-                  </div>
-                  {totals.discountAmount > 0 && (
-                    <div className="flex justify-between text-muted-foreground">
-                      <dt>Discount</dt>
-                      <dd>−{formatMoney(totals.discountAmount, currency)}</dd>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-muted-foreground">
-                    <dt>Tax</dt>
-                    <dd>{formatMoney(totals.taxAmount, currency)}</dd>
-                  </div>
-                  <div className="flex justify-between border-t border-line pt-1 text-base font-semibold text-ink">
-                    <dt>Total</dt>
-                    <dd>{formatMoney(totals.totalAmount, currency)}</dd>
-                  </div>
-                </dl>
-              </div>
-            </div>
-          </section>
-
-          {/* ── 03. Details ──────────────────────────────────────── */}
-          <section className={styles.formCard}>
-            <header className={styles.formCardHead}>
-              <div className={styles.icoBox}>
-                <FileText className="h-3.5 w-3.5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3>Details</h3>
-                <p className={styles.formCardHeadDesc}>
-                  Currency, validity, and any notes for the customer.
-                </p>
-              </div>
-              <div className={styles.formCardActions}>
-                <span className={styles.stepBadge}>STEP 03</span>
-              </div>
-            </header>
-            <div className={styles.formBody}>
+            {/* Details */}
+            <SectionCard
+              icon={<FileText className="h-4 w-4" />}
+              title="Details"
+              subtitle="Currency, validity, and any notes for the customer."
+            >
               <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
                 <FormField
                   control={form.control}
@@ -727,19 +691,43 @@ export default function ProformaForm({ item, defaultCurrency }: Props) {
                   )}
                 />
               </div>
+            </SectionCard>
+          </div>
+          <aside
+            className={cn(
+              styles.formStack,
+              "lg:sticky lg:top-4 lg:self-start",
+            )}
+          >
+            <div className="rounded-xl border border-ink bg-ink p-4 text-white">
+              <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.1em] text-white/55">
+                {isEdit ? "Total due" : "Total"}
+              </div>
+              <ProformaTotalsRows totals={totals} currency={currency} accent />
             </div>
-          </section>
+            {railExtra}
+          </aside>
         </div>
 
-        {/* Sticky footer */}
+        {/* Sticky save bar */}
         <div className={styles.formFoot}>
-          <span className={styles.formFootSaveState}>
-            <FileText className="h-3 w-3" />
-            {isEdit
-              ? `Editing ${item!.proformaNumber}`
-              : "Saved as DRAFT — share it or convert to an invoice next"}
-          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+              Total
+            </span>
+            <span className="text-[22px] font-semibold leading-none tracking-tight text-ink">
+              {totals.totalAmount.toLocaleString(undefined, {
+                maximumFractionDigits: 0,
+              })}
+            </span>
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {currency}
+            </span>
+          </div>
           <div className={styles.formFootSpacer} />
+          <span className="hidden font-mono text-[11px] text-muted-foreground sm:inline">
+            {isEdit ? `Editing ${item!.proformaNumber}` : "New proforma"}
+          </span>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button type="button" variant="ghost" disabled={isPending}>
@@ -771,7 +759,58 @@ export default function ProformaForm({ item, defaultCurrency }: Props) {
           </Button>
         </div>
       </form>
+
+      <QuickCustomerDialog
+        open={quickCustomerOpen}
+        onOpenChange={setQuickCustomerOpen}
+        onCreated={(c) => {
+          populateCustomer(c);
+          setCustomerListKey((k) => k + 1);
+        }}
+      />
     </Form>
+  );
+}
+
+// Local money formatter (kept light to avoid a server-action import here).
+function fmtMoney(amount: number, currency: string): string {
+  return `${(amount ?? 0).toLocaleString()} ${currency}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Titled section card — the clean dashboard card (icon + title + subtitle),
+// replacing the dated STEP 01/02/03 chrome.
+// ─────────────────────────────────────────────────────────────────────
+function SectionCard({
+  icon,
+  title,
+  subtitle,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="overflow-hidden rounded-xl border border-line bg-card">
+      <header className="flex items-center gap-3 border-b border-line px-4 py-3.5 sm:px-5">
+        <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg border border-line bg-canvas text-ink-2">
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <div className="text-sm font-semibold tracking-tight text-ink">
+            {title}
+          </div>
+          {subtitle && (
+            <div className="mt-0.5 truncate text-xs text-muted-foreground">
+              {subtitle}
+            </div>
+          )}
+        </div>
+      </header>
+      <div className="p-4 sm:p-5">{children}</div>
+    </section>
   );
 }
 
@@ -833,8 +872,8 @@ function DatePicker({ value, onChange, disabled, clearable }: DatePickerProps) {
 // Tax-type picker for a line — a dropdown of the business's configured tax
 // types (Accounting service). The proforma line stores only the rate, so the
 // selection maps to/from the line's `taxRate` percentage by matching on the
-// type's `ratePercent`. A rate that no longer maps to an active type (e.g. the
-// type was archived) still shows as a disabled "custom" row so it's visible.
+// type's `ratePercent`. A rate that no longer maps to an active type still
+// shows as a disabled "custom" row so it's visible.
 // ─────────────────────────────────────────────────────────────────────
 
 const CUSTOM_RATE = "__custom_rate__";

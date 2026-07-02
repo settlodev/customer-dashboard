@@ -7,7 +7,7 @@ import {
   PageBody,
 } from "@/components/layouts/page-shell";
 import { getStock } from "@/lib/actions/stock-actions";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import {
   getMovementsByVariant,
@@ -57,7 +57,7 @@ export default async function StockDetailPage({
   const { id } = await params;
   const [stock, location, currency, locationConfig] = await Promise.all([
     getStock(id),
-    getCurrentLocation(),
+    getCurrentDestination(),
     getLocationCurrency(),
     getLocationConfig(),
   ]);

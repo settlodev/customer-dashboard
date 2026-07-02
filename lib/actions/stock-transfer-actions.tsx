@@ -96,8 +96,17 @@ export async function getTransferDestinations(): Promise<DestinationOption[]> {
   }
 
   if (storesRes.status === "fulfilled") {
+    // When the source is a store, store→store transfers are restricted to
+    // sibling stores under the same parent location (the backend enforces
+    // this authoritatively). Fail open if the source's parent can't be
+    // determined — let the backend reject rather than hide everything.
+    const sourceStoreParentId =
+      source?.type === "STORE"
+        ? storesRes.value.find((s) => s.id === source.id)?.locationId ?? null
+        : null;
     for (const st of storesRes.value) {
       if (!st.active) continue;
+      if (sourceStoreParentId && st.locationId !== sourceStoreParentId) continue;
       options.push({
         id: st.id,
         name: st.name,

@@ -1,6 +1,7 @@
 // types/menu_items.ts
 import { MenuItemArgType } from "@/types/menu-item-type";
 import { LOCATION_WIDE_REPORT_LINKS } from "@/lib/reports-access";
+import { LOANS_ENABLED } from "@/lib/loans/config";
 
 export const menuItems = (
   args?: MenuItemArgType,
@@ -10,6 +11,10 @@ export const menuItems = (
 
   if (menuType === "warehouse") {
     return getWarehouseMenuItems(args);
+  }
+
+  if (menuType === "store") {
+    return getStoreMenuItems(args);
   }
 
   return getNormalMenuItems(args);
@@ -510,6 +515,36 @@ const getNormalMenuItems = (
       ],
     },
 
+    // Financing — feature-flagged via NEXT_PUBLIC_LOANS_ENABLED (see
+    // lib/loans/config.ts). Hidden entirely until the module is switched on.
+    ...(LOANS_ENABLED
+      ? [
+          {
+            label: "Financing",
+            showSeparator: true,
+            collapsible: false,
+            current: args?.isCurrentItem,
+            icon: "general",
+            items: [
+              {
+                title: "Loans",
+                link: "/loans",
+                current: args?.isCurrentItem,
+                icon: "cart",
+                permission: "loans:read",
+              },
+              {
+                title: "Apply for a loan",
+                link: "/loans/apply",
+                current: args?.isCurrentItem,
+                icon: "cart",
+                permission: "loans:apply",
+              },
+            ],
+          },
+        ]
+      : []),
+
     // Business Operations
     {
       label: "Business operations",
@@ -556,6 +591,162 @@ const getNormalMenuItems = (
         },
       ],
     },
+  ];
+};
+
+// Store mode — shown when the active destination is a store (a stockroom
+// attached to a parent location). A store cannot sell, so Sales, Accounting,
+// Business operations, Procurement and the product catalogue (Inventory
+// management) are all dropped; Reports collapses to stock only. The store
+// shares its parent location's catalogue but holds its own quantities, which
+// it manages here and moves via Stock transfer / Stock request.
+const getStoreMenuItems = (args?: MenuItemArgType) => {
+  const reportsReadAll = args?.reportsReadAll !== false; // default true
+  const storeId = args?.currentStoreId;
+  return [
+    // Whole-business overview — business-scoped and permission-guarded, kept
+    // for context (it is not store-scoped, so it shows the parent business).
+    {
+      label: "Business overview",
+      link: "/business-overview",
+      showSeparator: true,
+      collapsible: false,
+      current: args?.isCurrentItem,
+      icon: "inventory",
+      items: [],
+    },
+
+    // Reports — stock only in store mode (no sales/finance reports).
+    {
+      label: "Reports",
+      showSeparator: true,
+      collapsible: false,
+      current: args?.isCurrentItem,
+      icon: "dashboard",
+      items: [
+        {
+          title: "Stock report",
+          link: "/report/stock",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+      ].filter((it) => reportsReadAll || !LOCATION_WIDE_REPORT_LINKS.includes(it.link)),
+    },
+
+    // Stock management — the core store workspace. Consumption Rules /
+    // Analytics are intentionally omitted (a recipe/production concern, not a
+    // stockroom one). Stock transfer + Stock request are always shown here
+    // (a store implies the business has more than one destination).
+    {
+      label: "Stock management",
+      showSeparator: true,
+      collapsible: false,
+      current: args?.isCurrentItem,
+      icon: "stock",
+      items: [
+        {
+          title: "Stock items",
+          link: "/stock-variants",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Stock intake",
+          link: "/stock-intakes",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Stock modification",
+          link: "/stock-modifications",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Stock usage",
+          link: "/stock-usages",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Stock take",
+          link: "/stock-takes",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Traceability",
+          link: "/traceability",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Stock transfer",
+          link: "/stock-transfers",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Stock request",
+          link: "/stock-requests",
+          current: args?.isCurrentItem,
+          icon: "truck-return",
+        },
+        {
+          title: "Units of measure",
+          link: "/units",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+      ],
+    },
+
+    // People — store staff and their roles (no customers / account members).
+    {
+      label: "People",
+      showSeparator: storeId ? true : false,
+      collapsible: false,
+      current: args?.isCurrentItem,
+      icon: "customers",
+      items: [
+        {
+          title: "Staff",
+          link: "/staff",
+          current: args?.isCurrentItem,
+          icon: "cart",
+          permission: "staff:read",
+        },
+        {
+          title: "Shifts",
+          link: "/shifts",
+          current: args?.isCurrentItem,
+          icon: "cart",
+          permission: "shifts:read",
+        },
+        {
+          title: "Roles",
+          link: "/roles",
+          current: args?.isCurrentItem,
+          icon: "cart",
+          permission: "roles:read",
+        },
+      ],
+    },
+
+    // Store profile — links to the active store's detail page.
+    ...(storeId
+      ? [
+          {
+            label: "Store",
+            link: `/stores/${storeId}`,
+            showSeparator: false,
+            collapsible: false,
+            current: args?.isCurrentItem,
+            icon: "general",
+            items: [],
+          },
+        ]
+      : []),
   ];
 };
 

@@ -20,6 +20,8 @@ export interface MeAccount {
   email: string;
   active: boolean;
   owner: boolean;
+  /** OWNER | MEMBER | STAFF — how the caller relates to this account. */
+  relationship?: "OWNER" | "MEMBER" | "STAFF";
 }
 
 /**

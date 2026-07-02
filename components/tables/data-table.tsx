@@ -483,7 +483,14 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
   });
 
-  const searchValue = table.getColumn(searchKey)?.getFilterValue() as string;
+  // Resolve the search column once. When the search box is hidden the column
+  // is never looked up: callers that hide search (server-paged tables whose
+  // backend exposes its own filter inputs) may pass a `searchKey` that
+  // intentionally maps to no column, and TanStack's `getColumn` would otherwise
+  // log a dev-only "Column with id '…' does not exist" error for a box that is
+  // never rendered.
+  const searchColumn = hideSearch ? undefined : table.getColumn(searchKey);
+  const searchValue = searchColumn?.getFilterValue() as string;
 
   // Push the typed search value to the URL after a 300 ms debounce.
   // No-op when the input already matches `?search=` — without this guard
@@ -600,11 +607,9 @@ export function DataTable<TData, TValue>({
             className="h-9 pl-9 text-[12.5px]"
             placeholder={searchPlaceholder}
             type="search"
-            value={
-              (table.getColumn(searchKey)?.getFilterValue() as string) ?? ""
-            }
+            value={(searchColumn?.getFilterValue() as string) ?? ""}
             onChange={(event) =>
-              table.getColumn(searchKey)?.setFilterValue(event.target.value)
+              searchColumn?.setFilterValue(event.target.value)
             }
           />
         </div>

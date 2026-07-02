@@ -12,7 +12,7 @@ import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-modification/column";
 import { searchStockModifications } from "@/lib/actions/stock-modification-actions";
 import { softFetch } from "@/lib/list-fallback";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { getStockModificationKpi } from "@/lib/actions/reports-analytics-actions";
 import { StockModificationKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
 import { Plus } from "lucide-react";
@@ -41,7 +41,7 @@ export default async function Page({ searchParams }: Params) {
 
   const [responseData, location] = await Promise.all([
     softFetch(searchStockModifications(page ? page - 1 : 0, pageLimit, category)),
-    getCurrentLocation(),
+    getCurrentDestination(),
   ]);
 
   const data = responseData?.content ?? [];

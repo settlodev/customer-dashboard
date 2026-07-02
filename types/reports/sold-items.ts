@@ -46,6 +46,15 @@ export interface SoldItemLine {
   orderId: UUID | string;
   orderNumber: string;
 
+  /**
+   * Table the parent order was opened on, joined from the order fact in
+   * the Reports Service (null for table-less orders — takeaway / counter
+   * / retail). Only the id travels; the screen resolves the display name
+   * client-side from the OMS tables list, exactly like the orders list
+   * and the "Sales → By table" report.
+   */
+  tableId: UUID | string | null;
+
   // Product
   productId: UUID | string;
   productVariantId: UUID | string | null;
@@ -132,7 +141,7 @@ export interface SoldItemsReport {
   locationId: UUID | string;
   locationName: string;
   fromDate: string; // yyyy-MM-dd
-  toDate: string;   // yyyy-MM-dd
+  toDate: string; // yyyy-MM-dd
   generatedAt: string; // ISO
   summary: SoldItemsSummary;
   items: SoldItemLine[];

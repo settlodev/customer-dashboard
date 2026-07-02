@@ -13,8 +13,9 @@ import { DEFAULT_CURRENCY } from "@/lib/helpers";
 import { Money } from "@/components/widgets/money";
 import { USAGE_CATEGORY_OPTIONS } from "@/types/stock-usage/type";
 import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
-import { fetchDepartmentsForCurrentLocation } from "@/lib/actions/department-actions";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { fetchDepartmentsByLocation } from "@/lib/actions/department-actions";
+import { getCurrentDestination } from "@/lib/actions/context";
+import { getCurrentStore } from "@/lib/actions/store-actions";
 import { getEntityEntitlements } from "@/lib/actions/entitlement-actions";
 import type { Department } from "@/types/department/type";
 
@@ -284,14 +285,25 @@ export default async function StockUsagePage({ params }: { params: Params }) {
 
   // New record — load departments & entitlements server-side so the form
   // mounts with a valid `departmentId` and the right multi-department UX.
-  const [departments, currentLocation] = await Promise.all([
-    fetchDepartmentsForCurrentLocation(true).catch(() => [] as Department[]),
-    getCurrentLocation(),
-  ]);
+  // Departments — and the DEPARTMENTS_MODULE feature gate — live on the
+  // LOCATION. A store owns no departments, so when operating a store resolve
+  // its parent location and scope BOTH the fetch and the entitlement check to
+  // it (a store's feature gates also come from its parent location's plan).
+  const destination = await getCurrentDestination();
+  const departmentLocationId =
+    destination?.type === "STORE"
+      ? (await getCurrentStore())?.locationId
+      : destination?.id;
+
+  const departments = departmentLocationId
+    ? await fetchDepartmentsByLocation(departmentLocationId, true).catch(
+        () => [] as Department[],
+      )
+    : [];
 
   let canPickDepartment = true;
-  if (currentLocation?.id) {
-    const entitlements = await getEntityEntitlements(currentLocation.id);
+  if (departmentLocationId) {
+    const entitlements = await getEntityEntitlements(departmentLocationId);
     if (entitlements) {
       canPickDepartment = entitlements.features["DEPARTMENTS_MODULE"] === true;
     }

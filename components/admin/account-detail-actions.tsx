@@ -7,8 +7,10 @@ import {
   CheckCircle2,
   FlaskConical,
   Mail,
+  MessageSquare,
   PauseCircle,
   Pencil,
+  Phone,
   RefreshCw,
   Trash2,
 } from "lucide-react";
@@ -17,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { AccountActionDialog } from "@/components/admin/account-action-dialog";
 import { EditAccountDialog } from "@/components/admin/account-detail/edit-account-dialog";
 import { ChangeEmailDialog } from "@/components/admin/account-detail/change-email-dialog";
+import { ChangePhoneDialog } from "@/components/admin/account-detail/change-phone-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { setAccountInternal } from "@/lib/actions/admin/accounts";
 import {
@@ -60,6 +63,7 @@ type ActionKind =
   | "delete"
   | "purge"
   | "resend-verification"
+  | "resend-phone-verification"
   | "republish";
 
 export function AccountDetailActions({
@@ -75,6 +79,10 @@ export function AccountDetailActions({
   const [markingInternal, startMarkInternal] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
+  const [phoneOpen, setPhoneOpen] = useState(false);
+  // Once soft-deleted, suspend/reactivate/delete are moot (and reactivate can't
+  // un-delete). Hide them so the only destructive action left is Purge.
+  const isDeleted = !!account.deletedAt;
 
   const toggleInternal = () => {
     startMarkInternal(async () => {
@@ -102,7 +110,7 @@ export function AccountDetailActions({
         </Button>
       )}
 
-      {canSuspend &&
+      {canSuspend && !isDeleted &&
         (account.active ? (
           <Button
             type="button"
@@ -153,6 +161,35 @@ export function AccountDetailActions({
         </Button>
       )}
 
+      {/* Change phone is :manage-gated (stricter than the :read email/verify
+          actions): it can land on a live account, moving a reset factor. The
+          verify-phone SMS below stays on :read (canResend). */}
+      {canManage && !account.phoneVerified && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setPhoneOpen(true)}
+          className="text-sky-700 hover:bg-sky-50 hover:text-sky-800 dark:text-sky-300 dark:hover:bg-sky-500/10"
+        >
+          <Phone className="mr-1.5 h-4 w-4" />
+          Change phone
+        </Button>
+      )}
+
+      {canResend && account.phoneNumber && !account.phoneVerified && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setActive("resend-phone-verification")}
+          className="text-sky-700 hover:bg-sky-50 hover:text-sky-800 dark:text-sky-300 dark:hover:bg-sky-500/10"
+        >
+          <MessageSquare className="mr-1.5 h-4 w-4" />
+          Verify phone
+        </Button>
+      )}
+
       {canManage && (
         <Button
           type="button"
@@ -180,7 +217,7 @@ export function AccountDetailActions({
         </Button>
       )}
 
-      {canDelete && (
+      {canDelete && !isDeleted && (
         <Button
           type="button"
           variant="outline"
@@ -239,6 +276,12 @@ export function AccountDetailActions({
         currentEmail={account.email}
         open={emailOpen}
         onOpenChange={setEmailOpen}
+      />
+      <ChangePhoneDialog
+        accountId={account.id}
+        currentPhone={account.phoneNumber}
+        open={phoneOpen}
+        onOpenChange={setPhoneOpen}
       />
     </>
   );

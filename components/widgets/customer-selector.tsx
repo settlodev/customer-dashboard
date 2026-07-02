@@ -38,6 +38,9 @@ interface CustomerProps {
    * existing callers that only need the id are unaffected.
    */
   onSelectCustomer?: (customer: Customer) => void;
+  /** Load and show the first page of customers as soon as the popover opens,
+   *  instead of waiting for the user to type. */
+  showOnOpen?: boolean;
   onBlur?: () => void;
 }
 
@@ -73,6 +76,7 @@ function CustomerSelector({
   isDisabled,
   onChange,
   onSelectCustomer,
+  showOnOpen,
 }: CustomerProps) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Customer | null>(null);
@@ -108,40 +112,43 @@ function CustomerSelector({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
-  // Debounced server-side search. Empty query clears results — we don't
-  // prefetch the first page because that's the bloated behaviour we just
-  // moved away from.
+  // Debounced server-side search. With `showOnOpen`, an empty query loads the
+  // first page so the list is populated the moment the popover opens; without
+  // it, an empty query clears results (type-to-search, the default).
   useEffect(() => {
     if (!open) return;
     const trimmed = query.trim();
-    if (!trimmed) {
+    if (!trimmed && !showOnOpen) {
       setResults([]);
       setHasSearched(false);
       return;
     }
     let cancelled = false;
     setSearching(true);
-    const handle = setTimeout(() => {
-      lastQueryRef.current = trimmed;
-      searchCustomer(trimmed, 1, PAGE_SIZE, true)
-        .then((res) => {
-          if (cancelled || lastQueryRef.current !== trimmed) return;
-          setResults(res?.content ?? []);
-          setHasSearched(true);
-          setSearching(false);
-        })
-        .catch(() => {
-          if (cancelled) return;
-          setResults([]);
-          setHasSearched(true);
-          setSearching(false);
-        });
-    }, DEBOUNCE_MS);
+    const handle = setTimeout(
+      () => {
+        lastQueryRef.current = trimmed;
+        searchCustomer(trimmed, 1, PAGE_SIZE, true)
+          .then((res) => {
+            if (cancelled || lastQueryRef.current !== trimmed) return;
+            setResults(res?.content ?? []);
+            setHasSearched(true);
+            setSearching(false);
+          })
+          .catch(() => {
+            if (cancelled) return;
+            setResults([]);
+            setHasSearched(true);
+            setSearching(false);
+          });
+      },
+      trimmed ? DEBOUNCE_MS : 0,
+    );
     return () => {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [query, open]);
+  }, [query, open, showOnOpen]);
 
   const triggerLabel = selected
     ? customerLabel(selected) || placeholder || "Select customer"
@@ -197,13 +204,13 @@ function CustomerSelector({
             onValueChange={setQuery}
           />
           <CommandList>
-            {!query.trim() ? (
-              <CommandEmpty>Type to search customers…</CommandEmpty>
-            ) : searching ? (
+            {searching ? (
               <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Searching…
               </div>
+            ) : !query.trim() && !showOnOpen ? (
+              <CommandEmpty>Type to search customers…</CommandEmpty>
             ) : hasSearched && results.length === 0 ? (
               <CommandEmpty>No customer found.</CommandEmpty>
             ) : (

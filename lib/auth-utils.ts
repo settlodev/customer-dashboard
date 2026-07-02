@@ -18,7 +18,13 @@ import { logout } from "@/lib/actions/auth-actions";
 // claims easily exceed this. We split large values across numbered
 // chunks: authToken.0, authToken.1, etc.
 
-const COOKIE_CHUNK_SIZE = 3800; // Leave room for name + attributes
+// Chunk well below the browser's ~4096B per-cookie cap. That cap applies to the
+// URL-ENCODED serialization — Next encodeURIComponent's the value, which inflates
+// JSON punctuation (`"` `,` `:` `{` → %XX). A ~3700B raw SYSTEM_ADMIN token
+// encoded past 4096 and the browser SILENTLY dropped the whole cookie, so the
+// staff session never persisted and every admin login bounced back to /login.
+// 3000 raw stays under the cap even after encoding, at 1–2 chunks.
+const COOKIE_CHUNK_SIZE = 3000;
 const MAX_CHUNKS = 10;
 const AUTH_TOKEN_COOKIE = "authToken";
 // NAMING: the "staff" auth token below is for INTERNAL SETTLO OPERATORS — the
@@ -74,10 +80,11 @@ import {
   extractBusinessId,
   extractInternalPermissions,
   extractInternalRole,
-  extractPermissions,
   extractSubjectType,
   extractSubscriptionStatus,
+  isAccessTokenExpired,
 } from "@/lib/jwt-utils";
+import { hasReportsReadAll } from "@/lib/permissions/me";
 
 function getCookieOptions() {
   const isProduction = process.env.NODE_ENV === "production";
@@ -219,7 +226,6 @@ export const createAuthTokenFromLogin = async (
     businessId: extractBusinessId(loginResponse.accessToken),
     impersonating: opts?.impersonating ?? false,
     impersonatorId: opts?.impersonatorId ?? null,
-    reportsReadAll: extractPermissions(loginResponse.accessToken).includes("reports:read_all"),
   };
 
   await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData), {
@@ -234,7 +240,17 @@ export const getStaffAuthToken = async (): Promise<AuthToken | null> => {
 
   try {
     const parsed = JSON.parse(raw) as AuthToken;
-    return parsed.accessToken ? parsed : null;
+    if (!parsed.accessToken) return null;
+    // An expired access token with no refresh token is an unrecoverable
+    // session (the ApiClient interceptor can't refresh without a refresh
+    // token). Report it as logged-out so page guards like
+    // `if (!token?.accessToken) redirect("/login")` actually fire, instead of
+    // letting the page render and 401-loop. When a refresh token IS present we
+    // still return the token so the interceptor can refresh it.
+    if (!parsed.refreshToken && isAccessTokenExpired(parsed.accessToken)) {
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -468,8 +484,7 @@ export const clearPendingVerification = async () => {
  * report). Call as the first statement of each location-wide report page.
  */
 export const requireReportsReadAll = async (): Promise<void> => {
-  const token = await getAuthToken();
-  if (token?.reportsReadAll === false) {
+  if (!(await hasReportsReadAll())) {
     redirect("/dashboard");
   }
 };

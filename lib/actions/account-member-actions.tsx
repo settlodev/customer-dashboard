@@ -179,6 +179,10 @@ export interface PublicInvitation {
   accountName: string;
   status: "PENDING" | "ACCEPTED" | "REVOKED";
   hasAccount: boolean;
+  // false only for a known passwordless identity (invited staff who never set a
+  // password). Optional so an older backend that omits it is treated as "has a
+  // password" — i.e. routes to /login as before.
+  hasPassword?: boolean;
 }
 
 export const getPublicInvitation = async (
