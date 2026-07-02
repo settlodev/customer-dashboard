@@ -92,6 +92,7 @@ import { uploadService } from "@/lib/uploads/upload-service";
 import { assignBarcode } from "@/lib/actions/barcode-actions";
 import {
   getCachedCategories,
+  getCachedStocks,
   invalidateStocksCache,
   useCachedUnits,
 } from "@/lib/cache/reference-data";
@@ -102,6 +103,8 @@ import { StockSchema } from "@/types/stock/schema";
 import type { FormResponse } from "@/types/types";
 import UnitSelector from "@/components/widgets/unit-selector";
 import SupplierSelector from "@/components/widgets/supplier-selector";
+import StockVariantSelector from "@/components/widgets/stock-variant-selector";
+import CurrencySelector from "@/components/widgets/currency-selector";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { MATERIAL_TYPE_OPTIONS } from "@/types/catalogue/enums";
 import { BusinessDayClosedDialog } from "@/components/widgets/business-day-closed-dialog";
@@ -131,6 +134,9 @@ const DEFAULT_VARIANT = {
   lowStockThreshold: undefined as number | undefined,
   overstockThreshold: undefined as number | undefined,
   sellingPrice: undefined as number | undefined,
+  depositValue: undefined as number | undefined,
+  depositCurrency: undefined as string | undefined,
+  returnableContainers: [] as { containerStockVariantId: string; quantityPerUnit: number }[],
 };
 
 interface GalleryImage {
@@ -213,6 +219,9 @@ export default function StockForm({ item, balances }: StockFormProps) {
             lowStockThreshold: undefined as number | undefined,
             overstockThreshold: undefined as number | undefined,
             sellingPrice: undefined as number | undefined,
+            depositValue: v.depositValue ?? undefined,
+            depositCurrency: v.depositCurrency ?? undefined,
+            returnableContainers: v.returnableContainers ?? [],
           }))
         : [DEFAULT_VARIANT],
     },
@@ -226,6 +235,22 @@ export default function StockForm({ item, balances }: StockFormProps) {
   const stockName = form.watch("name");
   const baseUnitId = form.watch("baseUnitId");
   const materialType = form.watch("materialType");
+  // Ids of variants belonging to PACKAGING stocks — the valid empty
+  // containers (crates/bottles) offerable in the returnable-container
+  // picker below. Fetched once; the selector itself re-derives display
+  // names from the same cached catalogue.
+  const [packagingVariantIds, setPackagingVariantIds] = useState<string[]>([]);
+  useEffect(() => {
+    getCachedStocks()
+      .then((stocks) =>
+        setPackagingVariantIds(
+          stocks
+            .filter((s) => s.materialType === "PACKAGING" && !s.archived)
+            .flatMap((s) => s.variants.filter((v) => !v.archived).map((v) => v.id)),
+        ),
+      )
+      .catch(() => setPackagingVariantIds([]));
+  }, []);
   // useWatch (vs form.watch) for the variants array so nested field updates
   // — especially sellingPrice typed inside <NumericFormat> — reliably
   // re-trigger the readiness memo.
@@ -798,6 +823,8 @@ export default function StockForm({ item, balances }: StockFormProps) {
                         autoCreateProduct={autoCreateProduct}
                         baseUnitAbbreviation={baseUnitAbbr}
                         locationCurrency={locationCurrency}
+                        materialType={materialType}
+                        packagingVariantIds={packagingVariantIds}
                       />
                     ))}
                   </div>
@@ -1227,6 +1254,8 @@ interface VariantRowProps {
   autoCreateProduct: boolean;
   baseUnitAbbreviation: string;
   locationCurrency: string;
+  materialType: string;
+  packagingVariantIds: string[];
 }
 
 function VariantRowImpl({
@@ -1247,6 +1276,8 @@ function VariantRowImpl({
   autoCreateProduct,
   baseUnitAbbreviation,
   locationCurrency,
+  materialType,
+  packagingVariantIds,
 }: VariantRowProps) {
   // One subscription on the variant subtree — sibling rows changing
   // doesn't re-render this row.
@@ -1601,6 +1632,103 @@ function VariantRowImpl({
             />
           );
         })()}
+
+      {materialType === "PACKAGING" && (
+        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-md border bg-amber-50/40 p-3">
+          <p className="col-span-full text-[11px] text-muted-foreground">
+            Deposit held per empty container (crate/bottle). Used for deposit valuation.
+          </p>
+          <FormField
+            control={form.control}
+            name={`variants.${index}.depositValue`}
+            render={({ field: f }) => (
+              <FormItem>
+                <FormLabel className="text-xs">Deposit value</FormLabel>
+                <FormControl>
+                  <NumericFormat
+                    className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
+                    value={f.value ?? ""}
+                    onValueChange={(v) => f.onChange(v.value === "" ? undefined : Number(v.value))}
+                    thousandSeparator
+                    decimalScale={4}
+                    allowNegative={false}
+                    placeholder="e.g. 2000"
+                    disabled={isPending}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name={`variants.${index}.depositCurrency`}
+            render={({ field: f }) => (
+              <FormItem>
+                <FormLabel className="text-xs">Deposit currency</FormLabel>
+                <FormControl>
+                  <CurrencySelector
+                    value={f.value || locationCurrency || "TZS"}
+                    onChange={f.onChange}
+                    isDisabled={isPending}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      )}
+
+      {materialType !== "PACKAGING" && (
+        <FormField
+          control={form.control}
+          name={`variants.${index}.returnableContainers`}
+          render={({ field: f }) => {
+            const current = (f.value ?? [])[0] as
+              | { containerStockVariantId: string; quantityPerUnit: number }
+              | undefined;
+            const setContainer = (id: string) =>
+              f.onChange(id ? [{ containerStockVariantId: id, quantityPerUnit: current?.quantityPerUnit ?? 1 }] : []);
+            const setQty = (qty: number | undefined) =>
+              current?.containerStockVariantId
+                ? f.onChange([{ containerStockVariantId: current.containerStockVariantId, quantityPerUnit: qty ?? 1 }])
+                : undefined;
+            return (
+              <div className="mt-2 space-y-2 rounded-md border bg-gray-50/50 p-3">
+                <p className="text-[11px] text-muted-foreground">
+                  Returnable container exchanged on sale (e.g. an empty crate). Optional.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-medium">Empty container</label>
+                    <StockVariantSelector
+                      value={current?.containerStockVariantId ?? ""}
+                      onChange={setContainer}
+                      allowedValues={packagingVariantIds}
+                      isDisabled={isPending}
+                      placeholder="Select the empty crate/bottle"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium">Qty per unit</label>
+                    <NumericFormat
+                      className="flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                      value={current?.quantityPerUnit ?? ""}
+                      onValueChange={(v) => setQty(v.value === "" ? undefined : Number(v.value))}
+                      thousandSeparator
+                      decimalScale={6}
+                      allowNegative={false}
+                      placeholder="1"
+                      disabled={isPending || !current?.containerStockVariantId}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          }}
+        />
+      )}
 
       {!isEditing &&
         (() => {
