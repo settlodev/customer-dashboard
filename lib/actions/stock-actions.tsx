@@ -15,6 +15,25 @@ import { StockSchema } from "@/types/stock/schema";
 import { inventoryUrl } from "./inventory-client";
 import { rethrowIfBoundary } from "@/lib/list-fallback";
 
+// Returnable-crate gating: deposit belongs to a PACKAGING container variant;
+// the returnable-container link belongs to a sellable (non-PACKAGING) variant.
+// materialType is stock-level, so it decides for all variants — drop the
+// irrelevant field so stale form state can't send a nonsensical payload.
+function containerFields(
+  v: { depositValue?: number | null; depositCurrency?: string | null; returnableContainers?: { containerStockVariantId: string; quantityPerUnit: number }[] },
+  materialType: string,
+) {
+  const isPackaging = materialType === "PACKAGING";
+  return {
+    depositValue: isPackaging ? v.depositValue ?? undefined : undefined,
+    depositCurrency: isPackaging ? v.depositCurrency || undefined : undefined,
+    returnableContainers:
+      !isPackaging && v.returnableContainers && v.returnableContainers.length > 0
+        ? v.returnableContainers
+        : undefined,
+  };
+}
+
 // ── Stock CRUD ──────────────────────────────────────────────────────
 
 // Tab-aligned view filter mirroring the backend's StockListView enum.
@@ -151,6 +170,7 @@ export async function createStock(
             : undefined,
         lowStockThreshold: v.lowStockThreshold,
         overstockThreshold: v.overstockThreshold,
+        ...containerFields(v, validated.data.materialType),
       })),
     };
 
@@ -210,6 +230,7 @@ export async function updateStock(
             sku: variant.sku || undefined,
             barcode: variant.barcode || undefined,
             serialTracked: variant.serialTracked,
+            ...containerFields(variant, validated.data.materialType),
           },
         );
       }
@@ -224,6 +245,7 @@ export async function updateStock(
             sku: variant.sku || undefined,
             barcode: variant.barcode ?? "",
             serialTracked: variant.serialTracked,
+            ...containerFields(variant, validated.data.materialType),
           },
         );
       }
@@ -514,6 +536,7 @@ export async function createStockWithProduct(
         overstockThreshold: v.overstockThreshold,
         // Per-variant selling price for the auto-created product variant.
         sellingPrice: v.sellingPrice,
+        ...containerFields(v, validated.data.materialType),
       })),
       autoCreateProduct: true,
       product: {
@@ -585,6 +608,12 @@ function mapStockVariantPartial(v: DraftStockVariant) {
         : undefined,
     lowStockThreshold: v.lowStockThreshold,
     overstockThreshold: v.overstockThreshold,
+    depositValue: v.depositValue ?? undefined,
+    depositCurrency: v.depositCurrency || undefined,
+    returnableContainers:
+      v.returnableContainers && v.returnableContainers.length > 0
+        ? v.returnableContainers
+        : undefined,
   };
 }
 
