@@ -32,13 +32,6 @@ export const Pricing: React.FC = () => {
     const fetchPlans = async () => {
       setLoading(true);
       try {
-        // const data = await getPackages(activeTab);
-        // const excluded = EXCLUDED_CODES[activeTab] ?? [];
-        // setPackagesByType((prev) => ({
-        //   ...prev,
-        //   [activeTab]: data.filter(
-        //     (p) => p.isActive && !excluded.includes(p.code ?? ""),
-        //   ),
         const data = await getPackages(activeTab);
         setPackagesByType((prev) => ({
           ...prev,
