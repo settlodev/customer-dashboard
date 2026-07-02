@@ -7,6 +7,7 @@ export type EntityType = "LOCATION" | "WAREHOUSE" | "STORE";
 export type FeatureType = "CORE" | "ADVANCED" | "PREMIUM" | "LIMIT";
 
 export interface Package {
+  features: any[];
   id: string;
   code?: string;
   name: string;
@@ -141,9 +142,22 @@ export interface PlanChangePreview {
 
 // ── Invoices ────────────────────────────────────────────────────────
 
-export type InvoiceStatus = "DRAFT" | "PENDING" | "PAID" | "FAILED" | "CANCELLED" | "REFUNDED";
+export type InvoiceStatus =
+  | "DRAFT"
+  | "PENDING"
+  | "PAID"
+  | "FAILED"
+  | "CANCELLED"
+  | "REFUNDED";
 export type InvoiceType = "SUBSCRIPTION" | "SALES" | "PROFORMA";
-export type LineItemType = "PLAN" | "ADDON" | "PRORATION" | "DISCOUNT" | "TAX" | "DEVICE" | "CREDIT_PACK";
+export type LineItemType =
+  | "PLAN"
+  | "ADDON"
+  | "PRORATION"
+  | "DISCOUNT"
+  | "TAX"
+  | "DEVICE"
+  | "CREDIT_PACK";
 
 export interface InvoiceLineItem {
   id: string;

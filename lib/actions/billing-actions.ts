@@ -40,14 +40,20 @@ export async function getPackages(entityType?: string): Promise<Package[]> {
   const apiClient = new ApiClient();
   apiClient.isPlain = true;
   const params = entityType ? `?entityType=${entityType}` : "";
-  return apiClient.get<Package[]>(billingUrl(`/api/v1/packages${params}`));
+  return await apiClient.get<Package[]>(
+    billingUrl(`/api/v1/packages${params}`),
+  );
 }
 
-export async function getPackageBreakdown(packageId: string): Promise<PackageBreakdown | null> {
+export async function getPackageBreakdown(
+  packageId: string,
+): Promise<PackageBreakdown | null> {
   if (!BILLING_SERVICE_URL) return null;
   const apiClient = new ApiClient();
   apiClient.isPlain = true;
-  return apiClient.get<PackageBreakdown>(billingUrl(`/api/v1/packages/${packageId}/breakdown`));
+  return apiClient.get<PackageBreakdown>(
+    billingUrl(`/api/v1/packages/${packageId}/breakdown`),
+  );
 }
 
 // ── Addons ──────────────────────────────────────────────────────────
@@ -64,17 +70,23 @@ export async function getCurrentSubscription(): Promise<Subscription | null> {
   if (!BILLING_SERVICE_URL) return null;
   try {
     const apiClient = new ApiClient();
-    return await apiClient.get<Subscription>(billingUrl("/api/v1/subscriptions/current"));
+    return await apiClient.get<Subscription>(
+      billingUrl("/api/v1/subscriptions/current"),
+    );
   } catch {
     return null;
   }
 }
 
-export async function getBusinessSubscription(businessId: string): Promise<Subscription | null> {
+export async function getBusinessSubscription(
+  businessId: string,
+): Promise<Subscription | null> {
   if (!BILLING_SERVICE_URL) return null;
   try {
     const apiClient = new ApiClient();
-    return await apiClient.get<Subscription>(billingUrl(`/api/v1/subscriptions/business/${businessId}`));
+    return await apiClient.get<Subscription>(
+      billingUrl(`/api/v1/subscriptions/business/${businessId}`),
+    );
   } catch {
     return null;
   }
@@ -85,9 +97,13 @@ export async function getBusinessSubscription(businessId: string): Promise<Subsc
  * the X-User-Id header (already attached by ApiClient) so no body is needed.
  * Note: cancellation publishes SUBSCRIPTION_CANCELLED on the event bus.
  */
-export async function cancelSubscription(subscriptionId: string): Promise<void> {
+export async function cancelSubscription(
+  subscriptionId: string,
+): Promise<void> {
   const apiClient = new ApiClient();
-  await apiClient.delete<void>(billingUrl(`/api/v1/subscriptions/${subscriptionId}`));
+  await apiClient.delete<void>(
+    billingUrl(`/api/v1/subscriptions/${subscriptionId}`),
+  );
   revalidateTag(LAYOUT_TAGS.entitlements);
 }
 
@@ -100,7 +116,9 @@ export async function changeItemPlan(
 ): Promise<SubscriptionItem> {
   const apiClient = new ApiClient();
   const result = await apiClient.put<SubscriptionItem, undefined>(
-    billingUrl(`/api/v1/subscriptions/${subscriptionId}/items/${itemId}/plan/${packageId}`),
+    billingUrl(
+      `/api/v1/subscriptions/${subscriptionId}/items/${itemId}/plan/${packageId}`,
+    ),
     undefined,
   );
   revalidateTag(LAYOUT_TAGS.entitlements);
@@ -122,7 +140,9 @@ export async function previewPlanChange(
   try {
     const apiClient = new ApiClient();
     return await apiClient.post<PlanChangePreview, { targetPackageId: string }>(
-      billingUrl(`/api/v1/subscriptions/${subscriptionId}/items/${itemId}/plan-change-preview`),
+      billingUrl(
+        `/api/v1/subscriptions/${subscriptionId}/items/${itemId}/plan-change-preview`,
+      ),
       { targetPackageId },
     );
   } catch {
@@ -137,7 +157,9 @@ export async function addItemAddon(
 ): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post<void, undefined>(
-    billingUrl(`/api/v1/subscriptions/${subscriptionId}/items/${itemId}/addons/${addonId}`),
+    billingUrl(
+      `/api/v1/subscriptions/${subscriptionId}/items/${itemId}/addons/${addonId}`,
+    ),
     undefined,
   );
   revalidateTag(LAYOUT_TAGS.entitlements);
@@ -150,7 +172,9 @@ export async function removeItemAddon(
 ): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.delete<void>(
-    billingUrl(`/api/v1/subscriptions/${subscriptionId}/items/${itemId}/addons/${addonId}`),
+    billingUrl(
+      `/api/v1/subscriptions/${subscriptionId}/items/${itemId}/addons/${addonId}`,
+    ),
   );
   revalidateTag(LAYOUT_TAGS.entitlements);
 }
@@ -191,7 +215,9 @@ export async function prepaySubscription(
  * The server returns invoices sorted by invoiceDate DESC, so a pending
  * invoice (which is always the most recent) will be on the first page.
  */
-export async function getPendingInvoice(subscriptionId: string): Promise<BillingInvoice | null> {
+export async function getPendingInvoice(
+  subscriptionId: string,
+): Promise<BillingInvoice | null> {
   if (!BILLING_SERVICE_URL) return null;
   try {
     const page = await getSubscriptionInvoices(subscriptionId, 0, 20);
@@ -209,19 +235,28 @@ export async function getSubscriptionInvoices(
   if (!BILLING_SERVICE_URL) return null;
   try {
     const apiClient = new ApiClient();
-    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(size),
+    });
     return await apiClient.get<Page<BillingInvoice>>(
-      billingUrl(`/api/v1/invoices/subscription/${subscriptionId}?${params.toString()}`),
+      billingUrl(
+        `/api/v1/invoices/subscription/${subscriptionId}?${params.toString()}`,
+      ),
     );
   } catch {
     return null;
   }
 }
 
-export async function getInvoiceView(invoiceId: string): Promise<InvoiceViewDto | null> {
+export async function getInvoiceView(
+  invoiceId: string,
+): Promise<InvoiceViewDto | null> {
   if (!BILLING_SERVICE_URL) return null;
   const apiClient = new ApiClient();
-  return apiClient.get<InvoiceViewDto>(billingUrl(`/api/v1/invoices/${invoiceId}/view`));
+  return apiClient.get<InvoiceViewDto>(
+    billingUrl(`/api/v1/invoices/${invoiceId}/view`),
+  );
 }
 
 /**
@@ -238,10 +273,14 @@ export async function getInvoiceBillingParties(
   const apiClient = new ApiClient();
   const [business, location] = await Promise.all([
     businessId
-      ? apiClient.get<Business>(`/api/v1/businesses/${businessId}`).catch(() => null)
+      ? apiClient
+          .get<Business>(`/api/v1/businesses/${businessId}`)
+          .catch(() => null)
       : Promise.resolve(null),
     locationId
-      ? apiClient.get<Location>(`/api/v1/locations/${locationId}`).catch(() => null)
+      ? apiClient
+          .get<Location>(`/api/v1/locations/${locationId}`)
+          .catch(() => null)
       : Promise.resolve(null),
   ]);
   return { business, location };
@@ -267,7 +306,9 @@ export async function validateCoupon(code: string): Promise<Coupon | null> {
   if (!BILLING_SERVICE_URL || !code.trim()) return null;
   try {
     const apiClient = new ApiClient();
-    return await apiClient.get<Coupon>(billingUrl(`/api/v1/coupons/${encodeURIComponent(code)}`));
+    return await apiClient.get<Coupon>(
+      billingUrl(`/api/v1/coupons/${encodeURIComponent(code)}`),
+    );
   } catch {
     return null;
   }
@@ -283,7 +324,9 @@ export async function getFeatures(): Promise<Feature[]> {
   return apiClient.get<Feature[]>(billingUrl("/api/v1/features"));
 }
 
-export async function getIncludedPackageFeatures(packageId: string): Promise<PackageFeature[]> {
+export async function getIncludedPackageFeatures(
+  packageId: string,
+): Promise<PackageFeature[]> {
   if (!BILLING_SERVICE_URL) return [];
   const apiClient = new ApiClient();
   apiClient.isPlain = true;
@@ -300,14 +343,20 @@ export async function getCreditTypes(): Promise<CreditType[]> {
   return apiClient.get<CreditType[]>(billingUrl("/api/v1/credits/types"));
 }
 
-export async function getCreditPacks(creditTypeId?: string): Promise<CreditPack[]> {
+export async function getCreditPacks(
+  creditTypeId?: string,
+): Promise<CreditPack[]> {
   if (!BILLING_SERVICE_URL) return [];
   const apiClient = new ApiClient();
   const params = creditTypeId ? `?creditTypeId=${creditTypeId}` : "";
-  return apiClient.get<CreditPack[]>(billingUrl(`/api/v1/credits/packs${params}`));
+  return apiClient.get<CreditPack[]>(
+    billingUrl(`/api/v1/credits/packs${params}`),
+  );
 }
 
-export async function getCreditBalances(businessId: string): Promise<CreditBalance[]> {
+export async function getCreditBalances(
+  businessId: string,
+): Promise<CreditBalance[]> {
   if (!BILLING_SERVICE_URL || !businessId) return [];
   try {
     const apiClient = new ApiClient();
@@ -328,10 +377,15 @@ export async function getCreditTransactions(
   if (!BILLING_SERVICE_URL || !businessId) return null;
   try {
     const apiClient = new ApiClient();
-    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(size),
+    });
     if (creditTypeId) params.set("creditTypeId", creditTypeId);
     return await apiClient.get<Page<CreditTransaction>>(
-      billingUrl(`/api/v1/credits/transactions/${businessId}?${params.toString()}`),
+      billingUrl(
+        `/api/v1/credits/transactions/${businessId}?${params.toString()}`,
+      ),
     );
   } catch {
     return null;
@@ -343,8 +397,8 @@ export async function purchaseCreditPack(
   creditPackId: string,
 ): Promise<CreditBalance> {
   const apiClient = new ApiClient();
-  return apiClient.post<CreditBalance, { businessId: string; creditPackId: string }>(
-    billingUrl("/api/v1/credits/packs/purchase"),
-    { businessId, creditPackId },
-  );
+  return apiClient.post<
+    CreditBalance,
+    { businessId: string; creditPackId: string }
+  >(billingUrl("/api/v1/credits/packs/purchase"), { businessId, creditPackId });
 }
