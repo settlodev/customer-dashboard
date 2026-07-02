@@ -61,6 +61,7 @@ export interface StockVariant {
   serialTracked: boolean;
   depositValue?: number | null;
   depositCurrency?: string | null;
+  containerMode?: "RETURNABLE" | "CONSUMABLE" | null;
   returnableContainers?: ReturnableContainerLinkInput[];
   createdAt: string;
   updatedAt: string;

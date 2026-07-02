@@ -1,4 +1,4 @@
-import { array, boolean, number, object, preprocess, string } from "zod";
+import { array, boolean, enum as zEnum, number, object, preprocess, string } from "zod";
 
 const toNumber = (val: unknown) => {
   if (typeof val === "string" && val.trim() !== "") return parseFloat(val);
@@ -36,6 +36,7 @@ export const StockVariantSchema = object({
   overstockThreshold: preprocess(toNumber, number().nonnegative().optional()),
   depositValue: preprocess(toNumber, number().nonnegative().optional()),
   depositCurrency: string().length(3, "Currency must be a 3-letter ISO code").optional().nullish(),
+  containerMode: zEnum(["RETURNABLE", "CONSUMABLE"]).optional().nullish(),
   returnableContainers: array(
     object({
       containerStockVariantId: string().uuid(),
