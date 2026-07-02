@@ -56,6 +56,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { NumericFormat } from "react-number-format";
@@ -136,6 +137,7 @@ const DEFAULT_VARIANT = {
   sellingPrice: undefined as number | undefined,
   depositValue: undefined as number | undefined,
   depositCurrency: undefined as string | undefined,
+  containerMode: "RETURNABLE" as "RETURNABLE" | "CONSUMABLE",
   returnableContainers: [] as { containerStockVariantId: string; quantityPerUnit: number }[],
 };
 
@@ -221,6 +223,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
             sellingPrice: undefined as number | undefined,
             depositValue: v.depositValue ?? undefined,
             depositCurrency: v.depositCurrency ?? undefined,
+            containerMode: v.containerMode ?? "RETURNABLE",
             returnableContainers: v.returnableContainers ?? [],
           }))
         : [DEFAULT_VARIANT],
@@ -1672,6 +1675,39 @@ function VariantRowImpl({
                     onChange={f.onChange}
                     isDisabled={isPending}
                   />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name={`variants.${index}.containerMode`}
+            render={({ field: f }) => (
+              <FormItem className="sm:col-span-2">
+                <FormLabel className="text-xs">Container mode</FormLabel>
+                <FormControl>
+                  <RadioGroup
+                    value={f.value ?? "RETURNABLE"}
+                    onValueChange={f.onChange}
+                    disabled={isPending}
+                    className="flex flex-wrap gap-4"
+                  >
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <RadioGroupItem
+                        value="RETURNABLE"
+                        id={`containerMode-returnable-${index}`}
+                      />
+                      <span className="text-sm">Returnable (exchanged 1:1)</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <RadioGroupItem
+                        value="CONSUMABLE"
+                        id={`containerMode-consumable-${index}`}
+                      />
+                      <span className="text-sm">Consumed on sale (one-way)</span>
+                    </label>
+                  </RadioGroup>
                 </FormControl>
                 <FormMessage />
               </FormItem>
