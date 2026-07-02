@@ -585,6 +585,8 @@ const SCOPE_TINT: Record<ScopeKey, string> = {
 // Only location is wired for now; extend as other scopes get their own pages.
 const ADD_ROUTES: Partial<Record<ScopeKey, string>> = {
   location: "/locations/new",
+  // warehouse: "/warehouses/new",
+  store: "stores/new",
 };
 
 export function SidebarLocationSwitcher({
