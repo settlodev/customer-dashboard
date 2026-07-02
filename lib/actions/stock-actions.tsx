@@ -17,13 +17,19 @@ import { rethrowIfBoundary } from "@/lib/list-fallback";
 // materialType is stock-level, so it decides for all variants — drop the
 // irrelevant field so stale form state can't send a nonsensical payload.
 function containerFields(
-  v: { depositValue?: number | null; depositCurrency?: string | null; returnableContainers?: { containerStockVariantId: string; quantityPerUnit: number }[] },
+  v: {
+    depositValue?: number | null;
+    depositCurrency?: string | null;
+    containerMode?: "RETURNABLE" | "CONSUMABLE" | null;
+    returnableContainers?: { containerStockVariantId: string; quantityPerUnit: number }[];
+  },
   materialType: string,
 ) {
   const isPackaging = materialType === "PACKAGING";
   return {
     depositValue: isPackaging ? v.depositValue ?? undefined : undefined,
     depositCurrency: isPackaging ? v.depositCurrency || undefined : undefined,
+    containerMode: isPackaging ? v.containerMode ?? undefined : undefined,
     returnableContainers:
       !isPackaging && v.returnableContainers && v.returnableContainers.length > 0
         ? v.returnableContainers
@@ -567,6 +573,7 @@ function mapStockVariantPartial(v: DraftStockVariant) {
     overstockThreshold: v.overstockThreshold,
     depositValue: v.depositValue ?? undefined,
     depositCurrency: v.depositCurrency || undefined,
+    containerMode: v.containerMode ?? undefined,
     returnableContainers:
       v.returnableContainers && v.returnableContainers.length > 0
         ? v.returnableContainers
