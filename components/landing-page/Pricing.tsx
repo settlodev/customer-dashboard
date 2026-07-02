@@ -14,6 +14,7 @@ interface PricingCardProps {
   subscriptionFeatures: string[];
   isPopular?: boolean;
 }
+const EXCLUDED_PACKAGE_NAMES = ["SETTLO BASIC"];
 
 const PricingCard: React.FC<PricingCardProps> = ({
   sub,
@@ -153,9 +154,12 @@ export const Pricing: React.FC = () => {
     const getSubscriptions = async () => {
       try {
         const data = await fetchSubscriptions();
-        const filteredPlans = data.filter(
-          (plan) => !plan.packageName.toLowerCase().includes("trial"),
-        );
+        const filteredPlans = data.filter((plan) => {
+          const name = plan.packageName.toUpperCase().trim();
+          const isTrial = name.includes("TRIAL");
+          const isExcluded = EXCLUDED_PACKAGE_NAMES.includes(name);
+          return !isTrial && !isExcluded;
+        });
         setSubscriptions(filteredPlans);
       } catch (error) {
         console.error("Error fetching subscriptions:", error);
@@ -165,11 +169,14 @@ export const Pricing: React.FC = () => {
   }, []);
 
   const isPopularPackage = (subscription: Subscriptions): boolean => {
-    return subscription.amount === 25000;
+    return subscription.packageName.toLowerCase().includes("professional");
   };
 
   return (
-    <section id="pricing" className="relative z-20 w-full overflow-hidden py-28 md:py-32">
+    <section
+      id="pricing"
+      className="relative z-20 w-full overflow-hidden py-28 md:py-32"
+    >
       {/* Background */}
       <div className="absolute inset-0 bg-white dark:bg-gray-950" />
 
@@ -190,7 +197,7 @@ export const Pricing: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 max-w-5xl mx-auto items-start">
           {subscriptions.map((sub) => (
             <PricingCard
               key={sub.id}
