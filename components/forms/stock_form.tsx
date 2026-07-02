@@ -1713,12 +1713,13 @@ function VariantRowImpl({
                   <div>
                     <label className="text-xs font-medium">Qty per unit</label>
                     <NumericFormat
-                      className="flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                      className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
                       value={current?.quantityPerUnit ?? ""}
                       onValueChange={(v) => setQty(v.value === "" ? undefined : Number(v.value))}
                       thousandSeparator
                       decimalScale={6}
                       allowNegative={false}
+                      isAllowed={(values) => values.floatValue === undefined || values.floatValue > 0}
                       placeholder="1"
                       disabled={isPending || !current?.containerStockVariantId}
                     />
