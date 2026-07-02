@@ -32,6 +32,16 @@ export interface Stock {
   updatedAt: string;
 }
 
+export interface ReturnableContainerLinkInput {
+  /** Only present after a round-trip read. */
+  id?: string;
+  containerStockVariantId: string;
+  containerName?: string;
+  quantityPerUnit: number;
+  depositValue?: number | null;
+  depositCurrency?: string | null;
+}
+
 export interface StockVariant {
   id: string;
   stockId: string;
@@ -49,6 +59,9 @@ export interface StockVariant {
   isDefault: boolean;
   barcode: string | null;
   serialTracked: boolean;
+  depositValue?: number | null;
+  depositCurrency?: string | null;
+  returnableContainers?: ReturnableContainerLinkInput[];
   createdAt: string;
   updatedAt: string;
 }

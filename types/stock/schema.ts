@@ -34,6 +34,14 @@ export const StockVariantSchema = object({
   preferredSupplierId: string().uuid().optional().or(string().length(0)),
   lowStockThreshold: preprocess(toNumber, number().nonnegative().optional()),
   overstockThreshold: preprocess(toNumber, number().nonnegative().optional()),
+  depositValue: preprocess(toNumber, number().nonnegative().optional()),
+  depositCurrency: string().optional().nullish(),
+  returnableContainers: array(
+    object({
+      containerStockVariantId: string().uuid(),
+      quantityPerUnit: preprocess(toNumber, number().positive()),
+    }),
+  ).optional().default([]),
 }).superRefine((val, ctx) => {
   if (
     val.lowStockThreshold != null &&
