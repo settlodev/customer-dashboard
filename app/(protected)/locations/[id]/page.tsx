@@ -40,7 +40,7 @@ export default async function LocationPage({ params }: { params: Params }) {
     <PageShell>
       <PageBreadcrumbs
         items={[
-          { title: "Locations", href: "/locations" },
+          { title: "Location", href: "" },
           { title: isNewItem ? "New" : item?.name || "Edit" },
         ]}
       />
