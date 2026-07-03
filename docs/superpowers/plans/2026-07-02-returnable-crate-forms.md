@@ -21,7 +21,7 @@
 
 ---
 
-### Task B1 (BE): Persist deposit + links in `StockService.create()`
+### Task 1 (BE): Persist deposit + links in `StockService.create()`
 
 Closes M1 for `POST /api/v1/stocks` AND `POST /api/v1/stocks/with-product` (the latter delegates to `create()` at `ProductStockComposerService.java:171`).
 
@@ -182,7 +182,7 @@ git -C "/Users/Peter/Settlo/Settlo Inventory Service" commit -m "fix(container):
 
 ---
 
-### Task B2 (BE): CSV import — deposit + material_type columns
+### Task 2 (BE): CSV import — deposit + material_type columns
 
 Completes M1 for the CSV path. Adds optional `deposit_value`, `deposit_currency`, and `material_type` columns so bulk-imported empty crates carry a deposit. (Returnable-container *links* remain form-only — a CSV can't reference a target variant id.)
 
@@ -345,7 +345,7 @@ git -C "/Users/Peter/Settlo/Settlo Inventory Service" commit -m "fix(container):
 
 ---
 
-### Task F1 (FE): Types + schema
+### Task 3 (FE): Types + schema
 
 **Files:**
 - Modify: `types/stock/type.ts`
@@ -380,13 +380,13 @@ and add to the `StockVariant` interface (after `serialTracked`):
 
 ```ts
   depositValue: preprocess(toNumber, number().nonnegative().optional()),
-  depositCurrency: string().optional().nullish(),
+  depositCurrency: string().length(3, "Currency must be a 3-letter ISO code").optional().nullish(),
   returnableContainers: array(
     object({
       containerStockVariantId: string().uuid(),
       quantityPerUnit: preprocess(toNumber, number().positive()),
     }),
-  ).optional().default([]),
+  ).optional(),
 ```
 
 (No new refine needed: `materialType` gating is enforced in the server action; the array entry schema already requires a complete row.)
@@ -405,7 +405,7 @@ git -C "/Users/Peter/Settlo/Customer-Dashboard" commit -m "feat(stock): add depo
 
 ---
 
-### Task F2 (FE): Thread fields through the stock server actions
+### Task 4 (FE): Thread fields through the stock server actions
 
 **Files:**
 - Modify: `lib/actions/stock-actions.tsx` (`createStock` ~136–154, `createStockWithProduct` ~493–517, `updateStock` variant `POST`/`PUT` ~206–229, `saveStockDraft`'s `mapStockVariantPartial` ~568–589)
@@ -500,7 +500,7 @@ git -C "/Users/Peter/Settlo/Customer-Dashboard" commit -m "feat(stock): send dep
 
 ---
 
-### Task F3 (FE): Stock form — deposit + returnable-container UI
+### Task 5 (FE): Stock form — deposit + returnable-container UI
 
 **Files:**
 - Modify: `components/forms/stock_form.tsx`

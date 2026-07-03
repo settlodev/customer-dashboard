@@ -44,18 +44,30 @@ export function AccountingPeriodsPanel({
   const { toast } = useToast();
   const [items, setItems] = useState<AccountingPeriod[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const reload = async () => {
     setLoading(true);
-    const data = await listAccountingPeriods();
-    setItems(data);
+    const result = await listAccountingPeriods(locationId);
+    if (result.responseType === "success") {
+      setItems(result.data ?? []);
+      setLoadError(null);
+    } else {
+      setItems([]);
+      setLoadError(result.message);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: result.message,
+      });
+    }
     setLoading(false);
   };
 
   useEffect(() => {
     reload();
-  }, []);
+  }, [locationId]);
 
   const closeMonth = (year: number, month: number) =>
     startTransition(async () => {
@@ -150,6 +162,8 @@ export function AccountingPeriodsPanel({
           </h4>
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : loadError ? (
+            <p className="text-sm text-red-600">{loadError}</p>
           ) : items.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No periods on file. Close the previous month to start.

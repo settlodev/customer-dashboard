@@ -11,7 +11,11 @@ import { LoanApplicationDecisionPanel } from "@/components/admin/loan-applicatio
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { cn } from "@/lib/utils";
-import { getLoanApplication, getLoanProduct } from "@/lib/actions/admin/loans";
+import {
+  getLoanApplication,
+  getLoanProduct,
+  resolveBusinessDirectory,
+} from "@/lib/actions/admin/loans";
 import {
   APPLICATION_STATUS_LABELS,
   APPLICATION_STATUS_TONES,
@@ -98,6 +102,9 @@ export default async function AdminLoanApplicationDetailPage({
   }
   const currency = product?.currency ?? "TZS";
   const decided = Boolean(application.decisionedAt);
+  const biz = (await resolveBusinessDirectory([application.businessId]))[
+    application.businessId
+  ];
 
   return (
     <AdminShell token={token}>
@@ -144,11 +151,11 @@ export default async function AdminLoanApplicationDetailPage({
                   <Field label="Requested term" mono>
                     {application.requestedTermDays} days
                   </Field>
-                  <Field label="Business" mono>
-                    ••{application.businessId.slice(-8)}
+                  <Field label="Business">
+                    {biz?.name ?? `••${application.businessId.slice(-8)}`}
                   </Field>
-                  <Field label="Account" mono>
-                    ••{application.accountId.slice(-8)}
+                  <Field label="Owner">
+                    {biz?.owner ?? `••${application.accountId.slice(-8)}`}
                   </Field>
                   <Field label="Status">
                     {APPLICATION_STATUS_LABELS[application.status]}

@@ -10,7 +10,12 @@ import {
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { cn } from "@/lib/utils";
-import { listLoanApplications, listLoanProducts } from "@/lib/actions/admin/loans";
+import {
+  listLoanApplications,
+  listLoanProducts,
+  resolveBusinessDirectory,
+  type BusinessRef,
+} from "@/lib/actions/admin/loans";
 import {
   APPLICATION_STATUS_FILTERS,
   APPLICATION_STATUS_LABELS,
@@ -60,6 +65,7 @@ export default async function AdminLoanApplicationsPage({
 
   let applications: LoanApplicationResponse[] = [];
   let products = new Map<string, LoanProductResponse>();
+  let directory: Record<string, BusinessRef> = {};
   let loadError: string | null = null;
   try {
     const [apps, prodPage] = await Promise.all([
@@ -68,6 +74,9 @@ export default async function AdminLoanApplicationsPage({
     ]);
     applications = apps.content ?? [];
     products = new Map((prodPage.content ?? []).map((p) => [p.id, p]));
+    directory = await resolveBusinessDirectory(
+      applications.map((a) => a.businessId),
+    );
   } catch (err) {
     loadError =
       err instanceof Error ? err.message : "Failed to load loan applications.";
@@ -145,8 +154,9 @@ export default async function AdminLoanApplicationsPage({
                             >
                               {a.applicationNumber}
                             </Link>
-                            <div className="font-mono text-[11px] text-muted-foreground">
-                              biz ••{a.businessId.slice(-6)}
+                            <div className="text-[11px] text-muted-foreground">
+                              {directory[a.businessId]?.name ??
+                                `biz ••${a.businessId.slice(-6)}`}
                             </div>
                           </td>
                           <td className="px-4 py-3">

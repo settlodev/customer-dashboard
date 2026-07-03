@@ -19,6 +19,7 @@ import {
   listFundingSources,
   listLoanDisbursements,
   listPayoutAccounts,
+  resolveBusinessDirectory,
 } from "@/lib/actions/admin/loans";
 import {
   DISBURSEMENT_STATUS_LABELS,
@@ -103,6 +104,10 @@ export default async function AdminLoanDetailPage({ params }: PageProps) {
     product = null;
   }
 
+  const biz = (await resolveBusinessDirectory([loan.businessId]))[
+    loan.businessId
+  ];
+
   // Disbursement inputs are only needed (and permitted) for a disbursing officer.
   const pending = loan.status === "PENDING_DISBURSEMENT";
   let fundingSources: FundingSourceResponse[] = [];
@@ -169,9 +174,10 @@ export default async function AdminLoanDetailPage({ params }: PageProps) {
                   <Field label="Term" mono>
                     {loan.termDays} days · {loan.installmentCount} inst.
                   </Field>
-                  <Field label="Business" mono>
-                    ••{loan.businessId.slice(-8)}
+                  <Field label="Business">
+                    {biz?.name ?? `••${loan.businessId.slice(-8)}`}
                   </Field>
+                  {biz?.owner ? <Field label="Owner">{biz.owner}</Field> : null}
                   <Field label="Start date">
                     {loan.startDate
                       ? new Date(loan.startDate).toLocaleDateString()

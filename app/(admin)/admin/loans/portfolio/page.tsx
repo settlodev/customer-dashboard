@@ -10,7 +10,12 @@ import {
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { cn } from "@/lib/utils";
-import { listLoanProducts, listLoans } from "@/lib/actions/admin/loans";
+import {
+  listLoanProducts,
+  listLoans,
+  resolveBusinessDirectory,
+  type BusinessRef,
+} from "@/lib/actions/admin/loans";
 import {
   fmtAmount,
   LOAN_STATUS_FILTERS,
@@ -59,6 +64,7 @@ export default async function AdminLoansPage({ searchParams }: PageProps) {
 
   let loans: LoanResponse[] = [];
   let products = new Map<string, LoanProductResponse>();
+  let directory: Record<string, BusinessRef> = {};
   let loadError: string | null = null;
   try {
     const [loanPage, prodPage] = await Promise.all([
@@ -67,6 +73,7 @@ export default async function AdminLoansPage({ searchParams }: PageProps) {
     ]);
     loans = loanPage.content ?? [];
     products = new Map((prodPage.content ?? []).map((p) => [p.id, p]));
+    directory = await resolveBusinessDirectory(loans.map((l) => l.businessId));
   } catch (err) {
     loadError = err instanceof Error ? err.message : "Failed to load loans.";
   }
@@ -139,8 +146,9 @@ export default async function AdminLoansPage({ searchParams }: PageProps) {
                             >
                               {l.loanNumber}
                             </Link>
-                            <div className="font-mono text-[11px] text-muted-foreground">
-                              biz ••{l.businessId.slice(-6)}
+                            <div className="text-[11px] text-muted-foreground">
+                              {directory[l.businessId]?.name ??
+                                `biz ••${l.businessId.slice(-6)}`}
                               {pending && canDisburse ? (
                                 <span className="ml-2 text-primary">
                                   · ready to disburse
