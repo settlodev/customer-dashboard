@@ -463,6 +463,12 @@ const getNormalMenuItems = (
           permission: "fund_transfers:read",
         },
         {
+          title: "Provider settlements",
+          link: "/accounting/provider-settlements",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
           title: "Till reconciliation",
           link: "/accounting/till",
           current: args?.isCurrentItem,
