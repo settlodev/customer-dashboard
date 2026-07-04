@@ -36,6 +36,8 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
 
 // ── Payment method → account mapping ───────────────────────────────
 
+export type SettlementTreatment = "IMMEDIATE" | "RECEIVABLE";
+
 export interface PaymentMethodAccountMapping {
   id: string;
   locationId: string;
@@ -45,6 +47,7 @@ export interface PaymentMethodAccountMapping {
   chartOfAccountId: string;
   chartOfAccountCode: string | null;
   chartOfAccountName: string | null;
+  settlementTreatment: SettlementTreatment;
   active: boolean;
   notes: string | null;
   createdAt: string;
@@ -56,6 +59,7 @@ export interface PaymentMethodMappingPayload {
   paymentMethodId: string;
   paymentMethodCode: string;
   chartOfAccountId: string;
+  settlementTreatment?: SettlementTreatment;
   notes?: string;
   active?: boolean;
 }
