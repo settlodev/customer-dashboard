@@ -10,6 +10,7 @@ import {
   AlertIcon,
   AlertTitle,
 } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +41,7 @@ import type {
   PaymentMethodAccountMapping,
   ProductRevenueMapping,
   AccountType,
+  SettlementTreatment,
 } from "@/types/accounting-mapping/type";
 import type { Product } from "@/types/product/type";
 import type { PaymentMethod, PaymentMethodChild } from "@/types/payments/type";
@@ -123,6 +125,7 @@ function PaymentMethodMappings({ locationId }: { locationId: string }) {
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Payment method</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Chart of account</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Settlement</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Notes</th>
                 <th className="px-3 py-2 w-10" />
               </tr>
@@ -139,6 +142,13 @@ function PaymentMethodMappings({ locationId }: { locationId: string }) {
                   <td className="px-3 py-2">
                     <div className="font-mono text-xs text-muted-foreground">{m.chartOfAccountCode ?? "—"}</div>
                     <div className="text-sm">{m.chartOfAccountName ?? "—"}</div>
+                  </td>
+                  <td className="px-3 py-2">
+                    {m.settlementTreatment === "RECEIVABLE" ? (
+                      <Badge variant="warn" className="font-normal">Receivable</Badge>
+                    ) : (
+                      <Badge variant="soft" className="font-normal">Immediate</Badge>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">{m.notes || "—"}</td>
                   <td className="px-3 py-2">
@@ -187,6 +197,8 @@ function MappingDialog({
   const [open, setOpen] = useState(false);
   const [paymentMethodId, setPaymentMethodId] = useState("");
   const [chartOfAccountId, setChartOfAccountId] = useState("");
+  const [settlementTreatment, setSettlementTreatment] =
+    useState<SettlementTreatment>("IMMEDIATE");
   const [notes, setNotes] = useState("");
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -211,6 +223,7 @@ function MappingDialog({
         paymentMethodId: method.id,
         paymentMethodCode: method.code,
         chartOfAccountId,
+        settlementTreatment,
         notes: notes.trim() || undefined,
       });
       if (res.responseType === "error") {
@@ -224,6 +237,7 @@ function MappingDialog({
       toast({ title: "Mapping saved" });
       setPaymentMethodId("");
       setChartOfAccountId("");
+      setSettlementTreatment("IMMEDIATE");
       setNotes("");
       setOpen(false);
       onSaved();
@@ -270,14 +284,39 @@ function MappingDialog({
           </div>
 
           <div className="space-y-1">
+            <label className="text-xs font-medium">Settlement treatment</label>
+            <select
+              className="w-full h-10 rounded-md border px-3 text-sm"
+              value={settlementTreatment}
+              onChange={(e) =>
+                setSettlementTreatment(e.target.value as SettlementTreatment)
+              }
+              disabled={isPending}
+            >
+              <option value="IMMEDIATE">Money received immediately</option>
+              <option value="RECEIVABLE">Provider owes us — settle later</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
             <label className="text-xs font-medium">Chart of account</label>
             <ChartOfAccountSelector
               accountType={"ASSET" as AccountType}
               value={chartOfAccountId}
               onChange={(val) => setChartOfAccountId(val)}
-              placeholder="Typically an ASSET (cash/bank/till)"
+              placeholder={
+                settlementTreatment === "RECEIVABLE"
+                  ? "Provider holding / receivable account (e.g. 15xx / A/R)"
+                  : "Typically an ASSET (cash/bank/till)"
+              }
               isDisabled={isPending}
             />
+            {settlementTreatment === "RECEIVABLE" && (
+              <p className="text-[11px] text-muted-foreground">
+                Posts to a holding/receivable account until the provider pays
+                out, instead of cash/bank received now.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1">
