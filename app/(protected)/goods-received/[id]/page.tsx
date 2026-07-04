@@ -12,6 +12,8 @@ import { Money } from "@/components/widgets/money";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
 import { getGrn, getLandedCosts } from "@/lib/actions/grn-actions";
 import { getLocationConfig } from "@/lib/actions/location-config-actions";
+import { resolveBillForLpo } from "@/lib/actions/grn-bill-actions";
+import { grnDeliveryValue, computeBillPrefill } from "@/lib/grn-utils";
 import {
   GRN_STATUS_LABELS,
   GRN_STATUS_TONES,
@@ -22,6 +24,7 @@ import { GrnStatusActions } from "@/components/widgets/grn/status-actions";
 import { GrnShareButton } from "@/components/widgets/grn/share-dialog";
 import { InspectionPanel } from "@/components/widgets/grn/inspection-panel";
 import { LandedCostsPanel } from "@/components/widgets/grn/landed-costs-panel";
+import GrnBillPaymentCard from "@/components/widgets/grn/grn-bill-payment-card";
 import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
 import { FileText, Layers, Boxes, DollarSign, Truck } from "lucide-react";
 
@@ -57,6 +60,26 @@ export default async function GrnDetailPage({ params }: { params: Params }) {
 
   const [grn, config] = await Promise.all([getGrn(id), getLocationConfig()]);
   if (!grn) notFound();
+
+  let billResolution = null;
+  if (grn.lpoId) {
+    try {
+      billResolution = await resolveBillForLpo(grn.lpoId);
+    } catch {
+      billResolution = null; // best-effort: a bill-resolution failure must never break the GRN page
+    }
+  }
+  const billPayable =
+    !!billResolution &&
+    billResolution.expense.status === "APPROVED" &&
+    billResolution.expense.paymentStatus !== "PAID";
+  const billPrefill = billResolution
+    ? computeBillPrefill(
+        grnDeliveryValue(grn.items),
+        billResolution.expense.balanceDue,
+        billResolution.lpoFullyReceived,
+      )
+    : 0;
 
   const landedCostsEnabled = config?.landedCostTrackingEnabled ?? false;
   const qualityInspectionEnabled = config?.qualityInspectionEnabled ?? false;
@@ -136,6 +159,12 @@ export default async function GrnDetailPage({ params }: { params: Params }) {
         }
       />
       <PageBody>
+        {billPayable && billResolution && (
+          <GrnBillPaymentCard
+            expense={billResolution.expense}
+            prefillAmount={billPrefill}
+          />
+        )}
         <KpiStrip cols={4}>
           <KpiCard
             icon={<Layers className="h-3 w-3" />}
