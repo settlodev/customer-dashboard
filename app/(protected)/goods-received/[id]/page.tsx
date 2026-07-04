@@ -71,6 +71,7 @@ export default async function GrnDetailPage({ params }: { params: Params }) {
   }
   const billPayable =
     !!billResolution &&
+    grn.status === "RECEIVED" &&
     billResolution.expense.status === "APPROVED" &&
     billResolution.expense.paymentStatus !== "PAID";
   const billPrefill = billResolution
@@ -78,6 +79,7 @@ export default async function GrnDetailPage({ params }: { params: Params }) {
         grnDeliveryValue(grn.items),
         billResolution.expense.balanceDue,
         billResolution.lpoFullyReceived,
+        grn.currency === billResolution.expense.currencyCode,
       )
     : 0;
 

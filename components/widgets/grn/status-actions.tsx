@@ -53,6 +53,7 @@ export function GrnStatusActions({ grn }: Props) {
           grnId={grn.id}
           lpoId={grn.lpoId}
           items={grn.items}
+          currency={grn.currency}
           pendingInspection={pendingInspection}
           fromInspection={grn.status === "INSPECTION_HOLD"}
         />
@@ -72,12 +73,14 @@ function ReceiveButton({
   grnId,
   lpoId,
   items,
+  currency,
   pendingInspection,
   fromInspection,
 }: {
   grnId: string;
   lpoId: string | null;
   items: GrnItem[];
+  currency: string | null;
   pendingInspection: boolean;
   fromInspection: boolean;
 }) {
@@ -126,6 +129,7 @@ function ReceiveButton({
                   grnDeliveryValue(items),
                   resolution.expense.balanceDue,
                   resolution.lpoFullyReceived,
+                  currency === resolution.expense.currencyCode,
                 ),
               );
               setPayOpen(true);

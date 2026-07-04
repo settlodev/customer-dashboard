@@ -41,15 +41,19 @@ export function grnDeliveryValue(items: GrnItem[]): number {
 /**
  * Amount to prefill into the payment form for a delivery against a bill.
  * Defaults to this delivery's value, clamped to the bill's outstanding balance
- * so it can never exceed what is owed. When the delivery completes the PO (LPO
- * fully received), default to the full outstanding balance so the bill closes
- * cleanly with no rounding/FX remainder. Result is rounded to 2 decimals.
+ * so it can never exceed what is owed. Falls back to the full outstanding
+ * balance when the delivery value can't be trusted against the bill — either
+ * the delivery completes the PO (close it cleanly, no rounding/FX remainder),
+ * or the GRN's base currency differs from the bill's currency (deliveryValue is
+ * in the GRN currency, so min(...) across currencies would be meaningless).
+ * Result is rounded to 2 decimals.
  */
 export function computeBillPrefill(
   deliveryValue: number,
   balanceDue: number,
   lpoFullyReceived: boolean,
+  currencyMatches: boolean,
 ): number {
-  if (lpoFullyReceived) return round2(balanceDue);
+  if (lpoFullyReceived || !currencyMatches) return round2(balanceDue);
   return round2(Math.min(deliveryValue, balanceDue));
 }
