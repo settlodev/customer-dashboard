@@ -27,6 +27,7 @@ export interface Expense {
   taxAmount?: number | null;
   totalAmount: number;
   paidAmount: number;
+  creditedAmount: number;
   balanceDue: number;
   currencyCode: string;
   exchangeRate?: number | null;
