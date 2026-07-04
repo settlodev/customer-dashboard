@@ -177,10 +177,7 @@ function ReceiveButton({
             setPayOpen(o);
             if (!o) router.refresh();
           }}
-          onRecorded={() => {
-            setPayOpen(false);
-            router.refresh();
-          }}
+          onRecorded={() => setPayOpen(false)}
         />
       )}
     </>
