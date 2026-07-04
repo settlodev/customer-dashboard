@@ -467,6 +467,7 @@ const getNormalMenuItems = (
           link: "/accounting/provider-settlements",
           current: args?.isCurrentItem,
           icon: "cart",
+          permission: "provider_settlements:read",
         },
         {
           title: "Till reconciliation",
