@@ -247,16 +247,20 @@ export default async function SupplierReturnDetailPage({
                     </Link>{" "}
                     · outstanding{" "}
                     <span className="font-mono tabular-nums">
-                      {reconciliation.bill.balanceDue.toLocaleString()}{" "}
-                      {reconciliation.bill.currencyCode}
+                      <Money
+                        amount={reconciliation.bill.balanceDue}
+                        currency={reconciliation.bill.currencyCode}
+                      />
                     </span>
                   </p>
                   {reconciliation.creditNote ? (
                     <p className="text-green-700">
                       Credit note {reconciliation.creditNote.creditNoteNumber} raised ·{" "}
                       <span className="font-mono tabular-nums">
-                        {reconciliation.creditNote.amount.toLocaleString()}{" "}
-                        {reconciliation.bill.currencyCode}
+                        <Money
+                          amount={reconciliation.creditNote.amount}
+                          currency={reconciliation.bill.currencyCode}
+                        />
                       </span>
                     </p>
                   ) : (
