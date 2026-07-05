@@ -69,6 +69,13 @@ export async function receiveRefund(
   }
 }
 
+export async function findOwedRefundByReturn(
+  returnNumber: string,
+): Promise<SupplierRefund | null> {
+  const page = await listOwedRefunds(0, 200);
+  return page?.content?.find((r) => r.returnNumber === returnNumber) ?? null;
+}
+
 export async function cancelRefund(refundId: string): Promise<FormResponse> {
   try {
     const apiClient = new ApiClient();

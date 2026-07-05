@@ -269,6 +269,21 @@ export default async function SupplierReturnDetailPage({
                       refund may be owed if the return exceeds the outstanding balance).
                     </p>
                   )}
+                  {reconciliation.owedRefund && (
+                    <p className="text-amber-700">
+                      Cash refund owed: {reconciliation.owedRefund.refundNumber} ·{" "}
+                      <span className="font-mono tabular-nums">
+                        <Money
+                          amount={reconciliation.owedRefund.amount}
+                          currency={reconciliation.owedRefund.currencyCode}
+                        />
+                      </span>{" "}
+                      —{" "}
+                      <Link href="/supplier-refunds" className="text-primary hover:underline">
+                        record it
+                      </Link>
+                    </p>
+                  )}
                 </div>
               ) : (
                 <p className="mt-2 text-muted-foreground">
