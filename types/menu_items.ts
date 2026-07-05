@@ -299,6 +299,12 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
+        {
+          title: "Refunds owed",
+          link: "/supplier-refunds",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
       ],
     },
 
