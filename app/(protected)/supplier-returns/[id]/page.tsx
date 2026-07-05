@@ -54,7 +54,11 @@ export default async function SupplierReturnDetailPage({
   const supplier = suppliers.find((s) => s.id === supplierReturn.supplierId) ?? null;
 
   const reconciliation = supplierReturn.grnId
-    ? await resolveReturnReconciliation(supplierReturn.grnId, supplierReturn.returnNumber)
+    ? await resolveReturnReconciliation(
+        supplierReturn.grnId,
+        supplierReturn.returnNumber,
+        supplierReturn.id,
+      )
     : null;
 
   const currency = supplierReturn.currency || DEFAULT_CURRENCY;
@@ -264,10 +268,12 @@ export default async function SupplierReturnDetailPage({
                       </span>
                     </p>
                   ) : (
-                    <p className="text-amber-700">
-                      Not yet reconciled — dispatch the return to auto-credit the bill (a cash
-                      refund may be owed if the return exceeds the outstanding balance).
-                    </p>
+                    !reconciliation.owedRefund && (
+                      <p className="text-amber-700">
+                        Not yet reconciled — dispatch the return to auto-credit the bill (a cash
+                        refund may be owed if the return exceeds the outstanding balance).
+                      </p>
+                    )
                   )}
                   {reconciliation.owedRefund && (
                     <p className="text-amber-700">

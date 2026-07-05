@@ -4,7 +4,7 @@ import { getGrn } from "@/lib/actions/grn-actions";
 import { getLpo } from "@/lib/actions/lpo-actions";
 import { getExpenseByReference } from "@/lib/actions/expense-actions";
 import { listExpenseCreditNotes } from "@/lib/actions/expense-credit-note-actions";
-import { findOwedRefundByReturn } from "@/lib/actions/supplier-refund-actions";
+import { findOwedRefundByReturnId } from "@/lib/actions/supplier-refund-actions";
 import type { Expense } from "@/types/expense/type";
 import type { ExpenseCreditNote } from "@/types/expense-credit-note/type";
 import type { SupplierRefund } from "@/types/supplier-refund/type";
@@ -24,6 +24,7 @@ export interface ReturnReconciliation {
 export async function resolveReturnReconciliation(
   grnId: string,
   returnNumber: string,
+  returnId: string,
 ): Promise<ReturnReconciliation | null> {
   try {
     const grn = await getGrn(grnId);
@@ -37,7 +38,7 @@ export async function resolveReturnReconciliation(
 
     const notes = await listExpenseCreditNotes(bill.id);
     const creditNote = notes.find((n) => n.reference === returnNumber) ?? null;
-    const owedRefund = await findOwedRefundByReturn(returnNumber);
+    const owedRefund = await findOwedRefundByReturnId(returnId);
     return { bill, creditNote, owedRefund };
   } catch (error) {
     console.error("resolveReturnReconciliation failed", error);
