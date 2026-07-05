@@ -69,11 +69,22 @@ export async function receiveRefund(
   }
 }
 
-export async function findOwedRefundByReturnId(
+export async function findRefundByReturnId(
   returnId: string,
 ): Promise<SupplierRefund | null> {
-  const page = await listOwedRefunds(0, 200);
-  return page?.content?.find((r) => r.returnId === returnId) ?? null;
+  try {
+    const params = new URLSearchParams();
+    params.set("returnId", returnId);
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(
+      accountingUrl(`/api/v1/supplier-refunds?${params.toString()}`),
+    );
+    const list = (parseStringify(data) as SupplierRefund[]) ?? [];
+    return list[0] ?? null;
+  } catch (error) {
+    console.error("findRefundByReturnId failed", error);
+    return null;
+  }
 }
 
 export async function cancelRefund(refundId: string): Promise<FormResponse> {

@@ -268,26 +268,38 @@ export default async function SupplierReturnDetailPage({
                       </span>
                     </p>
                   ) : (
-                    !reconciliation.owedRefund && (
+                    !reconciliation.creditNote &&
+                    !reconciliation.refund && (
                       <p className="text-amber-700">
                         Not yet reconciled — dispatch the return to auto-credit the bill (a cash
                         refund may be owed if the return exceeds the outstanding balance).
                       </p>
                     )
                   )}
-                  {reconciliation.owedRefund && (
+                  {reconciliation.refund?.status === "OWED" && (
                     <p className="text-amber-700">
-                      Cash refund owed: {reconciliation.owedRefund.refundNumber} ·{" "}
+                      Cash refund owed: {reconciliation.refund.refundNumber} ·{" "}
                       <span className="font-mono tabular-nums">
                         <Money
-                          amount={reconciliation.owedRefund.amount}
-                          currency={reconciliation.owedRefund.currencyCode}
+                          amount={reconciliation.refund.amount}
+                          currency={reconciliation.refund.currencyCode}
                         />
                       </span>{" "}
                       —{" "}
                       <Link href="/supplier-refunds" className="text-primary hover:underline">
                         record it
                       </Link>
+                    </p>
+                  )}
+                  {reconciliation.refund?.status === "RECEIVED" && (
+                    <p className="text-green-700">
+                      Cash refund received: {reconciliation.refund.refundNumber} ·{" "}
+                      <span className="font-mono tabular-nums">
+                        <Money
+                          amount={reconciliation.refund.receivedAmount ?? reconciliation.refund.amount}
+                          currency={reconciliation.refund.currencyCode}
+                        />
+                      </span>
                     </p>
                   )}
                 </div>
