@@ -55,12 +55,18 @@ export type MappingListResult<T> = {
 
 export async function listPaymentMethodMappings(
   locationId: string,
+  activeOnly?: boolean,
 ): Promise<MappingListResult<PaymentMethodAccountMapping>> {
   try {
     const apiClient = new ApiClient();
-    const data = await apiClient.get(
-      accountingUrl(`/api/v1/payment-method-mappings/location/${locationId}`),
-    );
+    const url = activeOnly
+      ? accountingUrl(
+          `/api/v1/payment-method-mappings/location/${locationId}?activeOnly=true`,
+        )
+      : accountingUrl(
+          `/api/v1/payment-method-mappings/location/${locationId}`,
+        );
+    const data = await apiClient.get(url);
     return { data: parseStringify(data) ?? [] };
   } catch (error: any) {
     if (error?.code === "FORBIDDEN" || error?.status === 403) {
