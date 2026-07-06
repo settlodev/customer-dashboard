@@ -136,7 +136,7 @@ export function buildPackagingDepositColumns({
       ),
       cell: ({ row }) => {
         const value = row.original.depositLiability;
-        if (!value) return <span className="text-muted-foreground">—</span>;
+        if (value == null) return <span className="text-muted-foreground">—</span>;
         return (
           <div className="flex flex-col tabular-nums">
             <span className="font-medium">{formatNum(value, 2)}</span>

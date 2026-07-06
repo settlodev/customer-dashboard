@@ -41,9 +41,9 @@ export async function DepositTab() {
         />
         <KpiCard
           icon={<PackageOpen className="h-3 w-3" />}
-          label="Empties on hand"
+          label="Packaging on hand"
           value={fmt(report.totalEmpties)}
-          delta="Awaiting return"
+          delta={`${fmt(report.packagingItemCount)} packaging SKUs`}
           deltaTone="neutral"
         />
         <KpiCard

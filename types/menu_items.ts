@@ -621,9 +621,10 @@ const getNormalMenuItems = (
 // Store mode — shown when the active destination is a store (a stockroom
 // attached to a parent location). A store cannot sell, so Sales, Accounting,
 // Business operations, Procurement and the product catalogue (Inventory
-// management) are all dropped; Reports collapses to stock only. The store
-// shares its parent location's catalogue but holds its own quantities, which
-// it manages here and moves via Stock transfer / Stock request.
+// management) are all dropped; Reports collapses to stock (plus packaging,
+// when the location has the packaging module enabled). The store shares its
+// parent location's catalogue but holds its own quantities, which it manages
+// here and moves via Stock transfer / Stock request.
 const getStoreMenuItems = (args?: MenuItemArgType) => {
   const reportsReadAll = args?.reportsReadAll !== false; // default true
   const hasPackaging = args?.hasPackaging === true; // default false (hidden)
@@ -641,7 +642,8 @@ const getStoreMenuItems = (args?: MenuItemArgType) => {
       items: [],
     },
 
-    // Reports — stock only in store mode (no sales/finance reports).
+    // Reports — stock (plus packaging, when enabled) in store mode; no
+    // sales/finance reports.
     {
       label: "Reports",
       showSeparator: true,
