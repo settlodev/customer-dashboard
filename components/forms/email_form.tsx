@@ -194,8 +194,6 @@ const EmailForm = ({
                     }
                     onValueChange={(field as any).onChange}
                     placeholder="Select customers"
-                    variant="inverted"
-                    animation={2}
                     maxCount={3}
                     {...field}
                     disabled={isPending}

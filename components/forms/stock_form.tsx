@@ -40,7 +40,6 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
@@ -56,9 +55,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  ControlBox,
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  SegmentedRadio,
+  controlInputClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
+import { cn } from "@/lib/utils";
 import { NumericFormat } from "react-number-format";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -238,6 +247,11 @@ export default function StockForm({ item, balances }: StockFormProps) {
   const stockName = form.watch("name");
   const baseUnitId = form.watch("baseUnitId");
   const materialType = form.watch("materialType");
+  // Packaging items (crates/bottles) carry the deposit inline on each variant and
+  // have no "link a container" step, so the deposit shows in Variant details and
+  // the Packaging tab is hidden. Everything else can link a returnable container
+  // per variant via the Packaging tab.
+  const isPackaging = materialType === "PACKAGING";
   // Ids of variants belonging to PACKAGING stocks — the valid empty
   // containers (crates/bottles) offerable in the returnable-container
   // picker below. Fetched once; the selector itself re-derives display
@@ -622,29 +636,20 @@ export default function StockForm({ item, balances }: StockFormProps) {
                 </header>
 
                 <div className={styles.formBody}>
-                  <div
-                    className={styles.fieldRow}
-                    style={{ ["--cols" as never]: 3 } as React.CSSProperties}
-                  >
+                  <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] md:grid-cols-3">
                     <FormField
                       control={form.control}
                       name="name"
                       render={({ field }) => (
-                        <FormItem className="min-w-0">
-                          <FormLabel className={styles.fieldLabel}>
-                            Stock name <span className="req">*</span>
-                          </FormLabel>
+                        <FormItem className="min-w-0 space-y-[7px]">
+                          <FieldLabel required>Stock name</FieldLabel>
                           <FormControl>
-                            <div className={styles.inputWithPrefix}>
-                              <span className={styles.inputPrefix}>
-                                <Package className="h-3.5 w-3.5" />
-                              </span>
-                              <Input
-                                placeholder="e.g. Flour, Cooking Oil"
-                                {...field}
-                                disabled={isPending}
-                              />
-                            </div>
+                            <ControlInput
+                              prefix={<Package className="h-4 w-4" />}
+                              placeholder="e.g. Flour, Cooking Oil"
+                              {...field}
+                              disabled={isPending}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -655,17 +660,15 @@ export default function StockForm({ item, balances }: StockFormProps) {
                       control={form.control}
                       name="materialType"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className={styles.fieldLabel}>
-                            Material type
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Material type</FieldLabel>
                           <Select
                             value={field.value}
                             onValueChange={field.onChange}
                             disabled={isPending}
                           >
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger className={controlSelectTriggerClass}>
                                 <SelectValue />
                               </SelectTrigger>
                             </FormControl>
@@ -677,7 +680,11 @@ export default function StockForm({ item, balances }: StockFormProps) {
                               ))}
                             </SelectContent>
                           </Select>
-                          <FormMessage />
+                          <FieldHint>
+                            {isPackaging
+                              ? "This item IS a returnable container — set the deposit it carries on each variant."
+                              : "Sold or consumed as-is; can link a returnable container per variant."}
+                          </FieldHint>
                         </FormItem>
                       )}
                     />
@@ -686,10 +693,8 @@ export default function StockForm({ item, balances }: StockFormProps) {
                       control={form.control}
                       name="baseUnitId"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className={styles.fieldLabel}>
-                            Base unit <span className="req">*</span>
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel required>Base unit</FieldLabel>
                           <FormControl>
                             <UnitSelector
                               value={field.value}
@@ -703,44 +708,38 @@ export default function StockForm({ item, balances }: StockFormProps) {
                     />
                   </div>
 
-                  <div className={styles.fieldRow} style={{ marginTop: 14 }}>
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem className="col-span-2 min-w-0">
-                          <FormLabel className={styles.fieldLabel}>
-                            Description
-                            <span className="opt">OPTIONAL</span>
-                          </FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Notes for buyers, recipes, or storage."
-                              rows={2}
-                              {...field}
-                              value={field.value ?? ""}
-                              disabled={isPending}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem className="mt-[15px] space-y-[7px]">
+                        <FieldLabel optional>Description</FieldLabel>
+                        <FormControl>
+                          <ControlTextarea
+                            placeholder="Notes for buyers, recipes, or storage."
+                            {...field}
+                            value={field.value ?? ""}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
 
                   {!isEditing && (
-                    <div className="mt-4 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-0.5 min-w-0">
-                          <FormLabel className="text-sm font-medium text-foreground">
+                    <div className="mt-[18px] rounded-xl border border-primary/15 bg-primary/[0.06] p-[18px]">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 space-y-1">
+                          <div className="text-sm font-semibold text-ink">
                             Also create a sellable product
-                          </FormLabel>
-                          <p className="text-xs text-muted-foreground">
+                          </div>
+                          <p className="max-w-[78ch] text-xs leading-relaxed text-ink-3">
                             Use when this stock item IS the sellable thing
-                            (bottled drinks, packaged goods). Creates a
-                            matching product with one variant per stock
-                            variant, linked 1:1 with the selling price you
-                            set on each variant below. Leave off for raw
-                            materials consumed by recipes.
+                            (bottled drinks, packaged goods). Creates a matching
+                            product with one variant per stock variant, linked
+                            1:1 with the selling price you set on each variant
+                            below. Leave off for raw materials consumed by
+                            recipes.
                           </p>
                         </div>
                         <Switch
@@ -751,11 +750,13 @@ export default function StockForm({ item, balances }: StockFormProps) {
                       </div>
 
                       {autoCreateProduct && (
-                        <div className="space-y-1">
-                          <FormLabel className="text-xs">
-                            Categories{" "}
-                            <span className="text-red-500">*</span>
-                          </FormLabel>
+                        <div className="mt-4 space-y-[7px] border-t border-primary/15 pt-4">
+                          <label className="flex items-center gap-1.5 text-[13px] font-semibold leading-none text-ink">
+                            Product category <span className="text-primary">*</span>
+                            <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
+                              {categoryIds.length} selected
+                            </span>
+                          </label>
                           <MultiSelect
                             options={categories.map((c) => ({
                               label: c.name,
@@ -766,12 +767,10 @@ export default function StockForm({ item, balances }: StockFormProps) {
                             placeholder="Pick at least one category"
                             maxCount={5}
                           />
-                          {categoryIds.length === 0 && (
-                            <p className="text-[11px] text-muted-foreground">
-                              Categorisation drives reports, addons, and tax
-                              rules.
-                            </p>
-                          )}
+                          <FieldHint>
+                            Drives the online menu, reports, and tax rules for
+                            the created product.
+                          </FieldHint>
                         </div>
                       )}
                     </div>
@@ -1282,6 +1281,7 @@ function VariantRowImpl({
   materialType,
   packagingVariantIds,
 }: VariantRowProps) {
+  const [linkOpen, setLinkOpen] = useState(false);
   // One subscription on the variant subtree — sibling rows changing
   // doesn't re-render this row.
   const variant = useWatch({
@@ -1379,19 +1379,18 @@ function VariantRowImpl({
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] md:grid-cols-3">
         <FormField
           control={form.control}
           name={`variants.${index}.name`}
           render={({ field: f }) => (
-            <FormItem>
-              <FormLabel className="text-xs">
-                Name <span className="text-red-500">*</span>
-              </FormLabel>
+            <FormItem className="space-y-[7px]">
+              <FieldLabel required>Name</FieldLabel>
               <FormControl>
-                <Input
+                <ControlInput
                   placeholder="e.g. 50kg Bag, 1L Bottle"
                   {...f}
+                  value={f.value ?? ""}
                   disabled={isDisabled}
                 />
               </FormControl>
@@ -1403,14 +1402,13 @@ function VariantRowImpl({
           control={form.control}
           name={`variants.${index}.barcode`}
           render={({ field: f }) => (
-            <FormItem>
-              <FormLabel className="text-xs">Barcode</FormLabel>
+            <FormItem className="space-y-[7px]">
+              <FieldLabel optional>Barcode</FieldLabel>
               <FormControl>
-                <div className="relative">
-                  <BarcodeIcon className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                  <Input
-                    className="pl-10 pr-10"
-                    placeholder="Optional"
+                <ControlBox prefix={<BarcodeIcon className="h-4 w-4" />}>
+                  <input
+                    className={controlInputClass}
+                    placeholder="Scan or enter"
                     {...f}
                     value={f.value ?? ""}
                     disabled={isDisabled}
@@ -1420,17 +1418,17 @@ function VariantRowImpl({
                       type="button"
                       onClick={() => handleGenerateBarcode(index)}
                       disabled={isPending || generatingBarcode !== null}
-                      className="absolute right-2 top-2 p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                       title="Generate barcode"
                     >
                       {generatingBarcode === index ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <Wand2 className="w-4 h-4" />
+                        <Wand2 className="h-4 w-4" />
                       )}
                     </button>
                   )}
-                </div>
+                </ControlBox>
               </FormControl>
             </FormItem>
           )}
@@ -1439,19 +1437,16 @@ function VariantRowImpl({
           control={form.control}
           name={`variants.${index}.sku`}
           render={({ field: f }) => (
-            <FormItem>
-              <FormLabel className="text-xs">SKU</FormLabel>
+            <FormItem className="space-y-[7px]">
+              <FieldLabel optional>SKU</FieldLabel>
               <FormControl>
-                <div className="relative">
-                  <Hash className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                  <Input
-                    className="pl-10"
-                    placeholder="Optional"
-                    {...f}
-                    value={f.value ?? ""}
-                    disabled={isDisabled}
-                  />
-                </div>
+                <ControlInput
+                  prefix={<Hash className="h-4 w-4" />}
+                  placeholder="Auto if empty"
+                  {...f}
+                  value={f.value ?? ""}
+                  disabled={isDisabled}
+                />
               </FormControl>
             </FormItem>
           )}
@@ -1459,117 +1454,138 @@ function VariantRowImpl({
       </div>
 
       {!isEditing && (
-        <div
-          className={`grid grid-cols-1 gap-3 ${
-            autoCreateProduct ? "sm:grid-cols-3" : "sm:grid-cols-2"
-          }`}
-        >
-          <FormField
-            control={form.control}
-            name={`variants.${index}.initialQuantity`}
-            render={({ field: f }) => (
-              <FormItem>
-                <FormLabel className="text-xs">Initial quantity</FormLabel>
-                <FormControl>
-                  <NumericFormat
-                    className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
-                    value={f.value}
-                    onValueChange={(v) => f.onChange(v.floatValue ?? 0)}
-                    thousandSeparator
-                    placeholder="0"
-                    disabled={isPending}
-                    decimalScale={serialTracked ? 0 : 6}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+        <>
+          <div className="mb-3 mt-[22px] flex items-center gap-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            Opening stock &amp; pricing
+            <span className="h-px flex-1 bg-line" />
+          </div>
+          <div
+            className={cn(
+              "grid grid-cols-1 gap-x-[18px] gap-y-[15px]",
+              autoCreateProduct ? "sm:grid-cols-3" : "sm:grid-cols-2",
             )}
-          />
-          <FormField
-            control={form.control}
-            name={`variants.${index}.initialUnitCost`}
-            render={({ field: f }) => {
-              const qty = Number(variant?.initialQuantity);
-              const cost = Number(f.value);
-              const showQtyNoCost =
-                Number.isFinite(qty) &&
-                qty > 0 &&
-                !(Number.isFinite(cost) && cost > 0);
-              return (
-                <FormItem>
-                  <FormLabel className="text-xs">
-                    Initial unit cost ({locationCurrency})
-                  </FormLabel>
-                  <FormControl>
-                    <NumericFormat
-                      className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
-                      value={f.value}
-                      onValueChange={(v) => f.onChange(v.floatValue ?? 0)}
-                      thousandSeparator
-                      placeholder="0"
-                      disabled={isPending}
-                      decimalScale={4}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                  {showQtyNoCost && (
-                    <p className="mt-1 flex items-center gap-1 text-[11px] text-amber-600">
-                      <AlertTriangle className="h-3 w-3 shrink-0" />
-                      Stock has quantity but no cost.
-                    </p>
-                  )}
-                </FormItem>
-              );
-            }}
-          />
-          {autoCreateProduct && (
+          >
             <FormField
               control={form.control}
-              name={`variants.${index}.sellingPrice`}
-              render={({ field: f }) => {
-                const cost = Number(variant?.initialUnitCost);
-                const price = Number(f.value);
-                const hasPrice = Number.isFinite(price) && price > 0;
-                const hasCost = Number.isFinite(cost) && cost > 0;
-                const showBelowCost = hasPrice && hasCost && price < cost;
-                return (
-                  <FormItem>
-                    <FormLabel className="text-xs">
-                      Selling price ({locationCurrency})
-                    </FormLabel>
-                    <FormControl>
+              name={`variants.${index}.initialQuantity`}
+              render={({ field: f }) => (
+                <FormItem className="space-y-[7px]">
+                  <FieldLabel>Initial quantity</FieldLabel>
+                  <FormControl>
+                    <ControlBox>
                       <NumericFormat
-                        className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
-                        value={f.value ?? ""}
-                        onValueChange={(v) => f.onChange(v.floatValue)}
+                        className={cn(controlInputClass, "tabular-nums")}
+                        value={f.value}
+                        onValueChange={(v) => f.onChange(v.floatValue ?? 0)}
                         thousandSeparator
-                        decimalScale={2}
-                        allowNegative={false}
-                        placeholder="0.00"
+                        placeholder="0"
                         disabled={isPending}
+                        decimalScale={serialTracked ? 0 : 6}
                       />
+                    </ControlBox>
+                  </FormControl>
+                  <FieldHint>On-hand at go-live for this variant.</FieldHint>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={`variants.${index}.initialUnitCost`}
+              render={({ field: f }) => {
+                const qty = Number(variant?.initialQuantity);
+                const cost = Number(f.value);
+                const showQtyNoCost =
+                  Number.isFinite(qty) &&
+                  qty > 0 &&
+                  !(Number.isFinite(cost) && cost > 0);
+                return (
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel>Initial unit cost</FieldLabel>
+                    <FormControl>
+                      <ControlBox suffix={locationCurrency}>
+                        <NumericFormat
+                          className={cn(
+                            controlInputClass,
+                            "tabular-nums",
+                          )}
+                          value={f.value}
+                          onValueChange={(v) => f.onChange(v.floatValue ?? 0)}
+                          thousandSeparator
+                          placeholder="0"
+                          disabled={isPending}
+                          decimalScale={4}
+                        />
+                      </ControlBox>
                     </FormControl>
-                    <FormMessage />
-                    {showBelowCost && (
-                      <p className="mt-1 flex items-center gap-1 text-[11px] text-amber-600">
+                    {showQtyNoCost ? (
+                      <p className="flex items-center gap-1 text-[11px] text-amber-600">
                         <AlertTriangle className="h-3 w-3 shrink-0" />
-                        Below unit cost ({formatMoney(cost, locationCurrency)})
-                        — selling at a loss.
+                        Stock has quantity but no cost.
                       </p>
+                    ) : (
+                      <FieldHint>Buying price per unit.</FieldHint>
                     )}
+                    <FormMessage />
                   </FormItem>
                 );
               }}
             />
-          )}
-        </div>
+            {autoCreateProduct && (
+              <FormField
+                control={form.control}
+                name={`variants.${index}.sellingPrice`}
+                render={({ field: f }) => {
+                  const cost = Number(variant?.initialUnitCost);
+                  const price = Number(f.value);
+                  const hasPrice = Number.isFinite(price) && price > 0;
+                  const hasCost = Number.isFinite(cost) && cost > 0;
+                  const showBelowCost = hasPrice && hasCost && price < cost;
+                  return (
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Selling price</FieldLabel>
+                      <FormControl>
+                        <ControlBox suffix={locationCurrency}>
+                          <NumericFormat
+                            className={cn(
+                              controlInputClass,
+                              "tabular-nums",
+                            )}
+                            value={f.value ?? ""}
+                            onValueChange={(v) => f.onChange(v.floatValue)}
+                            thousandSeparator
+                            decimalScale={2}
+                            allowNegative={false}
+                            placeholder="0.00"
+                            disabled={isPending}
+                          />
+                        </ControlBox>
+                      </FormControl>
+                      {showBelowCost ? (
+                        <p className="flex items-center gap-1 text-[11px] text-amber-600">
+                          <AlertTriangle className="h-3 w-3 shrink-0" />
+                          Below unit cost (
+                          {formatMoney(cost, locationCurrency)}) — selling at a
+                          loss.
+                        </p>
+                      ) : (
+                        <FieldHint>Sells 1:1 as a product variant.</FieldHint>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            )}
+          </div>
+        </>
       )}
 
       <FormField
         control={form.control}
         name={`variants.${index}.serialTracked`}
         render={({ field: f }) => (
-          <FormItem className="flex items-center gap-2 space-y-0">
+          <FormItem className="mt-4 flex items-center gap-3 space-y-0">
             <FormControl>
               <Switch
                 checked={f.value}
@@ -1577,9 +1593,14 @@ function VariantRowImpl({
                 disabled={isDisabled}
               />
             </FormControl>
-            <FormLabel className="text-xs cursor-pointer">
-              Serial number tracking
-            </FormLabel>
+            <div className="space-y-0.5">
+              <FormLabel className="cursor-pointer text-[13.5px] font-semibold text-ink">
+                Serial number tracking
+              </FormLabel>
+              <p className="text-xs text-muted-foreground">
+                Capture a unique serial for every unit received and sold.
+              </p>
+            </div>
           </FormItem>
         )}
       />
@@ -1637,134 +1658,213 @@ function VariantRowImpl({
         })()}
 
       {materialType === "PACKAGING" && (
-        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-md border bg-amber-50/40 p-3">
-          <p className="col-span-full text-[11px] text-muted-foreground">
-            Deposit held per empty container (crate/bottle). Used for deposit valuation.
-          </p>
-          <FormField
-            control={form.control}
-            name={`variants.${index}.depositValue`}
-            render={({ field: f }) => (
-              <FormItem>
-                <FormLabel className="text-xs">Deposit value</FormLabel>
-                <FormControl>
-                  <NumericFormat
-                    className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
-                    value={f.value ?? ""}
-                    onValueChange={(v) => f.onChange(v.value === "" ? undefined : Number(v.value))}
-                    thousandSeparator
-                    decimalScale={4}
-                    allowNegative={false}
-                    placeholder="e.g. 2000"
-                    disabled={isPending}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name={`variants.${index}.depositCurrency`}
-            render={({ field: f }) => (
-              <FormItem>
-                <FormLabel className="text-xs">Deposit currency</FormLabel>
-                <FormControl>
-                  <CurrencySelector
-                    value={f.value || locationCurrency || "TZS"}
-                    onChange={f.onChange}
-                    isDisabled={isPending}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name={`variants.${index}.containerMode`}
-            render={({ field: f }) => (
-              <FormItem className="sm:col-span-2">
-                <FormLabel className="text-xs">Container mode</FormLabel>
-                <FormControl>
-                  <RadioGroup
+        <>
+          <div className="mb-3 mt-[22px] flex items-center gap-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            Container deposit
+            <span className="h-px flex-1 bg-line" />
+          </div>
+          <div className="rounded-xl border border-amber-200/70 bg-amber-50/50 p-4 dark:border-amber-500/20 dark:bg-amber-950/10">
+            <p className="mb-3.5 text-xs leading-relaxed text-ink-3">
+              This item is a returnable container. Set the{" "}
+              <b className="font-semibold text-ink">
+                deposit held per empty unit
+              </b>{" "}
+              — used for deposit valuation and reconciliation.
+            </p>
+            <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name={`variants.${index}.depositValue`}
+                render={({ field: f }) => (
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel>Deposit value</FieldLabel>
+                    <FormControl>
+                      <ControlBox
+                        suffix={
+                          variant?.depositCurrency || locationCurrency || "TZS"
+                        }
+                      >
+                        <NumericFormat
+                          className={cn(
+                            controlInputClass,
+                            "tabular-nums",
+                          )}
+                          value={f.value ?? ""}
+                          onValueChange={(nv) =>
+                            f.onChange(
+                              nv.value === "" ? undefined : Number(nv.value),
+                            )
+                          }
+                          thousandSeparator
+                          decimalScale={4}
+                          allowNegative={false}
+                          placeholder="e.g. 2000"
+                          disabled={isDisabled}
+                        />
+                      </ControlBox>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name={`variants.${index}.depositCurrency`}
+                render={({ field: f }) => (
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel>Deposit currency</FieldLabel>
+                    <FormControl>
+                      <CurrencySelector
+                        value={f.value || locationCurrency || "TZS"}
+                        onChange={f.onChange}
+                        isDisabled={isDisabled}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name={`variants.${index}.containerMode`}
+              render={({ field: f }) => (
+                <FormItem className="mt-[15px] space-y-[7px]">
+                  <FieldLabel>Container mode</FieldLabel>
+                  <SegmentedRadio
                     value={f.value ?? "RETURNABLE"}
-                    onValueChange={f.onChange}
-                    disabled={isPending}
-                    className="flex flex-wrap gap-4"
-                  >
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <RadioGroupItem
-                        value="RETURNABLE"
-                        id={`containerMode-returnable-${index}`}
-                      />
-                      <span className="text-sm">Returnable (exchanged 1:1)</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <RadioGroupItem
-                        value="CONSUMABLE"
-                        id={`containerMode-consumable-${index}`}
-                      />
-                      <span className="text-sm">Consumed on sale (one-way)</span>
-                    </label>
-                  </RadioGroup>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+                    onChange={f.onChange}
+                    disabled={isDisabled}
+                    options={[
+                      {
+                        value: "RETURNABLE",
+                        label: "Returnable (exchanged 1:1)",
+                      },
+                      {
+                        value: "CONSUMABLE",
+                        label: "Consumed on sale (one-way)",
+                      },
+                    ]}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </>
       )}
 
       {materialType !== "PACKAGING" && (
-        <FormField
-          control={form.control}
-          name={`variants.${index}.returnableContainers`}
-          render={({ field: f }) => {
-            const current = (f.value ?? [])[0] as
-              | { containerStockVariantId: string; quantityPerUnit: number }
-              | undefined;
-            const setContainer = (id: string) =>
-              f.onChange(id ? [{ containerStockVariantId: id, quantityPerUnit: current?.quantityPerUnit ?? 1 }] : []);
-            const setQty = (qty: number | undefined) =>
-              current?.containerStockVariantId
-                ? f.onChange([{ containerStockVariantId: current.containerStockVariantId, quantityPerUnit: qty ?? 1 }])
-                : undefined;
-            return (
-              <div className="mt-2 space-y-2 rounded-md border bg-gray-50/50 p-3">
-                <p className="text-[11px] text-muted-foreground">
-                  Returnable container exchanged on sale (e.g. an empty crate). Optional.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
-                    <label className="text-xs font-medium">Empty container</label>
-                    <StockVariantSelector
-                      value={current?.containerStockVariantId ?? ""}
-                      onChange={setContainer}
-                      allowedValues={packagingVariantIds}
-                      isDisabled={isPending}
-                      placeholder="Select the empty crate/bottle"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium">Qty per unit</label>
-                    <NumericFormat
-                      className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
-                      value={current?.quantityPerUnit ?? ""}
-                      onValueChange={(v) => setQty(v.value === "" ? undefined : Number(v.value))}
-                      thousandSeparator
-                      decimalScale={6}
-                      allowNegative={false}
-                      isAllowed={(values) => values.floatValue === undefined || values.floatValue > 0}
-                      placeholder="1"
-                      disabled={isPending || !current?.containerStockVariantId}
-                    />
-                  </div>
-                </div>
+        <>
+          <div className="mb-3 mt-[22px] flex items-center gap-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            Returnable packaging
+            <span className="h-px flex-1 bg-line" />
+          </div>
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={
+                linkOpen || (variant?.returnableContainers?.length ?? 0) > 0
+              }
+              onCheckedChange={(on) => {
+                setLinkOpen(on);
+                if (!on) {
+                  form.setValue(`variants.${index}.returnableContainers`, []);
+                }
+              }}
+              disabled={isDisabled}
+            />
+            <div className="space-y-0.5">
+              <div className="text-[13.5px] font-semibold text-ink">
+                Sold in a returnable container
               </div>
-            );
-          }}
-        />
+              <p className="text-xs text-muted-foreground">
+                Link the empty crate/bottle exchanged when a unit is sold.
+                Optional, per variant.
+              </p>
+            </div>
+          </div>
+          {(linkOpen || (variant?.returnableContainers?.length ?? 0) > 0) && (
+            <FormField
+              control={form.control}
+              name={`variants.${index}.returnableContainers`}
+              render={({ field: f }) => {
+                const current = (f.value ?? [])[0] as
+                  | { containerStockVariantId: string; quantityPerUnit: number }
+                  | undefined;
+                const setContainer = (id: string) =>
+                  f.onChange(
+                    id
+                      ? [
+                          {
+                            containerStockVariantId: id,
+                            quantityPerUnit: current?.quantityPerUnit ?? 1,
+                          },
+                        ]
+                      : [],
+                  );
+                const setQty = (qty: number | undefined) =>
+                  current?.containerStockVariantId
+                    ? f.onChange([
+                        {
+                          containerStockVariantId:
+                            current.containerStockVariantId,
+                          quantityPerUnit: qty ?? 1,
+                        },
+                      ])
+                    : undefined;
+                return (
+                  <div className="mt-3 rounded-xl border border-line bg-canvas p-4">
+                    <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-3">
+                      <div className="space-y-[7px] sm:col-span-2">
+                        <label className="flex items-center gap-1.5 text-[13px] font-semibold leading-none text-ink">
+                          Empty container
+                        </label>
+                        <StockVariantSelector
+                          value={current?.containerStockVariantId ?? ""}
+                          onChange={setContainer}
+                          allowedValues={packagingVariantIds}
+                          isDisabled={isDisabled}
+                          placeholder="Select the empty crate/bottle"
+                        />
+                      </div>
+                      <div className="space-y-[7px]">
+                        <label className="flex items-center gap-1.5 text-[13px] font-semibold leading-none text-ink">
+                          Qty per unit
+                        </label>
+                        <ControlBox>
+                          <NumericFormat
+                            className={cn(
+                              controlInputClass,
+                              "tabular-nums",
+                            )}
+                            value={current?.quantityPerUnit ?? ""}
+                            onValueChange={(nv) =>
+                              setQty(
+                                nv.value === "" ? undefined : Number(nv.value),
+                              )
+                            }
+                            thousandSeparator
+                            decimalScale={6}
+                            allowNegative={false}
+                            isAllowed={(values) =>
+                              values.floatValue === undefined ||
+                              values.floatValue > 0
+                            }
+                            placeholder="1"
+                            disabled={
+                              isDisabled || !current?.containerStockVariantId
+                            }
+                          />
+                        </ControlBox>
+                        <FieldHint>Containers exchanged per unit sold.</FieldHint>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+          )}
+        </>
       )}
 
       {!isEditing &&
@@ -1803,41 +1903,41 @@ function VariantRowImpl({
               </button>
 
               {isOpen && (
-                <div className="mt-3 space-y-3 rounded-md border bg-gray-50/50 p-3">
-                  <p className="text-[11px] text-muted-foreground">
-                    Tells the system when to alert and auto-generate an LPO.
-                    Safe to leave empty — set these any time from the stock
-                    detail page.
+                <div className="mt-3 space-y-[15px] rounded-xl border border-line bg-canvas p-4">
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    Tells the system when to alert and auto-generate an LPO. Safe
+                    to leave empty — set these any time from the stock detail
+                    page.
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
                     <FormField
                       control={form.control}
                       name={`variants.${index}.reorderPoint`}
                       render={({ field: f }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
-                            Reorder point
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Reorder point</FieldLabel>
                           <FormControl>
-                            <NumericFormat
-                              className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
-                              value={f.value ?? ""}
-                              onValueChange={(v) =>
-                                f.onChange(
-                                  v.value === "" ? undefined : Number(v.value),
-                                )
-                              }
-                              thousandSeparator
-                              decimalScale={6}
-                              allowNegative={false}
-                              placeholder="e.g. 20"
-                              disabled={isPending}
-                              suffix={unitAbbr ? ` ${unitAbbr}` : undefined}
-                            />
+                            <ControlBox suffix={unitAbbr || undefined}>
+                              <NumericFormat
+                                className={cn(
+                                  controlInputClass,
+                                  "tabular-nums",
+                                )}
+                                value={f.value ?? ""}
+                                onValueChange={(v) =>
+                                  f.onChange(
+                                    v.value === "" ? undefined : Number(v.value),
+                                  )
+                                }
+                                thousandSeparator
+                                decimalScale={6}
+                                allowNegative={false}
+                                placeholder="e.g. 20"
+                                disabled={isPending}
+                              />
+                            </ControlBox>
                           </FormControl>
-                          <p className="text-[11px] text-muted-foreground">
-                            Fires an LPO when available ≤ this.
-                          </p>
+                          <FieldHint>Fires an LPO when available ≤ this.</FieldHint>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1846,30 +1946,30 @@ function VariantRowImpl({
                       control={form.control}
                       name={`variants.${index}.reorderQuantity`}
                       render={({ field: f }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
-                            Reorder quantity
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Reorder quantity</FieldLabel>
                           <FormControl>
-                            <NumericFormat
-                              className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
-                              value={f.value ?? ""}
-                              onValueChange={(v) =>
-                                f.onChange(
-                                  v.value === "" ? undefined : Number(v.value),
-                                )
-                              }
-                              thousandSeparator
-                              decimalScale={6}
-                              allowNegative={false}
-                              placeholder="e.g. 100"
-                              disabled={isPending}
-                              suffix={unitAbbr ? ` ${unitAbbr}` : undefined}
-                            />
+                            <ControlBox suffix={unitAbbr || undefined}>
+                              <NumericFormat
+                                className={cn(
+                                  controlInputClass,
+                                  "tabular-nums",
+                                )}
+                                value={f.value ?? ""}
+                                onValueChange={(v) =>
+                                  f.onChange(
+                                    v.value === "" ? undefined : Number(v.value),
+                                  )
+                                }
+                                thousandSeparator
+                                decimalScale={6}
+                                allowNegative={false}
+                                placeholder="e.g. 100"
+                                disabled={isPending}
+                              />
+                            </ControlBox>
                           </FormControl>
-                          <p className="text-[11px] text-muted-foreground">
-                            How much the LPO orders.
-                          </p>
+                          <FieldHint>How much the LPO orders.</FieldHint>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1880,10 +1980,8 @@ function VariantRowImpl({
                     control={form.control}
                     name={`variants.${index}.preferredSupplierId`}
                     render={({ field: f }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">
-                          Preferred supplier
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel>Preferred supplier</FieldLabel>
                         <FormControl>
                           <SupplierSelector
                             label="Preferred supplier"
@@ -1898,31 +1996,33 @@ function VariantRowImpl({
                     )}
                   />
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
                     <FormField
                       control={form.control}
                       name={`variants.${index}.lowStockThreshold`}
                       render={({ field: f }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
-                            Low-stock threshold
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Low-stock threshold</FieldLabel>
                           <FormControl>
-                            <NumericFormat
-                              className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
-                              value={f.value ?? ""}
-                              onValueChange={(v) =>
-                                f.onChange(
-                                  v.value === "" ? undefined : Number(v.value),
-                                )
-                              }
-                              thousandSeparator
-                              decimalScale={6}
-                              allowNegative={false}
-                              placeholder="e.g. 10"
-                              disabled={isPending}
-                              suffix={unitAbbr ? ` ${unitAbbr}` : undefined}
-                            />
+                            <ControlBox suffix={unitAbbr || undefined}>
+                              <NumericFormat
+                                className={cn(
+                                  controlInputClass,
+                                  "tabular-nums",
+                                )}
+                                value={f.value ?? ""}
+                                onValueChange={(v) =>
+                                  f.onChange(
+                                    v.value === "" ? undefined : Number(v.value),
+                                  )
+                                }
+                                thousandSeparator
+                                decimalScale={6}
+                                allowNegative={false}
+                                placeholder="e.g. 10"
+                                disabled={isPending}
+                              />
+                            </ControlBox>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -1932,26 +2032,28 @@ function VariantRowImpl({
                       control={form.control}
                       name={`variants.${index}.overstockThreshold`}
                       render={({ field: f }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
-                            Overstock threshold
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Overstock threshold</FieldLabel>
                           <FormControl>
-                            <NumericFormat
-                              className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
-                              value={f.value ?? ""}
-                              onValueChange={(v) =>
-                                f.onChange(
-                                  v.value === "" ? undefined : Number(v.value),
-                                )
-                              }
-                              thousandSeparator
-                              decimalScale={6}
-                              allowNegative={false}
-                              placeholder="e.g. 500"
-                              disabled={isPending}
-                              suffix={unitAbbr ? ` ${unitAbbr}` : undefined}
-                            />
+                            <ControlBox suffix={unitAbbr || undefined}>
+                              <NumericFormat
+                                className={cn(
+                                  controlInputClass,
+                                  "tabular-nums",
+                                )}
+                                value={f.value ?? ""}
+                                onValueChange={(v) =>
+                                  f.onChange(
+                                    v.value === "" ? undefined : Number(v.value),
+                                  )
+                                }
+                                thousandSeparator
+                                decimalScale={6}
+                                allowNegative={false}
+                                placeholder="e.g. 500"
+                                disabled={isPending}
+                              />
+                            </ControlBox>
                           </FormControl>
                           <FormMessage />
                         </FormItem>

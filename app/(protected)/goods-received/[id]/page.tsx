@@ -20,13 +20,14 @@ import {
   INSPECTION_STATUS_LABELS,
   INSPECTION_STATUS_TONES,
 } from "@/types/grn/type";
+import { Button } from "@/components/ui/button";
 import { GrnStatusActions } from "@/components/widgets/grn/status-actions";
 import { GrnShareButton } from "@/components/widgets/grn/share-dialog";
 import { InspectionPanel } from "@/components/widgets/grn/inspection-panel";
 import { LandedCostsPanel } from "@/components/widgets/grn/landed-costs-panel";
 import GrnBillPaymentCard from "@/components/widgets/grn/grn-bill-payment-card";
 import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
-import { FileText, Layers, Boxes, DollarSign, Truck } from "lucide-react";
+import { FileDown, FileText, Layers, Boxes, DollarSign, Truck } from "lucide-react";
 
 type Params = Promise<{ id: string }>;
 
@@ -155,6 +156,16 @@ export default async function GrnDetailPage({ params }: { params: Params }) {
                 {currency}
               </span>
             </span>
+            <Button asChild variant="outline" size="sm">
+              <a
+                href={`/goods-received/${grn.id}/print`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FileDown className="mr-1.5 h-4 w-4" />
+                Download PDF
+              </a>
+            </Button>
             <GrnShareButton grn={grn} />
             <GrnStatusActions grn={grn} />
           </span>

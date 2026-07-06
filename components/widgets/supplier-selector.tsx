@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronsUpDown, Loader2, ShieldCheck } from "lucide-react";
+import { Check, ChevronDown, Loader2, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { controlComboboxTriggerClass } from "@/components/ui/field";
 import {
   Command,
   CommandEmpty,
@@ -133,13 +134,13 @@ function SupplierSelector({
             role="combobox"
             aria-expanded={open}
             disabled={isDisabled}
-            className="w-full justify-between overflow-hidden font-normal"
+            className={cn(controlComboboxTriggerClass, "overflow-hidden")}
           >
             <span className="truncate text-left flex-1 flex items-center gap-2">
               {isLoading && !selected ? (
                 <>
                   <Loader2 className="h-3 w-3 animate-spin opacity-60" />
-                  <span className="text-muted-foreground">
+                  <span className="text-muted-2">
                     Loading suppliers
                   </span>
                 </>
@@ -151,12 +152,12 @@ function SupplierSelector({
                   )}
                 </>
               ) : (
-                <span className="text-muted-foreground">
+                <span className="text-muted-2">
                   {placeholder || "Select supplier"}
                 </span>
               )}
             </span>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-2" />
           </Button>
         </PopoverTrigger>
 
