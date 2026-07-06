@@ -28,6 +28,7 @@ const getNormalMenuItems = (
   // backstop when a user clicks through with an underprivileged plan.
   const hasDepartmentsModule = args?.hasDepartmentsModule !== false;
   const reportsReadAll = args?.reportsReadAll !== false; // default true
+  const hasPackaging = args?.hasPackaging === true; // default false (hidden)
   return [
     // Top-level link — appears as its own row in the sidebar (no submenu).
     {
@@ -102,6 +103,16 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
+        ...(hasPackaging
+          ? [
+              {
+                title: "Packaging report",
+                link: "/report/packaging",
+                current: args?.isCurrentItem,
+                icon: "cart",
+              },
+            ]
+          : []),
         {
           title: "Staff report",
           link: "/report/staff",
@@ -615,6 +626,7 @@ const getNormalMenuItems = (
 // it manages here and moves via Stock transfer / Stock request.
 const getStoreMenuItems = (args?: MenuItemArgType) => {
   const reportsReadAll = args?.reportsReadAll !== false; // default true
+  const hasPackaging = args?.hasPackaging === true; // default false (hidden)
   const storeId = args?.currentStoreId;
   return [
     // Whole-business overview — business-scoped and permission-guarded, kept
@@ -643,6 +655,16 @@ const getStoreMenuItems = (args?: MenuItemArgType) => {
           current: args?.isCurrentItem,
           icon: "cart",
         },
+        ...(hasPackaging
+          ? [
+              {
+                title: "Packaging report",
+                link: "/report/packaging",
+                current: args?.isCurrentItem,
+                icon: "cart",
+              },
+            ]
+          : []),
       ].filter((it) => reportsReadAll || !LOCATION_WIDE_REPORT_LINKS.includes(it.link)),
     },
 

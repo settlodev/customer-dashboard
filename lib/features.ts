@@ -67,6 +67,7 @@ export const ROUTE_FEATURE_MAP: Record<string, FeatureKey> = {
   "/report/credit": Features.REPORTS,
   "/report/refunds": Features.REPORTS,
   "/report/stock": Features.REPORTS,
+  "/report/packaging": Features.REPORTS,
   "/report/staff": Features.REPORTS,
   "/report/expense": Features.REPORTS,
 

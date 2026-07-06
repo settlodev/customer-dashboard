@@ -14,6 +14,7 @@ import {
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
 import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
+import { hasPackagingStock } from "@/lib/actions/stock-actions";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { getAuthToken } from "@/lib/auth-utils";
 import { getMyPermissionsCached, hasReportsReadAll } from "@/lib/permissions/me";
@@ -74,6 +75,7 @@ export default async function RootLayout({
     fetchAllStores(),
     searchWarehouses(),
     getCurrentStore(),
+    hasPackagingStock(),
   ]);
 
   const currentBusiness = results[0].status === "fulfilled" ? results[0].value ?? undefined : undefined;
@@ -85,6 +87,10 @@ export default async function RootLayout({
   const storeList = results[6].status === "fulfilled" ? results[6].value : [];
   const warehouseList = results[7].status === "fulfilled" ? results[7].value : [];
   const currentStore = results[8].status === "fulfilled" ? results[8].value : undefined;
+  // hasPackagingStock() already fails closed (returns false) on error, so the
+  // allSettled rejection branch below is only a defensive backstop — it
+  // should never actually trigger.
+  const hasPackaging = results[9].status === "fulfilled" ? results[9].value : false;
 
   const locationCount = locationList?.length ?? 0;
   const storeCount = storeList?.length ?? 0;
@@ -185,6 +191,7 @@ export default async function RootLayout({
                   data={businessData}
                   user={user}
                   reportsReadAll={reportsReadAll}
+                  hasPackaging={hasPackaging}
                 />
 
                 <main className="flex flex-1 min-w-0 flex-col overflow-hidden">
