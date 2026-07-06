@@ -110,6 +110,7 @@ export interface StockListCounts {
   archived: number;
   draft: number;
   all: number;
+  hasPackaging?: boolean;
 }
 
 export async function getStockCounts(): Promise<StockListCounts> {
@@ -120,6 +121,19 @@ export async function getStockCounts(): Promise<StockListCounts> {
   } catch (error) {
     rethrowIfBoundary(error);
     return { active: 0, archived: 0, draft: 0, all: 0 };
+  }
+}
+
+// Nav-gating helper for the packaging report: true when the location has
+// at least one PACKAGING-material stock variant. Swallows errors (including
+// boundary ones) since this only controls a nav link's visibility — the
+// underlying page load is what should trigger session/permission handling.
+export async function hasPackagingStock(): Promise<boolean> {
+  try {
+    const counts = await getStockCounts();
+    return Boolean(counts?.hasPackaging);
+  } catch {
+    return false;
   }
 }
 

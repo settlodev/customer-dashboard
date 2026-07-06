@@ -13,6 +13,7 @@ import type {
   InventoryValuationItem,
   StockAging,
 } from "@/types/inventory-analytics/type";
+import { type PackagingReport, EMPTY_PACKAGING_REPORT } from "@/types/packaging-report/type";
 
 // Maps server field names (variantId/displayName) to client names (stockVariantId/variantName)
 function mapVariantFields<T extends Record<string, unknown>>(
@@ -161,5 +162,17 @@ export async function getDeadStock(
     return items.map(mapVariantFields);
   } catch {
     return [];
+  }
+}
+
+export async function getPackagingReport(): Promise<PackagingReport> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(
+      inventoryUrl("/api/v1/reports/packaging"),
+    );
+    return parseStringify(data) as PackagingReport;
+  } catch {
+    return EMPTY_PACKAGING_REPORT;
   }
 }
