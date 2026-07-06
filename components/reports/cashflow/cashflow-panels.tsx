@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import { fmtAmount, type CashflowMethodRow } from "@/types/reports/cashflow";
 
@@ -127,6 +130,8 @@ export function CashflowSummaryPanel({
 // Ranked share-bar list — the granular real detail that replaces the
 // old plain payment-method table. Bars scale to the largest tender so
 // dominance reads at a glance; the right-rail % is share of total inflow.
+// Rows carrying an `href` (built by the page) drill into the transaction
+// detail section pre-filtered to that tender.
 
 export function CashflowMethodBreakdown({
   rows,
@@ -147,50 +152,71 @@ export function CashflowMethodBreakdown({
 
   return (
     <ul className="divide-y divide-line">
-      {rows.map((row, i) => (
-        <li
-          key={`${row.name}-${i}`}
-          className="flex items-center gap-4 py-3 first:pt-0 last:pb-0"
-        >
-          <span className="w-5 shrink-0 font-mono text-[12px] tabular-nums text-muted-2">
-            {String(i + 1).padStart(2, "0")}
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="mb-1.5 flex items-baseline justify-between gap-3">
-              <span className="flex min-w-0 items-baseline gap-2">
-                <span className="truncate text-[13px] font-medium text-ink">
-                  {row.name}
-                </span>
-                {row.count != null && row.count > 0 && (
-                  <span className="shrink-0 font-mono text-[10.5px] tabular-nums text-muted-2">
-                    {row.count.toLocaleString()} txn{row.count === 1 ? "" : "s"}
+      {rows.map((row, i) => {
+        const body = (
+          <>
+            <span className="w-5 shrink-0 font-mono text-[12px] tabular-nums text-muted-2">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                <span className="flex min-w-0 items-baseline gap-2">
+                  <span className="truncate text-[13px] font-medium text-ink">
+                    {row.name}
                   </span>
-                )}
-              </span>
-              <span className="shrink-0 font-mono text-[12.5px] tabular-nums text-ink">
-                {fmtAmount(row.amount)}
-                <span className="ml-1 text-[10.5px] font-normal text-muted-foreground">
-                  {currency}
+                  {row.count != null && row.count > 0 && (
+                    <span className="shrink-0 font-mono text-[10.5px] tabular-nums text-muted-2">
+                      {row.count.toLocaleString()} txn
+                      {row.count === 1 ? "" : "s"}
+                    </span>
+                  )}
                 </span>
-              </span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${Math.max(2, (row.amount / max) * 100)}%`,
-                    background: POS,
-                  }}
-                />
+                <span className="flex shrink-0 items-center gap-1.5">
+                  <span className="font-mono text-[12.5px] tabular-nums text-ink">
+                    {fmtAmount(row.amount)}
+                    <span className="ml-1 text-[10.5px] font-normal text-muted-foreground">
+                      {currency}
+                    </span>
+                  </span>
+                  {row.href && (
+                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-2 opacity-0 transition-opacity group-hover:opacity-100" />
+                  )}
+                </span>
               </div>
-              <span className="w-11 shrink-0 text-right font-mono text-[10.5px] tabular-nums text-muted-foreground">
-                {row.share.toFixed(1)}%
-              </span>
+              <div className="flex items-center gap-2.5">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.max(2, (row.amount / max) * 100)}%`,
+                      background: POS,
+                    }}
+                  />
+                </div>
+                <span className="w-11 shrink-0 text-right font-mono text-[10.5px] tabular-nums text-muted-foreground">
+                  {row.share.toFixed(1)}%
+                </span>
+              </div>
             </div>
-          </div>
-        </li>
-      ))}
+          </>
+        );
+
+        return (
+          <li key={`${row.name}-${i}`} className="py-3 first:pt-0 last:pb-0">
+            {row.href ? (
+              <Link
+                href={row.href}
+                title={`View ${row.name} transactions`}
+                className="group -mx-2 flex items-center gap-4 rounded-lg px-2 py-1 transition-colors hover:bg-canvas"
+              >
+                {body}
+              </Link>
+            ) : (
+              <div className="flex items-center gap-4">{body}</div>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }

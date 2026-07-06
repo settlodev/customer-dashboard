@@ -44,6 +44,13 @@ export interface CashflowMethodRow {
    * fallback (`paymentMethodTotals`) carries amounts only.
    */
   count?: number;
+  /**
+   * `acceptedPaymentMethodType` id — the key the transaction drill-down
+   * filters on. Null for rows whose tender id never reached the fact table.
+   */
+  id?: string | null;
+  /** When set, the row renders as a link into the transaction drill-down. */
+  href?: string;
 }
 
 /**
@@ -68,6 +75,7 @@ export function breakdownToMethodRows(
             ? ((r.totalAmount || 0) / sum) * 100
             : 0,
       count: r.transactionCount ?? 0,
+      id: r.acceptedPaymentMethodType ? String(r.acceptedPaymentMethodType) : null,
     }))
     .filter((r) => r.amount !== 0)
     .sort((a, b) => b.amount - a.amount);
@@ -89,6 +97,111 @@ export function toMethodRows(report: CashFlow | null): CashflowMethodRow[] {
     }))
     .filter((m) => m.amount !== 0)
     .sort((a, b) => b.amount - a.amount);
+}
+
+// ─── Transaction drill-down (line items) ────────────────────────────
+// Shapes mirror the Reports Service DTOs 1:1 (Jackson camelCase):
+// `CashFlowTransactionListDto` (`/cash-flow/transactions`),
+// `RefundDetailsResponseDto` (`/refunds/details`) and `ExpenseListDto`
+// (`/expenses`). All three embed their own filtered totals + paging so
+// the section header can never disagree with the table it captions.
+
+/** One settled transaction (`TransactionReportDto`). */
+export interface CashflowTransactionRow {
+  transactionId: string | null;
+  orderId: string | null;
+  orderNumber: string | null;
+  locationId: string | null;
+  locationName: string | null;
+  /** yyyy-MM-dd. */
+  businessDate: string | null;
+  /** ISO datetime with offset; null for legacy rows. */
+  transactionDate: string | null;
+  acceptedPaymentMethodType: string | null;
+  acceptedPaymentMethodTypeName: string | null;
+  /** CASH_PAYMENT / CARD / COMPLIMENTARY / SIGNED_BILL / … */
+  paymentType: string | null;
+  amount: number;
+  tipAmount: number;
+  staffId: string | null;
+  staffName: string | null;
+  orderStaffId: string | null;
+  orderStaffName: string | null;
+  isRefund: boolean;
+}
+
+export interface CashflowTransactionList {
+  paymentMethodTypeId: string | null;
+  /** sum(amount) over the filtered set — all pages, complimentary included. */
+  totalAmount: number;
+  totalTips: number;
+  /** Portion of `totalAmount` that is complimentary (excluded from cash in). */
+  complimentaryAmount: number;
+  page: number;
+  size: number;
+  totalPages: number;
+  totalElements: number;
+  transactions: CashflowTransactionRow[];
+}
+
+/** One refund line (`RefundReportDto`) — one row per refunded order item. */
+export interface CashflowRefundRow {
+  id: string | null;
+  businessDate: string | null;
+  orderId: string | null;
+  orderItemId: string | null;
+  orderNumber: string | null;
+  orderItemName: string | null;
+  quantity: number;
+  refundNetAmount: number;
+  stockReturned: boolean;
+  reason: string | null;
+  refundType: string | null;
+  /** ISO datetime with offset. */
+  refundDate: string | null;
+  refundedBy: string | null;
+  refundedByName: string | null;
+  approvedBy: string | null;
+  approvedByName: string | null;
+}
+
+export interface CashflowRefundList {
+  totalRefundCount: number;
+  totalRefundedAmount: number;
+  page: number;
+  size: number;
+  totalPages: number;
+  totalElements: number;
+  refunds: CashflowRefundRow[];
+}
+
+/** One expense (`ExpenseItemDto`). `paidAmount` is the cash-out figure. */
+export interface CashflowExpenseRow {
+  expenseId: string | null;
+  name: string | null;
+  totalAmount: number;
+  paidAmount: number;
+  unpaidAmount: number;
+  /** PAID / PARTIALLY_PAID / UNPAID. */
+  status: string | null;
+  categoryId: string | null;
+  categoryName: string | null;
+  staffId: string | null;
+  staffName: string | null;
+  /** yyyy-MM-dd business date. */
+  date: string | null;
+}
+
+export interface CashflowExpenseList {
+  totalExpenses: number;
+  totalExpenseAmount: number;
+  totalPaidAmount: number;
+  totalUnpaidAmount: number;
+  page: number;
+  size: number;
+  totalPages: number;
+  totalElements: number;
+  expenses: CashflowExpenseRow[];
 }
 
 // ─── Formatting ─────────────────────────────────────────────────────
