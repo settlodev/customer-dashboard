@@ -24,7 +24,7 @@ export async function resolveBillForLpo(
   const lpo = await getLpo(lpoId);
   if (!lpo) return null;
 
-  const expense = await getExpenseByReference(lpo.lpoNumber);
+  const expense = await getExpenseByReference(lpo.lpoNumber, lpo.locationId);
   if (!expense) return null;
 
   return { expense, lpoFullyReceived: lpo.status === "RECEIVED" };

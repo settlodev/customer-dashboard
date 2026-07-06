@@ -33,7 +33,7 @@ export async function resolveReturnReconciliation(
     const lpo = await getLpo(grn.lpoId);
     if (!lpo) return null;
 
-    const bill = await getExpenseByReference(lpo.lpoNumber);
+    const bill = await getExpenseByReference(lpo.lpoNumber, lpo.locationId);
     if (!bill) return null;
 
     const notes = await listExpenseCreditNotes(bill.id);
