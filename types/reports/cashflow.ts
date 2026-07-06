@@ -106,6 +106,20 @@ export function toMethodRows(report: CashFlow | null): CashflowMethodRow[] {
 // (`/expenses`). All three embed their own filtered totals + paging so
 // the section header can never disagree with the table it captions.
 
+/**
+ * Detail-section sub-views. The list lives here — not in the client tab
+ * nav — because the server page validates `?view=` against it, and a
+ * runtime value exported from a "use client" module reaches server
+ * components only as an opaque client reference.
+ */
+export type CashflowDetailView = "payments" | "refunds" | "expenses";
+
+export const CASHFLOW_DETAIL_VIEWS: CashflowDetailView[] = [
+  "payments",
+  "refunds",
+  "expenses",
+];
+
 /** One settled transaction (`TransactionReportDto`). */
 export interface CashflowTransactionRow {
   transactionId: string | null;

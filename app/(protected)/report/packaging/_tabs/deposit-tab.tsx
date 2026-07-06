@@ -1,9 +1,7 @@
 import { Coins, PackageCheck, PackageMinus, PackageOpen } from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
-import { DataTable } from "@/components/tables/data-table";
-import { buildPackagingDepositColumns } from "@/components/tables/reports/packaging/deposit-columns";
+import { PackagingDepositTable } from "@/components/reports/packaging/packaging-deposit-table";
 import NoItems from "@/components/layouts/no-items";
 import { getPackagingReport } from "@/lib/actions/inventory-analytics-actions";
 
@@ -25,8 +23,6 @@ export async function DepositTab() {
   if (report.packagingItemCount === 0) {
     return <NoItems itemName="packaging stock" />;
   }
-
-  const columns = buildPackagingDepositColumns({ currency: report.currency });
 
   return (
     <>
@@ -62,16 +58,7 @@ export async function DepositTab() {
         />
       </KpiStrip>
 
-      <Card>
-        <CardContent className="px-2 pt-6 sm:px-6">
-          <DataTable
-            columns={columns}
-            data={report.items}
-            searchKey="variantName"
-            clientMode
-          />
-        </CardContent>
-      </Card>
+      <PackagingDepositTable data={report.items} currency={report.currency} />
     </>
   );
 }

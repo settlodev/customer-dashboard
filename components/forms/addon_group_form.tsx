@@ -18,7 +18,7 @@ import {
 import { NumericFormat } from "react-number-format";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -28,6 +28,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  ControlBox,
+  ControlInput,
+  FieldLabel,
+  controlInputClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import {
   Form,
   FormControl,
@@ -317,12 +324,10 @@ export function AddonGroupForm({ group, productVariants, onCreated }: Props) {
                   control={form.control}
                   name="name"
                   render={({ field }) => (
-                    <FormItem className="min-w-0 sm:col-span-2">
-                      <FormLabel className={styles.fieldLabel}>
-                        Name <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="min-w-0 sm:col-span-2 space-y-[7px]">
+                      <FieldLabel required>Name</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           placeholder="e.g. Sides, Drinks, Bundle picks"
                           {...field}
                           disabled={isPending || isArchived}
@@ -337,10 +342,10 @@ export function AddonGroupForm({ group, productVariants, onCreated }: Props) {
                   control={form.control}
                   name="minSelections"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>Min</FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Min</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           type="number"
                           min={0}
                           max={maxSelections ?? undefined}
@@ -358,10 +363,10 @@ export function AddonGroupForm({ group, productVariants, onCreated }: Props) {
                   control={form.control}
                   name="maxSelections"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>Max</FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Max</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           type="number"
                           min={1}
                           {...field}
@@ -758,17 +763,15 @@ function ItemRow({
           control={form.control}
           name={`items.${index}.productVariantId`}
           render={({ field }) => (
-            <FormItem className="min-w-0">
-              <FormLabel className="text-xs text-muted-foreground">
-                Product variant <span className="req">*</span>
-              </FormLabel>
+            <FormItem className="min-w-0 space-y-[7px]">
+              <FieldLabel required>Product variant</FieldLabel>
               <Select
                 value={field.value || ""}
                 onValueChange={field.onChange}
                 disabled={disabled}
               >
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className={controlSelectTriggerClass}>
                     <SelectValue placeholder="Pick a variant" />
                   </SelectTrigger>
                 </FormControl>
@@ -789,25 +792,25 @@ function ItemRow({
           control={form.control}
           name={`items.${index}.priceOverride`}
           render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs text-muted-foreground">
-                Price override (optional)
-              </FormLabel>
+            <FormItem className="space-y-[7px]">
+              <FieldLabel>Price override (optional)</FieldLabel>
               <FormControl>
-                <NumericFormat
-                  customInput={Input}
-                  value={field.value ?? ""}
-                  onValueChange={(v) => field.onChange(v.floatValue)}
-                  decimalScale={4}
-                  thousandSeparator=","
-                  allowNegative={false}
-                  placeholder={
-                    myVariant?.price != null
-                      ? `Native: ${myVariant.price.toLocaleString()}`
-                      : "Use variant's native price"
-                  }
-                  disabled={disabled}
-                />
+                <ControlBox>
+                  <NumericFormat
+                    className={cn(controlInputClass, "tabular-nums")}
+                    value={field.value ?? ""}
+                    onValueChange={(v) => field.onChange(v.floatValue)}
+                    decimalScale={4}
+                    thousandSeparator=","
+                    allowNegative={false}
+                    placeholder={
+                      myVariant?.price != null
+                        ? `Native: ${myVariant.price.toLocaleString()}`
+                        : "Use variant's native price"
+                    }
+                    disabled={disabled}
+                  />
+                </ControlBox>
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -17,7 +17,6 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -25,7 +24,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -40,9 +38,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { NumericFormat } from "react-number-format";
 import { MultiSelect } from "@/components/ui/multi-select";
+import {
+  ControlBox,
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlComboboxTriggerClass,
+  controlInputClass,
+} from "@/components/ui/field";
 import { useToast } from "@/hooks/use-toast";
 import {
   Alert,
@@ -177,47 +183,33 @@ export default function RfqForm() {
             </header>
 
             <div className={styles.formBody}>
-              <div className={styles.fieldRow}>
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 min-w-0">
-                      <FormLabel className={styles.fieldLabel}>
-                        Title <span className="req">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g. Q2 raw materials, December alcohol resupply"
-                          {...field}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel required>Title</FieldLabel>
+                    <FormControl>
+                      <ControlInput
+                        placeholder="e.g. Q2 raw materials, December alcohol resupply"
+                        {...field}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <div
-                className={styles.fieldRow}
-                style={
-                  {
-                    ["--cols" as never]: 3,
-                    marginTop: 14,
-                  } as React.CSSProperties
-                }
-              >
+              <div className="mt-[15px] grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2 lg:grid-cols-3">
                 <FormField
                   control={form.control}
                   name="targetCurrency"
                   render={({ field }) => {
                     const active = (field.value || locationCurrency).toUpperCase();
                     return (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Quote currency
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel>Quote currency</FieldLabel>
                         <FormControl>
                           <CurrencySelector
                             value={active}
@@ -225,9 +217,7 @@ export default function RfqForm() {
                             isDisabled={isPending}
                           />
                         </FormControl>
-                        <p className="text-[11px] text-muted-foreground">
-                          Defaults to {locationCurrency}.
-                        </p>
+                        <FieldHint>Defaults to {locationCurrency}.</FieldHint>
                         <FormMessage />
                       </FormItem>
                     );
@@ -239,10 +229,8 @@ export default function RfqForm() {
                   render={({ field }) => {
                     const selected = field.value ? new Date(field.value) : undefined;
                     return (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Submission deadline
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel>Submission deadline</FieldLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
@@ -251,11 +239,12 @@ export default function RfqForm() {
                                 variant="outline"
                                 disabled={isPending}
                                 className={cn(
-                                  "h-10 w-full justify-start text-left font-normal",
-                                  !selected && "text-muted-foreground",
+                                  controlComboboxTriggerClass,
+                                  "justify-start",
+                                  !selected && "text-muted-2",
                                 )}
                               >
-                                <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
                                 {selected ? format(selected, "PPP") : "Pick a date"}
                               </Button>
                             </FormControl>
@@ -287,9 +276,7 @@ export default function RfqForm() {
                             />
                           </PopoverContent>
                         </Popover>
-                        <p className="text-[11px] text-muted-foreground">
-                          After this, quotes are EXPIRED.
-                        </p>
+                        <FieldHint>After this, quotes are EXPIRED.</FieldHint>
                         <FormMessage />
                       </FormItem>
                     );
@@ -301,8 +288,8 @@ export default function RfqForm() {
                   render={({ field }) => {
                     const selected = field.value ? new Date(field.value) : undefined;
                     return (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>Needed by</FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel>Needed by</FieldLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
@@ -311,11 +298,12 @@ export default function RfqForm() {
                                 variant="outline"
                                 disabled={isPending}
                                 className={cn(
-                                  "h-10 w-full justify-start text-left font-normal",
-                                  !selected && "text-muted-foreground",
+                                  controlComboboxTriggerClass,
+                                  "justify-start",
+                                  !selected && "text-muted-2",
                                 )}
                               >
-                                <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
                                 {selected ? format(selected, "PPP") : "Pick a date"}
                               </Button>
                             </FormControl>
@@ -345,61 +333,50 @@ export default function RfqForm() {
                 />
               </div>
 
-              <div className={styles.fieldRow} style={{ marginTop: 14 }}>
-                <FormField
-                  control={form.control}
-                  name="invitedSupplierIds"
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 min-w-0">
-                      <FormLabel className={styles.fieldLabel}>
-                        Invite suppliers
-                        <span className="opt">OPTIONAL</span>
-                      </FormLabel>
-                      <FormControl>
-                        <MultiSelect
-                          options={supplierOptions}
-                          defaultValue={field.value ?? []}
-                          onValueChange={field.onChange}
-                          placeholder={
-                            supplierOptions.length > 0
-                              ? "Select suppliers to invite"
-                              : "Loading suppliers…"
-                          }
-                          maxCount={4}
-                          disabled={isPending || supplierOptions.length === 0}
-                        />
-                      </FormControl>
-                      <p className="text-[11px] text-muted-foreground">
-                        Pre-seeds quote slots for each invited supplier.
-                      </p>
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="invitedSupplierIds"
+                render={({ field }) => (
+                  <FormItem className="mt-[15px] space-y-[7px]">
+                    <FieldLabel optional>Invite suppliers</FieldLabel>
+                    <FormControl>
+                      <MultiSelect
+                        options={supplierOptions}
+                        defaultValue={field.value ?? []}
+                        onValueChange={field.onChange}
+                        placeholder={
+                          supplierOptions.length > 0
+                            ? "Select suppliers to invite"
+                            : "Loading suppliers…"
+                        }
+                        maxCount={4}
+                        disabled={isPending || supplierOptions.length === 0}
+                      />
+                    </FormControl>
+                    <FieldHint>
+                      Pre-seeds quote slots for each invited supplier.
+                    </FieldHint>
+                  </FormItem>
+                )}
+              />
 
-              <div className={styles.fieldRow} style={{ marginTop: 14 }}>
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 min-w-0">
-                      <FormLabel className={styles.fieldLabel}>
-                        Notes
-                        <span className="opt">OPTIONAL</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Delivery terms, payment conditions, certifications required."
-                          rows={2}
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem className="mt-[15px] space-y-[7px]">
+                    <FieldLabel optional>Notes</FieldLabel>
+                    <FormControl>
+                      <ControlTextarea
+                        placeholder="Delivery terms, payment conditions, certifications required."
+                        {...field}
+                        value={field.value ?? ""}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             </div>
           </section>
 
@@ -467,10 +444,8 @@ export default function RfqForm() {
                           control={form.control}
                           name={`items.${index}.stockVariantId`}
                           render={({ field: f }) => (
-                            <FormItem className="w-full md:flex-[5] min-w-0">
-                              <FormLabel className="text-xs">
-                                Stock item <span className="text-red-500">*</span>
-                              </FormLabel>
+                            <FormItem className="w-full md:flex-[5] min-w-0 space-y-[7px]">
+                              <FieldLabel required>Stock item</FieldLabel>
                               <FormControl>
                                 <StockVariantSelector
                                   value={f.value}
@@ -487,23 +462,23 @@ export default function RfqForm() {
                           control={form.control}
                           name={`items.${index}.requestedQuantity`}
                           render={({ field: f }) => (
-                            <FormItem className="w-full md:flex-[2] min-w-0">
-                              <FormLabel className="text-xs">
-                                Qty <span className="text-red-500">*</span>
-                              </FormLabel>
+                            <FormItem className="w-full md:flex-[2] min-w-0 space-y-[7px]">
+                              <FieldLabel required>Qty</FieldLabel>
                               <FormControl>
-                                <NumericFormat
-                                  customInput={Input}
-                                  value={f.value}
-                                  onValueChange={(v) =>
-                                    f.onChange(v.value ? Number(v.value) : 0)
-                                  }
-                                  thousandSeparator
-                                  decimalScale={6}
-                                  allowNegative={false}
-                                  placeholder="0"
-                                  disabled={isPending}
-                                />
+                                <ControlBox>
+                                  <NumericFormat
+                                    className={cn(controlInputClass, "tabular-nums")}
+                                    value={f.value}
+                                    onValueChange={(v) =>
+                                      f.onChange(v.value ? Number(v.value) : 0)
+                                    }
+                                    thousandSeparator
+                                    decimalScale={6}
+                                    allowNegative={false}
+                                    placeholder="0"
+                                    disabled={isPending}
+                                  />
+                                </ControlBox>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -513,26 +488,28 @@ export default function RfqForm() {
                           control={form.control}
                           name={`items.${index}.targetUnitPrice`}
                           render={({ field: f }) => (
-                            <FormItem className="w-full md:flex-[3] min-w-0">
-                              <FormLabel className="text-xs">
+                            <FormItem className="w-full md:flex-[3] min-w-0 space-y-[7px]">
+                              <FieldLabel>
                                 Target price
                                 <span className="text-muted-foreground ml-1 font-normal">
                                   ({quoteCurrency}, optional)
                                 </span>
-                              </FormLabel>
+                              </FieldLabel>
                               <FormControl>
-                                <NumericFormat
-                                  customInput={Input}
-                                  value={f.value ?? ""}
-                                  onValueChange={(v) =>
-                                    f.onChange(v.value === "" ? undefined : Number(v.value))
-                                  }
-                                  thousandSeparator
-                                  decimalScale={4}
-                                  allowNegative={false}
-                                  placeholder="0.00"
-                                  disabled={isPending}
-                                />
+                                <ControlBox>
+                                  <NumericFormat
+                                    className={cn(controlInputClass, "tabular-nums")}
+                                    value={f.value ?? ""}
+                                    onValueChange={(v) =>
+                                      f.onChange(v.value === "" ? undefined : Number(v.value))
+                                    }
+                                    thousandSeparator
+                                    decimalScale={4}
+                                    allowNegative={false}
+                                    placeholder="0.00"
+                                    disabled={isPending}
+                                  />
+                                </ControlBox>
                               </FormControl>
                             </FormItem>
                           )}
@@ -543,12 +520,11 @@ export default function RfqForm() {
                         control={form.control}
                         name={`items.${index}.specifications`}
                         render={({ field: f }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Specifications</FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Specifications</FieldLabel>
                             <FormControl>
-                              <Textarea
+                              <ControlTextarea
                                 placeholder="Grade, dimensions, certifications, brand restrictions."
-                                rows={2}
                                 {...f}
                                 value={f.value ?? ""}
                                 disabled={isPending}

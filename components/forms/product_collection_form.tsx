@@ -22,8 +22,6 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,9 +30,17 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  ControlBox,
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlInputClass,
+} from "@/components/ui/field";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -340,12 +346,10 @@ function ProductCollectionForm({
                     control={form.control}
                     name="name"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Bundle name <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel required>Bundle name</FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             placeholder="e.g. Family Combo"
                             {...field}
                             disabled={isPending}
@@ -360,15 +364,11 @@ function ProductCollectionForm({
                     control={form.control}
                     name="description"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Description
-                          <span className="opt">OPTIONAL</span>
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel optional>Description</FieldLabel>
                         <FormControl>
-                          <Textarea
+                          <ControlTextarea
                             placeholder="Brief description of what this bundle includes"
-                            rows={3}
                             {...field}
                             disabled={isPending}
                           />
@@ -385,12 +385,10 @@ function ProductCollectionForm({
                       render={({ field }) => (
                         <FormItem className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
                           <div className="space-y-0.5">
-                            <FormLabel className={styles.fieldLabel}>
-                              Active
-                            </FormLabel>
-                            <p className="text-[11px] text-muted-foreground">
+                            <FieldLabel>Active</FieldLabel>
+                            <FieldHint>
                               Inactive bundles are hidden from the POS catalog.
-                            </p>
+                            </FieldHint>
                           </div>
                           <FormControl>
                             <Switch
@@ -444,17 +442,19 @@ function ProductCollectionForm({
                   <label className={`${styles.fieldLabel} text-xs`}>
                     Quantity
                   </label>
-                  <NumericFormat
-                    className="flex h-10 w-full rounded-md border-0 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                    value={pendingVariantQty}
-                    onValueChange={(v) =>
-                      setPendingVariantQty(v.value ? Number(v.value) : 0)
-                    }
-                    placeholder="1"
-                    decimalScale={6}
-                    allowNegative={false}
-                    disabled={isPending}
-                  />
+                  <ControlBox>
+                    <NumericFormat
+                      className={cn(controlInputClass, "tabular-nums")}
+                      value={pendingVariantQty}
+                      onValueChange={(v) =>
+                        setPendingVariantQty(v.value ? Number(v.value) : 0)
+                      }
+                      placeholder="1"
+                      decimalScale={6}
+                      allowNegative={false}
+                      disabled={isPending}
+                    />
+                  </ControlBox>
                 </div>
                 <Button
                   type="button"
@@ -554,22 +554,24 @@ function ProductCollectionForm({
                                 control={form.control}
                                 name={`items.${index}.quantity` as const}
                                 render={({ field: qtyField }) => (
-                                  <FormItem className="space-y-1">
+                                  <FormItem className="space-y-[7px]">
                                     <FormControl>
-                                      <NumericFormat
-                                        className="flex h-9 w-full rounded-md border-0 bg-muted px-3 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                        value={qtyField.value ?? 1}
-                                        onValueChange={(v) =>
-                                          qtyField.onChange(
-                                            v.value ? Number(v.value) : 0,
-                                          )
-                                        }
-                                        decimalScale={6}
-                                        allowNegative={false}
-                                        disabled={isPending}
-                                      />
+                                      <ControlBox>
+                                        <NumericFormat
+                                          className={cn(controlInputClass, "tabular-nums")}
+                                          value={qtyField.value ?? 1}
+                                          onValueChange={(v) =>
+                                            qtyField.onChange(
+                                              v.value ? Number(v.value) : 0,
+                                            )
+                                          }
+                                          decimalScale={6}
+                                          allowNegative={false}
+                                          disabled={isPending}
+                                        />
+                                      </ControlBox>
                                     </FormControl>
-                                    <FormMessage className="text-[11px]" />
+                                    <FormMessage />
                                   </FormItem>
                                 )}
                               />
@@ -631,12 +633,10 @@ function ProductCollectionForm({
                   control={form.control}
                   name="nativeCurrency"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Native currency
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Native currency</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           placeholder="TZS"
                           maxLength={3}
                           {...field}
@@ -656,27 +656,26 @@ function ProductCollectionForm({
                   control={form.control}
                   name="customPrice"
                   render={({ field }) => (
-                    <FormItem className="sm:col-span-2">
-                      <FormLabel className={styles.fieldLabel}>
-                        Custom bundle price
-                        <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="sm:col-span-2 space-y-[7px]">
+                      <FieldLabel optional>Custom bundle price</FieldLabel>
                       <FormControl>
-                        <NumericFormat
-                          className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                          // null/undefined renders as blank → backend default-sum.
-                          value={field.value ?? ""}
-                          onValueChange={(v) =>
-                            field.onChange(
-                              v.value === "" ? null : Number(v.value),
-                            )
-                          }
-                          placeholder={`Default ${formatMoney(livePreview.defaultPrice, watchedNativeCurrency)}`}
-                          thousandSeparator=","
-                          decimalScale={2}
-                          allowNegative={false}
-                          disabled={isPending}
-                        />
+                        <ControlBox>
+                          <NumericFormat
+                            className={cn(controlInputClass, "tabular-nums")}
+                            // null/undefined renders as blank → backend default-sum.
+                            value={field.value ?? ""}
+                            onValueChange={(v) =>
+                              field.onChange(
+                                v.value === "" ? null : Number(v.value),
+                              )
+                            }
+                            placeholder={`Default ${formatMoney(livePreview.defaultPrice, watchedNativeCurrency)}`}
+                            thousandSeparator=","
+                            decimalScale={2}
+                            allowNegative={false}
+                            disabled={isPending}
+                          />
+                        </ControlBox>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -788,10 +787,10 @@ function ProductCollectionForm({
                         control={form.control}
                         name={`currencyOverrides.${index}.currency` as const}
                         render={({ field: ccyField }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Currency</FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Currency</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="USD"
                                 maxLength={3}
                                 {...ccyField}
@@ -804,7 +803,7 @@ function ProductCollectionForm({
                                 disabled={isPending}
                               />
                             </FormControl>
-                            <FormMessage className="text-[11px]" />
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -812,24 +811,26 @@ function ProductCollectionForm({
                         control={form.control}
                         name={`currencyOverrides.${index}.price` as const}
                         render={({ field: priceField }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Price</FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Price</FieldLabel>
                             <FormControl>
-                              <NumericFormat
-                                className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                value={priceField.value ?? ""}
-                                onValueChange={(v) =>
-                                  priceField.onChange(
-                                    v.value ? Number(v.value) : 0,
-                                  )
-                                }
-                                thousandSeparator=","
-                                decimalScale={2}
-                                allowNegative={false}
-                                disabled={isPending}
-                              />
+                              <ControlBox>
+                                <NumericFormat
+                                  className={cn(controlInputClass, "tabular-nums")}
+                                  value={priceField.value ?? ""}
+                                  onValueChange={(v) =>
+                                    priceField.onChange(
+                                      v.value ? Number(v.value) : 0,
+                                    )
+                                  }
+                                  thousandSeparator=","
+                                  decimalScale={2}
+                                  allowNegative={false}
+                                  disabled={isPending}
+                                />
+                              </ControlBox>
                             </FormControl>
-                            <FormMessage className="text-[11px]" />
+                            <FormMessage />
                           </FormItem>
                         )}
                       />

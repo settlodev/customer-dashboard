@@ -19,11 +19,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { CashflowExportButton } from "@/components/reports/cashflow/cashflow-export-button";
-import {
-  CashflowDetailTabs,
-  CASHFLOW_DETAIL_VIEWS,
-  type CashflowDetailView,
-} from "@/components/reports/cashflow/cashflow-detail-tabs";
+import { CashflowDetailTabs } from "@/components/reports/cashflow/cashflow-detail-tabs";
 import {
   CashflowDetailError,
   CashflowExpensesTable,
@@ -49,7 +45,12 @@ import {
   buildPlaceholderTrend,
   buildTrendFromDaily,
 } from "@/lib/reports/cashflow-trend";
-import { breakdownToMethodRows, fmtAmount } from "@/types/reports/cashflow";
+import {
+  breakdownToMethodRows,
+  CASHFLOW_DETAIL_VIEWS,
+  type CashflowDetailView,
+  fmtAmount,
+} from "@/types/reports/cashflow";
 import { rethrowIfBoundary } from "@/lib/list-fallback";
 import type OverviewResponse from "@/types/dashboard/type";
 

@@ -3,6 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { RotateCcw } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition } from "react";
 
@@ -45,6 +46,24 @@ const monoRef = (value: string | null) =>
     <span className="text-muted-2">—</span>
   );
 
+/**
+ * Order number as a deep link into the order drill-down (`/orders/{id}`) —
+ * payments and refund lines both hang off an order. Falls back to plain
+ * mono text for rows whose order id never reached the fact table.
+ */
+const orderRef = (orderNumber: string | null, orderId: string | null) => {
+  if (!orderNumber?.trim()) return <span className="text-muted-2">—</span>;
+  if (!orderId) return monoRef(orderNumber);
+  return (
+    <Link
+      href={`/orders/${orderId}`}
+      className="font-mono text-[12px] tabular-nums text-ink underline-offset-2 hover:underline"
+    >
+      {orderNumber}
+    </Link>
+  );
+};
+
 const person = (name: string | null) =>
   name?.trim() ? (
     <span className="text-[12.5px] text-ink">{name}</span>
@@ -75,8 +94,9 @@ const paymentColumns: ColumnDef<CashflowTransactionRow>[] = [
   },
   {
     accessorKey: "orderNumber",
-    header: "Receipt",
-    cell: ({ row }) => monoRef(row.original.orderNumber),
+    header: "Order #",
+    cell: ({ row }) =>
+      orderRef(row.original.orderNumber, row.original.orderId),
   },
   {
     accessorKey: "acceptedPaymentMethodTypeName",
@@ -136,6 +156,8 @@ export function CashflowPaymentsTable({
   /** Tender filter choices — value is the acceptedPaymentMethodType id. */
   methodOptions: { label: string; value: string }[];
 }) {
+  const router = useRouter();
+
   return (
     <DataTable
       columns={paymentColumns}
@@ -147,6 +169,9 @@ export function CashflowPaymentsTable({
       manualFilter
       filterKey="method"
       filterOptions={methodOptions.length > 0 ? methodOptions : undefined}
+      onRowClick={(row) => {
+        if (row.orderId) router.push(`/orders/${row.orderId}`);
+      }}
     />
   );
 }
@@ -165,7 +190,7 @@ const refundColumns: ColumnDef<CashflowRefundRow>[] = [
     header: "Order",
     cell: ({ row }) => (
       <div className="min-w-0">
-        {monoRef(row.original.orderNumber)}
+        {orderRef(row.original.orderNumber, row.original.orderId)}
         <div className="truncate text-[11px] text-muted-foreground">
           {row.original.orderItemName?.trim() || "—"}
           {row.original.quantity > 1 && (
@@ -222,6 +247,8 @@ export function CashflowRefundsTable({
   pageCount: number;
   defaultPageSize: number;
 }) {
+  const router = useRouter();
+
   return (
     <DataTable
       columns={refundColumns}
@@ -230,6 +257,9 @@ export function CashflowRefundsTable({
       hideSearch
       pageCount={pageCount}
       defaultPageSize={defaultPageSize}
+      onRowClick={(row) => {
+        if (row.orderId) router.push(`/orders/${row.orderId}`);
+      }}
     />
   );
 }

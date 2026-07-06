@@ -24,9 +24,14 @@ import {
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldLabel,
+  controlComboboxTriggerClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import {
   Form,
   FormControl,
@@ -278,10 +283,8 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                 control={form.control}
                 name="customerId"
                 render={({ field }) => (
-                  <FormItem className="mb-4">
-                    <FormLabel className={styles.fieldLabel}>
-                      Customer <span className="req">*</span>
-                    </FormLabel>
+                  <FormItem className="mb-4 space-y-[7px]">
+                    <FieldLabel required>Customer</FieldLabel>
                     <div className="flex items-center gap-2">
                       <div className="min-w-0 flex-1">
                         <CustomerSelector
@@ -307,7 +310,7 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
-                    <FormMessage className="text-xs" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -316,18 +319,16 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                   control={form.control}
                   name="customerName"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Name on document <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Name on document</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           {...field}
                           disabled={isPending || isLocked}
                           placeholder="Customer name"
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -335,10 +336,8 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                   control={form.control}
                   name="customerPhone"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Phone <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Phone</FieldLabel>
                       <FormControl>
                         <PhoneInput
                           placeholder="Enter phone number"
@@ -347,7 +346,7 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                           disabled={isPending || isLocked}
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -355,12 +354,10 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                   control={form.control}
                   name="customerEmail"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Email <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Email</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           {...field}
                           value={field.value ?? ""}
                           type="email"
@@ -368,7 +365,7 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                           placeholder="name@example.com"
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -376,19 +373,17 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                   control={form.control}
                   name="customerTin"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        TIN <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>TIN</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           {...field}
                           value={field.value ?? ""}
                           disabled={isPending || isLocked}
                           placeholder="Tax identification no."
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -442,10 +437,8 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                           control={form.control}
                           name={`lines.${index}.stockVariantId`}
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className={styles.fieldLabel}>
-                                Stock item <span className="opt">OPTIONAL</span>
-                              </FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel optional>Stock item</FieldLabel>
                               <FormControl>
                                 <StockVariantSelector
                                   value={field.value || ""}
@@ -475,18 +468,16 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                           control={form.control}
                           name={`lines.${index}.description`}
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className={styles.fieldLabel}>
-                                Description <span className="req">*</span>
-                              </FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel required>Description</FieldLabel>
                               <FormControl>
-                                <Input
+                                <ControlInput
                                   {...field}
                                   disabled={isPending || isLocked}
                                   placeholder="What is being quoted?"
                                 />
                               </FormControl>
-                              <FormMessage className="text-xs" />
+                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -496,10 +487,8 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                           control={form.control}
                           name={`lines.${index}.quantity`}
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className={styles.fieldLabel}>
-                                Qty <span className="req">*</span>
-                              </FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel required>Qty</FieldLabel>
                               <FormControl>
                                 <NumericInput
                                   value={field.value}
@@ -508,7 +497,7 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                                   placeholder="1"
                                 />
                               </FormControl>
-                              <FormMessage className="text-xs" />
+                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -516,10 +505,8 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                           control={form.control}
                           name={`lines.${index}.unitPrice`}
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className={styles.fieldLabel}>
-                                Unit price <span className="req">*</span>
-                              </FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel required>Unit price</FieldLabel>
                               <FormControl>
                                 <NumericInput
                                   value={field.value}
@@ -528,7 +515,7 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                                   placeholder="0.00"
                                 />
                               </FormControl>
-                              <FormMessage className="text-xs" />
+                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -536,10 +523,8 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                           control={form.control}
                           name={`lines.${index}.lineDiscountAmount`}
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className={styles.fieldLabel}>
-                                Discount
-                              </FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel>Discount</FieldLabel>
                               <FormControl>
                                 <NumericInput
                                   value={field.value}
@@ -548,7 +533,7 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                                   placeholder="0.00"
                                 />
                               </FormControl>
-                              <FormMessage className="text-xs" />
+                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -556,10 +541,8 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                           control={form.control}
                           name={`lines.${index}.taxRate`}
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className={styles.fieldLabel}>
-                                Tax
-                              </FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel>Tax</FieldLabel>
                               <FormControl>
                                 <TaxTypeSelect
                                   taxTypes={taxTypes}
@@ -568,7 +551,7 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                                   disabled={isPending || isLocked}
                                 />
                               </FormControl>
-                              <FormMessage className="text-xs" />
+                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -634,10 +617,8 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                   control={form.control}
                   name="currencyCode"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Currency <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Currency</FieldLabel>
                       <FormControl>
                         <CurrencySelector
                           value={field.value}
@@ -646,7 +627,7 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                           placeholder={`Default ${defaultCurrency}`}
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -654,16 +635,14 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                   control={form.control}
                   name="validUntil"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Valid until <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Valid until</FieldLabel>
                       <DatePicker
                         value={field.value ?? ""}
                         onChange={field.onChange}
                         disabled={isPending || isLocked}
                       />
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -673,20 +652,17 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                   control={form.control}
                   name="notes"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Notes <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Notes</FieldLabel>
                       <FormControl>
-                        <Textarea
+                        <ControlTextarea
                           {...field}
                           value={field.value ?? ""}
-                          rows={3}
                           disabled={isPending || isLocked}
                           placeholder="Terms, delivery notes, anything the customer should see."
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -833,11 +809,12 @@ function DatePicker({ value, onChange, disabled, clearable }: DatePickerProps) {
             variant="outline"
             disabled={disabled}
             className={cn(
-              "h-10 w-full justify-start text-left font-normal",
-              !date && "text-muted-foreground",
+              controlComboboxTriggerClass,
+              "justify-start",
+              !date && "text-muted-2",
             )}
           >
-            <CalendarDays className="mr-2 h-4 w-4 opacity-50" />
+            <CalendarDays className="mr-2 h-4 w-4 text-muted-2" />
             {date ? format(date, "PPP") : "Pick a date"}
           </Button>
         </PopoverTrigger>
@@ -910,7 +887,7 @@ function TaxTypeSelect({
         onChange(t ? Number(t.ratePercent) : 0);
       }}
     >
-      <SelectTrigger className="h-10 w-full">
+      <SelectTrigger className={cn(controlSelectTriggerClass, "w-full")}>
         <SelectValue
           placeholder={taxTypes.length ? "Select tax" : "No tax types"}
         />

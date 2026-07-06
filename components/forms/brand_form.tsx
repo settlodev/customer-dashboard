@@ -1,16 +1,18 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { FieldErrors, useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldLabel,
+} from "@/components/ui/field";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import React, { useCallback, useState, useTransition } from "react";
@@ -145,12 +147,10 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
                     control={form.control}
                     name="name"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Brand name <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel required>Brand name</FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             placeholder="Enter brand name"
                             {...field}
                             disabled={isPending}
@@ -165,15 +165,11 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
                     control={form.control}
                     name="description"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Description
-                          <span className="opt">OPTIONAL</span>
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel optional>Description</FieldLabel>
                         <FormControl>
-                          <Textarea
+                          <ControlTextarea
                             placeholder="Brief description of the brand"
-                            rows={4}
                             {...field}
                             disabled={isPending}
                           />

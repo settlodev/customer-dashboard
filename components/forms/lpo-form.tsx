@@ -13,14 +13,20 @@ import {
   Trash2,
   AlertTriangle,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  ControlBox,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlInputClass,
+} from "@/components/ui/field";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -35,7 +41,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { NumericFormat } from "react-number-format";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -232,54 +237,44 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
             </header>
 
             <div className={styles.formBody}>
-              <div className={styles.fieldRow}>
-                <FormField
-                  control={form.control}
-                  name="supplierId"
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 min-w-0">
-                      <FormLabel className={styles.fieldLabel}>
-                        Supplier <span className="req">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <SupplierSelector
-                          label="Supplier"
-                          placeholder="Select supplier"
-                          value={field.value}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          isDisabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="supplierId"
+                render={({ field }) => (
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel required>Supplier</FieldLabel>
+                    <FormControl>
+                      <SupplierSelector
+                        label="Supplier"
+                        placeholder="Select supplier"
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        isDisabled={isPending}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <div className={styles.fieldRow} style={{ marginTop: 14 }}>
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 min-w-0">
-                      <FormLabel className={styles.fieldLabel}>
-                        Notes
-                        <span className="opt">OPTIONAL</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Reference numbers, delivery requirements, payment terms."
-                          rows={2}
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem className="mt-[15px] space-y-[7px]">
+                    <FieldLabel optional>Notes</FieldLabel>
+                    <FormControl>
+                      <ControlTextarea
+                        placeholder="Reference numbers, delivery requirements, payment terms."
+                        {...field}
+                        value={field.value ?? ""}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             </div>
           </section>
 
@@ -351,10 +346,8 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
                           control={form.control}
                           name={`items.${index}.stockVariantId`}
                           render={({ field: f }) => (
-                            <FormItem className="w-full md:flex-[5] min-w-0">
-                              <FormLabel className="text-xs">
-                                Stock item <span className="text-red-500">*</span>
-                              </FormLabel>
+                            <FormItem className="w-full md:flex-[5] min-w-0 space-y-[7px]">
+                              <FieldLabel required>Stock item</FieldLabel>
                               <FormControl>
                                 <StockVariantSelector
                                   value={f.value}
@@ -376,23 +369,23 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
                           control={form.control}
                           name={`items.${index}.orderedQuantity`}
                           render={({ field: f }) => (
-                            <FormItem className="w-full md:flex-[2] min-w-0">
-                              <FormLabel className="text-xs">
-                                Qty <span className="text-red-500">*</span>
-                              </FormLabel>
+                            <FormItem className="w-full md:flex-[2] min-w-0 space-y-[7px]">
+                              <FieldLabel required>Qty</FieldLabel>
                               <FormControl>
-                                <NumericFormat
-                                  customInput={Input}
-                                  value={f.value}
-                                  onValueChange={(v) =>
-                                    f.onChange(v.value ? Number(v.value) : 0)
-                                  }
-                                  thousandSeparator
-                                  decimalScale={6}
-                                  allowNegative={false}
-                                  placeholder="0"
-                                  disabled={isPending}
-                                />
+                                <ControlBox>
+                                  <NumericFormat
+                                    className={cn(controlInputClass, "tabular-nums")}
+                                    value={f.value}
+                                    onValueChange={(v) =>
+                                      f.onChange(v.value ? Number(v.value) : 0)
+                                    }
+                                    thousandSeparator
+                                    decimalScale={6}
+                                    allowNegative={false}
+                                    placeholder="0"
+                                    disabled={isPending}
+                                  />
+                                </ControlBox>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -402,26 +395,28 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
                           control={form.control}
                           name={`items.${index}.unitCost`}
                           render={({ field: f }) => (
-                            <FormItem className="w-full md:flex-[3] min-w-0">
-                              <FormLabel className="text-xs">
+                            <FormItem className="w-full md:flex-[3] min-w-0 space-y-[7px]">
+                              <FieldLabel>
                                 Unit cost
                                 <span className="text-muted-foreground ml-1 font-normal">
                                   ({lineCurrency})
                                 </span>
-                              </FormLabel>
+                              </FieldLabel>
                               <FormControl>
-                                <NumericFormat
-                                  customInput={Input}
-                                  value={f.value}
-                                  onValueChange={(v) =>
-                                    f.onChange(v.value ? Number(v.value) : 0)
-                                  }
-                                  thousandSeparator
-                                  decimalScale={4}
-                                  allowNegative={false}
-                                  placeholder="0.00"
-                                  disabled={isPending}
-                                />
+                                <ControlBox>
+                                  <NumericFormat
+                                    className={cn(controlInputClass, "tabular-nums")}
+                                    value={f.value}
+                                    onValueChange={(v) =>
+                                      f.onChange(v.value ? Number(v.value) : 0)
+                                    }
+                                    thousandSeparator
+                                    decimalScale={4}
+                                    allowNegative={false}
+                                    placeholder="0.00"
+                                    disabled={isPending}
+                                  />
+                                </ControlBox>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -431,8 +426,8 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
                           control={form.control}
                           name={`items.${index}.currency`}
                           render={({ field: f }) => (
-                            <FormItem className="w-full md:flex-[2] min-w-0">
-                              <FormLabel className="text-xs">Currency</FormLabel>
+                            <FormItem className="w-full md:flex-[2] min-w-0 space-y-[7px]">
+                              <FieldLabel>Currency</FieldLabel>
                               <FormControl>
                                 <CurrencySelector
                                   value={f.value || ""}
@@ -441,9 +436,7 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
                                   placeholder={locationCurrency}
                                 />
                               </FormControl>
-                              <p className="text-[10px] text-muted-foreground">
-                                Defaults to {locationCurrency}
-                              </p>
+                              <FieldHint>Defaults to {locationCurrency}</FieldHint>
                               <FormMessage />
                             </FormItem>
                           )}

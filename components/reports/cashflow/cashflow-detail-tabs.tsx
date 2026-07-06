@@ -4,14 +4,10 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/utils";
-
-export type CashflowDetailView = "payments" | "refunds" | "expenses";
-
-export const CASHFLOW_DETAIL_VIEWS: CashflowDetailView[] = [
-  "payments",
-  "refunds",
-  "expenses",
-];
+import {
+  CASHFLOW_DETAIL_VIEWS,
+  type CashflowDetailView,
+} from "@/types/reports/cashflow";
 
 const VIEW_LABELS: Record<CashflowDetailView, string> = {
   payments: "Payments",

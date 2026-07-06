@@ -20,7 +20,6 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -28,7 +27,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -50,8 +48,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { NumericFormat } from "react-number-format";
+import {
+  ControlBox,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlComboboxTriggerClass,
+  controlInputClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import { useToast } from "@/hooks/use-toast";
 import {
   Alert,
@@ -335,22 +341,20 @@ export default function StockUsageForm({
             </header>
 
             <div className={styles.formBody}>
-              <div className={styles.fieldRow}>
+              <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="category"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Category <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Category</FieldLabel>
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
                         disabled={isPending}
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className={controlSelectTriggerClass}>
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -362,7 +366,7 @@ export default function StockUsageForm({
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -374,10 +378,8 @@ export default function StockUsageForm({
                       ? new Date(field.value)
                       : undefined;
                     return (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Usage date <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel required>Usage date</FieldLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
@@ -386,11 +388,12 @@ export default function StockUsageForm({
                                 variant="outline"
                                 disabled={isPending}
                                 className={cn(
-                                  "h-10 w-full justify-start text-left font-normal",
-                                  !selected && "text-muted-foreground",
+                                  controlComboboxTriggerClass,
+                                  "justify-start",
+                                  !selected && "text-muted-2",
                                 )}
                               >
-                                <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
                                 {selected ? format(selected, "PPP") : "Pick a date"}
                               </Button>
                             </FormControl>
@@ -410,25 +413,21 @@ export default function StockUsageForm({
                             />
                           </PopoverContent>
                         </Popover>
-                        <p className="text-[11px] text-muted-foreground">
-                          Defaults to today; back-date for late entry.
-                        </p>
-                        <FormMessage className="text-xs" />
+                        <FieldHint>Defaults to today; back-date for late entry.</FieldHint>
+                        <FormMessage />
                       </FormItem>
                     );
                   }}
                 />
               </div>
 
-              <div className={styles.fieldRow} style={{ marginTop: 14 }}>
+              <div className="mt-[15px] grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="recipientId"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Recipient <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Recipient</FieldLabel>
                       <FormControl>
                         <StaffSelectorWidget
                           label="Recipient"
@@ -440,10 +439,8 @@ export default function StockUsageForm({
                           isRequired
                         />
                       </FormControl>
-                      <p className="text-[11px] text-muted-foreground">
-                        Staff member who used or received the stock.
-                      </p>
-                      <FormMessage className="text-xs" />
+                      <FieldHint>Staff member who used or received the stock.</FieldHint>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -451,13 +448,8 @@ export default function StockUsageForm({
                   control={form.control}
                   name="departmentId"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Department
-                        {!canPickDepartment && (
-                          <span className="opt">OPTIONAL</span>
-                        )}
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional={!canPickDepartment}>Department</FieldLabel>
                       {canPickDepartment && departments.length > 1 ? (
                         <Select
                           value={field.value ?? ""}
@@ -467,7 +459,7 @@ export default function StockUsageForm({
                           disabled={isPending}
                         >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger className={controlSelectTriggerClass}>
                               <SelectValue placeholder="No department" />
                             </SelectTrigger>
                           </FormControl>
@@ -497,58 +489,47 @@ export default function StockUsageForm({
                           </span>
                         </div>
                       )}
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
 
-              <div className={styles.fieldRow} style={{ marginTop: 14 }}>
-                <FormField
-                  control={form.control}
-                  name="purpose"
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 min-w-0">
-                      <FormLabel className={styles.fieldLabel}>
-                        Purpose <span className="req">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Describe why this stock was used — e.g. staff lunch for kitchen shift, demo unit for trade show, calibration of espresso machine."
-                          rows={2}
-                          {...field}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage className="text-xs" />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="purpose"
+                render={({ field }) => (
+                  <FormItem className="mt-[15px] space-y-[7px]">
+                    <FieldLabel required>Purpose</FieldLabel>
+                    <FormControl>
+                      <ControlTextarea
+                        placeholder="Describe why this stock was used — e.g. staff lunch for kitchen shift, demo unit for trade show, calibration of espresso machine."
+                        {...field}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <div className={styles.fieldRow} style={{ marginTop: 14 }}>
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 min-w-0">
-                      <FormLabel className={styles.fieldLabel}>
-                        Notes
-                        <span className="opt">OPTIONAL</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Witnesses, event references, training session id, etc."
-                          rows={2}
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem className="mt-[15px] space-y-[7px]">
+                    <FieldLabel optional>Notes</FieldLabel>
+                    <FormControl>
+                      <ControlTextarea
+                        placeholder="Witnesses, event references, training session id, etc."
+                        {...field}
+                        value={field.value ?? ""}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             </div>
           </section>
 
@@ -619,10 +600,8 @@ export default function StockUsageForm({
                           control={form.control}
                           name={`items.${index}.stockVariantId`}
                           render={({ field: f }) => (
-                            <FormItem className="w-full md:flex-[5] min-w-0">
-                              <FormLabel className="text-xs">
-                                Stock item <span className="text-red-500">*</span>
-                              </FormLabel>
+                            <FormItem className="w-full md:flex-[5] min-w-0 space-y-[7px]">
+                              <FieldLabel required>Stock item</FieldLabel>
                               <FormControl>
                                 <StockVariantSelector
                                   value={f.value}
@@ -635,7 +614,7 @@ export default function StockUsageForm({
                                   isDisabled={isPending}
                                 />
                               </FormControl>
-                              <FormMessage className="text-xs" />
+                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -643,30 +622,30 @@ export default function StockUsageForm({
                           control={form.control}
                           name={`items.${index}.quantity`}
                           render={({ field: f }) => (
-                            <FormItem className="w-full md:flex-[3] min-w-0">
-                              <FormLabel className="text-xs">
-                                Quantity <span className="text-red-500">*</span>
-                              </FormLabel>
+                            <FormItem className="w-full md:flex-[3] min-w-0 space-y-[7px]">
+                              <FieldLabel required>Quantity</FieldLabel>
                               <FormControl>
-                                <NumericFormat
-                                  customInput={Input}
-                                  value={f.value}
-                                  onValueChange={(v) =>
-                                    f.onChange(v.value ? Number(v.value) : 0)
-                                  }
-                                  thousandSeparator
-                                  allowNegative={false}
-                                  decimalScale={isSerial ? 0 : undefined}
-                                  placeholder="0"
-                                  disabled={isPending}
-                                />
+                                <ControlBox>
+                                  <NumericFormat
+                                    className={cn(controlInputClass, "tabular-nums")}
+                                    value={f.value}
+                                    onValueChange={(v) =>
+                                      f.onChange(v.value ? Number(v.value) : 0)
+                                    }
+                                    thousandSeparator
+                                    allowNegative={false}
+                                    decimalScale={isSerial ? 0 : undefined}
+                                    placeholder="0"
+                                    disabled={isPending}
+                                  />
+                                </ControlBox>
                               </FormControl>
-                              <p className="text-[11px] text-muted-foreground">
+                              <FieldHint>
                                 {isSerial
                                   ? "Whole units only — list the serials below."
                                   : "Amount removed from stock."}
-                              </p>
-                              <FormMessage className="text-xs" />
+                              </FieldHint>
+                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -674,31 +653,33 @@ export default function StockUsageForm({
                           control={form.control}
                           name={`items.${index}.unitCost`}
                           render={({ field: f }) => (
-                            <FormItem className="w-full md:flex-[4] min-w-0">
-                              <FormLabel className="text-xs">
+                            <FormItem className="w-full md:flex-[4] min-w-0 space-y-[7px]">
+                              <FieldLabel>
                                 Unit cost
                                 <span className="text-muted-foreground ml-1 font-normal">
                                   ({locationCurrency}, optional)
                                 </span>
-                              </FormLabel>
+                              </FieldLabel>
                               <FormControl>
-                                <NumericFormat
-                                  customInput={Input}
-                                  value={f.value ?? ""}
-                                  onValueChange={(v) =>
-                                    f.onChange(
-                                      v.value === "" ? undefined : Number(v.value),
-                                    )
-                                  }
-                                  thousandSeparator
-                                  placeholder="Defaults to average cost"
-                                  disabled={isPending}
-                                />
+                                <ControlBox>
+                                  <NumericFormat
+                                    className={cn(controlInputClass, "tabular-nums")}
+                                    value={f.value ?? ""}
+                                    onValueChange={(v) =>
+                                      f.onChange(
+                                        v.value === "" ? undefined : Number(v.value),
+                                      )
+                                    }
+                                    thousandSeparator
+                                    placeholder="Defaults to average cost"
+                                    disabled={isPending}
+                                  />
+                                </ControlBox>
                               </FormControl>
-                              <p className="text-[11px] text-muted-foreground">
+                              <FieldHint>
                                 Leave blank to use the variant&apos;s average cost.
-                              </p>
-                              <FormMessage className="text-xs" />
+                              </FieldHint>
+                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -709,12 +690,10 @@ export default function StockUsageForm({
                           control={form.control}
                           name={`items.${index}.serialNumbers`}
                           render={({ field: f }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">
-                                Serial numbers <span className="text-red-500">*</span>
-                              </FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel required>Serial numbers</FieldLabel>
                               <FormControl>
-                                <Textarea
+                                <ControlTextarea
                                   placeholder="One serial per line"
                                   rows={Math.max(2, Math.min(quantity || 2, 6))}
                                   value={(f.value ?? []).join("\n")}
@@ -729,7 +708,7 @@ export default function StockUsageForm({
                                   disabled={isPending}
                                 />
                               </FormControl>
-                              <p className="text-[11px] text-muted-foreground">
+                              <FieldHint>
                                 Provide exactly {quantity || 0} serial number(s); they must
                                 be AVAILABLE at this location.
                                 {serialNumbers.length > 0 && (
@@ -737,8 +716,8 @@ export default function StockUsageForm({
                                     Entered: {serialNumbers.length}
                                   </span>
                                 )}
-                              </p>
-                              <FormMessage className="text-xs" />
+                              </FieldHint>
+                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -816,12 +795,11 @@ export default function StockUsageForm({
                         control={form.control}
                         name={`items.${index}.notes`}
                         render={({ field: f }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Item notes</FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Item notes</FieldLabel>
                             <FormControl>
-                              <Textarea
+                              <ControlTextarea
                                 placeholder="Optional — applies to this line only"
-                                rows={2}
                                 {...f}
                                 value={f.value ?? ""}
                                 disabled={isPending}

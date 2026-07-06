@@ -16,15 +16,19 @@ import { z } from "zod";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlComboboxTriggerClass,
+} from "@/components/ui/field";
 import {
   Popover,
   PopoverContent,
@@ -136,15 +140,13 @@ export default function ProviderSettlementForm({
               </div>
             </header>
             <div className={styles.formBody}>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-3">
                 <FormField
                   control={form.control}
                   name="grossAmount"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Gross amount <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Gross amount</FieldLabel>
                       <FormControl>
                         <NumericInput
                           value={field.value ?? ""}
@@ -153,7 +155,7 @@ export default function ProviderSettlementForm({
                           disabled={isPending}
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -161,10 +163,8 @@ export default function ProviderSettlementForm({
                   control={form.control}
                   name="commissionAmount"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Commission / fee <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Commission / fee</FieldLabel>
                       <FormControl>
                         <NumericInput
                           value={field.value}
@@ -173,15 +173,15 @@ export default function ProviderSettlementForm({
                           disabled={isPending}
                         />
                       </FormControl>
-                      <p className={styles.fieldHint}>
-                        Deducted from the payout and expensed.
-                      </p>
-                      <FormMessage className="text-xs" />
+                      <FieldHint>Deducted from the payout and expensed.</FieldHint>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
-                <div className="space-y-2">
-                  <label className={styles.fieldLabel}>Net to bank</label>
+                <div className="space-y-[7px]">
+                  <label className="flex items-center gap-1.5 text-[13px] font-semibold leading-none text-ink">
+                    Net to bank
+                  </label>
                   <div className="flex h-9 w-full items-center justify-between rounded-md border border-line bg-card px-3 text-[13px] font-medium tabular-nums text-ink">
                     <span>
                       {netAmount.toLocaleString(undefined, {
@@ -193,9 +193,9 @@ export default function ProviderSettlementForm({
                       {defaultCurrency}
                     </span>
                   </div>
-                  <p className={styles.fieldHint}>
+                  <FieldHint>
                     Gross minus commission — what actually lands in the bank.
-                  </p>
+                  </FieldHint>
                 </div>
               </div>
             </div>
@@ -214,15 +214,13 @@ export default function ProviderSettlementForm({
               </div>
             </header>
             <div className={styles.formBody}>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="bankAccountId"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Bank account <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Bank account</FieldLabel>
                       <FormControl>
                         <ChartOfAccountSelector
                           accountType={"ASSET" as AccountType}
@@ -232,7 +230,7 @@ export default function ProviderSettlementForm({
                           isDisabled={isPending}
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -240,10 +238,8 @@ export default function ProviderSettlementForm({
                   control={form.control}
                   name="settlementDate"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Settlement date
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Settlement date</FieldLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -252,11 +248,12 @@ export default function ProviderSettlementForm({
                               variant="outline"
                               disabled={isPending}
                               className={cn(
-                                "h-10 w-full justify-start text-left font-normal",
-                                !field.value && "text-muted-foreground",
+                                controlComboboxTriggerClass,
+                                "justify-start",
+                                !field.value && "text-muted-2",
                               )}
                             >
-                              <CalendarDays className="mr-2 h-4 w-4 opacity-50" />
+                              <CalendarDays className="mr-2 h-4 w-4 text-muted-2" />
                               {field.value
                                 ? format(new Date(field.value), "PPP")
                                 : "Pick a date"}
@@ -276,24 +273,22 @@ export default function ProviderSettlementForm({
                           />
                         </PopoverContent>
                       </Popover>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 mt-3.5">
+              <div className="mt-[15px] grid grid-cols-1 gap-x-[18px] gap-y-[15px]">
                 <FormField
                   control={form.control}
                   name="note"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Note <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Note</FieldLabel>
                       <FormControl>
-                        <Textarea {...field} rows={2} disabled={isPending} />
+                        <ControlTextarea {...field} disabled={isPending} />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />

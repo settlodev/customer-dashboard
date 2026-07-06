@@ -15,16 +15,18 @@ import {
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldLabel,
+} from "@/components/ui/field";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -115,23 +117,21 @@ export default function VendorForm({ item }: Props) {
               </div>
             </header>
             <div className={styles.formBody}>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Name <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Name</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           {...field}
                           disabled={isPending}
                           placeholder="ACME Supplies Ltd"
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -139,32 +139,27 @@ export default function VendorForm({ item }: Props) {
                   control={form.control}
                   name="contactPerson"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Contact person{" "}
-                        <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Contact person</FieldLabel>
                       <FormControl>
-                        <Input {...field} disabled={isPending} />
+                        <ControlInput {...field} disabled={isPending} />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 mt-3.5 sm:grid-cols-2">
+              <div className="mt-[15px] grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="taxNumber"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Tax number <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Tax number</FieldLabel>
                       <FormControl>
-                        <Input {...field} disabled={isPending} />
+                        <ControlInput {...field} disabled={isPending} />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -172,38 +167,37 @@ export default function VendorForm({ item }: Props) {
                   control={form.control}
                   name="registrationNumber"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Registration number{" "}
-                        <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Registration number</FieldLabel>
                       <FormControl>
-                        <Input {...field} disabled={isPending} />
+                        <ControlInput {...field} disabled={isPending} />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 mt-3.5">
+              <div className="mt-[15px] grid grid-cols-1 gap-x-[18px] gap-y-[15px]">
                 <FormField
                   control={form.control}
                   name="defaultCurrencyCode"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Default currency{" "}
-                        <span className="opt">DEFAULTS TO LOCATION</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>
+                        Default currency
+                        <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
+                          Defaults to location
+                        </span>
+                      </FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           {...field}
                           disabled={isPending}
                           maxLength={3}
                           className="uppercase"
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -228,22 +222,22 @@ export default function VendorForm({ item }: Props) {
               </div>
             </header>
             <div className={styles.formBody}>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="email"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>Email</FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Email</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           {...field}
                           type="email"
                           disabled={isPending}
                           placeholder="finance@acme.co.tz"
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -251,31 +245,31 @@ export default function VendorForm({ item }: Props) {
                   control={form.control}
                   name="phone"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>Phone</FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Phone</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           {...field}
                           disabled={isPending}
                           placeholder="+255 7XX XXX XXX"
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 mt-3.5">
+              <div className="mt-[15px] grid grid-cols-1 gap-x-[18px] gap-y-[15px]">
                 <FormField
                   control={form.control}
                   name="address"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>Address</FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Address</FieldLabel>
                       <FormControl>
-                        <Textarea {...field} rows={2} disabled={isPending} />
+                        <ControlTextarea {...field} disabled={isPending} />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -301,11 +295,11 @@ export default function VendorForm({ item }: Props) {
                 control={form.control}
                 name="notes"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="space-y-[7px]">
                     <FormControl>
-                      <Textarea {...field} rows={3} disabled={isPending} />
+                      <ControlTextarea {...field} disabled={isPending} />
                     </FormControl>
-                    <FormMessage className="text-xs" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />

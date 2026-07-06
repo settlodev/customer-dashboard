@@ -14,13 +14,20 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import {
+  ControlBox,
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlInputClass,
+} from "@/components/ui/field";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -35,7 +42,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { NumericFormat } from "react-number-format";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -180,15 +186,13 @@ export default function SupplierReturnForm() {
             </header>
 
             <div className={styles.formBody}>
-              <div className={styles.fieldRow}>
+              <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="supplierId"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Supplier <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Supplier</FieldLabel>
                       <FormControl>
                         <SupplierSelector
                           label="Supplier"
@@ -200,9 +204,9 @@ export default function SupplierReturnForm() {
                         />
                       </FormControl>
                       {watchedGrnId && (
-                        <p className="text-[11px] text-muted-foreground">
+                        <FieldHint>
                           Locked to the supplier on the linked GRN.
-                        </p>
+                        </FieldHint>
                       )}
                       <FormMessage />
                     </FormItem>
@@ -212,11 +216,8 @@ export default function SupplierReturnForm() {
                   control={form.control}
                   name="grnId"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Related GRN
-                        <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Related GRN</FieldLabel>
                       <FormControl>
                         <GrnSelector
                           value={field.value ?? ""}
@@ -291,62 +292,51 @@ export default function SupplierReturnForm() {
                           }
                         />
                       </FormControl>
-                      <p className="text-[11px] text-muted-foreground">
+                      <FieldHint>
                         Drives supplier-performance tracking.
-                      </p>
+                      </FieldHint>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
 
-              <div className={styles.fieldRow} style={{ marginTop: 14 }}>
-                <FormField
-                  control={form.control}
-                  name="reason"
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 min-w-0">
-                      <FormLabel className={styles.fieldLabel}>
-                        Reason <span className="req">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="e.g. Damaged on arrival, wrong product, expired"
-                          rows={2}
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="reason"
+                render={({ field }) => (
+                  <FormItem className="mt-[15px] space-y-[7px]">
+                    <FieldLabel required>Reason</FieldLabel>
+                    <FormControl>
+                      <ControlTextarea
+                        placeholder="e.g. Damaged on arrival, wrong product, expired"
+                        {...field}
+                        value={field.value ?? ""}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <div className={styles.fieldRow} style={{ marginTop: 14 }}>
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 min-w-0">
-                      <FormLabel className={styles.fieldLabel}>
-                        Notes
-                        <span className="opt">OPTIONAL</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Credit note reference, supplier contact, photos."
-                          rows={2}
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem className="mt-[15px] space-y-[7px]">
+                    <FieldLabel optional>Notes</FieldLabel>
+                    <FormControl>
+                      <ControlTextarea
+                        placeholder="Credit note reference, supplier contact, photos."
+                        {...field}
+                        value={field.value ?? ""}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             </div>
           </section>
 
@@ -424,10 +414,8 @@ export default function SupplierReturnForm() {
                           control={form.control}
                           name={`items.${index}.stockVariantId`}
                           render={({ field: f }) => (
-                            <FormItem className="w-full md:flex-[5] min-w-0">
-                              <FormLabel className="text-xs">
-                                Stock item <span className="text-red-500">*</span>
-                              </FormLabel>
+                            <FormItem className="w-full md:flex-[5] min-w-0 space-y-[7px]">
+                              <FieldLabel required>Stock item</FieldLabel>
                               <FormControl>
                                 <StockVariantSelector
                                   value={f.value}
@@ -445,36 +433,38 @@ export default function SupplierReturnForm() {
                           control={form.control}
                           name={`items.${index}.quantity`}
                           render={({ field: f }) => (
-                            <FormItem className="w-full md:flex-[2] min-w-0">
-                              <FormLabel className="text-xs">
-                                Qty <span className="text-red-500">*</span>
+                            <FormItem className="w-full md:flex-[2] min-w-0 space-y-[7px]">
+                              <FieldLabel>
+                                Qty <span className="text-primary">*</span>
                                 {rowMax !== undefined && (
                                   <span className="text-muted-foreground ml-1 font-normal">
                                     (max {rowMax})
                                   </span>
                                 )}
-                              </FormLabel>
+                              </FieldLabel>
                               <FormControl>
-                                <NumericFormat
-                                  customInput={Input}
-                                  value={f.value}
-                                  onValueChange={(v) =>
-                                    f.onChange(v.value ? Number(v.value) : 0)
-                                  }
-                                  thousandSeparator
-                                  decimalScale={6}
-                                  allowNegative={false}
-                                  placeholder="0"
-                                  disabled={isPending}
-                                  isAllowed={(values) => {
-                                    if (rowMax === undefined) return true;
-                                    const { floatValue } = values;
-                                    return (
-                                      floatValue === undefined ||
-                                      floatValue <= rowMax
-                                    );
-                                  }}
-                                />
+                                <ControlBox>
+                                  <NumericFormat
+                                    className={cn(controlInputClass, "tabular-nums")}
+                                    value={f.value}
+                                    onValueChange={(v) =>
+                                      f.onChange(v.value ? Number(v.value) : 0)
+                                    }
+                                    thousandSeparator
+                                    decimalScale={6}
+                                    allowNegative={false}
+                                    placeholder="0"
+                                    disabled={isPending}
+                                    isAllowed={(values) => {
+                                      if (rowMax === undefined) return true;
+                                      const { floatValue } = values;
+                                      return (
+                                        floatValue === undefined ||
+                                        floatValue <= rowMax
+                                      );
+                                    }}
+                                  />
+                                </ControlBox>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -484,26 +474,28 @@ export default function SupplierReturnForm() {
                           control={form.control}
                           name={`items.${index}.unitCost`}
                           render={({ field: f }) => (
-                            <FormItem className="w-full md:flex-[3] min-w-0">
-                              <FormLabel className="text-xs">
+                            <FormItem className="w-full md:flex-[3] min-w-0 space-y-[7px]">
+                              <FieldLabel>
                                 Unit cost
                                 <span className="text-muted-foreground ml-1 font-normal">
                                   ({lineCurrency})
                                 </span>
-                              </FormLabel>
+                              </FieldLabel>
                               <FormControl>
-                                <NumericFormat
-                                  customInput={Input}
-                                  value={f.value ?? ""}
-                                  onValueChange={(v) =>
-                                    f.onChange(v.value === "" ? undefined : Number(v.value))
-                                  }
-                                  thousandSeparator
-                                  decimalScale={4}
-                                  allowNegative={false}
-                                  placeholder="Defaults to batch cost"
-                                  disabled={isPending || unitCostLocked}
-                                />
+                                <ControlBox>
+                                  <NumericFormat
+                                    className={cn(controlInputClass, "tabular-nums")}
+                                    value={f.value ?? ""}
+                                    onValueChange={(v) =>
+                                      f.onChange(v.value === "" ? undefined : Number(v.value))
+                                    }
+                                    thousandSeparator
+                                    decimalScale={4}
+                                    allowNegative={false}
+                                    placeholder="Defaults to batch cost"
+                                    disabled={isPending || unitCostLocked}
+                                  />
+                                </ControlBox>
                               </FormControl>
                             </FormItem>
                           )}
@@ -514,10 +506,10 @@ export default function SupplierReturnForm() {
                         control={form.control}
                         name={`items.${index}.reason`}
                         render={({ field: f }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Line reason</FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Line reason</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="Optional — specific reason for this line"
                                 {...f}
                                 value={f.value ?? ""}

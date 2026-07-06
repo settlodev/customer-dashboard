@@ -59,9 +59,16 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlComboboxTriggerClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -784,10 +791,8 @@ export default function ReservationForm({ item }: ReservationFormProps) {
                         ? new Date(field.value + "T00:00:00")
                         : undefined;
                       return (
-                        <FormItem className="min-w-0">
-                          <FormLabel className={styles.fieldLabel}>
-                            Date <span className="req">*</span>
-                          </FormLabel>
+                        <FormItem className="min-w-0 space-y-[7px]">
+                          <FieldLabel required>Date</FieldLabel>
                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
@@ -796,12 +801,13 @@ export default function ReservationForm({ item }: ReservationFormProps) {
                                   variant="outline"
                                   disabled={isPending || !scheduleLoaded}
                                   className={cn(
-                                    "h-10 w-full justify-start text-left font-normal",
-                                    !selected && "text-muted-foreground",
+                                    controlComboboxTriggerClass,
+                                    "justify-start",
+                                    !selected && "text-muted-2",
                                   )}
                                 >
                                   {scheduleLoaded ? (
-                                    <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                    <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
                                   ) : (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin opacity-70" />
                                   )}
@@ -834,15 +840,15 @@ export default function ReservationForm({ item }: ReservationFormProps) {
                             </PopoverContent>
                           </Popover>
                           {settings ? (
-                            <p className="text-[11px] text-ink-3 mt-1">
+                            <FieldHint>
                               Bookable up to {bookingWindowDays} days ahead
                               {minAdvanceHours > 0
                                 ? ` · ${minAdvanceHours}h advance notice`
                                 : ""}
                               .
-                            </p>
+                            </FieldHint>
                           ) : null}
-                          <FormMessage className="text-xs" />
+                          <FormMessage />
                         </FormItem>
                       );
                     }}
@@ -852,18 +858,18 @@ export default function ReservationForm({ item }: ReservationFormProps) {
                     control={form.control}
                     name="peopleCount"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Guests <span className="req">*</span>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel>
+                          Guests <span className="text-primary">*</span>
                           {settings ? (
-                            <span className="opt">
+                            <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
                               {minParty}
                               {maxParty != null ? `–${maxParty}` : "+"}
                             </span>
                           ) : null}
-                        </FormLabel>
+                        </FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             type="number"
                             min={minParty}
                             max={maxParty ?? undefined}
@@ -894,11 +900,8 @@ export default function ReservationForm({ item }: ReservationFormProps) {
                     control={form.control}
                     name="tableSpaceId"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Table
-                          <span className="opt">OPTIONAL</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel optional>Table</FieldLabel>
                         <Select
                           onValueChange={(v) =>
                             field.onChange(v === "__auto__" ? undefined : v)
@@ -907,7 +910,7 @@ export default function ReservationForm({ item }: ReservationFormProps) {
                           disabled={isPending}
                         >
                           <FormControl>
-                            <SelectTrigger className="h-10 w-full">
+                            <SelectTrigger className={cn(controlSelectTriggerClass, "w-full")}>
                               <SelectValue placeholder="Auto-assign or pick a table" />
                             </SelectTrigger>
                           </FormControl>
@@ -945,13 +948,13 @@ export default function ReservationForm({ item }: ReservationFormProps) {
                           </SelectContent>
                         </Select>
                         {peopleCount != null && peopleCount > 0 ? (
-                          <p className="text-[11px] text-ink-3 mt-1">
+                          <FieldHint>
                             Fits {peopleCount} guest
                             {peopleCount === 1 ? "" : "s"}
                             {availableTableIds
                               ? ` · ${availableTableIds.size} free.`
                               : "."}
-                          </p>
+                          </FieldHint>
                         ) : null}
                         <FormMessage />
                       </FormItem>
@@ -962,17 +965,15 @@ export default function ReservationForm({ item }: ReservationFormProps) {
                     control={form.control}
                     name="source"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Booking source <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel required>Booking source</FieldLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value ?? ""}
                           disabled={isPending}
                         >
                           <FormControl>
-                            <SelectTrigger className="h-10 w-full">
+                            <SelectTrigger className={cn(controlSelectTriggerClass, "w-full")}>
                               <SelectValue placeholder="Select source" />
                             </SelectTrigger>
                           </FormControl>
@@ -993,10 +994,8 @@ export default function ReservationForm({ item }: ReservationFormProps) {
                     control={form.control}
                     name="customerId"
                     render={({ field }) => (
-                      <FormItem className="min-w-0 sm:col-span-2">
-                        <FormLabel className={styles.fieldLabel}>
-                          Customer <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 sm:col-span-2 space-y-[7px]">
+                        <FieldLabel required>Customer</FieldLabel>
                         <div className="flex items-center gap-2">
                           <div className="flex-1 min-w-0">
                             <CustomerSelector
@@ -1030,19 +1029,14 @@ export default function ReservationForm({ item }: ReservationFormProps) {
                       control={form.control}
                       name="specialRequests"
                       render={({ field }) => (
-                        <FormItem className="col-span-full w-full">
-                          <FormLabel className={styles.fieldLabel}>
-                            Special notes
-                            <span className="opt">OPTIONAL</span>
-                          </FormLabel>
+                        <FormItem className="col-span-full w-full space-y-[7px]">
+                          <FieldLabel optional>Special notes</FieldLabel>
                           <FormControl>
-                            <Textarea
+                            <ControlTextarea
                               placeholder="e.g. Birthday — please prepare a candle. Allergies: shellfish."
-                              rows={3}
                               disabled={isPending}
                               {...field}
                               value={field.value ?? ""}
-                              className="w-full"
                             />
                           </FormControl>
                           <FormMessage />
@@ -1149,10 +1143,8 @@ export default function ReservationForm({ item }: ReservationFormProps) {
                     control={form.control}
                     name="reservationTime"
                     render={({ field }) => (
-                      <FormItem className="flex-1 min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Start time <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="flex-1 min-w-0 space-y-[7px]">
+                        <FieldLabel required>Start time</FieldLabel>
                         {showSlotPicker ? (
                           <SlotPicker
                             value={field.value}
@@ -1219,11 +1211,8 @@ export default function ReservationForm({ item }: ReservationFormProps) {
                   control={form.control}
                   name="reservationEndTime"
                   render={({ field }) => (
-                    <FormItem className="min-w-0 mt-1">
-                      <FormLabel className={styles.fieldLabel}>
-                        End time
-                        <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="min-w-0 mt-1 space-y-[7px]">
+                      <FieldLabel optional>End time</FieldLabel>
                       <FormControl>
                         <TimePicker
                           value={field.value}
