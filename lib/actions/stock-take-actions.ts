@@ -7,6 +7,7 @@ import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { inventoryUrl } from "./inventory-client";
+import { getCurrentDestination } from "./context";
 import type {
   StockTake,
   StockTakeStatus,
@@ -65,7 +66,6 @@ export async function createStockTake(
   }
 
   const {
-    locationType,
     cycleCountType,
     blindCount,
     notes,
@@ -77,8 +77,13 @@ export async function createStockTake(
     samplePercentage,
   } = validated.data;
 
+  // The take counts the active destination, so its type comes from the
+  // session — not from the form (whose field defaulted to LOCATION even in
+  // store/warehouse mode). The backend derives this server-side too.
+  const destination = await getCurrentDestination();
+
   const payload: CreateStockTakePayload = {
-    locationType,
+    locationType: destination?.type ?? "LOCATION",
     cycleCountType,
     blindCount,
     notes: notes?.trim() ? notes.trim() : undefined,

@@ -30,10 +30,12 @@ import {
 } from "./loans-client";
 
 /*
- * NOTE: the Financing backend does not exist yet, so every read below falls
- * back to `lib/loans/mock-data.ts`. Each action already contains the live
- * call guarded by `FINANCING_BACKEND_READY` — when the service ships, set
- * `FINANCING_SERVICE_URL` and delete the mock import; nothing else changes.
+ * NOTE: the LMS doesn't yet expose the borrower-facing endpoints these actions
+ * expect (see `loans-client.ts`), so every read below falls back to
+ * `lib/loans/mock-data.ts`. Each action already contains the live call guarded
+ * by `FINANCING_BACKEND_READY` — to go live, wire those calls to the real LMS
+ * endpoints and set `LOANS_BORROWER_BACKEND_READY=true`; the admin console URL
+ * `LOAN_MANAGEMENT_SERVICE_URL` is already shared.
  */
 
 const EMPTY_ELIGIBILITY: LoanEligibility = {
