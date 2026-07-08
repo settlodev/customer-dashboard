@@ -40,12 +40,21 @@ import {
   Loader2,
 } from "lucide-react";
 import { NumericFormat } from "react-number-format";
+import { cn } from "@/lib/utils";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import CurrencySelector from "@/components/widgets/currency-selector";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  ControlBox,
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlInputClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -771,21 +780,15 @@ export default function ProductForm({ item }: ProductFormProps) {
                     control={form.control}
                     name="name"
                     render={({ field }) => (
-                      <FormItem className="min-w-0 sm:col-span-2">
-                        <FormLabel className={styles.fieldLabel}>
-                          Product name <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="space-y-[7px] min-w-0 sm:col-span-2">
+                        <FieldLabel required>Product name</FieldLabel>
                         <FormControl>
-                          <div className={styles.inputWithPrefix}>
-                            <span className={styles.inputPrefix}>
-                              <Package className="h-3.5 w-3.5" />
-                            </span>
-                            <Input
-                              placeholder="e.g. Cappuccino, Fish & Chips"
-                              {...field}
-                              disabled={isPending}
-                            />
-                          </div>
+                          <ControlInput
+                            prefix={<Package className="h-3.5 w-3.5" />}
+                            placeholder="e.g. Cappuccino, Fish & Chips"
+                            {...field}
+                            disabled={isPending}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -796,10 +799,8 @@ export default function ProductForm({ item }: ProductFormProps) {
                     control={form.control}
                     name="nativeCurrency"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Currency
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel>Currency</FieldLabel>
                         <FormControl>
                           <CurrencySelector
                             value={field.value || "TZS"}
@@ -817,10 +818,8 @@ export default function ProductForm({ item }: ProductFormProps) {
                     control={form.control}
                     name="brandId"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Brand
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel>Brand</FieldLabel>
                         <Select
                           onValueChange={(v) =>
                             field.onChange(v === "__none__" ? undefined : v)
@@ -829,7 +828,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                           disabled={isPending}
                         >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger className={controlSelectTriggerClass}>
                               <SelectValue placeholder="No brand" />
                             </SelectTrigger>
                           </FormControl>
@@ -857,16 +856,16 @@ export default function ProductForm({ item }: ProductFormProps) {
                     render={({ field }) => {
                       const selectedIds = field.value ?? [];
                       return (
-                        <FormItem>
-                          <FormLabel className={styles.fieldLabel}>
-                            Categories <span className="req">*</span>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel required>
+                            Categories
                             {categoriesLoading && (
                               <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
                                 <Loader2 className="h-3 w-3 animate-spin" />
                                 Loading…
                               </span>
                             )}
-                          </FormLabel>
+                          </FieldLabel>
                           <div className="flex items-start gap-2">
                             <div className="flex-1 min-w-0">
                               <FormControl>
@@ -921,10 +920,10 @@ export default function ProductForm({ item }: ProductFormProps) {
                             />
                           </div>
                           {!field.value?.length && (
-                            <p className={styles.fieldHint}>
+                            <FieldHint>
                               Categorisation drives reports, addons, and tax
                               rules.
-                            </p>
+                            </FieldHint>
                           )}
                           <FormMessage />
                         </FormItem>
@@ -937,13 +936,13 @@ export default function ProductForm({ item }: ProductFormProps) {
                     control={form.control}
                     name="tags"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel>
                           Tags
-                          <span className="opt">
+                          <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
                             {(field.value ?? []).length} ADDED
                           </span>
-                        </FormLabel>
+                        </FieldLabel>
                         <FormControl>
                           <ChipTagsInput
                             tags={field.value ?? []}
@@ -958,52 +957,41 @@ export default function ProductForm({ item }: ProductFormProps) {
                 </div>
 
                 {/* Description */}
-                <div
-                  className={styles.fieldRow}
-                  style={
-                    {
-                      ["--cols" as never]: 1,
-                      marginTop: 14,
-                    } as React.CSSProperties
-                  }
-                >
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Description
-                          <button
-                            type="button"
-                            className={styles.generateLink}
-                            onClick={handleGenerateDescription}
-                            disabled={isPending}
-                          >
-                            <Sparkles className="h-3 w-3" /> GENERATE
-                          </button>
-                        </FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="What is this product?"
-                            rows={3}
-                            {...field}
-                            value={field.value ?? ""}
-                            disabled={isPending}
-                            maxLength={500}
-                          />
-                        </FormControl>
-                        <p className={styles.fieldHint}>
-                          <span className={styles.descCount}>
-                            {field.value?.length ?? 0}/500
-                          </span>
-                          {" · Used on e-commerce website and digital menu."}
-                        </p>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem className="mt-[15px] space-y-[7px]">
+                      <FieldLabel>
+                        Description
+                        <button
+                          type="button"
+                          className={styles.generateLink}
+                          onClick={handleGenerateDescription}
+                          disabled={isPending}
+                        >
+                          <Sparkles className="h-3 w-3" /> GENERATE
+                        </button>
+                      </FieldLabel>
+                      <FormControl>
+                        <ControlTextarea
+                          placeholder="What is this product?"
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
+                          maxLength={500}
+                        />
+                      </FormControl>
+                      <FieldHint>
+                        <span className={styles.descCount}>
+                          {field.value?.length ?? 0}/500
+                        </span>
+                        {" · Used on e-commerce website and digital menu."}
+                      </FieldHint>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </section>
 
@@ -1264,17 +1252,15 @@ export default function ProductForm({ item }: ProductFormProps) {
                         control={form.control}
                         name="taxTypeId"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Tax type <span className="req">*</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel required>Tax type</FieldLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value ?? ""}
                               disabled={isPending || taxTypes.length === 0}
                             >
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className={controlSelectTriggerClass}>
                                   <SelectValue
                                     placeholder={
                                       taxTypes.length === 0
@@ -1301,10 +1287,8 @@ export default function ProductForm({ item }: ProductFormProps) {
                         control={form.control}
                         name="taxInclusive"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Tax inclusive
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Tax inclusive</FieldLabel>
                             <div className="flex h-9 w-full items-center gap-2 rounded-md border border-line bg-card px-3 text-xs">
                               <FormControl>
                                 <Switch
@@ -1327,10 +1311,8 @@ export default function ProductForm({ item }: ProductFormProps) {
                         control={form.control}
                         name="sellOnline"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Sell online
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Sell online</FieldLabel>
                             <div className="flex h-9 w-full items-center gap-2 rounded-md border border-line bg-card px-3 text-xs">
                               <FormControl>
                                 <Switch
@@ -1545,7 +1527,6 @@ function VariantEditorImpl({
   const stockVariantId = variant?.stockVariantId;
   const directQuantity = variant?.directQuantity;
   const currency = form.watch("nativeCurrency") || "TZS";
-  const currencySuffix = ` ${currency}`;
   const tracksStock = mode === "DIRECT" || mode === "RECIPE";
   const isMarkupMode =
     pricingStrategy === "PERCENTAGE_MARKUP" ||
@@ -1641,12 +1622,10 @@ function VariantEditorImpl({
             control={form.control}
             name={`variants.${index}.name`}
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  Variant name <span className="text-red-500">*</span>
-                </FormLabel>
+              <FormItem className="space-y-[7px]">
+                <FieldLabel required>Variant name</FieldLabel>
                 <FormControl>
-                  <Input
+                  <ControlInput
                     placeholder="e.g. Small, Large"
                     {...field}
                     disabled={disabled}
@@ -1661,10 +1640,10 @@ function VariantEditorImpl({
             control={form.control}
             name={`variants.${index}.sku`}
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>SKU</FormLabel>
+              <FormItem className="space-y-[7px]">
+                <FieldLabel>SKU</FieldLabel>
                 <FormControl>
-                  <Input
+                  <ControlInput
                     placeholder="Auto-generated if blank"
                     {...field}
                     value={field.value ?? ""}
@@ -1680,10 +1659,10 @@ function VariantEditorImpl({
             control={form.control}
             name={`variants.${index}.barcode`}
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Barcode</FormLabel>
+              <FormItem className="space-y-[7px]">
+                <FieldLabel>Barcode</FieldLabel>
                 <FormControl>
-                  <Input
+                  <ControlInput
                     placeholder="Optional · scan or enter, or generate later"
                     {...field}
                     value={field.value ?? ""}
@@ -1707,25 +1686,23 @@ function VariantEditorImpl({
           control={form.control}
           name={`variants.${index}.costPrice`}
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                Cost price
-                {!tracksStock && <span className="text-red-500"> *</span>}
-              </FormLabel>
+            <FormItem className="space-y-[7px]">
+              <FieldLabel required={!tracksStock}>Cost price</FieldLabel>
               <FormControl>
-                <NumericFormat
-                  customInput={Input}
-                  placeholder={
-                    tracksStock ? "Derived from stock items" : "0.00"
-                  }
-                  value={field.value ?? ""}
-                  onValueChange={(v) => field.onChange(v.floatValue)}
-                  decimalScale={4}
-                  allowNegative={false}
-                  thousandSeparator=","
-                  suffix={currencySuffix}
-                  disabled={disabled || tracksStock}
-                />
+                <ControlBox suffix={currency}>
+                  <NumericFormat
+                    className={cn(controlInputClass, "tabular-nums")}
+                    placeholder={
+                      tracksStock ? "Derived from stock items" : "0.00"
+                    }
+                    value={field.value ?? ""}
+                    onValueChange={(v) => field.onChange(v.floatValue)}
+                    decimalScale={4}
+                    allowNegative={false}
+                    thousandSeparator=","
+                    disabled={disabled || tracksStock}
+                  />
+                </ControlBox>
               </FormControl>
               {tracksStock && (
                 <p className="text-xs text-muted-foreground">
@@ -1743,22 +1720,21 @@ function VariantEditorImpl({
           control={form.control}
           name={`variants.${index}.price`}
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                Selling price <span className="text-red-500">*</span>
-              </FormLabel>
+            <FormItem className="space-y-[7px]">
+              <FieldLabel required>Selling price</FieldLabel>
               <FormControl>
-                <NumericFormat
-                  customInput={Input}
-                  placeholder={isMarkupMode ? "Auto from markup" : "0.00"}
-                  value={field.value ?? ""}
-                  onValueChange={(v) => field.onChange(v.floatValue ?? 0)}
-                  decimalScale={4}
-                  allowNegative={false}
-                  thousandSeparator=","
-                  suffix={currencySuffix}
-                  disabled={disabled || isMarkupMode}
-                />
+                <ControlBox suffix={currency}>
+                  <NumericFormat
+                    className={cn(controlInputClass, "tabular-nums")}
+                    placeholder={isMarkupMode ? "Auto from markup" : "0.00"}
+                    value={field.value ?? ""}
+                    onValueChange={(v) => field.onChange(v.floatValue ?? 0)}
+                    decimalScale={4}
+                    allowNegative={false}
+                    thousandSeparator=","
+                    disabled={disabled || isMarkupMode}
+                  />
+                </ControlBox>
               </FormControl>
               {isMarkupMode && (
                 <p className="text-xs text-muted-foreground">
@@ -1776,15 +1752,15 @@ function VariantEditorImpl({
           control={form.control}
           name={`variants.${index}.pricingStrategy`}
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Pricing strategy</FormLabel>
+            <FormItem className="space-y-[7px]">
+              <FieldLabel>Pricing strategy</FieldLabel>
               <Select
                 onValueChange={field.onChange}
                 value={field.value}
                 disabled={disabled}
               >
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className={controlSelectTriggerClass}>
                     <SelectValue />
                   </SelectTrigger>
                 </FormControl>
@@ -1806,21 +1782,20 @@ function VariantEditorImpl({
             control={form.control}
             name={`variants.${index}.markupPercentage`}
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  Markup % <span className="text-red-500">*</span>
-                </FormLabel>
+              <FormItem className="space-y-[7px]">
+                <FieldLabel required>Markup %</FieldLabel>
                 <FormControl>
-                  <NumericFormat
-                    customInput={Input}
-                    placeholder="0"
-                    value={field.value ?? ""}
-                    onValueChange={(v) => field.onChange(v.floatValue)}
-                    decimalScale={2}
-                    allowNegative={false}
-                    suffix="%"
-                    disabled={disabled}
-                  />
+                  <ControlBox suffix="%">
+                    <NumericFormat
+                      className={cn(controlInputClass, "tabular-nums")}
+                      placeholder="0"
+                      value={field.value ?? ""}
+                      onValueChange={(v) => field.onChange(v.floatValue)}
+                      decimalScale={2}
+                      allowNegative={false}
+                      disabled={disabled}
+                    />
+                  </ControlBox>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -1833,22 +1808,21 @@ function VariantEditorImpl({
             control={form.control}
             name={`variants.${index}.markupAmount`}
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  Markup amount <span className="text-red-500">*</span>
-                </FormLabel>
+              <FormItem className="space-y-[7px]">
+                <FieldLabel required>Markup amount</FieldLabel>
                 <FormControl>
-                  <NumericFormat
-                    customInput={Input}
-                    placeholder="0.00"
-                    value={field.value ?? ""}
-                    onValueChange={(v) => field.onChange(v.floatValue)}
-                    decimalScale={4}
-                    allowNegative={false}
-                    thousandSeparator=","
-                    suffix={currencySuffix}
-                    disabled={disabled}
-                  />
+                  <ControlBox suffix={currency}>
+                    <NumericFormat
+                      className={cn(controlInputClass, "tabular-nums")}
+                      placeholder="0.00"
+                      value={field.value ?? ""}
+                      onValueChange={(v) => field.onChange(v.floatValue)}
+                      decimalScale={4}
+                      allowNegative={false}
+                      thousandSeparator=","
+                      disabled={disabled}
+                    />
+                  </ControlBox>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -1932,20 +1906,20 @@ function VariantEditorImpl({
               control={form.control}
               name={`variants.${index}.availableQuantity`}
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Starting quantity <span className="text-red-500">*</span>
-                  </FormLabel>
+                <FormItem className="space-y-[7px]">
+                  <FieldLabel required>Starting quantity</FieldLabel>
                   <FormControl>
-                    <NumericFormat
-                      customInput={Input}
-                      placeholder="0"
-                      value={field.value ?? ""}
-                      onValueChange={(v) => field.onChange(v.floatValue)}
-                      decimalScale={6}
-                      allowNegative={false}
-                      disabled={disabled}
-                    />
+                    <ControlBox>
+                      <NumericFormat
+                        className={cn(controlInputClass, "tabular-nums")}
+                        placeholder="0"
+                        value={field.value ?? ""}
+                        onValueChange={(v) => field.onChange(v.floatValue)}
+                        decimalScale={6}
+                        allowNegative={false}
+                        disabled={disabled}
+                      />
+                    </ControlBox>
                   </FormControl>
                   <p className="text-xs text-muted-foreground">
                     Deducts on every sale; sales fail once it hits zero. Adjust
@@ -2002,17 +1976,15 @@ function VariantEditorImpl({
                 control={form.control}
                 name={`variants.${index}.stockVariantId`}
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Stock item <span className="text-red-500">*</span>
-                    </FormLabel>
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel required>Stock item</FieldLabel>
                     <Select
                       onValueChange={field.onChange}
                       value={field.value ?? ""}
                       disabled={disabled}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className={controlSelectTriggerClass}>
                           <SelectValue placeholder="Pick a stock item" />
                         </SelectTrigger>
                       </FormControl>
@@ -2032,20 +2004,20 @@ function VariantEditorImpl({
                 control={form.control}
                 name={`variants.${index}.directQuantity`}
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Quantity per sale <span className="text-red-500">*</span>
-                    </FormLabel>
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel required>Quantity per sale</FieldLabel>
                     <FormControl>
-                      <NumericFormat
-                        customInput={Input}
-                        placeholder="1"
-                        value={field.value ?? ""}
-                        onValueChange={(v) => field.onChange(v.floatValue)}
-                        decimalScale={6}
-                        allowNegative={false}
-                        disabled={disabled}
-                      />
+                      <ControlBox>
+                        <NumericFormat
+                          className={cn(controlInputClass, "tabular-nums")}
+                          placeholder="1"
+                          value={field.value ?? ""}
+                          onValueChange={(v) => field.onChange(v.floatValue)}
+                          decimalScale={6}
+                          allowNegative={false}
+                          disabled={disabled}
+                        />
+                      </ControlBox>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -2182,8 +2154,8 @@ function RecipeAttachField({
           control={control}
           name={`variants.${variantIndex}.bomRuleId`}
           render={({ field }) => (
-            <FormItem className="flex-1">
-              <FormLabel className="text-xs">Consumption rule</FormLabel>
+            <FormItem className="flex-1 space-y-[7px]">
+              <FieldLabel>Consumption rule</FieldLabel>
               <FormControl>
                 <ConsumptionRuleSelector
                   key={selectorRefreshKey}
@@ -4120,12 +4092,9 @@ function ProductLifecycleControl({
         </div>
       </div>
 
-      <div
-        className={styles.fieldRow}
-        style={{ ["--cols" as never]: 1 } as React.CSSProperties}
-      >
-        <FormItem>
-          <FormLabel className={styles.fieldLabel}>Status</FormLabel>
+      <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px]">
+        <FormItem className="space-y-[7px]">
+          <FieldLabel>Status</FieldLabel>
           {isDraft ? (
             // Draft is a flow-only state — the merchant moves out of it via
             // the Save-as-draft / Publish footer buttons. Show it read-only
@@ -4143,7 +4112,7 @@ function ProductLifecycleControl({
               disabled={disabled}
             >
               <FormControl>
-                <SelectTrigger>
+                <SelectTrigger className={controlSelectTriggerClass}>
                   <SelectValue />
                 </SelectTrigger>
               </FormControl>
@@ -4156,7 +4125,7 @@ function ProductLifecycleControl({
               </SelectContent>
             </Select>
           )}
-          {currentHint && <p className={styles.fieldHint}>{currentHint}</p>}
+          {currentHint && <FieldHint>{currentHint}</FieldHint>}
         </FormItem>
       </div>
     </>

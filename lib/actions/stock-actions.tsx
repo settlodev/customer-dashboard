@@ -6,14 +6,36 @@ import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type {
-  Stock,
-  CsvImportJobResponse,
-} from "@/types/stock/type";
+import type { Stock } from "@/types/stock/type";
 import { getCurrentLocation } from "./business/get-current-business";
 import { StockSchema } from "@/types/stock/schema";
 import { inventoryUrl } from "./inventory-client";
 import { rethrowIfBoundary } from "@/lib/list-fallback";
+
+// Returnable-crate gating: deposit belongs to a PACKAGING container variant;
+// the returnable-container link belongs to a sellable (non-PACKAGING) variant.
+// materialType is stock-level, so it decides for all variants — drop the
+// irrelevant field so stale form state can't send a nonsensical payload.
+function containerFields(
+  v: {
+    depositValue?: number | null;
+    depositCurrency?: string | null;
+    containerMode?: "RETURNABLE" | "CONSUMABLE" | null;
+    returnableContainers?: { containerStockVariantId: string; quantityPerUnit: number }[];
+  },
+  materialType: string,
+) {
+  const isPackaging = materialType === "PACKAGING";
+  return {
+    depositValue: isPackaging ? v.depositValue ?? undefined : undefined,
+    depositCurrency: isPackaging ? v.depositCurrency || undefined : undefined,
+    containerMode: isPackaging ? v.containerMode ?? undefined : undefined,
+    returnableContainers:
+      !isPackaging && v.returnableContainers && v.returnableContainers.length > 0
+        ? v.returnableContainers
+        : undefined,
+  };
+}
 
 // ── Stock CRUD ──────────────────────────────────────────────────────
 
@@ -88,6 +110,7 @@ export interface StockListCounts {
   archived: number;
   draft: number;
   all: number;
+  hasPackaging?: boolean;
 }
 
 export async function getStockCounts(): Promise<StockListCounts> {
@@ -98,6 +121,19 @@ export async function getStockCounts(): Promise<StockListCounts> {
   } catch (error) {
     rethrowIfBoundary(error);
     return { active: 0, archived: 0, draft: 0, all: 0 };
+  }
+}
+
+// Nav-gating helper for the packaging report: true when the location has
+// at least one PACKAGING-material stock variant. Swallows errors (including
+// boundary ones) since this only controls a nav link's visibility — the
+// underlying page load is what should trigger session/permission handling.
+export async function hasPackagingStock(): Promise<boolean> {
+  try {
+    const counts = await getStockCounts();
+    return Boolean(counts?.hasPackaging);
+  } catch {
+    return false;
   }
 }
 
@@ -151,6 +187,7 @@ export async function createStock(
             : undefined,
         lowStockThreshold: v.lowStockThreshold,
         overstockThreshold: v.overstockThreshold,
+        ...containerFields(v, validated.data.materialType),
       })),
     };
 
@@ -210,6 +247,7 @@ export async function updateStock(
             sku: variant.sku || undefined,
             barcode: variant.barcode || undefined,
             serialTracked: variant.serialTracked,
+            ...containerFields(variant, validated.data.materialType),
           },
         );
       }
@@ -224,6 +262,7 @@ export async function updateStock(
             sku: variant.sku || undefined,
             barcode: variant.barcode ?? "",
             serialTracked: variant.serialTracked,
+            ...containerFields(variant, validated.data.materialType),
           },
         );
       }
@@ -360,46 +399,6 @@ export async function unarchiveStockVariant(
   revalidatePath("/stock-variants");
 }
 
-// ── CSV Import (async, Java service) ────────────────────────────────
-
-export async function startStockImport(
-  fileContent: string,
-  fileName: string,
-): Promise<CsvImportJobResponse | FormResponse> {
-  try {
-    const apiClient = new ApiClient();
-    const blob = new Blob([fileContent], { type: "text/csv" });
-    const formData = new FormData();
-    formData.append("file", blob, fileName);
-
-    const result = await apiClient.post(
-      inventoryUrl("/api/v1/stocks/import-csv"),
-      formData,
-    );
-    return parseStringify(result) as CsvImportJobResponse;
-  } catch (error: any) {
-    return parseStringify({
-      responseType: "error",
-      message: error?.message ?? "Failed to start import",
-      error: error instanceof Error ? error : new Error(String(error)),
-    });
-  }
-}
-
-export async function getImportJobStatus(
-  jobId: string,
-): Promise<CsvImportJobResponse | null> {
-  try {
-    const apiClient = new ApiClient();
-    const result = await apiClient.get(
-      inventoryUrl(`/api/v1/stocks/import-csv/${jobId}`),
-    );
-    return parseStringify(result) as CsvImportJobResponse;
-  } catch {
-    return null;
-  }
-}
-
 // ── CSV Export (local generation) ───────────────────────────────────
 
 export async function downloadStockCSV(): Promise<string> {
@@ -514,6 +513,7 @@ export async function createStockWithProduct(
         overstockThreshold: v.overstockThreshold,
         // Per-variant selling price for the auto-created product variant.
         sellingPrice: v.sellingPrice,
+        ...containerFields(v, validated.data.materialType),
       })),
       autoCreateProduct: true,
       product: {
@@ -585,6 +585,13 @@ function mapStockVariantPartial(v: DraftStockVariant) {
         : undefined,
     lowStockThreshold: v.lowStockThreshold,
     overstockThreshold: v.overstockThreshold,
+    depositValue: v.depositValue ?? undefined,
+    depositCurrency: v.depositCurrency || undefined,
+    containerMode: v.containerMode ?? undefined,
+    returnableContainers:
+      v.returnableContainers && v.returnableContainers.length > 0
+        ? v.returnableContainers
+        : undefined,
   };
 }
 

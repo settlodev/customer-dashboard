@@ -16,10 +16,12 @@ import { motion } from "framer-motion";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  FileUp,
   ListFilter,
   MoreHorizontal,
   Search,
 } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +44,6 @@ import {
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
 } from "@radix-ui/react-icons";
-import { CSVStockDialog } from "../csv/stockCsvImport";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -71,8 +72,12 @@ const pageSpecificComponents = {
   },
   "/stock-variants": {
     entityType: "stock" as const,
-    importComponent: <CSVStockDialog uploadType="location" />,
-    exportComponent: <StockExport filename="stock" exportType="location" />,
+    // Import/export for this screen live in the page header
+    // (StockVariantsHeaderActions: richer inventory/movements export + the
+    // Import CSV link) — kept out of the table toolbar to avoid duplicate
+    // import/export buttons.
+    importComponent: null,
+    exportComponent: null,
     entityNames: { singular: "Stock Item", plural: "Stock Items" },
     allowArchive: true,
     isWarehouse: false,
@@ -95,9 +100,14 @@ const pageSpecificComponents = {
   "/warehouse-stock-variants": {
     entityType: "stock" as const,
     importComponent: (
-      <>
-        <CSVStockDialog uploadType="warehouse" />
-      </>
+      <Button asChild size="sm" variant="outline">
+        <Link href="/imports/stocks">
+          <FileUp className="h-3.5 w-3.5" />
+          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+            Import Stock
+          </span>
+        </Link>
+      </Button>
     ),
     exportComponent: (
       <StockExport

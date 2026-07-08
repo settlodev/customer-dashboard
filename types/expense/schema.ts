@@ -63,3 +63,35 @@ export const ExpensePaymentSchema = z.object({
 });
 
 export type ExpensePaymentFormValues = z.infer<typeof ExpensePaymentSchema>;
+
+export const ExpenseCreditNoteSchema = z.object({
+  amount: z.coerce
+    .number({ invalid_type_error: "Amount must be a number" })
+    .gt(0, "Credit amount must be greater than zero"),
+  reason: z.enum([
+    "RETURN",
+    "SHORT_DELIVERY",
+    "PRICE_CORRECTION",
+    "DAMAGE",
+    "DISCOUNT",
+    "OTHER",
+  ]),
+  offsetChartOfAccountId: z.string().uuid().optional().or(z.literal("")),
+  creditNoteDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+  reference: z.string().max(255).optional().or(z.literal("")),
+  notes: z.string().max(1000).optional().or(z.literal("")),
+});
+
+export type ExpenseCreditNoteFormValues = z.infer<typeof ExpenseCreditNoteSchema>;
+
+export const SupplierRefundReceiveSchema = z.object({
+  cashAccountId: z.string().uuid("Pick a cash/bank account"),
+  amount: z.coerce
+    .number({ invalid_type_error: "Amount must be a number" })
+    .gt(0, "Refund amount must be greater than zero"),
+  receivedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+  reference: z.string().max(255).optional().or(z.literal("")),
+  notes: z.string().max(1000).optional().or(z.literal("")),
+});
+
+export type SupplierRefundReceiveValues = z.infer<typeof SupplierRefundReceiveSchema>;

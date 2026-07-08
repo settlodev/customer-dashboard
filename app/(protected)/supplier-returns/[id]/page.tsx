@@ -12,6 +12,7 @@ import { Money } from "@/components/widgets/money";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
 import { getSupplierReturn } from "@/lib/actions/supplier-return-actions";
 import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
+import { resolveReturnReconciliation } from "@/lib/actions/supplier-return-reconciliation-actions";
 import {
   SUPPLIER_RETURN_STATUS_LABELS,
   SUPPLIER_RETURN_STATUS_TONES,
@@ -51,6 +52,14 @@ export default async function SupplierReturnDetailPage({
   if (!supplierReturn) notFound();
 
   const supplier = suppliers.find((s) => s.id === supplierReturn.supplierId) ?? null;
+
+  const reconciliation = supplierReturn.grnId
+    ? await resolveReturnReconciliation(
+        supplierReturn.grnId,
+        supplierReturn.returnNumber,
+        supplierReturn.id,
+      )
+    : null;
 
   const currency = supplierReturn.currency || DEFAULT_CURRENCY;
   const totalQty = supplierReturn.items.reduce(
@@ -223,6 +232,85 @@ export default async function SupplierReturnDetailPage({
             </div>
           </CardContent>
         </Card>
+
+        {supplierReturn.grnId && (
+          <Card>
+            <CardContent className="pt-6 text-sm">
+              <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+                Bill reconciliation
+              </p>
+              {reconciliation ? (
+                <div className="mt-2 space-y-1">
+                  <p>
+                    Bill{" "}
+                    <Link
+                      href={`/expenses/${reconciliation.bill.id}`}
+                      className="text-primary hover:underline"
+                    >
+                      {reconciliation.bill.reference ?? reconciliation.bill.expenseNumber}
+                    </Link>{" "}
+                    · outstanding{" "}
+                    <span className="font-mono tabular-nums">
+                      <Money
+                        amount={reconciliation.bill.balanceDue}
+                        currency={reconciliation.bill.currencyCode}
+                      />
+                    </span>
+                  </p>
+                  {reconciliation.creditNote ? (
+                    <p className="text-green-700">
+                      Credit note {reconciliation.creditNote.creditNoteNumber} raised ·{" "}
+                      <span className="font-mono tabular-nums">
+                        <Money
+                          amount={reconciliation.creditNote.amount}
+                          currency={reconciliation.bill.currencyCode}
+                        />
+                      </span>
+                    </p>
+                  ) : (
+                    !reconciliation.creditNote &&
+                    !reconciliation.refund && (
+                      <p className="text-amber-700">
+                        Not yet reconciled — dispatch the return to auto-credit the bill (a cash
+                        refund may be owed if the return exceeds the outstanding balance).
+                      </p>
+                    )
+                  )}
+                  {reconciliation.refund?.status === "OWED" && (
+                    <p className="text-amber-700">
+                      Cash refund owed: {reconciliation.refund.refundNumber} ·{" "}
+                      <span className="font-mono tabular-nums">
+                        <Money
+                          amount={reconciliation.refund.amount}
+                          currency={reconciliation.refund.currencyCode}
+                        />
+                      </span>{" "}
+                      —{" "}
+                      <Link href="/supplier-refunds" className="text-primary hover:underline">
+                        record it
+                      </Link>
+                    </p>
+                  )}
+                  {reconciliation.refund?.status === "RECEIVED" && (
+                    <p className="text-green-700">
+                      Cash refund received: {reconciliation.refund.refundNumber} ·{" "}
+                      <span className="font-mono tabular-nums">
+                        <Money
+                          amount={reconciliation.refund.receivedAmount ?? reconciliation.refund.amount}
+                          currency={reconciliation.refund.currencyCode}
+                        />
+                      </span>
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-2 text-muted-foreground">
+                  No linked bill found for this return&apos;s GRN.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <AttachmentsPanel
           entityType="SUPPLIER_RETURN"

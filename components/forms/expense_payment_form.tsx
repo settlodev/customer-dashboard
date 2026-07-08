@@ -59,6 +59,8 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRecorded?: () => void;
+  /** Overrides the default prefilled amount (expense.balanceDue). */
+  prefillAmount?: number;
 }
 
 type FormValues = z.infer<typeof ExpensePaymentSchema>;
@@ -68,6 +70,7 @@ export default function ExpensePaymentForm({
   open,
   onOpenChange,
   onRecorded,
+  prefillAmount,
 }: Props) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -83,7 +86,7 @@ export default function ExpensePaymentForm({
   const form = useForm<FormValues>({
     resolver: zodResolver(ExpensePaymentSchema),
     defaultValues: {
-      amount: expense.balanceDue,
+      amount: prefillAmount ?? expense.balanceDue,
       currencyCode: expense.currencyCode,
       paymentDate: today,
       sourceAccountId: "",

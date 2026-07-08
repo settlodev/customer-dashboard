@@ -8,7 +8,10 @@ export type MovementType =
   | "DAMAGE"
   | "RECIPE_USAGE"
   | "OPENING_BALANCE"
-  | "WASTE";
+  | "WASTE"
+  | "CONTAINER_RETURN_IN"
+  | "CONTAINER_RETURN_OUT"
+  | "PACKAGING_CONSUMED";
 
 export type ReferenceType =
   | "GRN"
@@ -120,6 +123,9 @@ export const MOVEMENT_TYPE_LABELS: Record<MovementType, string> = {
   RECIPE_USAGE: "Recipe Usage",
   OPENING_BALANCE: "Opening Balance",
   WASTE: "Waste",
+  CONTAINER_RETURN_IN: "Empties returned",
+  CONTAINER_RETURN_OUT: "Empties handed back",
+  PACKAGING_CONSUMED: "Packaging consumed",
 };
 
 /**

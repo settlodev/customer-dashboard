@@ -20,7 +20,6 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -28,7 +27,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -43,9 +41,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { NumericFormat } from "react-number-format";
+import {
+  ControlBox,
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlComboboxTriggerClass,
+  controlInputClass,
+} from "@/components/ui/field";
 import { useToast } from "@/hooks/use-toast";
 import {
   Alert,
@@ -330,10 +336,8 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                 control={form.control}
                 name="supplierId"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Supplier <span className="text-red-500">*</span>
-                    </FormLabel>
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel required>Supplier</FieldLabel>
                     <FormControl>
                       <SupplierSelector
                         label="Supplier"
@@ -345,9 +349,9 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                       />
                     </FormControl>
                     {linkedLpo && (
-                      <p className="text-[11px] text-muted-foreground">
+                      <FieldHint>
                         Locked to the linked LPO&apos;s supplier.
-                      </p>
+                      </FieldHint>
                     )}
                     <FormMessage />
                   </FormItem>
@@ -357,10 +361,8 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                 control={form.control}
                 name="receivedBy"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Received by <span className="text-red-500">*</span>
-                    </FormLabel>
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel required>Received by</FieldLabel>
                     <FormControl>
                       <StaffSelectorWidget
                         label="Received by"
@@ -382,10 +384,8 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                   const selected = field.value ? new Date(field.value) : undefined;
                   const today = startOfToday();
                   return (
-                    <FormItem>
-                      <FormLabel>
-                        Received date <span className="text-red-500">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Received date</FieldLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -394,11 +394,12 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                               variant="outline"
                               disabled={isPending}
                               className={cn(
-                                "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
-                                !selected && "text-muted-foreground",
+                                controlComboboxTriggerClass,
+                                "justify-start",
+                                !selected && "text-muted-2",
                               )}
                             >
-                              <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                              <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
                               {selected ? format(selected, "PPP") : "Pick a date"}
                             </Button>
                           </FormControl>
@@ -424,12 +425,11 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
               control={form.control}
               name="notes"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes</FormLabel>
+                <FormItem className="space-y-[7px]">
+                  <FieldLabel>Notes</FieldLabel>
                   <FormControl>
-                    <Textarea
+                    <ControlTextarea
                       placeholder="Optional context — reference numbers, shipment condition…"
-                      rows={3}
                       {...field}
                       value={field.value ?? ""}
                       disabled={isPending}
@@ -465,10 +465,10 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                 control={form.control}
                 name="deliveryPersonName"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel>Name</FieldLabel>
                     <FormControl>
-                      <Input
+                      <ControlInput
                         placeholder="Driver or courier name"
                         {...field}
                         value={field.value ?? ""}
@@ -482,10 +482,10 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                 control={form.control}
                 name="deliveryPersonPhone"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone</FormLabel>
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel>Phone</FieldLabel>
                     <FormControl>
-                      <Input
+                      <ControlInput
                         placeholder="e.g. +255 712 345 678"
                         {...field}
                         value={field.value ?? ""}
@@ -499,10 +499,10 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                 control={form.control}
                 name="deliveryPersonEmail"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel>Email</FieldLabel>
                     <FormControl>
-                      <Input
+                      <ControlInput
                         type="email"
                         placeholder="driver@example.com"
                         {...field}
@@ -581,10 +581,8 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                       control={form.control}
                       name={`items.${index}.stockVariantId`}
                       render={({ field: f }) => (
-                        <FormItem className="w-full md:flex-[5] min-w-0">
-                          <FormLabel className="text-xs">
-                            Stock item <span className="text-red-500">*</span>
-                          </FormLabel>
+                        <FormItem className="w-full md:flex-[5] min-w-0 space-y-[7px]">
+                          <FieldLabel required>Stock item</FieldLabel>
                           <FormControl>
                             <StockVariantSelector
                               value={f.value}
@@ -605,23 +603,23 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                       control={form.control}
                       name={`items.${index}.receivedQuantity`}
                       render={({ field: f }) => (
-                        <FormItem className="w-full md:flex-[2] min-w-0">
-                          <FormLabel className="text-xs">
-                            Quantity <span className="text-red-500">*</span>
-                          </FormLabel>
+                        <FormItem className="w-full md:flex-[2] min-w-0 space-y-[7px]">
+                          <FieldLabel required>Quantity</FieldLabel>
                           <FormControl>
-                            <NumericFormat
-                              customInput={Input}
-                              value={f.value}
-                              onValueChange={(v) =>
-                                f.onChange(v.value ? Number(v.value) : 0)
-                              }
-                              thousandSeparator
-                              decimalScale={rowSerialTracked ? 0 : 6}
-                              allowNegative={false}
-                              placeholder="0"
-                              disabled={isPending}
-                            />
+                            <ControlBox>
+                              <NumericFormat
+                                className={cn(controlInputClass, "tabular-nums")}
+                                value={f.value}
+                                onValueChange={(v) =>
+                                  f.onChange(v.value ? Number(v.value) : 0)
+                                }
+                                thousandSeparator
+                                decimalScale={rowSerialTracked ? 0 : 6}
+                                allowNegative={false}
+                                placeholder="0"
+                                disabled={isPending}
+                              />
+                            </ControlBox>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -631,26 +629,28 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                       control={form.control}
                       name={`items.${index}.unitCost`}
                       render={({ field: f }) => (
-                        <FormItem className="w-full md:flex-[3] min-w-0">
-                          <FormLabel className="text-xs">
+                        <FormItem className="w-full md:flex-[3] min-w-0 space-y-[7px]">
+                          <FieldLabel>
                             Unit cost
                             <span className="text-muted-foreground ml-1 font-normal">
                               ({locationCurrency})
                             </span>
-                          </FormLabel>
+                          </FieldLabel>
                           <FormControl>
-                            <NumericFormat
-                              customInput={Input}
-                              value={f.value}
-                              onValueChange={(v) =>
-                                f.onChange(v.value ? Number(v.value) : 0)
-                              }
-                              thousandSeparator
-                              decimalScale={4}
-                              allowNegative={false}
-                              placeholder="0.00"
-                              disabled={isPending}
-                            />
+                            <ControlBox>
+                              <NumericFormat
+                                className={cn(controlInputClass, "tabular-nums")}
+                                value={f.value}
+                                onValueChange={(v) =>
+                                  f.onChange(v.value ? Number(v.value) : 0)
+                                }
+                                thousandSeparator
+                                decimalScale={4}
+                                allowNegative={false}
+                                placeholder="0.00"
+                                disabled={isPending}
+                              />
+                            </ControlBox>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -666,13 +666,8 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                       const isSerial = !!meta?.serialTracked;
                       const usingPack = !!f.value && f.value !== anchor;
                       return (
-                        <FormItem>
-                          <FormLabel className="text-xs">
-                            Purchase unit
-                            <span className="text-muted-foreground ml-1.5 font-normal">
-                              optional
-                            </span>
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel optional>Purchase unit</FieldLabel>
                           <FormControl>
                             <CompatibleUnitSelector
                               anchorUnitId={anchor}
@@ -688,13 +683,13 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                               }
                             />
                           </FormControl>
-                          <p className="text-[11px] text-muted-foreground">
+                          <FieldHint>
                             {isSerial
                               ? "Serial-tracked items must be entered one-by-one in the variant's stock unit."
                               : usingPack
                                 ? "Quantity & unit cost above are interpreted in this pack — converted to stock units on receive."
                                 : "Leave blank to enter qty & cost directly in the variant's tracking unit."}
-                          </p>
+                          </FieldHint>
                         </FormItem>
                       );
                     }}
@@ -705,10 +700,10 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                       control={form.control}
                       name={`items.${index}.batchNumber`}
                       render={({ field: f }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Batch number</FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Batch number</FieldLabel>
                           <FormControl>
-                            <Input
+                            <ControlInput
                               placeholder="Auto-generated if blank"
                               {...f}
                               value={f.value ?? ""}
@@ -722,10 +717,10 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                       control={form.control}
                       name={`items.${index}.supplierBatchReference`}
                       render={({ field: f }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Supplier ref</FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Supplier ref</FieldLabel>
                           <FormControl>
-                            <Input
+                            <ControlInput
                               placeholder="Supplier batch reference"
                               {...f}
                               value={f.value ?? ""}
@@ -741,8 +736,8 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                       render={({ field: f }) => {
                         const selected = f.value ? new Date(f.value) : undefined;
                         return (
-                          <FormItem>
-                            <FormLabel className="text-xs">Expiry date</FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Expiry date</FieldLabel>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <FormControl>
@@ -751,11 +746,12 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                                     variant="outline"
                                     disabled={isPending}
                                     className={cn(
-                                      "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
-                                      !selected && "text-muted-foreground",
+                                      controlComboboxTriggerClass,
+                                      "justify-start",
+                                      !selected && "text-muted-2",
                                     )}
                                   >
-                                    <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                    <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
                                     {selected ? format(selected, "PPP") : "Pick a date"}
                                   </Button>
                                 </FormControl>
@@ -786,15 +782,15 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                         const mismatch =
                           qty > 0 && count > 0 && count !== Math.trunc(qty);
                         return (
-                          <FormItem>
-                            <FormLabel className="text-xs flex items-center gap-2">
-                              Serial numbers <span className="text-red-500">*</span>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>
+                              Serial numbers <span className="text-primary">*</span>
                               <Badge variant="outline" className="font-mono text-[10px]">
                                 {count} / {Math.trunc(qty) || 0}
                               </Badge>
-                            </FormLabel>
+                            </FieldLabel>
                             <FormControl>
-                              <Textarea
+                              <ControlTextarea
                                 placeholder="One serial per line — must match received quantity exactly"
                                 rows={Math.min(6, Math.max(3, Math.trunc(qty)))}
                                 value={raw}
@@ -806,7 +802,6 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                                   f.onChange(lines);
                                 }}
                                 disabled={isPending}
-                                className="font-mono text-xs"
                               />
                             </FormControl>
                             {mismatch && (

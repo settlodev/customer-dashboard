@@ -31,15 +31,24 @@ export function useRealtimeChannel<P = unknown>(
 
   useEffect(() => {
     if (!key) return;
-    const client = getGatewayClient();
-    const wrapped: ChannelHandler = (msg: WsMessage) => {
-      handlerRef.current(msg as WsMessage<P>);
-    };
-    const unsubscribers = list.map((c) => client.subscribe(c, wrapped));
-    void client.connect();
-    return () => {
-      for (const u of unsubscribers) u();
-    };
+    try {
+      const client = getGatewayClient();
+      const wrapped: ChannelHandler = (msg: WsMessage) => {
+        handlerRef.current(msg as WsMessage<P>);
+      };
+      const unsubscribers = list.map((c) => client.subscribe(c, wrapped));
+      void client.connect();
+      return () => {
+        for (const u of unsubscribers) u();
+      };
+    } catch {
+      // getGatewayClient() throws synchronously if
+      // NEXT_PUBLIC_WEBSOCKET_GATEWAY_URL is unset. In practice it's always
+      // configured, but guard anyway (matching useRealtimeStatus) so a
+      // subscribing bridge can never take down the tree from a layout effect —
+      // the app just falls back to server-rendered data / polling.
+      return;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 }

@@ -1,13 +1,16 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldLabel,
+} from "@/components/ui/field";
 import { FieldErrors, useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,7 +40,6 @@ import {
 import { invalidateDepartmentsCache } from "@/lib/cache/reference-data";
 import { Department } from "@/types/department/type";
 import { useRouter } from "next/navigation";
-import { Textarea } from "../ui/textarea";
 import UploadImageWidget from "../widgets/UploadImageWidget";
 import {
   CheckCircle2,
@@ -164,12 +166,10 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                     control={form.control}
                     name="name"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Department name <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel required>Department name</FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             placeholder="Enter department name"
                             {...field}
                             disabled={isPending}
@@ -185,10 +185,8 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                       control={form.control}
                       name="color"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className={styles.fieldLabel}>
-                            Color
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Color</FieldLabel>
                           <FormControl>
                             <div className="flex items-center gap-3">
                               <input
@@ -198,7 +196,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                                 disabled={isPending}
                                 className="w-10 h-10 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 p-0.5 shrink-0"
                               />
-                              <Input
+                              <ControlInput
                                 placeholder="#000000"
                                 value={field.value || ""}
                                 onChange={field.onChange}
@@ -215,12 +213,10 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                       control={form.control}
                       name="order"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className={styles.fieldLabel}>
-                            Display order
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Display order</FieldLabel>
                           <FormControl>
-                            <Input
+                            <ControlInput
                               type="number"
                               placeholder="e.g. 1"
                               {...field}
@@ -237,10 +233,8 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                       control={form.control}
                       name="defaultPosView"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className={styles.fieldLabel}>
-                            Default POS view
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Default POS view</FieldLabel>
                           <FormControl>
                             <div className="flex h-10 rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden">
                               <button
@@ -281,18 +275,14 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                     control={form.control}
                     name="description"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Description
-                          <span className="opt">OPTIONAL</span>
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel optional>Description</FieldLabel>
                         <FormControl>
-                          <Textarea
+                          <ControlTextarea
                             placeholder="Describe this department"
                             {...field}
                             value={field.value ?? ""}
                             disabled={isPending}
-                            rows={4}
                           />
                         </FormControl>
                         <FormMessage />

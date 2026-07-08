@@ -32,6 +32,16 @@ export interface Stock {
   updatedAt: string;
 }
 
+export interface ReturnableContainerLinkInput {
+  /** Only present after a round-trip read. */
+  id?: string;
+  containerStockVariantId: string;
+  containerName?: string;
+  quantityPerUnit: number;
+  depositValue?: number | null;
+  depositCurrency?: string | null;
+}
+
 export interface StockVariant {
   id: string;
   stockId: string;
@@ -49,6 +59,10 @@ export interface StockVariant {
   isDefault: boolean;
   barcode: string | null;
   serialTracked: boolean;
+  depositValue?: number | null;
+  depositCurrency?: string | null;
+  containerMode?: "RETURNABLE" | "CONSUMABLE" | null;
+  returnableContainers?: ReturnableContainerLinkInput[];
   createdAt: string;
   updatedAt: string;
 }
@@ -59,23 +73,5 @@ export interface StockWithBalance extends Stock {
   totalValue: number;
   lowStock: boolean;
   outOfStock: boolean;
-}
-
-/** Response from the async CSV import job endpoint */
-export interface CsvImportJobResponse {
-  jobId: string;
-  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
-  totalRows: number;
-  stocksCreated: number;
-  variantsCreated: number;
-  failureCount: number;
-  created: { id: string; name: string; variantCount: number }[];
-  errors: { row: number; message: string }[];
-  openingStockId: string | null;
-  openingStockReference: string | null;
-  openingStockItems: number;
-  startedAt: string | null;
-  completedAt: string | null;
-  errorMessage: string | null;
 }
 

@@ -31,8 +31,6 @@ import {
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
@@ -46,9 +44,18 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  ControlBox,
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlComboboxTriggerClass,
+  controlInputClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Select,
@@ -316,12 +323,10 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                     control={form.control}
                     name="firstName"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          First name <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel required>First name</FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             placeholder="e.g. Amani"
                             disabled={isPending}
                             {...field}
@@ -337,12 +342,10 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                     control={form.control}
                     name="lastName"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Last name <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel required>Last name</FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             placeholder="e.g. Mushi"
                             disabled={isPending}
                             {...field}
@@ -358,10 +361,8 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                     control={form.control}
                     name="gender"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Gender <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel required>Gender</FieldLabel>
                         <FormControl>
                           <GenderSelector
                             {...field}
@@ -379,10 +380,8 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                     control={form.control}
                     name="phoneNumber"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Phone number <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel required>Phone number</FieldLabel>
                         <FormControl>
                           <PhoneInput
                             placeholder="Enter phone number"
@@ -400,13 +399,10 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                     control={form.control}
                     name="email"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Email
-                          <span className="opt">OPTIONAL</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel optional>Email</FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             type="email"
                             placeholder="customer@example.com"
                             disabled={isPending}
@@ -427,10 +423,8 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                     control={form.control}
                     name="allowNotifications"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Notifications
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel>Notifications</FieldLabel>
                         <div className="flex h-10 items-center justify-between gap-3 rounded-md border border-input bg-background px-3">
                           <span className="truncate text-xs text-muted-foreground">
                             Marketing &amp; reminders
@@ -520,10 +514,8 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                             ? new Date(field.value)
                             : undefined;
                           return (
-                            <FormItem>
-                              <FormLabel className={styles.fieldLabel}>
-                                Date of birth
-                              </FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel>Date of birth</FieldLabel>
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <FormControl>
@@ -532,11 +524,12 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                                       variant="outline"
                                       disabled={isPending}
                                       className={cn(
-                                        "h-10 w-full justify-start text-left font-normal",
-                                        !selected && "text-muted-foreground",
+                                        controlComboboxTriggerClass,
+                                        "justify-start",
+                                        !selected && "text-muted-2",
                                       )}
                                     >
-                                      <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                      <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
                                       {selected
                                         ? format(selected, "PPP")
                                         : "Pick a date"}
@@ -582,17 +575,15 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                         control={form.control}
                         name="source"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              How acquired
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>How acquired</FieldLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value ?? ""}
                               disabled={isPending}
                             >
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className={controlSelectTriggerClass}>
                                   <SelectValue placeholder="Select a source" />
                                 </SelectTrigger>
                               </FormControl>
@@ -615,17 +606,15 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                         control={form.control}
                         name="createdFrom"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Created from
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Created from</FieldLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value ?? ""}
                               disabled={isPending}
                             >
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className={controlSelectTriggerClass}>
                                   <SelectValue placeholder="Origin system" />
                                 </SelectTrigger>
                               </FormControl>
@@ -672,12 +661,10 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                         control={form.control}
                         name="idType"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              ID type
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>ID type</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="e.g. Passport, NID"
                                 disabled={isPending}
                                 {...field}
@@ -693,12 +680,10 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                         control={form.control}
                         name="idNumber"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              ID number
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>ID number</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="ID document number"
                                 disabled={isPending}
                                 {...field}
@@ -714,12 +699,10 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                         control={form.control}
                         name="tinNumber"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              TIN number
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>TIN number</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="Tax identification number"
                                 disabled={isPending}
                                 {...field}
@@ -735,12 +718,10 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                         control={form.control}
                         name="vrn"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              VRN
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>VRN</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="VAT registration number"
                                 disabled={isPending}
                                 {...field}
@@ -780,26 +761,28 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                         control={form.control}
                         name="creditLimit"
                         render={() => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>
                               <span className="inline-flex items-center gap-1">
                                 <CreditCard className="h-3 w-3" /> Credit limit
                               </span>
-                              <span className="opt">TZS</span>
-                            </FormLabel>
+                            </FieldLabel>
                             <FormControl>
-                              <Input
-                                placeholder="e.g. 500,000"
-                                value={creditLimitDisplay}
-                                onChange={handleCreditLimitChange}
-                                disabled={isPending}
-                                inputMode="numeric"
-                              />
+                              <ControlBox suffix="TZS">
+                                <input
+                                  className={controlInputClass}
+                                  placeholder="e.g. 500,000"
+                                  value={creditLimitDisplay}
+                                  onChange={handleCreditLimitChange}
+                                  disabled={isPending}
+                                  inputMode="numeric"
+                                />
+                              </ControlBox>
                             </FormControl>
-                            <p className={styles.fieldHint}>
+                            <FieldHint>
                               Maximum balance allowed across all credit-sale
                               orders. Leave blank for cash-only.
-                            </p>
+                            </FieldHint>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -809,19 +792,19 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                         control={form.control}
                         name="customerGroupId"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>
                               <span className="inline-flex items-center gap-1">
                                 <Tag className="h-3 w-3" /> Customer group
                               </span>
-                            </FormLabel>
+                            </FieldLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value ?? ""}
                               disabled={isPending || groups.length === 0}
                             >
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className={controlSelectTriggerClass}>
                                   <SelectValue
                                     placeholder={
                                       groups.length === 0
@@ -870,76 +853,56 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                     </div>
                   </header>
                   <div className={styles.formBody}>
-                    <div
-                      className={styles.fieldRow}
-                      style={
-                        {
-                          ["--cols" as never]: 1,
-                        } as React.CSSProperties
-                      }
-                    >
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>
+                            Staff notes
+                            <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
+                              {(field.value ?? "").length}/1000
+                            </span>
+                          </FieldLabel>
+                          <FormControl>
+                            <ControlTextarea
+                              placeholder="Allergies, seating preferences, anything teammates should know."
+                              maxLength={1000}
+                              disabled={isPending}
+                              {...field}
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {isEditMode && (
                       <FormField
                         control={form.control}
-                        name="notes"
+                        name="active"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Staff notes
-                              <span className="opt">
-                                {(field.value ?? "").length}/1000
-                              </span>
-                            </FormLabel>
+                          <FormItem className={cn(styles.toggleRow, "mt-[15px]")}>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium">
+                                Customer status
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Inactive customers are hidden from the
+                                default list view but remain in reports.
+                              </p>
+                            </div>
                             <FormControl>
-                              <Textarea
-                                placeholder="Allergies, seating preferences, anything teammates should know."
-                                rows={4}
-                                maxLength={1000}
+                              <Switch
+                                checked={!!field.value}
+                                onCheckedChange={field.onChange}
                                 disabled={isPending}
-                                {...field}
-                                value={field.value ?? ""}
                               />
                             </FormControl>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
-                    </div>
-
-                    {isEditMode && (
-                      <div
-                        className={styles.fieldRow}
-                        style={
-                          {
-                            ["--cols" as never]: 1,
-                            marginTop: 14,
-                          } as React.CSSProperties
-                        }
-                      >
-                        <FormField
-                          control={form.control}
-                          name="active"
-                          render={({ field }) => (
-                            <FormItem className={styles.toggleRow}>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium">
-                                  Customer status
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  Inactive customers are hidden from the
-                                  default list view but remain in reports.
-                                </p>
-                              </div>
-                              <FormControl>
-                                <Switch
-                                  checked={!!field.value}
-                                  onCheckedChange={field.onChange}
-                                  disabled={isPending}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
                     )}
                   </div>
                 </>

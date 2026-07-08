@@ -46,6 +46,7 @@ import {
 import {
   deleteExpensePayment,
 } from "@/lib/actions/expense-payment-actions";
+import { deleteExpenseCreditNote } from "@/lib/actions/expense-credit-note-actions";
 import {
   deleteExpenseAttachment,
   registerExpenseAttachments,
@@ -56,16 +57,22 @@ import ExpenseForm from "@/components/forms/expense_form";
 import ExpensePaymentForm, {
   UploadAttachmentTrigger,
 } from "@/components/forms/expense_payment_form";
+import ExpenseCreditNoteForm from "@/components/forms/expense_credit_note_form";
 import type {
   Expense,
   ExpenseAttachment,
   ExpenseTimelineEvent,
 } from "@/types/expense/type";
 import type { ExpensePayment } from "@/types/expense-payment/type";
+import {
+  CREDIT_NOTE_REASON_LABELS,
+  type ExpenseCreditNote,
+} from "@/types/expense-credit-note/type";
 
 interface Props {
   expense: Expense;
   payments: ExpensePayment[];
+  creditNotes: ExpenseCreditNote[];
   attachments: ExpenseAttachment[];
   timeline: ExpenseTimelineEvent[];
   defaultCurrency: string;
@@ -84,6 +91,7 @@ const fmtBytes = (b: number) => {
 export function ExpenseDetailClient({
   expense,
   payments,
+  creditNotes,
   attachments,
   timeline,
   defaultCurrency,
@@ -93,6 +101,7 @@ export function ExpenseDetailClient({
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [paymentSheetOpen, setPaymentSheetOpen] = useState(false);
+  const [creditSheetOpen, setCreditSheetOpen] = useState(false);
   const [confirmVoid, setConfirmVoid] = useState(false);
 
   const handle = (
@@ -125,10 +134,12 @@ export function ExpenseDetailClient({
     expense.status === "APPROVED" || expense.status === "PENDING";
   const canPay =
     expense.status === "APPROVED" && expense.paymentStatus !== "PAID";
+  const canCredit =
+    expense.status === "APPROVED" && expense.balanceDue > 0;
 
   return (
     <>
-      <KpiStrip cols={4}>
+      <KpiStrip cols={5}>
         <KpiCard
           icon={<CircleDollarSign className="h-3 w-3" />}
           label="Total"
@@ -141,6 +152,15 @@ export function ExpenseDetailClient({
           icon={<Receipt className="h-3 w-3" />}
           label="Paid"
           value={expense.paidAmount.toLocaleString(undefined, {
+            maximumFractionDigits: 0,
+          })}
+          unit={expense.currencyCode}
+          deltaTone="pos"
+        />
+        <KpiCard
+          icon={<Receipt className="h-3 w-3" />}
+          label="Credited"
+          value={expense.creditedAmount.toLocaleString(undefined, {
             maximumFractionDigits: 0,
           })}
           unit={expense.currencyCode}
@@ -219,6 +239,16 @@ export function ExpenseDetailClient({
             Record payment
           </Button>
         )}
+        {canCredit && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setCreditSheetOpen(true)}
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Raise credit note
+          </Button>
+        )}
         {canVoid && (
           <Button
             size="sm"
@@ -243,6 +273,9 @@ export function ExpenseDetailClient({
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="payments">
             Payments ({payments.length})
+          </TabsTrigger>
+          <TabsTrigger value="credit-notes">
+            Credit notes ({creditNotes.length})
           </TabsTrigger>
           <TabsTrigger value="attachments">
             Attachments ({attachments.length})
@@ -374,6 +407,64 @@ export function ExpenseDetailClient({
           </Card>
         </TabsContent>
 
+        <TabsContent value="credit-notes" className="mt-4">
+          <Card>
+            <CardContent className="px-2 pt-6 sm:px-6">
+              {creditNotes.length === 0 ? (
+                <div className="py-12 text-center text-sm text-muted-foreground">
+                  No credit notes yet.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-gray-50/60 text-left text-xs font-semibold uppercase text-gray-400">
+                        <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3">Number</th>
+                        <th className="px-4 py-3">Reason</th>
+                        <th className="px-4 py-3">Posted to</th>
+                        <th className="px-4 py-3 text-right">Amount</th>
+                        <th className="px-4 py-3" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {creditNotes.map((c) => (
+                        <tr key={c.id} className="hover:bg-gray-50/50">
+                          <td className="px-4 py-3 font-mono text-xs">
+                            {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(
+                              new Date(c.creditNoteDate),
+                            )}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs">{c.creditNoteNumber}</td>
+                          <td className="px-4 py-3">{CREDIT_NOTE_REASON_LABELS[c.reason]}</td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {c.offsetAccountName ?? c.offsetAccountCode ?? "—"}
+                          </td>
+                          <td className="px-4 py-3 text-right font-mono tabular-nums">
+                            {fmt(c.amount, expense.currencyCode)}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={isPending}
+                              onClick={() =>
+                                handle(() => deleteExpenseCreditNote(expense.id, c.id))
+                              }
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="attachments" className="mt-4">
           <Card>
             <CardContent className="pt-6">
@@ -466,6 +557,13 @@ export function ExpenseDetailClient({
         expense={expense}
         open={paymentSheetOpen}
         onOpenChange={setPaymentSheetOpen}
+        onRecorded={() => router.refresh()}
+      />
+
+      <ExpenseCreditNoteForm
+        expense={expense}
+        open={creditSheetOpen}
+        onOpenChange={setCreditSheetOpen}
         onRecorded={() => router.refresh()}
       />
 

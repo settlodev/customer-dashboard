@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { BusinessDocument } from "./BusinessDocument";
 import type { DocumentTheme } from "./BusinessDocument";
 import type { BusinessDocumentData } from "./types";
@@ -18,6 +18,12 @@ interface PrintableDocumentProps {
    * as the suggested filename in some browsers (works in Chrome/Edge).
    */
   documentTitle?: string;
+  /**
+   * Open the print dialog automatically once the page (including the logo
+   * image) has loaded — for dedicated print/download views opened in a new
+   * tab. The toolbar stays available for re-printing after a cancel.
+   */
+  autoPrint?: boolean;
 }
 
 /**
@@ -35,10 +41,11 @@ export function PrintableDocument({
   tableHeaderClassName,
   theme,
   documentTitle,
+  autoPrint = false,
 }: PrintableDocumentProps) {
   const ref = useRef<HTMLDivElement>(null);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     const previousTitle = document.title;
     if (documentTitle) document.title = documentTitle;
     window.print();
@@ -48,7 +55,28 @@ export function PrintableDocument({
       window.removeEventListener("afterprint", restore);
     };
     window.addEventListener("afterprint", restore);
-  };
+  }, [documentTitle]);
+
+  useEffect(() => {
+    if (!autoPrint) return;
+    let cancelled = false;
+    const fire = () => {
+      if (!cancelled) handlePrint();
+    };
+    // Wait for `load` so images (logo) are in before the print snapshot.
+    if (document.readyState === "complete") {
+      const timer = setTimeout(fire, 300);
+      return () => {
+        cancelled = true;
+        clearTimeout(timer);
+      };
+    }
+    window.addEventListener("load", fire, { once: true });
+    return () => {
+      cancelled = true;
+      window.removeEventListener("load", fire);
+    };
+  }, [autoPrint, handlePrint]);
 
   return (
     <div className="min-h-screen bg-slate-100 py-8 print:bg-white print:py-0">

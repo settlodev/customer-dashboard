@@ -21,7 +21,6 @@ import { format } from "date-fns";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -29,7 +28,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -52,7 +50,15 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  ControlBox,
+  ControlInput,
+  ControlTextarea,
+  FieldLabel,
+  controlComboboxTriggerClass,
+  controlInputClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -249,18 +255,16 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                 control={form.control}
                 name="name"
                 render={({ field }) => (
-                  <FormItem className="sm:col-span-2 lg:col-span-2">
-                    <FormLabel className="text-xs">
-                      Rule name <span className="text-red-500">*</span>
-                    </FormLabel>
+                  <FormItem className="sm:col-span-2 lg:col-span-2 space-y-[7px]">
+                    <FieldLabel required>Rule name</FieldLabel>
                     <FormControl>
-                      <Input
+                      <ControlInput
                         placeholder="e.g. Chocolate Cake"
                         {...field}
                         disabled={isPending}
                       />
                     </FormControl>
-                    <FormMessage className="text-xs" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -270,8 +274,8 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                   control={form.control}
                   name={"attachments.0.productVariantId" as never}
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">Product variant</FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Product variant</FieldLabel>
                       <FormControl>
                         <StockVariantSelector
                           placeholder="Attach to product"
@@ -280,7 +284,7 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                           isDisabled={isPending}
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -290,20 +294,20 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                 control={form.control}
                 name="baseQuantity"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">
-                      Base quantity <span className="text-red-500">*</span>
-                    </FormLabel>
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel required>Base quantity</FieldLabel>
                     <FormControl>
-                      <NumericFormat
-                        className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                        value={field.value ?? 1}
-                        onValueChange={(v) => field.onChange(v.value ? Number(v.value) : 1)}
-                        placeholder="1"
-                        disabled={isPending}
-                      />
+                      <ControlBox>
+                        <NumericFormat
+                          className={cn(controlInputClass, "tabular-nums")}
+                          value={field.value ?? 1}
+                          onValueChange={(v) => field.onChange(v.value ? Number(v.value) : 1)}
+                          placeholder="1"
+                          disabled={isPending}
+                        />
+                      </ControlBox>
                     </FormControl>
-                    <FormMessage className="text-xs" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -312,10 +316,8 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                 control={form.control}
                 name="baseUnitId"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">
-                      Base unit <span className="text-red-500">*</span>
-                    </FormLabel>
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel required>Base unit</FieldLabel>
                     <FormControl>
                       <UnitSelector
                         {...field}
@@ -324,7 +326,7 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                         isDisabled={isPending}
                       />
                     </FormControl>
-                    <FormMessage className="text-xs" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -338,8 +340,8 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                       ? new Date(field.value as string)
                       : undefined;
                     return (
-                      <FormItem>
-                        <FormLabel className="text-xs">Effective from</FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel>Effective from</FieldLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
@@ -348,11 +350,12 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                                 variant="outline"
                                 disabled={isPending}
                                 className={cn(
-                                  "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
-                                  !selected && "text-muted-foreground",
+                                  controlComboboxTriggerClass,
+                                  "justify-start",
+                                  !selected && "text-muted-2",
                                 )}
                               >
-                                <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
                                 {selected ? format(selected, "PPP") : "Pick a date"}
                               </Button>
                             </FormControl>
@@ -378,7 +381,7 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                             />
                           </PopoverContent>
                         </Popover>
-                        <FormMessage className="text-xs" />
+                        <FormMessage />
                       </FormItem>
                     );
                   }}
@@ -398,8 +401,8 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                     ) as unknown as string | undefined;
                     const fromDate = fromValue ? new Date(fromValue) : undefined;
                     return (
-                      <FormItem>
-                        <FormLabel className="text-xs">Effective to</FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel>Effective to</FieldLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
@@ -408,11 +411,12 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                                 variant="outline"
                                 disabled={isPending}
                                 className={cn(
-                                  "h-10 w-full justify-start text-left font-normal border-0 bg-muted hover:bg-muted/80",
-                                  !selected && "text-muted-foreground",
+                                  controlComboboxTriggerClass,
+                                  "justify-start",
+                                  !selected && "text-muted-2",
                                 )}
                               >
-                                <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
                                 {selected ? format(selected, "PPP") : "Pick a date"}
                               </Button>
                             </FormControl>
@@ -427,7 +431,7 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                             />
                           </PopoverContent>
                         </Popover>
-                        <FormMessage className="text-xs" />
+                        <FormMessage />
                       </FormItem>
                     );
                   }}
@@ -438,12 +442,11 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                 control={form.control}
                 name="notes"
                 render={({ field }) => (
-                  <FormItem className="sm:col-span-2 md:col-span-3 lg:col-span-4">
-                    <FormLabel className="text-xs">Notes</FormLabel>
+                  <FormItem className="sm:col-span-2 md:col-span-3 lg:col-span-4 space-y-[7px]">
+                    <FieldLabel>Notes</FieldLabel>
                     <FormControl>
-                      <Textarea
+                      <ControlTextarea
                         placeholder="Internal notes / rationale for this revision"
-                        rows={3}
                         value={field.value ?? ""}
                         onChange={field.onChange}
                         disabled={isPending}
@@ -640,13 +643,10 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
           control={form.control}
           name={`items.${index}.itemNumber`}
           render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs">
-                No. <span className="text-red-500">*</span>
-              </FormLabel>
+            <FormItem className="space-y-[7px]">
+              <FieldLabel required>No.</FieldLabel>
               <FormControl>
-                <Input
-                  className="h-9"
+                <ControlInput
                   placeholder="0010"
                   {...field}
                   disabled={isPending}
@@ -660,11 +660,11 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
           control={form.control}
           name={`items.${index}.itemCategory`}
           render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs">Category</FormLabel>
+            <FormItem className="space-y-[7px]">
+              <FieldLabel>Category</FieldLabel>
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
-                  <SelectTrigger className="h-9">
+                  <SelectTrigger className={controlSelectTriggerClass}>
                     <SelectValue />
                   </SelectTrigger>
                 </FormControl>
@@ -689,10 +689,8 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
             control={form.control}
             name={`items.${index}.stockVariantId`}
             render={({ field }) => (
-              <FormItem className="md:col-span-2">
-                <FormLabel className="text-xs">
-                  Stock item {category === "STOCK" && <span className="text-red-500">*</span>}
-                </FormLabel>
+              <FormItem className="md:col-span-2 space-y-[7px]">
+                <FieldLabel required={category === "STOCK"}>Stock item</FieldLabel>
                 <FormControl>
                   <StockVariantSelector
                     placeholder="Select stock item"
@@ -713,17 +711,19 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
           control={form.control}
           name={`items.${index}.quantity`}
           render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs">Quantity</FormLabel>
+            <FormItem className="space-y-[7px]">
+              <FieldLabel>Quantity</FieldLabel>
               <FormControl>
-                <NumericFormat
-                  className="flex h-9 w-full rounded-md border-0 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
-                  value={field.value ?? ""}
-                  onValueChange={(v) => field.onChange(v.value ? Number(v.value) : undefined)}
-                  placeholder="0"
-                  disabled={isPending}
-                  thousandSeparator
-                />
+                <ControlBox>
+                  <NumericFormat
+                    className={cn(controlInputClass, "tabular-nums")}
+                    value={field.value ?? ""}
+                    onValueChange={(v) => field.onChange(v.value ? Number(v.value) : undefined)}
+                    placeholder="0"
+                    disabled={isPending}
+                    thousandSeparator
+                  />
+                </ControlBox>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -733,8 +733,8 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
           control={form.control}
           name={`items.${index}.unitId`}
           render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs">Unit</FormLabel>
+            <FormItem className="space-y-[7px]">
+              <FieldLabel>Unit</FieldLabel>
               <FormControl>
                 <CompatibleUnitSelector
                   anchorUnitId={anchorUnitId}
@@ -753,11 +753,10 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
             control={form.control}
             name={`items.${index}.text`}
             render={({ field }) => (
-              <FormItem className="md:col-span-6">
-                <FormLabel className="text-xs">Text</FormLabel>
+              <FormItem className="md:col-span-6 space-y-[7px]">
+                <FieldLabel>Text</FieldLabel>
                 <FormControl>
-                  <Textarea
-                    className="min-h-[60px]"
+                  <ControlTextarea
                     placeholder="Note or instruction shown alongside the rule"
                     value={field.value ?? ""}
                     onChange={field.onChange}
@@ -773,11 +772,11 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
           control={form.control}
           name={`items.${index}.substitutionStrategy`}
           render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs">Substitution</FormLabel>
+            <FormItem className="space-y-[7px]">
+              <FieldLabel>Substitution</FieldLabel>
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
-                  <SelectTrigger className="h-9">
+                  <SelectTrigger className={controlSelectTriggerClass}>
                     <SelectValue />
                   </SelectTrigger>
                 </FormControl>
@@ -796,19 +795,20 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
           control={form.control}
           name={`items.${index}.componentScrapPercent`}
           render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs flex items-center gap-1">
+            <FormItem className="space-y-[7px]">
+              <FieldLabel>
                 <Percent className="h-3 w-3" /> Scrap %
-              </FormLabel>
+              </FieldLabel>
               <FormControl>
-                <NumericFormat
-                  className="flex h-9 w-full rounded-md border-0 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
-                  value={field.value ?? ""}
-                  onValueChange={(v) => field.onChange(v.value ? Number(v.value) : undefined)}
-                  suffix="%"
-                  placeholder="0%"
-                  disabled={isPending}
-                />
+                <ControlBox suffix="%">
+                  <NumericFormat
+                    className={cn(controlInputClass, "tabular-nums")}
+                    value={field.value ?? ""}
+                    onValueChange={(v) => field.onChange(v.value ? Number(v.value) : undefined)}
+                    placeholder="0%"
+                    disabled={isPending}
+                  />
+                </ControlBox>
               </FormControl>
             </FormItem>
           )}
@@ -823,7 +823,7 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
                 <FormControl>
                   <Switch checked={!!f.value} onCheckedChange={f.onChange} disabled={isPending} />
                 </FormControl>
-                <FormLabel className="text-xs cursor-pointer">Optional</FormLabel>
+                <FieldLabel className="cursor-pointer">Optional</FieldLabel>
               </FormItem>
             )}
           />
@@ -839,7 +839,7 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
                     disabled={isPending}
                   />
                 </FormControl>
-                <FormLabel className="text-xs cursor-pointer">Scales</FormLabel>
+                <FieldLabel className="cursor-pointer">Scales</FieldLabel>
               </FormItem>
             )}
           />
@@ -855,7 +855,7 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
                     disabled={isPending}
                   />
                 </FormControl>
-                <FormLabel className="text-xs cursor-pointer">Backflush</FormLabel>
+                <FieldLabel className="cursor-pointer">Backflush</FieldLabel>
               </FormItem>
             )}
           />
@@ -895,7 +895,7 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
                 control={form.control}
                 name={`items.${index}.substitutes.${si}.stockVariantId`}
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2">
+                  <FormItem className="md:col-span-2 space-y-[7px]">
                     <FormControl>
                       <StockVariantSelector
                         placeholder="Substitute variant"
@@ -912,11 +912,10 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
                 control={form.control}
                 name={`items.${index}.substitutes.${si}.priority`}
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="space-y-[7px]">
                     <FormControl>
-                      <Input
+                      <ControlInput
                         type="number"
-                        className="h-9"
                         placeholder="Priority"
                         value={field.value ?? ""}
                         onChange={(e) =>
@@ -932,17 +931,19 @@ function ItemRow({ form, index, isPending, canRemove, onRemove }: ItemRowProps) 
                 control={form.control}
                 name={`items.${index}.substitutes.${si}.conversionFactor`}
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="space-y-[7px]">
                     <FormControl>
-                      <NumericFormat
-                        className="flex h-9 w-full rounded-md border-0 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
-                        value={field.value ?? 1}
-                        onValueChange={(v) =>
-                          field.onChange(v.value ? Number(v.value) : undefined)
-                        }
-                        placeholder="1.0"
-                        disabled={isPending}
-                      />
+                      <ControlBox>
+                        <NumericFormat
+                          className={cn(controlInputClass, "tabular-nums")}
+                          value={field.value ?? 1}
+                          onValueChange={(v) =>
+                            field.onChange(v.value ? Number(v.value) : undefined)
+                          }
+                          placeholder="1.0"
+                          disabled={isPending}
+                        />
+                      </ControlBox>
                     </FormControl>
                   </FormItem>
                 )}
@@ -986,10 +987,8 @@ function OutputRow({ form, index, isPending, onRemove }: OutputRowProps) {
         control={form.control}
         name={`outputs.${index}.stockVariantId`}
         render={({ field: f }) => (
-          <FormItem className="md:col-span-2">
-            <FormLabel className="text-xs">
-              Variant <span className="text-red-500">*</span>
-            </FormLabel>
+          <FormItem className="md:col-span-2 space-y-[7px]">
+            <FieldLabel required>Variant</FieldLabel>
             <FormControl>
               <StockVariantSelector
                 placeholder="Output variant"
@@ -1009,11 +1008,11 @@ function OutputRow({ form, index, isPending, onRemove }: OutputRowProps) {
         control={form.control}
         name={`outputs.${index}.outputType`}
         render={({ field: f }) => (
-          <FormItem>
-            <FormLabel className="text-xs">Type</FormLabel>
+          <FormItem className="space-y-[7px]">
+            <FieldLabel>Type</FieldLabel>
             <Select value={f.value} onValueChange={f.onChange}>
               <FormControl>
-                <SelectTrigger className="h-9">
+                <SelectTrigger className={controlSelectTriggerClass}>
                   <SelectValue />
                 </SelectTrigger>
               </FormControl>
@@ -1032,20 +1031,20 @@ function OutputRow({ form, index, isPending, onRemove }: OutputRowProps) {
         control={form.control}
         name={`outputs.${index}.yieldQuantity`}
         render={({ field: f }) => (
-          <FormItem>
-            <FormLabel className="text-xs">
-              Qty <span className="text-red-500">*</span>
-            </FormLabel>
+          <FormItem className="space-y-[7px]">
+            <FieldLabel required>Qty</FieldLabel>
             <FormControl>
-              <NumericFormat
-                className="flex h-9 w-full rounded-md border-0 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
-                value={f.value ?? ""}
-                onValueChange={(v) =>
-                  f.onChange(v.value ? Number(v.value) : undefined)
-                }
-                placeholder="1"
-                disabled={isPending}
-              />
+              <ControlBox>
+                <NumericFormat
+                  className={cn(controlInputClass, "tabular-nums")}
+                  value={f.value ?? ""}
+                  onValueChange={(v) =>
+                    f.onChange(v.value ? Number(v.value) : undefined)
+                  }
+                  placeholder="1"
+                  disabled={isPending}
+                />
+              </ControlBox>
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -1055,10 +1054,8 @@ function OutputRow({ form, index, isPending, onRemove }: OutputRowProps) {
         control={form.control}
         name={`outputs.${index}.yieldUnitId`}
         render={({ field: f }) => (
-          <FormItem>
-            <FormLabel className="text-xs">
-              Unit <span className="text-red-500">*</span>
-            </FormLabel>
+          <FormItem className="space-y-[7px]">
+            <FieldLabel required>Unit</FieldLabel>
             <FormControl>
               <CompatibleUnitSelector
                 anchorUnitId={anchorUnitId}

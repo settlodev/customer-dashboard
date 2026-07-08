@@ -3,6 +3,8 @@
 import React, { useState, useTransition } from "react";
 import {
   useForm,
+  useWatch,
+  type Control,
   type FieldPath,
   type Resolver,
   type UseFormReturn,
@@ -10,16 +12,21 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { NumericFormat } from "react-number-format";
-import { AlertTriangle, Banknote, Landmark, Loader2, Power } from "lucide-react";
+import {
+  AlertTriangle,
+  Banknote,
+  Check,
+  Landmark,
+  Loader2,
+  Power,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -44,13 +51,26 @@ import {
 } from "@/lib/actions/admin/loans";
 import type { FormResponse } from "@/types/types";
 import {
+  DISBURSEMENT_METHOD_LABELS,
   DISBURSEMENT_METHOD_OPTIONS,
+  fmtAmount,
+  FUNDING_SOURCE_TYPE_LABELS,
   FUNDING_SOURCE_TYPE_OPTIONS,
   FundingSourceFormSchema,
   type FundingSourceFormValues,
   type FundingSourceResponse,
   type SelectOption,
 } from "@/types/admin/loans";
+
+import { cn } from "@/lib/utils";
+import {
+  ControlBox,
+  ControlInput,
+  FieldHint,
+  FieldLabel,
+  controlInputClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 
 import styles from "./styles/form-shell.module.css";
 
@@ -91,23 +111,26 @@ function Section({
 
 function FieldRow({
   cols = 2,
+  className,
   children,
 }: {
   cols?: number;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
     <div
-      className={styles.fieldRow}
-      style={{ ["--cols" as never]: cols } as React.CSSProperties}
+      className={cn(
+        "grid grid-cols-1 gap-x-[18px] gap-y-[15px]",
+        cols === 2 && "sm:grid-cols-2",
+        cols === 3 && "sm:grid-cols-2 lg:grid-cols-3",
+        cols === 4 && "sm:grid-cols-2 lg:grid-cols-4",
+        className,
+      )}
     >
       {children}
     </div>
   );
-}
-
-function ReqMark({ show }: { show?: boolean }) {
-  return show ? <span className="text-primary"> *</span> : null;
 }
 
 function TextField({
@@ -134,26 +157,21 @@ function TextField({
       control={form.control}
       name={name}
       render={({ field }) => (
-        <FormItem className="min-w-0">
-          <FormLabel className={styles.fieldLabel}>
-            {label}
-            <ReqMark show={required} />
-          </FormLabel>
+        <FormItem className="min-w-0 space-y-[7px]">
+          <FieldLabel required={required}>{label}</FieldLabel>
           <FormControl>
-            <div className={styles.inputWithPrefix}>
-              {icon ? <span className={styles.inputPrefix}>{icon}</span> : null}
-              <Input
-                placeholder={placeholder}
-                value={(field.value as string) ?? ""}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                name={field.name}
-                ref={field.ref}
-                disabled={disabled}
-              />
-            </div>
+            <ControlInput
+              prefix={icon}
+              placeholder={placeholder}
+              value={(field.value as string) ?? ""}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              name={field.name}
+              ref={field.ref}
+              disabled={disabled}
+            />
           </FormControl>
-          {hint ? <p className={styles.fieldHint}>{hint}</p> : null}
+          {hint ? <FieldHint>{hint}</FieldHint> : null}
           <FormMessage />
         </FormItem>
       )}
@@ -183,16 +201,13 @@ function NumberField({
       control={form.control}
       name={name}
       render={({ field }) => (
-        <FormItem className="min-w-0">
-          <FormLabel className={styles.fieldLabel}>{label}</FormLabel>
+        <FormItem className="min-w-0 space-y-[7px]">
+          <FieldLabel>{label}</FieldLabel>
           <FormControl>
-            <div className={styles.inputWithPrefix}>
-              {prefix ? (
-                <span className={styles.inputPrefix}>{prefix}</span>
-              ) : null}
+            <ControlBox suffix={prefix || undefined}>
               <NumericFormat
                 getInputRef={field.ref}
-                customInput={Input}
+                className={cn(controlInputClass, "tabular-nums")}
                 thousandSeparator=","
                 allowNegative={false}
                 decimalScale={2}
@@ -209,9 +224,9 @@ function NumberField({
                 name={field.name}
                 disabled={disabled}
               />
-            </div>
+            </ControlBox>
           </FormControl>
-          {hint ? <p className={styles.fieldHint}>{hint}</p> : null}
+          {hint ? <FieldHint>{hint}</FieldHint> : null}
           <FormMessage />
         </FormItem>
       )}
@@ -241,18 +256,15 @@ function SelectField({
       control={form.control}
       name={name}
       render={({ field }) => (
-        <FormItem className="min-w-0">
-          <FormLabel className={styles.fieldLabel}>
-            {label}
-            <ReqMark show={required} />
-          </FormLabel>
+        <FormItem className="min-w-0 space-y-[7px]">
+          <FieldLabel required={required}>{label}</FieldLabel>
           <Select
             onValueChange={field.onChange}
             value={(field.value as string) ?? ""}
             disabled={disabled}
           >
             <FormControl>
-              <SelectTrigger>
+              <SelectTrigger className={controlSelectTriggerClass}>
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
             </FormControl>
@@ -264,7 +276,7 @@ function SelectField({
               ))}
             </SelectContent>
           </Select>
-          {hint ? <p className={styles.fieldHint}>{hint}</p> : null}
+          {hint ? <FieldHint>{hint}</FieldHint> : null}
           <FormMessage />
         </FormItem>
       )}
@@ -285,6 +297,129 @@ function toFormValues(
     glAccountRef: item?.glAccountRef ?? "",
     active: item?.active ?? true,
   };
+}
+
+// ── Live preview rail ─────────────────────────────────────────────────
+
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded border border-line bg-canvas px-1.5 py-0.5 font-mono text-[10px] text-ink-3">
+      {children}
+    </span>
+  );
+}
+
+function PreviewRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="truncate font-mono tabular-nums text-ink">{children}</dd>
+    </div>
+  );
+}
+
+/** Live source summary + readiness checklist, driven by the watched form values. */
+function FundingSourcePreview({
+  control,
+}: {
+  control: Control<FundingSourceFormValues>;
+}) {
+  const v = useWatch({ control }) as Partial<FundingSourceFormValues>;
+  const currency = (v.currency || "TZS").toUpperCase();
+  const name = v.name?.trim() || "Untitled source";
+  const automated = v.disbursementMethod === "AUTOMATED";
+  const limit =
+    v.capitalLimit === "" || v.capitalLimit == null
+      ? undefined
+      : Number(v.capitalLimit);
+
+  const checks = [
+    { label: "Name", done: Boolean(v.name?.trim()) },
+    { label: "Currency", done: /^[A-Za-z]{3}$/.test((v.currency ?? "").trim()) },
+    {
+      label: "Disbursement setup",
+      done: !automated || Boolean(v.bankGatewayKey?.trim()),
+    },
+  ];
+  const doneCount = checks.filter((c) => c.done).length;
+  const pct = Math.round((doneCount / checks.length) * 100);
+  const complete = doneCount === checks.length;
+
+  return (
+    <div className={styles.previewCard}>
+      <div className={styles.previewHead}>
+        <span className={styles.liveDot} /> Live preview
+      </div>
+      <div className={styles.previewBody}>
+        <div className={styles.previewName}>{name}</div>
+        <div className={styles.previewMeta}>{currency}</div>
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {v.type ? <Chip>{FUNDING_SOURCE_TYPE_LABELS[v.type]}</Chip> : null}
+          {v.disbursementMethod ? (
+            <Chip>{DISBURSEMENT_METHOD_LABELS[v.disbursementMethod]}</Chip>
+          ) : null}
+        </div>
+
+        <dl className="mt-4 space-y-2 text-xs">
+          <PreviewRow label="Capital limit">
+            {limit != null ? `${fmtAmount(limit)} ${currency}` : "Unlimited"}
+          </PreviewRow>
+          <PreviewRow label="GL account">
+            {v.glAccountRef?.trim() || "—"}
+          </PreviewRow>
+          {automated ? (
+            <PreviewRow label="Gateway">
+              {v.bankGatewayKey?.trim() || "—"}
+            </PreviewRow>
+          ) : null}
+        </dl>
+
+        <div className={styles.readiness}>
+          <div className={styles.readinessHead}>
+            <span className={styles.readinessLabel}>Readiness</span>
+            <span
+              className={`${styles.readinessPct}${
+                complete ? ` ${styles.readinessPctDone}` : ""
+              }`}
+            >
+              {pct}%
+            </span>
+          </div>
+          <div className={styles.readinessBar}>
+            <div
+              className={`${styles.readinessBarFill}${
+                complete ? ` ${styles.readinessBarFillDone}` : ""
+              }`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+
+        <div className={styles.checklist}>
+          {checks.map((c) => (
+            <div
+              key={c.label}
+              className={`${styles.checklistItem}${
+                c.done ? ` ${styles.checklistItemDone}` : ""
+              }`}
+            >
+              <span className={styles.checklistMark}>
+                {c.done ? <Check className="h-2.5 w-2.5" /> : null}
+              </span>
+              {c.label}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface FundingSourceFormProps {
@@ -370,7 +505,8 @@ export default function FundingSourceForm({
         onSubmit={form.handleSubmit(onSubmit, onInvalid)}
         className={styles.formRoot}
       >
-        <div className={styles.formStack}>
+        <div className={styles.formGrid}>
+          <div className={styles.formStack}>
           <Section
             icon={<Landmark className="h-3.5 w-3.5" />}
             title="Source identity"
@@ -387,7 +523,7 @@ export default function FundingSourceForm({
                 disabled={disabled}
               />
             </FieldRow>
-            <FieldRow cols={2}>
+            <FieldRow cols={2} className="mt-[15px]">
               <SelectField
                 form={form}
                 name="type"
@@ -436,7 +572,7 @@ export default function FundingSourceForm({
                 />
               ) : null}
             </FieldRow>
-            <FieldRow cols={2}>
+            <FieldRow cols={2} className="mt-[15px]">
               <NumberField
                 form={form}
                 name="capitalLimit"
@@ -487,25 +623,35 @@ export default function FundingSourceForm({
             </Section>
           ) : null}
 
-          <div className={styles.formFoot}>
-            <div className={styles.formFootSpacer} />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.push("/loans/funding-sources")}
-              disabled={isPending}
-            >
-              {readOnly ? "Back" : "Cancel"}
-            </Button>
-            {canManage ? (
-              <Button type="submit" disabled={isPending}>
-                {isPending ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                ) : null}
-                {isEditing ? "Save changes" : "Create source"}
-              </Button>
-            ) : null}
           </div>
+
+          {/* Live preview + readiness rail */}
+          <aside className="min-w-0 self-stretch">
+            <div className="lg:sticky lg:top-4">
+              <FundingSourcePreview control={form.control} />
+            </div>
+          </aside>
+        </div>
+
+        {/* Sticky footer (spans full width) */}
+        <div className={styles.formFoot}>
+          <div className={styles.formFootSpacer} />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push("/loans/funding-sources")}
+            disabled={isPending}
+          >
+            {readOnly ? "Back" : "Cancel"}
+          </Button>
+          {canManage ? (
+            <Button type="submit" disabled={isPending}>
+              {isPending ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : null}
+              {isEditing ? "Save changes" : "Create source"}
+            </Button>
+          ) : null}
         </div>
       </form>
     </Form>

@@ -24,20 +24,39 @@ import {
   PackageFeaturesPanel,
   PackageWhitelabelPanel,
 } from "@/components/admin/catalog/package-detail/package-overview-panels";
+import {
+  PackageAddonsPanel,
+  PackageHistoryPanel,
+  PackageMetadataPanel,
+  PricePositionPanel,
+  PricingBillingPanel,
+} from "@/components/admin/catalog/package-detail/package-billing-panels";
+import { PackageSubscribersTable } from "@/components/admin/catalog/package-detail/package-subscribers-table";
 
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import {
+  getBillingConfig,
   getPackage,
+  getPackageBreakdown,
+  getPackageHistory,
+  listAddons,
   listPackageFeatures,
   listPackageIncludedCredits,
+  listPackages,
   listWhitelabelPackagePrices,
 } from "@/lib/actions/admin/billing";
 import {
   getPackageAnalytics,
   getPackageForecast,
+  listPackageSubscribers,
 } from "@/lib/actions/admin/package-analytics";
 import { listWhitelabels } from "@/lib/actions/admin/whitelabels";
+import {
+  listInternalStaffProfiles,
+  listInternalUsers,
+} from "@/lib/actions/admin/internal-users";
+import { buildActorNameMap } from "@/lib/admin/actor-names";
 import type {
   PackageComparisonMode,
   PackageDateRange,
@@ -136,16 +155,38 @@ export default async function AdminPackageDetailPage({
     notFound();
   }
 
-  const [features, credits, whitelabels, analytics, forecast] =
-    await Promise.all([
-      safeList(() => listPackageFeatures(id)),
-      safeList(() => listPackageIncludedCredits(id)),
-      safeList(() => listWhitelabels()),
-      getPackageAnalytics(id, pkg.basePrice, range, comparisonMode),
-      getPackageForecast(id, pkg.basePrice, "linear", 90),
-    ]);
+  const [
+    features,
+    credits,
+    whitelabels,
+    analytics,
+    forecast,
+    breakdown,
+    billingConfig,
+    history,
+    subscribers,
+    allPackages,
+    addons,
+    internalUsers,
+    staffProfiles,
+  ] = await Promise.all([
+    safeList(() => listPackageFeatures(id)),
+    safeList(() => listPackageIncludedCredits(id)),
+    safeList(() => listWhitelabels()),
+    getPackageAnalytics(id, pkg.basePrice, range, comparisonMode),
+    getPackageForecast(id, pkg.basePrice, "linear", 90),
+    safeOne(() => getPackageBreakdown(id)),
+    safeOne(() => getBillingConfig()),
+    safeList(() => getPackageHistory(id)),
+    listPackageSubscribers(id),
+    safeList(() => listPackages(pkg.entityType)),
+    safeList(() => listAddons()),
+    safeList(() => listInternalUsers()),
+    safeList(() => listInternalStaffProfiles()),
+  ]);
 
   const overrides = await collectWhitelabelOverrides(id, whitelabels);
+  const actorNames = buildActorNameMap(internalUsers, staffProfiles);
 
   return (
     <AdminShell token={token}>
@@ -238,6 +279,21 @@ export default async function AdminPackageDetailPage({
             />
           </div>
 
+          {/* Pricing & billing (Billing service) */}
+          <PricingBillingPanel
+            pkg={pkg}
+            breakdown={breakdown}
+            config={billingConfig}
+          />
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <PackageAddonsPanel addons={addons} entityType={pkg.entityType} />
+            <PricePositionPanel packages={allPackages} current={pkg} />
+          </div>
+
+          {/* Subscribers on this plan (Reports service) */}
+          <PackageSubscribersTable subscribers={subscribers} />
+
           {/* Catalog configuration */}
           <div className="grid gap-4 lg:grid-cols-3">
             <PackageFeaturesPanel mappings={features} />
@@ -246,6 +302,16 @@ export default async function AdminPackageDetailPage({
               basePrice={pkg.basePrice}
               overrides={overrides}
             />
+          </div>
+
+          {/* Metadata + change history (Billing service) */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <PackageMetadataPanel
+              pkg={pkg}
+              history={history}
+              actorNames={actorNames}
+            />
+            <PackageHistoryPanel history={history} actorNames={actorNames} />
           </div>
 
           {/* Forecast */}
@@ -265,6 +331,14 @@ async function safeList<T>(fn: () => Promise<T[]>): Promise<T[]> {
     return await fn();
   } catch {
     return [];
+  }
+}
+
+async function safeOne<T>(fn: () => Promise<T>): Promise<T | null> {
+  try {
+    return await fn();
+  } catch {
+    return null;
   }
 }
 

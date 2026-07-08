@@ -28,14 +28,16 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  ControlInput,
+  FieldLabel,
+} from "@/components/ui/field";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -302,12 +304,10 @@ export default function StoreForm({ item }: StoreFormProps) {
                     control={form.control}
                     name="name"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Store name <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel required>Store name</FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             placeholder="e.g. Main Street Store"
                             disabled={isPending}
                             {...field}
@@ -323,13 +323,10 @@ export default function StoreForm({ item }: StoreFormProps) {
                     control={form.control}
                     name="code"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Code
-                          <span className="opt">OPTIONAL</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel optional>Code</FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             placeholder="e.g. STORE-001"
                             disabled={isPending}
                             {...field}
@@ -345,13 +342,10 @@ export default function StoreForm({ item }: StoreFormProps) {
                     control={form.control}
                     name="storeNumber"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Store number
-                          <span className="opt">OPTIONAL</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel optional>Store number</FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             placeholder="e.g. 12"
                             disabled={isPending}
                             {...field}
@@ -429,13 +423,10 @@ export default function StoreForm({ item }: StoreFormProps) {
                         control={form.control}
                         name="storeType"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Store type
-                              <span className="opt">OPTIONAL</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel optional>Store type</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="e.g. Restaurant, Bar, Retail"
                                 disabled={isPending}
                                 {...field}
@@ -451,13 +442,10 @@ export default function StoreForm({ item }: StoreFormProps) {
                         control={form.control}
                         name="timezone"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Timezone
-                              <span className="opt">OPTIONAL</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel optional>Timezone</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="e.g. Africa/Dar_es_Salaam"
                                 disabled={isPending}
                                 {...field}
@@ -473,13 +461,15 @@ export default function StoreForm({ item }: StoreFormProps) {
                         control={form.control}
                         name="capacity"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>
                               Capacity
-                              <span className="opt">SEATS</span>
-                            </FormLabel>
+                              <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
+                                SEATS
+                              </span>
+                            </FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 type="number"
                                 placeholder="e.g. 60"
                                 min={0}
@@ -527,13 +517,10 @@ export default function StoreForm({ item }: StoreFormProps) {
                         control={form.control}
                         name="address"
                         render={({ field }) => (
-                          <FormItem className="sm:col-span-2 xl:col-span-3">
-                            <FormLabel className={styles.fieldLabel}>
-                              Street address
-                              <span className="opt">OPTIONAL</span>
-                            </FormLabel>
+                          <FormItem className="sm:col-span-2 xl:col-span-3 space-y-[7px]">
+                            <FieldLabel optional>Street address</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="e.g. 123 Main Street"
                                 disabled={isPending}
                                 {...field}
@@ -549,13 +536,10 @@ export default function StoreForm({ item }: StoreFormProps) {
                         control={form.control}
                         name="region"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Region
-                              <span className="opt">OPTIONAL</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel optional>Region</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="e.g. Dar es Salaam"
                                 disabled={isPending}
                                 {...field}
@@ -571,13 +555,10 @@ export default function StoreForm({ item }: StoreFormProps) {
                         control={form.control}
                         name="district"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              District
-                              <span className="opt">OPTIONAL</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel optional>District</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="e.g. Kinondoni"
                                 disabled={isPending}
                                 {...field}
@@ -593,13 +574,10 @@ export default function StoreForm({ item }: StoreFormProps) {
                         control={form.control}
                         name="ward"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Ward
-                              <span className="opt">OPTIONAL</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel optional>Ward</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="e.g. Mikocheni"
                                 disabled={isPending}
                                 {...field}
@@ -615,13 +593,10 @@ export default function StoreForm({ item }: StoreFormProps) {
                         control={form.control}
                         name="postalCode"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Postal code
-                              <span className="opt">OPTIONAL</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel optional>Postal code</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="e.g. 14110"
                                 disabled={isPending}
                                 {...field}
@@ -662,12 +637,9 @@ export default function StoreForm({ item }: StoreFormProps) {
                         name="latitude"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Latitude
-                              <span className="opt">OPTIONAL</span>
-                            </FormLabel>
+                            <FieldLabel optional>Latitude</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 type="number"
                                 step="any"
                                 placeholder="e.g. -6.7924"
@@ -693,12 +665,9 @@ export default function StoreForm({ item }: StoreFormProps) {
                         name="longitude"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Longitude
-                              <span className="opt">OPTIONAL</span>
-                            </FormLabel>
+                            <FieldLabel optional>Longitude</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 type="number"
                                 step="any"
                                 placeholder="e.g. 39.2083"

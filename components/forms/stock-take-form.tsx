@@ -15,14 +15,12 @@ import {
   Trash2,
   AlertTriangle,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -45,7 +43,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import {
+  ControlBox,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlInputClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import { useToast } from "@/hooks/use-toast";
 import {
   Alert,
@@ -227,22 +233,20 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
             </header>
 
             <div className={styles.formBody}>
-              <div className={styles.fieldRow}>
+              <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="locationType"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Where will the count run?
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Where will the count run?</FieldLabel>
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
                         disabled={isPending}
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className={controlSelectTriggerClass}>
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -263,15 +267,15 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
                   control={form.control}
                   name="cycleCountType"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>Count type</FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Count type</FieldLabel>
                       <Select
                         value={field.value ?? "FULL"}
                         onValueChange={field.onChange}
                         disabled={isPending}
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className={controlSelectTriggerClass}>
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -285,9 +289,9 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
                           ))}
                         </SelectContent>
                       </Select>
-                      <p className="text-[11px] text-muted-foreground">
+                      <FieldHint>
                         {CYCLE_COUNT_TYPE_DESCRIPTIONS[field.value ?? "FULL"]}
-                      </p>
+                      </FieldHint>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -301,15 +305,15 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
                       control={form.control}
                       name="abcClass"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">ABC class</FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>ABC class</FieldLabel>
                           <Select
                             value={field.value ?? ""}
                             onValueChange={field.onChange}
                             disabled={isPending}
                           >
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger className={controlSelectTriggerClass}>
                                 <SelectValue placeholder="Select ABC class" />
                               </SelectTrigger>
                             </FormControl>
@@ -337,8 +341,8 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
                       control={form.control}
                       name="departmentId"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Department</FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Department</FieldLabel>
                           <FormControl>
                             <DepartmentSelector
                               value={field.value ?? ""}
@@ -347,10 +351,10 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
                               placeholder="Select a department"
                             />
                           </FormControl>
-                          <p className="text-[11px] text-muted-foreground">
+                          <FieldHint>
                             Counts on-hand variants of products in this
                             department&apos;s categories.
-                          </p>
+                          </FieldHint>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -362,8 +366,8 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
                       control={form.control}
                       name="zoneId"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Warehouse zone</FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Warehouse zone</FieldLabel>
                           <FormControl>
                             <ZoneSelector
                               value={field.value ?? ""}
@@ -384,8 +388,8 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
                         control={form.control}
                         name="sampleMode"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Sample by</FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Sample by</FieldLabel>
                             <FormControl>
                               <RadioGroup
                                 value={field.value ?? "size"}
@@ -416,29 +420,29 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
                           control={form.control}
                           name="sampleSize"
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">
-                                Number of items to sample
-                              </FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel>Number of items to sample</FieldLabel>
                               <FormControl>
-                                <NumericFormat
-                                  customInput={Input}
-                                  thousandSeparator
-                                  allowNegative={false}
-                                  decimalScale={0}
-                                  placeholder="e.g. 25"
-                                  value={field.value ?? ""}
-                                  onValueChange={(v) =>
-                                    field.onChange(v.floatValue ?? undefined)
-                                  }
-                                  onBlur={field.onBlur}
-                                  disabled={isPending}
-                                />
+                                <ControlBox>
+                                  <NumericFormat
+                                    className={cn(controlInputClass, "tabular-nums")}
+                                    thousandSeparator
+                                    allowNegative={false}
+                                    decimalScale={0}
+                                    placeholder="e.g. 25"
+                                    value={field.value ?? ""}
+                                    onValueChange={(v) =>
+                                      field.onChange(v.floatValue ?? undefined)
+                                    }
+                                    onBlur={field.onBlur}
+                                    disabled={isPending}
+                                  />
+                                </ControlBox>
                               </FormControl>
-                              <p className="text-[11px] text-muted-foreground">
+                              <FieldHint>
                                 Capped to the number of variants with stock at the
                                 location.
-                              </p>
+                              </FieldHint>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -450,28 +454,27 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
                           control={form.control}
                           name="samplePercentage"
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">
-                                Percentage of inventory
-                              </FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel>Percentage of inventory</FieldLabel>
                               <FormControl>
-                                <NumericFormat
-                                  customInput={Input}
-                                  allowNegative={false}
-                                  decimalScale={2}
-                                  suffix="%"
-                                  placeholder="e.g. 10"
-                                  value={field.value ?? ""}
-                                  onValueChange={(v) =>
-                                    field.onChange(v.floatValue ?? undefined)
-                                  }
-                                  onBlur={field.onBlur}
-                                  disabled={isPending}
-                                />
+                                <ControlBox suffix="%">
+                                  <NumericFormat
+                                    className={cn(controlInputClass, "tabular-nums")}
+                                    allowNegative={false}
+                                    decimalScale={2}
+                                    placeholder="e.g. 10"
+                                    value={field.value ?? ""}
+                                    onValueChange={(v) =>
+                                      field.onChange(v.floatValue ?? undefined)
+                                    }
+                                    onBlur={field.onBlur}
+                                    disabled={isPending}
+                                  />
+                                </ControlBox>
                               </FormControl>
-                              <p className="text-[11px] text-muted-foreground">
+                              <FieldHint>
                                 Rounded up to at least one item.
-                              </p>
+                              </FieldHint>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -515,15 +518,11 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
                   control={form.control}
                   name="notes"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Notes
-                        <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Notes</FieldLabel>
                       <FormControl>
-                        <Textarea
+                        <ControlTextarea
                           placeholder="e.g. month-end count, incident trigger, auditor present."
-                          rows={2}
                           {...field}
                           value={field.value ?? ""}
                           disabled={isPending}

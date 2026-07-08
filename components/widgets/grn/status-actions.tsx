@@ -21,6 +21,10 @@ import {
   submitGrnForInspection,
 } from "@/lib/actions/grn-actions";
 import { useLocationConfig } from "@/hooks/use-location-config";
+import ExpensePaymentForm from "@/components/forms/expense_payment_form";
+import { resolveBillForLpo } from "@/lib/actions/grn-bill-actions";
+import { grnDeliveryValue, computeBillPrefill } from "@/lib/grn-utils";
+import type { Expense } from "@/types/expense/type";
 
 interface Props {
   grn: Grn;
@@ -47,6 +51,9 @@ export function GrnStatusActions({ grn }: Props) {
       {canReceive && (
         <ReceiveButton
           grnId={grn.id}
+          lpoId={grn.lpoId}
+          items={grn.items}
+          currency={grn.currency}
           pendingInspection={pendingInspection}
           fromInspection={grn.status === "INSPECTION_HOLD"}
         />
@@ -64,10 +71,16 @@ function hasPendingInspection(items: GrnItem[]): boolean {
 
 function ReceiveButton({
   grnId,
+  lpoId,
+  items,
+  currency,
   pendingInspection,
   fromInspection,
 }: {
   grnId: string;
+  lpoId: string | null;
+  items: GrnItem[];
+  currency: string | null;
   pendingInspection: boolean;
   fromInspection: boolean;
 }) {
@@ -76,9 +89,14 @@ function ReceiveButton({
   const { toast } = useToast();
   const router = useRouter();
 
+  // Post-receive payment prompt state.
+  const [payExpense, setPayExpense] = useState<Expense | null>(null);
+  const [payPrefill, setPayPrefill] = useState(0);
+  const [payOpen, setPayOpen] = useState(false);
+
   const onConfirm = () => {
     startTransition(() => {
-      receiveGrn(grnId).then((res) => {
+      receiveGrn(grnId).then(async (res) => {
         if (!res || res.responseType === "error") {
           toast({
             variant: "destructive",
@@ -93,38 +111,80 @@ function ReceiveButton({
           title: "GRN received",
           description: res.message,
         });
+
+        // Offer to settle the supplier bill at the receipt moment.
+        // Best-effort: any bill-resolution failure must never disrupt the
+        // already-successful receipt — fall through to a normal refresh.
+        if (lpoId) {
+          try {
+            const resolution = await resolveBillForLpo(lpoId);
+            if (
+              resolution &&
+              resolution.expense.status === "APPROVED" &&
+              resolution.expense.paymentStatus !== "PAID"
+            ) {
+              setPayExpense(resolution.expense);
+              setPayPrefill(
+                computeBillPrefill(
+                  grnDeliveryValue(items),
+                  resolution.expense.balanceDue,
+                  resolution.lpoFullyReceived,
+                  currency === resolution.expense.currencyCode,
+                ),
+              );
+              setPayOpen(true);
+              return; // defer refresh until the payment sheet closes
+            }
+          } catch {
+            // ignore — receipt already succeeded; just refresh below
+          }
+        }
         router.refresh();
       });
     });
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="default" disabled={pendingInspection}>
-          <CheckCircle2 className="h-4 w-4 mr-1.5" /> Receive into Inventory
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Receive this GRN?</DialogTitle>
-          <DialogDescription>
-            {fromInspection
-              ? "Only items marked PASSED or PARTIAL will be added to inventory. Failed items stay out. This action can't be undone."
-              : "Stock will be added to inventory, batches will be created, and serial numbers registered. This action can't be undone."}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="secondary" onClick={() => setOpen(false)} disabled={isPending}>
-            Cancel
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button variant="default" disabled={pendingInspection}>
+            <CheckCircle2 className="h-4 w-4 mr-1.5" /> Receive into Inventory
           </Button>
-          <Button onClick={onConfirm} disabled={isPending}>
-            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Receive
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Receive this GRN?</DialogTitle>
+            <DialogDescription>
+              {fromInspection
+                ? "Only items marked PASSED or PARTIAL will be added to inventory. Failed items stay out. This action can't be undone."
+                : "Stock will be added to inventory, batches will be created, and serial numbers registered. This action can't be undone."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setOpen(false)} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button onClick={onConfirm} disabled={isPending}>
+              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Receive
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {payExpense && (
+        <ExpensePaymentForm
+          expense={payExpense}
+          prefillAmount={payPrefill}
+          open={payOpen}
+          onOpenChange={(o) => {
+            setPayOpen(o);
+            if (!o) router.refresh();
+          }}
+          onRecorded={() => setPayOpen(false)}
+        />
+      )}
+    </>
   );
 }
 

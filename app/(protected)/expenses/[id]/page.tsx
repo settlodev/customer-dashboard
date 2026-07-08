@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getExpense, getExpenseTimeline } from "@/lib/actions/expense-actions";
 import { listExpensePayments } from "@/lib/actions/expense-payment-actions";
+import { listExpenseCreditNotes } from "@/lib/actions/expense-credit-note-actions";
 import { listExpenseAttachments } from "@/lib/actions/expense-attachment-actions";
 import { getAccountingLocationSettings } from "@/lib/actions/accounting-location-settings-actions";
 import {
@@ -65,8 +66,9 @@ export default async function ExpensesDetailPage({
 
   if (!expense) notFound();
 
-  const [payments, attachments, timeline] = await Promise.all([
+  const [payments, creditNotes, attachments, timeline] = await Promise.all([
     listExpensePayments(expense.id),
+    listExpenseCreditNotes(expense.id),
     listExpenseAttachments(expense.id),
     getExpenseTimeline(expense.id),
   ]);
@@ -102,6 +104,7 @@ export default async function ExpensesDetailPage({
         <ExpenseDetailClient
           expense={expense}
           payments={payments}
+          creditNotes={creditNotes}
           attachments={attachments}
           timeline={timeline}
           defaultCurrency={defaultCurrency}

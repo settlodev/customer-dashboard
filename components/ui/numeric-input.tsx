@@ -37,7 +37,7 @@ const NumericInput = React.forwardRef<HTMLInputElement, NumericInputProps>(
       <NumericFormat
         getInputRef={ref}
         className={cn(
-          "flex h-9 w-full rounded-md border border-line-2 bg-card px-3 py-2 text-[13px] text-ink shadow-sm",
+          "h-11 w-full rounded-[10px] border border-line-2 bg-card px-[13px] text-sm text-ink tabular-nums",
           "transition-[border-color,box-shadow] duration-150",
           "placeholder:text-muted-2",
           "hover:border-ink-3",

@@ -52,145 +52,179 @@ interface NavItem {
   permissions?: string[];
 }
 
-const NAV_ITEMS: NavItem[] = [
+interface NavGroup {
+  /**
+   * Uppercase section heading rendered above the group. Omit for the primary
+   * block, which is shown without a heading (matches the admin design).
+   */
+  label?: string;
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
   {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
+    // Primary block — day-to-day navigation, shown without a heading.
+    items: [
+      {
+        title: "Dashboard",
+        href: "/dashboard",
+        icon: LayoutDashboard,
+      },
+      {
+        title: "Accounts",
+        href: "/accounts",
+        icon: Building2,
+        permissions: [PERM.ACCOUNTS_READ],
+      },
+      {
+        title: "Businesses",
+        href: "/businesses",
+        icon: Briefcase,
+        permissions: [PERM.ACCOUNTS_READ],
+      },
+      {
+        title: "Locations",
+        href: "/locations",
+        icon: MapPin,
+        permissions: [PERM.BUSINESS_ANALYTICS_READ],
+      },
+      {
+        title: "Customers",
+        href: "/customers",
+        icon: Users,
+        permissions: [PERM.USERS_IMPERSONATE],
+      },
+      {
+        title: "Refunds",
+        href: "/refunds",
+        icon: RotateCcw,
+        permissions: [PERM.SUPPORT_TICKETS_MANAGE],
+      },
+    ],
   },
   {
-    title: "Accounts",
-    href: "/accounts",
-    icon: Building2,
-    permissions: [PERM.ACCOUNTS_READ],
+    label: "Catalog",
+    items: [
+      {
+        title: "Packages",
+        href: "/packages",
+        icon: Package,
+        permissions: [PERM.ACCOUNTS_MANAGE],
+      },
+      {
+        title: "Addons",
+        href: "/addons",
+        icon: PackagePlus,
+        permissions: [PERM.ACCOUNTS_MANAGE],
+      },
+      {
+        title: "Features",
+        href: "/features",
+        icon: Layers,
+        permissions: [PERM.ACCOUNTS_MANAGE],
+      },
+      {
+        title: "Discounts",
+        href: "/discounts",
+        icon: Sparkles,
+        permissions: [PERM.SUPPORT_TICKETS_MANAGE],
+      },
+      {
+        title: "Coupons",
+        href: "/coupons",
+        icon: Ticket,
+        permissions: [PERM.ACCOUNTS_MANAGE],
+      },
+      {
+        title: "Credit packs",
+        href: "/credit-packs",
+        icon: Coins,
+        permissions: [PERM.ACCOUNTS_MANAGE],
+      },
+      {
+        title: "Whitelabel pricing",
+        href: "/whitelabel-pricing",
+        icon: Globe,
+        permissions: [PERM.ACCOUNTS_MANAGE],
+      },
+    ],
   },
   {
-    title: "Businesses",
-    href: "/businesses",
-    icon: Briefcase,
-    permissions: [PERM.ACCOUNTS_READ],
+    label: "Financing",
+    items: [
+      {
+        title: "Loan products",
+        href: "/loans/products",
+        icon: Landmark,
+        permissions: [PERM.LOANS_READ, PERM.LOANS_PRODUCT_MANAGE],
+      },
+      {
+        title: "Loan applications",
+        href: "/loans/applications",
+        icon: ClipboardCheck,
+        permissions: [PERM.LOANS_APPLICATIONS_READ],
+      },
+      {
+        title: "Loans",
+        href: "/loans/portfolio",
+        icon: HandCoins,
+        permissions: [PERM.LOANS_APPLICATIONS_READ],
+      },
+      {
+        title: "Funding sources",
+        href: "/loans/funding-sources",
+        icon: Wallet,
+        permissions: [PERM.LOANS_FUNDING_MANAGE],
+      },
+    ],
   },
   {
-    title: "Locations",
-    href: "/locations",
-    icon: MapPin,
-    permissions: [PERM.BUSINESS_ANALYTICS_READ],
+    label: "Operations",
+    items: [
+      {
+        title: "Analytics",
+        href: "/analytics",
+        icon: BarChart3,
+        // SaaS analytics (MRR/churn/cohorts) is platform-wide with no per-account
+        // dimension; saas:revenue:read is held by admins + board, not sales.
+        permissions: [PERM.SAAS_REVENUE_READ],
+      },
+      {
+        title: "Activity Log",
+        href: "/activity-log",
+        icon: ScrollText,
+        permissions: [PERM.ACTIVITY_LOG_READ],
+      },
+      {
+        title: "Stuck Writes",
+        href: "/stuck-writes",
+        icon: WifiOff,
+        permissions: [PERM.ACTIVITY_LOG_READ],
+      },
+    ],
   },
   {
-    title: "Activity Log",
-    href: "/activity-log",
-    icon: ScrollText,
-    permissions: [PERM.ACTIVITY_LOG_READ],
-  },
-  {
-    title: "Stuck Writes",
-    href: "/stuck-writes",
-    icon: WifiOff,
-    permissions: [PERM.ACTIVITY_LOG_READ],
-  },
-  {
-    title: "Customers",
-    href: "/customers",
-    icon: Users,
-    permissions: [PERM.USERS_IMPERSONATE],
-  },
-  {
-    title: "Refunds",
-    href: "/refunds",
-    icon: RotateCcw,
-    permissions: [PERM.SUPPORT_TICKETS_MANAGE],
-  },
-  {
-    title: "Packages",
-    href: "/packages",
-    icon: Package,
-    permissions: [PERM.ACCOUNTS_MANAGE],
-  },
-  {
-    title: "Addons",
-    href: "/addons",
-    icon: PackagePlus,
-    permissions: [PERM.ACCOUNTS_MANAGE],
-  },
-  {
-    title: "Features",
-    href: "/features",
-    icon: Layers,
-    permissions: [PERM.ACCOUNTS_MANAGE],
-  },
-  {
-    title: "Discounts",
-    href: "/discounts",
-    icon: Sparkles,
-    permissions: [PERM.SUPPORT_TICKETS_MANAGE],
-  },
-  {
-    title: "Coupons",
-    href: "/coupons",
-    icon: Ticket,
-    permissions: [PERM.ACCOUNTS_MANAGE],
-  },
-  {
-    title: "Credit packs",
-    href: "/credit-packs",
-    icon: Coins,
-    permissions: [PERM.ACCOUNTS_MANAGE],
-  },
-  {
-    title: "Whitelabel pricing",
-    href: "/whitelabel-pricing",
-    icon: Globe,
-    permissions: [PERM.ACCOUNTS_MANAGE],
-  },
-  {
-    title: "Analytics",
-    href: "/analytics",
-    icon: BarChart3,
-    // SaaS analytics (MRR/churn/cohorts) is platform-wide with no per-account
-    // dimension; saas:revenue:read is held by admins + board, not sales.
-    permissions: [PERM.SAAS_REVENUE_READ],
-  },
-  {
-    title: "Internal Users",
-    href: "/users",
-    icon: UserCog,
-    permissions: [PERM.ACCOUNTS_MANAGE],
-  },
-  {
-    title: "Roles",
-    href: "/roles",
-    icon: ShieldCheck,
-    permissions: [PERM.ROLES_MANAGE],
-  },
-  {
-    title: "External Agents",
-    href: "/support-agents",
-    icon: Headset,
-    permissions: [PERM.ACCOUNTS_MANAGE],
-  },
-  {
-    title: "Loan products",
-    href: "/loans/products",
-    icon: Landmark,
-    permissions: [PERM.LOANS_READ, PERM.LOANS_PRODUCT_MANAGE],
-  },
-  {
-    title: "Loan applications",
-    href: "/loans/applications",
-    icon: ClipboardCheck,
-    permissions: [PERM.LOANS_APPLICATIONS_READ],
-  },
-  {
-    title: "Loans",
-    href: "/loans/portfolio",
-    icon: HandCoins,
-    permissions: [PERM.LOANS_APPLICATIONS_READ],
-  },
-  {
-    title: "Funding sources",
-    href: "/loans/funding-sources",
-    icon: Wallet,
-    permissions: [PERM.LOANS_FUNDING_MANAGE],
+    label: "Team & Access",
+    items: [
+      {
+        title: "Internal Users",
+        href: "/users",
+        icon: UserCog,
+        permissions: [PERM.ACCOUNTS_MANAGE],
+      },
+      {
+        title: "Roles",
+        href: "/roles",
+        icon: ShieldCheck,
+        permissions: [PERM.ROLES_MANAGE],
+      },
+      {
+        title: "External Agents",
+        href: "/support-agents",
+        icon: Headset,
+        permissions: [PERM.ACCOUNTS_MANAGE],
+      },
+    ],
   },
 ];
 
@@ -200,11 +234,14 @@ interface AdminSidebarProps {
   onClose?: () => void;
 }
 
-function visibleNavItems(token: AuthToken | null | undefined): NavItem[] {
-  return NAV_ITEMS.filter((item) => {
-    if (!item.permissions || item.permissions.length === 0) return true;
-    return hasInternalPermission(token, ...item.permissions);
-  });
+function visibleGroups(token: AuthToken | null | undefined): NavGroup[] {
+  return NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => {
+      if (!item.permissions || item.permissions.length === 0) return true;
+      return hasInternalPermission(token, ...item.permissions);
+    }),
+  })).filter((group) => group.items.length > 0);
 }
 
 function pathMatches(href: string, pathname: string): boolean {
@@ -213,7 +250,7 @@ function pathMatches(href: string, pathname: string): boolean {
 
 function AdminSidebarContent({ token, isMobile, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
-  const items = visibleNavItems(token);
+  const groups = visibleGroups(token);
   const [isLoggingOut, startLogout] = useTransition();
 
   const roleLabel = token?.internalRole
@@ -265,32 +302,44 @@ function AdminSidebarContent({ token, isMobile, onClose }: AdminSidebarProps) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-        {items.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathMatches(item.href, pathname);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={isMobile ? onClose : undefined}
-              className={cn(
-                "flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-ink text-card"
-                  : "text-ink-3 hover:bg-canvas hover:text-ink",
-              )}
-            >
-              <Icon
-                className={cn(
-                  "h-4 w-4",
-                  isActive ? "text-card" : "text-primary",
-                )}
-              />
-              <span>{item.title}</span>
-            </Link>
-          );
-        })}
+      <nav className="flex-1 overflow-y-auto px-3 py-2 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+        {groups.map((group, groupIndex) => (
+          <div key={group.label ?? "primary"}>
+            {groupIndex > 0 && <div className="mx-2 my-2 h-px bg-line" />}
+            {group.label && (
+              <div className="px-2 pb-1 pt-2 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-2">
+                {group.label}
+              </div>
+            )}
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathMatches(item.href, pathname);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={isMobile ? onClose : undefined}
+                    className={cn(
+                      "flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-ink text-card"
+                        : "text-ink-3 hover:bg-canvas hover:text-ink",
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "h-4 w-4",
+                        isActive ? "text-card" : "text-primary",
+                      )}
+                    />
+                    <span>{item.title}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Account footer */}

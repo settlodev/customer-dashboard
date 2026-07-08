@@ -9,15 +9,30 @@ import type { AccountingPeriod } from "@/types/accounting-period/type";
 
 import { accountingUrl } from "./accounting-client";
 
-export async function listAccountingPeriods(): Promise<AccountingPeriod[]> {
+export async function listAccountingPeriods(
+  locationId: string,
+): Promise<FormResponse<AccountingPeriod[]>> {
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(
       accountingUrl(`/api/v1/accounting-periods`),
+      { params: { locationId } },
     );
-    return (parseStringify(data) as AccountingPeriod[]) ?? [];
-  } catch {
-    return [];
+    return {
+      responseType: "success",
+      message: "Accounting periods loaded",
+      data: (parseStringify(data) as AccountingPeriod[]) ?? [],
+    };
+  } catch (error: unknown) {
+    console.error("listAccountingPeriods failed", error);
+    return {
+      responseType: "error",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to load accounting periods",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
   }
 }
 

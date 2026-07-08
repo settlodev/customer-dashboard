@@ -14,6 +14,15 @@ export declare interface MenuItemArgType {
     /** When false, location-wide report nav items are filtered out (read_own users). Default true. */
     reportsReadAll?: boolean;
     /**
+     * Whether the account has at least one PACKAGING-material stock variant.
+     * Surfaces the "Packaging report" nav link when true. Unlike the other
+     * gates here, this defaults to FALSE (hidden) when unset — most accounts
+     * don't stock packaging materials, and `hasPackagingStock()` already
+     * fails closed (returns false) on error, so there's no loading state to
+     * protect by defaulting open.
+     */
+    hasPackaging?: boolean;
+    /**
      * Active store id when operating in store mode. Used to deep-link the
      * "Store profile" entry to the active store's detail page. Ignored in
      * the normal / warehouse menus.

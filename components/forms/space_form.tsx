@@ -29,16 +29,19 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldLabel,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -311,12 +314,10 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
                     control={form.control}
                     name="name"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Name <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel required>Name</FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             placeholder="e.g. Table 1, Bar Area"
                             disabled={isPending}
                             {...field}
@@ -332,13 +333,10 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
                     control={form.control}
                     name="code"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Code
-                          <span className="opt">OPTIONAL</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel optional>Code</FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             placeholder="e.g. T1"
                             disabled={isPending}
                             {...field}
@@ -354,17 +352,15 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
                     control={form.control}
                     name="type"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Type <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel required>Type</FieldLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value ?? ""}
                           disabled={isPending}
                         >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger className={controlSelectTriggerClass}>
                               <SelectValue placeholder="Select type" />
                             </SelectTrigger>
                           </FormControl>
@@ -449,13 +445,10 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
                         control={form.control}
                         name="capacity"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Maximum capacity{" "}
-                              <span className="req">*</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel required>Maximum capacity</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 type="number"
                                 placeholder="e.g. 4"
                                 min={1}
@@ -480,13 +473,10 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
                         control={form.control}
                         name="minCapacity"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Minimum capacity
-                              <span className="opt">OPTIONAL</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel optional>Minimum capacity</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 type="number"
                                 placeholder="No minimum"
                                 min={1}
@@ -512,13 +502,15 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
                           control={form.control}
                           name="turnTimeMinutes"
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className={styles.fieldLabel}>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel>
                                 Turn time
-                                <span className="opt">MINUTES</span>
-                              </FormLabel>
+                                <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
+                                  MINUTES
+                                </span>
+                              </FieldLabel>
                               <FormControl>
-                                <Input
+                                <ControlInput
                                   type="number"
                                   placeholder="Default: 15"
                                   min={0}
@@ -569,18 +561,15 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
                         control={form.control}
                         name="parentSpaceId"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Parent space
-                              <span className="opt">OPTIONAL</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel optional>Parent space</FieldLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value ?? ""}
                               disabled={isPending}
                             >
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className={controlSelectTriggerClass}>
                                   <SelectValue placeholder="None (top-level)" />
                                 </SelectTrigger>
                               </FormControl>
@@ -605,18 +594,15 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
                         control={form.control}
                         name="floorPlanId"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Floor plan
-                              <span className="opt">OPTIONAL</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel optional>Floor plan</FieldLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value ?? ""}
                               disabled={isPending}
                             >
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className={controlSelectTriggerClass}>
                                   <SelectValue placeholder="None" />
                                 </SelectTrigger>
                               </FormControl>
@@ -641,13 +627,10 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
                         control={form.control}
                         name="sortOrder"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Sort order
-                              <span className="opt">OPTIONAL</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel optional>Sort order</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 type="number"
                                 placeholder="0"
                                 min={0}
@@ -672,13 +655,15 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
                         control={form.control}
                         name="color"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>
                               Color
-                              <span className="opt">HEX</span>
-                            </FormLabel>
+                              <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
+                                HEX
+                              </span>
+                            </FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="#10b981"
                                 disabled={isPending}
                                 {...field}
@@ -694,13 +679,10 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
                         control={form.control}
                         name="posX"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Position X
-                              <span className="opt">OPTIONAL</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel optional>Position X</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 type="number"
                                 placeholder="0"
                                 min={0}
@@ -725,13 +707,10 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
                         control={form.control}
                         name="posY"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Position Y
-                              <span className="opt">OPTIONAL</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel optional>Position Y</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 type="number"
                                 placeholder="0"
                                 min={0}
@@ -781,18 +760,15 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
                           control={form.control}
                           name="tableStatus"
                           render={({ field }) => (
-                            <FormItem className="sm:col-span-2">
-                              <FormLabel className={styles.fieldLabel}>
-                                Live table status
-                                <span className="opt">OPTIONAL</span>
-                              </FormLabel>
+                            <FormItem className="sm:col-span-2 space-y-[7px]">
+                              <FieldLabel optional>Live table status</FieldLabel>
                               <Select
                                 onValueChange={field.onChange}
                                 value={field.value ?? ""}
                                 disabled={isPending}
                               >
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger className={controlSelectTriggerClass}>
                                     <SelectValue placeholder="Not set" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -887,16 +863,12 @@ export default function SpaceForm({ item, mode }: SpaceFormProps) {
                       control={form.control}
                       name="description"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className={styles.fieldLabel}>
-                            Notes
-                            <span className="opt">OPTIONAL</span>
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel optional>Notes</FieldLabel>
                           <FormControl>
-                            <Textarea
+                            <ControlTextarea
                               placeholder="e.g. Window seat, near patio entrance, accessible…"
                               disabled={isPending}
-                              rows={5}
                               {...field}
                               value={field.value ?? ""}
                             />

@@ -19,7 +19,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -34,8 +33,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { NumericFormat } from "react-number-format";
+import { cn } from "@/lib/utils";
+import {
+  ControlBox,
+  ControlTextarea,
+  FieldLabel,
+  controlInputClass,
+} from "@/components/ui/field";
 import { useToast } from "@/hooks/use-toast";
 import {
   Alert,
@@ -134,59 +139,49 @@ export default function StockTransferRequestForm() {
             </header>
 
             <div className={styles.formBody}>
-              <div className={styles.fieldRow}>
-                <FormField
-                  control={form.control}
-                  name="sourceLocationId"
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 min-w-0">
-                      <FormLabel className={styles.fieldLabel}>
-                        Source <span className="req">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <DestinationSelector
-                          value={field.value}
-                          isDisabled={isPending}
-                          placeholder="Select source"
-                          loadOptions={getRequestSources}
-                          onChange={(id, type) => {
-                            field.onChange(id);
-                            form.setValue("sourceLocationType", type, {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                            });
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="sourceLocationId"
+                render={({ field }) => (
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel required>Source</FieldLabel>
+                    <FormControl>
+                      <DestinationSelector
+                        value={field.value}
+                        isDisabled={isPending}
+                        placeholder="Select source"
+                        loadOptions={getRequestSources}
+                        onChange={(id, type) => {
+                          field.onChange(id);
+                          form.setValue("sourceLocationType", type, {
+                            shouldValidate: true,
+                            shouldDirty: true,
+                          });
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <div className={styles.fieldRow} style={{ marginTop: 14 }}>
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 min-w-0">
-                      <FormLabel className={styles.fieldLabel}>
-                        Notes
-                        <span className="opt">OPTIONAL</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Why you need this stock, target date…"
-                          rows={2}
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem className="mt-[15px] space-y-[7px]">
+                    <FieldLabel optional>Notes</FieldLabel>
+                    <FormControl>
+                      <ControlTextarea
+                        placeholder="Why you need this stock, target date…"
+                        {...field}
+                        value={field.value ?? ""}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             </div>
           </section>
 
@@ -243,10 +238,8 @@ export default function StockTransferRequestForm() {
                         control={form.control}
                         name={`items.${index}.stockVariantId`}
                         render={({ field: f }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">
-                              Stock item <span className="text-red-500">*</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel required>Stock item</FieldLabel>
                             <FormControl>
                               <StockVariantSelector
                                 value={f.value}
@@ -262,21 +255,21 @@ export default function StockTransferRequestForm() {
                         control={form.control}
                         name={`items.${index}.requestedQuantity`}
                         render={({ field: f }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">
-                              Quantity <span className="text-red-500">*</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel required>Quantity</FieldLabel>
                             <FormControl>
-                              <NumericFormat
-                                className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
-                                value={f.value}
-                                onValueChange={(v) =>
-                                  f.onChange(v.value ? Number(v.value) : 0)
-                                }
-                                thousandSeparator
-                                placeholder="0"
-                                disabled={isPending}
-                              />
+                              <ControlBox>
+                                <NumericFormat
+                                  className={cn(controlInputClass, "tabular-nums")}
+                                  value={f.value}
+                                  onValueChange={(v) =>
+                                    f.onChange(v.value ? Number(v.value) : 0)
+                                  }
+                                  thousandSeparator
+                                  placeholder="0"
+                                  disabled={isPending}
+                                />
+                              </ControlBox>
                             </FormControl>
                             <FormMessage />
                           </FormItem>

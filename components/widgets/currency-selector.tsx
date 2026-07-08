@@ -8,6 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { controlSelectTriggerClass } from "@/components/ui/field";
 import { getCachedCountries } from "@/lib/cache/reference-data";
 
 const COMMON_CURRENCIES: { code: string; name: string }[] = [
@@ -117,7 +119,7 @@ const CurrencySelector: React.FC<Props> = ({
       disabled={isDisabled}
       {...(isRequired && { required: true })}
     >
-      <SelectTrigger className={className ?? "w-full"}>
+      <SelectTrigger className={cn(controlSelectTriggerClass, "w-full", className)}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

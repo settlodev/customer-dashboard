@@ -281,6 +281,7 @@ export interface PackageFeatureSummary {
 export interface PackageResponse {
   id: string;
   name: string;
+  code: string | null;
   description: string | null;
   basePrice: number;
   billingInterval: BillingInterval | null;
@@ -288,6 +289,7 @@ export interface PackageResponse {
   includedWarehouseCount: number | null;
   includedStoreCount: number | null;
   isActive: boolean;
+  isDefault: boolean | null;
   version: number | null;
   createdAt: string | null;
   updatedAt: string | null;
@@ -638,4 +640,68 @@ export interface PackageForecast {
   /** Free-text caveat shown beneath the chart. */
   note: string | null;
   isLive: boolean;
+}
+
+// ── Package detail: Billing-sourced sections ────────────────────────
+
+/** One commitment tier from the package price breakdown (1/3/6/12 months). */
+export interface PackageBreakdownPeriod {
+  months: number;
+  totalPrice: number;
+  effectiveMonthlyRate: number;
+  discountPercentage: number;
+  savingsAmount: number;
+}
+
+/** `GET /api/v1/packages/{id}/breakdown` — term pricing computed by the backend. */
+export interface PackageBreakdownResponse {
+  packageId: string;
+  packageName: string;
+  monthlyPrice: number;
+  breakdowns: PackageBreakdownPeriod[];
+}
+
+/**
+ * `GET /api/v1/admin/billing-config` — platform-wide billing config (global
+ * BillingProperties). These apply to every package, not just one.
+ */
+export interface BillingConfigResponse {
+  trialDays: number | null;
+  defaultTrialPlanCode: string | null;
+  reminderDays: number | null;
+  gracePeriodDays: number | null;
+  suspensionDays: number | null;
+  quarterlyDiscountPct: number | null;
+  semiAnnualDiscountPct: number | null;
+  annualDiscountPct: number | null;
+  defaultCurrency: string | null;
+}
+
+/**
+ * One package config/pricing change from the audit trail
+ * (`GET /api/v1/admin/packages/{id}/history`). `changes` is the field->{from,to}
+ * diff on UPDATE, a full snapshot on CREATE, or null on DEACTIVATE.
+ */
+export interface PackageHistoryEntry {
+  id: string;
+  action: string;
+  userId: string | null;
+  changes: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+/**
+ * One business subscribed to a package, from the Reports Service
+ * (`GET /api/v2/internal/metrics/saas/packages/{id}/subscribers`) — names and
+ * regions are joined from dim_business, MRR/status derived from the facts.
+ */
+export interface PackageSubscriberRow {
+  businessId: string;
+  businessName: string;
+  region: string;
+  whitelabel: string;
+  locations: number;
+  mrr: number;
+  since: string | null;
+  status: string;
 }

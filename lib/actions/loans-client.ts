@@ -1,36 +1,38 @@
 /**
- * Shared URL helper + endpoint map for the (future) Financing service.
+ * Shared URL helper + endpoint map for the borrower (customer-side) loan pages,
+ * which talk to the Settlo Loan Management Service (LMS) — the same service the
+ * admin console uses via `LOAN_MANAGEMENT_SERVICE_URL`.
  *
  * Mirrors `accounting-client.ts` / `inventory-client.ts`: server actions
  * prefix their requests with `loansUrl(path)` so the shared ApiClient sees a
  * full URL and skips its own service routing while still attaching auth +
  * tenant headers.
  *
- * ⚠️ The financing backend does not exist yet. `loans-actions.ts` returns
- * typed mock data today; when the service ships, set `FINANCING_SERVICE_URL`
- * and replace each action's mock read with the `apiClient.<verb>(loansUrl(...))`
- * call already sketched in comments there — nothing else needs to change.
+ * ⚠️ The borrower endpoints below are still MOCK-backed. The LMS is live for the
+ * admin console, but the borrower-facing endpoints in `LOAN_ENDPOINTS`
+ * (eligibility, a "my loans" list, repayment) don't exist on it yet, so
+ * `loans-actions.ts` returns typed mock data. To go live: wire those actions to
+ * the real endpoints, then set `LOANS_BORROWER_BACKEND_READY=true`.
  */
 
-const FINANCING_SERVICE_URL =
-  process.env.FINANCING_SERVICE_URL ??
-  process.env.ACCOUNTING_SERVICE_URL ??
-  "";
+const LOAN_SERVICE_URL = process.env.LOAN_MANAGEMENT_SERVICE_URL ?? "";
 
 export function loansUrl(path: string): string {
-  return `${FINANCING_SERVICE_URL}${path}`;
+  return `${LOAN_SERVICE_URL}${path}`;
 }
 
 /**
- * True once a dedicated Financing service URL is configured. The server
- * actions branch on this: when set, they hit the live endpoints; otherwise
- * they fall back to the typed mock. Gating on the *dedicated* env (not the
- * accounting fallback) means production doesn't accidentally route loan calls
- * to Accounting before the service exists.
+ * Whether the borrower pages call the real LMS instead of returning typed mock
+ * data. Gated on an EXPLICIT opt-in — NOT merely the presence of the service URL
+ * — because the LMS doesn't yet expose borrower-facing endpoints matching
+ * `LOAN_ENDPOINTS`. Pointing the admin console at the LMS (setting
+ * `LOAN_MANAGEMENT_SERVICE_URL`) must not silently flip the customer pages onto
+ * endpoints that 404. Flip `LOANS_BORROWER_BACKEND_READY` on only after wiring
+ * `loans-actions.ts` to the real endpoints.
  */
-export const FINANCING_BACKEND_READY = Boolean(
-  process.env.FINANCING_SERVICE_URL,
-);
+export const FINANCING_BACKEND_READY =
+  Boolean(LOAN_SERVICE_URL) &&
+  /^(1|true|yes|on)$/i.test(process.env.LOANS_BORROWER_BACKEND_READY ?? "");
 
 /** The endpoints the Financing service is expected to expose. */
 export const LOAN_ENDPOINTS = {

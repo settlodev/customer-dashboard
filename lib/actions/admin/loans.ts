@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import ApiClient from "@/lib/settlo-api-client";
 import { getStaffAuthToken } from "@/lib/auth-utils";
+import { getAdminBusinessDetail } from "@/lib/actions/admin/businesses";
 import { parseStringify } from "@/lib/utils";
 import type { ApiResponse, FormResponse } from "@/types/types";
 import {
@@ -48,6 +49,43 @@ function loansClient() {
 
 const PRODUCTS_PATH = "/api/v1/loan-products";
 const APPLICATIONS_PATH = "/api/v1/loan-applications";
+const BUSINESS_DIRECTORY_CAP = 40;
+
+export interface BusinessRef {
+  name: string;
+  owner: string | null;
+}
+
+/**
+ * Best-effort resolution of LMS `businessId`s to display names (+ owner), by
+ * joining the Accounts admin API. Dedups and caps the number of lookups. Fails
+ * soft per-id — a loan officer without Accounts access simply gets no names, so
+ * callers fall back to the raw id. Returns a plain map keyed by businessId.
+ */
+export async function resolveBusinessDirectory(
+  ids: string[],
+): Promise<Record<string, BusinessRef>> {
+  const distinct = Array.from(new Set(ids.filter(Boolean))).slice(
+    0,
+    BUSINESS_DIRECTORY_CAP,
+  );
+  const entries = await Promise.all(
+    distinct.map(async (id) => {
+      try {
+        const b = await getAdminBusinessDetail(id);
+        return [
+          id,
+          { name: b.name, owner: b.accountFullName ?? b.accountEmail ?? null },
+        ] as const;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  const dir: Record<string, BusinessRef> = {};
+  for (const e of entries) if (e) dir[e[0]] = e[1];
+  return dir;
+}
 const LOANS_PATH = "/api/v1/loans";
 const DISBURSEMENTS_PATH = "/api/v1/disbursements";
 const FUNDING_SOURCES_PATH = "/api/v1/funding-sources";
@@ -715,6 +753,115 @@ export async function restructureLoan(
     return parseStringify({
       responseType: "error",
       message: error?.message || "Failed to restructure loan",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+// ── Quick active toggle (list rows) ───────────────────────────────────
+// Symmetric activate/deactivate: fetch the current entity, round-trip its
+// values through the update DTO with the new `active` flag. The stored
+// values were valid at create/update time, so the PUT re-validates cleanly.
+
+function productToUpdateBody(
+  p: LoanProductResponse,
+): Omit<UpdateLoanProductRequest, "active"> {
+  return {
+    name: p.name,
+    description: p.description ?? undefined,
+    pricingType: p.pricingType,
+    interestMethod: p.interestMethod,
+    repaymentFrequency: p.repaymentFrequency,
+    flatFeeRate: p.flatFeeRate ?? undefined,
+    factorRate: p.factorRate ?? undefined,
+    annualInterestRate: p.annualInterestRate ?? undefined,
+    originationFeeRate: p.originationFeeRate ?? undefined,
+    minPrincipal: p.minPrincipal,
+    maxPrincipal: p.maxPrincipal,
+    minTermDays: p.minTermDays,
+    maxTermDays: p.maxTermDays,
+    maxConcurrentLoansPerBorrower: p.maxConcurrentLoansPerBorrower,
+    holdbackPercent: p.holdbackPercent ?? undefined,
+    processingFee: p.processingFee ?? undefined,
+    minInterestRate: p.minInterestRate ?? undefined,
+    allocationOrder: p.allocationOrder ?? undefined,
+    gracePeriodDays: p.gracePeriodDays ?? undefined,
+    penaltyRatePerDay: p.penaltyRatePerDay ?? undefined,
+    lateFeeFlat: p.lateFeeFlat ?? undefined,
+    defaultThresholdDays: p.defaultThresholdDays ?? undefined,
+    termsTemplate: p.termsTemplate ?? undefined,
+  };
+}
+
+/** Toggle a loan product's availability. Requires `loans:product_manage`. */
+export async function setLoanProductActive(
+  id: string,
+  active: boolean,
+): Promise<FormResponse<LoanProductResponse>> {
+  try {
+    const current = await getLoanProduct(id);
+    const body: UpdateLoanProductRequest = {
+      ...productToUpdateBody(current),
+      active,
+    };
+    const result = await loansClient().put<
+      LoanProductResponse,
+      UpdateLoanProductRequest
+    >(`${PRODUCTS_PATH}/${id}`, body);
+    revalidatePath("/admin/loans/products");
+    revalidatePath(`/admin/loans/products/${id}`);
+    return parseStringify({
+      responseType: "success",
+      message: active ? "Product reactivated" : "Product deactivated",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to update product",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+function fundingToUpdateBody(
+  s: FundingSourceResponse,
+): Omit<UpdateFundingSourceRequest, "active"> {
+  return {
+    name: s.name,
+    capitalLimit: s.capitalLimit ?? undefined,
+    glAccountRef: s.glAccountRef ?? undefined,
+    disbursementMethod: s.disbursementMethod,
+    bankGatewayKey: s.bankGatewayKey ?? undefined,
+  };
+}
+
+/** Toggle a funding source's availability. Requires `loans:funding_manage`. */
+export async function setFundingSourceActive(
+  id: string,
+  active: boolean,
+): Promise<FormResponse<FundingSourceResponse>> {
+  try {
+    const current = await getFundingSource(id);
+    const body: UpdateFundingSourceRequest = {
+      ...fundingToUpdateBody(current),
+      active,
+    };
+    const result = await loansClient().put<
+      FundingSourceResponse,
+      UpdateFundingSourceRequest
+    >(`${FUNDING_SOURCES_PATH}/${id}`, body);
+    revalidatePath("/admin/loans/funding-sources");
+    revalidatePath(`/admin/loans/funding-sources/${id}`);
+    return parseStringify({
+      responseType: "success",
+      message: active ? "Source reactivated" : "Source deactivated",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to update funding source",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }

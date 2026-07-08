@@ -26,13 +26,21 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import {
+  ControlBox,
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlInputClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -43,7 +51,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Alert,
   AlertBody,
@@ -128,18 +135,24 @@ function FieldRow({
   cols?: number;
   children: React.ReactNode;
 }) {
+  const colClass =
+    cols >= 4
+      ? "sm:grid-cols-2 lg:grid-cols-4"
+      : cols === 3
+        ? "sm:grid-cols-2 lg:grid-cols-3"
+        : cols === 2
+          ? "sm:grid-cols-2"
+          : "";
   return (
     <div
-      className={styles.fieldRow}
-      style={{ ["--cols" as never]: cols } as React.CSSProperties}
+      className={cn(
+        "grid grid-cols-1 gap-x-[18px] gap-y-[15px] [&:not(:first-child)]:mt-[15px]",
+        colClass,
+      )}
     >
       {children}
     </div>
   );
-}
-
-function ReqMark({ show }: { show?: boolean }) {
-  return show ? <span className="text-primary"> *</span> : null;
 }
 
 // ── Field helpers ─────────────────────────────────────────────────────
@@ -168,26 +181,21 @@ function TextField({
       control={form.control}
       name={name}
       render={({ field }) => (
-        <FormItem className="min-w-0">
-          <FormLabel className={styles.fieldLabel}>
-            {label}
-            <ReqMark show={required} />
-          </FormLabel>
+        <FormItem className="min-w-0 space-y-[7px]">
+          <FieldLabel required={required}>{label}</FieldLabel>
           <FormControl>
-            <div className={styles.inputWithPrefix}>
-              {icon ? <span className={styles.inputPrefix}>{icon}</span> : null}
-              <Input
-                placeholder={placeholder}
-                value={(field.value as string) ?? ""}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                name={field.name}
-                ref={field.ref}
-                disabled={disabled}
-              />
-            </div>
+            <ControlInput
+              prefix={icon}
+              placeholder={placeholder}
+              value={(field.value as string) ?? ""}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              name={field.name}
+              ref={field.ref}
+              disabled={disabled}
+            />
           </FormControl>
-          {hint ? <p className={styles.fieldHint}>{hint}</p> : null}
+          {hint ? <FieldHint>{hint}</FieldHint> : null}
           <FormMessage />
         </FormItem>
       )}
@@ -223,19 +231,13 @@ function NumberField({
       control={form.control}
       name={name}
       render={({ field }) => (
-        <FormItem className="min-w-0">
-          <FormLabel className={styles.fieldLabel}>
-            {label}
-            <ReqMark show={required} />
-          </FormLabel>
+        <FormItem className="min-w-0 space-y-[7px]">
+          <FieldLabel required={required}>{label}</FieldLabel>
           <FormControl>
-            <div className={styles.inputWithPrefix}>
-              {prefix ? (
-                <span className={styles.inputPrefix}>{prefix}</span>
-              ) : null}
+            <ControlBox suffix={prefix || undefined}>
               <NumericFormat
                 getInputRef={field.ref}
-                customInput={Input}
+                className={cn(controlInputClass, "tabular-nums")}
                 thousandSeparator={thousands ? "," : undefined}
                 allowNegative={false}
                 decimalScale={decimalScale}
@@ -252,9 +254,9 @@ function NumberField({
                 name={field.name}
                 disabled={disabled}
               />
-            </div>
+            </ControlBox>
           </FormControl>
-          {hint ? <p className={styles.fieldHint}>{hint}</p> : null}
+          {hint ? <FieldHint>{hint}</FieldHint> : null}
           <FormMessage />
         </FormItem>
       )}
@@ -286,18 +288,15 @@ function SelectField({
       control={form.control}
       name={name}
       render={({ field }) => (
-        <FormItem className="min-w-0">
-          <FormLabel className={styles.fieldLabel}>
-            {label}
-            <ReqMark show={required} />
-          </FormLabel>
+        <FormItem className="min-w-0 space-y-[7px]">
+          <FieldLabel required={required}>{label}</FieldLabel>
           <Select
             onValueChange={field.onChange}
             value={(field.value as string) ?? ""}
             disabled={disabled}
           >
             <FormControl>
-              <SelectTrigger>
+              <SelectTrigger className={controlSelectTriggerClass}>
                 <SelectValue placeholder={placeholder ?? "Select"} />
               </SelectTrigger>
             </FormControl>
@@ -309,7 +308,7 @@ function SelectField({
               ))}
             </SelectContent>
           </Select>
-          {hint ? <p className={styles.fieldHint}>{hint}</p> : null}
+          {hint ? <FieldHint>{hint}</FieldHint> : null}
           <FormMessage />
         </FormItem>
       )}
@@ -339,10 +338,10 @@ function TextareaField({
       control={form.control}
       name={name}
       render={({ field }) => (
-        <FormItem className="min-w-0">
-          <FormLabel className={styles.fieldLabel}>{label}</FormLabel>
+        <FormItem className="min-w-0 space-y-[7px]">
+          <FieldLabel>{label}</FieldLabel>
           <FormControl>
-            <Textarea
+            <ControlTextarea
               rows={rows ?? 5}
               placeholder={placeholder}
               value={(field.value as string) ?? ""}
@@ -353,7 +352,7 @@ function TextareaField({
               disabled={disabled}
             />
           </FormControl>
-          {hint ? <p className={styles.fieldHint}>{hint}</p> : null}
+          {hint ? <FieldHint>{hint}</FieldHint> : null}
           <FormMessage />
         </FormItem>
       )}

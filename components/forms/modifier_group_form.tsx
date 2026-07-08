@@ -18,7 +18,7 @@ import {
 import { NumericFormat } from "react-number-format";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup } from "@/components/ui/radio-group";
@@ -29,6 +29,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  ControlBox,
+  ControlInput,
+  FieldHint,
+  FieldLabel,
+  controlInputClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import {
   Form,
   FormControl,
@@ -349,20 +357,15 @@ export function ModifierGroupForm({ group, stockVariants, onCreated }: Props) {
             </header>
 
             <div className={styles.formBody}>
-              <div
-                className={styles.fieldRow}
-                style={{ ["--cols" as never]: 4 } as React.CSSProperties}
-              >
+              <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2 lg:grid-cols-4">
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
-                    <FormItem className="min-w-0">
-                      <FormLabel className={styles.fieldLabel}>
-                        Name <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="min-w-0 space-y-[7px]">
+                      <FieldLabel required>Name</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           placeholder="e.g. Milk type"
                           {...field}
                           disabled={isPending || isArchived}
@@ -377,10 +380,8 @@ export function ModifierGroupForm({ group, stockVariants, onCreated }: Props) {
                   control={form.control}
                   name="selectionType"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Selection
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Selection</FieldLabel>
                       <Select
                         onValueChange={(v) =>
                           handleSelectionTypeChange(v as "SINGLE" | "MULTI")
@@ -389,7 +390,7 @@ export function ModifierGroupForm({ group, stockVariants, onCreated }: Props) {
                         disabled={isPending || isArchived}
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className={controlSelectTriggerClass}>
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -413,10 +414,8 @@ export function ModifierGroupForm({ group, stockVariants, onCreated }: Props) {
                     control={form.control}
                     name="minSelections"
                     render={({ field }) => (
-                      <FormItem className="md:col-span-2">
-                        <FormLabel className={styles.fieldLabel}>
-                          Required?
-                        </FormLabel>
+                      <FormItem className="md:col-span-2 space-y-[7px]">
+                        <FieldLabel>Required?</FieldLabel>
                         <div className="flex h-9 items-center gap-3 rounded-md border border-line bg-card px-3">
                           <Switch
                             checked={(field.value ?? 0) >= 1}
@@ -439,12 +438,10 @@ export function ModifierGroupForm({ group, stockVariants, onCreated }: Props) {
                       control={form.control}
                       name="minSelections"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className={styles.fieldLabel}>
-                            Min
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Min</FieldLabel>
                           <FormControl>
-                            <Input
+                            <ControlInput
                               type="number"
                               min={0}
                               max={maxSelections ?? undefined}
@@ -464,12 +461,10 @@ export function ModifierGroupForm({ group, stockVariants, onCreated }: Props) {
                       control={form.control}
                       name="maxSelections"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className={styles.fieldLabel}>
-                            Max
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Max</FieldLabel>
                           <FormControl>
-                            <Input
+                            <ControlInput
                               type="number"
                               min={1}
                               {...field}
@@ -480,9 +475,9 @@ export function ModifierGroupForm({ group, stockVariants, onCreated }: Props) {
                             />
                           </FormControl>
                           {(maxSelections ?? 0) === 1 && (
-                            <p className={styles.fieldHint}>
+                            <FieldHint>
                               Max of 1 — consider switching to Single.
-                            </p>
+                            </FieldHint>
                           )}
                           <FormMessage />
                         </FormItem>
@@ -495,15 +490,7 @@ export function ModifierGroupForm({ group, stockVariants, onCreated }: Props) {
               {/* Active switch — only on edit. New groups default to
                   active and the toggle lives on the list. */}
               {isEditing && (
-                <div
-                  className={styles.fieldRow}
-                  style={
-                    {
-                      ["--cols" as never]: 1,
-                      marginTop: 14,
-                    } as React.CSSProperties
-                  }
-                >
+                <div className="mt-[15px] grid grid-cols-1 gap-x-[18px] gap-y-[15px]">
                   <FormField
                     control={form.control}
                     name="active"
@@ -852,12 +839,10 @@ function OptionRow({
           control={form.control}
           name={`options.${index}.name`}
           render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs text-muted-foreground">
-                Name <span className="req">*</span>
-              </FormLabel>
+            <FormItem className="space-y-[7px]">
+              <FieldLabel required>Name</FieldLabel>
               <FormControl>
-                <Input
+                <ControlInput
                   placeholder="e.g. Oat milk"
                   {...field}
                   disabled={disabled}
@@ -872,19 +857,19 @@ function OptionRow({
           control={form.control}
           name={`options.${index}.priceAdjustment`}
           render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs text-muted-foreground">
-                Price adjustment
-              </FormLabel>
+            <FormItem className="space-y-[7px]">
+              <FieldLabel>Price adjustment</FieldLabel>
               <FormControl>
-                <NumericFormat
-                  customInput={Input}
-                  value={field.value}
-                  onValueChange={(v) => field.onChange(v.floatValue ?? 0)}
-                  decimalScale={4}
-                  thousandSeparator=","
-                  disabled={disabled}
-                />
+                <ControlBox>
+                  <NumericFormat
+                    className={cn(controlInputClass, "tabular-nums")}
+                    value={field.value}
+                    onValueChange={(v) => field.onChange(v.floatValue ?? 0)}
+                    decimalScale={4}
+                    thousandSeparator=","
+                    disabled={disabled}
+                  />
+                </ControlBox>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -966,10 +951,8 @@ function OptionTracking({
             control={form.control}
             name={`options.${index}.sellabilityMode`}
             render={({ field }) => (
-              <FormItem className="space-y-2">
-                <FormLabel className="text-xs text-muted-foreground">
-                  How is stock deducted?
-                </FormLabel>
+              <FormItem className="space-y-[7px]">
+                <FieldLabel>How is stock deducted?</FieldLabel>
                 <FormControl>
                   <RadioGroup
                     onValueChange={field.onChange}
@@ -1008,17 +991,15 @@ function OptionTracking({
                 control={form.control}
                 name={`options.${index}.stockVariantId`}
                 render={({ field }) => (
-                  <FormItem className="min-w-0">
-                    <FormLabel className="text-xs text-muted-foreground">
-                      Stock item <span className="req">*</span>
-                    </FormLabel>
+                  <FormItem className="min-w-0 space-y-[7px]">
+                    <FieldLabel required>Stock item</FieldLabel>
                     <Select
                       value={field.value || ""}
                       onValueChange={field.onChange}
                       disabled={disabled}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className={controlSelectTriggerClass}>
                           <SelectValue placeholder="Pick a stock item" />
                         </SelectTrigger>
                       </FormControl>
@@ -1038,21 +1019,20 @@ function OptionTracking({
                 control={form.control}
                 name={`options.${index}.directQuantity`}
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs text-muted-foreground">
-                      Quantity per selection{" "}
-                      <span className="req">*</span>
-                    </FormLabel>
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel required>Quantity per selection</FieldLabel>
                     <FormControl>
-                      <NumericFormat
-                        customInput={Input}
-                        value={field.value ?? ""}
-                        onValueChange={(v) => field.onChange(v.floatValue)}
-                        decimalScale={6}
-                        allowNegative={false}
-                        placeholder="e.g. 250"
-                        disabled={disabled}
-                      />
+                      <ControlBox>
+                        <NumericFormat
+                          className={cn(controlInputClass, "tabular-nums")}
+                          value={field.value ?? ""}
+                          onValueChange={(v) => field.onChange(v.floatValue)}
+                          decimalScale={6}
+                          allowNegative={false}
+                          placeholder="e.g. 250"
+                          disabled={disabled}
+                        />
+                      </ControlBox>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

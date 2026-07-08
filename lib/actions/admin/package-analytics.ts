@@ -8,24 +8,99 @@ import {
   PackageForecast,
   PackageForecastModel,
   PackageStatusBreakdown,
+  PackageSubscriberRow,
   PackageTimeSeriesPoint,
   PackageWhitelabelBreakdownRow,
 } from "@/types/admin/billing";
+import { reportsInternalGet } from "@/lib/reports-internal-client";
+
+const PACKAGE_ANALYTICS_PATH = (packageId: string) =>
+  `/api/v2/internal/metrics/saas/packages/${encodeURIComponent(packageId)}/analytics`;
 
 /**
- * Placeholder analytics for a package detail page.
+ * Businesses currently subscribed to a package. Sourced from the Reports
+ * Service (`.../packages/{id}/subscribers`) so business names + regions come
+ * pre-joined from dim_business. Returns [] on any failure, so the subscribers
+ * table degrades to an empty state instead of breaking the page.
+ */
+export async function listPackageSubscribers(
+  packageId: string,
+): Promise<PackageSubscriberRow[]> {
+  try {
+    const rows = await reportsInternalGet<PackageSubscriberRow[]>(
+      `/api/v2/internal/metrics/saas/packages/${encodeURIComponent(packageId)}/subscribers`,
+    );
+    return Array.isArray(rows) ? rows : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Per-package analytics for the package detail page.
  *
- * The platform analytics rollup (per-package MRR, revenue, churn,
- * cohorts) isn't wired up yet. Rather than block the management
- * dashboard on that pipeline, this synthesizes a deterministic shape
- * keyed off the package ID + range so the UI can be built and reviewed
- * end-to-end. The returned object carries {@code isLive: false}, which
- * the dashboard surfaces as a "Live data pending" badge.
- *
- * When the backend endpoint ships, swap the body of this function for
- * a real HTTP call. The response shape is final.
+ * Pulls the live aggregate from the Reports Service
+ * (`GET /api/v2/internal/metrics/saas/packages/{id}/analytics`), which
+ * computes the figures from `fact_subscription_items`,
+ * `fact_invoice_line_items` and the trial-conversion rollup. On ANY
+ * failure (endpoint not deployed yet, secret mismatch, query error) we
+ * fall back to the deterministic synthetic below, which carries
+ * {@code isLive: false} so the UI shows a "Live data pending" badge
+ * rather than breaking or dressing up fabricated numbers as live.
  */
 export async function getPackageAnalytics(
+  packageId: string,
+  basePrice: number,
+  range: PackageDateRange,
+  comparisonMode: PackageComparisonMode = "none",
+): Promise<PackageAnalytics> {
+  try {
+    const res = await reportsInternalGet<PackageAnalytics>(
+      PACKAGE_ANALYTICS_PATH(packageId),
+      { from: range.from, to: range.to, compare: comparisonMode },
+    );
+    return normalizePackageAnalytics(res, packageId, range);
+  } catch {
+    return synthesizePackageAnalytics(
+      packageId,
+      basePrice,
+      range,
+      comparisonMode,
+    );
+  }
+}
+
+/**
+ * Guard the live payload. The endpoint returns a JSON object assembled
+ * from ClickHouse column maps, so ensure the array/echo fields are
+ * always present (a partial row must never crash the UI) and force
+ * {@code isLive: true} — this path only runs on a successful fetch.
+ */
+function normalizePackageAnalytics(
+  res: PackageAnalytics,
+  packageId: string,
+  range: PackageDateRange,
+): PackageAnalytics {
+  return {
+    ...res,
+    packageId: res.packageId ?? packageId,
+    range: res.range ?? range,
+    comparison: res.comparison ?? null,
+    subscribersTimeline: res.subscribersTimeline ?? [],
+    revenueTimeline: res.revenueTimeline ?? [],
+    byStatus: res.byStatus ?? [],
+    byWhitelabel: res.byWhitelabel ?? [],
+    isLive: true,
+    computedAt: res.computedAt ?? new Date().toISOString(),
+  };
+}
+
+/**
+ * Deterministic synthetic fallback — keyed off the package ID + range so
+ * the same package shows a stable shape. Marked {@code isLive: false} so
+ * the UI flags it as placeholder data.
+ */
+async function synthesizePackageAnalytics(
   packageId: string,
   basePrice: number,
   range: PackageDateRange,

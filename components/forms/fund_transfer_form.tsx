@@ -15,16 +15,19 @@ import { z } from "zod";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldLabel,
+  controlComboboxTriggerClass,
+} from "@/components/ui/field";
 import {
   Popover,
   PopoverContent,
@@ -112,15 +115,13 @@ export default function FundTransferForm({
               </div>
             </header>
             <div className={styles.formBody}>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="fromAccountId"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        From <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>From</FieldLabel>
                       <FormControl>
                         <ChartOfAccountSelector
                           accountType="ASSET"
@@ -129,7 +130,7 @@ export default function FundTransferForm({
                           isDisabled={isPending}
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -137,10 +138,8 @@ export default function FundTransferForm({
                   control={form.control}
                   name="toAccountId"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        To <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>To</FieldLabel>
                       <FormControl>
                         <ChartOfAccountSelector
                           accountType="ASSET"
@@ -149,7 +148,7 @@ export default function FundTransferForm({
                           isDisabled={isPending}
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -170,15 +169,13 @@ export default function FundTransferForm({
               </div>
             </header>
             <div className={styles.formBody}>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-3">
                 <FormField
                   control={form.control}
                   name="amount"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Amount <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Amount</FieldLabel>
                       <FormControl>
                         <NumericInput
                           value={field.value ?? ""}
@@ -187,7 +184,7 @@ export default function FundTransferForm({
                           disabled={isPending}
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -195,10 +192,8 @@ export default function FundTransferForm({
                   control={form.control}
                   name="currencyCode"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Currency
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Currency</FieldLabel>
                       <FormControl>
                         <CurrencySelector
                           value={field.value}
@@ -207,7 +202,7 @@ export default function FundTransferForm({
                           placeholder={`Default ${defaultCurrency}`}
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -215,10 +210,8 @@ export default function FundTransferForm({
                   control={form.control}
                   name="transferDate"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Transfer date
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Transfer date</FieldLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -227,11 +220,12 @@ export default function FundTransferForm({
                               variant="outline"
                               disabled={isPending}
                               className={cn(
-                                "h-10 w-full justify-start text-left font-normal",
-                                !field.value && "text-muted-foreground",
+                                controlComboboxTriggerClass,
+                                "justify-start",
+                                !field.value && "text-muted-2",
                               )}
                             >
-                              <CalendarDays className="mr-2 h-4 w-4 opacity-50" />
+                              <CalendarDays className="mr-2 h-4 w-4 text-muted-2" />
                               {field.value
                                 ? format(new Date(field.value), "PPP")
                                 : "Pick a date"}
@@ -251,24 +245,22 @@ export default function FundTransferForm({
                           />
                         </PopoverContent>
                       </Popover>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 mt-3.5">
+              <div className="mt-[15px] grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="description"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Description <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Description</FieldLabel>
                       <FormControl>
-                        <Input {...field} disabled={isPending} />
+                        <ControlInput {...field} disabled={isPending} />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -276,31 +268,27 @@ export default function FundTransferForm({
                   control={form.control}
                   name="reference"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Reference <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Reference</FieldLabel>
                       <FormControl>
-                        <Input {...field} disabled={isPending} />
+                        <ControlInput {...field} disabled={isPending} />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 mt-3.5">
+              <div className="mt-[15px] grid grid-cols-1 gap-x-[18px] gap-y-[15px]">
                 <FormField
                   control={form.control}
                   name="notes"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Notes <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Notes</FieldLabel>
                       <FormControl>
-                        <Textarea {...field} rows={2} disabled={isPending} />
+                        <ControlTextarea {...field} disabled={isPending} />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />

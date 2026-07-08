@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { Check, ChevronsUpDown, Loader2, ShieldCheck } from "lucide-react";
+import { Check, ChevronDown, Loader2, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { controlComboboxTriggerClass } from "@/components/ui/field";
 import {
   Command,
   CommandEmpty,
@@ -122,14 +123,16 @@ const UnitSelector = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between overflow-hidden font-normal"
+          className={cn(controlComboboxTriggerClass, "overflow-hidden")}
           disabled={isDisabled || isLoading}
           onBlur={onBlur}
         >
-          <span className="truncate text-left flex-1">
+          <span
+            className={cn("truncate text-left flex-1", !selected && "text-muted-2")}
+          >
             {isLoading ? "Loading..." : displayText}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-2" />
         </Button>
       </PopoverTrigger>
 

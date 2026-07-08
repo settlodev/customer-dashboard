@@ -17,7 +17,6 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -25,7 +24,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -40,7 +38,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -49,6 +46,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NumericFormat } from "react-number-format";
+import {
+  ControlBox,
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlComboboxTriggerClass,
+  controlInputClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import { useToast } from "@/hooks/use-toast";
 import {
   Alert,
@@ -235,20 +242,15 @@ export default function StockIntakeForm() {
               </header>
 
               <div className={styles.formBody}>
-                <div
-                  className={styles.fieldRow}
-                  style={{ ["--cols" as never]: 4 } as React.CSSProperties}
-                >
+                <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2 lg:grid-cols-4">
                   <FormField
                     control={form.control}
                     name="orderedDate"
                     render={({ field }) => {
                       const selected = field.value ? new Date(field.value) : undefined;
                       return (
-                        <FormItem>
-                          <FormLabel className={styles.fieldLabel}>
-                            Date ordered <span className="req">*</span>
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel required>Date ordered</FieldLabel>
                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
@@ -257,11 +259,12 @@ export default function StockIntakeForm() {
                                   variant="outline"
                                   disabled={isPending}
                                   className={cn(
-                                    "h-10 w-full justify-start text-left font-normal",
-                                    !selected && "text-muted-foreground",
+                                    controlComboboxTriggerClass,
+                                    "justify-start",
+                                    !selected && "text-muted-2",
                                   )}
                                 >
-                                  <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                  <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
                                   {selected ? format(selected, "PPP") : "Pick a date"}
                                 </Button>
                               </FormControl>
@@ -282,7 +285,7 @@ export default function StockIntakeForm() {
                               />
                             </PopoverContent>
                           </Popover>
-                          <FormMessage className="text-xs" />
+                          <FormMessage />
                         </FormItem>
                       );
                     }}
@@ -293,10 +296,8 @@ export default function StockIntakeForm() {
                     render={({ field }) => {
                       const selected = field.value ? new Date(field.value) : undefined;
                       return (
-                        <FormItem>
-                          <FormLabel className={styles.fieldLabel}>
-                            Date received <span className="req">*</span>
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel required>Date received</FieldLabel>
                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
@@ -305,11 +306,12 @@ export default function StockIntakeForm() {
                                   variant="outline"
                                   disabled={isPending}
                                   className={cn(
-                                    "h-10 w-full justify-start text-left font-normal",
-                                    !selected && "text-muted-foreground",
+                                    controlComboboxTriggerClass,
+                                    "justify-start",
+                                    !selected && "text-muted-2",
                                   )}
                                 >
-                                  <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                  <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
                                   {selected ? format(selected, "PPP") : "Pick a date"}
                                 </Button>
                               </FormControl>
@@ -328,7 +330,7 @@ export default function StockIntakeForm() {
                               />
                             </PopoverContent>
                           </Popover>
-                          <FormMessage className="text-xs" />
+                          <FormMessage />
                         </FormItem>
                       );
                     }}
@@ -337,11 +339,8 @@ export default function StockIntakeForm() {
                     control={form.control}
                     name="supplierId"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Supplier
-                          <span className="opt">OPTIONAL</span>
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel optional>Supplier</FieldLabel>
                         <FormControl>
                           <SupplierSelector
                             label="Supplier"
@@ -359,13 +358,10 @@ export default function StockIntakeForm() {
                     control={form.control}
                     name="supplierReference"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Supplier reference
-                          <span className="opt">OPTIONAL</span>
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel optional>Supplier reference</FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             placeholder="DN / invoice #"
                             {...field}
                             value={field.value ?? ""}
@@ -373,28 +369,26 @@ export default function StockIntakeForm() {
                             maxLength={100}
                           />
                         </FormControl>
-                        <FormMessage className="text-xs" />
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
 
-                <div className={styles.fieldRow} style={{ marginTop: 14 }}>
+                <div className="mt-[15px] grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="paymentTerms"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Payment terms
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel>Payment terms</FieldLabel>
                         <Select
                           value={field.value ?? "CREDIT"}
                           onValueChange={field.onChange}
                           disabled={isPending}
                         >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger className={controlSelectTriggerClass}>
                               <SelectValue placeholder="Select terms" />
                             </SelectTrigger>
                           </FormControl>
@@ -406,35 +400,29 @@ export default function StockIntakeForm() {
                             ))}
                           </SelectContent>
                         </Select>
-                        <FormMessage className="text-xs" />
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
 
-                <div className={styles.fieldRow} style={{ marginTop: 14 }}>
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem className="col-span-2 min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Notes
-                          <span className="opt">OPTIONAL</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Notes about this delivery"
-                            rows={2}
-                            {...field}
-                            value={field.value ?? ""}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem className="mt-[15px] space-y-[7px]">
+                      <FieldLabel optional>Notes</FieldLabel>
+                      <FormControl>
+                        <ControlTextarea
+                          placeholder="Notes about this delivery"
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
               </div>
             </section>
 
@@ -509,15 +497,13 @@ export default function StockIntakeForm() {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                      <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2 lg:grid-cols-5">
                         <FormField
                           control={form.control}
                           name={`items.${index}.stockVariantId`}
                           render={({ field: f }) => (
-                            <FormItem className="sm:col-span-2">
-                              <FormLabel className="text-xs">
-                                Stock item <span className="text-red-500">*</span>
-                              </FormLabel>
+                            <FormItem className="space-y-[7px] sm:col-span-2">
+                              <FieldLabel required>Stock item</FieldLabel>
                               <FormControl>
                                 <StockVariantSelector
                                   value={f.value}
@@ -526,7 +512,7 @@ export default function StockIntakeForm() {
                                   isDisabled={isPending}
                                 />
                               </FormControl>
-                              <FormMessage className="text-xs" />
+                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -534,23 +520,23 @@ export default function StockIntakeForm() {
                           control={form.control}
                           name={`items.${index}.quantity`}
                           render={({ field: f }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">
-                                Quantity <span className="text-red-500">*</span>
-                              </FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel required>Quantity</FieldLabel>
                               <FormControl>
-                                <NumericFormat
-                                  className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
-                                  value={f.value}
-                                  onValueChange={(v) =>
-                                    f.onChange(v.value ? Number(v.value) : 0)
-                                  }
-                                  thousandSeparator
-                                  placeholder="0"
-                                  disabled={isPending}
-                                />
+                                <ControlBox>
+                                  <NumericFormat
+                                    className={cn(controlInputClass, "tabular-nums")}
+                                    value={f.value}
+                                    onValueChange={(v) =>
+                                      f.onChange(v.value ? Number(v.value) : 0)
+                                    }
+                                    thousandSeparator
+                                    placeholder="0"
+                                    disabled={isPending}
+                                  />
+                                </ControlBox>
                               </FormControl>
-                              <FormMessage className="text-xs" />
+                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -558,23 +544,23 @@ export default function StockIntakeForm() {
                           control={form.control}
                           name={`items.${index}.unitCost`}
                           render={({ field: f }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">
-                                Unit cost <span className="text-red-500">*</span>
-                              </FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel required>Unit cost</FieldLabel>
                               <FormControl>
-                                <NumericFormat
-                                  className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
-                                  value={f.value}
-                                  onValueChange={(v) =>
-                                    f.onChange(v.value ? Number(v.value) : 0)
-                                  }
-                                  thousandSeparator
-                                  placeholder="0"
-                                  disabled={isPending}
-                                />
+                                <ControlBox>
+                                  <NumericFormat
+                                    className={cn(controlInputClass, "tabular-nums")}
+                                    value={f.value}
+                                    onValueChange={(v) =>
+                                      f.onChange(v.value ? Number(v.value) : 0)
+                                    }
+                                    thousandSeparator
+                                    placeholder="0"
+                                    disabled={isPending}
+                                  />
+                                </ControlBox>
                               </FormControl>
-                              <FormMessage className="text-xs" />
+                              <FormMessage />
                             </FormItem>
                           )}
                         />
@@ -585,8 +571,8 @@ export default function StockIntakeForm() {
                             const active = (f.value || locationCurrency).toUpperCase();
                             const isForeign = active !== locationCurrency.toUpperCase();
                             return (
-                              <FormItem>
-                                <FormLabel className="text-xs">Currency</FormLabel>
+                              <FormItem className="space-y-[7px]">
+                                <FieldLabel>Currency</FieldLabel>
                                 <FormControl>
                                   <CurrencySelector
                                     value={active}
@@ -599,11 +585,9 @@ export default function StockIntakeForm() {
                                     Will convert to {locationCurrency} at confirm.
                                   </p>
                                 ) : (
-                                  <p className="text-[11px] text-muted-foreground">
-                                    Location base currency.
-                                  </p>
+                                  <FieldHint>Location base currency.</FieldHint>
                                 )}
-                                <FormMessage className="text-xs" />
+                                <FormMessage />
                               </FormItem>
                             );
                           }}
@@ -618,11 +602,8 @@ export default function StockIntakeForm() {
                           const isSerial = !!serialTrackedMap[index];
                           const usingPack = !!f.value && f.value !== anchor;
                           return (
-                            <FormItem>
-                              <FormLabel className="text-xs">
-                                Purchase unit
-                                <span className="opt ml-1.5">OPTIONAL</span>
-                              </FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel optional>Purchase unit</FieldLabel>
                               <FormControl>
                                 <CompatibleUnitSelector
                                   anchorUnitId={anchor}
@@ -638,27 +619,27 @@ export default function StockIntakeForm() {
                                   }
                                 />
                               </FormControl>
-                              <p className="text-[11px] text-muted-foreground">
+                              <FieldHint>
                                 {isSerial
                                   ? "Serial-tracked items must be entered one-by-one in the variant's stock unit."
                                   : usingPack
                                     ? "Quantity & unit cost above are interpreted in this pack — converted to stock units on save."
                                     : "Leave blank to enter qty & cost directly in the variant's tracking unit."}
-                              </p>
+                              </FieldHint>
                             </FormItem>
                           );
                         }}
                       />
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-3">
                         <FormField
                           control={form.control}
                           name={`items.${index}.batchNumber`}
                           render={({ field: f }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Batch number</FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel optional>Batch number</FieldLabel>
                               <FormControl>
-                                <Input
+                                <ControlInput
                                   placeholder="Optional"
                                   {...f}
                                   value={f.value ?? ""}
@@ -674,8 +655,8 @@ export default function StockIntakeForm() {
                           render={({ field: f }) => {
                             const selected = f.value ? new Date(f.value) : undefined;
                             return (
-                              <FormItem>
-                                <FormLabel className="text-xs">Expiry date</FormLabel>
+                              <FormItem className="space-y-[7px]">
+                                <FieldLabel optional>Expiry date</FieldLabel>
                                 <Popover>
                                   <PopoverTrigger asChild>
                                     <FormControl>
@@ -684,11 +665,12 @@ export default function StockIntakeForm() {
                                         variant="outline"
                                         disabled={isPending}
                                         className={cn(
-                                          "h-10 w-full justify-start text-left font-normal",
-                                          !selected && "text-muted-foreground",
+                                          controlComboboxTriggerClass,
+                                          "justify-start",
+                                          !selected && "text-muted-2",
                                         )}
                                       >
-                                        <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                        <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
                                         {selected ? format(selected, "PPP") : "Pick a date"}
                                       </Button>
                                     </FormControl>
@@ -714,10 +696,10 @@ export default function StockIntakeForm() {
                           control={form.control}
                           name={`items.${index}.supplierBatchReference`}
                           render={({ field: f }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Supplier ref</FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel optional>Supplier ref</FieldLabel>
                               <FormControl>
-                                <Input
+                                <ControlInput
                                   placeholder="Optional"
                                   {...f}
                                   value={f.value ?? ""}
@@ -738,20 +720,20 @@ export default function StockIntakeForm() {
                           const count = serials.filter((s) => s.trim()).length;
                           const isValidCount = qty > 0 && count === qty;
                           return (
-                            <div className="border-t pt-3 space-y-2">
+                            <div className="space-y-2 border-t border-line pt-3">
                               <div className="flex items-center justify-between">
-                                <p className="text-xs font-medium text-gray-600">
-                                  Serial numbers <span className="text-red-500">*</span>
+                                <label className="flex items-center gap-1.5 text-[13px] font-semibold leading-none text-ink">
+                                  Serial numbers <span className="text-primary">*</span>
                                   <span
-                                    className={`ml-2 text-[10px] font-normal ${
-                                      isValidCount ? "text-green-600" : "text-amber-600"
+                                    className={`ml-1 font-mono text-[10px] font-medium ${
+                                      isValidCount ? "text-emerald-600" : "text-amber-600"
                                     }`}
                                   >
                                     {count}/{qty} entered
                                   </span>
-                                </p>
+                                </label>
                               </div>
-                              <Textarea
+                              <ControlTextarea
                                 placeholder={
                                   qty > 0
                                     ? `Enter ${qty} serial number${qty > 1 ? "s" : ""}, one per line`
@@ -764,7 +746,6 @@ export default function StockIntakeForm() {
                                   setSerialInputs((prev) => ({ ...prev, [index]: lines }));
                                 }}
                                 disabled={isPending || qty === 0}
-                                className="font-mono text-sm"
                               />
                               {qty > 0 && !isValidCount && count > 0 && (
                                 <p className="text-[11px] text-amber-600">

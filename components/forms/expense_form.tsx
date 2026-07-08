@@ -17,14 +17,17 @@ import { z } from "zod";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldLabel,
+  controlComboboxTriggerClass,
+} from "@/components/ui/field";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -58,7 +61,6 @@ import { ExpenseSchema } from "@/types/expense/schema";
 import type { Expense } from "@/types/expense/type";
 
 import styles from "./styles/form-shell.module.css";
-import { NumericFormat } from "react-number-format";
 import { NumericInput } from "@/components/ui/numeric-input";
 
 interface Props {
@@ -244,10 +246,8 @@ export default function ExpenseForm({
                   control={form.control}
                   name="vendorId"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Vendor <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Vendor</FieldLabel>
                       <FormControl>
                         <VendorSelector
                           value={field.value ?? ""}
@@ -256,7 +256,7 @@ export default function ExpenseForm({
                           placeholder="Pick vendor"
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -264,10 +264,8 @@ export default function ExpenseForm({
                   control={form.control}
                   name="expenseCategoryId"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Category <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Category</FieldLabel>
                       <FormControl>
                         <ExpenseCategorySelector
                           value={field.value ?? ""}
@@ -276,7 +274,7 @@ export default function ExpenseForm({
                           placeholder="Pick category"
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -286,19 +284,16 @@ export default function ExpenseForm({
                   control={form.control}
                   name="description"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Description <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Description</FieldLabel>
                       <FormControl>
-                        <Textarea
+                        <ControlTextarea
                           {...field}
-                          rows={2}
                           disabled={isPending || isLocked}
                           placeholder="What is this expense for?"
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -308,19 +303,16 @@ export default function ExpenseForm({
                   control={form.control}
                   name="reference"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Reference / Invoice #{" "}
-                        <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Reference / Invoice #</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           {...field}
                           disabled={isPending || isLocked}
                           placeholder="INV-2026-0001"
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -328,10 +320,13 @@ export default function ExpenseForm({
                   control={form.control}
                   name="chartOfAccountId"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Expense account <span className="opt">OVERRIDE</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>
+                        Expense account
+                        <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
+                          OVERRIDE
+                        </span>
+                      </FieldLabel>
                       <FormControl>
                         <ChartOfAccountSelector
                           accountType="EXPENSE"
@@ -341,7 +336,7 @@ export default function ExpenseForm({
                           placeholder="Default from category"
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -372,10 +367,8 @@ export default function ExpenseForm({
                   control={form.control}
                   name="amount"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Net amount <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Net amount</FieldLabel>
                       <FormControl>
                         <NumericInput
                           value={field.value}
@@ -384,7 +377,7 @@ export default function ExpenseForm({
                           disabled={isPending || isLocked}
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -392,12 +385,10 @@ export default function ExpenseForm({
                   control={form.control}
                   name="taxAmount"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Tax amount <span className="opt">OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Tax amount</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           type="number"
                           step="0.0001"
                           {...field}
@@ -406,7 +397,7 @@ export default function ExpenseForm({
                           placeholder="0.00"
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -414,10 +405,8 @@ export default function ExpenseForm({
                   control={form.control}
                   name="currencyCode"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Currency <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Currency</FieldLabel>
                       <FormControl>
                         <CurrencySelector
                           value={field.value}
@@ -432,7 +421,7 @@ export default function ExpenseForm({
                           placeholder={`Default ${locationCurrency}`}
                         />
                       </FormControl>
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -443,26 +432,26 @@ export default function ExpenseForm({
                     control={form.control}
                     name="exchangeRate"
                     render={({ field }) => (
-                      <FormItem className="sm:col-span-3">
-                        <FormLabel className={styles.fieldLabel}>
+                      <FormItem className="sm:col-span-3 space-y-[7px]">
+                        <FieldLabel>
                           Exchange rate to {locationCurrency}
                           {fxLoading ? (
-                            <span className="opt inline-flex items-center gap-1">
+                            <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
                               <Loader2 className="h-3 w-3 animate-spin" />
                               FETCHING…
                             </span>
                           ) : fxStale ? (
-                            <span className="opt text-amber-600">
+                            <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-amber-600">
                               STALE — VERIFY
                             </span>
                           ) : (
-                            <span className="opt">
+                            <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
                               AUTO-FETCHED · OVERRIDE OK
                             </span>
                           )}
-                        </FormLabel>
+                        </FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             type="number"
                             step="0.000001"
                             {...field}
@@ -501,7 +490,7 @@ export default function ExpenseForm({
                             "Pick a non-base currency to fetch a rate."
                           )}
                         </p>
-                        <FormMessage className="text-xs" />
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -532,16 +521,14 @@ export default function ExpenseForm({
                   control={form.control}
                   name="expenseDate"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Expense date <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Expense date</FieldLabel>
                       <DatePicker
                         value={field.value}
                         onChange={field.onChange}
                         disabled={isPending || isLocked}
                       />
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -549,17 +536,20 @@ export default function ExpenseForm({
                   control={form.control}
                   name="dueDate"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Due date <span className="opt">DRIVES AP AGING</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>
+                        Due date
+                        <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
+                          DRIVES AP AGING
+                        </span>
+                      </FieldLabel>
                       <DatePicker
                         value={field.value ?? ""}
                         onChange={field.onChange}
                         disabled={isPending || isLocked}
                         clearable
                       />
-                      <FormMessage className="text-xs" />
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -635,11 +625,12 @@ function DatePicker({ value, onChange, disabled, clearable }: DatePickerProps) {
             variant="outline"
             disabled={disabled}
             className={cn(
-              "h-10 w-full justify-start text-left font-normal",
-              !date && "text-muted-foreground",
+              controlComboboxTriggerClass,
+              "justify-start",
+              !date && "text-muted-2",
             )}
           >
-            <CalendarDays className="mr-2 h-4 w-4 opacity-50" />
+            <CalendarDays className="mr-2 h-4 w-4 text-muted-2" />
             {date ? format(date, "PPP") : "Pick a date"}
           </Button>
         </PopoverTrigger>

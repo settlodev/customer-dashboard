@@ -28,6 +28,7 @@ const getNormalMenuItems = (
   // backstop when a user clicks through with an underprivileged plan.
   const hasDepartmentsModule = args?.hasDepartmentsModule !== false;
   const reportsReadAll = args?.reportsReadAll !== false; // default true
+  const hasPackaging = args?.hasPackaging === true; // default false (hidden)
   return [
     // Top-level link — appears as its own row in the sidebar (no submenu).
     {
@@ -102,6 +103,16 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
+        ...(hasPackaging
+          ? [
+              {
+                title: "Packaging report",
+                link: "/report/packaging",
+                current: args?.isCurrentItem,
+                icon: "cart",
+              },
+            ]
+          : []),
         {
           title: "Staff report",
           link: "/report/staff",
@@ -299,6 +310,12 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
+        {
+          title: "Refunds owed",
+          link: "/supplier-refunds",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
       ],
     },
 
@@ -463,6 +480,13 @@ const getNormalMenuItems = (
           permission: "fund_transfers:read",
         },
         {
+          title: "Provider settlements",
+          link: "/accounting/provider-settlements",
+          current: args?.isCurrentItem,
+          icon: "cart",
+          permission: "provider_settlements:read",
+        },
+        {
           title: "Till reconciliation",
           link: "/accounting/till",
           current: args?.isCurrentItem,
@@ -597,11 +621,13 @@ const getNormalMenuItems = (
 // Store mode — shown when the active destination is a store (a stockroom
 // attached to a parent location). A store cannot sell, so Sales, Accounting,
 // Business operations, Procurement and the product catalogue (Inventory
-// management) are all dropped; Reports collapses to stock only. The store
-// shares its parent location's catalogue but holds its own quantities, which
-// it manages here and moves via Stock transfer / Stock request.
+// management) are all dropped; Reports collapses to stock (plus packaging,
+// when the location has the packaging module enabled). The store shares its
+// parent location's catalogue but holds its own quantities, which it manages
+// here and moves via Stock transfer / Stock request.
 const getStoreMenuItems = (args?: MenuItemArgType) => {
   const reportsReadAll = args?.reportsReadAll !== false; // default true
+  const hasPackaging = args?.hasPackaging === true; // default false (hidden)
   const storeId = args?.currentStoreId;
   return [
     // Whole-business overview — business-scoped and permission-guarded, kept
@@ -616,7 +642,8 @@ const getStoreMenuItems = (args?: MenuItemArgType) => {
       items: [],
     },
 
-    // Reports — stock only in store mode (no sales/finance reports).
+    // Reports — stock (plus packaging, when enabled) in store mode; no
+    // sales/finance reports.
     {
       label: "Reports",
       showSeparator: true,
@@ -630,6 +657,16 @@ const getStoreMenuItems = (args?: MenuItemArgType) => {
           current: args?.isCurrentItem,
           icon: "cart",
         },
+        ...(hasPackaging
+          ? [
+              {
+                title: "Packaging report",
+                link: "/report/packaging",
+                current: args?.isCurrentItem,
+                icon: "cart",
+              },
+            ]
+          : []),
       ].filter((it) => reportsReadAll || !LOCATION_WIDE_REPORT_LINKS.includes(it.link)),
     },
 

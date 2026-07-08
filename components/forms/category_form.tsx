@@ -10,7 +10,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -37,8 +36,13 @@ import {
 import type { Department } from "@/types/department/type";
 import { Category } from "@/types/category/type";
 import { CategorySchema } from "@/types/category/schema";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import CategorySelector from "@/components/widgets/category-selector";
 import {
@@ -188,12 +192,10 @@ const CategoryForm = ({
                       control={form.control}
                       name="name"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className={styles.fieldLabel}>
-                            Category name <span className="req">*</span>
-                          </FormLabel>
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel required>Category name</FieldLabel>
                           <FormControl>
-                            <Input
+                            <ControlInput
                               placeholder="Enter category name"
                               {...field}
                               disabled={isPending}
@@ -208,11 +210,9 @@ const CategoryForm = ({
                       control={form.control}
                       name="parentId"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="space-y-[7px]">
                           <div className="flex items-center gap-2">
-                            <FormLabel className={styles.fieldLabel}>
-                              Parent category
-                            </FormLabel>
+                            <FieldLabel>Parent category</FieldLabel>
                             {field.value ? (
                               <button
                                 type="button"
@@ -266,17 +266,15 @@ const CategoryForm = ({
                         control={form.control}
                         name="departmentId"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Department <span className="req">*</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel required>Department</FieldLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value ?? ""}
                               disabled={isPending || departmentLocked}
                             >
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className={controlSelectTriggerClass}>
                                   <SelectValue placeholder="Select department" />
                                 </SelectTrigger>
                               </FormControl>
@@ -289,10 +287,10 @@ const CategoryForm = ({
                               </SelectContent>
                             </Select>
                             {departmentLocked && (
-                              <p className={styles.fieldHint}>
+                              <FieldHint>
                                 Set by the parent category — a category stays in
                                 its parent&apos;s department.
-                              </p>
+                              </FieldHint>
                             )}
                             <FormMessage />
                           </FormItem>
@@ -306,15 +304,11 @@ const CategoryForm = ({
                     control={form.control}
                     name="description"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className={styles.fieldLabel}>
-                          Description
-                          <span className="opt">OPTIONAL</span>
-                        </FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel optional>Description</FieldLabel>
                         <FormControl>
-                          <Textarea
+                          <ControlTextarea
                             placeholder="Brief description"
-                            rows={4}
                             {...field}
                             disabled={isPending}
                           />

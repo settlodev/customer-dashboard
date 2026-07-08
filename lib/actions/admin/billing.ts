@@ -28,9 +28,12 @@ import {
   InvoicePage,
   InvoiceResponse,
   ManualPaymentResponse,
+  PackageBreakdownResponse,
   PackageFeatureMappingResponse,
+  PackageHistoryEntry,
   PackageIncludedCreditResponse,
   PackageResponse,
+  BillingConfigResponse,
   PaymentMethod,
   RefundPage,
   RefundRequestDto,
@@ -699,6 +702,34 @@ export async function deactivatePackage(
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
+}
+
+/** Term pricing (1/3/6/12-month commitments + savings) computed by the backend. */
+export async function getPackageBreakdown(
+  packageId: string,
+): Promise<PackageBreakdownResponse> {
+  const data = await staffBilling().get<PackageBreakdownResponse>(
+    `/api/v1/packages/${packageId}/breakdown`,
+  );
+  return parseStringify(data);
+}
+
+/** Platform-wide billing config (trial length, grace period, prepay discounts). */
+export async function getBillingConfig(): Promise<BillingConfigResponse> {
+  const data = await staffBilling().get<BillingConfigResponse>(
+    `/api/v1/admin/billing-config`,
+  );
+  return parseStringify(data);
+}
+
+/** Package config/pricing change history (audit trail), most-recent first. */
+export async function getPackageHistory(
+  packageId: string,
+): Promise<PackageHistoryEntry[]> {
+  const data = await staffBilling().get<PackageHistoryEntry[]>(
+    `/api/v1/admin/packages/${packageId}/history`,
+  );
+  return parseStringify(data);
 }
 
 // ── Catalog: addons (super admin) ───────────────────────────────────

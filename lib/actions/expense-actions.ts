@@ -222,3 +222,24 @@ function errorResponse(
     error: error instanceof Error ? error : new Error(String(error)),
   };
 }
+
+export async function getExpenseByReference(
+  reference: string,
+  locationId?: string,
+): Promise<Expense | null> {
+  try {
+    const params = new URLSearchParams();
+    params.set("reference", reference);
+    params.set("size", "1");
+    if (locationId) params.set("locationId", locationId);
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(
+      accountingUrl(`/api/v1/expenses?${params.toString()}`),
+    );
+    const page = parseStringify(data) as ApiResponse<Expense>;
+    return page.content?.[0] ?? null;
+  } catch (error) {
+    console.error("getExpenseByReference failed", error);
+    return null;
+  }
+}

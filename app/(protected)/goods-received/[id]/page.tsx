@@ -12,18 +12,22 @@ import { Money } from "@/components/widgets/money";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
 import { getGrn, getLandedCosts } from "@/lib/actions/grn-actions";
 import { getLocationConfig } from "@/lib/actions/location-config-actions";
+import { resolveBillForLpo } from "@/lib/actions/grn-bill-actions";
+import { grnDeliveryValue, computeBillPrefill } from "@/lib/grn-utils";
 import {
   GRN_STATUS_LABELS,
   GRN_STATUS_TONES,
   INSPECTION_STATUS_LABELS,
   INSPECTION_STATUS_TONES,
 } from "@/types/grn/type";
+import { Button } from "@/components/ui/button";
 import { GrnStatusActions } from "@/components/widgets/grn/status-actions";
 import { GrnShareButton } from "@/components/widgets/grn/share-dialog";
 import { InspectionPanel } from "@/components/widgets/grn/inspection-panel";
 import { LandedCostsPanel } from "@/components/widgets/grn/landed-costs-panel";
+import GrnBillPaymentCard from "@/components/widgets/grn/grn-bill-payment-card";
 import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
-import { FileText, Layers, Boxes, DollarSign, Truck } from "lucide-react";
+import { FileDown, FileText, Layers, Boxes, DollarSign, Truck } from "lucide-react";
 
 type Params = Promise<{ id: string }>;
 
@@ -57,6 +61,28 @@ export default async function GrnDetailPage({ params }: { params: Params }) {
 
   const [grn, config] = await Promise.all([getGrn(id), getLocationConfig()]);
   if (!grn) notFound();
+
+  let billResolution = null;
+  if (grn.lpoId) {
+    try {
+      billResolution = await resolveBillForLpo(grn.lpoId);
+    } catch {
+      billResolution = null; // best-effort: a bill-resolution failure must never break the GRN page
+    }
+  }
+  const billPayable =
+    !!billResolution &&
+    grn.status === "RECEIVED" &&
+    billResolution.expense.status === "APPROVED" &&
+    billResolution.expense.paymentStatus !== "PAID";
+  const billPrefill = billResolution
+    ? computeBillPrefill(
+        grnDeliveryValue(grn.items),
+        billResolution.expense.balanceDue,
+        billResolution.lpoFullyReceived,
+        grn.currency === billResolution.expense.currencyCode,
+      )
+    : 0;
 
   const landedCostsEnabled = config?.landedCostTrackingEnabled ?? false;
   const qualityInspectionEnabled = config?.qualityInspectionEnabled ?? false;
@@ -130,12 +156,28 @@ export default async function GrnDetailPage({ params }: { params: Params }) {
                 {currency}
               </span>
             </span>
+            <Button asChild variant="outline" size="sm">
+              <a
+                href={`/goods-received/${grn.id}/print`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FileDown className="mr-1.5 h-4 w-4" />
+                Download PDF
+              </a>
+            </Button>
             <GrnShareButton grn={grn} />
             <GrnStatusActions grn={grn} />
           </span>
         }
       />
       <PageBody>
+        {billPayable && billResolution && (
+          <GrnBillPaymentCard
+            expense={billResolution.expense}
+            prefillAmount={billPrefill}
+          />
+        )}
         <KpiStrip cols={4}>
           <KpiCard
             icon={<Layers className="h-3 w-3" />}

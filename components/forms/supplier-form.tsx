@@ -6,13 +6,17 @@ import { useForm, FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldLabel,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -34,7 +38,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Building2,
@@ -196,17 +199,15 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   control={form.control}
                   name="settloSupplierId"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Linked marketplace supplier
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Linked marketplace supplier</FieldLabel>
                       <Select
                         value={field.value || UNLINKED}
                         onValueChange={(v) => applyCatalogPick(v)}
                         disabled={isPending}
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className={controlSelectTriggerClass}>
                             <SelectValue placeholder="Not linked" />
                           </SelectTrigger>
                         </FormControl>
@@ -251,12 +252,10 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   control={form.control}
                   name="name"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Supplier name <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Supplier name</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           placeholder="e.g. East Coast Foods Ltd"
                           {...field}
                           disabled={isPending}
@@ -270,10 +269,10 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   control={form.control}
                   name="email"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>Email</FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Email</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           type="email"
                           placeholder="supplier@example.com"
                           {...field}
@@ -289,10 +288,8 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   control={form.control}
                   name="phone"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Company phone
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Company phone</FieldLabel>
                       <FormControl>
                         <PhoneInput
                           placeholder="Company switchboard"
@@ -311,13 +308,10 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   control={form.control}
                   name="address"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Address
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Address</FieldLabel>
                       <FormControl>
-                        <Textarea
-                          rows={2}
+                        <ControlTextarea
                           placeholder="Street, city, country"
                           {...field}
                           value={field.value ?? ""}
@@ -334,16 +328,15 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   control={form.control}
                   name="notes"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>
                         Notes
-                        <span className={styles.optionalTag}>
+                        <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
                           OPTIONAL · INTERNAL
                         </span>
-                      </FormLabel>
+                      </FieldLabel>
                       <FormControl>
-                        <Textarea
-                          rows={3}
+                        <ControlTextarea
                           placeholder="Internal notes about this supplier — payment terms, delivery quirks, contacts. Visible only to your team."
                           {...field}
                           value={field.value ?? ""}
@@ -380,12 +373,10 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   control={form.control}
                   name="contactPersonName"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Name <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Name</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           placeholder="Full name"
                           {...field}
                           disabled={isPending}
@@ -399,10 +390,8 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   control={form.control}
                   name="contactPersonPhone"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Phone <span className="req">*</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Phone</FieldLabel>
                       <FormControl>
                         <PhoneInput
                           placeholder="+255 ..."
@@ -418,13 +407,10 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   control={form.control}
                   name="contactPersonEmail"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Email
-                        <span className={styles.optionalTag}>OPTIONAL</span>
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Email</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           type="email"
                           placeholder="contact@example.com"
                           {...field}
@@ -461,12 +447,10 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   control={form.control}
                   name="registrationNumber"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>
-                        Registration number
-                      </FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Registration number</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           placeholder="Optional"
                           {...field}
                           value={field.value ?? ""}
@@ -481,10 +465,10 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   control={form.control}
                   name="tinNumber"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={styles.fieldLabel}>TIN</FormLabel>
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>TIN</FieldLabel>
                       <FormControl>
-                        <Input
+                        <ControlInput
                           placeholder="Optional"
                           {...field}
                           value={field.value ?? ""}

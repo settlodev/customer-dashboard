@@ -9,6 +9,7 @@ import {
   PageShell,
 } from "@/components/layouts/page-shell";
 import { Button } from "@/components/ui/button";
+import { LoanActiveToggle } from "@/components/admin/loan-active-toggle";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { cn } from "@/lib/utils";
@@ -84,6 +85,7 @@ export default async function AdminFundingSourcesPage() {
                       <th className="px-4 py-3 text-right">Limit</th>
                       <th className="px-4 py-3 text-right">Available</th>
                       <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
@@ -124,6 +126,14 @@ export default async function AdminFundingSourcesPage() {
                           >
                             {s.active ? "Active" : "Inactive"}
                           </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <LoanActiveToggle
+                            kind="funding"
+                            id={s.id}
+                            name={s.name}
+                            active={s.active}
+                          />
                         </td>
                       </tr>
                     ))}

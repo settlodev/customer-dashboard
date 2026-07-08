@@ -32,7 +32,6 @@ import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
@@ -46,7 +45,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -57,6 +55,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlComboboxTriggerClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import GenderSelector from "@/components/widgets/gender-selector";
 import RoleSelector from "@/components/widgets/role-selector";
 import CountrySelector from "@/components/widgets/country-selector";
@@ -314,12 +320,10 @@ export default function StaffForm({
                     control={form.control}
                     name="firstName"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          First name <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel required>First name</FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             placeholder="e.g. Amani"
                             disabled={isPending}
                             {...field}
@@ -335,12 +339,10 @@ export default function StaffForm({
                     control={form.control}
                     name="lastName"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Last name <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel required>Last name</FieldLabel>
                         <FormControl>
-                          <Input
+                          <ControlInput
                             placeholder="e.g. Mushi"
                             disabled={isPending}
                             {...field}
@@ -356,10 +358,8 @@ export default function StaffForm({
                     control={form.control}
                     name="gender"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Gender <span className="req">*</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel required>Gender</FieldLabel>
                         <FormControl>
                           <GenderSelector
                             {...field}
@@ -377,10 +377,8 @@ export default function StaffForm({
                     control={form.control}
                     name="phoneNumber"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Phone number
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel>Phone number</FieldLabel>
                         <FormControl>
                           <PhoneInput
                             placeholder="Enter phone number"
@@ -398,10 +396,8 @@ export default function StaffForm({
                     control={form.control}
                     name="nationalityId"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
-                          Nationality
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel>Nationality</FieldLabel>
                         <FormControl>
                           <CountrySelector
                             {...field}
@@ -419,12 +415,12 @@ export default function StaffForm({
                     control={form.control}
                     name="color"
                     render={({ field }) => (
-                      <FormItem className="min-w-0">
-                        <FormLabel className={styles.fieldLabel}>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel>
                           <span className="inline-flex items-center gap-1">
                             <Palette className="h-3 w-3" /> Tag colour
                           </span>
-                        </FormLabel>
+                        </FieldLabel>
                         <FormControl>
                           <div className="flex items-center gap-2 rounded-md border border-line bg-card px-2 py-1.5">
                             <Input
@@ -518,10 +514,8 @@ export default function StaffForm({
                             ? new Date(field.value)
                             : undefined;
                           return (
-                            <FormItem>
-                              <FormLabel className={styles.fieldLabel}>
-                                Date of birth
-                              </FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel>Date of birth</FieldLabel>
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <FormControl>
@@ -530,11 +524,12 @@ export default function StaffForm({
                                       variant="outline"
                                       disabled={isPending}
                                       className={cn(
-                                        "h-10 w-full justify-start text-left font-normal",
-                                        !selected && "text-muted-foreground",
+                                        controlComboboxTriggerClass,
+                                        "justify-start",
+                                        !selected && "text-muted-2",
                                       )}
                                     >
-                                      <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                      <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
                                       {selected
                                         ? format(selected, "PPP")
                                         : "Pick a date"}
@@ -571,12 +566,10 @@ export default function StaffForm({
                         control={form.control}
                         name="address"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Address
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Address</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="Street, city or area"
                                 disabled={isPending}
                                 {...field}
@@ -589,41 +582,30 @@ export default function StaffForm({
                       />
                     </div>
 
-                    <div
-                      className={styles.fieldRow}
-                      style={
-                        {
-                          ["--cols" as never]: 1,
-                          marginTop: 14,
-                        } as React.CSSProperties
-                      }
-                    >
-                      <FormField
-                        control={form.control}
-                        name="notes"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Notes
-                              <span className="opt">
-                                {(field.value ?? "").length}/1000
-                              </span>
-                            </FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Anything teammates should know — allergies, training notes, etc."
-                                rows={4}
-                                maxLength={1000}
-                                disabled={isPending}
-                                {...field}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem className="mt-[15px] space-y-[7px]">
+                          <FieldLabel>
+                            Notes
+                            <span className="ml-auto font-mono text-[10px] tracking-[0.04em] text-muted-foreground">
+                              {(field.value ?? "").length}/1000
+                            </span>
+                          </FieldLabel>
+                          <FormControl>
+                            <ControlTextarea
+                              placeholder="Anything teammates should know — allergies, training notes, etc."
+                              maxLength={1000}
+                              disabled={isPending}
+                              {...field}
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </>
               )}
@@ -652,12 +634,10 @@ export default function StaffForm({
                         control={form.control}
                         name="jobTitle"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Job title <span className="req">*</span>
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel required>Job title</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="e.g. Cashier, Barista"
                                 disabled={isPending}
                                 {...field}
@@ -673,12 +653,10 @@ export default function StaffForm({
                         control={form.control}
                         name="employeeNumber"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Employee #
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Employee #</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="EMP-001"
                                 disabled={isPending}
                                 {...field}
@@ -698,10 +676,8 @@ export default function StaffForm({
                             ? new Date(field.value)
                             : undefined;
                           return (
-                            <FormItem>
-                              <FormLabel className={styles.fieldLabel}>
-                                Joining date
-                              </FormLabel>
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel>Joining date</FieldLabel>
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <FormControl>
@@ -710,11 +686,12 @@ export default function StaffForm({
                                       variant="outline"
                                       disabled={isPending}
                                       className={cn(
-                                        "h-10 w-full justify-start text-left font-normal",
-                                        !selected && "text-muted-foreground",
+                                        controlComboboxTriggerClass,
+                                        "justify-start",
+                                        !selected && "text-muted-2",
                                       )}
                                     >
-                                      <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                      <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
                                       {selected
                                         ? format(selected, "PPP")
                                         : "Pick a date"}
@@ -745,47 +722,34 @@ export default function StaffForm({
                     </div>
 
                     {showDepartmentPicker ? (
-                      <div
-                        className={styles.fieldRow}
-                        style={
-                          {
-                            ["--cols" as never]: 1,
-                            marginTop: 14,
-                          } as React.CSSProperties
-                        }
-                      >
-                        <FormField
-                          control={form.control}
-                          name="departmentId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className={styles.fieldLabel}>
-                                Primary department{" "}
-                                <span className="req">*</span>
-                              </FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                value={field.value ?? ""}
-                                disabled={isPending}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select primary department" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {departments.map((d) => (
-                                    <SelectItem key={d.id} value={d.id}>
-                                      {d.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                      <FormField
+                        control={form.control}
+                        name="departmentId"
+                        render={({ field }) => (
+                          <FormItem className="mt-[15px] space-y-[7px]">
+                            <FieldLabel required>Primary department</FieldLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value ?? ""}
+                              disabled={isPending}
+                            >
+                              <FormControl>
+                                <SelectTrigger className={controlSelectTriggerClass}>
+                                  <SelectValue placeholder="Select primary department" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {departments.map((d) => (
+                                  <SelectItem key={d.id} value={d.id}>
+                                    {d.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     ) : (
                       // Hidden when the merchant's package only exposes
                       // the auto-created Main department. The hidden
@@ -798,79 +762,56 @@ export default function StaffForm({
                       />
                     )}
 
-                    <div
-                      className={styles.fieldRow}
-                      style={
-                        {
-                          ["--cols" as never]: 1,
-                          marginTop: 14,
-                        } as React.CSSProperties
-                      }
-                    >
+                    <FormField
+                      control={form.control}
+                      name="roleIds"
+                      render={({ field }) => (
+                        <FormItem className="mt-[15px] space-y-[7px]">
+                          <FieldLabel>
+                            Roles <span className="text-primary">*</span>
+                            <span className="ml-auto font-mono text-[10px] tracking-[0.04em] text-muted-foreground">
+                              {(field.value ?? []).length} SELECTED
+                            </span>
+                          </FieldLabel>
+                          <FormControl>
+                            <RoleSelector
+                              value={field.value ?? []}
+                              onChange={field.onChange}
+                              isDisabled={isPending}
+                              placeholder="Pick at least one role"
+                              multiple
+                            />
+                          </FormControl>
+                          <FieldHint>
+                            At least one role is required — roles control
+                            what this person can do in the dashboard and on
+                            the POS.
+                          </FieldHint>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {!isEditMode && (
                       <FormField
                         control={form.control}
-                        name="roleIds"
+                        name="referredByCode"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Roles <span className="req">*</span>
-                              <span className="opt">
-                                {(field.value ?? []).length} SELECTED
-                              </span>
-                            </FormLabel>
+                          <FormItem className="mt-[15px] space-y-[7px]">
+                            <FieldLabel optional>Referral code</FieldLabel>
                             <FormControl>
-                              <RoleSelector
-                                value={field.value ?? []}
-                                onChange={field.onChange}
-                                isDisabled={isPending}
-                                placeholder="Pick at least one role"
-                                multiple
+                              <ControlInput
+                                placeholder="Code from the referring teammate"
+                                maxLength={16}
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
                               />
                             </FormControl>
-                            <p className={styles.fieldHint}>
-                              At least one role is required — roles control
-                              what this person can do in the dashboard and on
-                              the POS.
-                            </p>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                    </div>
-
-                    {!isEditMode && (
-                      <div
-                        className={styles.fieldRow}
-                        style={
-                          {
-                            ["--cols" as never]: 1,
-                            marginTop: 14,
-                          } as React.CSSProperties
-                        }
-                      >
-                        <FormField
-                          control={form.control}
-                          name="referredByCode"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className={styles.fieldLabel}>
-                                Referral code
-                                <span className="opt">OPTIONAL</span>
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="Code from the referring teammate"
-                                  maxLength={16}
-                                  disabled={isPending}
-                                  {...field}
-                                  value={field.value ?? ""}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
                     )}
                   </div>
                 </>
@@ -960,12 +901,10 @@ export default function StaffForm({
                               control={form.control}
                               name="email"
                               render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className={styles.fieldLabel}>
-                                    Login email <span className="req">*</span>
-                                  </FormLabel>
+                                <FormItem className="space-y-[7px]">
+                                  <FieldLabel required>Login email</FieldLabel>
                                   <FormControl>
-                                    <Input
+                                    <ControlInput
                                       type="email"
                                       placeholder="staff@example.com"
                                       disabled={isPending}
@@ -973,11 +912,11 @@ export default function StaffForm({
                                       value={field.value ?? ""}
                                     />
                                   </FormControl>
-                                  <p className={styles.fieldHint}>
+                                  <FieldHint>
                                     We&apos;ll email this person a secure link to
                                     set their own password — you don&apos;t need
                                     to create one.
-                                  </p>
+                                  </FieldHint>
                                   <FormMessage />
                                 </FormItem>
                               )}
@@ -1014,12 +953,10 @@ export default function StaffForm({
                         control={form.control}
                         name="emergencyName"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Contact name
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Contact name</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="e.g. Maria Mushi"
                                 disabled={isPending}
                                 {...field}
@@ -1035,10 +972,8 @@ export default function StaffForm({
                         control={form.control}
                         name="emergencyNumber"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Contact phone
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Contact phone</FieldLabel>
                             <FormControl>
                               <PhoneInput
                                 placeholder="Enter contact number"
@@ -1056,12 +991,10 @@ export default function StaffForm({
                         control={form.control}
                         name="emergencyRelationship"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={styles.fieldLabel}>
-                              Relationship
-                            </FormLabel>
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Relationship</FieldLabel>
                             <FormControl>
-                              <Input
+                              <ControlInput
                                 placeholder="e.g. Spouse, Parent"
                                 disabled={isPending}
                                 {...field}
