@@ -181,6 +181,35 @@ export function buildTopSellingColumns({
       },
     },
     {
+      accessorKey: "taxAmount",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          className="text-left p-0"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Tax
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const item = row.original;
+        if (!item.taxAmount || item.taxAmount <= 0) {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        return (
+          <div className="flex flex-col tabular-nums">
+            <span className="font-medium">{formatNum(item.taxAmount)}</span>
+            {item.taxCode && (
+              <span className="text-[11px] text-muted-foreground">
+                {item.taxCode}
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: "grossProfit",
       header: ({ column }) => (
         <Button

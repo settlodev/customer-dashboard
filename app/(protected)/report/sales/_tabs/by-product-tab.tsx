@@ -1,4 +1,4 @@
-import { CircleDollarSign, Layers, Package, TrendingUp } from "lucide-react";
+import { CircleDollarSign, Layers, Package, Receipt, TrendingUp } from "lucide-react";
 
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
@@ -80,7 +80,7 @@ export async function ByProductTab({
 
   return (
     <div className="space-y-6">
-      <KpiStrip cols={4}>
+      <KpiStrip cols={5}>
         <KpiCard
           icon={<CircleDollarSign className="h-3 w-3" />}
           label="Revenue"
@@ -113,6 +113,20 @@ export async function ByProductTab({
               : "Margin —"
           }
           deltaTone={grossProfit >= 0 ? "pos" : "neg"}
+        />
+        <KpiCard
+          icon={<Receipt className="h-3 w-3" />}
+          label="Tax collected"
+          value={
+            summary?.totalTaxAmount && summary.totalTaxAmount > 0
+              ? formatMoney(summary.totalTaxAmount)
+              : "—"
+          }
+          unit={
+            summary?.totalTaxAmount && summary.totalTaxAmount > 0
+              ? currency
+              : undefined
+          }
         />
         <KpiCard
           icon={<Layers className="h-3 w-3" />}
