@@ -17,6 +17,7 @@ export interface CategorySalesRow {
   qty: number;
   gross: number;
   net: number;
+  tax: number;
   profit: number;
 }
 
@@ -117,6 +118,31 @@ export function buildSalesByCategoryColumns({
           <span className="text-[11px] text-muted-foreground">{currency}</span>
         </div>
       ),
+    },
+    {
+      accessorKey: "tax",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          className="p-0 text-left"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Tax
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const tax = row.original.tax;
+        if (!tax || tax <= 0) {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        return (
+          <div className="flex flex-col tabular-nums">
+            <span>{formatNum(tax)}</span>
+            <span className="text-[11px] text-muted-foreground">{currency}</span>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "profit",
