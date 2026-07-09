@@ -62,18 +62,26 @@ export function buildTaxReportColumns({
     {
       accessorKey: "taxableAmount",
       header: "Taxable amount",
-      cell: ({ row }) => (
-        <span className="tabular-nums">{formatNum(row.original.taxableAmount)}</span>
-      ),
+      cell: ({ row }) => {
+        const value = row.original.taxableAmount;
+        if (!value || value <= 0) {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        return <span className="tabular-nums">{formatNum(value)}</span>;
+      },
     },
     {
       accessorKey: "taxAmount",
       header: "Tax amount",
-      cell: ({ row }) => (
-        <span className="font-medium tabular-nums">
-          {formatNum(row.original.taxAmount)}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const value = row.original.taxAmount;
+        if (!value || value <= 0) {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        return (
+          <span className="font-medium tabular-nums">{formatNum(value)}</span>
+        );
+      },
     },
   ];
 

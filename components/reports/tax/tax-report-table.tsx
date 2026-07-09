@@ -20,10 +20,15 @@ export function TaxReportTable({ data, breakdown, multiCurrency }: Props) {
     [breakdown, multiCurrency],
   );
 
+  // Must match the accessorKey buildTaxReportColumns emits for the active
+  // breakdown ("productName" in product mode, "taxCode" otherwise) — a
+  // mismatched key resolves to no column and silently disables search.
+  const searchKey = breakdown === "product" ? "productName" : "taxCode";
+
   return (
     <Card>
       <CardContent className="px-2 pt-6 sm:px-6">
-        <DataTable columns={columns} data={data} searchKey="productName" clientMode />
+        <DataTable columns={columns} data={data} searchKey={searchKey} clientMode />
       </CardContent>
     </Card>
   );

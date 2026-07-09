@@ -75,9 +75,9 @@ export default async function TaxReportPage({ searchParams }: Params) {
                   <KpiCard
                     key={c.currency}
                     label={`Tax collected (${c.currency})`}
-                    value={formatMoney(c.taxAmount)}
+                    value={c.taxAmount > 0 ? formatMoney(c.taxAmount) : "—"}
                     unit={c.currency}
-                    delta={`${formatMoney(c.taxableAmount)} taxable`}
+                    delta={`${c.taxableAmount > 0 ? formatMoney(c.taxableAmount) : "—"} taxable`}
                     deltaTone="neutral"
                   />
                 ))}
@@ -87,7 +87,7 @@ export default async function TaxReportPage({ searchParams }: Params) {
                 <KpiCard
                   label="Tax collected"
                   value={
-                    report.totalTaxAmount !== null
+                    report.totalTaxAmount && report.totalTaxAmount > 0
                       ? formatMoney(report.totalTaxAmount)
                       : "—"
                   }
@@ -96,7 +96,7 @@ export default async function TaxReportPage({ searchParams }: Params) {
                 <KpiCard
                   label="Taxable amount"
                   value={
-                    report.totalTaxableAmount !== null
+                    report.totalTaxableAmount && report.totalTaxableAmount > 0
                       ? formatMoney(report.totalTaxableAmount)
                       : "—"
                   }
