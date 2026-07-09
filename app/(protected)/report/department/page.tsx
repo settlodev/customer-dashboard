@@ -49,6 +49,7 @@ interface TopItems {
   percentageOfTotal?: number;
   staffName?: string;
   averagePrice?: number;
+  averageUnitPrice: number;
 }
 
 interface ExtendedReport {
@@ -243,7 +244,7 @@ export default function DepartmentReportPage() {
               extended.totalGrossAmount > 0
                 ? (revenue / extended.totalGrossAmount) * 100
                 : 0,
-            averagePrice:
+            averageUnitPrice:
               item.quantity > 0 ? revenue / item.quantity : item.price || 0,
             staffName: "Staff",
           };
@@ -473,10 +474,10 @@ export default function DepartmentReportPage() {
                           {item.quantity}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-sm">
-                          TZS {fmt(item.price)}
+                          TZS {fmt(item.averageUnitPrice)}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-sm text-emerald-600 dark:text-emerald-400">
-                          TZS {fmt(revenue)}
+                          TZS {fmt(item.price)}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-sm text-muted-foreground">
                           {pct.toFixed(1)}%
