@@ -308,6 +308,13 @@ export interface OrderDetailItem {
   costPrice: number | null;
   discountAmount: number | null;
   netAmount: number | null;
+  taxTypeId: string | null;
+  taxTypeCode: string | null;
+  taxTypeName: string | null;
+  taxRate: number | null;
+  taxInclusive: boolean | null;
+  taxableAmount: number | null;
+  taxAmount: number | null;
   preparationStatus: string | null;
   specialInstructions: string | null;
   staffId: UUID | null;
@@ -491,6 +498,7 @@ export interface OrderDetail {
   unpaidAmount: number | null;
   signedAmount: number | null;
   totalTipAmount: number | null;
+  taxAmount: number | null;
   totalCostPrice: number | null;
   businessCostsTotal: number | null;
   grossProfit: number | null;
