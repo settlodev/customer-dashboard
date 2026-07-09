@@ -14,6 +14,7 @@ export const LOCATION_WIDE_REPORT_LINKS: readonly string[] = [
   "/report/credit",
   "/report/refunds",
   "/report/voids",
+  "/report/tax",
   "/report/stock",
   "/report/packaging",
   "/report/staff",
