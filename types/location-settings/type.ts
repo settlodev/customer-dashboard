@@ -50,6 +50,7 @@ export interface LocationSettings {
   autoPrintDockets: boolean;
   allowDuplicateDocketPrinting: boolean;
   useModernPrintTemplate: boolean;
+  mergeIdenticalReceiptItems: boolean;
 
   // Stock deduction
   deductStockOnItemChange: boolean;

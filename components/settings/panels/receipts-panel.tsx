@@ -16,6 +16,7 @@ const KEYS = [
   "digitalReceiptPaymentDetails",
   "includePaymentDetailsOnReceipt",
   "showItemizedReceipt",
+  "mergeIdenticalReceiptItems",
   "showTaxOnReceipt",
   "showDiscountOnReceipt",
   "showStaffOnReceipt",
@@ -104,6 +105,7 @@ export function ReceiptsInvoicingPanel({
         isDirty={p.isDirty}
       >
         <SettingsSwitchRow label="Itemised line items" checked={!!v.showItemizedReceipt} onChange={(x) => p.setField("showItemizedReceipt", x)} disabled={p.isPending} />
+        <SettingsSwitchRow label="Merge identical items into one line" description="Combine repeated identical items (same price and modifiers, no discount or notes) into one quantity line on bills and receipts." checked={!!v.mergeIdenticalReceiptItems} onChange={(x) => p.setField("mergeIdenticalReceiptItems", x)} disabled={p.isPending} />
         <SettingsSwitchRow label="Show tax breakdown" checked={!!v.showTaxOnReceipt} onChange={(x) => p.setField("showTaxOnReceipt", x)} disabled={p.isPending} />
         <SettingsSwitchRow label="Show discount lines" checked={!!v.showDiscountOnReceipt} onChange={(x) => p.setField("showDiscountOnReceipt", x)} disabled={p.isPending} />
         <SettingsSwitchRow label="Show cashier / staff name" checked={!!v.showStaffOnReceipt} onChange={(x) => p.setField("showStaffOnReceipt", x)} disabled={p.isPending} />
