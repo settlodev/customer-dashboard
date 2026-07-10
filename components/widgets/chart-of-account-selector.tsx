@@ -31,6 +31,10 @@ interface Props {
   placeholder?: string;
   onChange: (value: string, account: ChartOfAccount | null) => void;
   isDisabled?: boolean;
+  /** Optional allow-list of types (client-side filter). Takes precedence over `accountType`. */
+  accountTypes?: AccountType[];
+  /** Account ids to hide (e.g. already-picked rows, system accounts). */
+  excludeIds?: string[];
 }
 
 export function ChartOfAccountSelector({
@@ -39,6 +43,8 @@ export function ChartOfAccountSelector({
   placeholder,
   onChange,
   isDisabled,
+  accountTypes,
+  excludeIds,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [accounts, setAccounts] = useState<ChartOfAccount[]>([]);
@@ -56,14 +62,24 @@ export function ChartOfAccountSelector({
     return () => ro.disconnect();
   }, []);
 
+  const typeKey = (accountTypes ?? []).join(",");
+
   useEffect(() => {
     let cancelled = false;
     if (open && accounts.length === 0) {
       setLoading(true);
-      listChartOfAccounts(accountType)
+      const request =
+        accountTypes && accountTypes.length > 0
+          ? listChartOfAccounts()
+          : listChartOfAccounts(accountType);
+      request
         .then((all) => {
           if (cancelled) return;
-          setAccounts(all.filter((a) => a.active));
+          let rows = all.filter((a) => a.active);
+          if (accountTypes && accountTypes.length > 0) {
+            rows = rows.filter((a) => accountTypes.includes(a.accountType));
+          }
+          setAccounts(rows);
         })
         .catch(() => !cancelled && setAccounts([]))
         .finally(() => !cancelled && setLoading(false));
@@ -71,12 +87,20 @@ export function ChartOfAccountSelector({
     return () => {
       cancelled = true;
     };
-  }, [open, accountType, accounts.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, accountType, typeKey, accounts.length]);
+
+  const excludeKey = (excludeIds ?? []).join(",");
+  const visible = useMemo(
+    () => accounts.filter((a) => !(excludeIds ?? []).includes(a.id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [accounts, excludeKey],
+  );
 
   // Group by account type for nicer scan
   const grouped = useMemo(() => {
     const groups = new Map<AccountType, ChartOfAccount[]>();
-    for (const a of accounts) {
+    for (const a of visible) {
       const list = groups.get(a.accountType) ?? [];
       list.push(a);
       groups.set(a.accountType, list);
@@ -85,7 +109,7 @@ export function ChartOfAccountSelector({
       type,
       list: list.sort((x, y) => x.code.localeCompare(y.code)),
     }));
-  }, [accounts]);
+  }, [visible]);
 
   const selected = accounts.find((a) => a.id === value) ?? null;
 
