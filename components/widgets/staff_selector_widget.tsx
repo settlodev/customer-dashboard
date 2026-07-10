@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { Check, ChevronDown, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { controlComboboxTriggerClass } from "@/components/ui/field";
 import {
   Command,
   CommandEmpty,
@@ -195,13 +196,14 @@ function StaffSelectorWidget({
           role="combobox"
           aria-expanded={open}
           disabled={isDisabled}
-          className={cn(
-            "w-full justify-between h-10 font-normal",
-            !selected && "text-muted-foreground",
-          )}
+          className={controlComboboxTriggerClass}
         >
-          <span className="truncate">{triggerLabel}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <span
+            className={cn("truncate text-left flex-1", !selected && "text-muted-2")}
+          >
+            {triggerLabel}
+          </span>
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-2" />
         </Button>
       </PopoverTrigger>
       <PopoverContent

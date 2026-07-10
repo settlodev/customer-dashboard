@@ -154,6 +154,7 @@ export async function ByProductTab({
         total={total}
         currency={currency}
         rowClickQuery={`?tab=sales&from=${from}&to=${to}`}
+        hideAveragePrice
       />
     </div>
   );

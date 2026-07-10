@@ -37,12 +37,14 @@ const NumericInput = React.forwardRef<HTMLInputElement, NumericInputProps>(
       <NumericFormat
         getInputRef={ref}
         className={cn(
+          // Mirrors `controlBoxClass` in components/ui/field.tsx (as a bare
+          // input) so NumericInput reads identically to ControlInput/ControlBox.
           "h-11 w-full rounded-[10px] border border-line-2 bg-card px-[13px] text-sm text-ink tabular-nums",
-          "transition-[border-color,box-shadow] duration-150",
+          "transition-[border-color,box-shadow]",
           "placeholder:text-muted-2",
-          "hover:border-ink-3",
           "focus-visible:outline-none focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/15",
-          "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface",
+          "aria-[invalid=true]:border-destructive",
+          "disabled:cursor-not-allowed disabled:opacity-60",
           className,
         )}
         value={value ?? ""}

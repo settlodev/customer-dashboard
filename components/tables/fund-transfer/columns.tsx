@@ -4,6 +4,22 @@ import { ColumnDef } from "@tanstack/react-table";
 
 import { type FundTransfer } from "@/types/fund-transfer/type";
 
+function moneyCell(
+  value: number | null | undefined,
+  currency: string,
+  muteZero = false,
+) {
+  const n = value ?? 0;
+  if (muteZero && n === 0) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+  return (
+    <>
+      {n.toLocaleString(undefined, { maximumFractionDigits: 0 })} {currency}
+    </>
+  );
+}
+
 export const columns: ColumnDef<FundTransfer>[] = [
   {
     accessorKey: "transferDate",
@@ -46,6 +62,36 @@ export const columns: ColumnDef<FundTransfer>[] = [
           maximumFractionDigits: 0,
         })}{" "}
         {row.original.currencyCode}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "feeAmount",
+    header: () => <span className="block text-right">Fee</span>,
+    cell: ({ row }) => (
+      <div className="text-right font-mono tabular-nums">
+        {moneyCell(row.original.feeAmount, row.original.currencyCode, true)}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "taxAmount",
+    header: () => <span className="block text-right">Tax</span>,
+    cell: ({ row }) => (
+      <div className="text-right font-mono tabular-nums">
+        {moneyCell(row.original.taxAmount, row.original.currencyCode, true)}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "netAmount",
+    header: () => <span className="block text-right">Net</span>,
+    cell: ({ row }) => (
+      <div className="text-right font-mono tabular-nums">
+        {moneyCell(
+          row.original.netAmount ?? row.original.amount,
+          row.original.currencyCode,
+        )}
       </div>
     ),
   },

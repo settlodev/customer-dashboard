@@ -10,6 +10,7 @@ import { inventoryUrl } from "./inventory-client";
 import { getCurrentDestination } from "./context";
 import type {
   Grn,
+  GrnStatus,
   PublicGrn,
   LandedCost,
   CreateGrnPayload,
@@ -26,20 +27,46 @@ const BASE = "/api/v1/grns";
 
 // ── List / read ─────────────────────────────────────────────────────
 
+export interface GrnListParams {
+  page?: number;
+  size?: number;
+  /** Inclusive business-date lower bound, `yyyy-MM-dd`. */
+  from?: string;
+  /** Inclusive business-date upper bound, `yyyy-MM-dd`. */
+  to?: string;
+  status?: GrnStatus;
+  /** Free-text match on GRN number or supplier name (server-side). */
+  search?: string;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
+}
+
 export async function getGrns(
-  page: number = 0,
-  size: number = 20,
-  sortBy: string = "createdAt",
-  sortDirection: "asc" | "desc" = "desc",
+  params: GrnListParams = {},
 ): Promise<ApiResponse<Grn>> {
-  const params = new URLSearchParams();
-  params.set("page", String(page));
-  params.set("size", String(size));
-  params.set("sortBy", sortBy);
-  params.set("sortDirection", sortDirection);
+  const {
+    page = 0,
+    size = 20,
+    from,
+    to,
+    status,
+    search,
+    sortBy = "createdAt",
+    sortDirection = "desc",
+  } = params;
+
+  const qs = new URLSearchParams();
+  qs.set("page", String(page));
+  qs.set("size", String(size));
+  qs.set("sortBy", sortBy);
+  qs.set("sortDirection", sortDirection);
+  if (from) qs.set("from", from);
+  if (to) qs.set("to", to);
+  if (status) qs.set("status", status);
+  if (search?.trim()) qs.set("search", search.trim());
 
   const apiClient = new ApiClient();
-  const data = await apiClient.get(inventoryUrl(`${BASE}?${params.toString()}`));
+  const data = await apiClient.get(inventoryUrl(`${BASE}?${qs.toString()}`));
   return parseStringify(data);
 }
 

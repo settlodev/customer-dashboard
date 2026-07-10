@@ -1,0 +1,11 @@
+{
+  "git": {
+    "deploymentEnabled": {
+      "alpha": true,
+      "beta": true,
+      "main": true,
+      "dev": true,
+      "*": false
+    }
+  }
+}

@@ -5,6 +5,8 @@ export const FundTransferSchema = z
     fromAccountId: z.string().uuid("Pick a source account"),
     toAccountId: z.string().uuid("Pick a destination account"),
     amount: z.coerce.number().gt(0, "Amount must be greater than zero"),
+    feeAmount: z.coerce.number().min(0, "Fee can't be negative").optional(),
+    taxAmount: z.coerce.number().min(0, "Tax can't be negative").optional(),
     currencyCode: z.string().length(3),
     transferDate: z
       .string()
@@ -16,6 +18,13 @@ export const FundTransferSchema = z
   .refine((d) => d.fromAccountId !== d.toAccountId, {
     message: "Source and destination must differ",
     path: ["toAccountId"],
-  });
+  })
+  .refine(
+    (d) => !(d.amount > 0) || (d.feeAmount ?? 0) + (d.taxAmount ?? 0) < d.amount,
+    {
+      message: "Fee + tax must be less than the amount",
+      path: ["feeAmount"],
+    },
+  );
 
 export type FundTransferFormValues = z.infer<typeof FundTransferSchema>;

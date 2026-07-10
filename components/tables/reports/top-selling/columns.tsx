@@ -35,12 +35,15 @@ const formatDateTime = (value: string | null | undefined) => {
 
 interface BuildColumnsOptions {
   currency: string;
+  /** Hide the "Avg price" column (e.g. on the sales report product tab). */
+  hideAveragePrice?: boolean;
 }
 
 export function buildTopSellingColumns({
   currency,
+  hideAveragePrice = false,
 }: BuildColumnsOptions): ColumnDef<TopSellingItem>[] {
-  return [
+  const columns: ColumnDef<TopSellingItem>[] = [
     {
       accessorKey: "rank",
       enableHiding: false,
@@ -321,4 +324,11 @@ export function buildTopSellingColumns({
       },
     },
   ];
+
+  return hideAveragePrice
+    ? columns.filter(
+        (column) =>
+          !("accessorKey" in column && column.accessorKey === "averagePrice"),
+      )
+    : columns;
 }

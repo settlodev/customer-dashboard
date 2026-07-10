@@ -11,16 +11,29 @@ import NoItems from "@/components/layouts/no-items";
 import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/grn/columns";
+import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { getGrns } from "@/lib/actions/grn-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getGrnKpi } from "@/lib/actions/reports-analytics-actions";
 import { GrnKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
 import { softFetch } from "@/lib/list-fallback";
+import { GRN_STATUS_LABELS, GrnStatus } from "@/types/grn/type";
+
+const GRN_STATUS_VALUES: GrnStatus[] = [
+  "DRAFT",
+  "INSPECTION_HOLD",
+  "RECEIVED",
+  "CANCELLED",
+];
 
 type Params = {
   searchParams: Promise<{
     page?: string;
     limit?: string;
+    from?: string;
+    to?: string;
+    status?: string;
+    search?: string;
   }>;
 };
 
@@ -28,9 +41,25 @@ export default async function Page({ searchParams }: Params) {
   const resolvedParams = await searchParams;
   const page = Number(resolvedParams.page) || 0;
   const pageLimit = Number(resolvedParams.limit) || 20;
+  const from = resolvedParams.from;
+  const to = resolvedParams.to;
+  const status = GRN_STATUS_VALUES.find((s) => s === resolvedParams.status);
+  const search = resolvedParams.search?.trim() || undefined;
+  // A live filter must keep the toolbar on screen even when it returns zero
+  // rows — otherwise the user lands on the empty state with no way to clear it.
+  const hasFilters = Boolean(from || to || status || search);
 
   const [responseData, location] = await Promise.all([
-    softFetch(getGrns(page ? page - 1 : 0, pageLimit)),
+    softFetch(
+      getGrns({
+        page: page ? page - 1 : 0,
+        size: pageLimit,
+        from,
+        to,
+        status,
+        search,
+      }),
+    ),
     getCurrentLocation(),
   ]);
   const data = responseData?.content ?? [];
@@ -57,18 +86,26 @@ export default async function Page({ searchParams }: Params) {
       <PageBody>
         {!responseData ? (
           <DataLoadError itemName="goods received notes" />
-        ) : total > 0 ? (
+        ) : total > 0 || hasFilters ? (
           <>
             <GrnKpiStrip summary={kpi} />
+            <OrdersDateFilter from={from ?? ""} to={to ?? ""} allowClear />
             <DataTable
               columns={columns}
               data={data}
               searchKey="grnNumber"
+              searchPlaceholder="Search GRN number or supplier…"
               pageNo={page}
               total={total}
               pageCount={pageCount}
               defaultPageSize={pageLimit}
               disableArchive
+              filterKey="status"
+              filterOptions={GRN_STATUS_VALUES.map((s) => ({
+                value: s,
+                label: GRN_STATUS_LABELS[s],
+              }))}
+              manualFilter
             />
           </>
         ) : (

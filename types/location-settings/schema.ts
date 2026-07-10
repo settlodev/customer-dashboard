@@ -109,6 +109,7 @@ export const LocationSettingsSchema = z.object({
   // Approvals
   requireApprovalForVoids: z.boolean().optional(),
   requireApprovalForDiscounts: z.boolean().optional(),
+  requireApprovalForDayClose: z.boolean().optional(),
 
   // Order naming
   orderNamePrefix: z.string().max(50).optional(),

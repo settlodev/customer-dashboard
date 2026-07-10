@@ -134,15 +134,180 @@ export const fmtAmount = (n: number | null | undefined): string =>
   n == null || Number.isNaN(n) ? "—" : Math.round(n).toLocaleString();
 
 export const PAYEE_TYPE_LABELS: Record<PayeeType, string> = {
-  SUPPLIER: "Supplier (direct pay)",
-  MWANGA_CASA: "Mwanga Casa",
-  IN_KIND_DEVICE: "In-kind (device)",
+  SUPPLIER: "Supplier",
+  MWANGA_CASA: "Customer Account",
+  IN_KIND_DEVICE: "In Kind",
 };
 
 export const INTEREST_METHOD_LABELS: Record<InterestMethod, string> = {
   FLAT: "Flat",
   REDUCING_BALANCE: "Reducing balance",
-  NONE: "None",
+  NONE: "None (fee-based only)",
+};
+
+// ── Descriptions (shown as field hints — plain prose for non-bankers) ──
+
+export const PAYEE_TYPE_DESCRIPTIONS: Record<PayeeType, string> = {
+  SUPPLIER:
+    "Funds go directly to the device vendor or stock supplier — the borrower never handles the cash. Common for POS device and stock loans.",
+  MWANGA_CASA:
+    "Funds are deposited into the borrower's own bank account (any bank). Used for working capital where the business needs cash in hand.",
+  IN_KIND_DEVICE:
+    "No cash changes hands. A physical device or goods are issued directly to the borrower at disbursement.",
+};
+
+export const PRODUCT_TYPE_DESCRIPTIONS: Record<LoanProductType, string> = {
+  POS_DEVICE:
+    "Finance a POS terminal or card reader. The device is the collateral — paid to the device supplier or issued directly to the borrower.",
+  STOCK:
+    "Finance inventory or stock purchases. Funds are sent straight to the approved supplier so the borrower can stock their shelves.",
+  BUSINESS_IMPROVEMENT:
+    "General working capital. Cash goes into the borrower's own bank account for business use (equipment, rent, salaries, etc.).",
+};
+
+export const PRICING_TYPE_DESCRIPTIONS: Record<PricingType, string> = {
+  FLAT_FEE:
+    "A one-time fee as a percentage of the loan amount — the same cost no matter how long the loan runs. E.g. 8% on TZS 500,000 = TZS 40,000 fee.",
+  FACTOR_RATE:
+    "Total repayable = loan amount × factor. E.g. factor 1.10 on TZS 500,000 = repay TZS 550,000 total. Simple and transparent.",
+  DECLINING_INTEREST:
+    "Interest is recalculated each period on the remaining balance. The borrower pays less interest over time as the principal reduces.",
+};
+
+export const INTEREST_METHOD_DESCRIPTIONS: Record<InterestMethod, string> = {
+  FLAT:
+    "Interest is fixed every period, calculated on the original loan amount from start to finish.",
+  REDUCING_BALANCE:
+    "Interest reduces each period as the borrower repays — the outstanding balance shrinks, so the interest charge shrinks with it.",
+  NONE:
+    "No interest is charged. All cost is expressed as a fee (flat fee or factor rate). Select Flat Fee or Factor Rate as the pricing model.",
+};
+
+export const REPAYMENT_TYPE_DESCRIPTIONS: Record<RepaymentType, string> = {
+  INSTALLMENTS:
+    "Borrower pays a fixed amount each period (weekly, monthly, etc.) until the full balance is cleared. The most common structure.",
+  SALES_HOLDBACK:
+    "A set percentage of the borrower's daily sales is automatically swept to repay the loan. Repayment follows the business's revenue.",
+  BULLET:
+    "No payments during the loan term. The full balance — principal, fees, and interest — is due in one lump sum on the maturity date.",
+};
+
+// Payee types valid for each product type. Other combinations are blocked.
+// Rule: cash (MWANGA_CASA) can't be used for device/stock; in-kind/device can't be used for working capital.
+export const ALLOWED_PAYEE_TYPES_BY_PRODUCT: Record<LoanProductType, PayeeType[]> = {
+  POS_DEVICE: ["SUPPLIER", "IN_KIND_DEVICE"],
+  STOCK: ["SUPPLIER"],
+  BUSINESS_IMPROVEMENT: ["MWANGA_CASA"],
+};
+
+// ── Terms & conditions templates (prefilled by product type) ───────────
+// {{variable}} placeholders are substituted at loan-booking time.
+// Available: {{applicantName}}, {{businessName}}, {{businessRegNumber}},
+//   {{borrowerPhone}}, {{borrowerEmail}}, {{applicationNumber}},
+//   {{currency}}, {{loanAmount}}, {{termDays}}, {{installmentCount}},
+//   {{installmentAmount}}, {{disbursementDate}}, {{maturityDate}},
+//   {{gracePeriodDays}}, {{lateFeeFlat}}, {{penaltyRatePerDay}},
+//   {{defaultThresholdDays}}
+export const TERMS_TEMPLATE_PRESETS: Record<LoanProductType, string> = {
+  POS_DEVICE: `LOAN AGREEMENT — POS DEVICE FINANCING
+Application: {{applicationNumber}}
+
+BORROWER
+Name: {{applicantName}}
+Business: {{businessName}} ({{businessRegNumber}})
+Phone: {{borrowerPhone}}
+Email: {{borrowerEmail}}
+
+LOAN DETAILS
+Amount: {{currency}} {{loanAmount}}
+Term: {{termDays}} days
+Repayments: {{installmentCount}} × {{currency}} {{installmentAmount}}
+Disbursement Date: {{disbursementDate}}
+Maturity Date: {{maturityDate}}
+
+DEVICE CONDITIONS
+The POS device provided under this agreement is and remains Settlo's property until the loan is fully repaid. The borrower agrees to:
+• Keep the device in good working condition at all times.
+• Not sell, transfer, pledge, or assign the device to any third party.
+• Report any loss or theft to Settlo within 24 hours. The outstanding loan balance remains payable regardless.
+• Not attempt to repair, unlock, or modify the device without prior written consent from Settlo.
+• Return the device to Settlo on demand if the loan is in default.
+
+REPAYMENT
+Repayments are due as per the schedule issued at disbursement.
+A grace period of {{gracePeriodDays}} day(s) applies after each due date.
+Late payments attract a one-time flat fee of {{currency}} {{lateFeeFlat}} on the first overdue day,
+plus a daily charge of {{penaltyRatePerDay}} of the unpaid balance until settled.
+After {{defaultThresholdDays}} days of non-payment the loan is classified as defaulted.
+
+CONSENT
+By submitting this application, I confirm I have read, understood, and agree to all terms above.`,
+
+  STOCK: `LOAN AGREEMENT — STOCK / INVENTORY FINANCING
+Application: {{applicationNumber}}
+
+BORROWER
+Name: {{applicantName}}
+Business: {{businessName}} ({{businessRegNumber}})
+Phone: {{borrowerPhone}}
+Email: {{borrowerEmail}}
+
+LOAN DETAILS
+Amount: {{currency}} {{loanAmount}}
+Term: {{termDays}} days
+Repayments: {{installmentCount}} × {{currency}} {{installmentAmount}}
+Disbursement Date: {{disbursementDate}}
+Maturity Date: {{maturityDate}}
+
+PURPOSE & DISBURSEMENT
+Funds are disbursed directly to the approved supplier for the purchase of stock or inventory on behalf of the borrower.
+The borrower confirms that:
+• The goods are intended for legitimate business use only.
+• Funds will not be redirected to any purpose other than the approved stock purchase.
+• The borrower remains solely responsible for full repayment regardless of stock performance or sales.
+
+REPAYMENT
+Repayments are due as per the schedule issued at disbursement.
+A grace period of {{gracePeriodDays}} day(s) applies after each due date.
+Late payments attract a one-time flat fee of {{currency}} {{lateFeeFlat}} on the first overdue day,
+plus a daily charge of {{penaltyRatePerDay}} of the unpaid balance until settled.
+After {{defaultThresholdDays}} days of non-payment the loan is classified as defaulted.
+
+CONSENT
+By submitting this application, I confirm I have read, understood, and agree to all terms above.`,
+
+  BUSINESS_IMPROVEMENT: `LOAN AGREEMENT — WORKING CAPITAL / BUSINESS IMPROVEMENT
+Application: {{applicationNumber}}
+
+BORROWER
+Name: {{applicantName}}
+Business: {{businessName}} ({{businessRegNumber}})
+Phone: {{borrowerPhone}}
+Email: {{borrowerEmail}}
+
+LOAN DETAILS
+Amount: {{currency}} {{loanAmount}}
+Term: {{termDays}} days
+Repayments: {{installmentCount}} × {{currency}} {{installmentAmount}}
+Disbursement Date: {{disbursementDate}}
+Maturity Date: {{maturityDate}}
+
+PURPOSE & DISBURSEMENT
+Funds are deposited into the borrower's registered bank account for working capital and general business improvement.
+The borrower confirms that:
+• The funds will be used exclusively for business-related purposes as declared in the loan application.
+• Funds will not be used for personal expenses or activities unrelated to the stated business.
+• The borrower remains solely responsible for repayment regardless of business performance.
+
+REPAYMENT
+Repayments are due as per the schedule issued at disbursement.
+A grace period of {{gracePeriodDays}} day(s) applies after each due date.
+Late payments attract a one-time flat fee of {{currency}} {{lateFeeFlat}} on the first overdue day,
+plus a daily charge of {{penaltyRatePerDay}} of the unpaid balance until settled.
+After {{defaultThresholdDays}} days of non-payment the loan is classified as defaulted.
+
+CONSENT
+By submitting this application, I confirm I have read, understood, and agree to all terms above.`,
 };
 
 // ── Select option lists (label-map order) ─────────────────────────────
@@ -368,6 +533,17 @@ export const LoanProductFormSchema = z
       d.maxTermDays == null ||
       d.maxTermDays >= d.minTermDays,
     { message: "Must be ≥ minimum term", path: ["maxTermDays"] },
+  )
+  .refine(
+    (d) => {
+      const allowed = ALLOWED_PAYEE_TYPES_BY_PRODUCT[d.productType];
+      return !allowed || allowed.includes(d.payeeType);
+    },
+    { message: "This payee type is not valid for the selected product type", path: ["payeeType"] },
+  )
+  .refine(
+    (d) => !(d.interestMethod === "NONE" && d.pricingType === "DECLINING_INTEREST"),
+    { message: "Declining interest requires a flat or reducing-balance interest method — or switch pricing to Flat Fee / Factor Rate", path: ["pricingType"] },
   );
 
 /** Parsed (coerced) output — empties become `undefined`, numerics become numbers. */

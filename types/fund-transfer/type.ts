@@ -10,6 +10,9 @@ export interface FundTransfer {
   toAccountCode?: string | null;
   toAccountName?: string | null;
   amount: number;
+  feeAmount?: number | null;
+  taxAmount?: number | null;
+  netAmount?: number | null;
   currencyCode: string;
   transferDate: string;
   description?: string | null;

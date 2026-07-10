@@ -237,6 +237,7 @@ export interface LocationSettings {
   // Approvals
   requireApprovalForVoids: boolean;
   requireApprovalForDiscounts: boolean;
+  requireApprovalForDayClose: boolean;
 
   // Staff HR
   enableShiftManagement: boolean;

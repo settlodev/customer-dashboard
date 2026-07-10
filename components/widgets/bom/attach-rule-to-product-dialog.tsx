@@ -7,10 +7,11 @@ import React, {
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronsUpDown, Link2, Loader2, Search } from "lucide-react";
+import { Check, ChevronDown, Link2, Loader2, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { controlComboboxTriggerClass } from "@/components/ui/field";
 import {
   Dialog,
   DialogContent,
@@ -204,7 +205,7 @@ export default function AttachRuleToProductDialog({
                 role="combobox"
                 aria-expanded={pickerOpen}
                 disabled={productsLoading || isPending || isPickerEmpty}
-                className="w-full justify-between font-normal"
+                className={controlComboboxTriggerClass}
               >
                 <span className="flex flex-1 items-center gap-2 truncate text-left">
                   {productsLoading ? (
@@ -226,13 +227,13 @@ export default function AttachRuleToProductDialog({
                   ) : (
                     <>
                       <Search className="h-3.5 w-3.5 shrink-0 opacity-50" />
-                      <span className="text-muted-foreground">
+                      <span className="text-muted-2">
                         Search products…
                       </span>
                     </>
                   )}
                 </span>
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-2" />
               </Button>
             </PopoverTrigger>
             <PopoverContent

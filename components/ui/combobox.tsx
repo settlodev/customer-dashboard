@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { controlComboboxTriggerClass } from "@/components/ui/field";
 import {
   Command,
   CommandEmpty,
@@ -138,11 +139,7 @@ export function Combobox({
           aria-expanded={open}
           aria-label={ariaLabel}
           disabled={disabled}
-          className={cn(
-            "h-9 justify-between gap-2 text-[12.5px] font-normal",
-            !selected && "text-muted-foreground",
-            className,
-          )}
+          className={cn(controlComboboxTriggerClass, className)}
         >
           <span className="flex min-w-0 items-center gap-2">
             {icon}
@@ -150,12 +147,13 @@ export function Combobox({
               className={cn(
                 "truncate",
                 selected?.mono && "font-mono text-[12px]",
+                !selected && "text-muted-2",
               )}
             >
               {selected ? selected.label : placeholder}
             </span>
           </span>
-          <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-2" />
         </Button>
       </PopoverTrigger>
       <PopoverContent

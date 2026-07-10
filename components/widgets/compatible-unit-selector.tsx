@@ -7,9 +7,10 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import { Check, ChevronsUpDown, Loader2, ShieldCheck } from "lucide-react";
+import { Check, ChevronDown, Loader2, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { controlComboboxTriggerClass } from "@/components/ui/field";
 import {
   Command,
   CommandEmpty,
@@ -235,14 +236,19 @@ const CompatibleUnitSelector: React.FC<Props> = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between overflow-hidden font-normal"
+          className={cn(controlComboboxTriggerClass, "overflow-hidden")}
           disabled={isDisabled || showLoadingText}
           onBlur={onBlur}
         >
-          <span className="truncate text-left flex-1">
+          <span
+            className={cn(
+              "truncate text-left flex-1",
+              !selectedLabel && "text-muted-2",
+            )}
+          >
             {showLoadingText ? "Loading..." : selectedLabel ?? placeholder}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-2" />
         </Button>
       </PopoverTrigger>
 
