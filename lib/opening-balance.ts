@@ -32,8 +32,13 @@ export function computeOpeningBalanceResidual(
     else credits += magnitude;
   }
   const residual = debits - credits;
-  if (residual === 0) return null;
+  // Money tolerance: floating-point sums can leave a sub-cent residual on
+  // inputs that balance exactly in decimal (e.g. 0.10 + 0.20), so treat
+  // anything under half a cent as balanced. The backend uses exact BigDecimal
+  // and stays authoritative; this only drives the client-side preview.
+  if (Math.abs(residual) < 0.005) return null;
+  const magnitude = Math.round(Math.abs(residual) * 100) / 100;
   return residual > 0
-    ? { amount: residual, side: "CREDIT" }
-    : { amount: -residual, side: "DEBIT" };
+    ? { amount: magnitude, side: "CREDIT" }
+    : { amount: magnitude, side: "DEBIT" };
 }
