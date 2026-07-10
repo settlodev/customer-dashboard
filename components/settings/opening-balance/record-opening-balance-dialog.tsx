@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Loader2, Plus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,18 @@ export function RecordOpeningBalanceDialog({
   const [rows, setRows] = useState<Row[]>([
     { key: "r0", chartOfAccountId: "", account: null, amount: undefined },
   ]);
+
+  // Reset to a fresh blank form each time the dialog opens, seeding the
+  // as-of date from the (now-loaded) suggestion. The dialog is always mounted
+  // and toggled via `open`, so without this the initial useState seed
+  // (captured before status loads) leaves the date blank and shows stale rows
+  // on reopen. While open, status cannot change, so this won't reset mid-edit.
+  useEffect(() => {
+    if (!open) return;
+    setAsOfDate(suggestedAsOfDate ?? "");
+    keyCounter.current = 1;
+    setRows([{ key: "r0", chartOfAccountId: "", account: null, amount: undefined }]);
+  }, [open, suggestedAsOfDate]);
 
   const addRow = () =>
     setRows((rs) => [
