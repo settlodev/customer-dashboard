@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useEffect, useState, useTransition } from "react";
 import {
   useForm,
   useWatch,
@@ -19,10 +19,12 @@ import {
   Coins,
   FileText,
   Hash,
+  Info,
   Landmark,
   Loader2,
   Percent,
   Power,
+  Wand2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -62,20 +64,30 @@ import { useToast } from "@/hooks/use-toast";
 import { createLoanProduct, updateLoanProduct } from "@/lib/actions/admin/loans";
 import type { FormResponse } from "@/types/types";
 import {
+  ALLOWED_PAYEE_TYPES_BY_PRODUCT,
   fmtAmount,
+  INTEREST_METHOD_DESCRIPTIONS,
   INTEREST_METHOD_OPTIONS,
   LOAN_PRODUCT_TYPE_LABELS,
   LOAN_PRODUCT_TYPE_OPTIONS,
   LoanProductFormSchema,
+  PAYEE_TYPE_DESCRIPTIONS,
   PAYEE_TYPE_OPTIONS,
+  PRICING_TYPE_DESCRIPTIONS,
   PRICING_TYPE_LABELS,
   PRICING_TYPE_OPTIONS,
+  PRODUCT_TYPE_DESCRIPTIONS,
   REPAYMENT_FREQUENCY_LABELS,
   REPAYMENT_FREQUENCY_OPTIONS,
+  REPAYMENT_TYPE_DESCRIPTIONS,
   REPAYMENT_TYPE_LABELS,
   REPAYMENT_TYPE_OPTIONS,
+  TERMS_TEMPLATE_PRESETS,
+  type InterestMethod,
   type LoanProductFormValues,
   type LoanProductResponse,
+  type LoanProductType,
+  type PayeeType,
   type PricingType,
   type SelectOption,
 } from "@/types/admin/loans";
@@ -589,10 +601,41 @@ export default function LoanProductForm({
     defaultValues: toFormValues(item),
   });
 
-  const pricingType = form.watch("pricingType");
+  // ── Watched values for conditional rendering ──────────────────────
+  const productType = form.watch("productType") as LoanProductType;
+  const pricingType = form.watch("pricingType") as PricingType;
+  const interestMethod = form.watch("interestMethod") as InterestMethod;
   const repaymentType = form.watch("repaymentType");
+  const payeeTypeValue = form.watch("payeeType") as PayeeType;
   const currency = (form.watch("currency") || "TZS").toUpperCase();
 
+  // ── Payee options filtered by product type ────────────────────────
+  const allowedPayeeValues = ALLOWED_PAYEE_TYPES_BY_PRODUCT[productType];
+  const filteredPayeeOptions = allowedPayeeValues
+    ? PAYEE_TYPE_OPTIONS.filter((o) =>
+        allowedPayeeValues.includes(o.value as PayeeType),
+      )
+    : PAYEE_TYPE_OPTIONS;
+
+  // Auto-reset payeeType when productType changes to an incompatible combination.
+  useEffect(() => {
+    if (isEditing) return;
+    const current = form.getValues("payeeType") as PayeeType;
+    const allowed = ALLOWED_PAYEE_TYPES_BY_PRODUCT[productType];
+    if (allowed && !allowed.includes(current)) {
+      form.setValue("payeeType", allowed[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productType]);
+
+  // ── Interest/pricing conflict ─────────────────────────────────────
+  // interestMethod=NONE means fee-only pricing — DECLINING_INTEREST is incompatible.
+  const interestPricingConflict =
+    interestMethod === "NONE" && pricingType === "DECLINING_INTEREST";
+  const showInterestRateFields =
+    interestMethod !== "NONE" && pricingType === "DECLINING_INTEREST";
+
+  // ── Submit ────────────────────────────────────────────────────────
   const onSubmit = (values: LoanProductFormValues) => {
     if (readOnly) return;
     startTransition(async () => {
@@ -652,11 +695,12 @@ export default function LoanProductForm({
       >
         <div className={styles.formGrid}>
           <div className={styles.formStack}>
+
           {/* 01 — Identity */}
           <Section
             icon={<Landmark className="h-3.5 w-3.5" />}
             title="Product identity"
-            desc="How this financing product is identified. Code, type, payee and currency are fixed after creation."
+            desc="Name the product and choose who it's for. Code, product type, payee, and currency are fixed once the product is created."
             step="STEP 01"
           >
             <FieldRow cols={2}>
@@ -670,8 +714,8 @@ export default function LoanProductForm({
                 icon={<Hash className="h-3.5 w-3.5" />}
                 hint={
                   isEditing
-                    ? "Code can't be changed."
-                    : "Unique short code. Uppercase, no spaces."
+                    ? "Code is permanent and cannot be changed."
+                    : "A short unique identifier — uppercase, no spaces. Used in API calls and reports."
                 }
               />
               <TextField
@@ -681,6 +725,7 @@ export default function LoanProductForm({
                 required
                 placeholder="e.g. POS Device — 30 days"
                 disabled={disabled}
+                hint="The name shown to reviewers and borrowers on their loan offer."
               />
             </FieldRow>
             <FieldRow cols={1}>
@@ -689,8 +734,9 @@ export default function LoanProductForm({
                 name="description"
                 label="Description"
                 rows={2}
-                placeholder="Short summary shown to reviewers."
+                placeholder="Brief summary — e.g. 30-day device financing for active merchants."
                 disabled={disabled}
+                hint="Internal notes shown to loan officers during underwriting. Not visible to borrowers."
               />
             </FieldRow>
             <FieldRow cols={3}>
@@ -701,15 +747,25 @@ export default function LoanProductForm({
                 required
                 options={LOAN_PRODUCT_TYPE_OPTIONS}
                 disabled={disabled || isEditing}
+                hint={
+                  isEditing
+                    ? "Product type is permanent and cannot be changed."
+                    : PRODUCT_TYPE_DESCRIPTIONS[productType]
+                }
               />
               <SelectField
                 form={form}
                 name="payeeType"
-                label="Payee"
+                label="Who receives the money"
                 required
-                options={PAYEE_TYPE_OPTIONS}
+                options={filteredPayeeOptions}
                 disabled={disabled || isEditing}
-                hint="Who receives the disbursement."
+                hint={
+                  isEditing
+                    ? "Payee type is permanent and cannot be changed."
+                    : PAYEE_TYPE_DESCRIPTIONS[payeeTypeValue] ??
+                      "Who receives the disbursement when a loan is approved."
+                }
               />
               <TextField
                 form={form}
@@ -718,7 +774,11 @@ export default function LoanProductForm({
                 required
                 placeholder="TZS"
                 disabled={disabled || isEditing}
-                hint="3-letter ISO code."
+                hint={
+                  isEditing
+                    ? "Currency is permanent and cannot be changed."
+                    : "3-letter ISO currency code. TZS for Tanzanian Shilling."
+                }
               />
             </FieldRow>
           </Section>
@@ -727,7 +787,7 @@ export default function LoanProductForm({
           <Section
             icon={<Percent className="h-3.5 w-3.5" />}
             title="Pricing & interest"
-            desc="How the cost of the loan is calculated."
+            desc="Set how the cost of the loan is calculated. The pricing model and interest method together determine what the borrower pays back."
             step="STEP 02"
           >
             <FieldRow cols={2}>
@@ -738,6 +798,7 @@ export default function LoanProductForm({
                 required
                 options={PRICING_TYPE_OPTIONS}
                 disabled={disabled}
+                hint={PRICING_TYPE_DESCRIPTIONS[pricingType]}
               />
               <SelectField
                 form={form}
@@ -746,8 +807,29 @@ export default function LoanProductForm({
                 required
                 options={INTEREST_METHOD_OPTIONS}
                 disabled={disabled}
+                hint={INTEREST_METHOD_DESCRIPTIONS[interestMethod]}
               />
             </FieldRow>
+
+            {/* Conflict warning: NONE + DECLINING_INTEREST is invalid */}
+            {interestPricingConflict ? (
+              <Alert tone="danger" className="mt-3">
+                <AlertIcon>
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                </AlertIcon>
+                <AlertBody>
+                  <AlertTitle>Incompatible combination</AlertTitle>
+                  <AlertDescription>
+                    &quot;Declining interest&quot; pricing requires interest to be charged.
+                    Either change the pricing model to <strong>Flat Fee</strong> or{" "}
+                    <strong>Factor Rate</strong>, or change the interest method to{" "}
+                    <strong>Flat</strong> or <strong>Reducing balance</strong>.
+                  </AlertDescription>
+                </AlertBody>
+              </Alert>
+            ) : null}
+
+            {/* Flat fee rate — only for FLAT_FEE pricing */}
             {pricingType === "FLAT_FEE" ? (
               <FieldRow cols={2}>
                 <NumberField
@@ -755,12 +837,14 @@ export default function LoanProductForm({
                   name="flatFeeRate"
                   label="Flat fee rate"
                   decimalScale={4}
-                  placeholder="0.05"
-                  hint="Fraction of principal — 0.05 = 5%."
+                  placeholder="0.08"
+                  hint="Fraction of the loan amount charged as a one-time fee. 0.08 = 8% of principal."
                   disabled={disabled}
                 />
               </FieldRow>
             ) : null}
+
+            {/* Factor rate — only for FACTOR_RATE pricing */}
             {pricingType === "FACTOR_RATE" ? (
               <FieldRow cols={2}>
                 <NumberField
@@ -768,44 +852,38 @@ export default function LoanProductForm({
                   name="factorRate"
                   label="Factor rate"
                   decimalScale={4}
-                  placeholder="1.15"
-                  hint="Multiplier on principal — 1.15 = repay 115%."
+                  placeholder="1.10"
+                  hint="Multiplier on the loan amount. 1.10 means the borrower repays 110% of what they borrowed."
                   disabled={disabled}
                 />
               </FieldRow>
             ) : null}
-            {pricingType === "DECLINING_INTEREST" ? (
+
+            {/* Annual rate + minimum interest — only when interest is actually charged */}
+            {showInterestRateFields ? (
               <FieldRow cols={2}>
                 <NumberField
                   form={form}
                   name="annualInterestRate"
-                  label="Annual interest rate"
+                  label="Annual interest rate (APR)"
                   decimalScale={4}
                   placeholder="0.24"
-                  hint="Fraction per year — 0.24 = 24% p.a."
+                  hint="Yearly interest rate as a decimal. 0.24 = 24% per annum. Interest is prorated over the loan term."
                   disabled={disabled}
                 />
                 <NumberField
                   form={form}
                   name="minInterestRate"
-                  label="Minimum interest rate"
+                  label="Minimum interest guarantee"
                   decimalScale={4}
                   placeholder="0.00"
-                  hint="Floor applied to the computed rate."
+                  hint="Floor interest as a fraction of principal. Protects against early repayment eating into minimum revenue. 0.03 = at least 3% of principal is always charged."
                   disabled={disabled}
                 />
               </FieldRow>
             ) : null}
+
             <FieldRow cols={2}>
-              <NumberField
-                form={form}
-                name="originationFeeRate"
-                label="Origination fee rate"
-                decimalScale={4}
-                placeholder="0.01"
-                hint="Fraction of principal charged upfront."
-                disabled={disabled}
-              />
               <NumberField
                 form={form}
                 name="processingFee"
@@ -814,7 +892,16 @@ export default function LoanProductForm({
                 thousands
                 decimalScale={2}
                 placeholder="0"
-                hint="Flat fee added at disbursement."
+                hint={`Flat one-time fee added at disbursement — e.g. TZS 5,000 admin charge. Always in ${currency}, regardless of loan size.`}
+                disabled={disabled}
+              />
+              <NumberField
+                form={form}
+                name="originationFeeRate"
+                label="Origination fee rate"
+                decimalScale={4}
+                placeholder="0.00"
+                hint="Fraction of principal charged upfront as an origination cost. Reserved for future use — not yet applied by the engine."
                 disabled={disabled}
               />
             </FieldRow>
@@ -824,30 +911,32 @@ export default function LoanProductForm({
           <Section
             icon={<Coins className="h-3.5 w-3.5" />}
             title="Principal & term"
-            desc="The borrowing limits this product allows."
+            desc="Set the minimum and maximum loan amounts and durations this product allows. Applications outside these bounds are rejected automatically."
             step="STEP 03"
           >
             <FieldRow cols={2}>
               <NumberField
                 form={form}
                 name="minPrincipal"
-                label="Minimum principal"
+                label="Minimum loan amount"
                 required
                 prefix={currency}
                 thousands
                 decimalScale={2}
                 placeholder="0"
+                hint="Smallest amount a borrower can request under this product."
                 disabled={disabled}
               />
               <NumberField
                 form={form}
                 name="maxPrincipal"
-                label="Maximum principal"
+                label="Maximum loan amount"
                 required
                 prefix={currency}
                 thousands
                 decimalScale={2}
                 placeholder="0"
+                hint="Largest amount a borrower can request. Officer approvals must also stay within this limit."
                 disabled={disabled}
               />
             </FieldRow>
@@ -859,6 +948,7 @@ export default function LoanProductForm({
                 required
                 decimalScale={0}
                 placeholder="7"
+                hint="Shortest allowed loan duration in calendar days."
                 disabled={disabled}
               />
               <NumberField
@@ -868,15 +958,17 @@ export default function LoanProductForm({
                 required
                 decimalScale={0}
                 placeholder="90"
+                hint="Longest allowed loan duration. 30 = one month, 90 = three months, 365 = one year."
                 disabled={disabled}
               />
               <NumberField
                 form={form}
                 name="maxConcurrentLoansPerBorrower"
-                label="Max active loans / borrower"
+                label="Max active loans per borrower"
                 required
                 decimalScale={0}
                 placeholder="1"
+                hint="How many loans of this product type a single borrower can hold at the same time. Usually 1."
                 disabled={disabled}
               />
             </FieldRow>
@@ -886,26 +978,31 @@ export default function LoanProductForm({
           <Section
             icon={<CalendarClock className="h-3.5 w-3.5" />}
             title="Repayment"
-            desc="How borrowers pay the loan back."
+            desc="How the borrower pays the loan back — schedule structure, frequency, and how incoming payments are applied to the outstanding balance."
             step="STEP 04"
           >
             <FieldRow cols={2}>
               <SelectField
                 form={form}
                 name="repaymentType"
-                label="Repayment type"
+                label="Repayment structure"
                 required
                 options={REPAYMENT_TYPE_OPTIONS}
                 disabled={disabled || isEditing}
-                hint={isEditing ? "Fixed after creation." : undefined}
+                hint={
+                  isEditing
+                    ? "Repayment structure is permanent and cannot be changed."
+                    : REPAYMENT_TYPE_DESCRIPTIONS[repaymentType as keyof typeof REPAYMENT_TYPE_DESCRIPTIONS]
+                }
               />
               <SelectField
                 form={form}
                 name="repaymentFrequency"
-                label="Frequency"
+                label="Payment frequency"
                 required
                 options={REPAYMENT_FREQUENCY_OPTIONS}
                 disabled={disabled}
+                hint="How often the borrower is expected to make a payment. For bullet loans, set this to Bullet."
               />
             </FieldRow>
             <FieldRow cols={2}>
@@ -913,19 +1010,19 @@ export default function LoanProductForm({
                 <NumberField
                   form={form}
                   name="holdbackPercent"
-                  label="Sales holdback"
+                  label="Sales holdback %"
                   decimalScale={4}
                   placeholder="0.20"
-                  hint="Share of daily sales withheld — 0.20 = 20%."
+                  hint="Share of the borrower's daily sales withheld automatically. 0.20 = 20% of each day's takings go to repayment."
                   disabled={disabled}
                 />
               ) : null}
               <TextField
                 form={form}
                 name="allocationOrder"
-                label="Allocation order"
-                placeholder="e.g. PENALTY,INTEREST,PRINCIPAL"
-                hint="Optional — order repayments are applied."
+                label="Payment allocation order"
+                placeholder="PENALTY,INTEREST,PRINCIPAL,FEE"
+                hint="Which debt bucket an incoming payment clears first. Leave blank for the default: penalties → interest → principal → fees. Change this only if you have a specific regulatory or commercial reason."
                 disabled={disabled}
               />
             </FieldRow>
@@ -935,7 +1032,7 @@ export default function LoanProductForm({
           <Section
             icon={<AlertTriangle className="h-3.5 w-3.5" />}
             title="Late fees & default"
-            desc="Penalties applied when a borrower falls behind."
+            desc="Penalties applied when a borrower misses a payment. You can use a one-time flat charge, a daily accruing penalty, or both — or leave them at zero for no late fees."
             optional
           >
             <FieldRow cols={2}>
@@ -945,38 +1042,38 @@ export default function LoanProductForm({
                 label="Grace period (days)"
                 decimalScale={0}
                 placeholder="0"
-                hint="Days before penalties start."
+                hint="Days after a due date before any late charges begin. 0 means penalties start immediately. 3 days is a common grace period."
                 disabled={disabled}
               />
               <NumberField
                 form={form}
-                name="penaltyRatePerDay"
-                label="Penalty rate / day"
-                decimalScale={4}
-                placeholder="0.00"
-                hint="Fraction of overdue amount per day."
+                name="lateFeeFlat"
+                label="One-time late fee"
+                prefix={currency}
+                thousands
+                decimalScale={2}
+                placeholder="0"
+                hint="A fixed charge applied once the first time a payment goes overdue — regardless of the overdue amount. Charged per missed instalment, not per day."
                 disabled={disabled}
               />
             </FieldRow>
             <FieldRow cols={2}>
               <NumberField
                 form={form}
-                name="lateFeeFlat"
-                label="Flat late fee"
-                prefix={currency}
-                thousands
-                decimalScale={2}
-                placeholder="0"
-                hint="One-off fee when a payment is late."
+                name="penaltyRatePerDay"
+                label="Daily penalty rate"
+                decimalScale={4}
+                placeholder="0.00"
+                hint="A daily percentage charged on the unpaid overdue balance — accrues every day until settled. 0.001 = 0.1% per day. Can be used alongside the one-time flat fee."
                 disabled={disabled}
               />
               <NumberField
                 form={form}
                 name="defaultThresholdDays"
-                label="Default threshold (days)"
+                label="Auto-default threshold (days)"
                 decimalScale={0}
                 placeholder="0"
-                hint="Days overdue before the loan defaults."
+                hint="How many days past a missed instalment's due date before the system automatically classifies the loan as defaulted. Leave blank to require a manual write-off decision."
                 disabled={disabled}
               />
             </FieldRow>
@@ -985,20 +1082,62 @@ export default function LoanProductForm({
           {/* 06 — Terms (optional) */}
           <Section
             icon={<FileText className="h-3.5 w-3.5" />}
-            title="Terms template"
-            desc="Contract text shown to the borrower on the offer."
+            title="Terms & conditions template"
+            desc="The loan agreement text shown to the borrower on their offer letter. Use {{variable}} placeholders — they are substituted with real values at loan booking time."
             optional
           >
+            {/* Template prefill button */}
+            {!readOnly ? (
+              <div className="mb-3 flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() =>
+                    form.setValue(
+                      "termsTemplate",
+                      TERMS_TEMPLATE_PRESETS[productType],
+                      { shouldDirty: true },
+                    )
+                  }
+                  disabled={disabled}
+                >
+                  <Wand2 className="h-3 w-3" />
+                  Fill from {LOAN_PRODUCT_TYPE_LABELS[productType]} template
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  Starts you from a standard template — edit freely after.
+                </span>
+              </div>
+            ) : null}
+
             <FieldRow cols={1}>
               <TextareaField
                 form={form}
                 name="termsTemplate"
                 label="Terms & conditions"
-                rows={6}
-                placeholder="Plain text or a template with placeholders…"
+                rows={14}
+                placeholder="Click 'Fill from template' above, or write your own terms here…"
                 disabled={disabled}
               />
             </FieldRow>
+
+            {/* Available variable reference */}
+            <div className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground">
+              <Info className="mt-0.5 h-3 w-3 shrink-0" />
+              <span>
+                <strong>Available placeholders:</strong>{" "}
+                {"{{applicantName}}"}, {"{{businessName}}"},{" "}
+                {"{{businessRegNumber}}"}, {"{{borrowerPhone}}"},{" "}
+                {"{{borrowerEmail}}"}, {"{{applicationNumber}}"},{" "}
+                {"{{currency}}"}, {"{{loanAmount}}"}, {"{{termDays}}"},{" "}
+                {"{{installmentCount}}"}, {"{{installmentAmount}}"},{" "}
+                {"{{disbursementDate}}"}, {"{{maturityDate}}"},{" "}
+                {"{{gracePeriodDays}}"}, {"{{lateFeeFlat}}"},{" "}
+                {"{{penaltyRatePerDay}}"}, {"{{defaultThresholdDays}}"}
+              </span>
+            </div>
           </Section>
 
           {/* Availability (edit only) */}
@@ -1006,7 +1145,7 @@ export default function LoanProductForm({
             <Section
               icon={<Power className="h-3.5 w-3.5" />}
               title="Availability"
-              desc="Inactive products can't be offered to new borrowers."
+              desc="Inactive products are hidden from borrowers and cannot receive new applications. Existing active loans are not affected."
             >
               <FormField
                 control={form.control}

@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { Check, ChevronDown, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { controlComboboxTriggerClass } from "@/components/ui/field";
 import {
   Command,
   CommandEmpty,
@@ -86,14 +87,19 @@ export function VendorSelector({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between overflow-hidden"
+          className={cn(controlComboboxTriggerClass, "overflow-hidden")}
           disabled={isDisabled}
           type="button"
         >
-          <span className="truncate text-left flex-1">
+          <span
+            className={cn(
+              "truncate text-left flex-1",
+              !selected && "text-muted-2",
+            )}
+          >
             {selected ? selected.name : placeholder ?? "Select vendor"}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-2" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="p-0" style={{ width: popoverWidth }} align="start">

@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
-  ChevronsUpDown,
+  ChevronDown,
   Loader2,
   MapPin,
   Store as StoreIcon,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { controlComboboxTriggerClass } from "@/components/ui/field";
 import {
   Command,
   CommandGroup,
@@ -137,7 +138,7 @@ const DestinationSelector: React.FC<Props> = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between overflow-hidden font-normal"
+          className={cn(controlComboboxTriggerClass, "overflow-hidden")}
           disabled={isDisabled}
         >
           <span className="flex flex-1 items-center gap-2 truncate text-left">
@@ -152,10 +153,10 @@ const DestinationSelector: React.FC<Props> = ({
                 <span className="truncate">{selectedOption.name}</span>
               </>
             ) : (
-              <span className="text-muted-foreground">{placeholder}</span>
+              <span className="text-muted-2">{placeholder}</span>
             )}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-2" />
         </Button>
       </PopoverTrigger>
 

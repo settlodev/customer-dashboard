@@ -394,7 +394,7 @@ export default function ProductForm({ item }: ProductFormProps) {
           categoryIds: [],
           tags: [],
           sellOnline: true,
-          taxInclusive: false,
+          taxInclusive: true,
           taxTypeId: "",
           active: true,
           lifecycleStatus: "ACTIVE",

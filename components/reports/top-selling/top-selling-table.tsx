@@ -20,6 +20,8 @@ interface Props {
    * this table is embedded in the sales report hub).
    */
   rowClickQuery?: string;
+  /** Hide the "Avg price" column (e.g. on the sales report product tab). */
+  hideAveragePrice?: boolean;
 }
 
 /**
@@ -37,11 +39,12 @@ export function TopSellingTable({
   total,
   currency,
   rowClickQuery = "",
+  hideAveragePrice = false,
 }: Props) {
   const router = useRouter();
   const columns = useMemo(
-    () => buildTopSellingColumns({ currency }),
-    [currency],
+    () => buildTopSellingColumns({ currency, hideAveragePrice }),
+    [currency, hideAveragePrice],
   );
 
   // DataTable's built-in `rowClickBasePath` assumes the row has an

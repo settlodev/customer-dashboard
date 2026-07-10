@@ -70,6 +70,8 @@ export async function createFundTransfer(
     const payload = {
       ...parsed.data,
       locationId,
+      feeAmount: parsed.data.feeAmount ?? 0,
+      taxAmount: parsed.data.taxAmount ?? 0,
       description: parsed.data.description || undefined,
       reference: parsed.data.reference || undefined,
       notes: parsed.data.notes || undefined,

@@ -26,6 +26,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 import { SettingsSection } from "../shared/settings-section";
+import { OpeningBalanceSection } from "../opening-balance/opening-balance-section";
 import { listChartOfAccounts } from "@/lib/actions/accounting-mapping-actions";
 import {
   createChartOfAccount,
@@ -252,7 +253,9 @@ export function ChartOfAccountsPanel() {
         </Dialog>
       }
     >
-      <Card className="border-line">
+      <div className="space-y-3">
+        <OpeningBalanceSection accounts={items} />
+        <Card className="border-line">
         <CardContent className="px-0 py-0">
           {loading ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
@@ -324,6 +327,7 @@ export function ChartOfAccountsPanel() {
           )}
         </CardContent>
       </Card>
+      </div>
     </SettingsSection>
   );
 }

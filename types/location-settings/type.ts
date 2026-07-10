@@ -6,6 +6,7 @@
 // read type so form state stays simple.
 
 export type OrderingMode = "STANDARD" | "TABLE_MANAGEMENT";
+export type LoginMode = "PIN_AND_FINGERPRINT" | "FINGERPRINT_ONLY" | "PIN_ONLY";
 export type LoyaltyAwardType = "PER_ORDER" | "PER_ORDER_VALUE";
 export type StaffPointsRecipient = "FINISHED_BY" | "ASSIGNED_TO" | "SPLIT";
 
@@ -81,6 +82,7 @@ export interface LocationSettings {
   autoOpenCashDrawer: boolean;
   discountApprovalThreshold: number | null;
   orderingMode: OrderingMode;
+  loginMode?: LoginMode;
   receiptCopies: number;
   enableKitchenDisplay: boolean;
   enableLoyaltyProgram: boolean;
@@ -237,6 +239,7 @@ export interface LocationSettings {
   // Approvals
   requireApprovalForVoids: boolean;
   requireApprovalForDiscounts: boolean;
+  requireApprovalForDayClose: boolean;
 
   // Staff HR
   enableShiftManagement: boolean;
@@ -263,6 +266,12 @@ export interface LocationSettings {
 export const ORDERING_MODE_OPTIONS: { value: OrderingMode; label: string }[] = [
   { value: "STANDARD", label: "Standard orders" },
   { value: "TABLE_MANAGEMENT", label: "Orders around tables" },
+];
+
+export const LOGIN_MODE_OPTIONS: { value: LoginMode; label: string }[] = [
+  { value: "PIN_AND_FINGERPRINT", label: "Both (PIN + fingerprint)" },
+  { value: "FINGERPRINT_ONLY", label: "Fingerprint only" },
+  { value: "PIN_ONLY", label: "PIN only" },
 ];
 
 export const LOYALTY_AWARD_TYPE_OPTIONS: { value: LoyaltyAwardType; label: string }[] = [

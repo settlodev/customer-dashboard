@@ -8,6 +8,7 @@ import {
   ArrowRightLeft,
   CalendarDays,
   CheckCircle2,
+  Coins,
   Loader2,
   Trash2,
 } from "lucide-react";
@@ -67,6 +68,8 @@ export default function FundTransferForm({
       fromAccountId: "",
       toAccountId: "",
       amount: undefined,
+      feeAmount: undefined,
+      taxAmount: undefined,
       currencyCode: defaultCurrency,
       transferDate: today,
       description: "",
@@ -74,6 +77,25 @@ export default function FundTransferForm({
       notes: "",
     },
   });
+
+  // Live "net to destination" preview — mirrors the backend, which debits the
+  // destination amount − fee − tax and posts fee/tax as an expense.
+  const watchedAmount = form.watch("amount");
+  const watchedFee = form.watch("feeAmount");
+  const watchedTax = form.watch("taxAmount");
+  const watchedCurrency = form.watch("currencyCode") || defaultCurrency;
+  const hasAmount = (Number(watchedAmount) || 0) > 0;
+  const netToDestination =
+    (Number(watchedAmount) || 0) -
+    (Number(watchedFee) || 0) -
+    (Number(watchedTax) || 0);
+  const netInvalid = hasAmount && netToDestination <= 0;
+  const netDisplay = hasAmount
+    ? netToDestination.toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      })
+    : "—";
 
   const submit = (values: FormValues) => {
     startTransition(async () => {
@@ -292,6 +314,77 @@ export default function FundTransferForm({
                     </FormItem>
                   )}
                 />
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <Coins className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Charges &amp; net</h3>
+                <p className={styles.formCardHeadDesc}>
+                  Optional fee and tax are deducted from the amount and posted
+                  as an expense; the destination receives the net.
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 03</span>
+              </div>
+            </header>
+            <div className={styles.formBody}>
+              <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="feeAmount"
+                  render={({ field }) => (
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Fee</FieldLabel>
+                      <FormControl>
+                        <NumericInput
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="0.00"
+                          allowNegative={false}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="taxAmount"
+                  render={({ field }) => (
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Tax</FieldLabel>
+                      <FormControl>
+                        <NumericInput
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="0.00"
+                          allowNegative={false}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="mt-[15px] flex items-center justify-between rounded-[10px] border border-line-2 bg-surface px-[13px] py-[11px]">
+                <span className="text-sm text-muted-2">Net to destination</span>
+                <span
+                  className={cn(
+                    "font-mono tabular-nums text-sm",
+                    netInvalid ? "text-destructive" : "text-ink",
+                  )}
+                >
+                  {netDisplay} {watchedCurrency}
+                </span>
               </div>
             </div>
           </section>

@@ -100,6 +100,7 @@ export interface CategorySalesRollup {
   grossSales: number;
   netSales: number;
   grossProfit: number;
+  taxAmount: number;
 }
 
 /** "By category" rollup payload: true totals + one row per category. */

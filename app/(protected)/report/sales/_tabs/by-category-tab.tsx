@@ -36,6 +36,7 @@ export async function ByCategoryTab({ from, to }: Props) {
     qty: c.quantitySold,
     gross: c.grossSales,
     net: c.netSales,
+    tax: c.taxAmount,
     profit: c.grossProfit,
   }));
 

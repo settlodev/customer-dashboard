@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { Check, ChevronDown, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { controlComboboxTriggerClass } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
 import { Customer } from "@/types/customer/type";
 import {
@@ -183,13 +184,12 @@ function CustomerSelector({
           role="combobox"
           aria-expanded={open}
           disabled={isDisabled}
-          className={cn(
-            "w-full justify-between h-10 font-normal",
-            !selected && "text-muted-foreground",
-          )}
+          className={controlComboboxTriggerClass}
         >
-          <span className="truncate">{triggerLabel}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <span className={cn("truncate", !selected && "text-muted-2")}>
+            {triggerLabel}
+          </span>
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-2" />
         </Button>
       </PopoverTrigger>
       <PopoverContent

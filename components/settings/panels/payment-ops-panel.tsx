@@ -12,6 +12,7 @@ const KEYS = [
   "enablePartialPayments",
   "requireApprovalForVoids",
   "requireApprovalForDiscounts",
+  "requireApprovalForDayClose",
 ] as const;
 
 export function PaymentOpsPanel({
@@ -82,6 +83,13 @@ export function PaymentOpsPanel({
           label="Require approval for discounts"
           checked={!!v.requireApprovalForDiscounts}
           onChange={(x) => p.setField("requireApprovalForDiscounts", x)}
+          disabled={p.isPending}
+        />
+        <SettingsSwitchRow
+          label="Require approval for day close"
+          description="A second manager must authorise the end-of-day cash-up close."
+          checked={!!v.requireApprovalForDayClose}
+          onChange={(x) => p.setField("requireApprovalForDayClose", x)}
           disabled={p.isPending}
         />
       </SettingsSection>

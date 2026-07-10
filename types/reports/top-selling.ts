@@ -50,6 +50,9 @@ export interface TopSellingItem {
   /** revenue − refundAmount. */
   netRevenue: number;
   discountAmount: number;
+  taxAmount: number;
+  /** TRA EFD code (e.g. "A" = Standard 18%). Null = exempt/unclassified. */
+  taxCode: string | null;
   costAmount: number;
   grossProfit: number;
   /** Percentage 0–100. Null when costAmount isn't tracked. */
@@ -90,6 +93,7 @@ export interface TopSellingSummary {
   totalQuantitySold: number;
   totalNetQuantitySold: number;
   totalGrossProfit: number;
+  totalTaxAmount: number;
   /** Weighted average across products. Null when no COGS data. */
   averageMargin: number | null;
   uniqueProductCount: number;

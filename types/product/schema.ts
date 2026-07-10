@@ -151,7 +151,11 @@ export const ProductSchema = object({
   tags: array(string()).default([]),
 
   sellOnline: boolean().default(true),
-  taxInclusive: boolean().default(false),
+  // Mirrors the inventory service's per-product default (V70): products are
+  // tax-INCLUSIVE unless the merchant opts a product out. Must stay true —
+  // the create action always transmits this value, so a false default here
+  // silently overrides the backend default and rings the product exclusive.
+  taxInclusive: boolean().default(true),
   // FK to a TaxType in the Accounting Service. Owned at the product
   // level: the form fans the same value out to every variant on
   // submit (the inventory service still stores it per-variant). The

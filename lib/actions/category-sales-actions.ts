@@ -60,6 +60,7 @@ export async function getCategorySalesRollup(
         grossSales: num(r.grossSales),
         netSales: num(r.netSales),
         grossProfit: num(r.grossProfit),
+        taxAmount: num(r.taxAmount),
       })),
     };
   } catch {
@@ -88,6 +89,7 @@ const EMPTY_RESULT: CategoryItemSalesResult = {
     grossSales: 0,
     netSales: 0,
     grossProfit: 0,
+    taxAmount: 0,
   },
   items: {
     content: [],
@@ -136,6 +138,7 @@ export async function getCategoryItemSales(
         grossSales: num(t?.grossSales),
         netSales: num(t?.netSales),
         grossProfit: num(t?.grossProfit),
+        taxAmount: num(t?.taxAmount),
       },
       items: {
         content: (items?.content ?? []).map((r) => ({

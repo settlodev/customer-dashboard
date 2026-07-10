@@ -300,6 +300,14 @@ function OverviewTab({
               }
             />
             <DetailRow
+              label="Tax"
+              value={
+                order.taxAmount && order.taxAmount > 0
+                  ? formatNumber(order.taxAmount)
+                  : "—"
+              }
+            />
+            <DetailRow
               label="Customer charges"
               value={formatNumber(order.customerChargesTotal)}
             />
@@ -470,6 +478,7 @@ function ItemTable({
             <th className="px-3 py-2 text-right font-medium">Qty</th>
             <th className="px-3 py-2 text-right font-medium">Unit</th>
             <th className="px-3 py-2 text-right font-medium">Discount</th>
+            <th className="px-3 py-2 text-right font-medium">Tax</th>
             <th className="px-3 py-2 text-right font-medium">Net</th>
             <th className="px-3 py-2 text-left font-medium">Prep</th>
           </tr>
@@ -505,6 +514,26 @@ function ItemTable({
                 {item.discountAmount && item.discountAmount > 0
                   ? `−${formatNumber(item.discountAmount)}`
                   : "—"}
+              </td>
+              <td className="px-3 py-2.5 text-right tabular-nums">
+                {item.taxAmount && item.taxAmount > 0 ? (
+                  <div className="flex flex-col items-end">
+                    <span>{formatNumber(item.taxAmount)}</span>
+                    {(item.taxRate || item.taxTypeCode) && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {item.taxRate ? `${formatNumber(item.taxRate, 0)}%` : ""}
+                        {item.taxTypeCode ? ` · ${item.taxTypeCode}` : ""}
+                        {item.taxInclusive === true
+                          ? " · incl."
+                          : item.taxInclusive === false
+                            ? " · excl."
+                            : ""}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  "—"
+                )}
               </td>
               <td className="px-3 py-2.5 text-right tabular-nums font-medium">
                 {formatNumber(item.netAmount)}
@@ -549,6 +578,15 @@ function PaymentsTab({ order }: { order: OrderDetail }) {
                   : "—"
               }
               icon={<Tag className="h-3.5 w-3.5" />}
+            />
+            <KeyVal
+              label="Tax"
+              value={
+                order.taxAmount && order.taxAmount > 0
+                  ? formatNumber(order.taxAmount)
+                  : "—"
+              }
+              icon={<Receipt className="h-3.5 w-3.5" />}
             />
             <KeyVal
               label="Tip"

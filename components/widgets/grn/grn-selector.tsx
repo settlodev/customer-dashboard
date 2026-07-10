@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronsUpDown, Loader2, X } from "lucide-react";
+import { Check, ChevronDown, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { controlComboboxTriggerClass } from "@/components/ui/field";
 import {
   Command,
   CommandEmpty,
@@ -75,7 +76,7 @@ const GrnSelector: React.FC<Props> = ({
   useEffect(() => {
     if (!open || grns.length > 0) return;
     setIsLoading(true);
-    getGrns(0, FETCH_SIZE)
+    getGrns({ size: FETCH_SIZE })
       .then((res) => setGrns(res.content ?? []))
       .catch(() => setGrns([]))
       .finally(() => setIsLoading(false));
@@ -135,7 +136,7 @@ const GrnSelector: React.FC<Props> = ({
       )}
     </span>
   ) : (
-    <span className="text-muted-foreground">{placeholder}</span>
+    <span className="text-muted-2">{placeholder}</span>
   );
 
   return (
@@ -147,7 +148,7 @@ const GrnSelector: React.FC<Props> = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between overflow-hidden font-normal"
+          className={cn(controlComboboxTriggerClass, "overflow-hidden")}
           disabled={isDisabled}
         >
           <span className="truncate text-left flex-1">{displayContent}</span>
@@ -163,7 +164,7 @@ const GrnSelector: React.FC<Props> = ({
                 <X className="h-3.5 w-3.5 opacity-60" />
               </span>
             )}
-            <ChevronsUpDown className="h-4 w-4 opacity-50" />
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-2" />
           </span>
         </Button>
       </PopoverTrigger>
