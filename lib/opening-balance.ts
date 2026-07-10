@@ -1,0 +1,39 @@
+import type { NormalBalance } from "@/types/accounting-mapping/type";
+
+export interface OpeningBalancePreviewLine {
+  normalBalance: NormalBalance;
+  amount: number;
+}
+
+export interface OpeningBalanceResidual {
+  amount: number; // positive magnitude of the equity plug
+  side: "DEBIT" | "CREDIT";
+}
+
+/**
+ * Mirrors the backend residual logic. Each line posts on its natural side
+ * (debit for a DEBIT-normal account, credit for a CREDIT-normal one) when the
+ * amount is >= 0, and flips when the amount is negative (contra balance). The
+ * Opening Balance Equity plug closes the debit/credit gap. Returns null when
+ * the entered lines already balance (no plug needed). Zero / non-finite
+ * amounts are ignored.
+ */
+export function computeOpeningBalanceResidual(
+  lines: OpeningBalancePreviewLine[],
+): OpeningBalanceResidual | null {
+  let debits = 0;
+  let credits = 0;
+  for (const line of lines) {
+    if (!Number.isFinite(line.amount) || line.amount === 0) continue;
+    const debitNormal = line.normalBalance === "DEBIT";
+    const postDebit = debitNormal === (line.amount >= 0);
+    const magnitude = Math.abs(line.amount);
+    if (postDebit) debits += magnitude;
+    else credits += magnitude;
+  }
+  const residual = debits - credits;
+  if (residual === 0) return null;
+  return residual > 0
+    ? { amount: residual, side: "CREDIT" }
+    : { amount: -residual, side: "DEBIT" };
+}
