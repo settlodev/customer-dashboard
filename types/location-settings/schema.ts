@@ -73,6 +73,7 @@ export const LocationSettingsSchema = z.object({
 
   // Orders & POS
   orderingMode: z.enum(["STANDARD", "TABLE_MANAGEMENT"]).optional(),
+  loginMode: z.enum(["PIN_AND_FINGERPRINT", "FINGERPRINT_ONLY", "PIN_ONLY"]).optional(),
   enableKitchenDisplay: z.boolean().optional(),
   allowTipping: z.boolean().optional(),
   allowOrderRequests: z.boolean().optional(),
