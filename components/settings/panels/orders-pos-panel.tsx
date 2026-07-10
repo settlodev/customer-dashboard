@@ -12,10 +12,11 @@ import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
 import type { LocationSettings } from "@/types/location-settings/type";
-import { ORDERING_MODE_OPTIONS } from "@/types/location-settings/type";
+import { ORDERING_MODE_OPTIONS, LOGIN_MODE_OPTIONS } from "@/types/location-settings/type";
 
 const KEYS = [
   "orderingMode",
+  "loginMode",
   "enableKitchenDisplay",
   "allowTipping",
   "allowOrderRequests",
@@ -74,6 +75,26 @@ export function OrdersPosPanel({
               </SelectTrigger>
               <SelectContent>
                 {ORDERING_MODE_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Labelled>
+          <Labelled label="Login mode">
+            <Select
+              value={v.loginMode ?? "PIN_AND_FINGERPRINT"}
+              onValueChange={(val) =>
+                panel.setField("loginMode", val as LocationSettings["loginMode"])
+              }
+              disabled={panel.isPending}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LOGIN_MODE_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>
                     {o.label}
                   </SelectItem>
