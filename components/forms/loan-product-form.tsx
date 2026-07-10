@@ -820,7 +820,7 @@ export default function LoanProductForm({
                 <AlertBody>
                   <AlertTitle>Incompatible combination</AlertTitle>
                   <AlertDescription>
-                    "Declining interest" pricing requires interest to be charged.
+                    &quot;Declining interest&quot; pricing requires interest to be charged.
                     Either change the pricing model to <strong>Flat Fee</strong> or{" "}
                     <strong>Factor Rate</strong>, or change the interest method to{" "}
                     <strong>Flat</strong> or <strong>Reducing balance</strong>.
