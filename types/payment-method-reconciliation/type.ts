@@ -30,6 +30,14 @@ export interface PaymentMethodReconciliation {
   approvedBy: string | null;
   approvedAt: string | null;
   journalEntryId: string | null;
+  /**
+   * Server-resolved staff full names for `reconciledBy` / `approvedBy`,
+   * looked up account-wide by the Accounting service (the actor may not be
+   * in the dashboard's location-scoped roster — e.g. an owner approving).
+   * Null when unresolvable; the UI falls back to a shortened id.
+   */
+  reconciledByName?: string | null;
+  approvedByName?: string | null;
 }
 
 /** Maps to the Badge component's tone variants. */

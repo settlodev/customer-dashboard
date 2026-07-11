@@ -133,7 +133,7 @@ export default async function DaySessionDetailPage({
   const lastApproval = approvedRecons[0];
   const verifierChip =
     verified && lastApproval?.approvedBy
-      ? staffChip(lastApproval.approvedBy, staffById)
+      ? staffChip(lastApproval.approvedBy, staffById, lastApproval.approvedByName)
       : null;
 
   const closedChip = session.closedBy

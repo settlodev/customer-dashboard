@@ -1,18 +1,22 @@
 /**
- * Close-of-Day report — the formal A4 "Z-report" sheet.
+ * Close-of-Day report — the formal A4 "Z-report" body.
  *
- * Server component: receives the same COD data the dashboard uses plus a
- * letterhead, and renders the printable document from the "Settlo Close
- * of Day Report" design. Unlike the in-app dashboard, this is a PRINT
- * document — always light — so it uses fixed `stone`/brand colours, not
- * the theme-flipping ink/line tokens. The client `ReportPrintFrame`
- * wraps it with the toolbar + A4 print stylesheet.
+ * Server component that reuses the SAME shared-document template as the
+ * GRN / proforma shareables: rendered inside `PrintableDocument`'s A4
+ * sheet + toolbar + print stylesheet, opening with the shared
+ * `DocumentHeader` letterhead and closing with `NotesFooter` (signatures
+ * + "Powered by Settlo"). Body is the slate document palette with the
+ * tenant brand colour on the title + the cash-up table header only —
+ * matching how the GRN line-items table is themed.
  */
 
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { composeLetterheadAddress } from "@/lib/grn-document";
+import { DocumentHeader } from "@/components/documents/sections/DocumentHeader";
+import { NotesFooter } from "@/components/documents/sections/NotesFooter";
+import type { BusinessIdentity, DocumentMeta } from "@/components/documents/types";
 import type { Staff } from "@/types/staff";
 import type { LocationLetterhead } from "@/types/letterhead/type";
 import type { DaySession } from "@/lib/actions/location-day-sessions-actions";
@@ -37,25 +41,28 @@ import {
   type StaffChip,
 } from "@/lib/day-sessions/cod-format";
 
-// Fixed print palette (never theme-flips).
+// Default Settlo brand (matches lib/grn-document.ts) when the tenant
+// letterhead carries no brand colour.
+const SETTLO_PRIMARY = "#ED7B40";
+
+// Status accent colours — fixed hex, print-safe (never theme-flip).
 const POS = "text-[#0A6B49]";
 const NEG = "text-[#C0392B]";
 const WARN = "text-[#B9791F]";
 
 // A drawer/cash-up over or short is a discrepancy either way — never
-// "good" — so a positive variance gets the amber warn tone, matching
-// `varianceClass` in payment-method-reconciliation-card.tsx.
-const varTone = (n: number) => (n === 0 ? "text-stone-400" : n > 0 ? WARN : NEG);
+// "good" — so a positive variance gets the amber warn tone.
+const varTone = (n: number) => (n === 0 ? "text-slate-400" : n > 0 ? WARN : NEG);
 
-// Table class fragments.
+// Table class fragments (shared-document slate palette).
 const TH =
-  "border-b border-stone-200 bg-stone-100 px-[15px] py-[11px] text-left font-mono text-[10px] font-semibold uppercase tracking-[0.09em] text-stone-600 whitespace-nowrap";
+  "border-b border-slate-200 bg-slate-100 px-[15px] py-[11px] text-left font-mono text-[10px] font-semibold uppercase tracking-[0.09em] text-slate-600 whitespace-nowrap";
 const HERO_TH =
-  "bg-primary px-[15px] py-[11px] text-left font-mono text-[10px] font-semibold uppercase tracking-[0.09em] text-white whitespace-nowrap";
-const TD = "border-b border-stone-200 px-[15px] py-3 align-top text-[13px]";
+  "px-[15px] py-[11px] text-left font-mono text-[10px] font-semibold uppercase tracking-[0.09em] text-white whitespace-nowrap";
+const TD = "border-b border-slate-200 px-[15px] py-3 align-top text-[13px]";
 const NUM = "text-right font-mono tabular-nums whitespace-nowrap";
-const PRIM = "font-semibold tracking-[-0.005em] text-stone-900";
-const SUB = "mt-0.5 text-[11.5px] text-stone-400";
+const PRIM = "font-semibold tracking-[-0.005em] text-slate-900";
+const SUB = "mt-0.5 text-[11.5px] text-slate-400";
 
 export function CloseOfDayReportSheet({
   session,
@@ -79,7 +86,26 @@ export function CloseOfDayReportSheet({
   const lh = letterhead?.letterhead ?? null;
   const tax = letterhead?.taxIds ?? null;
   const businessName = lh?.businessName ?? session.locationName ?? "Business";
-  const addressLines = composeLetterheadAddress(lh);
+  const primaryColor = letterhead?.brand?.primaryColor?.trim() || SETTLO_PRIMARY;
+  const heroStyle: React.CSSProperties = { backgroundColor: primaryColor };
+
+  // Shared-document letterhead (identical component to GRN / proforma).
+  const issuer: BusinessIdentity = {
+    name: businessName,
+    logoUrl: lh?.logoUrl ?? undefined,
+    addressLines: composeLetterheadAddress(lh),
+    phone: lh?.phone ?? undefined,
+    email: lh?.email ?? undefined,
+    website: lh?.website ?? undefined,
+    tin: tax?.tin ?? undefined,
+    vrn: tax?.vrn ?? undefined,
+  };
+  const meta: DocumentMeta = {
+    type: "statement",
+    titleOverride: "Close of Day Report",
+    documentNumber: session.identifier ?? shortId(session.id),
+    issueDate: session.businessDate,
+  };
 
   const methodNameById = methodNameIndex(
     report?.paymentsByMethod ?? [],
@@ -103,7 +129,7 @@ export function CloseOfDayReportSheet({
     reconciliations.every((r) => r.status === "APPROVED");
   const verifier: StaffChip | null =
     verified && approved[0]?.approvedBy
-      ? staffChip(approved[0].approvedBy, roster)
+      ? staffChip(approved[0].approvedBy, roster, approved[0].approvedByName)
       : null;
   const closedBy = session.closedBy
     ? staffChip(session.closedBy, roster, session.closedByName)
@@ -151,60 +177,42 @@ export function CloseOfDayReportSheet({
     .reduce((s, p) => s + (p.amount ?? 0), 0);
   const cashExpenses = extras.expenses?.totals.paidByCash ?? 0;
 
+  const signatures = [
+    {
+      label: "Closed by",
+      name: closedBy
+        ? `${closedBy.name}${closedBy.title ? ` · ${closedBy.title}` : ""}`
+        : (session.closedByLabel ?? "—"),
+    },
+    {
+      label: "Verified by",
+      name: verifier
+        ? `${verifier.name}${verifier.title ? ` · ${verifier.title}` : ""}`
+        : "—",
+    },
+  ];
+
   return (
-    <article className="w-full max-w-[920px] overflow-hidden rounded-[14px] border border-stone-200 bg-white text-stone-900 shadow-xl print:max-w-none print:rounded-none print:border-0 print:shadow-none">
-      {/* ── Letterhead ─────────────────────────────────────────────── */}
-      <div className="px-6 pb-0 pt-11 sm:px-[52px]">
-        <div className="flex flex-col justify-between gap-6 pb-[26px] sm:flex-row sm:items-start">
-          <h1 className="m-0 max-w-[360px] text-[40px] font-normal leading-[1.05] tracking-[-0.02em] text-primary">
-            Close of Day Report
-            <span className="mt-3 block font-mono text-[12.5px] font-medium uppercase tracking-[0.06em] text-stone-500">
-              Business date · {fmtBusinessDate(session.businessDate)}
-            </span>
-          </h1>
-          <div className="leading-[1.55] sm:text-right">
-            <div className="text-[19px] font-bold tracking-[-0.01em]">
-              {businessName}
-            </div>
-            {addressLines.map((line, i) => (
-              <div key={i} className="text-[13.5px] text-stone-600">
-                {line}
-              </div>
-            ))}
-            {(lh?.phone || lh?.email) && (
-              <div className="mt-2.5 text-[13.5px] text-stone-600">
-                {lh?.phone && <div>Mobile: {lh.phone}</div>}
-                {lh?.email && <div>{lh.email}</div>}
-              </div>
-            )}
-            {(tax?.tin || tax?.vrn) && (
-              <div className="mt-2.5 font-mono text-[12px] text-stone-500">
-                {tax?.tin && <div>TIN: {tax.tin}</div>}
-                {tax?.vrn && <div>VRN: {tax.vrn}</div>}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="mx-6 h-px bg-stone-200 sm:mx-[52px]" />
+    <>
+      <DocumentHeader issuer={issuer} meta={meta} titleColor={primaryColor} />
 
       {/* ── Meta ───────────────────────────────────────────────────── */}
-      <div className="px-6 pb-2 pt-7 sm:px-[52px]">
+      <div className="px-10 pb-2 pt-7">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-10">
           <div>
-            <div className="mb-1.5 text-[12.5px] text-stone-500">
+            <div className="mb-1.5 text-[12.5px] text-slate-500">
               Location{session.identifier ? " · Session" : ""}
             </div>
             <div className="text-[17px] font-bold tracking-[-0.01em]">
               {session.locationName ?? "—"}
             </div>
             {session.identifier && (
-              <div className="mt-0.5 font-mono text-[13px] text-stone-600">
+              <div className="mt-0.5 font-mono text-[13px] text-slate-600">
                 {session.identifier}
               </div>
             )}
             {openedByName && (
-              <div className="mt-3 text-[13px] text-stone-500">
+              <div className="mt-3 text-[13px] text-slate-500">
                 Day session opened by {openedByName}
               </div>
             )}
@@ -219,15 +227,15 @@ export function CloseOfDayReportSheet({
                   "mt-2 inline-flex h-6 items-center gap-1.5 rounded-md px-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.06em]",
                   verified
                     ? "bg-[#0A6B49]/10 text-[#0A6B49]"
-                    : "bg-stone-100 text-stone-600",
+                    : "bg-slate-100 text-slate-600",
                 )}
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-current" />
                 {verified ? "Verified & closed" : session.status}
               </span>
             </div>
-            <div className="mt-4 flex items-center justify-between gap-4 rounded-[9px] bg-stone-100 px-4 py-3.5">
-              <span className="text-[14px] font-semibold text-stone-700">
+            <div className="mt-4 flex items-center justify-between gap-4 rounded-[9px] bg-slate-100 px-4 py-3.5">
+              <span className="text-[14px] font-semibold text-slate-700">
                 Net variance ({currency}):
               </span>
               <span
@@ -245,7 +253,7 @@ export function CloseOfDayReportSheet({
 
       {/* ── Session audit trail ────────────────────────────────────── */}
       <Section title="Session" note="Open / close audit trail">
-        <div className="grid grid-cols-2 overflow-hidden rounded-[10px] border border-stone-200 sm:grid-cols-4">
+        <div className="grid grid-cols-2 overflow-hidden rounded-[10px] border border-slate-200 sm:grid-cols-4">
           <SessCell
             label="Opened"
             value={fmtLongDate(session.openedAt)}
@@ -301,7 +309,7 @@ export function CloseOfDayReportSheet({
         </div>
       </Section>
 
-      {/* ── Cash-up by payment method (hero) ───────────────────────── */}
+      {/* ── Cash-up by payment method (brand-themed, like GRN items) ── */}
       <Section
         title="Cash-up by payment method"
         count={`${reconciliations.length} method${reconciliations.length === 1 ? "" : "s"}`}
@@ -310,15 +318,25 @@ export function CloseOfDayReportSheet({
         {reconciliations.length === 0 ? (
           <EmptyBox>No cash-up was recorded for this session.</EmptyBox>
         ) : (
-          <div className="overflow-hidden rounded-[10px] border border-primary/40">
+          <div className="overflow-hidden rounded-[10px] border border-slate-200">
             <table className="w-full border-collapse [&_tbody_tr:last-child>td]:border-b-0">
               <thead>
                 <tr>
-                  <th className={HERO_TH}>Payment method</th>
-                  <th className={cn(HERO_TH, "text-right")}>Txns</th>
-                  <th className={cn(HERO_TH, "text-right")}>Expected</th>
-                  <th className={cn(HERO_TH, "text-right")}>Counted</th>
-                  <th className={cn(HERO_TH, "text-right")}>Variance</th>
+                  <th className={HERO_TH} style={heroStyle}>
+                    Payment method
+                  </th>
+                  <th className={cn(HERO_TH, "text-right")} style={heroStyle}>
+                    Txns
+                  </th>
+                  <th className={cn(HERO_TH, "text-right")} style={heroStyle}>
+                    Expected
+                  </th>
+                  <th className={cn(HERO_TH, "text-right")} style={heroStyle}>
+                    Counted
+                  </th>
+                  <th className={cn(HERO_TH, "text-right")} style={heroStyle}>
+                    Variance
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -352,19 +370,16 @@ export function CloseOfDayReportSheet({
               </tbody>
               <tfoot>
                 <tr>
-                  <td className="border-t-2 border-primary bg-primary/10 px-[15px] py-3 font-mono text-[10px] font-semibold uppercase tracking-[0.09em] text-stone-700">
-                    Total collected
-                  </td>
-                  <td className={cn("border-t-2 border-primary bg-primary/10 px-[15px] py-3 font-bold", NUM)}>
-                    {txnsTotal.toLocaleString()}
-                  </td>
-                  <td className={cn("border-t-2 border-primary bg-primary/10 px-[15px] py-3 font-bold", NUM)}>
-                    {fmt2(expectedTotal)}
-                  </td>
-                  <td className={cn("border-t-2 border-primary bg-primary/10 px-[15px] py-3 font-bold", NUM)}>
-                    {fmt2(countedTotal)}
-                  </td>
-                  <td className={cn("border-t-2 border-primary bg-primary/10 px-[15px] py-3 font-bold", NUM, varTone(netVariance))}>
+                  <TFootLabel>Total collected</TFootLabel>
+                  <TFootNum>{txnsTotal.toLocaleString()}</TFootNum>
+                  <TFootNum>{fmt2(expectedTotal)}</TFootNum>
+                  <TFootNum>{fmt2(countedTotal)}</TFootNum>
+                  <td
+                    className={cn(
+                      "border-t-2 border-slate-300 bg-slate-50 px-[15px] py-3 text-right font-mono font-bold tabular-nums",
+                      varTone(netVariance),
+                    )}
+                  >
                     {fmtVariance2(netVariance)}
                   </td>
                 </tr>
@@ -390,7 +405,7 @@ export function CloseOfDayReportSheet({
               {till?.opening != null && (
                 <tr>
                   <td className={cn(TD, PRIM)}>Opening cash float</td>
-                  <td className={cn(TD, "text-[12.5px] text-stone-700")}>
+                  <td className={cn(TD, "text-[12.5px] text-slate-700")}>
                     Issued to the till at open
                   </td>
                   <td className={cn(TD, NUM)}>—</td>
@@ -400,10 +415,12 @@ export function CloseOfDayReportSheet({
               {(sales?.discounts ?? 0) > 0 && (
                 <tr>
                   <td className={cn(TD, PRIM)}>Discounts applied</td>
-                  <td className={cn(TD, "text-[12.5px] text-stone-700")}>
+                  <td className={cn(TD, "text-[12.5px] text-slate-700")}>
                     Point-of-sale discounts
                   </td>
-                  <td className={cn(TD, NUM)}>—</td>
+                  <td className={cn(TD, NUM)}>
+                    {sales?.discountCount != null ? sales.discountCount : "—"}
+                  </td>
                   <td className={cn(TD, NUM)}>{fmt2(sales?.discounts)}</td>
                 </tr>
               )}
@@ -443,7 +460,7 @@ export function CloseOfDayReportSheet({
                     <Chip tone="void">VOID</Chip>
                   </td>
                   <td className={TD}>
-                    <div className="text-[12.5px] text-stone-700">
+                    <div className="text-[12.5px] text-slate-700">
                       {v.voidReason
                         ? (VOID_REASON_LABELS[v.voidReason] ?? v.voidReason)
                         : "—"}
@@ -467,7 +484,7 @@ export function CloseOfDayReportSheet({
                     <Chip tone="void">CANCELLED</Chip>
                   </td>
                   <td className={TD}>
-                    <div className="text-[12.5px] text-stone-700">
+                    <div className="text-[12.5px] text-slate-700">
                       {c.cancellationReason ?? "—"}
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1">
@@ -531,7 +548,7 @@ export function CloseOfDayReportSheet({
                         </div>
                       )}
                     </td>
-                    <td className={cn(TD, "text-[12.5px] text-stone-700")}>{method}</td>
+                    <td className={cn(TD, "text-[12.5px] text-slate-700")}>{method}</td>
                     <td className={TD}>
                       <Chip tone={held ? "held" : "applied"}>
                         {held ? "HELD" : "APPLIED"}
@@ -583,14 +600,14 @@ export function CloseOfDayReportSheet({
                     {r.quantity ? ` ×${r.quantity}` : ""}
                   </td>
                   <td className={TD}>
-                    <div className="text-[12.5px] text-stone-700">
+                    <div className="text-[12.5px] text-slate-700">
                       {r.reason ?? "—"}
                     </div>
                     <div className="mt-1.5">
                       <Appr label="Approved" value={staffName(r.approvedBy, roster)} />
                     </div>
                   </td>
-                  <td className={cn(TD, "text-[12.5px] text-stone-700")}>
+                  <td className={cn(TD, "text-[12.5px] text-slate-700")}>
                     {r.paymentMethodCode ?? "—"}
                   </td>
                   <td className={cn(TD, NUM)}>{fmt2(r.refundAmount)}</td>
@@ -649,7 +666,7 @@ export function CloseOfDayReportSheet({
                     <td className={cn(TD, PRIM)}>
                       {e.description ?? e.expenseNumber}
                     </td>
-                    <td className={cn(TD, "text-[12.5px] text-stone-700")}>
+                    <td className={cn(TD, "text-[12.5px] text-slate-700")}>
                       {[e.categoryName, e.payeeName].filter(Boolean).join(" · ") ||
                         "Uncategorised"}
                     </td>
@@ -703,41 +720,16 @@ export function CloseOfDayReportSheet({
         </Section>
       )}
 
-      {/* ── Signatures ─────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-11 px-6 pb-2 pt-9 sm:grid-cols-2 sm:px-[52px]">
-        <SignBox
-          role="Closed by"
-          name={
-            closedBy
-              ? `${closedBy.name}${closedBy.title ? ` · ${closedBy.title}` : ""}`
-              : (session.closedByLabel ?? "—")
-          }
-        />
-        <SignBox
-          role="Verified by"
-          name={
-            verifier
-              ? `${verifier.name}${verifier.title ? ` · ${verifier.title}` : ""}`
-              : "—"
-          }
-        />
-      </div>
+      {/* Trailing spacer so the sections don't butt against the footer. */}
+      <div className="pt-6" />
 
-      {/* ── Footer ─────────────────────────────────────────────────── */}
-      <div className="mt-5 flex items-center justify-center gap-2 px-6 pb-10 pt-5 text-[13px] text-stone-500 sm:px-[52px]">
-        Powered by
-        <span className="inline-flex items-center gap-1.5 font-semibold text-stone-700">
-          <span className="grid h-5 w-5 place-items-center rounded-md bg-primary text-[11px] font-bold text-white">
-            S
-          </span>
-          Settlo
-        </span>
-      </div>
-    </article>
+      {/* ── Signatures + Powered by Settlo (shared component) ───────── */}
+      <NotesFooter signatures={signatures} footerMessage="" />
+    </>
   );
 }
 
-// ── Local presentational helpers ─────────────────────────────────────
+// ── Local presentational helpers (shared-document slate palette) ─────
 
 function Section({
   title,
@@ -751,13 +743,13 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="px-6 pt-[30px] sm:px-[52px]">
+    <section className="px-10 pt-[30px]">
       <div className="mb-3 flex items-baseline gap-2.5">
-        <h3 className="m-0 font-mono text-[12px] font-semibold uppercase tracking-[0.13em] text-stone-700">
+        <h3 className="m-0 font-mono text-[12px] font-semibold uppercase tracking-[0.13em] text-slate-700">
           {title}
         </h3>
-        {count && <span className="font-mono text-[11px] text-stone-400">{count}</span>}
-        {note && <span className="ml-auto text-[12px] text-stone-400">{note}</span>}
+        {count && <span className="font-mono text-[11px] text-slate-400">{count}</span>}
+        {note && <span className="ml-auto text-[12px] text-slate-400">{note}</span>}
       </div>
       {children}
     </section>
@@ -766,7 +758,7 @@ function Section({
 
 function TableBox({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-[10px] border border-stone-200">
+    <div className="overflow-hidden rounded-[10px] border border-slate-200">
       <table className="w-full border-collapse [&_tbody_tr:last-child>td]:border-b-0">
         {children}
       </table>
@@ -776,7 +768,7 @@ function TableBox({ children }: { children: React.ReactNode }) {
 
 function EmptyBox({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-[10px] border border-stone-200 bg-stone-50 px-[15px] py-5 text-center text-[13px] text-stone-500">
+    <div className="rounded-[10px] border border-slate-200 bg-slate-50 px-[15px] py-5 text-center text-[13px] text-slate-500">
       {children}
     </div>
   );
@@ -785,8 +777,8 @@ function EmptyBox({ children }: { children: React.ReactNode }) {
 function Kv({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-4 py-[5px] text-[14px]">
-      <span className="text-stone-600">{k}</span>
-      <span className="text-right font-semibold text-stone-900">{v}</span>
+      <span className="text-slate-600">{k}</span>
+      <span className="text-right font-semibold text-slate-900">{v}</span>
     </div>
   );
 }
@@ -801,12 +793,12 @@ function SessCell({
   sub?: string;
 }) {
   return (
-    <div className="border-b border-r border-stone-200 px-4 py-3.5 last:border-r-0 sm:border-b-0 [&:nth-child(2)]:border-r-0 sm:[&:nth-child(2)]:border-r [&:nth-child(3)]:border-b-0">
-      <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-stone-400">
+    <div className="border-b border-r border-slate-200 px-4 py-3.5 last:border-r-0 sm:border-b-0 [&:nth-child(2)]:border-r-0 sm:[&:nth-child(2)]:border-r [&:nth-child(3)]:border-b-0">
+      <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
         {label}
       </div>
       <div className="mt-1.5 text-[15px] font-bold tracking-[-0.01em]">{value}</div>
-      {sub && <div className="mt-0.5 font-mono text-[11.5px] text-stone-600">{sub}</div>}
+      {sub && <div className="mt-0.5 font-mono text-[11.5px] text-slate-600">{sub}</div>}
     </div>
   );
 }
@@ -821,8 +813,8 @@ function SessWho({
   fallback?: string | null;
 }) {
   return (
-    <div className="border-b border-r border-stone-200 px-4 py-3.5 last:border-r-0 sm:border-b-0 [&:nth-child(2)]:border-r-0 sm:[&:nth-child(2)]:border-r [&:nth-child(3)]:border-b-0">
-      <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-stone-400">
+    <div className="border-b border-r border-slate-200 px-4 py-3.5 last:border-r-0 sm:border-b-0 [&:nth-child(2)]:border-r-0 sm:[&:nth-child(2)]:border-r [&:nth-child(3)]:border-b-0">
+      <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
         {label}
       </div>
       {chip ? (
@@ -836,12 +828,12 @@ function SessWho({
           <div className="min-w-0">
             <div className="truncate text-[14px] font-semibold">{chip.name}</div>
             {chip.title && (
-              <div className="truncate text-[11px] text-stone-400">{chip.title}</div>
+              <div className="truncate text-[11px] text-slate-400">{chip.title}</div>
             )}
           </div>
         </div>
       ) : (
-        <div className="mt-1.5 text-[15px] font-bold tracking-[-0.01em] text-stone-500">
+        <div className="mt-1.5 text-[15px] font-bold tracking-[-0.01em] text-slate-500">
           {fallback ?? "—"}
         </div>
       )}
@@ -863,20 +855,20 @@ function SumCard({
   valueClass?: string;
 }) {
   return (
-    <div className="rounded-[10px] border border-stone-200 px-4 py-3.5">
-      <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-stone-400">
+    <div className="rounded-[10px] border border-slate-200 px-4 py-3.5">
+      <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
         {label}
       </div>
       <div
         className={cn(
           "mt-2 font-mono text-[22px] font-bold tabular-nums tracking-[-0.02em]",
-          valueClass ?? "text-stone-900",
+          valueClass ?? "text-slate-900",
         )}
       >
         {value}
-        <span className="ml-1 text-[11px] font-medium text-stone-400">{unit}</span>
+        <span className="ml-1 text-[11px] font-medium text-slate-400">{unit}</span>
       </div>
-      {sub && <div className="mt-1.5 text-[11.5px] text-stone-600">{sub}</div>}
+      {sub && <div className="mt-1.5 text-[11.5px] text-slate-600">{sub}</div>}
     </div>
   );
 }
@@ -894,7 +886,7 @@ function Chip({ tone, children }: { tone: string; children: React.ReactNode }) {
     <span
       className={cn(
         "mt-1.5 inline-flex h-5 items-center rounded-[5px] px-2 font-mono text-[10px] font-semibold tracking-[0.03em]",
-        CHIP_TONE[tone] ?? "bg-stone-100 text-stone-600",
+        CHIP_TONE[tone] ?? "bg-slate-100 text-slate-600",
       )}
     >
       {children}
@@ -904,8 +896,8 @@ function Chip({ tone, children }: { tone: string; children: React.ReactNode }) {
 
 function Appr({ label, value }: { label: string; value: string }) {
   return (
-    <span className="text-[11.5px] text-stone-400">
-      {label} <b className="font-semibold text-stone-700">{value}</b>
+    <span className="text-[11.5px] text-slate-400">
+      {label} <b className="font-semibold text-slate-700">{value}</b>
     </span>
   );
 }
@@ -920,7 +912,7 @@ function TFootLabel({
   return (
     <td
       colSpan={colSpan}
-      className="border-t-2 border-stone-300 bg-stone-50 px-[15px] py-3 font-mono text-[10px] font-semibold uppercase tracking-[0.09em] text-stone-700"
+      className="border-t-2 border-slate-300 bg-slate-50 px-[15px] py-3 font-mono text-[10px] font-semibold uppercase tracking-[0.09em] text-slate-700"
     >
       {children}
     </td>
@@ -929,7 +921,7 @@ function TFootLabel({
 
 function TFootNum({ children }: { children: React.ReactNode }) {
   return (
-    <td className="border-t-2 border-stone-300 bg-stone-50 px-[15px] py-3 text-right font-mono font-bold tabular-nums">
+    <td className="border-t-2 border-slate-300 bg-slate-50 px-[15px] py-3 text-right font-mono font-bold tabular-nums">
       {children}
     </td>
   );
@@ -951,12 +943,12 @@ function ReconRow({
       className={cn(
         "flex justify-between gap-4 py-[9px] text-[14px]",
         grand
-          ? "mt-0.5 border-t-2 border-stone-300 pt-3.5"
-          : "border-b border-stone-200",
+          ? "mt-0.5 border-t-2 border-slate-300 pt-3.5"
+          : "border-b border-slate-200",
       )}
     >
       <span
-        className={cn(grand ? "text-[16px] font-bold text-stone-900" : "text-stone-600")}
+        className={cn(grand ? "text-[16px] font-bold text-slate-900" : "text-slate-600")}
       >
         {k}
       </span>
@@ -964,23 +956,11 @@ function ReconRow({
         className={cn(
           "font-mono font-semibold tabular-nums",
           grand ? "text-[18px] font-bold" : "",
-          tone ?? "text-stone-900",
+          tone ?? "text-slate-900",
         )}
       >
         {v}
       </span>
-    </div>
-  );
-}
-
-function SignBox({ role, name }: { role: string; name: string }) {
-  return (
-    <div>
-      <div className="h-[34px] border-b-[1.5px] border-stone-700" />
-      <div className="mt-2 flex justify-between gap-3 text-[12px] text-stone-600">
-        <span>{role}</span>
-        <b className="font-semibold text-stone-900">{name}</b>
-      </div>
     </div>
   );
 }

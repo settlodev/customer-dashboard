@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { fmt, fmtVariance } from "@/lib/day-sessions/cod-format";
+import { fmt, fmtVariance, initialsOf } from "@/lib/day-sessions/cod-format";
 import { approvePaymentMethodReconciliation } from "@/lib/actions/payment-method-reconciliation-actions";
 import type { PaymentMethodReconciliation } from "@/types/payment-method-reconciliation/type";
 
@@ -161,7 +161,10 @@ export function CashUpReconciliationCard({
                           <ApprovedMark
                             initials={
                               r.approvedBy
-                                ? staffInitialsById[r.approvedBy]
+                                ? (staffInitialsById[r.approvedBy] ??
+                                  (r.approvedByName
+                                    ? initialsOf(r.approvedByName)
+                                    : undefined))
                                 : undefined
                             }
                           />

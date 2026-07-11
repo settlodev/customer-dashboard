@@ -10,7 +10,7 @@ import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import { getLetterhead } from "@/lib/actions/letterhead-actions";
 import type { Staff } from "@/types/staff";
 import { resolveCurrency } from "@/lib/day-sessions/cod-format";
-import { ReportPrintFrame } from "@/components/widgets/day-sessions/report-print-frame";
+import { PrintableDocument } from "@/components/documents/PrintableDocument";
 import { CloseOfDayReportSheet } from "@/components/widgets/day-sessions/close-of-day-report-sheet";
 
 type Params = Promise<{ id: string }>;
@@ -58,7 +58,7 @@ export default async function CloseOfDayReportPage({
   const documentTitle = `${session.identifier ?? "Close of Day"} — Close of Day Report`;
 
   return (
-    <ReportPrintFrame documentTitle={documentTitle}>
+    <PrintableDocument documentTitle={documentTitle}>
       <CloseOfDayReportSheet
         session={session}
         report={report}
@@ -69,6 +69,6 @@ export default async function CloseOfDayReportPage({
         currency={currency}
         generatedAt={new Date().toISOString()}
       />
-    </ReportPrintFrame>
+    </PrintableDocument>
   );
 }
