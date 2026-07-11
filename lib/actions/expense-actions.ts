@@ -7,6 +7,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import type { ApiResponse, FormResponse } from "@/types/types";
 import type {
+  DaySessionExpensesSummary,
   Expense,
   ExpenseStatus,
   ExpenseTimelineEvent,
@@ -240,6 +241,24 @@ export async function getExpenseByReference(
     return page.content?.[0] ?? null;
   } catch (error) {
     console.error("getExpenseByReference failed", error);
+    return null;
+  }
+}
+
+// ── Close-of-Day ─────────────────────────────────────────────────────
+
+/** Expenses recorded against a single day session (Accounting Service). */
+export async function getSessionExpenses(
+  sessionId: string,
+): Promise<DaySessionExpensesSummary | null> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(
+      accountingUrl(`/api/v1/reports/sessions/${sessionId}/expenses`),
+    );
+    return parseStringify(data);
+  } catch (error) {
+    console.error("getSessionExpenses failed", error);
     return null;
   }
 }

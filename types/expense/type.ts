@@ -98,3 +98,42 @@ export const PAYMENT_STATUS_TONES: Record<PaymentStatus, string> = {
   PARTIALLY_PAID: "bg-amber-50 text-amber-700",
   PAID: "bg-green-50 text-green-700",
 };
+
+// ── Close-of-Day session summary ──────────────────────────────────────
+// GET /api/v1/reports/sessions/{sessionId}/expenses. Feeds the
+// dashboard's Close-of-Day report — expenses recorded against a single
+// day session, with the cash/mobile/other payment-method split.
+
+export interface DaySessionExpenseItem {
+  expenseId: string;
+  expenseNumber: string;
+  description?: string | null;
+  expenseCategoryId?: string | null;
+  categoryName?: string | null;
+  payeeId?: string | null;
+  payeeName?: string | null;
+  payeeType?: string | null;
+  status: ExpenseStatus;
+  paymentStatus: PaymentStatus;
+  paymentMethodCodes: string[];
+  amount: number;
+  paidAmount: number;
+  balanceDue: number;
+  currencyCode: string;
+}
+
+export interface DaySessionExpenseTotals {
+  count: number;
+  totalAmount: number;
+  paidByCash: number;
+  paidByMobile: number;
+  paidByOther: number;
+  unpaidTotal: number;
+}
+
+export interface DaySessionExpensesSummary {
+  daySessionId: string;
+  businessId: string;
+  items: DaySessionExpenseItem[];
+  totals: DaySessionExpenseTotals;
+}

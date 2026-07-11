@@ -8,6 +8,7 @@ import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import type {
   CustomerPrepaymentOverview,
+  DaySessionPrepaymentsSummary,
   PrepaymentAvailableBalance,
   PrepaymentInstrument,
   PrepaymentSettings,
@@ -222,5 +223,28 @@ export const updatePrepaymentSettings = async (
       "Failed to save prepayment settings",
       error,
     );
+  }
+};
+
+// ── Close-of-Day ─────────────────────────────────────────────────────────
+
+/** Prepayments received/applied during a single day session (Accounts Service). */
+export const getSessionPrepayments = async (
+  locationId: string,
+  sessionId: string,
+): Promise<DaySessionPrepaymentsSummary | null> => {
+  try {
+    const params = new URLSearchParams({
+      locationId,
+      daySessionId: sessionId,
+    });
+    const apiClient = new ApiClient();
+    const data = await apiClient.get<DaySessionPrepaymentsSummary>(
+      `${BASE}/day-session-summary?${params.toString()}`,
+    );
+    return parseStringify(data);
+  } catch (error) {
+    console.error("getSessionPrepayments failed", error);
+    return null;
   }
 };
