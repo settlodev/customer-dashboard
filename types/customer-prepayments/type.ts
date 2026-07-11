@@ -93,6 +93,41 @@ export interface CustomerPrepaymentOverview {
   transactions: PrepaymentTransaction[];
 }
 
+// ── Close-of-Day session summary (Accounts Service) ─────────────────────
+// GET /api/v1/customer-prepayments/day-session-summary. Feeds the
+// dashboard's Close-of-Day report — prepayments/deposits received or
+// applied during a single day session.
+
+export type DaySessionPrepaymentStatus = "HELD" | "APPLIED";
+
+export interface DaySessionPrepaymentItem {
+  instrumentId: UUID;
+  reference: string | null;
+  customerId: UUID;
+  customerName: string | null;
+  description: string | null;
+  paymentMethodId: UUID | null;
+  status: DaySessionPrepaymentStatus;
+  amount: number;
+  currency: string;
+  receivedAt: string;
+}
+
+export interface DaySessionPrepaymentTotals {
+  count: number;
+  totalReceived: number;
+  heldTotal: number;
+  appliedTotal: number;
+}
+
+export interface DaySessionPrepaymentsSummary {
+  locationId: UUID;
+  daySessionId: UUID;
+  businessDate: string;
+  items: DaySessionPrepaymentItem[];
+  totals: DaySessionPrepaymentTotals;
+}
+
 // ── Reports Service analytics (co.tz.settlo.analytics.prepayment.dto.*) ──
 
 export interface PrepaymentAnalyticsOverview {

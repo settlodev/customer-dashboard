@@ -8,6 +8,15 @@ import {
   listDaySessions as listAccountsDaySessions,
 } from "./location-day-sessions-actions";
 import { rethrowIfBoundary } from "@/lib/list-fallback";
+import { getSessionPrepayments } from "./customer-prepayments-actions";
+import { getSessionRefunds, getSessionVoids } from "./order-actions";
+import { getSessionExpenses } from "./expense-actions";
+import type { DaySessionPrepaymentsSummary } from "@/types/customer-prepayments/type";
+import type {
+  DaySessionRefundsResponse,
+  DaySessionVoidsResponse,
+} from "@/types/orders/type";
+import type { DaySessionExpensesSummary } from "@/types/expense/type";
 
 /**
  * Per-session aggregate row returned by the Reports list endpoint.
@@ -269,18 +278,47 @@ export interface DaySessionReport {
   status: "OPEN" | "CLOSED" | "DELETED";
   openedAt: string;
   closedAt?: string | null;
+  openedBy?: string | null;
+  closedBy?: string | null;
   /** True for X-reports (live snapshot of OPEN session); false for end-of-day Z-report. */
   preliminary: boolean;
 
   orderCount: number;
   openOrdersAtClose?: number | null;
 
-  sales: { gross: number; discounts: number; net: number; tips: number };
+  sales: {
+    gross: number;
+    discounts: number;
+    net: number;
+    tips: number;
+    itemCount?: number;
+    /** Number of orders that had a discount applied (Reports). */
+    discountCount?: number;
+  };
+  /** In-house / complimentary (gifted) transactions this session (Reports). */
+  complimentaryAmount?: number;
+  complimentaryCount?: number;
   refunds: { count: number; amount: number };
   expenses: { count: number; amount: number };
   cogs: number;
   grossProfit: number;
   cashNet: number;
+
+  /** Cash-drawer count-up, for locations using physical-till reconciliation. */
+  physicalTill?: {
+    opening: number | null;
+    counted: number | null;
+    expected: number | null;
+    variance: number | null;
+  } | null;
+
+  /** Voided items + cancelled orders during the session (distinct from post-sale refunds above). */
+  voids?: {
+    voidedItemCount: number;
+    voidedAmount: number;
+    cancelledOrderCount: number;
+    cancelledAmount: number;
+  };
 
   paymentsByMethod: Array<{
     paymentMethodId: string;
@@ -355,4 +393,40 @@ export async function getDaySessionDetail(
   }
 
   return { session, report };
+}
+
+/**
+ * The four Close-of-Day data sources that live outside the Reports
+ * Z-report: prepayments (Accounts), refunds + voids (Order Management),
+ * and expenses (Accounting). Each leaf action already catches its own
+ * errors and resolves to {@code null} on failure; wrapping the fan-out
+ * in {@link Promise.allSettled} is a second line of defence so one
+ * service being down (or throwing unexpectedly) can never take the
+ * others down with it — every field degrades independently to
+ * {@code null} instead of failing the whole Close-of-Day report.
+ */
+export interface CloseOfDayExtras {
+  prepayments: DaySessionPrepaymentsSummary | null;
+  refunds: DaySessionRefundsResponse | null;
+  voids: DaySessionVoidsResponse | null;
+  expenses: DaySessionExpensesSummary | null;
+}
+
+export async function getCloseOfDayExtras(
+  locationId: string,
+  sessionId: string,
+): Promise<CloseOfDayExtras> {
+  const [prepayments, refunds, voids, expenses] = await Promise.allSettled([
+    getSessionPrepayments(locationId, sessionId),
+    getSessionRefunds(sessionId),
+    getSessionVoids(sessionId),
+    getSessionExpenses(sessionId),
+  ]);
+
+  return {
+    prepayments: prepayments.status === "fulfilled" ? prepayments.value : null,
+    refunds: refunds.status === "fulfilled" ? refunds.value : null,
+    voids: voids.status === "fulfilled" ? voids.value : null,
+    expenses: expenses.status === "fulfilled" ? expenses.value : null,
+  };
 }

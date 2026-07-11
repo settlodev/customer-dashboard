@@ -13,6 +13,8 @@ import {
   CashFlow,
   CashFlowDailyPoint,
   Credit,
+  DaySessionRefundsResponse,
+  DaySessionVoidsResponse,
   Order,
   OrderDetail,
   OrderEvent,
@@ -213,6 +215,39 @@ export const getVoidsReport = async (
     `${ordersBase}/voids${query ? `?${query}` : ""}`,
   );
   return parseStringify(data ?? EMPTY_VOIDS_REPORT);
+};
+
+// ─── Close-of-Day session reports (OMS) ──────────────────────────────
+// Session-scoped refund/void listings backing the dashboard's
+// Close-of-Day report. Distinct from getVoidsReport above (a date-range
+// report keyed by order); these are flat listings keyed by daySessionId.
+
+export const getSessionRefunds = async (
+  sessionId: string,
+): Promise<DaySessionRefundsResponse | null> => {
+  try {
+    const data = await oms().get<DaySessionRefundsResponse>(
+      `${ordersBase}/sessions/${sessionId}/refunds`,
+    );
+    return parseStringify(data);
+  } catch (error) {
+    console.error("getSessionRefunds failed", error);
+    return null;
+  }
+};
+
+export const getSessionVoids = async (
+  sessionId: string,
+): Promise<DaySessionVoidsResponse | null> => {
+  try {
+    const data = await oms().get<DaySessionVoidsResponse>(
+      `${ordersBase}/sessions/${sessionId}/voids`,
+    );
+    return parseStringify(data);
+  } catch (error) {
+    console.error("getSessionVoids failed", error);
+    return null;
+  }
 };
 
 export const getOrder = async (id: UUID): Promise<Order | null> => {

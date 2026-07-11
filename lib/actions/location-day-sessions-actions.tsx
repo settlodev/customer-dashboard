@@ -26,6 +26,17 @@ export interface DaySession {
   openedByLabel?: string | null;
   /** "System" when auto-closed (closedBy=null after CLOSED), null otherwise. */
   closedByLabel?: string | null;
+  /**
+   * Server-resolved staff full name for {@link openedBy} / {@link closedBy} /
+   * {@link approvedBy}. The dashboard's staff roster is location-scoped, so an
+   * actor anchored elsewhere (owner, cross-location manager) won't be in it —
+   * the backend resolves the name account-wide and returns it here. Null when
+   * unresolvable; the UI then falls back to the label or a shortened id.
+   * Populated on the session read endpoints (detail + list), not on mutations.
+   */
+  openedByName?: string | null;
+  closedByName?: string | null;
+  approvedByName?: string | null;
   openingNotes?: string;
   closingNotes?: string;
   createdAt: string;

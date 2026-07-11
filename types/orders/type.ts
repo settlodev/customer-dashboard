@@ -760,3 +760,75 @@ export const CANCELLATION_REASON_LABELS: Record<CancellationReason, string> = {
   [CancellationReason.STAFF_ERROR]: "Staff error",
   [CancellationReason.OTHER]: "Other",
 };
+
+// ─── Close-of-Day session reports (OMS) ─────────────────────────────
+// Session-scoped refund/void listings backing the dashboard's
+// Close-of-Day report. Distinct from OrderVoidsResponse above (a
+// date-range report keyed by order); these are flat listings keyed by
+// daySessionId.
+//   GET /api/v1/orders/sessions/{sessionId}/refunds
+//   GET /api/v1/orders/sessions/{sessionId}/voids
+
+export interface DaySessionRefundItem {
+  id: UUID;
+  orderItemId: UUID;
+  /** Parent order's human ticket number (OMS-enriched). */
+  orderNumber?: string | null;
+  /** Refunded item name (OMS-enriched). */
+  itemName?: string | null;
+  quantity: number;
+  reason: string | null;
+  processedBy: UUID | null;
+  approvedBy: UUID | null;
+  refundedAt: string | null;
+  refundAmount: number;
+  refundCurrency: string | null;
+  paymentMethodId: UUID | null;
+  paymentMethodCode: string | null;
+  daySessionId: UUID;
+  businessDate: string;
+}
+
+export interface DaySessionRefundsResponse {
+  locationId: UUID;
+  daySessionId: UUID;
+  refunds: DaySessionRefundItem[];
+  totalAmount: number;
+  count: number;
+}
+
+export interface DaySessionVoidItem {
+  orderId: UUID;
+  orderNumber: string;
+  orderItemId: UUID;
+  itemName: string;
+  quantity: number;
+  voidReason: VoidReason | null;
+  staffId: UUID | null;
+  removedBy: UUID | null;
+  removedAt: string | null;
+  approvedBy: UUID | null;
+  approvalRequestId: UUID | null;
+  netAmount: number;
+}
+
+/** A cancelled full-ticket order, as returned alongside item voids. */
+export interface DaySessionCancelledOrderItem {
+  orderId: UUID;
+  orderNumber: string;
+  cancellationReason: string | null;
+  cancelledBy: UUID | null;
+  cancelledAt: string | null;
+  netAmount: number;
+}
+
+export interface DaySessionVoidsResponse {
+  locationId: UUID;
+  daySessionId: UUID;
+  items: DaySessionVoidItem[];
+  totalVoidedAmount: number;
+  count: number;
+  cancelledOrders: DaySessionCancelledOrderItem[];
+  totalCancelledAmount: number;
+  cancelledCount: number;
+}

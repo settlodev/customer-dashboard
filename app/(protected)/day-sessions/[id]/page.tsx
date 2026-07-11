@@ -1,32 +1,58 @@
 import { notFound } from "next/navigation";
 import {
-  Activity,
   CircleDollarSign,
+  FileText,
   ListChecks,
-  Receipt,
+  Scale,
+  ShieldCheck,
+  TrendingUp,
   Undo2,
   Wallet,
 } from "lucide-react";
 
 import {
-  PageBody,
   PageBreadcrumbs,
   PageHeader,
   PageShell,
 } from "@/components/layouts/page-shell";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import { getCurrentDestination } from "@/lib/actions/context";
-import { getDaySessionDetail } from "@/lib/actions/day-session-list-actions";
+import {
+  getCloseOfDayExtras,
+  getDaySessionDetail,
+} from "@/lib/actions/day-session-list-actions";
 import { listPaymentMethodReconciliations } from "@/lib/actions/payment-method-reconciliation-actions";
-import { PaymentMethodReconciliationCard } from "@/components/widgets/accounting/payment-method-reconciliation-card";
+import { fetchAllStaff } from "@/lib/actions/staff-actions";
+import type { Staff } from "@/types/staff";
+
+import { CashUpReconciliationCard } from "@/components/widgets/day-sessions/cash-up-reconciliation-card";
+import { CodShareButton } from "@/components/widgets/day-sessions/cod-share-dialog";
+import { ExportButton } from "@/components/widgets/day-sessions/print-button";
+import {
+  CancellationsVoids,
+  CashDrawer,
+  ExpensesList,
+  PaymentMix,
+  Prepayments,
+  RefundsList,
+  SalesBreakdown,
+  SessionMetaStrip,
+} from "@/components/widgets/day-sessions/cod-sections";
+import {
+  fmt,
+  fmtDateTimeDot,
+  fmtDuration,
+  fmtTime,
+  fmtVariance,
+  initialsOf,
+  marginPct,
+  methodNameIndex,
+  resolveCurrency,
+  staffChip,
+  staffName,
+} from "@/lib/day-sessions/cod-format";
 
 type Params = Promise<{ id: string }>;
 
@@ -35,34 +61,6 @@ const STATUS_TONE: Record<string, "pos" | "neg" | "warn" | "soft"> = {
   CLOSED: "soft",
   SUPERSEDED: "warn",
   DELETED: "neg",
-};
-
-const fmt = (n?: number | null) =>
-  (n ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
-
-const fmtDateTime = (iso?: string | null) => {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
-const fmtDuration = (
-  openedAt?: string | null,
-  closedAt?: string | null,
-): string => {
-  if (!openedAt) return "—";
-  const open = new Date(openedAt).getTime();
-  const close = closedAt ? new Date(closedAt).getTime() : Date.now();
-  const minutes = Math.max(0, Math.floor((close - open) / 60000));
-  if (minutes < 60) return `${minutes}m`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m === 0 ? `${h}h` : `${h}h ${m}m`;
 };
 
 export default async function DaySessionDetailPage({
@@ -76,23 +74,158 @@ export default async function DaySessionDetailPage({
   if (!destination || destination.type !== "LOCATION") notFound();
   const locationId = destination.id;
 
-  const detail = await getDaySessionDetail(locationId, id);
-  // Either half can be null:
-  //   - session=null  → Accounts couldn't find the session for this
-  //     location. Likely a stale URL or wrong location selected — 404.
-  //   - report=null   → Reports temporarily unavailable or no orders
-  //     yet on a freshly-opened session. Render the lifecycle card and
-  //     show empty financials gracefully below.
+  // Fan out every read for this page at once: the lifecycle+report pair,
+  // per-method cash-up, the four Close-of-Day extras, and the staff
+  // roster for name/avatar resolution. One slow service never blocks the
+  // others from rendering.
+  const [detail, reconciliations, extras, staffList] = await Promise.all([
+    getDaySessionDetail(locationId, id),
+    listPaymentMethodReconciliations(id),
+    getCloseOfDayExtras(locationId, id),
+    fetchAllStaff().catch(() => [] as Staff[]),
+  ]);
+
+  // session=null → Accounts couldn't find it for this location (stale URL
+  // or wrong location). report=null → Reports unavailable or no activity
+  // yet; the page still renders the lifecycle + Close-of-Day extras.
   if (!detail.session) notFound();
   const { session, report } = detail;
 
-  // Per-method cash-up (Accounting Service) — manager approves here; an
-  // offline-mobile-money variance posts a Mobile Money Over/Short.
-  const reconciliations = await listPaymentMethodReconciliations(id);
+  const staffById = new Map(staffList.map((s): [string, Staff] => [s.id, s]));
+  const staffInitialsById = Object.fromEntries(
+    staffList.map((s) => [s.id, initialsOf(s.fullName)]),
+  );
 
-  const headerLabel =
-    session.identifier ?? `Session ${session.id.slice(0, 8)}`;
+  // id → payment-method name (from the report + reconciliation rows that
+  // carry it) so prepayments and the cash drawer can label a raw method id.
+  const methodNameById = methodNameIndex(
+    report?.paymentsByMethod ?? [],
+    reconciliations,
+  );
+  const txnsByMethodId = Object.fromEntries(
+    (report?.paymentsByMethod ?? []).map((p) => [p.paymentMethodId, p.count]),
+  );
+
+  const currency = resolveCurrency(
+    reconciliations.find((r) => r.currency)?.currency,
+    extras.expenses?.items[0]?.currencyCode,
+    extras.prepayments?.items[0]?.currency,
+    extras.refunds?.refunds[0]?.refundCurrency,
+  );
+
+  // ── Verification (derived — the backend has no session-level sign-off).
+  // A closed session is "verified" once every cash-up method is approved;
+  // the verifier is whoever approved last.
+  const approvedRecons = reconciliations
+    .filter((r) => r.status === "APPROVED" && r.approvedAt)
+    .sort(
+      (a, b) =>
+        new Date(b.approvedAt as string).getTime() -
+        new Date(a.approvedAt as string).getTime(),
+    );
+  const pendingCount = reconciliations.filter(
+    (r) => r.status === "SUBMITTED",
+  ).length;
+  const verified =
+    session.status === "CLOSED" &&
+    reconciliations.length > 0 &&
+    reconciliations.every((r) => r.status === "APPROVED");
+  const lastApproval = approvedRecons[0];
+  const verifierChip =
+    verified && lastApproval?.approvedBy
+      ? staffChip(lastApproval.approvedBy, staffById)
+      : null;
+
+  const closedChip = session.closedBy
+    ? staffChip(session.closedBy, staffById, session.closedByName)
+    : null;
+
+  // ── KPI figures ───────────────────────────────────────────────────
+  const net = report?.sales.net ?? 0;
+  const gross = report?.sales.gross ?? 0;
+  const grossProfit = report?.grossProfit ?? 0;
+  const margin = marginPct(grossProfit, net);
+  const refundAmt = report?.refunds.amount ?? 0;
+  const refundCount = report?.refunds.count ?? 0;
+  const expectedTotal = reconciliations.reduce(
+    (s, r) => s + (r.expectedAmount ?? 0),
+    0,
+  );
+  const countedTotal = reconciliations.reduce(
+    (s, r) => s + (r.countedAmount ?? 0),
+    0,
+  );
+  const netVariance = countedTotal - expectedTotal;
+
+  const headerLabel = session.identifier ?? `Session ${session.id.slice(0, 8)}`;
   const reportIsLive = session.status === "OPEN" && report?.preliminary;
+
+  // ── Session meta strip cells ──────────────────────────────────────
+  const metaCells = [
+    {
+      label: "Opened",
+      value: fmtDateTimeDot(session.openedAt),
+      sub:
+        session.triggerType === "AUTO"
+          ? "Auto · scheduler"
+          : session.openedBy
+            ? staffName(session.openedBy, staffById, session.openedByName)
+            : (session.openedByLabel ?? "Manual"),
+    },
+    {
+      label: "Closed",
+      value: session.closedAt ? fmtDateTimeDot(session.closedAt) : "In progress",
+      sub: session.closedAt
+        ? `${fmtDuration(session.openedAt, session.closedAt)}${
+            session.extensionCount
+              ? ` · ${session.extensionCount} extension${session.extensionCount === 1 ? "" : "s"}`
+              : ""
+          }`
+        : `Open ${fmtDuration(session.openedAt)}`,
+    },
+    closedChip
+      ? {
+          label: "Closed by",
+          who: closedChip,
+          sub: closedChip.title ?? undefined,
+        }
+      : {
+          label: "Closed by",
+          value: session.closedByLabel ?? "—",
+          sub: session.status === "OPEN" ? "Session open" : undefined,
+        },
+    verifierChip
+      ? {
+          label: "Verified by",
+          who: verifierChip,
+          sub: `${verifierChip.title ? `${verifierChip.title} · ` : ""}${fmtTime(
+            lastApproval?.approvedAt,
+          )}`,
+        }
+      : {
+          label: "Verified by",
+          value: verified ? "Verified" : "Not verified",
+          sub:
+            !verified && pendingCount > 0
+              ? `${pendingCount} awaiting`
+              : undefined,
+        },
+    {
+      label: "Opening float",
+      value:
+        report?.physicalTill?.opening != null ? (
+          <>
+            {fmt(report.physicalTill.opening)}
+            <span className="ml-1.5 font-mono text-[11px] font-medium text-muted-foreground">
+              {currency}
+            </span>
+          </>
+        ) : (
+          "—"
+        ),
+      sub: "Issued at open",
+    },
+  ];
 
   return (
     <PageShell>
@@ -104,281 +237,220 @@ export default async function DaySessionDetailPage({
       />
       <PageHeader
         title={headerLabel}
-        subtitle={`Business day ${session.businessDate} · ${session.triggerType} trigger`}
+        subtitle={
+          <>
+            Business day {session.businessDate}
+            {session.locationName ? (
+              <>
+                {" · "}
+                <span className="font-medium text-ink-3">
+                  {session.locationName}
+                </span>
+              </>
+            ) : null}
+            {" · "}
+            {session.triggerType} trigger
+          </>
+        }
         titleAccessory={
           <div className="flex items-center gap-2">
             <Badge variant={STATUS_TONE[session.status] ?? "soft"}>
               {session.status}
             </Badge>
+            {verified ? (
+              <Badge variant="pos">
+                <ShieldCheck className="h-3 w-3" />
+                Verified
+              </Badge>
+            ) : null}
             {reportIsLive ? (
-              <span className="text-[10px] uppercase tracking-wide text-emerald-700">
+              <span className="font-mono text-[10px] uppercase tracking-wide text-pos">
                 live snapshot
               </span>
             ) : null}
           </div>
         }
+        actions={
+          <div className="flex items-center gap-2">
+            <ExportButton />
+            <CodShareButton
+              locationId={locationId}
+              sessionId={id}
+              label={headerLabel}
+            />
+            <a
+              href={`/day-sessions/${id}/report`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-[13px] text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-dark"
+            >
+              <FileText className="h-[15px] w-[15px]" />
+              <span className="hidden sm:inline">Report</span>
+              <span aria-hidden>↗</span>
+            </a>
+          </div>
+        }
       />
 
-      <PageBody>
-        {/* ── Lifecycle card (Accounts source of truth) ─────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Lifecycle</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
-            <div>
-              <div className="text-[11px] uppercase tracking-wide text-gray-500">
-                Opened
-              </div>
-              <div>{fmtDateTime(session.openedAt)}</div>
-              {session.openedByLabel ? (
-                <div className="text-[11px] text-gray-500">
-                  {session.openedByLabel}
-                </div>
-              ) : null}
-            </div>
-            <div>
-              <div className="text-[11px] uppercase tracking-wide text-gray-500">
-                Closed
-              </div>
-              <div>{fmtDateTime(session.closedAt)}</div>
-              {session.closedByLabel ? (
-                <div className="text-[11px] text-gray-500">
-                  {session.closedByLabel}
-                </div>
-              ) : null}
-            </div>
-            <div>
-              <div className="text-[11px] uppercase tracking-wide text-gray-500">
-                Duration
-              </div>
-              <div>{fmtDuration(session.openedAt, session.closedAt)}</div>
-            </div>
-            <div>
-              <div className="text-[11px] uppercase tracking-wide text-gray-500">
-                Extensions
-              </div>
-              <div>{session.extensionCount ?? 0}</div>
-              {session.extendedUntil ? (
-                <div className="text-[11px] text-gray-500">
-                  Until {fmtDateTime(session.extendedUntil)}
-                </div>
-              ) : null}
-            </div>
-            {session.openingNotes ? (
-              <div className="col-span-2 md:col-span-4">
-                <div className="text-[11px] uppercase tracking-wide text-gray-500">
-                  Opening notes
-                </div>
-                <div className="whitespace-pre-line text-sm">
-                  {session.openingNotes}
-                </div>
-              </div>
-            ) : null}
-            {session.closingNotes ? (
-              <div className="col-span-2 md:col-span-4">
-                <div className="text-[11px] uppercase tracking-wide text-gray-500">
-                  Closing notes
-                </div>
-                <div className="whitespace-pre-line text-sm">
-                  {session.closingNotes}
-                </div>
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
+      <SessionMetaStrip cells={metaCells} />
 
-        {/* ── KPI strip ─────────────────────────────────────────────────── */}
-        <KpiStrip cols={4}>
-          <KpiCard
-            icon={<CircleDollarSign className="h-3 w-3" />}
-            label="Net sales"
-            value={fmt(report?.sales.net)}
-            delta={report ? `${fmt(report.sales.gross)} gross` : ""}
-            deltaTone="neutral"
-          />
-          <KpiCard
-            icon={<ListChecks className="h-3 w-3" />}
-            label="Orders"
-            value={fmt(report?.orderCount)}
-            delta={
-              report?.openOrdersAtClose
+      {/* ── KPI strip ──────────────────────────────────────────────── */}
+      <KpiStrip cols={6} className="mb-3.5">
+        <KpiCard
+          icon={<CircleDollarSign className="h-3 w-3" />}
+          label="Net sales"
+          value={fmt(net)}
+          unit={currency}
+          delta={`${fmt(gross)} gross`}
+        />
+        <KpiCard
+          icon={<ListChecks className="h-3 w-3" />}
+          label="Orders"
+          value={fmt(report?.orderCount)}
+          delta={
+            report?.sales.itemCount != null
+              ? `${fmt(report.sales.itemCount)} items`
+              : report?.openOrdersAtClose
                 ? `${report.openOrdersAtClose} open at close`
-                : ""
-            }
-            deltaTone={
-              report?.openOrdersAtClose ? "neg" : "neutral"
-            }
-          />
-          <KpiCard
-            icon={<Undo2 className="h-3 w-3" />}
-            label="Refunds"
-            value={fmt(report?.refunds.amount)}
-            delta={
-              report?.refunds.count
-                ? `${report.refunds.count} refund${report.refunds.count === 1 ? "" : "s"}`
-                : "None"
-            }
-            deltaTone={report && report.refunds.count > 0 ? "neg" : "pos"}
-          />
-          <KpiCard
-            icon={<Wallet className="h-3 w-3" />}
-            label="Cash net"
-            value={fmt(report?.cashNet)}
-            delta="Receipts − refunds − cash expenses"
-            deltaTone="neutral"
-          />
-        </KpiStrip>
+                : undefined
+          }
+        />
+        <KpiCard
+          icon={<Wallet className="h-3 w-3" />}
+          label="Cash net"
+          value={fmt(report?.cashNet)}
+          unit={currency}
+          delta="Receipts − refunds − exp."
+        />
+        <KpiCard
+          icon={<Undo2 className="h-3 w-3" />}
+          label="Refunds"
+          value={fmt(refundAmt)}
+          unit={currency}
+          delta={
+            <span className={refundCount > 0 ? "text-neg" : undefined}>
+              {refundCount > 0
+                ? `${refundCount} refund${refundCount === 1 ? "" : "s"}`
+                : "None"}
+            </span>
+          }
+        />
+        <KpiCard
+          icon={<TrendingUp className="h-3 w-3" />}
+          label="Gross profit"
+          value={fmt(grossProfit)}
+          unit={currency}
+          delta={
+            margin != null ? (
+              <span className="text-pos">{margin}% margin</span>
+            ) : undefined
+          }
+        />
+        <KpiCard
+          icon={<Scale className="h-3 w-3" />}
+          label="Net variance"
+          value={
+            <span
+              className={
+                netVariance > 0
+                  ? "text-warn"
+                  : netVariance < 0
+                    ? "text-neg"
+                    : undefined
+              }
+            >
+              {fmtVariance(netVariance)}
+            </span>
+          }
+          delta={
+            <span
+              className={
+                netVariance > 0
+                  ? "text-warn"
+                  : netVariance < 0
+                    ? "text-neg"
+                    : undefined
+              }
+            >
+              {netVariance === 0
+                ? "balanced"
+                : netVariance > 0
+                  ? "over"
+                  : "short"}
+            </span>
+          }
+        />
+      </KpiStrip>
 
-        {/* ── Detail tabs ───────────────────────────────────────────────── */}
-        <Tabs defaultValue="summary">
-          <TabsList>
-            <TabsTrigger value="summary">Summary</TabsTrigger>
-            <TabsTrigger value="payments">Payments</TabsTrigger>
-            <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
-          </TabsList>
+      {/* ── Main bento ─────────────────────────────────────────────── */}
+      {/* 2:1 split via the app-standard grid-cols-3 + col-span-2 (an
+          arbitrary `grid-cols-[1.5fr_1fr]` loses the cascade to the base
+          `grid-cols-1` and collapses to one column). min-w-0 keeps the
+          wide cash-up table from blowing out the left track. */}
+      <div className="grid grid-cols-1 items-start gap-3.5 lg:grid-cols-3">
+        {/* LEFT */}
+        <div className="min-w-0 lg:col-span-2">
+          <CashUpReconciliationCard
+            reconciliations={reconciliations}
+            sessionId={id}
+            currency={currency}
+            txnsByMethodId={txnsByMethodId}
+            staffInitialsById={staffInitialsById}
+          />
 
-          {/* ── Summary tab ─────────────────────────────────────────── */}
-          <TabsContent value="summary" className="space-y-4 pt-4">
-            {report ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Sales breakdown</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
-                  <KvRow label="Gross sales" value={fmt(report.sales.gross)} />
-                  <KvRow
-                    label="Discounts"
-                    value={`− ${fmt(report.sales.discounts)}`}
-                  />
-                  <KvRow label="Net sales" value={fmt(report.sales.net)} bold />
-                  <KvRow label="Tips" value={fmt(report.sales.tips)} />
-                  <KvRow
-                    label="Refunds"
-                    value={`− ${fmt(report.refunds.amount)}`}
-                  />
-                  <KvRow
-                    label="Expenses"
-                    value={`− ${fmt(report.expenses.amount)}`}
-                  />
-                  <KvRow label="COGS" value={`− ${fmt(report.cogs)}`} />
-                  <KvRow
-                    label="Gross profit"
-                    value={fmt(report.grossProfit)}
-                    bold
-                  />
-                </CardContent>
-              </Card>
-            ) : (
-              <EmptyReportCard
-                message={
-                  session.status === "OPEN"
-                    ? "No financial activity yet — the X-report will populate as orders post."
-                    : "Reports Service is temporarily unavailable. Refresh in a moment."
-                }
-              />
-            )}
-          </TabsContent>
+          {report && report.paymentsByMethod.length > 0 ? (
+            <PaymentMix report={report} />
+          ) : null}
 
-          {/* ── Payments tab ────────────────────────────────────────── */}
-          <TabsContent value="payments" className="space-y-4 pt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">By payment method</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {report && report.paymentsByMethod.length > 0 ? (
-                  <div className="divide-y divide-gray-100">
-                    {report.paymentsByMethod.map((p) => (
-                      <div
-                        key={p.paymentMethodId}
-                        className="flex items-center justify-between py-2 text-sm"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Receipt className="h-3.5 w-3.5 text-gray-400" />
-                          <div>
-                            <div className="font-medium">
-                              {p.paymentMethodName}
-                            </div>
-                            <div className="text-[11px] text-gray-500">
-                              {p.count} transaction{p.count === 1 ? "" : "s"}
-                              {p.tips > 0 ? ` · ${fmt(p.tips)} tips` : ""}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="font-medium">{fmt(p.amount)}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">
-                    No payments recorded yet.
-                  </p>
-                )}
+          <CancellationsVoids
+            voids={extras.voids}
+            report={report}
+            roster={staffById}
+            currency={currency}
+          />
+        </div>
+
+        {/* RIGHT */}
+        <div className="min-w-0">
+          {report ? (
+            <SalesBreakdown report={report} currency={currency} />
+          ) : (
+            <Card className="mb-3.5">
+              <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                {session.status === "OPEN"
+                  ? "No financial activity yet — the report populates as orders post."
+                  : "Reports Service is temporarily unavailable. Refresh in a moment."}
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          {/* ── Reconciliation tab ──────────────────────────────────── */}
-          <TabsContent value="reconciliation" className="space-y-4 pt-4">
-            <PaymentMethodReconciliationCard
-              reconciliations={reconciliations}
-              sessionId={id}
+          <Prepayments
+            prepayments={extras.prepayments}
+            methodNameById={methodNameById}
+            currency={currency}
+          />
+
+          <RefundsList
+            refunds={extras.refunds}
+            roster={staffById}
+            currency={currency}
+          />
+
+          <ExpensesList expenses={extras.expenses} currency={currency} />
+
+          {report?.physicalTill ? (
+            <CashDrawer
+              till={report.physicalTill}
+              payments={report.paymentsByMethod}
+              refunds={extras.refunds?.refunds ?? []}
+              prepayments={extras.prepayments?.items ?? []}
+              cashExpenses={extras.expenses?.totals.paidByCash ?? 0}
+              methodNameById={methodNameById}
+              currency={currency}
             />
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Activity className="h-3.5 w-3.5" />
-                  Lifecycle flags
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
-                <KvRow
-                  label="Force-closed"
-                  value={(report?.openOrdersAtClose ?? 0) > 0 ? "Yes" : "No"}
-                />
-                <KvRow
-                  label="Open at close"
-                  value={String(report?.openOrdersAtClose ?? 0)}
-                />
-                <KvRow
-                  label="Extensions"
-                  value={String(session.extensionCount ?? 0)}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </PageBody>
-    </PageShell>
-  );
-}
-
-function KvRow({
-  label,
-  value,
-  bold,
-}: {
-  label: string;
-  value: string;
-  bold?: boolean;
-}) {
-  return (
-    <div>
-      <div className="text-[11px] uppercase tracking-wide text-gray-500">
-        {label}
+          ) : null}
+        </div>
       </div>
-      <div className={bold ? "font-semibold" : ""}>{value}</div>
-    </div>
-  );
-}
-
-function EmptyReportCard({ message }: { message: string }) {
-  return (
-    <Card>
-      <CardContent className="py-10 text-center text-sm text-gray-500">
-        {message}
-      </CardContent>
-    </Card>
+    </PageShell>
   );
 }
