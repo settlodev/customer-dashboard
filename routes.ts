@@ -12,6 +12,7 @@ export const publicRoutes = [
   "/reserve/[id]",
   "/r/[slug]",
   "/grn/[token]",
+  "/cod/[token]",
   "/invoice/[token]",
   "/proforma/[token]",
   "/receipt/[token]",

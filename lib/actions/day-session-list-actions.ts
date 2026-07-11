@@ -292,7 +292,12 @@ export interface DaySessionReport {
     net: number;
     tips: number;
     itemCount?: number;
+    /** Number of orders that had a discount applied (Reports). */
+    discountCount?: number;
   };
+  /** In-house / complimentary (gifted) transactions this session (Reports). */
+  complimentaryAmount?: number;
+  complimentaryCount?: number;
   refunds: { count: number; amount: number };
   expenses: { count: number; amount: number };
   cogs: number;

@@ -772,6 +772,10 @@ export const CANCELLATION_REASON_LABELS: Record<CancellationReason, string> = {
 export interface DaySessionRefundItem {
   id: UUID;
   orderItemId: UUID;
+  /** Parent order's human ticket number (OMS-enriched). */
+  orderNumber?: string | null;
+  /** Refunded item name (OMS-enriched). */
+  itemName?: string | null;
   quantity: number;
   reason: string | null;
   processedBy: UUID | null;
@@ -808,10 +812,23 @@ export interface DaySessionVoidItem {
   netAmount: number;
 }
 
+/** A cancelled full-ticket order, as returned alongside item voids. */
+export interface DaySessionCancelledOrderItem {
+  orderId: UUID;
+  orderNumber: string;
+  cancellationReason: string | null;
+  cancelledBy: UUID | null;
+  cancelledAt: string | null;
+  netAmount: number;
+}
+
 export interface DaySessionVoidsResponse {
   locationId: UUID;
   daySessionId: UUID;
   items: DaySessionVoidItem[];
   totalVoidedAmount: number;
   count: number;
+  cancelledOrders: DaySessionCancelledOrderItem[];
+  totalCancelledAmount: number;
+  cancelledCount: number;
 }
