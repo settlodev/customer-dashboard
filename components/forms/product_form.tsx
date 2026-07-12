@@ -207,6 +207,7 @@ const DEFAULT_VARIANT: ProductVariantInput = {
   directQuantity: undefined,
   bomRuleId: undefined,
   autoRetireOnSellout: false,
+  giveaway: false,
 };
 
 function variantToInput(
@@ -243,6 +244,7 @@ function variantToInput(
     // the field when the variant first renders. Default undefined here.
     bomRuleId: undefined,
     autoRetireOnSellout: v.autoRetireOnSellout ?? false,
+    giveaway: v.giveaway ?? false,
   };
 }
 
@@ -1531,6 +1533,7 @@ function VariantEditorImpl({
   const isMarkupMode =
     pricingStrategy === "PERCENTAGE_MARKUP" ||
     pricingStrategy === "FIXED_MARKUP";
+  const isGiveaway = !!variant?.giveaway;
 
   const handleTrackToggle = (track: boolean) => {
     if (track) {
@@ -1566,7 +1569,7 @@ function VariantEditorImpl({
   }, [mode, stockVariantId, directQuantity, stockVariantCosts, index, form]);
 
   useEffect(() => {
-    if (!isMarkupMode || costPrice == null) return;
+    if (isGiveaway || !isMarkupMode || costPrice == null) return;
     let derived: number | null = null;
     if (pricingStrategy === "PERCENTAGE_MARKUP" && markupPercentage != null) {
       derived = Number(
@@ -1581,6 +1584,7 @@ function VariantEditorImpl({
       });
     }
   }, [
+    isGiveaway,
     isMarkupMode,
     pricingStrategy,
     costPrice,
@@ -1589,6 +1593,15 @@ function VariantEditorImpl({
     index,
     form,
   ]);
+
+  // Give-away items are always free — pin the price to 0 (on toggle-on and when
+  // an existing give-away variant loads). The field is disabled in the UI and
+  // the backend enforces it too; this just keeps the form value consistent.
+  useEffect(() => {
+    if (isGiveaway && form.getValues(`variants.${index}.price`) !== 0) {
+      form.setValue(`variants.${index}.price`, 0, { shouldValidate: true });
+    }
+  }, [isGiveaway, index, form]);
 
   return (
     <div
@@ -1726,23 +1739,33 @@ function VariantEditorImpl({
                 <ControlBox suffix={currency}>
                   <NumericFormat
                     className={cn(controlInputClass, "tabular-nums")}
-                    placeholder={isMarkupMode ? "Auto from markup" : "0.00"}
+                    placeholder={
+                      isGiveaway
+                        ? "0 (free)"
+                        : isMarkupMode
+                          ? "Auto from markup"
+                          : "0.00"
+                    }
                     value={field.value ?? ""}
                     onValueChange={(v) => field.onChange(v.floatValue ?? 0)}
                     decimalScale={4}
                     allowNegative={false}
                     thousandSeparator=","
-                    disabled={disabled || isMarkupMode}
+                    disabled={disabled || isMarkupMode || isGiveaway}
                   />
                 </ControlBox>
               </FormControl>
-              {isMarkupMode && (
+              {isGiveaway ? (
+                <p className="text-xs text-muted-foreground">
+                  Free give-away — customers pay nothing.
+                </p>
+              ) : isMarkupMode ? (
                 <p className="text-xs text-muted-foreground">
                   {tracksStock
                     ? "Calculated from cost + markup. Recomputes per batch at sale time — selling price moves with cost (intentional)."
                     : "Calculated from cost + markup."}
                 </p>
-              )}
+              ) : null}
               <FormMessage />
             </FormItem>
           )}
@@ -1757,7 +1780,7 @@ function VariantEditorImpl({
               <Select
                 onValueChange={field.onChange}
                 value={field.value}
-                disabled={disabled}
+                disabled={disabled || isGiveaway}
               >
                 <FormControl>
                   <SelectTrigger className={controlSelectTriggerClass}>
@@ -1830,6 +1853,31 @@ function VariantEditorImpl({
           />
         )}
       </div>
+
+      <FormItem className="flex items-center justify-between rounded-lg border border-dashed p-3">
+        <div className="space-y-0.5">
+          <FormLabel className="text-sm">Give-away item (free)</FormLabel>
+          <p className="text-xs text-muted-foreground">
+            Customers pay nothing — e.g. a bottomless refill. Still deducts stock;
+            its cost is tracked as a give-away, so it won&apos;t dent product margins.
+          </p>
+        </div>
+        <Switch
+          checked={isGiveaway}
+          onCheckedChange={(checked) => {
+            form.setValue(`variants.${index}.giveaway`, checked, {
+              shouldDirty: true,
+            });
+            if (checked) {
+              form.setValue(`variants.${index}.pricingStrategy`, "MANUAL");
+              form.setValue(`variants.${index}.price`, 0, {
+                shouldValidate: true,
+              });
+            }
+          }}
+          disabled={disabled}
+        />
+      </FormItem>
       {!autoCreateStock && (
         <FormItem className="flex items-center justify-between rounded-lg border p-3">
           <div className="space-y-0.5">

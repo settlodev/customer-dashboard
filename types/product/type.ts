@@ -108,6 +108,8 @@ export interface ProductVariant {
    * merchant never plans to restock.
    */
   autoRetireOnSellout: boolean;
+  /** Give-away / free item (sells at 0, still tracked). Distinct from the comp tender. */
+  giveaway: boolean;
   unlimited: boolean;
   costPrice: number | null;
   availableQuantity: number | null;

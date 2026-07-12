@@ -62,6 +62,11 @@ export const ProductVariantSchema = object({
   // form; only meaningful for tracked variants — UNLIMITED variants
   // ignore the setting since there's nothing to "sell out."
   autoRetireOnSellout: boolean().default(false),
+
+  // Give-away / free item (e.g. a bottomless refill). Sells at price 0 but still
+  // tracks stock; its cost is booked as a give-away, not product COGS. Distinct
+  // from the COMPLIMENTARY / in-house tender (a payment concept).
+  giveaway: boolean().default(false),
 }).superRefine((val, ctx) => {
   // Pricing strategy ⇒ required field per branch
   if (val.pricingStrategy === "PERCENTAGE_MARKUP" && val.markupPercentage == null) {
