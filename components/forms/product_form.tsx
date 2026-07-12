@@ -58,6 +58,7 @@ import {
 } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
@@ -4191,6 +4192,14 @@ function BlockFromSaleToggle({
   form: ReturnType<typeof useForm<ProductInput>>;
   disabled: boolean;
 }) {
+  const { hasPermission } = usePermissions();
+  // Manual lock/unlock is gated by the same permission the backend enforces
+  // on POST /products/{id}/lock and the variant-edit path
+  // (products:sale_lock). Without it the control is read-only: the current
+  // blocked state stays visible and legible, it just can't be flipped. This
+  // is UX-only — the backend @PreAuthorize is the real gate.
+  const canLock = hasPermission("products:sale_lock");
+
   const variants = form.watch("variants") ?? [];
   const allLocked =
     variants.length > 0 && variants.every((v) => v?.saleLocked);
@@ -4203,6 +4212,11 @@ function BlockFromSaleToggle({
           Keeps it on the menu but stops staff selling it until you switch
           this off.
         </p>
+        {!canLock && (
+          <p className="text-xs italic text-muted-foreground">
+            You don&apos;t have permission to change this.
+          </p>
+        )}
       </div>
       <Switch
         checked={allLocked}
@@ -4215,7 +4229,7 @@ function BlockFromSaleToggle({
               }),
             )
         }
-        disabled={disabled}
+        disabled={disabled || !canLock}
       />
     </div>
   );
