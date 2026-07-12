@@ -53,9 +53,11 @@ import {
   FieldHint,
   FieldLabel,
   SegmentedRadio,
+  SegmentedBoolean,
   controlInputClass,
 } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
@@ -1301,20 +1303,13 @@ export default function ProductForm({ item }: ProductFormProps) {
                         render={({ field }) => (
                           <FormItem className="space-y-[7px]">
                             <FieldLabel>Tax inclusive</FieldLabel>
-                            <div className="flex h-9 w-full items-center gap-2 rounded-md border border-line bg-card px-3 text-xs">
-                              <FormControl>
-                                <Switch
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                  disabled={isPending}
-                                />
-                              </FormControl>
-                              <span className="truncate text-muted-foreground">
-                                {field.value
-                                  ? "Price includes tax"
-                                  : "Tax added at checkout"}
-                              </span>
-                            </div>
+                            <SegmentedBoolean
+                              value={field.value}
+                              onChange={field.onChange}
+                              trueLabel="Included"
+                              falseLabel="Added at checkout"
+                              disabled={isPending}
+                            />
                           </FormItem>
                         )}
                       />
@@ -1325,20 +1320,13 @@ export default function ProductForm({ item }: ProductFormProps) {
                         render={({ field }) => (
                           <FormItem className="space-y-[7px]">
                             <FieldLabel>Sell online</FieldLabel>
-                            <div className="flex h-9 w-full items-center gap-2 rounded-md border border-line bg-card px-3 text-xs">
-                              <FormControl>
-                                <Switch
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                  disabled={isPending}
-                                />
-                              </FormControl>
-                              <span className="truncate text-muted-foreground">
-                                {field.value
-                                  ? "Visible in the online catalog"
-                                  : "Hidden from the online catalog"}
-                              </span>
-                            </div>
+                            <SegmentedBoolean
+                              value={field.value}
+                              onChange={field.onChange}
+                              trueLabel="Visible"
+                              falseLabel="Hidden"
+                              disabled={isPending}
+                            />
                           </FormItem>
                         )}
                       />
@@ -4436,15 +4424,12 @@ function SellabilityScheduleEditor({
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-3">
                       <div className="space-y-[7px]">
                         <FieldLabel>Date</FieldLabel>
-                        <Input
-                          type="date"
+                        <DatePicker
                           value={exc?.date ?? ""}
-                          onChange={(e) =>
-                            patchException(idx, { date: e.target.value })
-                          }
+                          onChange={(v) => patchException(idx, { date: v })}
                           disabled={disabled}
                         />
                       </div>
@@ -4458,6 +4443,7 @@ function SellabilityScheduleEditor({
                             })
                           }
                           disabled={disabled}
+                          stretch
                           options={[
                             { value: "BLOCKED", label: "Blocked" },
                             { value: "AVAILABLE", label: "Available" },

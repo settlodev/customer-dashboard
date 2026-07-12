@@ -214,15 +214,23 @@ export function SegmentedRadio({
   options,
   disabled,
   className,
+  stretch,
 }: {
   value: string;
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
   disabled?: boolean;
   className?: string;
+  /** When true, options share the full container width equally. */
+  stretch?: boolean;
 }) {
   return (
-    <div className={cn("flex flex-wrap gap-2.5", className)}>
+    <div
+      className={cn(
+        stretch ? "flex gap-2.5" : "flex flex-wrap gap-2.5",
+        className,
+      )}
+    >
       {options.map((o) => {
         const on = value === o.value;
         return (
@@ -234,6 +242,7 @@ export function SegmentedRadio({
             aria-pressed={on}
             className={cn(
               "inline-flex items-center gap-2.5 rounded-[10px] border px-[15px] py-[11px] text-[13px] font-medium transition disabled:cursor-not-allowed disabled:opacity-60",
+              stretch && "flex-1 justify-center",
               on
                 ? "border-primary bg-primary/[0.06] text-ink"
                 : "border-line-2 bg-card text-ink-2 hover:border-muted-2",
@@ -252,5 +261,42 @@ export function SegmentedRadio({
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Boolean rendered as a two-option segmented control — reuse this wherever a
+ * yes/no setting should look like the schedule Mode / Available controls
+ * instead of a bare switch, so on/off toggles stay visually consistent.
+ */
+export function SegmentedBoolean({
+  value,
+  onChange,
+  trueLabel,
+  falseLabel,
+  disabled,
+  className,
+  stretch = true,
+}: {
+  value: boolean;
+  onChange: (value: boolean) => void;
+  trueLabel: string;
+  falseLabel: string;
+  disabled?: boolean;
+  className?: string;
+  stretch?: boolean;
+}) {
+  return (
+    <SegmentedRadio
+      value={value ? "true" : "false"}
+      onChange={(v) => onChange(v === "true")}
+      options={[
+        { value: "true", label: trueLabel },
+        { value: "false", label: falseLabel },
+      ]}
+      disabled={disabled}
+      className={className}
+      stretch={stretch}
+    />
   );
 }
