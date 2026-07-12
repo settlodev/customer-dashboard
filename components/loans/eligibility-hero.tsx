@@ -151,40 +151,51 @@ export function EligibilityHero({
         </>
       ) : (
         // ── Eligible: no active loan, can apply ─────────────────────────
-        <>
-          <div className="relative z-[1] flex items-center justify-between gap-4">
-            <span className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full bg-primary-light px-3 py-[5px] text-xs font-semibold text-primary-dark">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Pre-qualified
-            </span>
-            <span className="truncate font-mono text-[11px] tracking-[0.02em] text-muted-foreground">
-              Device · Stock · Working capital
-            </span>
-          </div>
+        <div className="relative z-[1] grid grid-cols-1 items-center gap-8 lg:grid-cols-[1.35fr_1fr]">
+          {/* Left: badge, headline amount, description, actions */}
+          <div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full bg-primary-light px-3 py-[5px] text-xs font-semibold text-primary-dark">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                Pre-qualified
+              </span>
+              <span className="truncate font-mono text-[11px] tracking-[0.02em] text-muted-foreground">
+                Device · Stock · Working capital
+              </span>
+            </div>
 
-          <div className="relative z-[1] mt-[18px] font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-            Available to borrow
-          </div>
-          <div className="relative z-[1] mt-2 text-[40px] font-bold leading-[0.95] tracking-[-0.035em] text-primary-dark sm:text-[52px] lg:text-[58px]">
-            {currency} {formatTzsShort(eligibility.limit)}
-            <span className="ml-2.5 text-[19px] font-semibold tracking-[-0.01em] text-muted-foreground">
-              / {eligibility.limit.toLocaleString()}
-            </span>
-          </div>
+            <div className="mt-[18px] font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+              Available to borrow
+            </div>
+            <div className="mt-2 text-[40px] font-bold leading-[0.95] tracking-[-0.035em] text-primary-dark sm:text-[52px] lg:text-[58px]">
+              {currency} {formatTzsShort(eligibility.limit)}
+              <span className="ml-2.5 text-[19px] font-semibold tracking-[-0.01em] text-muted-foreground">
+                / {eligibility.limit.toLocaleString()}
+              </span>
+            </div>
 
-          <div className="relative z-[1] mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <p className="max-w-[50ch] text-[13.5px] leading-relaxed text-ink-3">
+            <p className="mt-4 max-w-[50ch] text-[13.5px] leading-relaxed text-ink-3">
               A financing limit from your sales &amp; repayment history on
               Settlo. No paperwork — funds in as little as 24 hours.
             </p>
-            {canApply && (
-              <Link href="/loans/apply" className={ctaClass}>
-                <Zap className="h-4 w-4" /> Apply for financing
+
+            <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
+              {canApply && (
+                <Link href="/loans/apply" className={ctaClass}>
+                  <Zap className="h-4 w-4" /> Apply for financing
+                </Link>
+              )}
+              <Link
+                href="/loans"
+                className="text-sm font-semibold text-primary-dark hover:text-primary"
+              >
+                See terms &amp; rates →
               </Link>
-            )}
+            </div>
           </div>
 
-          <div className="relative z-[1] mt-[22px] grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {/* Right: stat chips, 2×2 */}
+          <div className="grid grid-cols-2 gap-3">
             <Chip
               label="Available now"
               value={formatTzs(eligibility.available, currency)}
@@ -206,7 +217,7 @@ export function EligibilityHero({
               />
             )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
