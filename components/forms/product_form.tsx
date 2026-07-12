@@ -679,10 +679,17 @@ export default function ProductForm({ item }: ProductFormProps) {
     () => [
       !!watchedName?.trim(),
       !!watchedCategoryIds?.length,
-      (firstVariant?.price ?? 0) > 0,
+      // A give-away variant is intentionally free — price 0 counts as "priced".
+      !!firstVariant?.giveaway || (firstVariant?.price ?? 0) > 0,
       stockRuleSatisfied,
     ],
-    [watchedName, watchedCategoryIds, firstVariant?.price, stockRuleSatisfied],
+    [
+      watchedName,
+      watchedCategoryIds,
+      firstVariant?.price,
+      firstVariant?.giveaway,
+      stockRuleSatisfied,
+    ],
   );
   const completion = Math.round(
     (requiredFilled.filter(Boolean).length / requiredFilled.length) * 100,
