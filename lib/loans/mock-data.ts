@@ -205,5 +205,9 @@ export function getMockEligibility(): LoanEligibility {
     customerSince: "2024",
     hasActiveLoan: hasActive,
     activeLoanId: active?.id ?? null,
+    // Pre-existing mock borrower is always pre-qualified (limit > 0) —
+    // preserves prior behavior now that pages switch on `eligibilityStatus`.
+    eligibilityStatus: "QUALIFIED",
+    building: null,
   };
 }

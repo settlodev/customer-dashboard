@@ -171,6 +171,34 @@ export interface LoanEligibility {
   customerSince: string | null;
   hasActiveLoan: boolean;
   activeLoanId?: string | null;
+  /**
+   * `QUALIFIED` — pre-qualified, show {@link EligibilityHero}. `BUILDING` —
+   * not there yet but making progress, show the building-eligibility card
+   * (see `building`). `INELIGIBLE` — nothing to show.
+   */
+  eligibilityStatus: "QUALIFIED" | "BUILDING" | "INELIGIBLE";
+  /** Populated only when `eligibilityStatus === "BUILDING"`. */
+  building?: BuildingProgress | null;
+}
+
+/** A single row of the building-eligibility checklist. */
+export interface BuildProgressItem {
+  key: string;
+  label: string;
+  detail: string;
+  state: "done" | "prog" | "todo";
+  pct: number;
+}
+
+/** Progress-toward-qualifying snapshot for a not-yet-eligible merchant. */
+export interface BuildingProgress {
+  /** Estimated limit once qualified; null if not yet estimable. */
+  projectedLimit: number | null;
+  /** Overall progress toward qualifying, 0–100. */
+  eligibilityPct: number;
+  checklist: BuildProgressItem[];
+  /** Estimated active trading days remaining to reach target; null if unknown. */
+  daysToTarget: number | null;
 }
 
 /** Result of submitting an application (mock + future backend). */

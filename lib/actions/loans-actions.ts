@@ -48,6 +48,8 @@ const EMPTY_ELIGIBILITY: LoanEligibility = {
   customerSince: null,
   hasActiveLoan: false,
   activeLoanId: null,
+  eligibilityStatus: "INELIGIBLE",
+  building: null,
 };
 
 /**

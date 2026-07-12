@@ -15,6 +15,7 @@ import { LOANS_ENABLED } from "@/lib/loans/config";
 import { getLoanEligibility } from "@/lib/actions/loans-actions";
 import { getLoanAccess } from "@/lib/loans/access";
 import { EligibilityHero } from "@/components/loans/eligibility-hero";
+import { BuildingEligibilityCard } from "@/components/loans/building-eligibility-card";
 
 const CURRENCY = "TZS";
 
@@ -56,13 +57,22 @@ export default async function BusinessOverviewPage() {
       />
 
       <PageBody>
-        {LOANS_ENABLED && loanAccess?.canRead && loanEligibility && loanEligibility.limit > 0 && (
-          <EligibilityHero
-            eligibility={loanEligibility}
-            activeLoan={activeLoan}
-            canApply={loanAccess.canApply}
-          />
-        )}
+        {LOANS_ENABLED &&
+          loanAccess?.canRead &&
+          loanEligibility &&
+          loanEligibility.eligibilityStatus === "QUALIFIED" && (
+            <EligibilityHero
+              eligibility={loanEligibility}
+              activeLoan={activeLoan}
+              canApply={loanAccess.canApply}
+            />
+          )}
+        {LOANS_ENABLED &&
+          loanAccess?.canRead &&
+          loanEligibility &&
+          loanEligibility.eligibilityStatus === "BUILDING" && (
+            <BuildingEligibilityCard eligibility={loanEligibility} />
+          )}
         <InventoryKpiStrip summary={summary} />
         <ProductsKpiStrip summary={productsKpi} />
       </PageBody>
