@@ -233,6 +233,38 @@ export const ProductSchema = object({
       seen.set(key, i);
     }
   });
+
+  // Sellability exceptions: the backend can't parse an empty date ("" is
+  // not a valid LocalDate → 400), rejects duplicate dates, and an
+  // AVAILABLE row with only one of start/end set leaves the exception
+  // silently half-open. Both set = a time window; both blank = all day;
+  // one set = invalid.
+  const seenDates = new Map<string, number>();
+  val.sellabilityExceptions.forEach((exc, i) => {
+    if (!exc.date || !exc.date.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["sellabilityExceptions", i, "date"],
+        message: "Pick a date for this exception",
+      });
+    } else if (seenDates.has(exc.date)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["sellabilityExceptions", i, "date"],
+        message: "Duplicate date",
+      });
+    } else {
+      seenDates.set(exc.date, i);
+    }
+
+    if (exc.mode === "AVAILABLE" && !!exc.startTime !== !!exc.endTime) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["sellabilityExceptions", i, "startTime"],
+        message: "Set both a start and end time, or leave both blank",
+      });
+    }
+  });
 });
 
 export type ProductInput = z.infer<typeof ProductSchema>;

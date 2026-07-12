@@ -4432,6 +4432,15 @@ function SellabilityScheduleEditor({
                           onChange={(v) => patchException(idx, { date: v })}
                           disabled={disabled}
                         />
+                        {form.formState.errors.sellabilityExceptions?.[idx]
+                          ?.date && (
+                          <p className="text-xs font-medium text-destructive">
+                            {
+                              form.formState.errors.sellabilityExceptions[idx]
+                                ?.date?.message
+                            }
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-[7px]">
                         <FieldLabel>Mode</FieldLabel>
@@ -4451,33 +4460,45 @@ function SellabilityScheduleEditor({
                         />
                       </div>
                       {exc?.mode === "AVAILABLE" && (
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-[7px]">
-                            <FieldLabel>Start</FieldLabel>
-                            <Input
-                              type="time"
-                              value={exc?.startTime ?? ""}
-                              onChange={(e) =>
-                                patchException(idx, {
-                                  startTime: e.target.value || null,
-                                })
-                              }
-                              disabled={disabled}
-                            />
+                        <div className="space-y-[7px]">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-[7px]">
+                              <FieldLabel>Start</FieldLabel>
+                              <Input
+                                type="time"
+                                value={exc?.startTime ?? ""}
+                                onChange={(e) =>
+                                  patchException(idx, {
+                                    startTime: e.target.value || null,
+                                  })
+                                }
+                                disabled={disabled}
+                              />
+                            </div>
+                            <div className="space-y-[7px]">
+                              <FieldLabel>End</FieldLabel>
+                              <Input
+                                type="time"
+                                value={exc?.endTime ?? ""}
+                                onChange={(e) =>
+                                  patchException(idx, {
+                                    endTime: e.target.value || null,
+                                  })
+                                }
+                                disabled={disabled}
+                              />
+                            </div>
                           </div>
-                          <div className="space-y-[7px]">
-                            <FieldLabel>End</FieldLabel>
-                            <Input
-                              type="time"
-                              value={exc?.endTime ?? ""}
-                              onChange={(e) =>
-                                patchException(idx, {
-                                  endTime: e.target.value || null,
-                                })
+                          {form.formState.errors.sellabilityExceptions?.[idx]
+                            ?.startTime && (
+                            <p className="text-xs font-medium text-destructive">
+                              {
+                                form.formState.errors.sellabilityExceptions[
+                                  idx
+                                ]?.startTime?.message
                               }
-                              disabled={disabled}
-                            />
-                          </div>
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
