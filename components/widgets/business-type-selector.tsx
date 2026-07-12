@@ -1,5 +1,5 @@
 import { UUID } from "crypto";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react";
 import { fetchBusinessType } from "@/lib/actions/business-actions";
 
@@ -24,6 +24,7 @@ function BusinessTypeSelector({
     value,
     isDisabled,
     onChange,
+    onBlur,
 }: BusinessTypeSelectorProps) {
 
 const [businessType, setBusinessType] = useState<BusinessType[]>([]);
@@ -46,28 +47,23 @@ useEffect(() => {
 return (
     
     <div className="space-y-2">
-    <Select
-        defaultValue={value}
+    <Combobox
+        options={businessType.map((type) => ({
+            value: type.id,
+            label: type.name,
+            keywords: [type.code],
+        }))}
+        value={value ?? null}
+        onChange={(v) => onChange(v ?? "")}
+        placeholder={placeholder || "Select business type"}
+        searchPlaceholder="Search business types…"
+        emptyText={isLoading ? "Loading business types…" : "No business types found."}
         disabled={isDisabled || isLoading}
-        value={value}
-        onValueChange={onChange}
-    >
-        <SelectTrigger className="w-full">
-            <SelectValue
-                placeholder={placeholder || "Select business type"}
-            />
-        </SelectTrigger>
-        <SelectContent>
-            {businessType.map((type) => (
-                <SelectItem
-                    key={type.id}
-                    value={type.id}
-                >
-                    {type.name}
-                </SelectItem>
-            ))}
-        </SelectContent>
-    </Select>
+        ariaLabel="Business type"
+        onOpenChange={(open) => {
+            if (!open) onBlur?.();
+        }}
+    />
     
 </div>
 )

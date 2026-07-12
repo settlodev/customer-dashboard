@@ -1,13 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Country } from "@/types/country/type";
 import { useCachedCountries } from "@/lib/cache/reference-data";
 
@@ -29,7 +23,6 @@ interface Props {
 
 const CountrySelector: React.FC<Props> = ({
   placeholder,
-  isRequired,
   value,
   isDisabled,
   description,
@@ -53,24 +46,20 @@ const CountrySelector: React.FC<Props> = ({
 
   return (
     <div className="space-y-2">
-      <Select
-        defaultValue={value}
+      <Combobox
+        options={countries.map((country) => ({
+          value: String(country[valueKey]),
+          label: `${country.name}${valueKey === "currencyCode" ? ` (${country.currencyCode})` : ""}`,
+          keywords: [country.code].filter(Boolean) as string[],
+        }))}
+        value={value ?? null}
+        onChange={(v) => onChange(v ?? "")}
+        placeholder={placeholder ?? "Select country"}
+        searchPlaceholder="Search countries…"
+        emptyText={isLoading ? "Loading countries…" : "No countries found."}
         disabled={isDisabled || isLoading}
-        value={value}
-        {...(isRequired && { required: true })}
-        onValueChange={onChange}
-      >
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder={placeholder ?? "Select country"} />
-        </SelectTrigger>
-        <SelectContent>
-          {countries.map((country) => (
-            <SelectItem key={country.id} value={String(country[valueKey])}>
-              {country.name}{valueKey === "currencyCode" ? ` (${country.currencyCode})` : ""}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        ariaLabel="Country"
+      />
       {description && <p className="text-sm text-gray-500">{description}</p>}
     </div>
   );

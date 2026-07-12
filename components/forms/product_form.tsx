@@ -53,7 +53,6 @@ import {
   FieldHint,
   FieldLabel,
   controlInputClass,
-  controlSelectTriggerClass,
 } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
@@ -65,13 +64,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MultiSelect } from "@/components/ui/multi-select";
 import {
@@ -829,27 +822,28 @@ export default function ProductForm({ item }: ProductFormProps) {
                     render={({ field }) => (
                       <FormItem className="space-y-[7px]">
                         <FieldLabel>Brand</FieldLabel>
-                        <Select
-                          onValueChange={(v) =>
-                            field.onChange(v === "__none__" ? undefined : v)
-                          }
-                          value={field.value ?? "__none__"}
-                          disabled={isPending}
-                        >
-                          <FormControl>
-                            <SelectTrigger className={controlSelectTriggerClass}>
-                              <SelectValue placeholder="No brand" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="__none__">No brand</SelectItem>
-                            {brands.map((b) => (
-                              <SelectItem key={b.id} value={b.id}>
-                                {b.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <Combobox
+                            options={[
+                              { value: "__none__", label: "No brand" },
+                              ...brands.map((b) => ({
+                                value: b.id,
+                                label: b.name,
+                              })),
+                            ]}
+                            value={field.value ?? "__none__"}
+                            onChange={(v) =>
+                              field.onChange(
+                                v && v !== "__none__" ? v : undefined,
+                              )
+                            }
+                            placeholder="No brand"
+                            searchPlaceholder="Search brands…"
+                            emptyText="No brands found."
+                            disabled={isPending}
+                            ariaLabel="Brand"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1263,30 +1257,25 @@ export default function ProductForm({ item }: ProductFormProps) {
                         render={({ field }) => (
                           <FormItem className="space-y-[7px]">
                             <FieldLabel required>Tax type</FieldLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value ?? ""}
-                              disabled={isPending || taxTypes.length === 0}
-                            >
-                              <FormControl>
-                                <SelectTrigger className={controlSelectTriggerClass}>
-                                  <SelectValue
-                                    placeholder={
-                                      taxTypes.length === 0
-                                        ? "Loading tax types…"
-                                        : "Pick a tax type"
-                                    }
-                                  />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {taxTypes.map((t) => (
-                                  <SelectItem key={t.id} value={t.id}>
-                                    {t.code} — {t.name} ({t.ratePercent}%)
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <FormControl>
+                              <Combobox
+                                options={taxTypes.map((t) => ({
+                                  value: t.id,
+                                  label: `${t.code} — ${t.name} (${t.ratePercent}%)`,
+                                }))}
+                                value={field.value ?? null}
+                                onChange={(v) => field.onChange(v ?? "")}
+                                placeholder={
+                                  taxTypes.length === 0
+                                    ? "Loading tax types…"
+                                    : "Pick a tax type"
+                                }
+                                searchPlaceholder="Search tax types…"
+                                emptyText="No tax types found."
+                                disabled={isPending || taxTypes.length === 0}
+                                ariaLabel="Tax type"
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -1528,7 +1517,16 @@ function VariantEditorImpl({
     control: form.control,
     name: `variants.${index}`,
   });
-  const mode = variant?.sellabilityMode;
+  // `mode` gates which stock block MOUNTS (DIRECT stock picker vs the RECIPE
+  // consumption-rule selector), so give it its own primitive watch rather than
+  // deriving it from the object-level `variant` watch. Derived from the object,
+  // the block-swap could lag a render behind the radio — the DIRECT picker
+  // stayed mounted after switching to Recipe (BOM). A field watch updates in
+  // lockstep with the radio's own Controller.
+  const mode = useWatch({
+    control: form.control,
+    name: `variants.${index}.sellabilityMode`,
+  });
   const pricingStrategy = variant?.pricingStrategy;
   const costPrice = variant?.costPrice;
   const markupPercentage = variant?.markupPercentage;
@@ -1784,24 +1782,20 @@ function VariantEditorImpl({
           render={({ field }) => (
             <FormItem className="space-y-[7px]">
               <FieldLabel>Pricing strategy</FieldLabel>
-              <Select
-                onValueChange={field.onChange}
-                value={field.value}
-                disabled={disabled || isGiveaway}
-              >
-                <FormControl>
-                  <SelectTrigger className={controlSelectTriggerClass}>
-                    <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {PRICING_STRATEGY_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <Combobox
+                  options={PRICING_STRATEGY_OPTIONS.map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                  }))}
+                  value={field.value ?? null}
+                  onChange={(v) => v && field.onChange(v)}
+                  placeholder="Select strategy"
+                  searchPlaceholder="Search strategies…"
+                  disabled={disabled || isGiveaway}
+                  ariaLabel="Pricing strategy"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -2033,24 +2027,21 @@ function VariantEditorImpl({
                 render={({ field }) => (
                   <FormItem className="space-y-[7px]">
                     <FieldLabel required>Stock item</FieldLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value ?? ""}
-                      disabled={disabled}
-                    >
-                      <FormControl>
-                        <SelectTrigger className={controlSelectTriggerClass}>
-                          <SelectValue placeholder="Pick a stock item" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {stockVariants.map((sv) => (
-                          <SelectItem key={sv.id} value={sv.id}>
-                            {sv.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Combobox
+                        options={stockVariants.map((sv) => ({
+                          value: sv.id,
+                          label: sv.label,
+                        }))}
+                        value={field.value ?? null}
+                        onChange={(v) => field.onChange(v ?? "")}
+                        placeholder="Pick a stock item"
+                        searchPlaceholder="Search stock items…"
+                        emptyText="No stock items found."
+                        disabled={disabled}
+                        ariaLabel="Stock item"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -4161,24 +4152,18 @@ function ProductLifecycleControl({
               </span>
             </div>
           ) : (
-            <Select
+            <Combobox
+              options={LIFECYCLE_STATUS_KEYS.map((s) => ({
+                value: s.key,
+                label: s.label,
+              }))}
               value={currentKey}
-              onValueChange={handleChange}
+              onChange={(v) => v && handleChange(v)}
+              placeholder="Select status"
+              searchPlaceholder="Search statuses…"
               disabled={disabled}
-            >
-              <FormControl>
-                <SelectTrigger className={controlSelectTriggerClass}>
-                  <SelectValue />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {LIFECYCLE_STATUS_KEYS.map((s) => (
-                  <SelectItem key={s.key} value={s.key}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              ariaLabel="Status"
+            />
           )}
           {currentHint && <FieldHint>{currentHint}</FieldHint>}
         </FormItem>
@@ -4328,22 +4313,18 @@ function PriceOverridesSection({
         <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div>
             <label className={styles.fieldLabel}>Variant</label>
-            <Select
+            <Combobox
+              options={uniqueVariants.map((v) => ({
+                value: v.id,
+                label: v.displayName || v.name,
+              }))}
               value={selectedVariantId}
-              onValueChange={setSelectedVariantId}
+              onChange={(v) => v && setSelectedVariantId(v)}
+              placeholder="Select variant"
+              searchPlaceholder="Search variants…"
               disabled={busy}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {uniqueVariants.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.displayName || v.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              ariaLabel="Variant"
+            />
           </div>
 
           <div>

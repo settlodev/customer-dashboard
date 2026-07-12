@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { fetchAllStores } from "@/lib/actions/store-actions";
 import type { Store } from "@/types/store/type";
 
@@ -43,18 +43,22 @@ export default function StoreSelector({
   }, [businessId, locationId]);
 
   return (
-    <Select value={value} disabled={isDisabled || isLoading} onValueChange={onChange} onOpenChange={onBlur}>
-      <SelectTrigger>
-        <SelectValue placeholder={isLoading ? "Loading..." : placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {stores.map((store) => (
-          <SelectItem key={store.id} value={store.id}>
-            {store.name}
-            {store.code && <span className="text-xs text-muted-foreground ml-1">({store.code})</span>}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <Combobox
+      options={stores.map((store) => ({
+        value: store.id,
+        label: store.name,
+        description: store.code || undefined,
+      }))}
+      value={value ?? null}
+      onChange={(v) => onChange(v ?? "")}
+      placeholder={placeholder}
+      searchPlaceholder="Search stores…"
+      emptyText={isLoading ? "Loading stores…" : "No stores available"}
+      disabled={isDisabled || isLoading}
+      ariaLabel="Store"
+      onOpenChange={(open) => {
+        if (!open) onBlur?.();
+      }}
+    />
   );
 }

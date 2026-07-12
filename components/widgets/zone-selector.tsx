@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { getStorageZones } from "@/lib/actions/warehouse/storage-zone-actions";
 import type { StorageZone } from "@/types/warehouse/storage-zone";
 
@@ -49,39 +43,23 @@ export default function ZoneSelector({
 
   return (
     <div className="space-y-1">
-      <Select
-        value={value ?? ""}
-        onValueChange={onChange}
+      <Combobox
+        options={active.map((zone) => ({
+          value: zone.id,
+          label: zone.name,
+          description: `${zone.code}${zone.binCount ? ` · ${zone.binCount} bin${zone.binCount === 1 ? "" : "s"}` : ""}`,
+        }))}
+        value={value ?? null}
+        onChange={(v) => onChange(v ?? "")}
+        placeholder={placeholder}
+        searchPlaceholder="Search zones…"
+        emptyText={loading ? "Loading zones…" : "No zones configured"}
+        disabled={isDisabled || loading || active.length === 0}
+        ariaLabel="Zone"
         onOpenChange={(open) => {
           if (!open) onBlur?.();
         }}
-        disabled={isDisabled || loading || active.length === 0}
-      >
-        <SelectTrigger>
-          <SelectValue
-            placeholder={
-              loading
-                ? "Loading zones…"
-                : active.length === 0
-                  ? "No zones configured"
-                  : placeholder
-            }
-          />
-        </SelectTrigger>
-        <SelectContent>
-          {active.map((zone) => (
-            <SelectItem key={zone.id} value={zone.id}>
-              <div className="flex flex-col items-start">
-                <span>{zone.name}</span>
-                <span className="text-[11px] text-muted-foreground">
-                  {zone.code}
-                  {zone.binCount ? ` · ${zone.binCount} bin${zone.binCount === 1 ? "" : "s"}` : ""}
-                </span>
-              </div>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      />
       {error && <p className="text-[11px] text-red-600">{error}</p>}
       {!loading && !error && active.length === 0 && (
         <p className="text-[11px] text-muted-foreground">
