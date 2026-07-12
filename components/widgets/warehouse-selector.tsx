@@ -1,4 +1,4 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
 import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
@@ -38,20 +38,19 @@ function WarehouseSelector({
         loadSuppliers();
     }, []);
     return (
-        <Select value={value} onValueChange={onChange} disabled={isDisabled || isLoading}>
-            <SelectTrigger>
-                <SelectValue placeholder={placeholder || "Select warehouse"}/>
-            </SelectTrigger>
-            <SelectContent>
-                {warehouses && warehouses.length > 0 ?
-                    warehouses.map((item, index) => {
-                        return <SelectItem key={index} value={item.id}>
-                            {item.name}
-                        </SelectItem>
-                    })
-                    : <></>}
-            </SelectContent>
-        </Select>
+        <Combobox
+            options={warehouses.map((item) => ({
+                value: item.id,
+                label: item.name,
+            }))}
+            value={value ?? null}
+            onChange={(v) => onChange(v ?? "")}
+            placeholder={placeholder || "Select warehouse"}
+            searchPlaceholder="Search warehouses…"
+            emptyText={isLoading ? "Loading warehouses…" : "No warehouses available"}
+            disabled={isDisabled || isLoading}
+            ariaLabel="Warehouse"
+        />
     )
 }
 export default WarehouseSelector

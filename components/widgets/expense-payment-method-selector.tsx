@@ -2,13 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { listPaymentMethodMappings } from "@/lib/actions/accounting-mapping-actions";
 
@@ -77,41 +71,27 @@ export function ExpensePaymentMethodSelector({
     };
   }, []);
 
-  const selected = options.find((o) => o.id === value);
-
   return (
-    <Select
-      value={value ?? ""}
-      onValueChange={(v) => {
+    <Combobox
+      options={options.map((o) => ({
+        value: o.id,
+        label: o.label,
+        keywords: [o.code],
+      }))}
+      value={value ?? null}
+      onChange={(v) => {
         const opt = options.find((o) => o.id === v);
-        onChange(v, opt?.label ?? "", opt?.code ?? "");
+        onChange(v ?? "", opt?.label ?? "", opt?.code ?? "");
       }}
+      placeholder={placeholder ?? "Select payment method"}
+      searchPlaceholder="Search payment methods…"
+      emptyText={
+        loading
+          ? "Loading payment methods…"
+          : "No payment methods mapped for this location"
+      }
       disabled={isDisabled || loading}
-    >
-      <SelectTrigger className="h-10 w-full">
-        <SelectValue
-          placeholder={
-            loading
-              ? "Loading payment methods…"
-              : (placeholder ?? "Select payment method")
-          }
-        >
-          {selected?.label}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        {options.length === 0 && !loading ? (
-          <div className="px-3 py-4 text-sm text-muted-foreground">
-            No payment methods mapped for this location
-          </div>
-        ) : (
-          options.map((o) => (
-            <SelectItem key={o.id} value={o.id}>
-              {o.label}
-            </SelectItem>
-          ))
-        )}
-      </SelectContent>
-    </Select>
+      ariaLabel="Payment method"
+    />
   );
 }

@@ -1,13 +1,7 @@
 "use client"
 
 import React, { useState } from "react";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { Plus, Tag } from "lucide-react";
@@ -35,7 +29,6 @@ interface DepartmentSelectorProps {
 
 const DepartmentSelector: React.FC<DepartmentSelectorProps> = ({
                                                                    placeholder,
-                                                                   isRequired,
                                                                    value,
                                                                    isDisabled,
                                                                    description,
@@ -91,24 +84,19 @@ const DepartmentSelector: React.FC<DepartmentSelectorProps> = ({
     return (
         <div className="flex gap-2 items-start">
             <div className="flex-1 space-y-2">
-                <Select
-                    defaultValue={value}
+                <Combobox
+                    options={departments.map((department) => ({
+                        value: department.id,
+                        label: department.name,
+                    }))}
+                    value={value ?? null}
+                    onChange={(v) => onChange(v ?? "")}
+                    placeholder={placeholder || "Select department"}
+                    searchPlaceholder="Search departments…"
+                    emptyText={isLoading ? "Loading departments…" : "No departments found."}
                     disabled={isDisabled || isLoading}
-                    value={value}
-                    required={isRequired}
-                    onValueChange={onChange}
-                >
-                    <SelectTrigger className="w-full">
-                        <SelectValue placeholder={placeholder || "Select department"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {departments.map((department) => (
-                            <SelectItem key={department.id} value={department.id}>
-                                {department.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                    ariaLabel="Department"
+                />
                 {description && (
                     <p className="text-sm text-gray-500">{description}</p>
                 )}

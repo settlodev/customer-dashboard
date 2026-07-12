@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { Plus, Tag } from "lucide-react";
@@ -142,52 +142,32 @@ const CategorySelector = ({
     onChange(newValue);
   };
 
-  const renderCategoryOptions = () => {
-    const options: React.ReactNode[] = [];
-
-    categories.forEach((category) => {
-      options.push(
-        <SelectItem key={category.id} value={category.id}>
-          {category.name}
-        </SelectItem>,
-      );
-
-      if (showChildren && category.children && category.children.length > 0) {
-        category.children.forEach((child) => {
-          options.push(
-            <SelectItem key={child.id} value={child.id}>
-              <span className="ml-4">&nbsp;&nbsp;└ {child.name}</span>
-            </SelectItem>,
-          );
-        });
-      }
-    });
-
-    return options;
-  };
-
-  const getDisplayName = (selectedId: string) => {
-    for (const category of categories) {
-      if (category.id === selectedId) return category.name;
-      if (category.children) {
-        const child = category.children.find((c) => c.id === selectedId);
-        if (child) return `${category.name} > ${child.name}`;
-      }
+  const categoryOptions = categories.flatMap((category) => {
+    const entries = [{ value: category.id, label: category.name }];
+    if (showChildren && category.children && category.children.length > 0) {
+      category.children.forEach((child) => {
+        entries.push({ value: child.id, label: `${category.name} > ${child.name}` });
+      });
     }
-    return "";
-  };
+    return entries;
+  });
 
-  // ── Simple mode: just the select, no create button ──────────────
+  // ── Simple mode: just the combobox, no create button ────────────
   if (simple) {
     return (
-      <Select value={selectedValue} onValueChange={handleSelectChange} disabled={isDisabled}>
-        <SelectTrigger>
-          <SelectValue placeholder={placeholder}>
-            {selectedValue ? getDisplayName(selectedValue) : placeholder}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>{renderCategoryOptions()}</SelectContent>
-      </Select>
+      <Combobox
+        options={categoryOptions}
+        value={selectedValue ?? null}
+        onChange={(v) => handleSelectChange(v ?? "")}
+        placeholder={placeholder}
+        searchPlaceholder="Search categories…"
+        emptyText="No categories found."
+        disabled={isDisabled}
+        ariaLabel="Category"
+        onOpenChange={(open) => {
+          if (!open) onBlur?.();
+        }}
+      />
     );
   }
 
@@ -195,19 +175,20 @@ const CategorySelector = ({
   return (
     <div className="flex gap-2 items-start">
       <div className="flex-1">
-        <Select
-          value={selectedValue}
+        <Combobox
+          options={categoryOptions}
+          value={selectedValue ?? null}
+          onChange={(v) => handleSelectChange(v ?? "")}
+          placeholder={placeholder}
+          searchPlaceholder="Search categories…"
+          emptyText={isLoading ? "Loading categories…" : "No categories found."}
           disabled={isDisabled || isLoading}
-          onValueChange={handleSelectChange}
-          onOpenChange={onBlur}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder={placeholder}>
-              {selectedValue ? getDisplayName(selectedValue) : placeholder}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>{renderCategoryOptions()}</SelectContent>
-        </Select>
+          ariaLabel="Category"
+          className="w-full"
+          onOpenChange={(open) => {
+            if (!open) onBlur?.();
+          }}
+        />
       </div>
 
       <Dialog

@@ -1,13 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import {taxClasses} from "@/types/constants";
 
 interface Props {
@@ -22,7 +16,6 @@ interface Props {
 
 const TaxClassSelector: React.FC<Props> = ({
                                                placeholder,
-                                               isRequired,
                                                value,
                                                isDisabled,
                                                description,
@@ -30,27 +23,20 @@ const TaxClassSelector: React.FC<Props> = ({
                                            }) => {
     return (
         <div className="space-y-2">
-            <Select
-                defaultValue={value}
+            <Combobox
+                options={taxClasses.map((taxClass) => ({
+                    value: taxClass.name,
+                    label: `${taxClass.displayName} (${taxClass.amount}%)`,
+                    keywords: [taxClass.description],
+                }))}
+                value={value ?? null}
+                onChange={(v) => onChange(v ?? "")}
+                placeholder={placeholder || "Select tax class"}
+                searchPlaceholder="Search tax classes…"
+                emptyText="No tax classes found."
                 disabled={isDisabled}
-                value={value}
-                required={isRequired}
-                onValueChange={onChange}
-            >
-                <SelectTrigger className="w-full">
-                    <SelectValue placeholder={placeholder || "Select tax class"} />
-                </SelectTrigger>
-                <SelectContent>
-                    {taxClasses.map((taxClass) => (
-                        <SelectItem
-                            key={taxClass.name}
-                            value={taxClass.name}
-                        >
-                            {taxClass.displayName} ({taxClass.amount}%)
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+                ariaLabel="Tax class"
+            />
 
             {description && (
                 <p className="text-sm text-gray-500">{description}</p>

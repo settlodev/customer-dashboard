@@ -1,13 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Department } from "@/types/department/type";
 import { getCachedDepartments } from "@/lib/cache/reference-data";
 
@@ -24,7 +18,6 @@ interface LocationDepartmentSelectorProps {
 
 const LocationDepartmentSelector: React.FC<LocationDepartmentSelectorProps> = ({
   placeholder,
-  isRequired,
   value,
   isDisabled,
   description,
@@ -60,38 +53,29 @@ const LocationDepartmentSelector: React.FC<LocationDepartmentSelectorProps> = ({
   return (
     <div className="flex gap-2 items-start">
       <div className="flex-1 space-y-2">
-        <Select
-          defaultValue={value}
+        <Combobox
+          options={departments.map((department) => ({
+            value: department.id,
+            label: department.name,
+          }))}
+          value={value ?? null}
+          onChange={(v) => onChange(v ?? "")}
+          placeholder={
+            !locationId
+              ? "Select location first"
+              : placeholder || "Select department"
+          }
+          searchPlaceholder="Search departments…"
+          emptyText={
+            isLoading
+              ? "Loading departments…"
+              : !locationId
+                ? "Please select a location first"
+                : "No departments found for this location"
+          }
           disabled={isDisabled || isLoading || !locationId}
-          value={value}
-          required={isRequired}
-          onValueChange={onChange}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue
-              placeholder={
-                !locationId
-                  ? "Select location first"
-                  : placeholder || "Select department"
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {departments.length === 0 ? (
-              <div className="py-2 px-2 text-sm text-muted-foreground text-center">
-                {!locationId
-                  ? "Please select a location first"
-                  : "No departments found for this location"}
-              </div>
-            ) : (
-              departments.map((department) => (
-                <SelectItem key={department.id} value={department.id}>
-                  {department.name}
-                </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
+          ariaLabel="Department"
+        />
         {description && <p className="text-sm text-gray-500">{description}</p>}
         {!locationId && (
           <p className="text-sm text-yellow-600">

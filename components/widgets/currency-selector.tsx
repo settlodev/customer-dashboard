@@ -1,15 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { controlSelectTriggerClass } from "@/components/ui/field";
+import { Combobox } from "@/components/ui/combobox";
 import { getCachedCountries } from "@/lib/cache/reference-data";
 
 const COMMON_CURRENCIES: { code: string; name: string }[] = [
@@ -58,7 +50,6 @@ const CurrencySelector: React.FC<Props> = ({
   onChange,
   placeholder = "Select currency",
   isDisabled,
-  isRequired,
   className,
   includeAllCountries = false,
   excludeCodes,
@@ -113,24 +104,21 @@ const CurrencySelector: React.FC<Props> = ({
   }, [extra, value, excludeCodes]);
 
   return (
-    <Select
-      value={value || undefined}
-      onValueChange={onChange}
+    <Combobox
+      options={options.map((c) => ({
+        value: c.code,
+        label: c.name,
+        description: c.code,
+      }))}
+      value={value ?? null}
+      onChange={(v) => onChange(v ?? "")}
+      placeholder={placeholder}
+      searchPlaceholder="Search currencies…"
+      emptyText="No currencies found."
       disabled={isDisabled}
-      {...(isRequired && { required: true })}
-    >
-      <SelectTrigger className={cn(controlSelectTriggerClass, "w-full", className)}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((c) => (
-          <SelectItem key={c.code} value={c.code}>
-            <span className="font-mono text-xs font-semibold mr-2">{c.code}</span>
-            <span className="text-sm text-muted-foreground">{c.name}</span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      className={className}
+      ariaLabel="Currency"
+    />
   );
 };
 

@@ -63,6 +63,12 @@ interface ComboboxProps {
   contentClassName?: string;
   align?: "start" | "center" | "end";
   ariaLabel?: string;
+  /**
+   * Fires when the dropdown opens/closes. Handy for parity with a plain
+   * `<Select>`'s blur behaviour — wire `(open) => { if (!open) field.onBlur(); }`
+   * so react-hook-form still marks the field touched when the popover closes.
+   */
+  onOpenChange?: (open: boolean) => void;
 }
 
 function optionMatches(option: ComboboxOption, term: string): boolean {
@@ -86,6 +92,7 @@ export function Combobox({
   contentClassName,
   align = "start",
   ariaLabel,
+  onOpenChange,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [term, setTerm] = React.useState("");
@@ -129,6 +136,7 @@ export function Combobox({
         if (disabled) return;
         setOpen(next);
         if (!next) setTerm("");
+        onOpenChange?.(next);
       }}
     >
       <PopoverTrigger asChild>

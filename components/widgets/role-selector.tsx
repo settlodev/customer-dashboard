@@ -1,13 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Role, RoleScope } from "@/types/roles/type";
 import { fetchRolesByScope, fetchRolesForCurrentDestination } from "@/lib/actions/role-actions";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +28,6 @@ interface Props {
 
 const RoleSelector: React.FC<Props> = ({
   placeholder,
-  isRequired,
   value,
   isDisabled,
   description,
@@ -99,25 +92,25 @@ const RoleSelector: React.FC<Props> = ({
         )}
 
         {/* Dropdown to add */}
-        <Select
+        <Combobox
+          options={roles
+            .filter((r) => !selectedIds.includes(r.id))
+            .map((role) => ({
+              value: role.id,
+              label: role.name,
+              description: role.system ? "system" : undefined,
+            }))}
+          value={null}
+          onChange={(v) => {
+            if (v) toggleRole(v);
+          }}
+          placeholder={placeholder || "Add role"}
+          searchPlaceholder="Search roles…"
+          emptyText={isLoading ? "Loading roles…" : "No roles available"}
           disabled={isDisabled || isLoading}
-          onValueChange={(val) => toggleRole(val)}
-          value=""
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder={placeholder || "Add role"} />
-          </SelectTrigger>
-          <SelectContent>
-            {roles
-              .filter((r) => !selectedIds.includes(r.id))
-              .map((role) => (
-                <SelectItem key={role.id} value={role.id}>
-                  {role.name}
-                  {role.system && <span className="text-xs text-muted-foreground ml-1">(system)</span>}
-                </SelectItem>
-              ))}
-          </SelectContent>
-        </Select>
+          className="w-full"
+          ariaLabel="Role"
+        />
 
         {description && <p className="text-sm text-gray-500">{description}</p>}
       </div>
@@ -127,24 +120,20 @@ const RoleSelector: React.FC<Props> = ({
   // Single-select mode
   return (
     <div className="space-y-2">
-      <Select
-        defaultValue={typeof value === "string" ? value : undefined}
+      <Combobox
+        options={roles.map((role) => ({
+          value: role.id,
+          label: role.name,
+        }))}
+        value={typeof value === "string" ? value : null}
+        onChange={(v) => onChange(v ?? "")}
+        placeholder={placeholder || "Select role"}
+        searchPlaceholder="Search roles…"
+        emptyText={isLoading ? "Loading roles…" : "No roles available"}
         disabled={isDisabled || isLoading}
-        value={typeof value === "string" ? value : undefined}
-        required={isRequired}
-        onValueChange={(val) => onChange(val)}
-      >
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder={placeholder || "Select role"} />
-        </SelectTrigger>
-        <SelectContent>
-          {roles.map((role) => (
-            <SelectItem key={role.id} value={role.id}>
-              {role.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        className="w-full"
+        ariaLabel="Role"
+      />
       {description && <p className="text-sm text-gray-500">{description}</p>}
     </div>
   );
