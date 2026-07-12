@@ -3,6 +3,7 @@ import {
   Coins,
   Crown,
   DollarSign,
+  Gift,
   ShoppingBag,
   TrendingUp,
   Undo2,
@@ -58,8 +59,19 @@ export function SalesKpiStrip({ overview, topSeller, loading }: Props) {
 
   const ready = !!overview && !showSkeleton;
 
+  // Give-aways (complimentary cost) is a niche metric — only bars/venues
+  // running "buy one, refills free" style deals ever have one. Surface the
+  // tile only when there's something to show so the strip stays a clean
+  // 6-up for everyone else.
+  const hasGiveaways = !!overview && (overview.giveawayCost ?? 0) > 0;
+
+  // Give-aways are a promo expense: they keep product margin (gross profit)
+  // clean but do reduce net profit, same as any other cost of doing business.
   const netProfit = overview
-    ? overview.netSales - overview.totalCost - overview.totalExpenseAmount
+    ? overview.netSales -
+      overview.totalCost -
+      overview.totalExpenseAmount -
+      (overview.giveawayCost ?? 0)
     : 0;
   const margin =
     overview && overview.netSales > 0
@@ -71,7 +83,7 @@ export function SalesKpiStrip({ overview, topSeller, loading }: Props) {
       : 0;
 
   return (
-    <KpiStrip cols={6}>
+    <KpiStrip cols={hasGiveaways ? 7 : 6}>
       <KpiCard
         icon={<DollarSign className="h-3 w-3" />}
         label="Net sales"
@@ -130,6 +142,20 @@ export function SalesKpiStrip({ overview, topSeller, loading }: Props) {
           overview && overview.totalRefundedAmount > 0 ? "neg" : "neutral"
         }
       />
+      {hasGiveaways && (
+        <KpiCard
+          icon={<Gift className="h-3 w-3" />}
+          label="Give-aways"
+          value={v(() => fmtCount(overview!.giveawayCost))}
+          unit="TZS"
+          delta={
+            ready && overview!.netSales > 0
+              ? `${((overview!.giveawayCost / overview!.netSales) * 100).toFixed(1)}% of net sales`
+              : undefined
+          }
+          deltaTone="neutral"
+        />
+      )}
     </KpiStrip>
   );
 }

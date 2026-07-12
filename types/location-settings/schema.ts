@@ -24,6 +24,23 @@ const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Must be HH:mm");
 const optionalUrl = z.string().url("Must be a valid URL").max(500).optional().or(z.literal(""));
 const optionalEmail = z.string().email("Invalid email").max(255).optional().or(z.literal(""));
 
+// Empty, or a comma-separated list of valid emails (for CC fields).
+const optionalEmailList = z
+  .string()
+  .max(512)
+  .optional()
+  .or(z.literal(""))
+  .refine(
+    (v) =>
+      !v ||
+      v
+        .split(",")
+        .map((e) => e.trim())
+        .filter(Boolean)
+        .every((e) => z.string().email().safeParse(e).success),
+    { message: "Enter valid email addresses separated by commas" },
+  );
+
 export const OperatingHoursSchema = z.object({
   dayOfWeek: z.enum([
     "MONDAY",
@@ -168,7 +185,9 @@ export const LocationSettingsSchema = z.object({
   enableSmsNotifications: z.boolean().optional(),
   enablePushNotifications: z.boolean().optional(),
   lowStockAlertEmail: optionalEmail,
+  lowStockAlertEmailCc: optionalEmailList,
   dailyReportEmail: optionalEmail,
+  dailyReportEmailCc: optionalEmailList,
   alertPhoneNumber: z.string().max(20).optional(),
   sendDailySalesEmail: z.boolean().optional(),
   sendWeeklySalesEmail: z.boolean().optional(),

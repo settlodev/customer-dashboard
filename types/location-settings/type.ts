@@ -181,7 +181,9 @@ export interface LocationSettings {
 
   // Notification addresses
   lowStockAlertEmail: string | null;
+  lowStockAlertEmailCc: string | null;
   dailyReportEmail: string | null;
+  dailyReportEmailCc: string | null;
   alertPhoneNumber: string | null;
   sendDailySalesEmail: boolean;
   sendWeeklySalesEmail: boolean;

@@ -28,6 +28,7 @@ import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import type { Staff } from "@/types/staff";
 
 import { CashUpReconciliationCard } from "@/components/widgets/day-sessions/cash-up-reconciliation-card";
+import { CodEmailButton } from "@/components/widgets/day-sessions/cod-email-dialog";
 import { CodShareButton } from "@/components/widgets/day-sessions/cod-share-dialog";
 import { ExportButton } from "@/components/widgets/day-sessions/print-button";
 import {
@@ -277,6 +278,12 @@ export default async function DaySessionDetailPage({
               locationId={locationId}
               sessionId={id}
               label={headerLabel}
+            />
+            <CodEmailButton
+              locationId={locationId}
+              sessionId={id}
+              businessDate={session.businessDate}
+              identifier={session.identifier ?? undefined}
             />
             <a
               href={`/day-sessions/${id}/report`}

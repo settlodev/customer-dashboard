@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 interface KpiStripProps {
   children: React.ReactNode;
   /** Desktop column count (≥ md). Mobile always falls back to 2 cols. */
-  cols?: 2 | 3 | 4 | 5 | 6;
+  cols?: 2 | 3 | 4 | 5 | 6 | 7;
   className?: string;
 }
 
@@ -49,6 +49,7 @@ const COLS_MAP: Record<NonNullable<KpiStripProps["cols"]>, string> = {
   4: "sm:grid-cols-2 lg:grid-cols-4",
   5: "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5",
   6: "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6",
+  7: "sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7",
 };
 
 export function KpiStrip({

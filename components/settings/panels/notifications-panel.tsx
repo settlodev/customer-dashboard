@@ -14,7 +14,9 @@ const KEYS = [
   "enableSmsNotifications",
   "enablePushNotifications",
   "lowStockAlertEmail",
+  "lowStockAlertEmailCc",
   "dailyReportEmail",
+  "dailyReportEmailCc",
   "alertPhoneNumber",
   "sendDailySalesEmail",
   "sendWeeklySalesEmail",
@@ -108,12 +110,32 @@ export function NotificationsPanel({
               disabled={p.isPending}
             />
           </Field>
+          <Field label="Low-stock alert CC">
+            <Input
+              type="text"
+              maxLength={512}
+              placeholder="a@x.com, b@y.com"
+              value={v.lowStockAlertEmailCc ?? ""}
+              onChange={(e) => p.setField("lowStockAlertEmailCc", e.target.value)}
+              disabled={p.isPending}
+            />
+          </Field>
           <Field label="Daily report email">
             <Input
               type="email"
               maxLength={255}
               value={v.dailyReportEmail ?? ""}
               onChange={(e) => p.setField("dailyReportEmail", e.target.value)}
+              disabled={p.isPending}
+            />
+          </Field>
+          <Field label="Daily report CC">
+            <Input
+              type="text"
+              maxLength={512}
+              placeholder="a@x.com, b@y.com"
+              value={v.dailyReportEmailCc ?? ""}
+              onChange={(e) => p.setField("dailyReportEmailCc", e.target.value)}
               disabled={p.isPending}
             />
           </Field>
