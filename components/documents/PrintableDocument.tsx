@@ -6,7 +6,19 @@ import type { DocumentTheme } from "./BusinessDocument";
 import type { BusinessDocumentData } from "./types";
 
 interface PrintableDocumentProps {
-  data: BusinessDocumentData;
+  /**
+   * Standard invoice-anatomy document. Omit when supplying {@link children}
+   * (a bespoke body — e.g. the Close-of-Day report — that reuses this
+   * frame's toolbar + A4 print stylesheet but not the line-items layout).
+   */
+  data?: BusinessDocumentData;
+  /**
+   * Custom document body rendered inside the same A4 sheet shell instead of
+   * {@link BusinessDocument}. Provide the sheet's own sections (letterhead,
+   * tables, footer). When set, {@link data}/{@link theme}/
+   * {@link tableHeaderClassName} are ignored.
+   */
+  children?: React.ReactNode;
   tableHeaderClassName?: string;
   /**
    * Per-tenant brand colours. Forwarded to {@link BusinessDocument}. When
@@ -26,6 +38,11 @@ interface PrintableDocumentProps {
   autoPrint?: boolean;
 }
 
+// A4 sheet shell shared by the standard BusinessDocument and any custom
+// `children` body — identical sizing / chrome / print rules either way.
+const SHEET_CLASS =
+  "w-full max-w-[210mm] min-h-[297mm] overflow-hidden rounded-sm shadow-xl ring-1 ring-slate-200 print:max-w-none print:min-h-0 print:rounded-none print:shadow-none print:ring-0";
+
 /**
  * Wraps BusinessDocument with a toolbar (Print to PDF / Download) and the
  * print-stylesheet that sizes the page to A4 and hides the toolbar on print.
@@ -38,6 +55,7 @@ interface PrintableDocumentProps {
  */
 export function PrintableDocument({
   data,
+  children,
   tableHeaderClassName,
   theme,
   documentTitle,
@@ -95,12 +113,18 @@ export function PrintableDocument({
 
       {/* Document — A4 sized on screen and in print, centred horizontally */}
       <div ref={ref} className="print-page flex justify-center px-4 print:px-0">
-        <BusinessDocument
-          data={data}
-          tableHeaderClassName={tableHeaderClassName}
-          theme={theme}
-          className="w-full max-w-[210mm] min-h-[297mm] overflow-hidden rounded-sm shadow-xl ring-1 ring-slate-200 print:max-w-none print:min-h-0 print:rounded-none print:shadow-none print:ring-0"
-        />
+        {children ? (
+          <article className={`flex flex-col bg-white text-slate-900 ${SHEET_CLASS}`}>
+            {children}
+          </article>
+        ) : data ? (
+          <BusinessDocument
+            data={data}
+            tableHeaderClassName={tableHeaderClassName}
+            theme={theme}
+            className={SHEET_CLASS}
+          />
+        ) : null}
       </div>
 
       {/* Print stylesheet */}

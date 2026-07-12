@@ -22,6 +22,10 @@ export default interface OverviewResponse {
 
   transactionsAmount: number;
   complimentaryAmount: number;
+  /** COGS of goods on in-house / COMPLIMENTARY-tender orders (the payment concept). */
+  complimentaryCost: number;
+  /** Estimated cost of free give-away ITEMS (e.g. refills) — separate from the tender above. */
+  giveawayCost: number;
   signedBillAmount: number;
   expensesPaidAmount: number;
   closingBalance: number;

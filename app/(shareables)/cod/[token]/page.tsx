@@ -5,7 +5,7 @@ import { Clock } from "lucide-react";
 import type { Staff } from "@/types/staff";
 import { getPublicCloseOfDay } from "@/lib/actions/day-session-share-actions";
 import { resolveCurrency } from "@/lib/day-sessions/cod-format";
-import { ReportPrintFrame } from "@/components/widgets/day-sessions/report-print-frame";
+import { PrintableDocument } from "@/components/documents/PrintableDocument";
 import { CloseOfDayReportSheet } from "@/components/widgets/day-sessions/close-of-day-report-sheet";
 
 type Params = Promise<{ token: string }>;
@@ -84,7 +84,7 @@ export default async function SharedCloseOfDayPage({
   const documentTitle = `${dto.session.identifier ?? "Close of Day"} — Close of Day Report`;
 
   return (
-    <ReportPrintFrame documentTitle={documentTitle}>
+    <PrintableDocument documentTitle={documentTitle}>
       <CloseOfDayReportSheet
         session={dto.session}
         report={dto.report}
@@ -100,7 +100,7 @@ export default async function SharedCloseOfDayPage({
         currency={currency}
         generatedAt={new Date().toISOString()}
       />
-    </ReportPrintFrame>
+    </PrintableDocument>
   );
 }
 

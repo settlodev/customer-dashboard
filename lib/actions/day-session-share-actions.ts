@@ -67,6 +67,12 @@ export interface PublicCloseOfDay {
   staff: Staff[];
   letterhead: LocationLetterhead | null;
   currency: string | null;
+  /**
+   * Business base currency, stamped server-side for server-composed
+   * summaries (e.g. the close-of-day email). The page itself still
+   * resolves {@link currency} from the cash-up / expenses sources.
+   */
+  reportCurrency?: string | null;
   shareTokenIssuedAt: string | null;
   /** Absolute expiry; null when the link never expires. */
   expiresAt: string | null;
