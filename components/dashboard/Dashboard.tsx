@@ -1,15 +1,8 @@
 "use client";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { format } from "date-fns";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { PageBody, PageHeader } from "@/components/layouts/page-shell";
-import { DateRangePicker } from "@/components/ui/date-picker-with-range";
+import { DateRangeSegmented } from "@/components/filters/date-range-segmented";
 import { InventoryKpiStrip } from "@/components/widgets/inventory/inventory-kpi-strip";
 import { PrepaymentKpiStrip } from "@/components/widgets/prepayments/prepayments-kpi-strip";
 import { SalesKpiStrip } from "@/components/widgets/dashboard/sales-kpi-strip";
@@ -39,8 +32,20 @@ type Props = {
   /** Personalised greeting, shown in place of the generic "Dashboard" title. */
   greetingTitle?: string;
   greetingSubtitle?: string;
+  /**
+   * Active date range (`yyyy-MM-dd`), owned by the URL and resolved
+   * server-side. Defaults to the location's current business day (the day
+   * session's businessDate, which the Reports facts are stamped with) so the
+   * hero/KPI totals line up with /report/expense and the Z-reports, and — since
+   * the overview aggregates by business_date — compile every session on that
+   * business day into one. The shared {@link DateRangeSegmented} control in the
+   * header writes changes back to the `from`/`to` query params, which re-runs
+   * the server page and lands here as new props.
+   */
+  from: string;
+  to: string;
   /** Financing eligibility hero (or null when the Loans flag is off). Rendered
-   *  at the top of the body, beneath the header's date picker. */
+   *  at the top of the body, beneath the header's date filter. */
   financingSlot?: React.ReactNode;
 };
 
@@ -53,6 +58,8 @@ const Dashboard: React.FC<Props> = ({
   reportsReadAll = true,
   greetingTitle,
   greetingSubtitle,
+  from,
+  to,
   financingSlot,
 }) => {
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
@@ -62,64 +69,52 @@ const Dashboard: React.FC<Props> = ({
   );
   const [isLoading, setIsLoading] = useState(true);
 
-  const today = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
-
-  // Active date range, held in a ref so the realtime refetch reuses whatever
-  // the user is currently viewing. ALL three sources are queried with the same
-  // explicit calendar dates — the overview must NOT use the `by-filter TODAY`
-  // path, which resolves "today" through the location's business-hours logic
-  // (DateRangeResolver) and can land on a different day than the calendar date
-  // the facts are stamped with, returning zeros while top-selling shows data.
-  const filterRef = useRef<{ from: string; to: string }>({
-    from: today,
-    to: today,
-  });
-
   // Fetch the overview (hero + sales KPIs), the top-selling report, and the
   // payment-method breakdown together for the active range. Each is resilient
-  // on its own so one failing source doesn't blank the others.
-  const loadAll = useCallback(async (opts?: { silent?: boolean }) => {
-    // Without reports:read_all the report-backed cards aren't rendered, so skip
-    // the (now location-wide / 403'd) overview/top-selling/payment fetches
-    // entirely — for the initial load, date-range changes, and realtime refresh.
-    if (!reportsReadAll) {
-      setIsLoading(false);
-      return;
-    }
-    try {
-      if (!opts?.silent) setIsLoading(true);
-      const { from, to } = filterRef.current;
-      const [ov, ts, pm] = await Promise.all([
-        fetchOverview(from, to).catch(() => null),
-        listTopSellingProducts({
-          fromDate: from,
-          toDate: to,
-          sortBy: "revenue",
-          limit: TOP_SELLING_LIMIT,
-        }),
-        getPaymentMethodBreakdown({ startDate: from, endDate: to }),
-      ]);
-      setOverview(ov as OverviewResponse | null);
-      setTopSelling(ts);
-      setPayments(pm);
-    } catch (error) {
-      console.error("Error loading dashboard:", error);
-    } finally {
-      if (!opts?.silent) setIsLoading(false);
-    }
-  }, [reportsReadAll]);
+  // on its own so one failing source doesn't blank the others. The range is the
+  // URL-owned `from`/`to` — the same explicit dates the reports use — so a
+  // preset/custom change in the shared control re-runs the server page and
+  // arrives here as new props. (These are passed straight through; the overview
+  // must NOT use the `by-filter TODAY` path, which re-derives "today" from the
+  // location's business-HOURS config and can drift off the session businessDate
+  // the facts are stamped with, returning zeros.)
+  const loadAll = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      // Without reports:read_all the report-backed cards aren't rendered, so
+      // skip the (now location-wide / 403'd) overview/top-selling/payment
+      // fetches entirely — initial load, range changes, and realtime refresh.
+      if (!reportsReadAll) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        if (!opts?.silent) setIsLoading(true);
+        const [ov, ts, pm] = await Promise.all([
+          fetchOverview(from, to).catch(() => null),
+          listTopSellingProducts({
+            fromDate: from,
+            toDate: to,
+            sortBy: "revenue",
+            limit: TOP_SELLING_LIMIT,
+          }),
+          getPaymentMethodBreakdown({ startDate: from, endDate: to }),
+        ]);
+        setOverview(ov as OverviewResponse | null);
+        setTopSelling(ts);
+        setPayments(pm);
+      } catch (error) {
+        console.error("Error loading dashboard:", error);
+      } finally {
+        if (!opts?.silent) setIsLoading(false);
+      }
+    },
+    [reportsReadAll, from, to],
+  );
 
+  // Initial load, and again whenever the range (URL) changes.
   useEffect(() => {
     void loadAll();
   }, [loadAll]);
-
-  const handleFilterChange = useCallback(
-    (startDate: string, endDate: string) => {
-      filterRef.current = { from: startDate, to: endDate };
-      void loadAll();
-    },
-    [loadAll],
-  );
 
   // Realtime: refetch quietly (keep the current numbers on screen until the
   // fresh ones arrive — no skeleton flash).
@@ -132,7 +127,7 @@ const Dashboard: React.FC<Props> = ({
       <PageHeader
         title={greetingTitle ?? "Dashboard"}
         subtitle={greetingSubtitle ?? "Financial overview and sales performance"}
-        actions={<DateRangePicker onFilterChange={handleFilterChange} />}
+        actions={<DateRangeSegmented from={from} to={to} />}
       />
 
       <PageBody>

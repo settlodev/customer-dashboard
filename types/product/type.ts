@@ -44,6 +44,18 @@ export interface Product {
   lifecycleStatus: LifecycleStatus;
   replacementProductId: string | null;
   tags: string[];
+  /**
+   * Weekly sellability windows. Empty (the default) means always
+   * sellable. Non-empty scopes live-selling to the listed day/time
+   * windows — see {@link SellableWindow}.
+   */
+  sellableWindows?: SellableWindow[];
+  /**
+   * Per-date overrides layered on top of {@link sellableWindows} — block
+   * a specific holiday, or open for a one-off event outside the normal
+   * windows. Empty (the default) means no overrides.
+   */
+  sellabilityExceptions?: SellabilityException[];
   // A product can roll up to several departments — one per category it
   // belongs to. Departments live on the category, not the product, so read
   // them off `categories[].departmentName` (see {@link CategoryInfo}) rather
@@ -69,6 +81,30 @@ export interface CategoryInfo {
   // hasn't synced the name yet even when `departmentId` is set.
   departmentId: string | null;
   departmentName: string | null;
+}
+
+// Product-level sellability schedule (see {@link Product.sellableWindows} /
+// {@link Product.sellabilityExceptions}).
+export type ProductDayOfWeek =
+  | "MONDAY"
+  | "TUESDAY"
+  | "WEDNESDAY"
+  | "THURSDAY"
+  | "FRIDAY"
+  | "SATURDAY"
+  | "SUNDAY";
+
+export interface SellableWindow {
+  dayOfWeek: ProductDayOfWeek;
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm — endTime <= startTime is a valid overnight window
+}
+
+export interface SellabilityException {
+  date: string; // YYYY-MM-DD
+  mode: "BLOCKED" | "AVAILABLE";
+  startTime?: string | null;
+  endTime?: string | null;
 }
 
 // ── Product Variant ─────────────────────────────────────────────────
@@ -110,6 +146,12 @@ export interface ProductVariant {
   autoRetireOnSellout: boolean;
   /** Give-away / free item (sells at 0, still tracked). Distinct from the comp tender. */
   giveaway: boolean;
+  /**
+   * Block-from-sale ("Unavailable today"). True blocks staff from selling
+   * this variant without removing it from the menu. A product is fully
+   * blocked only when every one of its variants carries saleLocked=true.
+   */
+  saleLocked?: boolean;
   unlimited: boolean;
   costPrice: number | null;
   availableQuantity: number | null;

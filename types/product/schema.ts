@@ -67,6 +67,13 @@ export const ProductVariantSchema = object({
   // tracks stock; its cost is booked as a give-away, not product COGS. Distinct
   // from the COMPLIMENTARY / in-house tender (a payment concept).
   giveaway: boolean().default(false),
+
+  // Block-from-sale ("Unavailable today"): true blocks staff from selling
+  // this variant without pulling it off the menu. Driven product-wide by
+  // the Visibility tab's "Block from sale" toggle, which sets this flag
+  // identically across every variant — a product is fully blocked only
+  // when every variant carries saleLocked=true.
+  saleLocked: boolean().default(false),
 }).superRefine((val, ctx) => {
   // Pricing strategy ⇒ required field per branch
   if (val.pricingStrategy === "PERCENTAGE_MARKUP" && val.markupPercentage == null) {
@@ -154,6 +161,32 @@ export const ProductSchema = object({
   // surfaces a department picker for products.
   categoryIds: array(string().uuid()).min(1, "Pick at least one category"),
   tags: array(string()).default([]),
+
+  // Sellability schedule. Empty arrays (the default) mean always
+  // sellable. sellableWindows scopes selling to specific weekly
+  // day/time windows; endTime <= startTime is a valid overnight window
+  // (e.g. 22:00–02:00). sellabilityExceptions overrides the weekly
+  // windows for a specific calendar date — block a holiday, or open for
+  // a one-off event outside the normal windows.
+  sellableWindows: array(object({
+    dayOfWeek: z.enum([
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
+      "SUNDAY",
+    ]),
+    startTime: string(),
+    endTime: string(),
+  })).default([]),
+  sellabilityExceptions: array(object({
+    date: string(),
+    mode: z.enum(["BLOCKED", "AVAILABLE"]),
+    startTime: string().nullish(),
+    endTime: string().nullish(),
+  })).default([]),
 
   sellOnline: boolean().default(true),
   // Mirrors the inventory service's per-product default (V70): products are
