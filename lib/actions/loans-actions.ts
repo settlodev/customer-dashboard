@@ -24,6 +24,7 @@ import {
 } from "@/lib/loans/mock-data";
 
 import {
+  ELIGIBILITY_BACKEND_READY,
   FINANCING_BACKEND_READY,
   LOAN_ENDPOINTS,
   loansUrl,
@@ -42,18 +43,28 @@ const EMPTY_ELIGIBILITY: LoanEligibility = {
   currencyCode: "TZS",
   limit: 0,
   available: 0,
-  onTimeRatePct: 0,
+  onTimeRatePct: null,
   loansRepaid: 0,
-  customerSince: "",
+  customerSince: null,
   hasActiveLoan: false,
   activeLoanId: null,
 };
 
-export async function getLoanEligibility(): Promise<LoanEligibility> {
+/**
+ * `businessId` is optional so the other still-mock-only callers of this action — the
+ * loans list/apply/detail pages and the main dashboard — keep compiling and stay on
+ * mock data even if `ELIGIBILITY_BACKEND_READY` is flipped on. Only a caller that
+ * passes a businessId (currently just /business-overview) can reach the real endpoint.
+ */
+export async function getLoanEligibility(
+  businessId?: string,
+): Promise<LoanEligibility> {
   try {
-    if (FINANCING_BACKEND_READY) {
+    if (ELIGIBILITY_BACKEND_READY && businessId) {
       const apiClient = new ApiClient();
-      const data = await apiClient.get(loansUrl(LOAN_ENDPOINTS.eligibility));
+      const data = await apiClient.get(
+        `${loansUrl(LOAN_ENDPOINTS.eligibility)}?businessId=${encodeURIComponent(businessId)}`,
+      );
       return parseStringify(data);
     }
     return parseStringify(getMockEligibility());

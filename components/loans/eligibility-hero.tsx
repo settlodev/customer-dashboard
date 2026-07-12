@@ -144,7 +144,7 @@ export function EligibilityHero({
             />
             <Chip
               label="On-time rate"
-              value={`${eligibility.onTimeRatePct}%`}
+              value={eligibility.onTimeRatePct != null ? `${eligibility.onTimeRatePct}%` : "—"}
               tone="pos"
             />
           </div>
@@ -191,16 +191,20 @@ export function EligibilityHero({
               tone="orange"
               highlight
             />
-            <Chip label="Active loans" value="0" />
-            <Chip
-              label="Loans repaid"
-              value={String(eligibility.loansRepaid)}
-            />
-            <Chip
-              label="On-time rate"
-              value={`${eligibility.onTimeRatePct}%`}
-              tone="pos"
-            />
+            <Chip label="Active loans" value={eligibility.hasActiveLoan ? "1" : "0"} />
+            {eligibility.onTimeRatePct != null && (
+              <Chip
+                label="Loans repaid"
+                value={String(eligibility.loansRepaid)}
+              />
+            )}
+            {eligibility.onTimeRatePct != null && (
+              <Chip
+                label="On-time rate"
+                value={`${eligibility.onTimeRatePct}%`}
+                tone="pos"
+              />
+            )}
           </div>
         </>
       )}

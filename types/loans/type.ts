@@ -164,10 +164,11 @@ export interface LoanEligibility {
   limit: number;
   /** Borrowable right now (0 while a facility is active). */
   available: number;
-  onTimeRatePct: number;
+  /** null = no repayment history yet (new borrower). */
+  onTimeRatePct: number | null;
   loansRepaid: number;
-  /** Free-form, e.g. "2024". */
-  customerSince: string;
+  /** Free-form, e.g. "2024"; null = unknown / new. */
+  customerSince: string | null;
   hasActiveLoan: boolean;
   activeLoanId?: string | null;
 }
