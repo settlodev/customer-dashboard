@@ -25,7 +25,7 @@ export function usePaymentPolling(
   const [isPolling, setIsPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startTimeRef = useRef<number>(0);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stoppedRef = useRef(false);
 
   const stop = useCallback(() => {
@@ -33,6 +33,10 @@ export function usePaymentPolling(
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
     setIsPolling(false);
   }, []);
@@ -49,29 +53,18 @@ export function usePaymentPolling(
     setIsPolling(true);
     setError(null);
     setStatus("ACCEPTED");
-    startTimeRef.current = Date.now();
 
     const poll = async () => {
       if (stoppedRef.current) return;
 
-      // Timeout — record FAILED on the server so the row doesn't dangle.
-      if (Date.now() - startTimeRef.current > POLL_TIMEOUT_MS) {
-        stop();
-        try {
-          await markPaymentTimedOut(externalReferenceId);
-        } catch {
-          // Network error on the timeout call is non-fatal — the server
-          // can still receive the late webhook and resolve the row.
-        }
-        setError(
-          "Payment verification timed out. We didn't receive a confirmation from your mobile-money provider.",
-        );
-        setStatus("FAILED");
-        return;
-      }
-
       try {
         const response = await getPaymentStatus(externalReferenceId);
+        // Critical: a slow request that resolves AFTER a terminal state has been
+        // set (by a SUCCESS/FAILED poll or the timeout below) must not overwrite
+        // it. Without this guard a late "PROCESSING" reverts the modal to the
+        // waiting state and, since polling has stopped, it stays stuck there.
+        if (stoppedRef.current) return;
+
         const newStatus = response.paymentStatus;
         setStatus(newStatus);
 
@@ -84,16 +77,34 @@ export function usePaymentPolling(
           }
         }
       } catch {
-        // Network error — keep polling, don't fail immediately
+        // Network error — keep polling until the timeout closes it out.
       }
     };
 
-    // Initial poll after a short delay (give provider time to process)
+    // Dedicated hard timeout: resolve the awaiting UI to FAILED the moment the
+    // window expires, independent of the poll cadence (so a stalled poll can't
+    // leave the modal spinning forever). Flip the UI first, then notify the
+    // server best-effort — the row is left recoverable by a late Selcom webhook.
+    const handleTimeout = () => {
+      if (stoppedRef.current) return;
+      stop();
+      setError(
+        "Payment verification timed out. We didn't receive a confirmation from your mobile-money provider.",
+      );
+      setStatus("FAILED");
+      markPaymentTimedOut(externalReferenceId).catch(() => {
+        // Non-fatal — the server can still receive the late webhook and resolve.
+      });
+    };
+
+    // Initial poll after a short delay (give the provider time to process).
     const initialTimeout = setTimeout(() => {
       if (stoppedRef.current) return;
       poll();
       intervalRef.current = setInterval(poll, POLL_INTERVAL_MS);
     }, 3_000);
+
+    timeoutRef.current = setTimeout(handleTimeout, POLL_TIMEOUT_MS);
 
     return () => {
       clearTimeout(initialTimeout);
