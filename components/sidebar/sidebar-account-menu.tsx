@@ -44,6 +44,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { useEntitlements } from "@/context/entitlementContext";
+import { usePermissions } from "@/context/permissionsContext";
 import {
   Dialog,
   DialogContent,
@@ -128,6 +129,8 @@ interface SubscriptionSummaryCardProps {
   isSuspended: boolean;
   isPastDue: boolean;
   paidThrough: string | null;
+  /** Whether to surface the "Manage subscription" action (billing:manage / subscription:renew). */
+  canManage: boolean;
   onNavigate: () => void;
 }
 
@@ -141,6 +144,7 @@ function SubscriptionSummaryCard({
   isSuspended,
   isPastDue,
   paidThrough,
+  canManage,
   onNavigate,
 }: SubscriptionSummaryCardProps) {
   // The entitlement projection holds a *flat* packageName per item — the
@@ -278,13 +282,15 @@ function SubscriptionSummaryCard({
         </p>
       )}
 
-      <Link
-        href="/billing"
-        onClick={onNavigate}
-        className="rounded-md border border-line bg-card px-2.5 py-1.5 text-center text-[11.5px] font-medium tracking-tight text-ink transition-colors hover:border-primary hover:bg-primary hover:text-white"
-      >
-        Manage subscription
-      </Link>
+      {canManage && (
+        <Link
+          href="/billing"
+          onClick={onNavigate}
+          className="rounded-md border border-line bg-card px-2.5 py-1.5 text-center text-[11.5px] font-medium tracking-tight text-ink transition-colors hover:border-primary hover:bg-primary hover:text-white"
+        >
+          Manage subscription
+        </Link>
+      )}
     </div>
   );
 }
@@ -321,6 +327,17 @@ export function SidebarAccountMenu({
     isPastDue,
     paidThrough,
   } = useEntitlements();
+
+  // Permission gating for the account/billing controls. Fail-open while the
+  // /me permission source is still resolving (mirrors the sidebar nav gate) —
+  // the backend is the real authority; this only declutters the menu for
+  // limited-scope members. Owners hold the full catalog, so they see it all.
+  const { hasAnyPermission, loading: permsLoading } = usePermissions();
+  const canAny = (keys: string[]) => permsLoading || hasAnyPermission(keys);
+  const canViewSubscription = canAny(["billing:view", "subscription:view"]);
+  const canManageSubscription = canAny(["billing:manage", "subscription:renew"]);
+  const canAddBusiness = canAny(["businesses:create"]);
+  const canOpenSettings = canAny(["settings:business", "settings:locations"]);
 
   // Theme toggle. `useColorMode` reads from localStorage on the client,
   // so we render a placeholder until mounted to avoid an icon flicker
@@ -536,19 +553,23 @@ export function SidebarAccountMenu({
 
       {/* Subscription card — live snapshot from the entitlements context.
           Status, plan name, days-remaining, and paid-through date are all
-          pulled from the single round-trip the layout already made. */}
-      <SubscriptionSummaryCard
-        workspaceName={currentBusiness?.name}
-        entitlements={entitlements}
-        subscriptionStatus={subscriptionStatus}
-        isActive={isActive}
-        isTrial={isTrial}
-        isExpired={isExpired}
-        isSuspended={isSuspended}
-        isPastDue={isPastDue}
-        paidThrough={paidThrough}
-        onNavigate={() => setOpen(false)}
-      />
+          pulled from the single round-trip the layout already made. Hidden
+          for members without billing/subscription visibility. */}
+      {canViewSubscription && (
+        <SubscriptionSummaryCard
+          workspaceName={currentBusiness?.name}
+          entitlements={entitlements}
+          subscriptionStatus={subscriptionStatus}
+          isActive={isActive}
+          isTrial={isTrial}
+          isExpired={isExpired}
+          isSuspended={isSuspended}
+          isPastDue={isPastDue}
+          paidThrough={paidThrough}
+          canManage={canManageSubscription}
+          onNavigate={() => setOpen(false)}
+        />
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {/* Cross-account switch (hidden unless the user belongs to >1 account).
@@ -615,23 +636,25 @@ export function SidebarAccountMenu({
                 );
               })}
 
-              <Link
-                href="/business-registration"
-                onClick={() => setOpen(false)}
-                className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-muted-foreground transition-colors hover:bg-canvas"
-              >
-                <div className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-md border border-dashed border-line text-muted-foreground">
-                  <Plus className="h-3 w-3" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-medium leading-tight tracking-tight text-ink-2">
-                    Add a business
+              {canAddBusiness && (
+                <Link
+                  href="/business-registration"
+                  onClick={() => setOpen(false)}
+                  className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-muted-foreground transition-colors hover:bg-canvas"
+                >
+                  <div className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-md border border-dashed border-line text-muted-foreground">
+                    <Plus className="h-3 w-3" />
                   </div>
-                  <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                    Open a new workspace
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13px] font-medium leading-tight tracking-tight text-ink-2">
+                      Add a business
+                    </div>
+                    <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      Open a new workspace
+                    </div>
                   </div>
-                </div>
-              </Link>
+                </Link>
+              )}
             </div>
           </div>
         )}
@@ -649,14 +672,16 @@ export function SidebarAccountMenu({
             <User className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="flex-1 truncate">View profile</span>
           </Link>
-          <Link
-            href="/settings"
-            onClick={() => setOpen(false)}
-            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] tracking-tight text-ink transition-colors hover:bg-canvas"
-          >
-            <Settings className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="flex-1 truncate">Account settings</span>
-          </Link>
+          {canOpenSettings && (
+            <Link
+              href="/settings"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] tracking-tight text-ink transition-colors hover:bg-canvas"
+            >
+              <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="flex-1 truncate">Account settings</span>
+            </Link>
+          )}
           <button
             type="button"
             // TODO: link to in-app help center once route lands.

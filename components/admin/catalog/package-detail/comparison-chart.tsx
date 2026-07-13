@@ -201,7 +201,7 @@ export function ComparisonChart({
                 borderRadius: 8,
                 fontSize: 12,
               }}
-              formatter={(value: number) => formatValue(value)}
+              formatter={(value) => formatValue(Number(value))}
               labelFormatter={(_label, payload) => {
                 const row = payload?.[0]?.payload;
                 if (!row) return "";

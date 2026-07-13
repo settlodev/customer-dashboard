@@ -82,7 +82,7 @@ export function AreaTrendChart({
               boxShadow: "0 8px 24px -8px rgba(0,0,0,0.18)",
             }}
             labelStyle={{ color: "hsl(var(--ink-3))", fontSize: 11 }}
-            formatter={(value: number) => [valueFormatter(value), tooltipLabel]}
+            formatter={(value) => [valueFormatter(Number(value)), tooltipLabel]}
           />
           <Area
             type="monotone"

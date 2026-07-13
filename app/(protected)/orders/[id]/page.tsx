@@ -12,6 +12,7 @@ import { OrderInvoiceShareButton } from "@/components/widgets/orders/invoice-sha
 import { OrderReceiptShareButton } from "@/components/widgets/orders/receipt-share-dialog";
 import { PrintVfdButton } from "@/components/widgets/orders/print-vfd-button";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import { getOrderDetail } from "@/lib/actions/order-actions";
 import {
   ORDER_STATUS_LABELS,
@@ -34,7 +35,10 @@ export default async function OrderPage({ params }: { params: Params }) {
   }
   if (!detail) notFound();
 
-  const currentLocation = await getCurrentLocation();
+  const [currentLocation, currency] = await Promise.all([
+    getCurrentLocation(),
+    getLocationCurrency(),
+  ]);
 
   const status = detail.orderStatus as OrderStatus;
   const statusClass = ORDER_STATUS_PILL[status] ?? "bg-gray-100 text-gray-600";
@@ -88,8 +92,9 @@ export default async function OrderPage({ params }: { params: Params }) {
         title={headerName}
         titleAccessory={
           <span
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClass}`}
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${statusClass}`}
           >
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
             {statusLabel}
           </span>
         }
@@ -127,7 +132,7 @@ export default async function OrderPage({ params }: { params: Params }) {
       )}
 
       <PageBody>
-        <OrderDetailView order={detail} />
+        <OrderDetailView order={detail} currency={currency} />
       </PageBody>
     </PageShell>
   );

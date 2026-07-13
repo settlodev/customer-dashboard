@@ -34,6 +34,15 @@ export const FINANCING_BACKEND_READY =
   Boolean(LOAN_SERVICE_URL) &&
   /^(1|true|yes|on)$/i.test(process.env.LOANS_BORROWER_BACKEND_READY ?? "");
 
+/**
+ * Card-scoped go-live flag for the pre-qualification eligibility summary ONLY. Separate from
+ * FINANCING_BACKEND_READY because that gates the list/apply/pay actions too, whose borrower
+ * endpoints aren't ready — flipping it globally would 404 those pages.
+ */
+export const ELIGIBILITY_BACKEND_READY =
+  Boolean(LOAN_SERVICE_URL) &&
+  /^(1|true|yes|on)$/i.test(process.env.LOANS_ELIGIBILITY_BACKEND_READY ?? "");
+
 /** The endpoints the Financing service is expected to expose. */
 export const LOAN_ENDPOINTS = {
   eligibility: "/api/v1/loans/eligibility",

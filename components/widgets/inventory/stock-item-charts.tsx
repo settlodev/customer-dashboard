@@ -96,7 +96,7 @@ export function QtyOnHandChart({ snapshots }: { snapshots: InventorySnapshot[] }
                 width={50}
               />
               <Tooltip
-                formatter={(v: number) => v.toLocaleString()}
+                formatter={(v) => Number(v).toLocaleString()}
                 labelClassName="text-xs font-medium"
               />
               <Line
@@ -158,7 +158,7 @@ export function StockValueChart({
                 tickFormatter={(v) => Math.round(Number(v)).toLocaleString()}
               />
               <Tooltip
-                formatter={(v: number) => v.toLocaleString()}
+                formatter={(v) => Number(v).toLocaleString()}
                 labelClassName="text-xs font-medium"
               />
               <Area
@@ -207,7 +207,7 @@ export function MovementMixChart({ snapshots }: { snapshots: InventorySnapshot[]
                 width={50}
               />
               <Tooltip
-                formatter={(v: number) => Math.abs(Number(v)).toLocaleString()}
+                formatter={(v) => Math.abs(Number(v)).toLocaleString()}
                 labelClassName="text-xs font-medium"
               />
               <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
@@ -267,7 +267,7 @@ export function MovementTypeBreakdownChart({
                 tickLine={false}
                 width={110}
               />
-              <Tooltip formatter={(v: number) => v.toLocaleString()} labelClassName="text-xs font-medium" />
+              <Tooltip formatter={(v) => Number(v).toLocaleString()} labelClassName="text-xs font-medium" />
               <Bar dataKey="quantity" fill="#EB7F44" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>

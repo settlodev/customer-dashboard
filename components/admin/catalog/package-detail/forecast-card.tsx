@@ -190,7 +190,7 @@ export function ForecastCard({
                 borderRadius: 8,
                 fontSize: 12,
               }}
-              formatter={(value: number, name: string) => {
+              formatter={(value, name) => {
                 const label =
                   name === "value"
                     ? "Forecast"
@@ -199,7 +199,7 @@ export function ForecastCard({
                       : name === "lower"
                         ? "Lower 95%"
                         : name;
-                return [formatCurrency(value), label];
+                return [formatCurrency(Number(value)), label];
               }}
               labelFormatter={(l) => l}
             />

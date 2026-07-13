@@ -67,6 +67,9 @@ type VariantPayload = {
   // when a DIRECT-link deduction empties the stock.
   autoRetireOnSellout?: boolean;
   giveaway?: boolean;
+  // Block-from-sale ("Unavailable today"): true blocks staff from selling
+  // this variant without removing it from the menu.
+  saleLocked?: boolean;
   // FK to a TaxType in the Accounting Service. Backend treats null as
   // exempt; on update, omitting the field leaves the existing value
   // unchanged (PATCH semantics).
@@ -99,6 +102,7 @@ function mapVariant(
     unlimited: false,
     autoRetireOnSellout: v.autoRetireOnSellout ?? false,
     giveaway: v.giveaway ?? false,
+    saleLocked: v.saleLocked ?? false,
     taxTypeId: taxTypeId ?? undefined,
   };
 
@@ -283,6 +287,8 @@ export async function createProduct(
       trackStock: deriveTrackStock(validData.data.variants),
       taxInclusive: validData.data.taxInclusive,
       tags: validData.data.tags,
+      sellableWindows: validData.data.sellableWindows,
+      sellabilityExceptions: validData.data.sellabilityExceptions,
       variants: validData.data.variants.map((v) =>
         mapVariant(v, validData.data.taxTypeId),
       ),
@@ -364,6 +370,8 @@ export async function createProductWithStock(
       trackStock: true,
       taxInclusive: validData.data.taxInclusive,
       tags: validData.data.tags,
+      sellableWindows: validData.data.sellableWindows,
+      sellabilityExceptions: validData.data.sellabilityExceptions,
       // Force every variant into DIRECT mode without a stockVariantId — the
       // backend creates the matching stock variant on the fly and links
       // them by index. directQuantity defaults to 1 if not set.
@@ -453,6 +461,8 @@ export async function updateProduct(
       trackStock: deriveTrackStock(validData.data.variants),
       taxInclusive: validData.data.taxInclusive,
       tags: validData.data.tags,
+      sellableWindows: validData.data.sellableWindows,
+      sellabilityExceptions: validData.data.sellabilityExceptions,
       active: validData.data.active,
       lifecycleStatus: validData.data.lifecycleStatus,
       replacementProductId: validData.data.replacementProductId || undefined,
@@ -953,6 +963,7 @@ function mapVariantPartial(
     autoRetireOnSellout:
       sellMode !== "UNLIMITED" ? v.autoRetireOnSellout ?? undefined : undefined,
     giveaway: v.giveaway ?? false,
+    saleLocked: v.saleLocked ?? false,
     taxTypeId: taxTypeId ?? undefined,
   };
 }
@@ -992,6 +1003,8 @@ export async function saveProductDraft(
         sellOnline: values.sellOnline,
         taxInclusive: values.taxInclusive,
         tags,
+        sellableWindows: values.sellableWindows,
+        sellabilityExceptions: values.sellabilityExceptions,
         variants: meaningfulVariants.length ? meaningfulVariants : undefined,
         modifierGroupIds: values.modifierGroupIds?.length
           ? values.modifierGroupIds
@@ -1026,6 +1039,8 @@ export async function saveProductDraft(
       sellOnline: values.sellOnline,
       taxInclusive: values.taxInclusive,
       tags,
+      sellableWindows: values.sellableWindows,
+      sellabilityExceptions: values.sellabilityExceptions,
       replacementProductId: values.replacementProductId || undefined,
     });
 

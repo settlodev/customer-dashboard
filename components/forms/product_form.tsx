@@ -52,9 +52,13 @@ import {
   ControlTextarea,
   FieldHint,
   FieldLabel,
+  SegmentedRadio,
+  SegmentedBoolean,
   controlInputClass,
 } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
+import { DatePicker } from "@/components/ui/date-picker";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
@@ -168,6 +172,11 @@ import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import type { TaxType } from "@/types/tax-type/type";
 import type { FormResponse } from "@/types/types";
+import {
+  DAYS_OF_WEEK,
+  DAY_LABELS,
+  type DayOfWeek,
+} from "@/types/location-settings/type";
 
 interface ProductFormProps {
   item: Product | null | undefined;
@@ -201,6 +210,7 @@ const DEFAULT_VARIANT: ProductVariantInput = {
   bomRuleId: undefined,
   autoRetireOnSellout: false,
   giveaway: false,
+  saleLocked: false,
 };
 
 function variantToInput(
@@ -238,6 +248,7 @@ function variantToInput(
     bomRuleId: undefined,
     autoRetireOnSellout: v.autoRetireOnSellout ?? false,
     giveaway: v.giveaway ?? false,
+    saleLocked: v.saleLocked ?? false,
   };
 }
 
@@ -370,6 +381,8 @@ export default function ProductForm({ item }: ProductFormProps) {
           brandId: item.brandId ?? undefined,
           categoryIds: item.categories?.map((c) => c.id) ?? [],
           tags: item.tags ?? [],
+          sellableWindows: item.sellableWindows ?? [],
+          sellabilityExceptions: item.sellabilityExceptions ?? [],
           sellOnline: item.sellOnline,
           taxInclusive: item.taxInclusive,
           taxTypeId: item.variants?.find((v) => v.taxTypeId)?.taxTypeId ?? "",
@@ -388,6 +401,8 @@ export default function ProductForm({ item }: ProductFormProps) {
           brandId: undefined,
           categoryIds: [],
           tags: [],
+          sellableWindows: [],
+          sellabilityExceptions: [],
           sellOnline: true,
           taxInclusive: true,
           taxTypeId: "",
@@ -428,15 +443,16 @@ export default function ProductForm({ item }: ProductFormProps) {
       setActiveTab("pricing");
       return;
     }
-    const taxFields = [
-      "taxTypeId",
+    const visibilityFields = [
       "taxInclusive",
       "sellOnline",
       "lifecycleStatus",
       "active",
       "replacementProductId",
+      "sellableWindows",
+      "sellabilityExceptions",
     ];
-    if (taxFields.some((f) => (errors as Record<string, unknown>)[f])) {
+    if (visibilityFields.some((f) => (errors as Record<string, unknown>)[f])) {
       setActiveTab("tax");
     }
   }, []);
@@ -818,30 +834,27 @@ export default function ProductForm({ item }: ProductFormProps) {
 
                   <FormField
                     control={form.control}
-                    name="brandId"
+                    name="taxTypeId"
                     render={({ field }) => (
                       <FormItem className="space-y-[7px]">
-                        <FieldLabel>Brand</FieldLabel>
+                        <FieldLabel required>Tax type</FieldLabel>
                         <FormControl>
                           <Combobox
-                            options={[
-                              { value: "__none__", label: "No brand" },
-                              ...brands.map((b) => ({
-                                value: b.id,
-                                label: b.name,
-                              })),
-                            ]}
-                            value={field.value ?? "__none__"}
-                            onChange={(v) =>
-                              field.onChange(
-                                v && v !== "__none__" ? v : undefined,
-                              )
+                            options={taxTypes.map((t) => ({
+                              value: t.id,
+                              label: `${t.code} — ${t.name} (${t.ratePercent}%)`,
+                            }))}
+                            value={field.value ?? null}
+                            onChange={(v) => field.onChange(v ?? "")}
+                            placeholder={
+                              taxTypes.length === 0
+                                ? "Loading tax types…"
+                                : "Pick a tax type"
                             }
-                            placeholder="No brand"
-                            searchPlaceholder="Search brands…"
-                            emptyText="No brands found."
-                            disabled={isPending}
-                            ariaLabel="Brand"
+                            searchPlaceholder="Search tax types…"
+                            emptyText="No tax types found."
+                            disabled={isPending || taxTypes.length === 0}
+                            ariaLabel="Tax type"
                           />
                         </FormControl>
                         <FormMessage />
@@ -850,9 +863,9 @@ export default function ProductForm({ item }: ProductFormProps) {
                   />
                 </div>
 
-                {/* Categories + Tags: stacked on small screens,
-                    side-by-side from lg up. */}
-                <div className="mt-3.5 grid grid-cols-1 gap-x-4 gap-y-3.5 lg:grid-cols-2">
+                {/* Category + Brand + Tags: stacked on small screens,
+                    three columns from lg up. */}
+                <div className="mt-3.5 grid grid-cols-1 gap-x-4 gap-y-3.5 lg:grid-cols-3">
                   <FormField
                     control={form.control}
                     name="categoryIds"
@@ -932,6 +945,40 @@ export default function ProductForm({ item }: ProductFormProps) {
                         </FormItem>
                       );
                     }}
+                  />
+
+                  {/* Brand */}
+                  <FormField
+                    control={form.control}
+                    name="brandId"
+                    render={({ field }) => (
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel>Brand</FieldLabel>
+                        <FormControl>
+                          <Combobox
+                            options={[
+                              { value: "__none__", label: "No brand" },
+                              ...brands.map((b) => ({
+                                value: b.id,
+                                label: b.name,
+                              })),
+                            ]}
+                            value={field.value ?? "__none__"}
+                            onChange={(v) =>
+                              field.onChange(
+                                v && v !== "__none__" ? v : undefined,
+                              )
+                            }
+                            placeholder="No brand"
+                            searchPlaceholder="Search brands…"
+                            emptyText="No brands found."
+                            disabled={isPending}
+                            ariaLabel="Brand"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
 
                   {/* Tags */}
@@ -1025,7 +1072,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                     },
                     {
                       id: "tax",
-                      label: "Tax & visibility",
+                      label: "Visibility",
                       icon: <Settings2 className="h-3.5 w-3.5" />,
                     },
                   ] as const
@@ -1232,7 +1279,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                 </div>
               )}
 
-              {/* Tax & visibility (+ Lifecycle in edit) */}
+              {/* Visibility (+ Lifecycle in edit) */}
               {activeTab === "tax" && (
                 <>
                   <header
@@ -1243,64 +1290,27 @@ export default function ProductForm({ item }: ProductFormProps) {
                       <Settings2 className="h-3.5 w-3.5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3>Tax & visibility</h3>
+                      <h3>Visibility</h3>
                       <p className={styles.formCardHeadDesc}>
-                        How this product is taxed and where it appears.
+                        Where this product appears.
                       </p>
                     </div>
                   </header>
                   <div className={styles.formBody}>
-                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
-                      <FormField
-                        control={form.control}
-                        name="taxTypeId"
-                        render={({ field }) => (
-                          <FormItem className="space-y-[7px]">
-                            <FieldLabel required>Tax type</FieldLabel>
-                            <FormControl>
-                              <Combobox
-                                options={taxTypes.map((t) => ({
-                                  value: t.id,
-                                  label: `${t.code} — ${t.name} (${t.ratePercent}%)`,
-                                }))}
-                                value={field.value ?? null}
-                                onChange={(v) => field.onChange(v ?? "")}
-                                placeholder={
-                                  taxTypes.length === 0
-                                    ? "Loading tax types…"
-                                    : "Pick a tax type"
-                                }
-                                searchPlaceholder="Search tax types…"
-                                emptyText="No tax types found."
-                                disabled={isPending || taxTypes.length === 0}
-                                ariaLabel="Tax type"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
                       <FormField
                         control={form.control}
                         name="taxInclusive"
                         render={({ field }) => (
                           <FormItem className="space-y-[7px]">
                             <FieldLabel>Tax inclusive</FieldLabel>
-                            <div className="flex h-9 w-full items-center gap-2 rounded-md border border-line bg-card px-3 text-xs">
-                              <FormControl>
-                                <Switch
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                  disabled={isPending}
-                                />
-                              </FormControl>
-                              <span className="truncate text-muted-foreground">
-                                {field.value
-                                  ? "Price includes tax"
-                                  : "Tax added at checkout"}
-                              </span>
-                            </div>
+                            <SegmentedBoolean
+                              value={field.value}
+                              onChange={field.onChange}
+                              trueLabel="Included"
+                              falseLabel="Added at checkout"
+                              disabled={isPending}
+                            />
                           </FormItem>
                         )}
                       />
@@ -1311,24 +1321,20 @@ export default function ProductForm({ item }: ProductFormProps) {
                         render={({ field }) => (
                           <FormItem className="space-y-[7px]">
                             <FieldLabel>Sell online</FieldLabel>
-                            <div className="flex h-9 w-full items-center gap-2 rounded-md border border-line bg-card px-3 text-xs">
-                              <FormControl>
-                                <Switch
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                  disabled={isPending}
-                                />
-                              </FormControl>
-                              <span className="truncate text-muted-foreground">
-                                {field.value
-                                  ? "Visible in the online catalog"
-                                  : "Hidden from the online catalog"}
-                              </span>
-                            </div>
+                            <SegmentedBoolean
+                              value={field.value}
+                              onChange={field.onChange}
+                              trueLabel="Visible"
+                              falseLabel="Hidden"
+                              disabled={isPending}
+                            />
                           </FormItem>
                         )}
                       />
                     </div>
+
+                    <BlockFromSaleToggle form={form} disabled={isPending} />
+                    <SellabilityScheduleEditor form={form} disabled={isPending} />
 
                     {isEditMode && (
                       <ProductLifecycleControl
@@ -4169,6 +4175,355 @@ function ProductLifecycleControl({
         </FormItem>
       </div>
     </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Block from sale — product-wide "Unavailable today" toggle. Reads/writes
+// saleLocked identically across every variant; there's no single form
+// field backing it, so it's a plain derived control rather than a
+// FormField/Controller binding.
+// ─────────────────────────────────────────────────────────────────────
+
+function BlockFromSaleToggle({
+  form,
+  disabled,
+}: {
+  form: ReturnType<typeof useForm<ProductInput>>;
+  disabled: boolean;
+}) {
+  const { hasPermission } = usePermissions();
+  // Manual lock/unlock is gated by the same permission the backend enforces
+  // on POST /products/{id}/lock and the variant-edit path
+  // (products:sale_lock). Without it the control is read-only: the current
+  // blocked state stays visible and legible, it just can't be flipped. This
+  // is UX-only — the backend @PreAuthorize is the real gate.
+  const canLock = hasPermission("products:sale_lock");
+
+  const variants = form.watch("variants") ?? [];
+  const allLocked =
+    variants.length > 0 && variants.every((v) => v?.saleLocked);
+
+  return (
+    <div className="mt-3.5 flex items-start justify-between gap-3 rounded-lg border border-dashed border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+      <div className="min-w-0 space-y-0.5">
+        <FieldLabel>Block from sale (Unavailable today)</FieldLabel>
+        <p className="text-xs text-muted-foreground">
+          Keeps it on the menu but stops staff selling it until you switch
+          this off.
+        </p>
+        {!canLock && (
+          <p className="text-xs italic text-muted-foreground">
+            You don&apos;t have permission to change this.
+          </p>
+        )}
+      </div>
+      <Switch
+        checked={allLocked}
+        onCheckedChange={(val) =>
+          form
+            .getValues("variants")
+            .forEach((_, i) =>
+              form.setValue(`variants.${i}.saleLocked`, val, {
+                shouldDirty: true,
+              }),
+            )
+        }
+        disabled={disabled || !canLock}
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Sellability schedule — product-level weekly windows + date exceptions.
+// The master toggle is UI-only (there's no single "enabled" field on the
+// backend): off clears both arrays, which is itself the "always
+// sellable" state the backend expects.
+// ─────────────────────────────────────────────────────────────────────
+
+function SellabilityScheduleEditor({
+  form,
+  disabled,
+}: {
+  form: ReturnType<typeof useForm<ProductInput>>;
+  disabled: boolean;
+}) {
+  const [scheduleEnabled, setScheduleEnabled] = useState<boolean>(
+    () =>
+      (form.getValues("sellableWindows")?.length ?? 0) > 0 ||
+      (form.getValues("sellabilityExceptions")?.length ?? 0) > 0,
+  );
+
+  const windows = form.watch("sellableWindows") ?? [];
+  const exceptions = form.watch("sellabilityExceptions") ?? [];
+
+  const handleToggle = (on: boolean) => {
+    setScheduleEnabled(on);
+    if (!on) {
+      form.setValue("sellableWindows", [], { shouldDirty: true });
+      form.setValue("sellabilityExceptions", [], { shouldDirty: true });
+    }
+  };
+
+  const toggleDay = (day: DayOfWeek, on: boolean) => {
+    const current = form.getValues("sellableWindows") ?? [];
+    const next = on
+      ? [...current, { dayOfWeek: day, startTime: "09:00", endTime: "17:00" }]
+      : current.filter((w) => w.dayOfWeek !== day);
+    form.setValue("sellableWindows", next, { shouldDirty: true });
+  };
+
+  const patchDay = (
+    day: DayOfWeek,
+    patch: Partial<{ startTime: string; endTime: string }>,
+  ) => {
+    const current = form.getValues("sellableWindows") ?? [];
+    form.setValue(
+      "sellableWindows",
+      current.map((w) => (w.dayOfWeek === day ? { ...w, ...patch } : w)),
+      { shouldDirty: true },
+    );
+  };
+
+  const addException = () => {
+    const current = form.getValues("sellabilityExceptions") ?? [];
+    form.setValue(
+      "sellabilityExceptions",
+      [...current, { date: "", mode: "BLOCKED" as const }],
+      { shouldDirty: true },
+    );
+  };
+
+  const removeException = (idx: number) => {
+    const current = form.getValues("sellabilityExceptions") ?? [];
+    form.setValue(
+      "sellabilityExceptions",
+      current.filter((_, i) => i !== idx),
+      { shouldDirty: true },
+    );
+  };
+
+  const patchException = (
+    idx: number,
+    patch: Partial<{
+      date: string;
+      mode: "BLOCKED" | "AVAILABLE";
+      startTime: string | null;
+      endTime: string | null;
+    }>,
+  ) => {
+    const current = form.getValues("sellabilityExceptions") ?? [];
+    form.setValue(
+      "sellabilityExceptions",
+      current.map((e, i) => (i === idx ? { ...e, ...patch } : e)),
+      { shouldDirty: true },
+    );
+  };
+
+  return (
+    <div className="mt-3.5 space-y-3.5 rounded-lg border p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-0.5">
+          <FieldLabel>Limit when this can be sold</FieldLabel>
+          <p className="text-xs text-muted-foreground">
+            Off = always available. On = only sellable on the days/hours you
+            set.
+          </p>
+        </div>
+        <Switch
+          checked={scheduleEnabled}
+          onCheckedChange={handleToggle}
+          disabled={disabled}
+        />
+      </div>
+
+      {scheduleEnabled && (
+        <div className="space-y-4 border-t border-line pt-3.5">
+          {/* Weekly grid */}
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-ink">Weekly hours</p>
+            <div className="space-y-1.5">
+              {DAYS_OF_WEEK.map((day) => {
+                const entry = windows.find((w) => w?.dayOfWeek === day);
+                const on = !!entry;
+                return (
+                  <div
+                    key={day}
+                    className="grid grid-cols-12 items-center gap-3 py-1.5 border-b last:border-b-0"
+                  >
+                    <span className="col-span-3 text-xs font-medium text-ink-2">
+                      {DAY_LABELS[day]}
+                    </span>
+                    <div className="col-span-3 flex items-center gap-2">
+                      <Switch
+                        checked={on}
+                        onCheckedChange={(val) => toggleDay(day, val)}
+                        disabled={disabled}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {on ? "Open" : "Closed"}
+                      </span>
+                    </div>
+                    <div className="col-span-3">
+                      <Input
+                        type="time"
+                        value={entry?.startTime ?? "09:00"}
+                        onChange={(e) =>
+                          patchDay(day, { startTime: e.target.value })
+                        }
+                        disabled={disabled || !on}
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <Input
+                        type="time"
+                        value={entry?.endTime ?? "17:00"}
+                        onChange={(e) =>
+                          patchDay(day, { endTime: e.target.value })
+                        }
+                        disabled={disabled || !on}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Date exceptions */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-ink">
+                  Date exceptions
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Override specific dates — e.g. block a holiday, or open for
+                  a one-off event.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={addException}
+                disabled={disabled}
+                className="shrink-0"
+                style={{ color: "var(--pf-primary)" }}
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add date
+              </Button>
+            </div>
+
+            {exceptions.length > 0 && (
+              <div className="space-y-2.5">
+                {exceptions.map((exc, idx) => (
+                  <div
+                    key={idx}
+                    className="border rounded-lg p-3 space-y-3 bg-muted/40"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        Exception {idx + 1}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeException(idx)}
+                        disabled={disabled}
+                        className="text-red-600 hover:text-red-700 h-8"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="space-y-[7px]">
+                        <FieldLabel>Date</FieldLabel>
+                        <DatePicker
+                          value={exc?.date ?? ""}
+                          onChange={(v) => patchException(idx, { date: v })}
+                          disabled={disabled}
+                        />
+                        {form.formState.errors.sellabilityExceptions?.[idx]
+                          ?.date && (
+                          <p className="text-xs font-medium text-destructive">
+                            {
+                              form.formState.errors.sellabilityExceptions[idx]
+                                ?.date?.message
+                            }
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-[7px]">
+                        <FieldLabel>Mode</FieldLabel>
+                        <SegmentedRadio
+                          value={exc?.mode ?? "BLOCKED"}
+                          onChange={(v) =>
+                            patchException(idx, {
+                              mode: v as "BLOCKED" | "AVAILABLE",
+                            })
+                          }
+                          disabled={disabled}
+                          stretch
+                          options={[
+                            { value: "BLOCKED", label: "Blocked" },
+                            { value: "AVAILABLE", label: "Available" },
+                          ]}
+                        />
+                      </div>
+                      {exc?.mode === "AVAILABLE" && (
+                        <div className="space-y-[7px]">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-[7px]">
+                              <FieldLabel>Start</FieldLabel>
+                              <Input
+                                type="time"
+                                value={exc?.startTime ?? ""}
+                                onChange={(e) =>
+                                  patchException(idx, {
+                                    startTime: e.target.value || null,
+                                  })
+                                }
+                                disabled={disabled}
+                              />
+                            </div>
+                            <div className="space-y-[7px]">
+                              <FieldLabel>End</FieldLabel>
+                              <Input
+                                type="time"
+                                value={exc?.endTime ?? ""}
+                                onChange={(e) =>
+                                  patchException(idx, {
+                                    endTime: e.target.value || null,
+                                  })
+                                }
+                                disabled={disabled}
+                              />
+                            </div>
+                          </div>
+                          {form.formState.errors.sellabilityExceptions?.[idx]
+                            ?.startTime && (
+                            <p className="text-xs font-medium text-destructive">
+                              {
+                                form.formState.errors.sellabilityExceptions[
+                                  idx
+                                ]?.startTime?.message
+                              }
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

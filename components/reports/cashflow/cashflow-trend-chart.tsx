@@ -78,8 +78,8 @@ export function CashflowTrendChart({ data, currency, height = 260 }: Props) {
               boxShadow: "0 8px 24px -8px rgba(0,0,0,0.18)",
             }}
             labelStyle={{ color: "hsl(var(--ink-3))", fontSize: 11 }}
-            formatter={(value: number, name: string) => [
-              `${value < 0 ? "−" : ""}${compact(Math.abs(value))} ${currency}`,
+            formatter={(value, name) => [
+              `${Number(value) < 0 ? "−" : ""}${compact(Math.abs(Number(value)))} ${currency}`,
               name,
             ]}
           />
