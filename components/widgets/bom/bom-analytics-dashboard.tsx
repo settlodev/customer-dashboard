@@ -197,7 +197,7 @@ export default function BomAnalyticsDashboard({
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: number) => v.toLocaleString()} />
+                <Tooltip formatter={(v) => Number(v).toLocaleString()} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Line type="monotone" dataKey="material" stroke="#0ea5e9" dot={false} name="Material" />
                 <Line type="monotone" dataKey="scrap" stroke="#f59e0b" dot={false} name="Scrap" />

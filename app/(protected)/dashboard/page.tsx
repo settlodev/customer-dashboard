@@ -7,14 +7,44 @@ import {
 import { getInventoryDashboardSummary } from "@/lib/actions/reports-analytics-actions";
 import { getOutstandingPrepaidLiability } from "@/lib/actions/prepayment-analytics-actions";
 import { resolveCurrentBusinessDate } from "@/lib/actions/dashboard-action";
+import { listNotifications } from "@/lib/actions/notification-actions";
+import { toActivityItems } from "@/lib/dashboard/recent-activity";
+import { getReorderSuggestions } from "@/lib/actions/inventory-analytics-actions";
 import { getAuthToken } from "@/lib/auth-utils";
 import { LOANS_ENABLED } from "@/lib/loans/config";
 import { getLoan, getLoanEligibility } from "@/lib/actions/loans-actions";
 import { getLoanAccess } from "@/lib/loans/access";
 import { hasReportsReadAll } from "@/lib/permissions/me";
 import { EligibilityHero } from "@/components/loans/eligibility-hero";
-import { formatRangeLabel } from "@/lib/date-range";
 import { format } from "date-fns";
+
+/**
+ * Time-of-day greeting resolved in the given IANA timezone (the active
+ * location's `timezone`, falling back to EAT — Settlo's home market). Computed
+ * server-side and passed down as a plain string, so the greeting is identical
+ * on the server and the client render (no hydration split from reading the
+ * clock inside a client component).
+ */
+function getTimeOfDayGreeting(timezone?: string | null): string {
+    const hourIn = (tz: string) =>
+        Number(
+            new Intl.DateTimeFormat("en-US", {
+                timeZone: tz,
+                hourCycle: "h23",
+                hour: "numeric",
+            }).format(new Date()),
+        );
+    let hour: number;
+    try {
+        hour = hourIn(timezone?.trim() || "Africa/Dar_es_Salaam");
+    } catch {
+        // Unknown/invalid tz string on the location — fall back to EAT.
+        hour = hourIn("Africa/Dar_es_Salaam");
+    }
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+}
 
 export default async function DashboardPage({
     searchParams,
@@ -27,17 +57,24 @@ export default async function DashboardPage({
         getCurrentLocation(),
         getCurrentBusiness(),
     ]);
-    const [summary, prepaid, businessDate] = await Promise.all([
-        location?.id
-            ? getInventoryDashboardSummary(location.id, "TZS")
-            : Promise.resolve(null),
-        business?.id
-            ? getOutstandingPrepaidLiability(business.id)
-            : Promise.resolve(null),
-        location?.id
-            ? resolveCurrentBusinessDate(location.id)
-            : Promise.resolve(null),
-    ]);
+    const [summary, prepaid, businessDate, notifPage, reorderSuggestions] =
+        await Promise.all([
+            location?.id
+                ? getInventoryDashboardSummary(location.id, "TZS")
+                : Promise.resolve(null),
+            business?.id
+                ? getOutstandingPrepaidLiability(business.id)
+                : Promise.resolve(null),
+            location?.id
+                ? resolveCurrentBusinessDate(location.id)
+                : Promise.resolve(null),
+            // Owner notification feed → Recent activity card (business-scoped;
+            // the action returns an empty page when no business is selected).
+            listNotifications(0, 6),
+            // Reorder-soon list (location-scoped; action swallows errors to []).
+            location?.id ? getReorderSuggestions() : Promise.resolve([]),
+        ]);
+    const recentActivity = toActivityItems(notifPage.content);
 
     // Loans eligibility hero (feature-flagged + permission-gated). Shown only
     // to users who hold loans:read; the Apply CTA needs loans:apply.
@@ -58,11 +95,24 @@ export default async function DashboardPage({
     const from = params.from ?? fallbackDate;
     const to = params.to ?? fallbackDate;
 
-    const placeName = location?.name ?? business?.name ?? "your business";
     const firstName = authToken?.firstName?.trim() || "there";
-    // Echo the selected period next to the greeting; the shared date filter in
-    // the header is the control that changes it.
-    const greetingSubtitle = `Here's how ${placeName} is doing — ${formatRangeLabel(from, to)}`;
+    const greeting = getTimeOfDayGreeting(location?.timezone);
+
+    // Identity subline shown under the greeting (venue · branch · city) — the
+    // design's "Masaki Bar & Lounge · Dar es Salaam · Terminal 02" line, built
+    // from whatever fields we have and de-duped. The date range now lives in
+    // the header's segmented control, so it's no longer echoed here.
+    const venue =
+        business?.name ?? location?.businessName ?? location?.name ?? "your business";
+    const branch = location?.name?.trim();
+    const city = (location?.region || location?.district || "").trim();
+    const subline = [
+        venue,
+        branch && branch !== venue ? branch : null,
+        city || null,
+    ]
+        .filter(Boolean)
+        .join(" · ");
 
     const reportsReadAll = await hasReportsReadAll();
 
@@ -73,8 +123,11 @@ export default async function DashboardPage({
                 inventorySummary={summary}
                 prepaid={prepaid}
                 reportsReadAll={reportsReadAll}
-                greetingTitle={`Habari, ${firstName} 👋`}
-                greetingSubtitle={greetingSubtitle}
+                greeting={greeting}
+                userName={firstName}
+                subline={subline}
+                recentActivity={recentActivity}
+                reorderSuggestions={reorderSuggestions}
                 from={from}
                 to={to}
                 financingSlot={

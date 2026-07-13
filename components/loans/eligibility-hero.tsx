@@ -21,8 +21,19 @@ const GLOW: React.CSSProperties = {
     "radial-gradient(circle at 80% 25%, hsl(var(--primary) / 0.13), transparent 62%)",
 };
 
+// Headline amount — the dominant figure on the card: 50px (42px on mobile),
+// deep orange.
+const amountClass =
+  "text-[42px] font-bold leading-[0.95] tracking-[-0.035em] text-primary-dark sm:text-[50px]";
+
+// Amount denominator ("/ 6,500,000") — design's .hxd-amt .u (15px muted).
+const unitClass =
+  "ml-2.5 text-[15px] font-semibold tracking-[-0.01em] text-muted-foreground";
+
+// Primary CTA — deliberately compact (40px tall, 13.5px) so it reads as
+// subordinate to the headline amount.
 const ctaClass =
-  "inline-flex h-[46px] flex-shrink-0 items-center gap-2 rounded-xl bg-primary px-5 text-[15px] font-bold tracking-[-0.01em] text-white shadow-[0_6px_18px_-6px_rgba(235,127,68,0.6)] transition hover:brightness-105";
+  "inline-flex h-10 flex-shrink-0 items-center gap-1.5 rounded-[10px] bg-primary px-4 text-[13.5px] font-bold tracking-[-0.01em] text-white shadow-[0_4px_12px_-5px_rgba(235,127,68,0.5)] transition hover:brightness-105";
 
 function Chip({
   label,
@@ -38,7 +49,7 @@ function Chip({
   return (
     <div
       className={
-        "rounded-[13px] border px-4 py-3.5 " +
+        "rounded-[11px] border px-3.5 py-3 " +
         (highlight
           ? "border-primary/30 bg-primary-light"
           : "border-line bg-canvas")
@@ -49,7 +60,7 @@ function Chip({
       </div>
       <div
         className={
-          "mt-1.5 text-[18px] font-bold tracking-[-0.02em] " +
+          "mt-1.5 text-[16.5px] font-bold tracking-[-0.02em] " +
           (tone === "orange"
             ? "text-primary-dark"
             : tone === "pos"
@@ -64,10 +75,12 @@ function Chip({
 }
 
 /**
- * Eligibility hero — Direction D (merged). A single light card with a deep-
- * orange headline amount and a row of stat chips. Adapts to the one-active-loan
- * rule: "available to borrow / Apply" when eligible, "outstanding / View" when
- * repaying. `canApply` hides the Apply CTA (caller passes the loans:apply check).
+ * Eligibility hero — a single light card (design's `.hxd`) with a deep-orange
+ * headline amount and a row of stat chips. Tuned to the "Settlo Home Dashboard"
+ * mock: 12px corners (`rounded-xl`, matching the sibling money cards), a flat
+ * 44px amount, and 11px chips/CTA. Adapts to the one-active-loan rule:
+ * "available to borrow / Apply" when eligible, "outstanding / View active loan"
+ * when repaying. `canApply` hides the Apply CTA (caller passes loans:apply).
  */
 export function EligibilityHero({
   eligibility,
@@ -82,10 +95,10 @@ export function EligibilityHero({
   const currency = eligibility.currencyCode;
 
   return (
-    <div className="relative overflow-hidden rounded-[22px] border border-line bg-card px-5 pb-6 pt-7 sm:px-8">
+    <div className="relative overflow-hidden rounded-xl border border-line bg-card px-5 py-5 sm:px-6 sm:py-6">
       <span
         aria-hidden
-        className="pointer-events-none absolute -top-[30%] -right-[8%] h-[150%] w-[44%]"
+        className="pointer-events-none absolute -right-[8%] -top-[30%] h-[150%] w-[44%]"
         style={GLOW}
       />
 
@@ -93,26 +106,26 @@ export function EligibilityHero({
         // ── Repaying: one active facility ───────────────────────────────
         <>
           <div className="relative z-[1] flex items-center justify-between gap-4">
-            <span className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full bg-warn-tint px-3 py-[5px] text-xs font-semibold text-amber-800">
+            <span className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full bg-warn-tint px-[11px] py-1 text-[11.5px] font-semibold text-amber-800">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />1 active
               loan · repaying
             </span>
-            <span className="truncate font-mono text-[11px] tracking-[0.02em] text-muted-foreground">
+            <span className="truncate font-mono text-[10.5px] tracking-[0.02em] text-muted-foreground">
               {activeLoan.productName} · {activeLoan.reference}
             </span>
           </div>
 
-          <div className="relative z-[1] mt-[18px] font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+          <div className="relative z-[1] mt-4 font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">
             Outstanding balance
           </div>
-          <div className="relative z-[1] mt-2 text-[40px] font-bold leading-[0.95] tracking-[-0.035em] text-primary-dark sm:text-[52px] lg:text-[58px]">
+          <div className={"relative z-[1] mt-2 " + amountClass}>
             {currency} {activeLoan.outstanding.toLocaleString()}
-            <span className="ml-2.5 text-[19px] font-semibold tracking-[-0.01em] text-muted-foreground">
+            <span className={unitClass}>
               of {activeLoan.principal.toLocaleString()}
             </span>
           </div>
 
-          <div className="relative z-[1] mb-0.5 mt-3.5 h-2 max-w-[420px] overflow-hidden rounded-full bg-canvas">
+          <div className="relative z-[1] mb-0.5 mt-3.5 h-2 max-w-[430px] overflow-hidden rounded-full bg-canvas">
             <div
               className="h-full rounded-full bg-pos"
               style={{ width: `${activeLoan.paidPct}%` }}
@@ -120,17 +133,17 @@ export function EligibilityHero({
           </div>
 
           <div className="relative z-[1] mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <p className="max-w-[50ch] text-[13.5px] leading-relaxed text-ink-3">
+            <p className="max-w-[46ch] text-[13px] leading-[1.55] text-ink-3">
               {activeLoan.paidPct}% repaid · {activeLoan.paidInstallments}/
               {activeLoan.totalInstallments} payments. Apply for new financing
               once this loan is fully cleared — one at a time.
             </p>
             <Link href={`/loans/${activeLoan.id}`} className={ctaClass}>
-              View active loan <ArrowRight className="h-4 w-4" />
+              View active loan <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
-          <div className="relative z-[1] mt-[22px] grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="relative z-[1] mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
             <Chip
               label="Next payment"
               value={formatTzs(activeLoan.nextPaymentAmount, currency)}
@@ -154,40 +167,35 @@ export function EligibilityHero({
         <div className="relative z-[1] grid grid-cols-1 items-center gap-8 lg:grid-cols-[1.35fr_1fr]">
           {/* Left: badge, headline amount, description, actions */}
           <div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full bg-primary-light px-3 py-[5px] text-xs font-semibold text-primary-dark">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                Pre-qualified
-              </span>
-              <span className="truncate font-mono text-[11px] tracking-[0.02em] text-muted-foreground">
-                Device · Stock · Working capital
-              </span>
-            </div>
+            <span className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full bg-primary-light px-[11px] py-1 text-[11.5px] font-semibold text-primary-dark">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              Pre-qualified
+            </span>
 
-            <div className="mt-[18px] font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+            <div className="mt-4 font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">
               Available to borrow
             </div>
-            <div className="mt-2 text-[40px] font-bold leading-[0.95] tracking-[-0.035em] text-primary-dark sm:text-[52px] lg:text-[58px]">
+            <div className={"mt-2 " + amountClass}>
               {currency} {formatTzsShort(eligibility.limit)}
-              <span className="ml-2.5 text-[19px] font-semibold tracking-[-0.01em] text-muted-foreground">
+              <span className={unitClass}>
                 / {eligibility.limit.toLocaleString()}
               </span>
             </div>
 
-            <p className="mt-4 max-w-[50ch] text-[13.5px] leading-relaxed text-ink-3">
+            <p className="mt-3 max-w-[46ch] text-[13px] leading-[1.55] text-ink-3">
               A financing limit from your sales &amp; repayment history on
               Settlo. No paperwork — funds in as little as 24 hours.
             </p>
 
-            <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <div className="mt-4 flex flex-wrap items-center gap-x-[18px] gap-y-3">
               {canApply && (
                 <Link href="/loans/apply" className={ctaClass}>
-                  <Zap className="h-4 w-4" /> Apply for financing
+                  <Zap className="h-3.5 w-3.5" /> Apply for financing
                 </Link>
               )}
               <Link
                 href="/loans"
-                className="text-sm font-semibold text-primary-dark hover:text-primary"
+                className="text-[13px] font-semibold text-primary-dark hover:text-primary"
               >
                 See terms &amp; rates →
               </Link>
@@ -195,7 +203,7 @@ export function EligibilityHero({
           </div>
 
           {/* Right: stat chips, 2×2 */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             <Chip
               label="Available now"
               value={formatTzs(eligibility.available, currency)}

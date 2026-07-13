@@ -1,7 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useState } from "react";
 
-import { PageBody, PageHeader } from "@/components/layouts/page-shell";
+import { PageBody } from "@/components/layouts/page-shell";
 import { DateRangeSegmented } from "@/components/filters/date-range-segmented";
 import { InventoryKpiStrip } from "@/components/widgets/inventory/inventory-kpi-strip";
 import { PrepaymentKpiStrip } from "@/components/widgets/prepayments/prepayments-kpi-strip";
@@ -15,10 +15,16 @@ import type { RsInventoryDashboardSummary } from "@/types/reports-analytics/type
 import type { PrepaymentAnalyticsOverview } from "@/types/customer-prepayments/type";
 import type { TopSellingReport } from "@/types/reports/top-selling";
 import type { PaymentMethodBreakdown } from "@/types/reports/payment-methods";
+import type { ActivityItem } from "@/lib/dashboard/recent-activity";
+import type { ReorderSuggestion } from "@/types/inventory-analytics/type";
 
+import { DashboardHeader } from "./dashboard-header";
 import DashboardHeroCards from "./dashboard-hero-cards";
+import { SalesTrendCard } from "./sales-trend-card";
 import { TopSellingCard } from "./top-selling-card";
 import { PaymentMethodsCard } from "./payment-methods-card";
+import { RecentActivityCard } from "./recent-activity-card";
+import { ReorderSoonCard } from "./reorder-soon-card";
 
 type Props = {
   /** Active location id, used to scope the realtime orders channel. */
@@ -29,9 +35,17 @@ type Props = {
   prepaid: PrepaymentAnalyticsOverview | null;
   /** When false (read_own), the report-backed cards (overview/top-selling/payment) are hidden. */
   reportsReadAll?: boolean;
-  /** Personalised greeting, shown in place of the generic "Dashboard" title. */
-  greetingTitle?: string;
-  greetingSubtitle?: string;
+  /** Time-of-day greeting ("Good evening"), resolved server-side in the active
+   *  location's timezone. */
+  greeting: string;
+  /** Signed-in user's first name — shown in brand orange next to the greeting. */
+  userName: string;
+  /** Identity subline (venue · city), shown in mono below the greeting. */
+  subline?: string;
+  /** Latest owner-notification events → Recent activity card (server-mapped). */
+  recentActivity: ActivityItem[];
+  /** Stock variants nearing depletion → Reorder soon card (server-fetched). */
+  reorderSuggestions: ReorderSuggestion[];
   /**
    * Active date range (`yyyy-MM-dd`), owned by the URL and resolved
    * server-side. Defaults to the location's current business day (the day
@@ -56,8 +70,11 @@ const Dashboard: React.FC<Props> = ({
   inventorySummary,
   prepaid,
   reportsReadAll = true,
-  greetingTitle,
-  greetingSubtitle,
+  greeting,
+  userName,
+  subline,
+  recentActivity,
+  reorderSuggestions,
   from,
   to,
   financingSlot,
@@ -68,6 +85,12 @@ const Dashboard: React.FC<Props> = ({
     null,
   );
   const [isLoading, setIsLoading] = useState(true);
+  // Whether the overview (hero + expenses) fetch failed, so the cards can show
+  // an explicit "unavailable" state instead of a misleading zero. Tracked
+  // separately because fetchOverview is caught to null to keep the other cards
+  // alive — without this flag a Reports 403/500/timeout looks identical to a
+  // genuine "0 expenses".
+  const [overviewError, setOverviewError] = useState(false);
 
   // Fetch the overview (hero + sales KPIs), the top-selling report, and the
   // payment-method breakdown together for the active range. Each is resilient
@@ -89,8 +112,12 @@ const Dashboard: React.FC<Props> = ({
       }
       try {
         if (!opts?.silent) setIsLoading(true);
+        let overviewFailed = false;
         const [ov, ts, pm] = await Promise.all([
-          fetchOverview(from, to).catch(() => null),
+          fetchOverview(from, to).catch(() => {
+            overviewFailed = true;
+            return null;
+          }),
           listTopSellingProducts({
             fromDate: from,
             toDate: to,
@@ -100,6 +127,7 @@ const Dashboard: React.FC<Props> = ({
           getPaymentMethodBreakdown({ startDate: from, endDate: to }),
         ]);
         setOverview(ov as OverviewResponse | null);
+        setOverviewError(overviewFailed);
         setTopSelling(ts);
         setPayments(pm);
       } catch (error) {
@@ -124,15 +152,33 @@ const Dashboard: React.FC<Props> = ({
 
   return (
     <>
-      <PageHeader
-        title={greetingTitle ?? "Dashboard"}
-        subtitle={greetingSubtitle ?? "Financial overview and sales performance"}
+      <DashboardHeader
+        greeting={greeting}
+        userName={userName}
+        subline={subline}
         actions={<DateRangeSegmented from={from} to={to} />}
       />
 
       <PageBody>
         {financingSlot}
-        {reportsReadAll && <DashboardHeroCards overview={overview} loading={isLoading} />}
+        {reportsReadAll && (
+          <DashboardHeroCards
+            overview={overview}
+            loading={isLoading}
+            error={overviewError}
+            onRetry={() => void loadAll()}
+          />
+        )}
+        {reportsReadAll && (
+          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-5">
+            <div className="min-w-0 lg:col-span-3">
+              <SalesTrendCard overview={overview} loading={isLoading} />
+            </div>
+            <div className="lg:col-span-2">
+              <PaymentMethodsCard data={payments} loading={isLoading} />
+            </div>
+          </div>
+        )}
         {reportsReadAll && (
           <SalesKpiStrip
             overview={overview}
@@ -140,14 +186,17 @@ const Dashboard: React.FC<Props> = ({
             loading={isLoading}
           />
         )}
-        <InventoryKpiStrip summary={inventorySummary} />
-        <PrepaymentKpiStrip summary={prepaid} />
         {reportsReadAll && (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
             <TopSellingCard report={topSelling} loading={isLoading} />
-            <PaymentMethodsCard data={payments} loading={isLoading} />
+            <RecentActivityCard items={recentActivity} />
           </div>
         )}
+        <InventoryKpiStrip summary={inventorySummary} />
+        {/* Reorder soon — full width for now; pairs with Settlo credit (design
+            §8 right) once that card is built. */}
+        <ReorderSoonCard items={reorderSuggestions} />
+        <PrepaymentKpiStrip summary={prepaid} />
       </PageBody>
 
       {locationId && (

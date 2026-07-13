@@ -104,8 +104,8 @@ export function RevenueTrendCard({ series, isLive }: RevenueTrendCardProps) {
                 borderRadius: 8,
                 fontSize: 12,
               }}
-              formatter={(value: number) => [
-                formatCurrency(value),
+              formatter={(value) => [
+                formatCurrency(Number(value)),
                 "Revenue",
               ]}
               labelFormatter={(label) => label}
