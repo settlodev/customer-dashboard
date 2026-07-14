@@ -33,6 +33,7 @@ import {
   cancelTransfer,
   confirmReturnTransfer,
   confirmTransfer,
+  declineTransfer,
   dispatchTransfer,
   receiveTransfer,
   rejectTransfer,
@@ -42,10 +43,19 @@ import StaffSelectorWidget from "../staff_selector_widget";
 
 interface Props {
   transfer: StockTransfer;
+  /**
+   * The active destination's id (X-Location-Id). Decides which side of the
+   * transfer the viewer is on:
+   *   - id === transfer.sourceLocationId       → source
+   *   - id === transfer.destinationLocationId  → destination
+   */
+  activeDestinationId: string | null;
 }
 
 /**
- * Status-aware action buttons for stock transfers.
+ * Status-aware action buttons for stock transfers — gated both by status and
+ * by which side of the transfer the current viewer is on, so the source and
+ * destination each only ever see the action that's actually theirs to take.
  *
  * When a transfer needs destination approval (`awaitingApproval` — the backend's
  * additive rule: location→location OR the destination's require_transfer_approval),
@@ -54,21 +64,29 @@ interface Props {
  *   REQUESTED → [ACCEPTED] → CONFIRMED → DISPATCHED → (PARTIALLY_)RECEIVED / CANCELLED
  *   pending → REJECTED (no stock moved); post-dispatch → DECLINED → RETURN_IN_TRANSIT → RETURNED
  */
-export function StockTransferStatusActions({ transfer }: Props) {
+export function StockTransferStatusActions({ transfer, activeDestinationId }: Props) {
   const { status, awaitingApproval } = transfer;
 
-  const showAccept = awaitingApproval;
-  const showReject = awaitingApproval;
+  const isSource =
+    !!activeDestinationId && activeDestinationId === transfer.sourceLocationId;
+  const isDestination =
+    !!activeDestinationId && activeDestinationId === transfer.destinationLocationId;
+
+  const showAccept = awaitingApproval && isDestination;
+  const showReject = awaitingApproval && isDestination;
   // A pending transfer awaiting approval blocks Confirm until it's Accepted;
   // one that needs no approval is confirmable straight from REQUESTED.
   const showConfirm =
-    (status === "REQUESTED" && !awaitingApproval) || status === "ACCEPTED";
-  const showDispatch = status === "CONFIRMED";
+    ((status === "REQUESTED" && !awaitingApproval) || status === "ACCEPTED") &&
+    isSource;
+  const showDispatch = status === "CONFIRMED" && isSource;
   const showReceive =
-    status === "DISPATCHED" || status === "PARTIALLY_RECEIVED";
-  const showReturn = status === "DECLINED";
-  const showConfirmReturn = status === "RETURN_IN_TRANSIT";
-  const showCancel = CANCELLABLE.includes(status);
+    (status === "DISPATCHED" || status === "PARTIALLY_RECEIVED") && isDestination;
+  const showDecline =
+    (status === "DISPATCHED" || status === "PARTIALLY_RECEIVED") && isDestination;
+  const showReturn = status === "DECLINED" && isDestination;
+  const showConfirmReturn = status === "RETURN_IN_TRANSIT" && isSource;
+  const showCancel = CANCELLABLE.includes(status) && isSource;
 
   const anyVisible =
     showConfirm ||
@@ -76,6 +94,7 @@ export function StockTransferStatusActions({ transfer }: Props) {
     showReject ||
     showDispatch ||
     showReceive ||
+    showDecline ||
     showReturn ||
     showConfirmReturn ||
     showCancel;
@@ -89,6 +108,7 @@ export function StockTransferStatusActions({ transfer }: Props) {
       {showConfirm && <ConfirmButton id={transfer.id} />}
       {showDispatch && <DispatchButton id={transfer.id} />}
       {showReceive && <ReceiveButton transfer={transfer} />}
+      {showDecline && <DeclineButton id={transfer.id} />}
       {showReturn && <ReturnButton id={transfer.id} />}
       {showConfirmReturn && <ConfirmReturnButton id={transfer.id} />}
       {showCancel && <CancelButton id={transfer.id} />}
@@ -244,6 +264,74 @@ function RejectButton({ id }: { id: string }) {
           <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
             {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Reject
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DeclineButton({ id }: { id: string }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const onConfirm = () => {
+    startTransition(async () => {
+      try {
+        await declineTransfer(id, reason.trim() || undefined);
+        toast({ title: "Transfer declined" });
+        setOpen(false);
+        router.refresh();
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: "Couldn't decline",
+          description: error?.message ?? "Request failed",
+        });
+      }
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" className="text-red-600 hover:bg-red-50">
+          <ThumbsDown className="h-4 w-4 mr-1.5" /> Decline
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Decline this shipment</DialogTitle>
+          <DialogDescription>
+            The source location will be notified and asked to arrange a return.
+            Use this if the shipment shouldn&apos;t be accepted as-is (wrong
+            items, damage, etc).
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Reason (optional)</label>
+          <Textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Why is this shipment being declined?"
+            rows={3}
+            disabled={isPending}
+          />
+        </div>
+        <DialogFooter>
+          <Button
+            variant="secondary"
+            onClick={() => setOpen(false)}
+            disabled={isPending}
+          >
+            Keep
+          </Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
+            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Decline
           </Button>
         </DialogFooter>
       </DialogContent>
