@@ -1,6 +1,10 @@
 "use client";
 
-import type { Proforma } from "@/types/proforma/type";
+import type {
+  Proforma,
+  ProformaItem,
+  ProformaStatus,
+} from "@/types/proforma/type";
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const PRIMARY = "#EB7F44";
@@ -13,34 +17,72 @@ const fmt = (n: number) =>
     style: "currency",
     currency: "TZS",
     minimumFractionDigits: 2,
-  }).format(n);
+  }).format(Number.isFinite(n) ? n : 0);
 
 const fmtDate = (d: string | null | undefined) => {
   if (!d) return null;
-  try {
-    return new Date(d).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  } catch {
-    return d;
-  }
+  const parsed = new Date(d);
+  if (Number.isNaN(parsed.getTime())) return d;
+  return parsed.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 };
 
 const fmtDateShort = (d: string | null | undefined) => {
   if (!d) return "";
-  try {
-    return new Date(d).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return d;
+  const parsed = new Date(d);
+  if (Number.isNaN(parsed.getTime())) return d;
+  return parsed.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+/** Money comparison that tolerates float noise. */
+const nearlyEqual = (a: number, b: number, epsilon = 0.01) =>
+  Math.abs(a - b) < epsilon;
+
+/**
+ * Resolve the discount.
+ *
+ * THE ORIGINAL BUG: `data.totalDiscountAmount ?? data.manualDiscountAmount`.
+ * `??` only falls through on null/undefined. The backend sends
+ * `totalDiscountAmount: 0` — a real number — so the 5,000 TZS manual discount
+ * was never read and the discount row never rendered.
+ */
+const resolveDiscount = (data: Proforma): number => {
+  const candidates = [
+    data.totalDiscountAmount,
+    data.manualDiscountAmount,
+    data.appliedDiscountAmount,
+  ];
+  for (const c of candidates) {
+    if (typeof c === "number" && c > 0) return c;
   }
+  return 0;
+};
+
+/** Derive the VAT rate from the payload rather than hardcoding 18%. */
+const deriveVatRate = (taxExclusiveGross: number, taxAmount: number) => {
+  if (taxExclusiveGross <= 0 || taxAmount <= 0) return null;
+  return Math.round((taxAmount / taxExclusiveGross) * 100);
+};
+
+const STATUS_STYLES: Record<
+  ProformaStatus,
+  { label: string; bg: string; fg: string }
+> = {
+  DRAFT: { label: "Draft", bg: "#f3f4f6", fg: "#374151" },
+  AWAITING: { label: "Awaiting confirmation", bg: "#fef3c7", fg: "#92400e" },
+  CONFIRMED: { label: "Confirmed by customer", bg: "#d1fae5", fg: "#065f46" },
+  COMPLETED: { label: "Completed", bg: "#d1fae5", fg: "#065f46" },
+  EXPIRED: { label: "Expired", bg: "#fee2e2", fg: "#991b1b" },
+  CANCELLED: { label: "Cancelled", bg: "#f3f4f6", fg: "#374151" },
 };
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
@@ -114,21 +156,60 @@ export function DetailsSkeleton() {
 export function InvoiceDocument({
   data,
   printRef,
+  /**
+   * When the server's `netAmount` doesn't equal `gross - discount`, prefer the
+   * locally computed figure so the printed document at least adds up.
+   * Set to `false` once the backend is fixed and `netAmount` is authoritative.
+   */
+  reconcileTotals = true,
 }: {
   data: Proforma;
   printRef: React.RefObject<HTMLDivElement>;
+  reconcileTotals?: boolean;
 }) {
   const customerName =
     `${data.customerFirstName ?? ""} ${data.customerLastName ?? ""}`.trim();
 
-  const taxExclusiveGross: number = (data as any).taxExclusiveGrossAmount ?? 0;
-  const taxAmount: number = (data as any).taxAmount ?? 0;
-  const grossAmount: number = (data as any).grossAmount ?? 0;
-  const discountAmount: number = data.totalDiscountAmount ?? 0;
-  const netAmount: number = data.netAmount ?? 0;
+  const taxExclusiveGross = data.taxExclusiveGrossAmount ?? 0;
+  const taxAmount = data.taxAmount ?? 0;
+  const grossAmount = data.grossAmount ?? 0;
+  const serverNet = data.netAmount ?? 0;
 
-  // ✅ Use showTaxAmounts from payload — not derived from taxAmount > 0
-  const showTax: boolean = (data as any).showTaxAmounts === true;
+  const showTax = data.showTaxAmounts === true;
+  const vatRate = deriveVatRate(taxExclusiveGross, taxAmount);
+
+  // ── Discount + totals reconciliation ──
+  const discountAmount = resolveDiscount(data);
+  const computedNet = Math.max(0, grossAmount - discountAmount);
+  const totalsMismatch =
+    discountAmount > 0 && !nearlyEqual(serverNet, computedNet);
+  const netAmount = totalsMismatch && reconcileTotals ? computedNet : serverNet;
+
+  if (totalsMismatch && process.env.NODE_ENV !== "production") {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[Proforma ${data.proformaNumber}] totals do not reconcile: ` +
+        `gross ${grossAmount} - discount ${discountAmount} = ${computedNet}, ` +
+        `but the server returned netAmount ${serverNet}. The backend is likely ` +
+        `not applying manualDiscountAmount to netAmount, nor writing it back ` +
+        `into totalDiscountAmount.`,
+    );
+  }
+
+  /** VAT is the server figure, computed on the pre-discount gross. */
+  const discountAffectsVat = showTax && discountAmount > 0 && taxAmount > 0;
+
+  const lineExTotal = (it: ProformaItem) =>
+    it.lineTaxExclusiveTotal ?? it.unitTaxExclusivePrice * it.quantity;
+  const lineIncTotal = (it: ProformaItem) =>
+    it.lineTotal ?? it.unitPrice * it.quantity;
+
+  const unitPriceFor = (it: ProformaItem) =>
+    showTax ? it.unitTaxExclusivePrice : it.unitPrice;
+  const lineTotalFor = (it: ProformaItem) =>
+    showTax ? lineExTotal(it) : lineIncTotal(it);
+
+  const status = STATUS_STYLES[data.proformaStatus];
 
   return (
     <>
@@ -136,21 +217,42 @@ export function InvoiceDocument({
         @media print {
           body * { visibility: hidden !important; }
           #receipt-content, #receipt-content * { visibility: visible !important; }
+
+          /* Static flow so multi-page invoices paginate instead of being clipped
+             to one sheet by position:fixed + inset:0. */
           #receipt-content {
-            position: fixed !important;
-            inset: 0 !important;
-            padding: 32px !important;
+            position: static !important;
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
             background: white !important;
+            border: none !important;
             border-radius: 0 !important;
             box-shadow: none !important;
           }
+
+          /* Tailwind's lg: breakpoints resolve against the *paper* width when
+             printing, so a narrow window would otherwise print the mobile cards.
+             Force the table and hide the cards explicitly. */
+          #receipt-content .items-table { display: block !important; }
+          #receipt-content .items-cards { display: none !important; }
+
+          #receipt-content table { page-break-inside: auto; }
+          #receipt-content tr { page-break-inside: avoid; page-break-after: auto; }
+          #receipt-content thead { display: table-header-group; }
+          #receipt-content .totals-block,
+          #receipt-content .notes-block { page-break-inside: avoid; }
+
           .no-print { display: none !important; }
+
+          @page { margin: 16mm; }
         }
       `}</style>
 
       <div
         id="receipt-content"
-        ref={printRef as React.RefObject<HTMLDivElement>}
+        ref={printRef}
         className="bg-white rounded-lg shadow-sm mx-auto overflow-hidden"
         style={{ maxWidth: 794, border: `1px solid ${SECONDARY}` }}
       >
@@ -160,12 +262,13 @@ export function InvoiceDocument({
             {data.locationLogo ? (
               <img
                 src={data.locationLogo}
-                alt="Logo"
-                className="max-h-32 w-full object-contain flex-shrink-0"
+                alt={`${data.businessName ?? "Business"} logo`}
+                className="max-h-24 w-auto object-contain flex-shrink-0"
                 style={{ border: `1px solid ${SECONDARY}`, borderRadius: 4 }}
               />
             ) : (
-              <div className="h-20 w-20 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0" />
+              /* No logo: show the business name rather than an invisible box. */
+              <div></div>
             )}
           </div>
 
@@ -176,23 +279,33 @@ export function InvoiceDocument({
             >
               PROFORMA INVOICE
             </h2>
+
+            {status && (
+              <span
+                className="inline-block rounded-full px-3 py-1 text-xs font-semibold mb-2"
+                style={{ backgroundColor: status.bg, color: status.fg }}
+              >
+                {status.label}
+              </span>
+            )}
+
             <div className="text-sm text-gray-600 space-y-0.5">
               {data.tinNumber && (
                 <p className="font-semibold text-gray-800">
                   TIN: {data.tinNumber}
                 </p>
               )}
-              <p className="font-semibold text-gray-800">{data.businessName}</p>
-              {data.locationAddress && <p>{data.locationAddress}</p>}
-              {(data as any).locationCity && (
-                <p>{(data as any).locationCity}</p>
+              {data.businessName && (
+                <p className="font-semibold text-gray-800">
+                  {data.businessName}
+                </p>
               )}
+              {data.locationAddress && <p>{data.locationAddress}</p>}
+              {data.locationCity && <p>{data.locationCity}</p>}
               {data.locationPhoneNumber && (
                 <p>Mobile: {data.locationPhoneNumber}</p>
               )}
-              {(data as any).locationEmail && (
-                <p>{(data as any).locationEmail}</p>
-              )}
+              {data.locationEmail && <p>{data.locationEmail}</p>}
             </div>
           </div>
         </div>
@@ -213,17 +326,11 @@ export function InvoiceDocument({
               {customerName && (
                 <p className="font-semibold text-gray-900">{customerName}</p>
               )}
-              {(data as any).customerAddress && (
-                <p>{(data as any).customerAddress}</p>
-              )}
-              {(data as any).customerCity && (
-                <p>{(data as any).customerCity}</p>
-              )}
+              {data.customerAddress && <p>{data.customerAddress}</p>}
+              {data.customerCity && <p>{data.customerCity}</p>}
               {data.customerPhoneNumber && <p>{data.customerPhoneNumber}</p>}
               {data.customerEmail && <p>{data.customerEmail}</p>}
-              {(data as any).customerTin && (
-                <p>TIN: {(data as any).customerTin}</p>
-              )}
+              {data.customerTin && <p>TIN: {data.customerTin}</p>}
             </div>
           </div>
 
@@ -269,8 +376,8 @@ export function InvoiceDocument({
           </div>
         </div>
 
-        {/* ── ITEMS TABLE — desktop ── */}
-        <div className="hidden lg:block px-8 mb-6">
+        {/* ── ITEMS TABLE — desktop + print ── */}
+        <div className="items-table hidden lg:block px-8 mb-6">
           <table className="w-full text-sm">
             <thead>
               <tr style={{ backgroundColor: PRIMARY }}>
@@ -281,7 +388,6 @@ export function InvoiceDocument({
                   Quantity
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white">
-                  {/* ✅ Label changes based on showTax */}
                   {showTax ? "Unit Price (excl. VAT)" : "Price"}
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white">
@@ -302,30 +408,21 @@ export function InvoiceDocument({
                   <td className="px-4 py-3 text-gray-900">
                     <span className="text-gray-400 mr-2">{index + 1}.</span>
                     <span className="font-medium">{it.productName}</span>
-                    {it.productVariantName && (
-                      <span className="text-gray-400 text-xs ml-1">
-                        — {it.productVariantName}
-                      </span>
-                    )}
+                    {it.productVariantName &&
+                      it.productVariantName !== it.productName && (
+                        <span className="text-gray-400 text-xs ml-1">
+                          — {it.productVariantName}
+                        </span>
+                      )}
                   </td>
                   <td className="px-4 py-3 text-gray-600 text-center">
                     {it.quantity.toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-gray-600 text-right">
-                    {/* ✅ Show ex-tax price when showTax, otherwise VAT-inclusive */}
-                    {fmt(
-                      showTax
-                        ? (it as any).unitTaxExclusivePrice
-                        : it.unitPrice,
-                    )}
+                    {fmt(unitPriceFor(it))}
                   </td>
                   <td className="px-4 py-3 font-medium text-gray-900 text-right">
-                    {/* ✅ Line total follows the same rule */}
-                    {fmt(
-                      showTax
-                        ? (it as any).unitTaxExclusivePrice * it.quantity
-                        : it.unitPrice * it.quantity,
-                    )}
+                    {fmt(lineTotalFor(it))}
                   </td>
                 </tr>
               ))}
@@ -333,8 +430,8 @@ export function InvoiceDocument({
           </table>
         </div>
 
-        {/* ── ITEMS CARDS — mobile ── */}
-        <div className="lg:hidden px-4 mb-6 space-y-3">
+        {/* ── ITEMS CARDS — mobile screen only ── */}
+        <div className="items-cards lg:hidden px-4 mb-6 space-y-3">
           <div
             className="flex justify-between items-center px-4 py-2 rounded-t-lg text-white text-xs font-semibold uppercase tracking-wider"
             style={{ backgroundColor: PRIMARY }}
@@ -355,19 +452,15 @@ export function InvoiceDocument({
                 <p className="text-sm font-medium text-gray-900 flex-1">
                   <span className="text-gray-400 mr-1">{index + 1}.</span>
                   {it.productName}
-                  {it.productVariantName && (
-                    <span className="text-gray-400 text-xs ml-1">
-                      — {it.productVariantName}
-                    </span>
-                  )}
+                  {it.productVariantName &&
+                    it.productVariantName !== it.productName && (
+                      <span className="text-gray-400 text-xs ml-1">
+                        — {it.productVariantName}
+                      </span>
+                    )}
                 </p>
                 <p className="text-sm font-bold whitespace-nowrap">
-                  {/* ✅ Mobile card amount also respects showTax */}
-                  {fmt(
-                    showTax
-                      ? (it as any).unitTaxExclusivePrice * it.quantity
-                      : it.unitPrice * it.quantity,
-                  )}
+                  {fmt(lineTotalFor(it))}
                 </p>
               </div>
               <div className="flex flex-wrap gap-4 text-xs text-gray-500">
@@ -379,9 +472,7 @@ export function InvoiceDocument({
                   <span className="font-medium text-gray-700">
                     {showTax ? "Unit price (excl. VAT):" : "Unit price:"}
                   </span>{" "}
-                  {fmt(
-                    showTax ? (it as any).unitTaxExclusivePrice : it.unitPrice,
-                  )}
+                  {fmt(unitPriceFor(it))}
                 </span>
               </div>
             </div>
@@ -389,12 +480,11 @@ export function InvoiceDocument({
         </div>
 
         {/* ── TOTALS ── */}
-        <div className="px-6 lg:px-8 mb-6">
+        <div className="totals-block px-6 lg:px-8 mb-6">
           <div className="flex justify-end">
             <div className="w-full lg:max-w-xs">
               {showTax ? (
                 <>
-                  {/* Subtotal before VAT */}
                   <div
                     className="flex justify-between text-sm text-gray-600 py-2"
                     style={{ borderBottom: `1px solid ${SECONDARY}` }}
@@ -403,7 +493,6 @@ export function InvoiceDocument({
                     <span>{fmt(taxExclusiveGross)}</span>
                   </div>
 
-                  {/* VAT */}
                   <div
                     className="flex justify-between text-sm py-2"
                     style={{
@@ -411,11 +500,12 @@ export function InvoiceDocument({
                       color: "#059669",
                     }}
                   >
-                    <span className="font-medium">VAT (18%):</span>
+                    <span className="font-medium">
+                      VAT{vatRate !== null ? ` (${vatRate}%)` : ""}:
+                    </span>
                     <span className="font-medium">+ {fmt(taxAmount)}</span>
                   </div>
 
-                  {/* Gross incl. VAT */}
                   <div
                     className="flex justify-between text-sm text-gray-600 py-2"
                     style={{ borderBottom: `1px solid ${SECONDARY}` }}
@@ -425,7 +515,6 @@ export function InvoiceDocument({
                   </div>
                 </>
               ) : (
-                /* ✅ showTax false — simple subtotal, no VAT lines */
                 <div
                   className="flex justify-between text-sm text-gray-600 py-2"
                   style={{ borderBottom: `1px solid ${SECONDARY}` }}
@@ -435,7 +524,6 @@ export function InvoiceDocument({
                 </div>
               )}
 
-              {/* Discount */}
               {discountAmount > 0 && (
                 <div
                   className="flex justify-between text-sm py-2"
@@ -449,7 +537,6 @@ export function InvoiceDocument({
                 </div>
               )}
 
-              {/* Grand Total */}
               <div
                 className="flex justify-between font-bold py-3 mt-1 rounded px-3"
                 style={{ backgroundColor: PRIMARY_LIGHT, color: PRIMARY }}
@@ -458,10 +545,16 @@ export function InvoiceDocument({
                 <span>{fmt(netAmount)}</span>
               </div>
 
-              {/* ✅ VAT note — only when showTax is true */}
-              {showTax && taxAmount > 0 && (
+              {showTax && taxAmount > 0 && !discountAffectsVat && (
                 <p className="text-[11px] text-gray-400 mt-2 text-right">
                   VAT of {fmt(taxAmount)} is included in the grand total
+                </p>
+              )}
+
+              {discountAffectsVat && (
+                <p className="text-[11px] text-gray-400 mt-2 text-right">
+                  VAT of {fmt(taxAmount)} is calculated on the gross amount
+                  before discount
                 </p>
               )}
             </div>
@@ -470,7 +563,7 @@ export function InvoiceDocument({
 
         {/* ── NOTES / TERMS ── */}
         {data.notes && (
-          <>
+          <div className="notes-block">
             <div
               className="mx-8"
               style={{ height: 1, backgroundColor: SECONDARY }}
@@ -480,12 +573,12 @@ export function InvoiceDocument({
                 Notes / Terms
               </p>
               <div className="text-sm text-gray-600 space-y-1 leading-relaxed">
-                {data.notes.split("\n").map((line: string, i: number) => (
+                {data.notes.split("\n").map((line, i) => (
                   <p key={i}>{line}</p>
                 ))}
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {/* ── Footer ── */}
@@ -512,7 +605,7 @@ export function InvoiceDocument({
               Thank you for your business and continued support
             </p>
             <p className="text-xs text-gray-400 mt-0.5">
-              Powered by Settlo Technologies
+              Powered by Settlo Technologies Limited
             </p>
           </div>
         </div>
