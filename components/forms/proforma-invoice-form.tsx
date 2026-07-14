@@ -59,11 +59,12 @@ import {
   editItemPriceOrQuantityToProforma,
 } from "@/lib/actions/proforma-actions";
 import { searchDiscount } from "@/lib/actions/discount-actions";
-import { Proforma } from "@/types/proforma/type";
+import type { Proforma, ProformaStatus } from "@/types/proforma/type";
 import { Customer } from "@/types/customer/type";
 import { FormResponse } from "@/types/types";
 import { Discount } from "@/types/discount/type";
 import { Gender } from "@/types/enums";
+import { firstPositive, resolveDiscount } from "@/lib/actions/total";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -100,14 +101,28 @@ interface BusinessInfo {
   tinNumber?: string | null;
 }
 
+/**
+ * The customer shape the preview needs.
+ *
+ * This is deliberately NOT `Pick<Customer, ...>`. It gets populated from two
+ * different sources — a `Customer` search result (non-null fields) and a
+ * `Proforma` payload (nullable fields) — so it has to accept the looser of the
+ * two. A real `Customer` still assigns into this without any change at the
+ * call site.
+ */
+interface PreviewCustomer {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phoneNumber: string | null;
+}
+
 interface ProformaState {
   id: string | null;
   proformaNumber: string | null;
-  proformaStatus: string | null;
-  customer: Pick<
-    Customer,
-    "id" | "firstName" | "lastName" | "email" | "phoneNumber"
-  > | null;
+  proformaStatus: ProformaStatus | null;
+  customer: PreviewCustomer | null;
   items: LineItem[];
   discount: number;
   discountId: string | null;
@@ -119,7 +134,6 @@ interface ProformaState {
   netAmount: number;
   taxAmount: number;
   showTaxBreakdown: boolean;
-  // ─── NEW: preview loading flag ───────────────────────────────────────────
   isPreviewLoading: boolean;
 }
 
@@ -1234,7 +1248,7 @@ function EditItemPanel({
     }).format(n);
 
   const handleSave = async () => {
-    if (!hasChanges) return;
+    if (!hasChanges || saving) return;
     setSaving(true);
     await onSave(item.itemId, qty, unitPrice);
     setSaving(false);
@@ -1364,6 +1378,7 @@ function DetailsStep({
   initialNote,
   initialExpiresAt,
   initialDiscount,
+  initialDiscountId,
   showTaxBreakdown,
   onTaxBreakdownChange,
   onSave,
@@ -1375,6 +1390,13 @@ function DetailsStep({
   initialNote: string;
   initialExpiresAt: string;
   initialDiscount: number;
+  /**
+   * When present, the saved discount came from the discount list — NOT a manual
+   * amount. Without this the step used to default every existing discount to
+   * "manual", so re-saving an API discount silently converted it to a manual
+   * one (and sent discountId: null).
+   */
+  initialDiscountId: string | null;
   showTaxBreakdown: boolean;
   onTaxBreakdownChange: (v: boolean) => void;
   onSave: (opts: {
@@ -1385,19 +1407,30 @@ function DetailsStep({
   }) => Promise<void>;
   onBack: () => void;
 }) {
+  const hasExistingDiscount = initialDiscount > 0 || !!initialDiscountId;
+
   const [notes, setNote] = useState(initialNote);
   const [expiresAt, setExpiresAt] = useState(initialExpiresAt);
   const [applyDiscount, setApplyDiscount] = useState<boolean | null>(
-    initialDiscount > 0 ? true : null,
+    hasExistingDiscount ? true : null,
   );
   const [discountSource, setDiscountSource] = useState<"api" | "manual">(
-    initialDiscount > 0 ? "manual" : "api",
+    initialDiscountId ? "api" : "manual",
   );
   const [selectedDiscount, setSelectedDiscount] = useState<Discount | null>(
     null,
   );
+  /**
+   * The API discount already attached to this proforma. We only have its id and
+   * resolved amount (the payload doesn't return the discount's name or rule), so
+   * it's tracked separately from `selectedDiscount` and treated as valid until
+   * the user replaces or clears it.
+   */
+  const [keptDiscountId, setKeptDiscountId] = useState<string | null>(
+    initialDiscountId,
+  );
   const [manualAmount, setManualAmount] = useState(
-    initialDiscount > 0 ? String(initialDiscount) : "",
+    !initialDiscountId && initialDiscount > 0 ? String(initialDiscount) : "",
   );
   const [saved, setSaved] = useState(false);
 
@@ -1409,11 +1442,16 @@ function DetailsStep({
     }).format(n);
 
   const effectiveDiscountAmount = (() => {
-    if (!applyDiscount || (!selectedDiscount && !manualAmount)) return 0;
-    if (discountSource === "api" && selectedDiscount) {
-      return selectedDiscount.discountType === "PERCENTAGE"
-        ? Math.round((grossTotal * selectedDiscount.discountValue) / 100)
-        : selectedDiscount.discountValue;
+    if (!applyDiscount) return 0;
+    if (discountSource === "api") {
+      if (selectedDiscount) {
+        return selectedDiscount.discountType === "PERCENTAGE"
+          ? Math.round((grossTotal * selectedDiscount.discountValue) / 100)
+          : selectedDiscount.discountValue;
+      }
+      // Keeping the discount that's already on the proforma.
+      if (keptDiscountId) return initialDiscount;
+      return 0;
     }
     return parseFloat(manualAmount) || 0;
   })();
@@ -1421,18 +1459,22 @@ function DetailsStep({
   const netTotal = Math.max(0, grossTotal - effectiveDiscountAmount);
   const hasValidDiscount =
     discountSource === "api"
-      ? !!selectedDiscount
+      ? !!selectedDiscount || !!keptDiscountId
       : (parseFloat(manualAmount) || 0) > 0;
-  const canSave = !applyDiscount || (applyDiscount && hasValidDiscount);
+  const canSave = !applyDiscount || hasValidDiscount;
 
   const handleSave = async () => {
     await onSave({
       notes,
       expiresAt,
       discountId:
-        discountSource === "api" ? (selectedDiscount?.id ?? null) : null,
+        applyDiscount && discountSource === "api"
+          ? (selectedDiscount?.id ?? keptDiscountId ?? null)
+          : null,
       manualDiscountAmount:
-        discountSource === "manual" ? parseFloat(manualAmount) || 0 : 0,
+        applyDiscount && discountSource === "manual"
+          ? parseFloat(manualAmount) || 0
+          : 0,
     });
     setSaved(true);
   };
@@ -1538,22 +1580,24 @@ function DetailsStep({
               type="button"
               onClick={() => {
                 setApplyDiscount(opt.value);
+                if (!opt.value) {
+                  // Explicitly removing the discount — drop the kept API one too.
+                  setKeptDiscountId(null);
+                  setSelectedDiscount(null);
+                  setManualAmount("");
+                }
                 setSaved(false);
               }}
               className={`p-3.5 rounded-xl border-2 text-left transition-all ${
                 applyDiscount === opt.value
-                  ? opt.value
-                    ? "border-[#EB7F44] bg-gray-50"
-                    : "border-[#EB7F44] bg-gray-50"
+                  ? "border-[#EB7F44] bg-gray-50"
                   : "border-gray-200 hover:border-gray-300 bg-white"
               }`}
             >
               <p
                 className={`text-sm font-semibold ${
                   applyDiscount === opt.value
-                    ? opt.value
-                      ? "text-gray-700"
-                      : "text-gray-800"
+                    ? "text-gray-700"
                     : "text-gray-600"
                 }`}
               >
@@ -1576,6 +1620,8 @@ function DetailsStep({
                   setDiscountSource(src);
                   setSelectedDiscount(null);
                   setManualAmount("");
+                  // Switching to manual abandons the attached API discount.
+                  if (src === "manual") setKeptDiscountId(null);
                   setSaved(false);
                 }}
                 className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-all ${
@@ -1596,9 +1642,39 @@ function DetailsStep({
               <DiscountSearch
                 onSelect={(d) => {
                   setSelectedDiscount(d);
+                  setKeptDiscountId(null); // replaced by the new selection
                   setSaved(false);
                 }}
               />
+
+              {/* An API discount is already attached and hasn't been replaced. */}
+              {!selectedDiscount && keptDiscountId && (
+                <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <PercentIcon className="w-4 h-4 text-gray-700" />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        Existing discount applied
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {fmt(initialDiscount)} off — search above to replace it
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setKeptDiscountId(null);
+                      setSaved(false);
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                    title="Remove this discount"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
               {selectedDiscount && (
                 <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
                   <div className="flex items-center gap-2">
@@ -1666,7 +1742,7 @@ function DetailsStep({
 
       <Button
         type="button"
-        className="w-full bg-[#EB7F44]  text-white h-11 shadow-sm font-medium"
+        className="w-full bg-[#EB7F44] text-white h-11 shadow-sm font-medium"
         disabled={pending || !canSave}
         onClick={handleSave}
       >
@@ -1703,9 +1779,6 @@ function DetailsStep({
 }
 
 // ─── Live Preview ─────────────────────────────────────────────────────────────
-// NEW: accepts isLoading prop and renders a frosted overlay while any
-// server-side mutation is in flight, keeping the stale content visible
-// beneath it so the user can see exactly what is being updated.
 
 function ProformaPreview({
   state,
@@ -1721,19 +1794,17 @@ function ProformaPreview({
       style: "currency",
       currency: "TZS",
       minimumFractionDigits: 2,
-    }).format(n);
+    }).format(Number.isFinite(n) ? n : 0);
 
   const fmtDate = (d: string) => {
     if (!d) return "";
-    try {
-      return new Date(d).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    } catch {
-      return d;
-    }
+    const parsed = new Date(d);
+    if (Number.isNaN(parsed.getTime())) return d;
+    return parsed.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   };
 
   const grossAmount =
@@ -1751,20 +1822,24 @@ function ProformaPreview({
 
   const taxAmount = state.taxAmount;
 
-  const netAmount =
-    state.netAmount > 0
-      ? state.netAmount
-      : Math.max(0, grossAmount - (state.discount ?? 0));
+  // The preview always shows gross - discount. The server's netAmount is
+  // currently unreliable when a manual discount is present (it comes back equal
+  // to grossAmount), so trusting it here would show a total that doesn't add up.
+  const netAmount = Math.max(0, grossAmount - (state.discount ?? 0));
+
+  // Derived, not hardcoded — the 18% literal used to be baked into two places.
+  const vatRate =
+    taxExclusiveGrossAmount > 0 && taxAmount > 0
+      ? Math.round((taxAmount / taxExclusiveGrossAmount) * 100)
+      : null;
 
   return (
-    // position: relative is required so the absolute overlay is contained here
     <div className="relative bg-white rounded-2xl border border-gray-200 shadow-sm p-6 text-[12.5px] sticky top-4 transition-all duration-300">
       {/* ── Loading overlay ── */}
       {isLoading && (
         <div
           className="absolute inset-0 z-10 rounded-2xl flex flex-col items-center justify-center gap-2.5"
           style={{
-            // Semi-transparent white so the stale content shows through
             backgroundColor: "rgba(255, 255, 255, 0.72)",
             backdropFilter: "blur(2px)",
             WebkitBackdropFilter: "blur(2px)",
@@ -1848,7 +1923,9 @@ function ProformaPreview({
         </p>
         <div className="space-y-0.5">
           <p className="font-bold text-gray-900">
-            {state.customer.firstName} {state.customer.lastName}
+            {[state.customer.firstName, state.customer.lastName]
+              .filter(Boolean)
+              .join(" ") || "—"}
           </p>
           {state.customer.email && (
             <p className="text-gray-500">{state.customer.email}</p>
@@ -1891,7 +1968,7 @@ function ProformaPreview({
                 <tr key={it.itemId} className="border-b border-gray-50">
                   <td className="py-2 text-gray-800">
                     {it.productName}
-                    {it.variantName && (
+                    {it.variantName && it.variantName !== it.productName && (
                       <span className="text-gray-400"> — {it.variantName}</span>
                     )}
                   </td>
@@ -1927,9 +2004,11 @@ function ProformaPreview({
               <div className="flex justify-between text-emerald-600 font-medium">
                 <span className="flex items-center gap-1">
                   VAT
-                  <span className="text-[10px] text-gray-400 font-normal">
-                    (18%)
-                  </span>
+                  {vatRate !== null && (
+                    <span className="text-[10px] text-gray-400 font-normal">
+                      ({vatRate}%)
+                    </span>
+                  )}
                 </span>
                 <span>+ {fmt(taxAmount)}</span>
               </div>
@@ -1974,8 +2053,8 @@ function ProformaPreview({
         <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-lg">
           <PercentIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
           <p className="text-[11px] text-emerald-700">
-            Prices are <span className="font-semibold">VAT-inclusive</span> at
-            18%. Tax amount:{" "}
+            Prices are <span className="font-semibold">VAT-inclusive</span>
+            {vatRate !== null ? ` at ${vatRate}%` : ""}. Tax amount:{" "}
             <span className="font-semibold">{fmt(taxAmount)}</span>
           </p>
         </div>
@@ -2028,10 +2107,10 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         taxAmount: 0,
         netAmount: 0,
         showTaxBreakdown: false,
-        // ─── NEW ───────────────────────────────────────────────────────────
         isPreviewLoading: false,
       };
     }
+
     return {
       id: item.id,
       proformaNumber: item.proformaNumber,
@@ -2047,29 +2126,33 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         itemId: i.id,
         variantId: i.id,
         productName: i.productName,
-        variantName: i.productVariantName,
+        // productVariantName is `string | null` on the wire.
+        variantName: i.productVariantName ?? "",
         unitPrice: i.unitPrice,
         unitTaxExclusivePrice: i.unitTaxExclusivePrice ?? i.unitPrice,
         quantity: i.quantity,
       })),
-      discount:
-        (item as any).totalDiscountAmount ?? item.appliedDiscountAmount ?? 0,
-      discountId: (item as any).appliedDiscountId ?? null,
+      // Shared resolver — `totalDiscountAmount ?? manualDiscountAmount` used to
+      // drop the discount entirely, because the server sends 0 rather than null.
+      discount: resolveDiscount(item),
+      discountId: item.appliedDiscountId,
       notes: item.notes ?? "",
-      expiresAt: item.expiresAt ? String(item.expiresAt).split("T")[0] : "",
-      showTaxBreakdown: (item as any).showTaxAmounts ?? false,
+      expiresAt: item.expiresAt ? item.expiresAt.split("T")[0] : "",
+      showTaxBreakdown: item.showTaxAmounts ?? false,
       business: {
-        businessName: item.businessName ?? null,
-        locationName: item.locationName ?? null,
-        locationAddress: item.locationAddress ?? null,
-        locationPhoneNumber: item.locationPhoneNumber ?? null,
-        locationLogo: item.locationLogo ?? null,
+        businessName: item.businessName,
+        locationName: item.locationName,
+        locationAddress: item.locationAddress,
+        locationPhoneNumber: item.locationPhoneNumber,
+        locationLogo: item.locationLogo,
+        // Was missing on the edit path — the TIN silently vanished from the
+        // preview header when editing an existing proforma.
+        tinNumber: item.tinNumber ?? null,
       },
-      grossAmount: (item as any).grossAmount ?? 0,
-      taxExclusiveGrossAmount: (item as any).taxExclusiveGrossAmount ?? 0,
-      taxAmount: (item as any).taxAmount ?? 0,
-      netAmount: (item as any).netAmount ?? 0,
-      // ─── NEW ───────────────────────────────────────────────────────────
+      grossAmount: item.grossAmount ?? 0,
+      taxExclusiveGrossAmount: item.taxExclusiveGrossAmount ?? 0,
+      taxAmount: item.taxAmount ?? 0,
+      netAmount: item.netAmount ?? 0,
       isPreviewLoading: false,
     };
   });
@@ -2104,6 +2187,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         ...prev,
         id: proformaId,
         proformaNumber,
+        proformaStatus: result.data.proformaStatus ?? null,
         customer,
         business,
       }));
@@ -2122,7 +2206,6 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       if (!state.id) return;
       setError(null);
 
-      // Show loading overlay on the preview immediately
       setState((prev) => ({ ...prev, isPreviewLoading: true }));
 
       const result = await addItemsToProforma(state.id, {
@@ -2133,15 +2216,16 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       if (result?.responseType === "error") {
         setError(result.message);
         toast.error(result.message);
-        // Always clear the loading flag — even on error
         setState((prev) => ({ ...prev, isPreviewLoading: false }));
         return;
       }
 
-      const data = result?.data as any;
-      const itemId: string = data?.id ?? newItem.variantId;
-      const unitTaxExclusivePrice: number =
-        data?.unitTaxExclusivePrice ?? newItem.unitTaxExclusivePrice;
+      const data = result?.data as Record<string, unknown> | undefined;
+      const itemId = typeof data?.id === "string" ? data.id : newItem.variantId;
+      const unitTaxExclusivePrice =
+        typeof data?.unitTaxExclusivePrice === "number"
+          ? data.unitTaxExclusivePrice
+          : newItem.unitTaxExclusivePrice;
 
       setState((prev) => ({
         ...prev,
@@ -2150,11 +2234,18 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
           ...prev.items,
           { ...newItem, itemId, quantity, unitTaxExclusivePrice },
         ],
-        grossAmount: data?.grossAmount ?? prev.grossAmount,
+        grossAmount:
+          typeof data?.grossAmount === "number"
+            ? data.grossAmount
+            : prev.grossAmount,
         taxExclusiveGrossAmount:
-          data?.taxExclusiveGrossAmount ?? prev.taxExclusiveGrossAmount,
-        taxAmount: data?.taxAmount ?? prev.taxAmount,
-        netAmount: data?.netAmount ?? prev.netAmount,
+          typeof data?.taxExclusiveGrossAmount === "number"
+            ? data.taxExclusiveGrossAmount
+            : prev.taxExclusiveGrossAmount,
+        taxAmount:
+          typeof data?.taxAmount === "number" ? data.taxAmount : prev.taxAmount,
+        netAmount:
+          typeof data?.netAmount === "number" ? data.netAmount : prev.netAmount,
       }));
 
       toast.success("Item added");
@@ -2171,7 +2262,6 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       setRemovingIndex(index);
       if (editingIndex === index) setEditingIndex(null);
 
-      // Show loading overlay on the preview
       setState((prev) => ({ ...prev, isPreviewLoading: true }));
 
       const result = await removeItemsToProforma(state.id, lineItem.itemId);
@@ -2180,22 +2270,41 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       if (result?.responseType === "error") {
         setError(result.message);
         toast.error(result.message);
-        // Clear loading flag on error
         setState((prev) => ({ ...prev, isPreviewLoading: false }));
         return;
       }
 
-      const data = result?.data as any;
-      setState((prev) => ({
-        ...prev,
-        isPreviewLoading: false,
-        items: prev.items.filter((_, i) => i !== index),
-        grossAmount: data?.grossAmount ?? prev.grossAmount,
-        taxExclusiveGrossAmount:
-          data?.taxExclusiveGrossAmount ?? prev.taxExclusiveGrossAmount,
-        taxAmount: data?.taxAmount ?? prev.taxAmount,
-        netAmount: data?.netAmount ?? prev.netAmount,
-      }));
+      const data = result?.data as Record<string, unknown> | undefined;
+
+      setState((prev) => {
+        // Filter by itemId, not index — the index could be stale by the time the
+        // request resolves if the list changed underneath us.
+        const items = prev.items.filter((it) => it.itemId !== lineItem.itemId);
+        return {
+          ...prev,
+          isPreviewLoading: false,
+          items,
+          grossAmount:
+            typeof data?.grossAmount === "number"
+              ? data.grossAmount
+              : items.reduce((s, it) => s + it.unitPrice * it.quantity, 0),
+          taxExclusiveGrossAmount:
+            typeof data?.taxExclusiveGrossAmount === "number"
+              ? data.taxExclusiveGrossAmount
+              : items.reduce(
+                  (s, it) => s + it.unitTaxExclusivePrice * it.quantity,
+                  0,
+                ),
+          taxAmount:
+            typeof data?.taxAmount === "number"
+              ? data.taxAmount
+              : prev.taxAmount,
+          netAmount:
+            typeof data?.netAmount === "number"
+              ? data.netAmount
+              : prev.netAmount,
+        };
+      });
 
       toast.success("Item removed");
     },
@@ -2208,7 +2317,6 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       if (!state.id) return;
       setError(null);
 
-      // Show loading overlay on the preview
       setState((prev) => ({ ...prev, isPreviewLoading: true }));
 
       const result = await editItemPriceOrQuantityToProforma(
@@ -2226,10 +2334,9 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       }
 
       // The edit-item endpoint returns the updated line item, NOT the parent
-      // proforma. Pull proforma-level totals from the response when present;
-      // otherwise recompute them from the updated items list so the preview
-      // always reflects the correct values without requiring a page reload.
-      const data = result?.data as any;
+      // proforma. Prefer proforma-level totals from the response when present;
+      // otherwise recompute from the updated items list.
+      const data = result?.data as Record<string, unknown> | undefined;
 
       setState((prev) => {
         const updatedItems = prev.items.map((it) =>
@@ -2238,14 +2345,14 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
                 ...it,
                 quantity,
                 unitPrice: unitCustomPrice,
-                // The item response does carry unitTaxExclusivePrice
                 unitTaxExclusivePrice:
-                  data?.unitTaxExclusivePrice ?? unitCustomPrice,
+                  typeof data?.unitTaxExclusivePrice === "number"
+                    ? data.unitTaxExclusivePrice
+                    : unitCustomPrice,
               }
             : it,
         );
 
-        // Prefer server-computed totals; fall back to client derivation.
         const grossAmount =
           typeof data?.grossAmount === "number"
             ? data.grossAmount
@@ -2265,7 +2372,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         const taxAmount =
           typeof data?.taxAmount === "number"
             ? data.taxAmount
-            : grossAmount - taxExclusiveGrossAmount;
+            : Math.max(0, grossAmount - taxExclusiveGrossAmount);
 
         const netAmount =
           typeof data?.netAmount === "number"
@@ -2300,8 +2407,6 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       if (!state.id) return;
       setError(null);
       setDetailsPending(true);
-
-      // Show loading overlay on the preview
       setState((prev) => ({ ...prev, isPreviewLoading: true }));
 
       const result = await updateProforma(
@@ -2317,17 +2422,23 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
 
       if (result?.responseType === "error") {
         setError(result.message);
-        // Clear loading flag on error
         setState((prev) => ({ ...prev, isPreviewLoading: false }));
         return;
       }
 
       const data = result?.data as Record<string, unknown> | undefined;
-      const appliedDiscount =
-        typeof data?.totalDiscountAmount === "number" &&
-        data.totalDiscountAmount > 0
-          ? data.totalDiscountAmount
-          : opts.manualDiscountAmount;
+
+      // The old version was:
+      //   totalDiscountAmount > 0 ? totalDiscountAmount : opts.manualDiscountAmount
+      // When the user picked an API discount, manualDiscountAmount is 0 — so a
+      // server response of totalDiscountAmount: 0 wiped the discount from state
+      // entirely. Fall through every field the server might have populated.
+      const appliedDiscount = firstPositive([
+        data?.totalDiscountAmount as number | undefined,
+        data?.appliedDiscountAmount as number | undefined,
+        data?.manualDiscountAmount as number | undefined,
+        opts.manualDiscountAmount,
+      ]);
 
       setState((prev) => ({
         ...prev,
@@ -2424,7 +2535,9 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-gray-900 truncate">
-                      {state.customer.firstName} {state.customer.lastName}
+                      {[state.customer.firstName, state.customer.lastName]
+                        .filter(Boolean)
+                        .join(" ") || "—"}
                     </p>
                     <p className="text-xs text-gray-400 truncate">
                       {state.customer.phoneNumber}
@@ -2477,12 +2590,13 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-gray-900 truncate">
                               {it.productName}
-                              {it.variantName && (
-                                <span className="text-gray-400 font-normal">
-                                  {" "}
-                                  — {it.variantName}
-                                </span>
-                              )}
+                              {it.variantName &&
+                                it.variantName !== it.productName && (
+                                  <span className="text-gray-400 font-normal">
+                                    {" "}
+                                    — {it.variantName}
+                                  </span>
+                                )}
                             </p>
                             <p className="text-xs text-gray-400">
                               {it.quantity} × {fmt(it.unitPrice)}
@@ -2583,6 +2697,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
               initialNote={state.notes}
               initialExpiresAt={state.expiresAt}
               initialDiscount={state.discount}
+              initialDiscountId={state.discountId}
               showTaxBreakdown={state.showTaxBreakdown}
               onTaxBreakdownChange={(v) =>
                 setState((prev) => ({ ...prev, showTaxBreakdown: v }))
@@ -2594,7 +2709,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         </CardContent>
       </Card>
 
-      {/* ── Preview — pass isLoading so overlay activates during mutations ── */}
+      {/* ── Preview ── */}
       <div className="hidden lg:block">
         <ProformaPreview state={state} isLoading={state.isPreviewLoading} />
       </div>

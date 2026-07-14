@@ -2,10 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import React from "react";
-
 import { Pencil as EditIcon, Eye as EyeIcon } from "lucide-react";
-
-import { Proforma } from "@/types/proforma/type";
+import { isProformaEditable } from "@/types/proforma/type";
+import type { Proforma } from "@/types/proforma/type";
 
 interface CellActionProps {
   data: Proforma;
@@ -13,39 +12,29 @@ interface CellActionProps {
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
+  const canEdit = isProformaEditable(data.proformaStatus);
 
   return (
-    <>
-      <div style={{ alignItems: "flex-end" }}>
-        <div
-          style={{
-            display: "flex",
-            float: "right",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 16,
-            fontSize: 20,
-          }}
+    <div className="flex items-center justify-end gap-4">
+      <button
+        type="button"
+        onClick={() => router.push(`/proforma-invoice/details/${data.id}`)}
+        className="cursor-pointer"
+        title="View proforma"
+      >
+        <EyeIcon color="#384B70" size={20} />
+      </button>
+
+      {canEdit && (
+        <button
+          type="button"
+          onClick={() => router.push(`/proforma-invoice/${data.id}`)}
+          className="cursor-pointer"
+          title="Edit proforma"
         >
-          <a
-            style={{ flex: 1 }}
-            onClick={() => router.push(`/proforma-invoice/details/${data.id}`)}
-            className="cursor-pointer"
-          >
-            <EyeIcon color={"#384B70"} />
-          </a>
-          {data.proformaStatus !== "COMPLETE" &&
-            data.proformaStatus !== "ACCEPTED" && (
-              <a
-                style={{ flex: 1 }}
-                onClick={() => router.push(`/proforma-invoice/${data.id}`)}
-                className="cursor-pointer"
-              >
-                <EditIcon color={"#384B70"} />
-              </a>
-            )}
-        </div>
-      </div>
-    </>
+          <EditIcon color="#384B70" size={20} />
+        </button>
+      )}
+    </div>
   );
 };
