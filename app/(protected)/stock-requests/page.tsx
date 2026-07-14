@@ -10,9 +10,10 @@ import {
 import NoItems from "@/components/layouts/no-items";
 import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/stock-transfer-request/column";
+import { getColumns } from "@/components/tables/stock-transfer-request/column";
 import { searchTransferRequests } from "@/lib/actions/stock-transfer-request-actions";
 import { softFetch } from "@/lib/list-fallback";
+import { getCurrentDestination } from "@/lib/actions/context";
 import type { TransferRequestStatus } from "@/types/stock-transfer-request/type";
 import { cn } from "@/lib/utils";
 
@@ -47,9 +48,12 @@ export default async function Page({ searchParams }: Params) {
     | TransferRequestStatus
     | undefined;
 
-  const responseData = await softFetch(
-    searchTransferRequests(page ? page - 1 : 0, pageLimit, direction, status),
-  );
+  const [responseData, destination] = await Promise.all([
+    softFetch(
+      searchTransferRequests(page ? page - 1 : 0, pageLimit, direction, status),
+    ),
+    getCurrentDestination(),
+  ]);
 
   const data = responseData?.content ?? [];
   const total = responseData?.totalElements ?? 0;
@@ -98,7 +102,7 @@ export default async function Page({ searchParams }: Params) {
           <DataLoadError itemName="stock requests" />
         ) : total > 0 || status ? (
           <DataTable
-            columns={columns}
+            columns={getColumns({ activeDestinationId: destination?.id ?? null })}
             data={data}
             searchKey="requestNumber"
             pageNo={page}

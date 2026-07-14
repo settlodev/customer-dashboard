@@ -10,7 +10,7 @@ import {
 import NoItems from "@/components/layouts/no-items";
 import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/stock-transfer/column";
+import { getColumns } from "@/components/tables/stock-transfer/column";
 import { searchStockTransfers } from "@/lib/actions/stock-transfer-actions";
 import { softFetch } from "@/lib/list-fallback";
 import { getCurrentDestination } from "@/lib/actions/context";
@@ -113,7 +113,7 @@ export default async function Page({ searchParams }: Params) {
           <>
             <StockTransferKpiStrip summary={kpi} />
             <DataTable
-              columns={columns}
+              columns={getColumns({ activeDestinationId: location?.id ?? null })}
               data={data}
               searchKey="transferNumber"
               pageNo={page}

@@ -4,7 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { StockTransfer, TRANSFER_STATUS_LABELS } from "@/types/stock-transfer/type";
+import { StockTransfer, getTransferStatusLabel } from "@/types/stock-transfer/type";
 
 const STATUS_COLORS: Record<string, string> = {
   REQUESTED: "bg-blue-50 text-blue-700",
@@ -19,7 +19,14 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: "bg-gray-100 text-gray-500",
 };
 
-export const columns: ColumnDef<StockTransfer>[] = [
+interface ColumnOptions {
+  /** The active destination's id (X-Location-Id) — decides source vs destination for the status label. */
+  activeDestinationId: string | null;
+}
+
+export const getColumns = ({
+  activeDestinationId,
+}: ColumnOptions): ColumnDef<StockTransfer>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -86,7 +93,7 @@ export const columns: ColumnDef<StockTransfer>[] = [
       const colors = STATUS_COLORS[status] || "bg-gray-100 text-gray-600";
       return (
         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colors}`}>
-          {TRANSFER_STATUS_LABELS[status] || status}
+          {getTransferStatusLabel(row.original, activeDestinationId)}
         </span>
       );
     },

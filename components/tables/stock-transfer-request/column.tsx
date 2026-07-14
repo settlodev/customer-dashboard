@@ -7,10 +7,17 @@ import { Button } from "@/components/ui/button";
 import {
   TransferRequest,
   TRANSFER_REQUEST_STATUS_COLORS,
-  TRANSFER_REQUEST_STATUS_LABELS,
+  getTransferRequestStatusLabel,
 } from "@/types/stock-transfer-request/type";
 
-export const columns: ColumnDef<TransferRequest>[] = [
+interface ColumnOptions {
+  /** The active destination's id (X-Location-Id) — decides source vs requester for the status label. */
+  activeDestinationId: string | null;
+}
+
+export const getColumns = ({
+  activeDestinationId,
+}: ColumnOptions): ColumnDef<TransferRequest>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -85,7 +92,7 @@ export const columns: ColumnDef<TransferRequest>[] = [
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colors}`}
         >
-          {TRANSFER_REQUEST_STATUS_LABELS[status] || status}
+          {getTransferRequestStatusLabel(row.original, activeDestinationId)}
         </span>
       );
     },
