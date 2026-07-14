@@ -45,6 +45,10 @@ export interface StockTransfer {
   /** Currency of item costs — source location's base currency. */
   currency: string | null;
   items: StockTransferItem[];
+  /** Snapshot: this transfer needs the destination to Accept before dispatch. */
+  approvalRequired: boolean;
+  /** Derived (approvalRequired && status === "REQUESTED") — drives Accept/Reject. */
+  awaitingApproval: boolean;
   createdAt: string;
   updatedAt: string;
 }

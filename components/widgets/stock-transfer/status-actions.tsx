@@ -33,9 +33,9 @@ import {
   cancelTransfer,
   confirmReturnTransfer,
   confirmTransfer,
-  declineTransfer,
   dispatchTransfer,
   receiveTransfer,
+  rejectTransfer,
   returnTransfer,
 } from "@/lib/actions/stock-transfer-actions";
 import StaffSelectorWidget from "../staff_selector_widget";
@@ -45,34 +45,35 @@ interface Props {
 }
 
 /**
- * Status-aware action buttons for stock transfers. The lifecycle depends on
- * `transferType`:
- *   - SUPPLY / RETURN / RETURN_TO_STORE / INTER_STORE:
- *       REQUESTED → CONFIRMED → DISPATCHED → (PARTIALLY_)RECEIVED / CANCELLED
- *   - INTER_LOCATION:
- *       REQUESTED → ACCEPTED → CONFIRMED → DISPATCHED → RECEIVED
- *                 or DECLINED → RETURN_IN_TRANSIT → RETURNED
+ * Status-aware action buttons for stock transfers.
+ *
+ * When a transfer needs destination approval (`awaitingApproval` — the backend's
+ * additive rule: location→location OR the destination's require_transfer_approval),
+ * the destination Accepts or Rejects while it's REQUESTED, and the source can only
+ * Confirm once it's ACCEPTED. Otherwise the source Confirms straight from REQUESTED:
+ *   REQUESTED → [ACCEPTED] → CONFIRMED → DISPATCHED → (PARTIALLY_)RECEIVED / CANCELLED
+ *   pending → REJECTED (no stock moved); post-dispatch → DECLINED → RETURN_IN_TRANSIT → RETURNED
  */
 export function StockTransferStatusActions({ transfer }: Props) {
-  const { status, transferType } = transfer;
-  const isInterLocation = transferType === "INTER_LOCATION";
+  const { status, awaitingApproval } = transfer;
 
+  const showAccept = awaitingApproval;
+  const showReject = awaitingApproval;
+  // A pending transfer awaiting approval blocks Confirm until it's Accepted;
+  // one that needs no approval is confirmable straight from REQUESTED.
   const showConfirm =
-    status === "REQUESTED" ||
-    (status === "ACCEPTED" && isInterLocation);
-  const showAccept = status === "REQUESTED" && isInterLocation;
-  const showDecline = status === "REQUESTED" && isInterLocation;
+    (status === "REQUESTED" && !awaitingApproval) || status === "ACCEPTED";
   const showDispatch = status === "CONFIRMED";
   const showReceive =
     status === "DISPATCHED" || status === "PARTIALLY_RECEIVED";
-  const showReturn = status === "DECLINED" && isInterLocation;
+  const showReturn = status === "DECLINED";
   const showConfirmReturn = status === "RETURN_IN_TRANSIT";
   const showCancel = CANCELLABLE.includes(status);
 
   const anyVisible =
     showConfirm ||
     showAccept ||
-    showDecline ||
+    showReject ||
     showDispatch ||
     showReceive ||
     showReturn ||
@@ -84,7 +85,7 @@ export function StockTransferStatusActions({ transfer }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {showAccept && <AcceptButton id={transfer.id} />}
-      {showDecline && <DeclineButton id={transfer.id} />}
+      {showReject && <RejectButton id={transfer.id} />}
       {showConfirm && <ConfirmButton id={transfer.id} />}
       {showDispatch && <DispatchButton id={transfer.id} />}
       {showReceive && <ReceiveButton transfer={transfer} />}
@@ -187,7 +188,7 @@ function AcceptButton({ id }: { id: string }) {
   );
 }
 
-function DeclineButton({ id }: { id: string }) {
+function RejectButton({ id }: { id: string }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -197,14 +198,14 @@ function DeclineButton({ id }: { id: string }) {
   const onConfirm = () => {
     startTransition(async () => {
       try {
-        await declineTransfer(id, reason.trim() || undefined);
-        toast({ title: "Transfer declined" });
+        await rejectTransfer(id, reason.trim() || undefined);
+        toast({ title: "Transfer rejected" });
         setOpen(false);
         router.refresh();
       } catch (error: any) {
         toast({
           variant: "destructive",
-          title: "Couldn't decline",
+          title: "Couldn't reject",
           description: error?.message ?? "Request failed",
         });
       }
@@ -215,15 +216,15 @@ function DeclineButton({ id }: { id: string }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" className="text-red-600 hover:bg-red-50">
-          <ThumbsDown className="h-4 w-4 mr-1.5" /> Decline
+          <ThumbsDown className="h-4 w-4 mr-1.5" /> Reject
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Decline transfer request</DialogTitle>
+          <DialogTitle>Reject transfer request</DialogTitle>
           <DialogDescription>
-            The source location will be notified. They can then request the
-            items be returned.
+            The source location will be notified. Nothing has been dispatched, so
+            no stock moves — the transfer is simply closed.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
@@ -231,7 +232,7 @@ function DeclineButton({ id }: { id: string }) {
           <Textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Why is this transfer being declined?"
+            placeholder="Why is this transfer being rejected?"
             rows={3}
             disabled={isPending}
           />
@@ -242,7 +243,7 @@ function DeclineButton({ id }: { id: string }) {
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
             {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Decline
+            Reject
           </Button>
         </DialogFooter>
       </DialogContent>

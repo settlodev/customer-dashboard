@@ -17,8 +17,15 @@ import { StockTransferStatusActions } from "@/components/widgets/stock-transfer/
 import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
 
 type Params = Promise<{ id: string }>;
+type SearchParams = Promise<{ stockItem?: string }>;
 
-export default async function StockTransferPage({ params }: { params: Params }) {
+export default async function StockTransferPage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
   const resolvedParams = await params;
   const isNewItem = resolvedParams.id === "new";
 
@@ -164,7 +171,7 @@ export default async function StockTransferPage({ params }: { params: Params }) 
         subtitle="Transfer stock between locations."
       />
       <PageBody>
-        <StockTransferForm />
+        <StockTransferForm prefillStockItem={(await searchParams).stockItem} />
       </PageBody>
     </PageShell>
   );

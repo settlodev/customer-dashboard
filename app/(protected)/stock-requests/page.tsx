@@ -108,6 +108,7 @@ export default async function Page({ searchParams }: Params) {
             filterKey="status"
             filterOptions={STATUS_OPTIONS}
             manualFilter
+            rowClickBasePath="/stock-requests"
           />
         ) : direction === "outgoing" ? (
           <NoItems newItemUrl="/stock-requests/new" itemName="stock requests" />

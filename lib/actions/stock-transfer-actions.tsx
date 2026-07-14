@@ -214,6 +214,12 @@ export async function declineTransfer(id: string, reason?: string): Promise<void
   revalidatePath("/stock-transfers");
 }
 
+export async function rejectTransfer(id: string, reason?: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl(`/api/v1/stock-transfers/${id}/reject`), { reason });
+  revalidatePath("/stock-transfers");
+}
+
 export async function returnTransfer(id: string): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post(inventoryUrl(`/api/v1/stock-transfers/${id}/return-to-source`), {});
