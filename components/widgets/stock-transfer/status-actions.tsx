@@ -39,7 +39,6 @@ import {
   rejectTransfer,
   returnTransfer,
 } from "@/lib/actions/stock-transfer-actions";
-import StaffSelectorWidget from "../staff_selector_widget";
 
 interface Props {
   transfer: StockTransfer;
@@ -405,7 +404,6 @@ function CancelButton({ id }: { id: string }) {
 
 function ReceiveButton({ transfer }: { transfer: StockTransfer }) {
   const [open, setOpen] = useState(false);
-  const [receivedBy, setReceivedBy] = useState("");
   const [notes, setNotes] = useState("");
   const [quantities, setQuantities] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
@@ -432,14 +430,6 @@ function ReceiveButton({ transfer }: { transfer: StockTransfer }) {
     setQuantities((prev) => ({ ...prev, [itemId]: Math.max(0, value) }));
 
   const onConfirm = () => {
-    if (!receivedBy) {
-      toast({
-        variant: "destructive",
-        title: "Select the receiver",
-        description: "Pick a staff member who received the goods.",
-      });
-      return;
-    }
     if (totalReceiving <= 0) {
       toast({
         variant: "destructive",
@@ -454,7 +444,7 @@ function ReceiveButton({ transfer }: { transfer: StockTransfer }) {
     }));
     startTransition(async () => {
       try {
-        await receiveTransfer(transfer.id, receivedBy, items, notes.trim() || undefined);
+        await receiveTransfer(transfer.id, items, notes.trim() || undefined);
         toast({ title: "Transfer received into inventory" });
         setOpen(false);
         router.refresh();
@@ -484,28 +474,15 @@ function ReceiveButton({ transfer }: { transfer: StockTransfer }) {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium">Received by</label>
-              <StaffSelectorWidget
-                label="Received by"
-                placeholder="Select staff"
-                value={receivedBy}
-                onChange={setReceivedBy}
-                onBlur={() => {}}
-                isDisabled={isPending}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium">Notes</label>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                placeholder="Optional — condition, short-shipment cause…"
-                disabled={isPending}
-              />
-            </div>
+          <div>
+            <label className="text-xs font-medium">Notes</label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Optional — condition, short-shipment cause…"
+              disabled={isPending}
+            />
           </div>
 
           <div className="overflow-x-auto border rounded-lg">
