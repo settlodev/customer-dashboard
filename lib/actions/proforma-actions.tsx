@@ -70,7 +70,7 @@ export const getProforma = async (id: UUID): Promise<Proforma | null> => {
     const response = await apiClient.get(
       `/api/location/${location?.id}/order-proforma/${id}`,
     );
-    console.log("The proforma response", response);
+
     return parseStringify(response) as Proforma;
   } catch (error) {
     console.error(`[getProforma] Error fetching proforma ${id}:`, error);
@@ -111,6 +111,7 @@ export const createProforma = async (
   const payload = {
     ...validData.data,
   };
+
   try {
     const apiClient = new ApiClient();
 
@@ -175,7 +176,6 @@ export const addItemsToProforma = async (
       message: "Proforma items added successfully",
       data: response,
     };
-    console.log("The response after adding items", response);
   } catch (error) {
     formResponse = {
       responseType: "error",
@@ -253,6 +253,8 @@ export const updateProforma = async (
     showTaxAmounts,
   });
 
+  console.log("The proforma response", validData);
+
   if (!validData.success) {
     formResponse = {
       responseType: "error",
@@ -279,7 +281,6 @@ export const updateProforma = async (
     payload.manualDiscountAmount = validData.data.manualDiscountAmount;
   }
 
-  console.log("The payload updating ", payload);
   const location = await getCurrentLocation();
 
   try {
