@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 
 import { Subscriptions, ValidDiscountCode } from "@/types/subscription/type";
 import { AlertCircle, Calendar, Check, CheckCircle2, Loader2, Mail, Phone, Star, Tag, X } from "lucide-react";
-import Loading from "../loading";
 import { getAllSubscriptions,paySubscription,User, validateDiscountCode, verifyPayment } from "@/lib/actions/subscriptions";
 import { useSearchParams } from "next/navigation";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
@@ -29,6 +28,7 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { Input } from "@/components/ui/input";
 import { NumericFormat } from "react-number-format";
 import { isValidPhoneNumber } from "libphonenumber-js";
+import Loading from "@/components/ui/loading";
 
 
 
@@ -127,12 +127,12 @@ const SubscriptionPage = () => {
         <Card
           key={index}
           className={`w-full relative transform hover:scale-105 transition-transform duration-300 ${
-            index === 1 ? "border-2 border-emerald-500" : ""
+            index === 1 ? "border-2 border-primary" : ""
           }`}
         >
           {index === 1 && (
             <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-              <Badge className="bg-emerald-500 text-white px-3 py-1">
+              <Badge className="bg-primary text-white px-3 py-1">
                 <Star className="w-4 h-4 mr-1 inline" />
                 <span className="hidden sm:inline">Most Popular</span>
               </Badge>
@@ -154,7 +154,7 @@ const SubscriptionPage = () => {
             <ul className="space-y-2 sm:space-y-4">
               {plan.subscriptionFeatures.slice(0, 10).map((feature) => (
                 <li key={feature.id} className="flex items-start space-x-2 sm:space-x-3">
-                  <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0 mt-1" />
+                  <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0 mt-1" />
                   <span className="text-sm sm:text-base text-gray-700">{feature.name}</span>
                 </li>
               ))}
@@ -166,7 +166,7 @@ const SubscriptionPage = () => {
               onClick={() => handleGetStartedClick(plan)}
               className={`w-full py-3 sm:py-4 lg:py-6 text-base sm:text-lg font-semibold ${
                 index === 1
-                  ? "bg-emerald-500 hover:bg-emerald-200"
+                  ? "bg-primary hover:bg-orange-600"
                   : "bg-gray-900 hover:bg-gray-800"
               }`}
             >
@@ -279,7 +279,7 @@ const SubscriptionFormModal = ({
       toast({
         title: "Discount Code Valid",
         description: "The discount code has been applied successfully",
-        variant: "default"
+        variant: "success"
       });
     } catch (error) {
       setDiscountValid(false);
@@ -565,7 +565,7 @@ const SubscriptionFormModal = ({
                             {isValidatingDiscount ? (
                               <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
                             ) : discountValid === true ? (
-                              <Check className="h-5 w-5 text-green-500" />
+                              <Check className="h-5 w-5 text-primary" />
                             ) : discountValid === false ? (
                               <X className="h-5 w-5 text-red-500" onClick={() => field.onChange('')} />
                             ) : null}

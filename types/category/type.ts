@@ -26,3 +26,5 @@ export interface SubCategory {
     "locationName": string,
     "isArchived": boolean,
 }
+
+

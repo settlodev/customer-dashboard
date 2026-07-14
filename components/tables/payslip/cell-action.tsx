@@ -13,7 +13,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import DeleteModal from "@/components/tables/delete-modal";
-import {useDisclosure} from "@nextui-org/modal";
+import {useDisclosure} from "@/hooks/use-disclosure";
 import {toast} from "@/hooks/use-toast";
 import { Payslip } from "@/types/payslip/type";
 import { deletePayslip } from "@/lib/actions/payslip-actions";
@@ -31,7 +31,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             if (data) {
                 await deletePayslip(data.id);
                 toast({
-                    variant: "default",
+                    variant: "success",
                     title: "Success",
                     description: "Payslip deleted successfully!",
                 });

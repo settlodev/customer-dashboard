@@ -5,7 +5,7 @@ import React, { useState } from "react";
 
 import DeleteModal from "@/components/tables/delete-modal";
 import {toast} from "@/hooks/use-toast";
-import {DeleteIcon, EditIcon, EyeIcon} from "@nextui-org/shared-icons";
+import { Trash2 as DeleteIcon, Pencil as EditIcon, Eye as EyeIcon } from "lucide-react";
 
 import { Stock } from "@/types/stock/type";
 import { deleteStock } from "@/lib/actions/stock-actions";
@@ -28,7 +28,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             if (data) {
                 await deleteStock(data.id);
                 toast({
-                    variant: "default",
+                    variant: "success",
                     title: "Success",
                     description: "Stock deleted successfully!",
                 });

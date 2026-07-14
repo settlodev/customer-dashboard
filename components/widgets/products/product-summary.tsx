@@ -1,42 +1,52 @@
-'use client';
-import { Card, CardContent } from '@/components/ui/card'
-import React from 'react'
+"use client";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Package, Layers } from "lucide-react";
+import React from "react";
 
 type ProductSummaryProps = {
   data: {
     totalProducts: number;
     totalProductVariants: number;
   };
-}
+};
 
 function ProductSummary({ data }: ProductSummaryProps) {
-    return (
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-            <Card className='w-full'>
-                <CardContent className='p-4'>
-                    <div className='flex items-center justify-between'>
-                        <div>
-                            <h3 className='text-lg font-semibold'>Total Products</h3>
-                            <p className='text-sm text-muted-foreground'>Product count</p>
-                        </div>
-                        <div className='text-xl font-bold'>{data.totalProducts}</div>
-                    </div>
-                </CardContent>
-            </Card>
-            
-            <Card className='w-full'>
-                <CardContent className='p-4'>
-                    <div className='flex items-center justify-between'>
-                        <div>
-                            <h3 className='text-lg font-semibold'>Total Variants</h3>
-                            <p className='text-sm text-muted-foreground'>Product variants count</p>
-                        </div>
-                        <div className='text-xl font-bold'>{data.totalProductVariants}</div>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-    )
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <Card className="rounded-xl shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Total Products
+          </CardTitle>
+          <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            <Package className="h-4 w-4 text-gray-500" />
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-1">
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            {data.totalProducts}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-xl shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Total Variants
+          </CardTitle>
+          <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            <Layers className="h-4 w-4 text-gray-500" />
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-1">
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            {data.totalProductVariants}
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
-export default ProductSummary
+export default ProductSummary;

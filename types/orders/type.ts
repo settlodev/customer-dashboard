@@ -188,11 +188,11 @@ export interface CashFlow{
     startDate:Date
     endDate:Date
     transactions:number
-    expenses:number
+    expensePayments:number
     refunds:number
     transactionsAmount:number
     refundsAmount:number
-    expensesAmount:number
+    expensesPaidAmount:number
     closingBalance:number
     paymentMethodTotals:PaymentMethods[]
 }

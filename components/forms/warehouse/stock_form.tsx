@@ -71,7 +71,7 @@ export default function WarehouseStockForm({ item }: StockFormProps) {
 
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
-            console.log("errors", errors);
+            console.log("The errors while creating or updating", errors);
         },
         []
     );
@@ -82,7 +82,6 @@ export default function WarehouseStockForm({ item }: StockFormProps) {
             startingValue: 0,
             alertLevel: 0,
             imageOption: "",
-            // unit: form.getValues("unit")
         });
     };
 
@@ -90,7 +89,7 @@ export default function WarehouseStockForm({ item }: StockFormProps) {
 
         const stored = localStorage.getItem('pagination-stock-variants');
         const paginationState = stored ? JSON.parse(stored) : null;
-        console.log('Pagination state:', paginationState);
+        
 
         setResponse(undefined);
 
@@ -130,7 +129,7 @@ export default function WarehouseStockForm({ item }: StockFormProps) {
                         console.error('Error updating stock:', error);
                     });
             } else {
-                // console.log('Creating new stock');
+                console.log('Creating new stock');
                 createStockFromWarehouse(updatedValues)
                     .then((data) => {
                         console.log('Create stock response:', data);

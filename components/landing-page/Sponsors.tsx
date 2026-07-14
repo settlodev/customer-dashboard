@@ -25,7 +25,7 @@ export const Sponsors = () => {
 
   return (
       <section className="bg-white py-24 w-full">
-        <div className="max-w-6xl mx-auto px-4">
+        <div className="max-w-[85rem] mx-auto px-4">
           <div className="text-center space-y-6 mb-16">
           <span className="inline-block text-emerald-600 font-medium">
             Trusted By Industry Leaders

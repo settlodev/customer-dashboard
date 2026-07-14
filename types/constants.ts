@@ -1,4 +1,4 @@
-import { Bell, Bolt } from "lucide-react";
+import { Bell, Building2, CalendarClock, CreditCard, Link2, MapPin, Package, Printer, Receipt, Smartphone, Star, ToggleRight, UtensilsCrossed } from "lucide-react";
 
 export const taxClasses=
     [
@@ -76,29 +76,82 @@ export const ItemStatuses = [
 ];
 
 export const settingsNavItems = [
-    // {
-    //     id: 'general',
-    //     label: 'General',
-    //     icon: Settings,
-    //     description: 'Location and basic settings'
-    // },
     {
-        id: 'preferences',
-        label: 'Preferences',
-        icon: Bolt,
-        description: 'Personal preferences'
+        id: 'business',
+        label: 'Business',
+        icon: Building2,
+        description: 'Business details & info'
+    },
+    {
+        id: 'location',
+        label: 'Location',
+        icon: MapPin,
+        description: 'Location details & hours'
+    },
+    {
+        id: 'features',
+        label: 'Features',
+        icon: ToggleRight,
+        description: 'Toggle app features'
+    },
+    {
+        id: 'printing',
+        label: 'Printing & Receipts',
+        icon: Printer,
+        description: 'Tickets, receipts & images'
+    },
+    {
+        id: 'orders-inventory',
+        label: 'Orders & Inventory',
+        icon: Package,
+        description: 'Order rules & stock deduction'
     },
     {
         id: 'notifications',
         label: 'Notifications',
         icon: Bell,
-        description: 'Email and push notifications'
+        description: 'Email, SMS & push alerts'
     },
-    // {
-    //     id: 'account',
-    //     label: 'Account',
-    //     icon: Shield,
-    //     description: 'Account security settings'
-    // },
-   
+    {
+        id: 'reservations',
+        label: 'Reservations',
+        icon: CalendarClock,
+        description: 'Booking rules & questions'
+    },
+    {
+        id: 'digital-menu',
+        label: 'Digital Menu',
+        icon: UtensilsCrossed,
+        description: 'Online ordering menus'
+    },
+    {
+        id: 'payments',
+        label: 'Payments',
+        icon: CreditCard,
+        description: 'Accepted payment methods'
+    },
+    {
+        id: 'loyalty-points',
+        label: 'Loyalty Points',
+        icon: Star,
+        description: 'Customer & staff rewards'
+    },
+    {
+        id: 'efd',
+        label: 'EFD',
+        icon: Receipt,
+        description: 'Tax & fiscal compliance'
+    },
+    {
+        id: 'devices',
+        label: 'Devices',
+        icon: Smartphone,
+        description: 'Linked devices & access'
+    },
+    {
+        id: 'integrations',
+        label: 'Integrations',
+        icon: Link2,
+        description: 'Payment & service integrations'
+    },
 ];

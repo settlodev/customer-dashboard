@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -168,18 +170,14 @@ const TableExport: React.FC<TableExportProps> = ({
   };
 
   return (
-    <div className="flex gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleDownload}
-        className="flex items-center gap-2"
-        disabled={isLoading}
-      >
-        <Download className="h-4 w-4" />
-        {isLoading ? 'Downloading...' : 'Export to CSV'}
-      </Button>
-    </div>
+    <Button
+      variant="outline"
+      onClick={handleDownload}
+      disabled={isLoading}
+    >
+      <Download className="h-4 w-4 mr-1.5" />
+      {isLoading ? "Exporting..." : "Export CSV"}
+    </Button>
   );
 };
 

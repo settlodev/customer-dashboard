@@ -20,15 +20,15 @@ interface UseCSVUploadResult {
 // Constants for timeouts and progress steps
 const UPLOAD_SIMULATION_STEPS = 8;
 const SIMULATION_STEP_TIME = 150; // milliseconds
-const VALIDATION_PROGRESS = 20; // First 20% for validation
-const PROCESSING_PROGRESS = 70; // Next 50% for processing
-const COMPLETION_PROGRESS = 100; // Final 30% for completion
+const VALIDATION_PROGRESS = 20; 
+const PROCESSING_PROGRESS = 70; 
+const COMPLETION_PROGRESS = 100; 
 
 export const useCSVUpload = (): UseCSVUploadResult => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  // const router = useRouter();
 
   const resetUpload = useCallback(() => {
     setIsUploading(false);
@@ -65,7 +65,7 @@ export const useCSVUpload = (): UseCSVUploadResult => {
       setUploadProgress(COMPLETION_PROGRESS);
       
       // Handle navigation on client side
-      router.push("/stock-intakes");
+      // router.push("/stock-intakes");
       
       return response;
     } catch (err: any) {

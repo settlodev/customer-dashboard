@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import { redirect } from "next/navigation";
 import {ErrorResponseType} from "@/types/types";
 
 export const ErrorCodes = {
@@ -14,6 +15,7 @@ export const ErrorCodes = {
     PHONE_EXISTS: 'PHONE_EXISTS',
     WRONG_CREDENTIALS: 'WRONG_CREDENTIALS',
     EMAIL_VERIFIED: 'EMAIL_VERIFIED',
+    SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
     STOCK_VARIANT: 'STOCK_VARIANT',
 } as const;
 
@@ -62,7 +64,12 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
 
         if (error.response) {
             const { status } = error.response;
+            // const serverMessage = (error.response.data as { message?: string })?.message;
             const serverMessage = (error.response.data as { message?: string })?.message;
+
+            // console.log("Status:", status);
+            // console.log("Server message:", serverMessage);
+            // console.log("Full response data:", error.response.data);
 
             switch (status) {
                 case 400:
@@ -74,14 +81,11 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
                     );
 
                 case 401:
-                    return createErrorResponse(
-                        status,
-                        ErrorCodes.UNAUTHORIZED,
-                        serverMessage || 'Unauthorized, please log in again.',
-                        errorDetails
-                    );
+                    console.error("[API] 401 Unauthorized — redirecting to login");
+                    redirect("/login");
 
                 case 403:
+                    // console.log("Creating 403 error response with message:", serverMessage);
                     return createErrorResponse(
                         status,
                         ErrorCodes.FORBIDDEN,
@@ -156,6 +160,16 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
                             stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
                             details: error.response.data
                         }
+                    );
+
+                case 502:
+                case 503:
+                case 504:
+                    return createErrorResponse(
+                        status,
+                        ErrorCodes.SERVICE_UNAVAILABLE,
+                        serverMessage || 'Service is temporarily unavailable. Please try again later.',
+                        errorDetails
                     );
 
                 default:

@@ -7,6 +7,7 @@ import DataRemovalEmailTemplate from "@/components/emails/data-removal";
 
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
 export async function sendPasswordResetEmail(token: string, email: string) {
     try {
         const {data,error} = await resend.emails.send({
