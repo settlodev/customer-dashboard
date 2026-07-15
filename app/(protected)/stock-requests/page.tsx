@@ -9,8 +9,7 @@ import {
 } from "@/components/layouts/page-shell";
 import NoItems from "@/components/layouts/no-items";
 import DataLoadError from "@/components/layouts/data-load-error";
-import { DataTable } from "@/components/tables/data-table";
-import { getColumns } from "@/components/tables/stock-transfer-request/column";
+import { TransferRequestTable } from "@/components/tables/stock-transfer-request/table";
 import { searchTransferRequests } from "@/lib/actions/stock-transfer-request-actions";
 import { softFetch } from "@/lib/list-fallback";
 import { getCurrentDestination } from "@/lib/actions/context";
@@ -101,18 +100,14 @@ export default async function Page({ searchParams }: Params) {
         {!responseData ? (
           <DataLoadError itemName="stock requests" />
         ) : total > 0 || status ? (
-          <DataTable
-            columns={getColumns({ activeDestinationId: destination?.id ?? null })}
+          <TransferRequestTable
             data={data}
-            searchKey="requestNumber"
+            activeDestinationId={destination?.id ?? null}
             pageNo={page}
             total={total}
             pageCount={pageCount}
             defaultPageSize={pageLimit}
-            filterKey="status"
             filterOptions={STATUS_OPTIONS}
-            manualFilter
-            rowClickBasePath="/stock-requests"
           />
         ) : direction === "outgoing" ? (
           <NoItems newItemUrl="/stock-requests/new" itemName="stock requests" />

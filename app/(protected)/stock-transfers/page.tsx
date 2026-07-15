@@ -9,8 +9,7 @@ import {
 } from "@/components/layouts/page-shell";
 import NoItems from "@/components/layouts/no-items";
 import DataLoadError from "@/components/layouts/data-load-error";
-import { DataTable } from "@/components/tables/data-table";
-import { getColumns } from "@/components/tables/stock-transfer/column";
+import { StockTransferTable } from "@/components/tables/stock-transfer/table";
 import { searchStockTransfers } from "@/lib/actions/stock-transfer-actions";
 import { softFetch } from "@/lib/list-fallback";
 import { getCurrentDestination } from "@/lib/actions/context";
@@ -112,18 +111,14 @@ export default async function Page({ searchParams }: Params) {
         ) : total > 0 || status ? (
           <>
             <StockTransferKpiStrip summary={kpi} />
-            <DataTable
-              columns={getColumns({ activeDestinationId: location?.id ?? null })}
+            <StockTransferTable
               data={data}
-              searchKey="transferNumber"
+              activeDestinationId={location?.id ?? null}
               pageNo={page}
               total={total}
               pageCount={pageCount}
               defaultPageSize={pageLimit}
-              filterKey="status"
               filterOptions={STATUS_OPTIONS}
-              manualFilter
-              rowClickBasePath="/stock-transfers"
             />
           </>
         ) : direction === "outgoing" ? (
