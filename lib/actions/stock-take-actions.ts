@@ -14,8 +14,13 @@ import type {
   CycleCountType,
   CreateStockTakePayload,
   RecordCountPayload,
+  RecordCountBatchPayload,
 } from "@/types/stock-take/type";
-import { CreateStockTakeSchema, RecordCountSchema } from "@/types/stock-take/schema";
+import {
+  CreateStockTakeSchema,
+  RecordCountSchema,
+  RecordCountBatchSchema,
+} from "@/types/stock-take/schema";
 
 const BASE = "/api/v1/stock-takes";
 
@@ -305,6 +310,38 @@ export async function recordStockTakeCount(
     return {
       responseType: "error",
       message: error?.message ?? "Failed to record count",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
+export async function recordStockTakeCounts(
+  takeId: string,
+  input: z.infer<typeof RecordCountBatchSchema>,
+): Promise<FormResponse> {
+  const validated = RecordCountBatchSchema.safeParse(input);
+  if (!validated.success) {
+    return {
+      responseType: "error",
+      message: "Invalid counts",
+      error: new Error(validated.error.message),
+    };
+  }
+
+  const payload: RecordCountBatchPayload = validated.data;
+
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(inventoryUrl(`${BASE}/${takeId}/counts`), payload);
+    revalidatePath(`/stock-takes/${takeId}`);
+    return {
+      responseType: "success",
+      message: `${payload.counts.length} count${payload.counts.length === 1 ? "" : "s"} submitted`,
+    };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message ?? "Failed to submit counts",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }

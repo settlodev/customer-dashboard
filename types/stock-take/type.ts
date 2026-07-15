@@ -72,6 +72,10 @@ export interface RecordCountPayload {
   notes?: string;
 }
 
+export interface RecordCountBatchPayload {
+  counts: RecordCountPayload[];
+}
+
 export const STOCK_TAKE_STATUS_LABELS: Record<StockTakeStatus, string> = {
   DRAFT: "Draft",
   IN_PROGRESS: "In Progress",

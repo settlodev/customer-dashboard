@@ -107,3 +107,7 @@ export const RecordCountSchema = z.object({
   ),
   notes: z.string().optional(),
 });
+
+export const RecordCountBatchSchema = z.object({
+  counts: z.array(RecordCountSchema).min(1, "At least one count is required"),
+});
