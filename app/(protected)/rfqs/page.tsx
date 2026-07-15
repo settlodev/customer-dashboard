@@ -21,7 +21,7 @@ import { columns } from "@/components/tables/rfq/columns";
 import { getRfqs } from "@/lib/actions/rfq-actions";
 import { softFetch } from "@/lib/list-fallback";
 import { getLocationConfig } from "@/lib/actions/location-config-actions";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { getRfqKpi } from "@/lib/actions/reports-analytics-actions";
 import { RfqKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
 import type { RfqStatus } from "@/types/rfq/type";
@@ -54,7 +54,7 @@ export default async function Page({ searchParams }: Params) {
   const [responseData, config, location] = await Promise.all([
     softFetch(getRfqs(page ? page - 1 : 0, pageLimit, status)),
     getLocationConfig(),
-    getCurrentLocation(),
+    getCurrentDestination(),
   ]);
 
   const data = responseData?.content ?? [];

@@ -14,7 +14,7 @@ import { columns, LpoRow } from "@/components/tables/lpo/columns";
 import { getLpos } from "@/lib/actions/lpo-actions";
 import { softFetch } from "@/lib/list-fallback";
 import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { getPurchaseOrderKpi } from "@/lib/actions/reports-analytics-actions";
 import { PurchaseOrderKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
 import type { LpoStatus } from "@/types/lpo/type";
@@ -45,7 +45,7 @@ export default async function Page({ searchParams }: Params) {
   // Same shape as the products page: chain the KPI fetch off the location
   // promise so it joins the parallel Promise.all instead of being awaited
   // sequentially after.
-  const locationPromise = getCurrentLocation();
+  const locationPromise = getCurrentDestination();
   const kpiPromise = locationPromise.then((loc) =>
     loc?.id ? getPurchaseOrderKpi(loc.id).catch(() => null) : null,
   );
