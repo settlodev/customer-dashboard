@@ -7,7 +7,6 @@ import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { inventoryUrl } from "./inventory-client";
-import { getCurrentDestination } from "./context";
 import type {
   StockTake,
   StockTakeStatus,
@@ -82,13 +81,10 @@ export async function createStockTake(
     samplePercentage,
   } = validated.data;
 
-  // The take counts the active destination, so its type comes from the
-  // session — not from the form (whose field defaulted to LOCATION even in
-  // store/warehouse mode). The backend derives this server-side too.
-  const destination = await getCurrentDestination();
-
+  // The take counts the active destination — the backend derives its type
+  // from the X-Location-Id header (attached ambiently by ApiClient), so it
+  // never needs to travel in the body.
   const payload: CreateStockTakePayload = {
-    locationType: destination?.type ?? "LOCATION",
     cycleCountType,
     blindCount,
     notes: notes?.trim() ? notes.trim() : undefined,
@@ -199,7 +195,6 @@ export async function updateStockTakeDraft(
   }
 
   const {
-    locationType,
     cycleCountType,
     blindCount,
     notes,
@@ -212,7 +207,6 @@ export async function updateStockTakeDraft(
   } = validated.data;
 
   const payload = {
-    locationType,
     cycleCountType,
     blindCount,
     notes: notes?.trim() ? notes.trim() : null,
@@ -250,7 +244,6 @@ export async function getStockTakePreview(
   if (!validated.success) return null;
 
   const {
-    locationType,
     cycleCountType,
     abcClass,
     departmentId,
@@ -261,7 +254,6 @@ export async function getStockTakePreview(
   } = validated.data;
 
   const payload = {
-    locationType,
     cycleCountType,
     filterCriteria: buildFilterCriteria({
       cycleCountType,

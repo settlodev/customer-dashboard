@@ -7,6 +7,7 @@ import {
 } from "@/components/layouts/page-shell";
 import StockTakeForm from "@/components/forms/stock-take-form";
 import { getStockTake } from "@/lib/actions/stock-take-actions";
+import { getCurrentDestination } from "@/lib/actions/context";
 import type { CreateStockTakeInput } from "@/types/stock-take/schema";
 import type { StockTake } from "@/types/stock-take/type";
 
@@ -14,7 +15,10 @@ type Params = Promise<{ id: string }>;
 
 export default async function EditStockTakePage({ params }: { params: Params }) {
   const { id } = await params;
-  const stockTake = await getStockTake(id);
+  const [stockTake, destination] = await Promise.all([
+    getStockTake(id),
+    getCurrentDestination(),
+  ]);
   if (!stockTake) notFound();
   if (stockTake.status !== "DRAFT") {
     // Editing is only valid on DRAFT — send user back to the detail page.
@@ -22,6 +26,9 @@ export default async function EditStockTakePage({ params }: { params: Params }) 
   }
 
   const initial = toFormValues(stockTake);
+  // The draft's original type reflects the workspace it was created in; if the
+  // cookie context is missing (edge case) fall back to that stamped value.
+  const destinationType = destination?.type ?? stockTake.locationType;
 
   return (
     <PageShell>
@@ -37,7 +44,11 @@ export default async function EditStockTakePage({ params }: { params: Params }) 
         subtitle="Update count scope and notes before starting."
       />
       <PageBody>
-        <StockTakeForm stockTakeId={stockTake.id} initialValues={initial} />
+        <StockTakeForm
+          stockTakeId={stockTake.id}
+          initialValues={initial}
+          destinationType={destinationType}
+        />
       </PageBody>
     </PageShell>
   );
@@ -46,7 +57,6 @@ export default async function EditStockTakePage({ params }: { params: Params }) 
 function toFormValues(stockTake: StockTake): Partial<CreateStockTakeInput> {
   const type = stockTake.cycleCountType ?? "FULL";
   const base: Partial<CreateStockTakeInput> = {
-    locationType: stockTake.locationType,
     cycleCountType: type,
     blindCount: stockTake.blindCount ?? false,
     notes: stockTake.notes ?? "",

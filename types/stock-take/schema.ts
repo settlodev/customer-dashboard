@@ -10,11 +10,6 @@ const uuid = z.string().uuid("Must be a valid UUID");
 
 export const CreateStockTakeSchema = z
   .object({
-    locationType: z
-      .enum(["LOCATION", "STORE", "WAREHOUSE"], {
-        required_error: "Select where the count will take place",
-      })
-      .default("LOCATION"),
     cycleCountType: z
       .enum(["FULL", "ABC_CLASS", "DEPARTMENT", "RANDOM", "ZONE"])
       .default("FULL"),

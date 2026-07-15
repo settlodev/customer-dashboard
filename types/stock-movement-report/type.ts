@@ -37,6 +37,8 @@ export interface StockMovementReportRow {
 
   reserved: number;
   available: number;
+  /** Dispatched from another destination but not yet received here. */
+  inTransit: number;
   avgCost: number;
   reorderPoint: number | null;
 
@@ -56,6 +58,7 @@ export interface StockMovementReportSummary {
   totalNet: number;
   totalClosing: number;
   totalValue: number;
+  totalInTransit: number;
   /** Lens counts (all = total item count for the current search). */
   all: number;
   movers: number;
