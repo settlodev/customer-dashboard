@@ -6,19 +6,25 @@ import { revalidatePath } from "next/cache";
 import type { InventoryBalance } from "@/types/inventory-balance/type";
 import type { FormResponse } from "@/types/types";
 import { inventoryUrl } from "./inventory-client";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 
 /**
- * Resolve the inventory balance for a variant at the user's current location.
- * Returns null when the location can't be resolved or the variant has no
- * balance row yet (treated as zero on hand by callers).
+ * Resolve the inventory balance for a variant at the user's current
+ * destination (location OR store). Returns null when no destination is
+ * active or the variant has no balance row yet (treated as zero on hand
+ * by callers).
+ *
+ * Uses getCurrentDestination(), not getCurrentLocation() — the latter only
+ * reads the currentLocation cookie, which is cleared (not set to the
+ * parent) when a store is active, so it previously made every balance
+ * blank out to "not found" in store mode.
  */
 export async function getCurrentLocationBalance(
   variantId: string,
 ): Promise<InventoryBalance | null> {
-  const location = await getCurrentLocation();
-  if (!location?.id) return null;
-  return getBalance(location.id, variantId);
+  const destination = await getCurrentDestination();
+  if (!destination?.id) return null;
+  return getBalance(destination.id, variantId);
 }
 
 export async function getBalancesByLocation(
