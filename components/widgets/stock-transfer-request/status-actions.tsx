@@ -214,13 +214,21 @@ function CancelButton({ id }: { id: string }) {
 
 // ── Approve — per-item editable quantities ───────────────────────────
 
+// The most an approver can put on a line: never more than was requested, and
+// never more than the source actually has on hand right now. Falls back to
+// requestedQuantity alone when availability wasn't fetched (list-derived data).
+const approvalCap = (item: TransferRequest["items"][number]): number =>
+  item.availableQuantity != null
+    ? Math.min(item.requestedQuantity, item.availableQuantity)
+    : item.requestedQuantity;
+
 function ApproveButton({ request }: { request: TransferRequest }) {
   const [open, setOpen] = useState(false);
   const [reviewNotes, setReviewNotes] = useState("");
   const [quantities, setQuantities] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
     request.items.forEach((item) => {
-      initial[item.id] = item.requestedQuantity;
+      initial[item.id] = approvalCap(item);
     });
     return initial;
   });
@@ -234,12 +242,13 @@ function ApproveButton({ request }: { request: TransferRequest }) {
     [quantities],
   );
 
-  // Clamp each line to 0..requestedQuantity — the backend rejects approvals
-  // above the requested amount, and 0 simply drops the line.
+  // Clamp each line to 0..approvalCap — the backend rejects approvals above
+  // the requested amount, and approving more than the source has on hand
+  // would just fail once dispatched anyway.
   const setQty = (item: TransferRequest["items"][number], value: number) =>
     setQuantities((prev) => ({
       ...prev,
-      [item.id]: Math.min(Math.max(0, value), item.requestedQuantity),
+      [item.id]: Math.min(Math.max(0, value), approvalCap(item)),
     }));
 
   const onConfirm = () => {
@@ -301,6 +310,9 @@ function ApproveButton({ request }: { request: TransferRequest }) {
                   <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
                     Requested
                   </th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                    Available
+                  </th>
                   <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase w-36">
                     Approving
                   </th>
@@ -316,6 +328,11 @@ function ApproveButton({ request }: { request: TransferRequest }) {
                       </td>
                       <td className="px-3 py-2 text-right">
                         {item.requestedQuantity.toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2 text-right text-muted-foreground">
+                        {item.availableQuantity != null
+                          ? item.availableQuantity.toLocaleString()
+                          : "—"}
                       </td>
                       <td className="px-3 py-2 text-right">
                         <NumericFormat
@@ -336,7 +353,7 @@ function ApproveButton({ request }: { request: TransferRequest }) {
               </tbody>
               <tfoot>
                 <tr className="bg-gray-50/60 font-semibold">
-                  <td colSpan={2} className="px-3 py-2 text-right">
+                  <td colSpan={3} className="px-3 py-2 text-right">
                     Total approving
                   </td>
                   <td className="px-3 py-2 text-right">

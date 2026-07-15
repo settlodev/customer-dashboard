@@ -50,6 +50,8 @@ export interface TransferRequestItem {
   requestedQuantity: number;
   /** Set on approval — may be trimmed below requestedQuantity; null while PENDING. */
   approvedQuantity: number | null;
+  /** Available stock at the source (quantityOnHand - reservedQuantity). Only populated on the single-request detail fetch — null on list rows. */
+  availableQuantity: number | null;
   notes: string | null;
 }
 
