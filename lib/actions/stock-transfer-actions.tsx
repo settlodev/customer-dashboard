@@ -189,13 +189,11 @@ export async function dispatchTransfer(id: string): Promise<void> {
 
 export async function receiveTransfer(
   id: string,
-  receivedBy: string,
   items?: { stockVariantId: string; receivedQuantity: number }[],
   notes?: string,
 ): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post(inventoryUrl(`/api/v1/stock-transfers/${id}/receive`), {
-    receivedBy,
     notes,
     items,
   });
@@ -211,6 +209,12 @@ export async function acceptTransfer(id: string): Promise<void> {
 export async function declineTransfer(id: string, reason?: string): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post(inventoryUrl(`/api/v1/stock-transfers/${id}/decline`), { reason });
+  revalidatePath("/stock-transfers");
+}
+
+export async function rejectTransfer(id: string, reason?: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl(`/api/v1/stock-transfers/${id}/reject`), { reason });
   revalidatePath("/stock-transfers");
 }
 

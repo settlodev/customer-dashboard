@@ -305,12 +305,14 @@ async function getScopedLocationId(): Promise<string | null> {
  *
  * <p>Per-parent-location guard: a stale cookie from a prior location
  * must NOT bleed through after the operator switches. We compare the
- * cookie's locationId against the {@code currentLocation} cookie
- * (the parent location — always set even when a store/warehouse is
- * the active destination). When they differ, the header is omitted
- * and the server returns {@code BUSINESS_DAY_SESSION_HEADER_MISSING}
- * which {@code useBusinessDayGuard} surfaces as an "open the day"
- * prompt at the new location.
+ * cookie's locationId against the {@code currentLocation} cookie. Note
+ * this only guards true location→location switches — {@code
+ * currentLocation} is cleared (not preserved as the parent) when a
+ * store or warehouse becomes the active destination, so this check is
+ * a no-op in store/warehouse mode; a stale session there is instead
+ * caught server-side by BusinessDayResolver's location-match check
+ * (BUSINESS_DAY_SESSION_LOCATION_MISMATCH), just without the nicer
+ * proactive "open the day" prompt this guard gives location switches.
  */
 async function getDaySessionIdForLocation(): Promise<string | null> {
   try {

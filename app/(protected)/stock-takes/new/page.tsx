@@ -7,9 +7,13 @@ import {
 } from "@/components/layouts/page-shell";
 import StockTakeForm from "@/components/forms/stock-take-form";
 import { getLocationConfig } from "@/lib/actions/location-config-actions";
+import { getCurrentDestination } from "@/lib/actions/context";
 
 export default async function NewStockTakePage() {
-  const config = await getLocationConfig();
+  const [config, destination] = await Promise.all([
+    getLocationConfig(),
+    getCurrentDestination(),
+  ]);
   if (!config?.cycleCountingEnabled) notFound();
 
   return (
@@ -25,7 +29,7 @@ export default async function NewStockTakePage() {
         subtitle="Draft → Start (snapshots on-hand) → record counts → Complete → Approve (auto-generates variance adjustments)."
       />
       <PageBody>
-        <StockTakeForm />
+        <StockTakeForm destinationType={destination?.type ?? "LOCATION"} />
       </PageBody>
     </PageShell>
   );

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 import { Loader2, Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,35 +9,54 @@ import { useToast } from "@/hooks/use-toast";
 import type { StockTakeItem } from "@/types/stock-take/type";
 import { recordStockTakeCount } from "@/lib/actions/stock-take-actions";
 
+export interface CountDraft {
+  countedQuantity?: number;
+  notes: string;
+}
+
 interface Props {
   takeId: string;
   item: StockTakeItem;
+  value: CountDraft;
+  dirty: boolean;
   blindCount: boolean;
   readOnly?: boolean;
   showBin?: boolean;
+  onChange: (patch: Partial<CountDraft>) => void;
+  onSaved: () => void;
 }
 
 /**
- * One editable row inside the stock-take detail page. Persists counted qty
- * with an inline save button — the backend recalculates variance per request.
+ * One editable row inside the stock-take detail page. The count/notes value
+ * is owned by the parent table (so it survives client-side pagination) —
+ * this row just renders it and offers an immediate per-row Save alongside
+ * the table's bulk "Submit all counts" action.
  */
-export function StockTakeCountRow({ takeId, item, blindCount, readOnly, showBin }: Props) {
-  const [counted, setCounted] = useState<number | undefined>(
-    item.countedQuantity ?? undefined,
-  );
-  const [notes, setNotes] = useState<string>(item.notes ?? "");
+export function StockTakeCountRow({
+  takeId,
+  item,
+  value,
+  dirty,
+  blindCount,
+  readOnly,
+  showBin,
+  onChange,
+  onSaved,
+}: Props) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
-  const router = useRouter();
 
-  const dirty =
-    (counted ?? null) !== (item.countedQuantity ?? null) ||
-    (notes ?? "") !== (item.notes ?? "");
-
-  const variance = item.variance;
+  // Computed live from the pending value, not the last-saved item.variance,
+  // so typing a count previews its variance immediately instead of only
+  // after a save round trip. Stays hidden under blind count the same way
+  // expectedQuantity already is (both null together).
+  const liveVariance =
+    item.expectedQuantity != null && value.countedQuantity != null
+      ? value.countedQuantity - item.expectedQuantity
+      : null;
 
   const save = () => {
-    if (counted == null) {
+    if (value.countedQuantity == null) {
       toast({
         variant: "destructive",
         title: "Enter a count",
@@ -49,8 +67,8 @@ export function StockTakeCountRow({ takeId, item, blindCount, readOnly, showBin 
     startTransition(() => {
       recordStockTakeCount(takeId, {
         itemId: item.id,
-        countedQuantity: counted,
-        notes: notes.trim() || undefined,
+        countedQuantity: value.countedQuantity!,
+        notes: value.notes.trim() || undefined,
       }).then((res) => {
         if (res.responseType === "error") {
           toast({
@@ -60,7 +78,7 @@ export function StockTakeCountRow({ takeId, item, blindCount, readOnly, showBin 
           });
           return;
         }
-        router.refresh();
+        onSaved();
       });
     });
   };
@@ -81,13 +99,13 @@ export function StockTakeCountRow({ takeId, item, blindCount, readOnly, showBin 
       <td className="px-3 py-3 w-36">
         {readOnly ? (
           <div className="text-right">
-            {counted != null ? counted.toLocaleString() : "—"}
+            {value.countedQuantity != null ? value.countedQuantity.toLocaleString() : "—"}
           </div>
         ) : (
           <NumericFormat
             customInput={Input}
-            value={counted ?? ""}
-            onValueChange={(v) => setCounted(v.value === "" ? undefined : Number(v.value))}
+            value={value.countedQuantity ?? ""}
+            onValueChange={(v) => onChange({ countedQuantity: v.value === "" ? undefined : Number(v.value) })}
             thousandSeparator
             decimalScale={6}
             allowNegative={false}
@@ -96,23 +114,23 @@ export function StockTakeCountRow({ takeId, item, blindCount, readOnly, showBin 
         )}
       </td>
       <td className="px-3 py-3 text-right text-sm">
-        {variance == null ? (
+        {liveVariance == null ? (
           <span className="text-muted-foreground">—</span>
-        ) : variance > 0 ? (
-          <span className="text-green-700 font-medium">+{variance.toLocaleString()}</span>
-        ) : variance < 0 ? (
-          <span className="text-red-600 font-medium">{variance.toLocaleString()}</span>
+        ) : liveVariance > 0 ? (
+          <span className="text-green-700 font-medium">+{liveVariance.toLocaleString()}</span>
+        ) : liveVariance < 0 ? (
+          <span className="text-red-600 font-medium">{liveVariance.toLocaleString()}</span>
         ) : (
           <span className="text-muted-foreground">0</span>
         )}
       </td>
       <td className="px-3 py-3">
         {readOnly ? (
-          <span className="text-xs text-muted-foreground">{notes || "—"}</span>
+          <span className="text-xs text-muted-foreground">{value.notes || "—"}</span>
         ) : (
           <Input
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            value={value.notes}
+            onChange={(e) => onChange({ notes: e.target.value })}
             placeholder="Optional note"
             disabled={isPending}
           />

@@ -33,6 +33,26 @@ interface Props {
   stockTake: StockTake;
 }
 
+/**
+ * Approval isn't reversible from the UI, and applies as a delta on top of
+ * whatever the live balance is at approval time (not a hard set-to-counted) —
+ * so the confirmation names the actual blast radius instead of generic copy.
+ */
+function describeApproveImpact(stockTake: StockTake): string {
+  const withVariance = stockTake.items.filter(
+    (i) => i.variance != null && i.variance !== 0,
+  );
+
+  if (withVariance.length === 0) {
+    return "No items have a variance, so no stock modification will be created — this just closes out the stock take.";
+  }
+
+  const increasing = withVariance.filter((i) => (i.variance ?? 0) > 0).length;
+  const decreasing = withVariance.filter((i) => (i.variance ?? 0) < 0).length;
+
+  return `This will adjust ${withVariance.length} item${withVariance.length === 1 ? "" : "s"} — ${increasing} increasing, ${decreasing} decreasing. Stock modifications are generated immediately and on-hand balances change now.`;
+}
+
 export function StockTakeStatusActions({ stockTake }: Props) {
   const uncounted = (stockTake.totalItems ?? 0) - (stockTake.itemsCounted ?? 0);
 
@@ -74,7 +94,7 @@ export function StockTakeStatusActions({ stockTake }: Props) {
           label="Approve"
           Icon={ThumbsUp}
           title="Approve this stock take?"
-          body="Approval generates RECOUNT stock modifications for every variance. This is the point where on-hand balances actually change."
+          body={describeApproveImpact(stockTake)}
           fn={approveStockTake}
         />
       )}

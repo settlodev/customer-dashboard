@@ -13,7 +13,7 @@ import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/grn/columns";
 import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { getGrns } from "@/lib/actions/grn-actions";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { getGrnKpi } from "@/lib/actions/reports-analytics-actions";
 import { GrnKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
 import { softFetch } from "@/lib/list-fallback";
@@ -60,7 +60,7 @@ export default async function Page({ searchParams }: Params) {
         search,
       }),
     ),
-    getCurrentLocation(),
+    getCurrentDestination(),
   ]);
   const data = responseData?.content ?? [];
   const total = responseData?.totalElements ?? 0;

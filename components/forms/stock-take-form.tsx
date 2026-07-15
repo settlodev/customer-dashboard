@@ -73,8 +73,8 @@ import {
   ABC_CLASS_OPTIONS,
   CYCLE_COUNT_TYPE_DESCRIPTIONS,
   CYCLE_COUNT_TYPE_OPTIONS,
-  LOCATION_TYPE_OPTIONS,
 } from "@/types/stock-take/type";
+import type { DestinationType } from "@/types/catalogue/enums";
 import type { FormResponse } from "@/types/types";
 
 import styles from "./styles/form-shell.module.css";
@@ -84,9 +84,15 @@ type FormValues = z.infer<typeof CreateStockTakeSchema>;
 interface Props {
   initialValues?: Partial<FormValues>;
   stockTakeId?: string;
+  /** The active location/store/warehouse the count will run against — fixed by the current workspace, never user-selected. */
+  destinationType: DestinationType;
 }
 
-export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
+export default function StockTakeForm({
+  initialValues,
+  stockTakeId,
+  destinationType,
+}: Props) {
   const router = useRouter();
   const isEdit = Boolean(stockTakeId);
   const [isPending, startTransition] = useTransition();
@@ -97,7 +103,6 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
 
   const defaults = useMemo<FormValues>(
     () => ({
-      locationType: initialValues?.locationType ?? "LOCATION",
       cycleCountType: initialValues?.cycleCountType ?? "FULL",
       blindCount: initialValues?.blindCount ?? false,
       notes: initialValues?.notes ?? "",
@@ -118,7 +123,6 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
 
   const cycleType = form.watch("cycleCountType");
   const sampleMode = form.watch("sampleMode");
-  const locationType = form.watch("locationType");
 
   useEffect(() => {
     if (cycleType !== "ABC_CLASS") form.setValue("abcClass", undefined);
@@ -132,11 +136,11 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
   }, [cycleType]);
 
   useEffect(() => {
-    if (locationType !== "WAREHOUSE" && cycleType === "ZONE") {
+    if (destinationType !== "WAREHOUSE" && cycleType === "ZONE") {
       form.setValue("cycleCountType", "FULL");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locationType]);
+  }, [destinationType]);
 
   useEffect(() => {
     if (sampleMode === "size") form.setValue("samplePercentage", undefined);
@@ -236,35 +240,6 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
               <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="locationType"
-                  render={({ field }) => (
-                    <FormItem className="space-y-[7px]">
-                      <FieldLabel>Where will the count run?</FieldLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        disabled={isPending}
-                      >
-                        <FormControl>
-                          <SelectTrigger className={controlSelectTriggerClass}>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {LOCATION_TYPE_OPTIONS.map((o) => (
-                            <SelectItem key={o.value} value={o.value}>
-                              {o.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="cycleCountType"
                   render={({ field }) => (
                     <FormItem className="space-y-[7px]">
@@ -281,7 +256,7 @@ export default function StockTakeForm({ initialValues, stockTakeId }: Props) {
                         </FormControl>
                         <SelectContent>
                           {CYCLE_COUNT_TYPE_OPTIONS.filter(
-                            (o) => o.value !== "ZONE" || locationType === "WAREHOUSE",
+                            (o) => o.value !== "ZONE" || destinationType === "WAREHOUSE",
                           ).map((o) => (
                             <SelectItem key={o.value} value={o.value}>
                               {o.label}

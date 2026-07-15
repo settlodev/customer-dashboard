@@ -16,7 +16,7 @@ import {
 } from "@/components/tables/supplier-return/columns";
 import { getSupplierReturns } from "@/lib/actions/supplier-return-actions";
 import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { getSupplierReturnKpi } from "@/lib/actions/reports-analytics-actions";
 import { softFetch } from "@/lib/list-fallback";
 import { SupplierReturnKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
@@ -47,7 +47,7 @@ export default async function Page({ searchParams }: Params) {
   const [responseData, suppliers, location] = await Promise.all([
     softFetch(getSupplierReturns(page ? page - 1 : 0, pageLimit, status)),
     fetchAllSuppliers(),
-    getCurrentLocation(),
+    getCurrentDestination(),
   ]);
   const supplierMap = Object.fromEntries(suppliers.map((s) => [s.id, s.name]));
 

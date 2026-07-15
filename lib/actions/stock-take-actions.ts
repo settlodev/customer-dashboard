@@ -7,15 +7,19 @@ import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { inventoryUrl } from "./inventory-client";
-import { getCurrentDestination } from "./context";
 import type {
   StockTake,
   StockTakeStatus,
   CycleCountType,
   CreateStockTakePayload,
   RecordCountPayload,
+  RecordCountBatchPayload,
 } from "@/types/stock-take/type";
-import { CreateStockTakeSchema, RecordCountSchema } from "@/types/stock-take/schema";
+import {
+  CreateStockTakeSchema,
+  RecordCountSchema,
+  RecordCountBatchSchema,
+} from "@/types/stock-take/schema";
 
 const BASE = "/api/v1/stock-takes";
 
@@ -77,13 +81,10 @@ export async function createStockTake(
     samplePercentage,
   } = validated.data;
 
-  // The take counts the active destination, so its type comes from the
-  // session — not from the form (whose field defaulted to LOCATION even in
-  // store/warehouse mode). The backend derives this server-side too.
-  const destination = await getCurrentDestination();
-
+  // The take counts the active destination — the backend derives its type
+  // from the X-Location-Id header (attached ambiently by ApiClient), so it
+  // never needs to travel in the body.
   const payload: CreateStockTakePayload = {
-    locationType: destination?.type ?? "LOCATION",
     cycleCountType,
     blindCount,
     notes: notes?.trim() ? notes.trim() : undefined,
@@ -194,7 +195,6 @@ export async function updateStockTakeDraft(
   }
 
   const {
-    locationType,
     cycleCountType,
     blindCount,
     notes,
@@ -207,7 +207,6 @@ export async function updateStockTakeDraft(
   } = validated.data;
 
   const payload = {
-    locationType,
     cycleCountType,
     blindCount,
     notes: notes?.trim() ? notes.trim() : null,
@@ -245,7 +244,6 @@ export async function getStockTakePreview(
   if (!validated.success) return null;
 
   const {
-    locationType,
     cycleCountType,
     abcClass,
     departmentId,
@@ -256,7 +254,6 @@ export async function getStockTakePreview(
   } = validated.data;
 
   const payload = {
-    locationType,
     cycleCountType,
     filterCriteria: buildFilterCriteria({
       cycleCountType,
@@ -305,6 +302,38 @@ export async function recordStockTakeCount(
     return {
       responseType: "error",
       message: error?.message ?? "Failed to record count",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
+export async function recordStockTakeCounts(
+  takeId: string,
+  input: z.infer<typeof RecordCountBatchSchema>,
+): Promise<FormResponse> {
+  const validated = RecordCountBatchSchema.safeParse(input);
+  if (!validated.success) {
+    return {
+      responseType: "error",
+      message: "Invalid counts",
+      error: new Error(validated.error.message),
+    };
+  }
+
+  const payload: RecordCountBatchPayload = validated.data;
+
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(inventoryUrl(`${BASE}/${takeId}/counts`), payload);
+    revalidatePath(`/stock-takes/${takeId}`);
+    return {
+      responseType: "success",
+      message: `${payload.counts.length} count${payload.counts.length === 1 ? "" : "s"} submitted`,
+    };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message ?? "Failed to submit counts",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }

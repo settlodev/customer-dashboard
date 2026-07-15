@@ -13,7 +13,7 @@ import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/requisition/columns";
 import { getRequisitions } from "@/lib/actions/requisition-actions";
 import { softFetch } from "@/lib/list-fallback";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { getPurchaseRequisitionKpi } from "@/lib/actions/reports-analytics-actions";
 import { PurchaseRequisitionKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
 import type { RequisitionStatus } from "@/types/requisition/type";
@@ -43,7 +43,7 @@ export default async function Page({ searchParams }: Params) {
 
   const [responseData, location] = await Promise.all([
     softFetch(getRequisitions(page ? page - 1 : 0, pageLimit, status)),
-    getCurrentLocation(),
+    getCurrentDestination(),
   ]);
 
   const data = responseData?.content ?? [];

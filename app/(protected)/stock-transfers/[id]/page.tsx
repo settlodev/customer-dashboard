@@ -8,22 +8,33 @@ import {
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import { Boxes, Layers, DollarSign } from "lucide-react";
 import { getStockTransfer } from "@/lib/actions/stock-transfer-actions";
+import { getCurrentDestination } from "@/lib/actions/context";
 import StockTransferForm from "@/components/forms/stock_transfer_form";
 import { Card, CardContent } from "@/components/ui/card";
-import { TRANSFER_STATUS_LABELS } from "@/types/stock-transfer/type";
+import { getTransferStatusLabel } from "@/types/stock-transfer/type";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
 import { Money } from "@/components/widgets/money";
 import { StockTransferStatusActions } from "@/components/widgets/stock-transfer/status-actions";
 import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
 
 type Params = Promise<{ id: string }>;
+type SearchParams = Promise<{ stockItem?: string }>;
 
-export default async function StockTransferPage({ params }: { params: Params }) {
+export default async function StockTransferPage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
   const resolvedParams = await params;
   const isNewItem = resolvedParams.id === "new";
 
   if (!isNewItem) {
-    const item = await getStockTransfer(resolvedParams.id);
+    const [item, destination] = await Promise.all([
+      getStockTransfer(resolvedParams.id),
+      getCurrentDestination(),
+    ]);
     if (!item) notFound();
 
     const currency = item.currency || DEFAULT_CURRENCY;
@@ -47,7 +58,7 @@ export default async function StockTransferPage({ params }: { params: Params }) 
         />
         <PageHeader
           title={item.transferNumber}
-          subtitle={`${item.sourceLocationName} → ${item.destinationLocationName} — ${TRANSFER_STATUS_LABELS[item.status] ?? item.status}`}
+          subtitle={`${item.sourceLocationName} → ${item.destinationLocationName} — ${getTransferStatusLabel(item, destination?.id ?? null)}`}
           actions={
             <span className="flex items-center gap-3">
               <span className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.02em] text-muted-foreground">
@@ -56,7 +67,10 @@ export default async function StockTransferPage({ params }: { params: Params }) 
                   {currency}
                 </span>
               </span>
-              <StockTransferStatusActions transfer={item} />
+              <StockTransferStatusActions
+                transfer={item}
+                activeDestinationId={destination?.id ?? null}
+              />
             </span>
           }
         />
@@ -164,7 +178,7 @@ export default async function StockTransferPage({ params }: { params: Params }) 
         subtitle="Transfer stock between locations."
       />
       <PageBody>
-        <StockTransferForm />
+        <StockTransferForm prefillStockItem={(await searchParams).stockItem} />
       </PageBody>
     </PageShell>
   );

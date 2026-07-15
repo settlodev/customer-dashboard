@@ -45,6 +45,10 @@ export interface StockTransfer {
   /** Currency of item costs — source location's base currency. */
   currency: string | null;
   items: StockTransferItem[];
+  /** Snapshot: this transfer needs the destination to Accept before dispatch. */
+  approvalRequired: boolean;
+  /** Derived (approvalRequired && status === "REQUESTED") — drives Accept/Reject. */
+  awaitingApproval: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -85,3 +89,60 @@ export const TRANSFER_STATUS_LABELS: Record<TransferStatus, string> = {
   RETURNED: "Returned",
   CANCELLED: "Cancelled",
 };
+
+function resolveTransferSide(
+  transfer: Pick<StockTransfer, "sourceLocationId" | "destinationLocationId">,
+  activeDestinationId: string | null,
+): "SOURCE" | "DESTINATION" | null {
+  if (!activeDestinationId) return null;
+  if (activeDestinationId === transfer.sourceLocationId) return "SOURCE";
+  if (activeDestinationId === transfer.destinationLocationId) return "DESTINATION";
+  return null;
+}
+
+const SOURCE_STATUS_LABEL_OVERRIDES: Partial<Record<TransferStatus, string>> = {
+  DECLINED: "Declined — return pending",
+};
+
+const DESTINATION_STATUS_LABEL_OVERRIDES: Partial<Record<TransferStatus, string>> = {
+  DISPATCHED: "In Transit",
+  DECLINED: "Declined by you",
+  RETURN_IN_TRANSIT: "Returning",
+};
+
+/**
+ * Side-aware status label — overrides TRANSFER_STATUS_LABELS only where the
+ * meaning genuinely differs by viewer (e.g. DISPATCHED reads "In Transit" at
+ * the destination). Falls back to the side-independent map when the viewer's
+ * side can't be resolved (activeDestinationId is null or matches neither end).
+ */
+export function getTransferStatusLabel(
+  transfer: Pick<
+    StockTransfer,
+    "status" | "sourceLocationId" | "destinationLocationId" | "awaitingApproval"
+  >,
+  activeDestinationId: string | null,
+): string {
+  const side = resolveTransferSide(transfer, activeDestinationId);
+
+  if (side === "DESTINATION" && transfer.status === "REQUESTED") {
+    return transfer.awaitingApproval
+      ? "Awaiting your approval"
+      : TRANSFER_STATUS_LABELS.REQUESTED;
+  }
+  if (side === "SOURCE") {
+    return (
+      SOURCE_STATUS_LABEL_OVERRIDES[transfer.status] ??
+      TRANSFER_STATUS_LABELS[transfer.status] ??
+      transfer.status
+    );
+  }
+  if (side === "DESTINATION") {
+    return (
+      DESTINATION_STATUS_LABEL_OVERRIDES[transfer.status] ??
+      TRANSFER_STATUS_LABELS[transfer.status] ??
+      transfer.status
+    );
+  }
+  return TRANSFER_STATUS_LABELS[transfer.status] ?? transfer.status;
+}

@@ -50,6 +50,8 @@ export interface TransferRequestItem {
   requestedQuantity: number;
   /** Set on approval — may be trimmed below requestedQuantity; null while PENDING. */
   approvedQuantity: number | null;
+  /** Available stock at the source (quantityOnHand - reservedQuantity). Only populated on the single-request detail fetch — null on list rows. */
+  availableQuantity: number | null;
   notes: string | null;
 }
 
@@ -66,3 +68,21 @@ export const TRANSFER_REQUEST_STATUS_COLORS: Record<TransferRequestStatus, strin
   DECLINED: "bg-red-50 text-red-700",
   CANCELLED: "bg-gray-100 text-gray-500",
 };
+
+/**
+ * Side-aware status label. Only PENDING differs by viewer: the source owes
+ * a decision, the requester is just waiting. Every other status
+ * (APPROVED/DECLINED/CANCELLED) reads identically on both sides.
+ */
+export function getTransferRequestStatusLabel(
+  request: Pick<TransferRequest, "status" | "sourceLocationId" | "requestingLocationId">,
+  activeDestinationId: string | null,
+): string {
+  const isSource =
+    !!activeDestinationId && activeDestinationId === request.sourceLocationId;
+
+  if (isSource && request.status === "PENDING") {
+    return "Awaiting your decision";
+  }
+  return TRANSFER_REQUEST_STATUS_LABELS[request.status] ?? request.status;
+}

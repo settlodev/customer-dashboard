@@ -17,6 +17,7 @@ import {
   Package,
   PackageSearch,
   Search,
+  Truck,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -194,7 +195,7 @@ export function StockMovementReport({
     <div className="space-y-4">
       {/* ── Stat strip ─────────────────────────────────────────── */}
       <div className="overflow-hidden rounded-xl border border-line bg-line">
-        <div className="grid grid-cols-2 gap-px bg-line sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-px bg-line sm:grid-cols-3 lg:grid-cols-7">
           <Stat
             label="Opening"
             value={fmtQty(summary.totalOpening)}
@@ -222,6 +223,13 @@ export function StockMovementReport({
             value={fmtQty(summary.totalClosing)}
             unit="u"
             sub={closingSub}
+          />
+          <Stat
+            icon={<Truck className="h-3 w-3" />}
+            label="In transit"
+            value={summary.totalInTransit > 0 ? fmtQty(summary.totalInTransit) : "—"}
+            unit={summary.totalInTransit > 0 ? "u" : undefined}
+            sub="dispatched, not yet received"
           />
           <Stat
             label="Closing value"
@@ -721,6 +729,11 @@ function MovementDrawer({
             value={row.reserved > 0 ? fmtQty(row.reserved) : "—"}
             unit={row.reserved > 0 ? "u" : undefined}
             tone={row.reserved > 0 ? "warn" : undefined}
+          />
+          <Fact
+            label="In transit"
+            value={row.inTransit > 0 ? fmtQty(row.inTransit) : "—"}
+            unit={row.inTransit > 0 ? "u" : undefined}
           />
           <Fact label="Avg cost" value={fmtCost(row.avgCost)} unit={currency} />
           <Fact

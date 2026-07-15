@@ -57,7 +57,11 @@ import DestinationSelector from "@/components/widgets/destination-selector";
 
 import styles from "./styles/form-shell.module.css";
 
-export default function StockTransferForm() {
+export default function StockTransferForm({
+  prefillStockItem,
+}: {
+  prefillStockItem?: string;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
@@ -69,8 +73,9 @@ export default function StockTransferForm() {
       destinationLocationType: "LOCATION",
       destinationLocationId: "",
       transferType: "SUPPLY",
+      transferDate: "",
       notes: "",
-      items: [{ stockVariantId: "", quantity: 0 }],
+      items: [{ stockVariantId: prefillStockItem ?? "", quantity: 0 }],
     },
   });
 
@@ -157,6 +162,33 @@ export default function StockTransferForm() {
                       />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="transferDate"
+                render={({ field }) => (
+                  <FormItem className="mt-[15px] space-y-[7px]">
+                    <FieldLabel optional>Transfer date</FieldLabel>
+                    <FormControl>
+                      <ControlBox>
+                        <input
+                          type="date"
+                          className={cn(controlInputClass, "tabular-nums")}
+                          value={field.value ? field.value.slice(0, 10) : ""}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value
+                                ? new Date(e.target.value).toISOString()
+                                : "",
+                            )
+                          }
+                          disabled={isPending}
+                        />
+                      </ControlBox>
+                    </FormControl>
                   </FormItem>
                 )}
               />

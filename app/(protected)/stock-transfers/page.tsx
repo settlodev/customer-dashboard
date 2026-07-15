@@ -1,5 +1,6 @@
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   PageShell,
   PageHeader,
@@ -8,19 +9,38 @@ import {
 } from "@/components/layouts/page-shell";
 import NoItems from "@/components/layouts/no-items";
 import DataLoadError from "@/components/layouts/data-load-error";
-import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/stock-transfer/column";
+import { StockTransferTable } from "@/components/tables/stock-transfer/table";
 import { searchStockTransfers } from "@/lib/actions/stock-transfer-actions";
 import { softFetch } from "@/lib/list-fallback";
 import { getCurrentDestination } from "@/lib/actions/context";
 import { getStockTransferKpi } from "@/lib/actions/reports-analytics-actions";
 import { StockTransferKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
-import { Plus } from "lucide-react";
+import type { TransferStatus } from "@/types/stock-transfer/type";
+import { cn } from "@/lib/utils";
+
+const STATUS_OPTIONS = [
+  { label: "All", value: "" },
+  { label: "Requested", value: "REQUESTED" },
+  { label: "Accepted", value: "ACCEPTED" },
+  { label: "Confirmed", value: "CONFIRMED" },
+  { label: "Dispatched", value: "DISPATCHED" },
+  { label: "Partially Received", value: "PARTIALLY_RECEIVED" },
+  { label: "Received", value: "RECEIVED" },
+  { label: "Declined", value: "DECLINED" },
+  { label: "Cancelled", value: "CANCELLED" },
+];
+
+const TABS = [
+  { key: "outgoing", label: "Outgoing" },
+  { key: "incoming", label: "Incoming" },
+] as const;
 
 type Params = {
   searchParams: Promise<{
     page?: string;
     limit?: string;
+    direction?: string;
+    status?: string;
   }>;
 };
 
@@ -28,9 +48,16 @@ export default async function Page({ searchParams }: Params) {
   const resolvedParams = await searchParams;
   const page = Number(resolvedParams.page) || 0;
   const pageLimit = Number(resolvedParams.limit) || 20;
+  const direction =
+    resolvedParams.direction === "incoming" ? "incoming" : "outgoing";
+  const status = (resolvedParams.status || undefined) as
+    | TransferStatus
+    | undefined;
 
   const [responseData, location] = await Promise.all([
-    softFetch(searchStockTransfers(page ? page - 1 : 0, pageLimit)),
+    softFetch(
+      searchStockTransfers(page ? page - 1 : 0, pageLimit, direction, status),
+    ),
     getCurrentDestination(),
   ]);
 
@@ -47,34 +74,57 @@ export default async function Page({ searchParams }: Params) {
         title="Stock Transfers"
         subtitle="Move stock between locations, stores, and warehouses."
         actions={
-          <>
-            <Button asChild size="sm">
-              <Link href="/stock-transfers/new">
-                <Plus className="mr-1.5 h-4 w-4" />
-                New Transfer
-              </Link>
-            </Button>
-          </>
+          <Button asChild size="sm">
+            <Link href="/stock-transfers/new">
+              <Plus className="mr-1.5 h-4 w-4" />
+              New Transfer
+            </Link>
+          </Button>
         }
       />
       <PageBody>
+        <div className="inline-flex rounded-lg border bg-muted/40 p-1">
+          {TABS.map((tab) => {
+            const params = new URLSearchParams();
+            params.set("direction", tab.key);
+            if (status) params.set("status", status);
+            const active = direction === tab.key;
+            return (
+              <Link
+                key={tab.key}
+                href={`/stock-transfers?${params.toString()}`}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  active
+                    ? "bg-background text-ink shadow-sm"
+                    : "text-muted-foreground hover:text-ink",
+                )}
+              >
+                {tab.label}
+              </Link>
+            );
+          })}
+        </div>
+
         {!responseData ? (
           <DataLoadError itemName="stock transfers" />
-        ) : total > 0 ? (
+        ) : total > 0 || status ? (
           <>
             <StockTransferKpiStrip summary={kpi} />
-            <DataTable
-              columns={columns}
+            <StockTransferTable
               data={data}
-              searchKey="transferNumber"
+              activeDestinationId={location?.id ?? null}
               pageNo={page}
               total={total}
               pageCount={pageCount}
               defaultPageSize={pageLimit}
+              filterOptions={STATUS_OPTIONS}
             />
           </>
-        ) : (
+        ) : direction === "outgoing" ? (
           <NoItems newItemUrl="/stock-transfers/new" itemName="stock transfers" />
+        ) : (
+          <NoItems itemName="incoming transfers" />
         )}
       </PageBody>
     </PageShell>

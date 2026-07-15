@@ -10,11 +10,6 @@ const uuid = z.string().uuid("Must be a valid UUID");
 
 export const CreateStockTakeSchema = z
   .object({
-    locationType: z
-      .enum(["LOCATION", "STORE", "WAREHOUSE"], {
-        required_error: "Select where the count will take place",
-      })
-      .default("LOCATION"),
     cycleCountType: z
       .enum(["FULL", "ABC_CLASS", "DEPARTMENT", "RANDOM", "ZONE"])
       .default("FULL"),
@@ -106,4 +101,8 @@ export const RecordCountSchema = z.object({
       .nonnegative("Count cannot be negative"),
   ),
   notes: z.string().optional(),
+});
+
+export const RecordCountBatchSchema = z.object({
+  counts: z.array(RecordCountSchema).min(1, "At least one count is required"),
 });

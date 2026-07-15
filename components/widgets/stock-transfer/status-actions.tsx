@@ -36,45 +36,64 @@ import {
   declineTransfer,
   dispatchTransfer,
   receiveTransfer,
+  rejectTransfer,
   returnTransfer,
 } from "@/lib/actions/stock-transfer-actions";
-import StaffSelectorWidget from "../staff_selector_widget";
 
 interface Props {
   transfer: StockTransfer;
+  /**
+   * The active destination's id (X-Location-Id). Decides which side of the
+   * transfer the viewer is on:
+   *   - id === transfer.sourceLocationId       → source
+   *   - id === transfer.destinationLocationId  → destination
+   */
+  activeDestinationId: string | null;
 }
 
 /**
- * Status-aware action buttons for stock transfers. The lifecycle depends on
- * `transferType`:
- *   - SUPPLY / RETURN / RETURN_TO_STORE / INTER_STORE:
- *       REQUESTED → CONFIRMED → DISPATCHED → (PARTIALLY_)RECEIVED / CANCELLED
- *   - INTER_LOCATION:
- *       REQUESTED → ACCEPTED → CONFIRMED → DISPATCHED → RECEIVED
- *                 or DECLINED → RETURN_IN_TRANSIT → RETURNED
+ * Status-aware action buttons for stock transfers — gated both by status and
+ * by which side of the transfer the current viewer is on, so the source and
+ * destination each only ever see the action that's actually theirs to take.
+ *
+ * When a transfer needs destination approval (`awaitingApproval` — the backend's
+ * additive rule: location→location OR the destination's require_transfer_approval),
+ * the destination Accepts or Rejects while it's REQUESTED, and the source can only
+ * Confirm once it's ACCEPTED. Otherwise the source Confirms straight from REQUESTED:
+ *   REQUESTED → [ACCEPTED] → CONFIRMED → DISPATCHED → (PARTIALLY_)RECEIVED / CANCELLED
+ *   pending → REJECTED (no stock moved); post-dispatch → DECLINED → RETURN_IN_TRANSIT → RETURNED
  */
-export function StockTransferStatusActions({ transfer }: Props) {
-  const { status, transferType } = transfer;
-  const isInterLocation = transferType === "INTER_LOCATION";
+export function StockTransferStatusActions({ transfer, activeDestinationId }: Props) {
+  const { status, awaitingApproval } = transfer;
 
+  const isSource =
+    !!activeDestinationId && activeDestinationId === transfer.sourceLocationId;
+  const isDestination =
+    !!activeDestinationId && activeDestinationId === transfer.destinationLocationId;
+
+  const showAccept = awaitingApproval && isDestination;
+  const showReject = awaitingApproval && isDestination;
+  // A pending transfer awaiting approval blocks Confirm until it's Accepted;
+  // one that needs no approval is confirmable straight from REQUESTED.
   const showConfirm =
-    status === "REQUESTED" ||
-    (status === "ACCEPTED" && isInterLocation);
-  const showAccept = status === "REQUESTED" && isInterLocation;
-  const showDecline = status === "REQUESTED" && isInterLocation;
-  const showDispatch = status === "CONFIRMED";
+    ((status === "REQUESTED" && !awaitingApproval) || status === "ACCEPTED") &&
+    isSource;
+  const showDispatch = status === "CONFIRMED" && isSource;
   const showReceive =
-    status === "DISPATCHED" || status === "PARTIALLY_RECEIVED";
-  const showReturn = status === "DECLINED" && isInterLocation;
-  const showConfirmReturn = status === "RETURN_IN_TRANSIT";
-  const showCancel = CANCELLABLE.includes(status);
+    (status === "DISPATCHED" || status === "PARTIALLY_RECEIVED") && isDestination;
+  const showDecline =
+    (status === "DISPATCHED" || status === "PARTIALLY_RECEIVED") && isDestination;
+  const showReturn = status === "DECLINED" && isDestination;
+  const showConfirmReturn = status === "RETURN_IN_TRANSIT" && isSource;
+  const showCancel = CANCELLABLE.includes(status) && isSource;
 
   const anyVisible =
     showConfirm ||
     showAccept ||
-    showDecline ||
+    showReject ||
     showDispatch ||
     showReceive ||
+    showDecline ||
     showReturn ||
     showConfirmReturn ||
     showCancel;
@@ -84,10 +103,11 @@ export function StockTransferStatusActions({ transfer }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {showAccept && <AcceptButton id={transfer.id} />}
-      {showDecline && <DeclineButton id={transfer.id} />}
+      {showReject && <RejectButton id={transfer.id} />}
       {showConfirm && <ConfirmButton id={transfer.id} />}
       {showDispatch && <DispatchButton id={transfer.id} />}
       {showReceive && <ReceiveButton transfer={transfer} />}
+      {showDecline && <DeclineButton id={transfer.id} />}
       {showReturn && <ReturnButton id={transfer.id} />}
       {showConfirmReturn && <ConfirmReturnButton id={transfer.id} />}
       {showCancel && <CancelButton id={transfer.id} />}
@@ -187,6 +207,69 @@ function AcceptButton({ id }: { id: string }) {
   );
 }
 
+function RejectButton({ id }: { id: string }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const onConfirm = () => {
+    startTransition(async () => {
+      try {
+        await rejectTransfer(id, reason.trim() || undefined);
+        toast({ title: "Transfer rejected" });
+        setOpen(false);
+        router.refresh();
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: "Couldn't reject",
+          description: error?.message ?? "Request failed",
+        });
+      }
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" className="text-red-600 hover:bg-red-50">
+          <ThumbsDown className="h-4 w-4 mr-1.5" /> Reject
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Reject transfer request</DialogTitle>
+          <DialogDescription>
+            The source location will be notified. Nothing has been dispatched, so
+            no stock moves — the transfer is simply closed.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Reason (optional)</label>
+          <Textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Why is this transfer being rejected?"
+            rows={3}
+            disabled={isPending}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="secondary" onClick={() => setOpen(false)} disabled={isPending}>
+            Keep
+          </Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
+            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Reject
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function DeclineButton({ id }: { id: string }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -220,10 +303,11 @@ function DeclineButton({ id }: { id: string }) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Decline transfer request</DialogTitle>
+          <DialogTitle>Decline this shipment</DialogTitle>
           <DialogDescription>
-            The source location will be notified. They can then request the
-            items be returned.
+            The source location will be notified and asked to arrange a return.
+            Use this if the shipment shouldn&apos;t be accepted as-is (wrong
+            items, damage, etc).
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
@@ -231,13 +315,17 @@ function DeclineButton({ id }: { id: string }) {
           <Textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Why is this transfer being declined?"
+            placeholder="Why is this shipment being declined?"
             rows={3}
             disabled={isPending}
           />
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={() => setOpen(false)} disabled={isPending}>
+          <Button
+            variant="secondary"
+            onClick={() => setOpen(false)}
+            disabled={isPending}
+          >
             Keep
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
@@ -316,7 +404,6 @@ function CancelButton({ id }: { id: string }) {
 
 function ReceiveButton({ transfer }: { transfer: StockTransfer }) {
   const [open, setOpen] = useState(false);
-  const [receivedBy, setReceivedBy] = useState("");
   const [notes, setNotes] = useState("");
   const [quantities, setQuantities] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
@@ -343,14 +430,6 @@ function ReceiveButton({ transfer }: { transfer: StockTransfer }) {
     setQuantities((prev) => ({ ...prev, [itemId]: Math.max(0, value) }));
 
   const onConfirm = () => {
-    if (!receivedBy) {
-      toast({
-        variant: "destructive",
-        title: "Select the receiver",
-        description: "Pick a staff member who received the goods.",
-      });
-      return;
-    }
     if (totalReceiving <= 0) {
       toast({
         variant: "destructive",
@@ -365,7 +444,7 @@ function ReceiveButton({ transfer }: { transfer: StockTransfer }) {
     }));
     startTransition(async () => {
       try {
-        await receiveTransfer(transfer.id, receivedBy, items, notes.trim() || undefined);
+        await receiveTransfer(transfer.id, items, notes.trim() || undefined);
         toast({ title: "Transfer received into inventory" });
         setOpen(false);
         router.refresh();
@@ -395,28 +474,15 @@ function ReceiveButton({ transfer }: { transfer: StockTransfer }) {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium">Received by</label>
-              <StaffSelectorWidget
-                label="Received by"
-                placeholder="Select staff"
-                value={receivedBy}
-                onChange={setReceivedBy}
-                onBlur={() => {}}
-                isDisabled={isPending}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium">Notes</label>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                placeholder="Optional — condition, short-shipment cause…"
-                disabled={isPending}
-              />
-            </div>
+          <div>
+            <label className="text-xs font-medium">Notes</label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Optional — condition, short-shipment cause…"
+              disabled={isPending}
+            />
           </div>
 
           <div className="overflow-x-auto border rounded-lg">

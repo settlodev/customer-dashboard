@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getTransferRequest } from "@/lib/actions/stock-transfer-request-actions";
 import { getCurrentDestination } from "@/lib/actions/context";
 import {
-  TRANSFER_REQUEST_STATUS_LABELS,
+  getTransferRequestStatusLabel,
   type TransferRequest,
 } from "@/types/stock-transfer-request/type";
 import { TransferRequestStatusActions } from "@/components/widgets/stock-transfer-request/status-actions";
@@ -75,7 +75,7 @@ export default async function StockRequestPage({
       />
       <PageHeader
         title={item.requestNumber}
-        subtitle={`${item.sourceLocationName ?? "Source"} → ${item.requestingLocationName ?? "Requester"} — ${TRANSFER_REQUEST_STATUS_LABELS[item.status] ?? item.status}`}
+        subtitle={`${item.sourceLocationName ?? "Source"} → ${item.requestingLocationName ?? "Requester"} — ${getTransferRequestStatusLabel(item, destination?.id ?? null)}`}
         actions={
           <TransferRequestStatusActions
             request={item}

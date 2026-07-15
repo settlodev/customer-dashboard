@@ -59,7 +59,6 @@ export interface StockTakeItem {
 }
 
 export interface CreateStockTakePayload {
-  locationType: DestinationType;
   notes?: string;
   cycleCountType?: CycleCountType;
   filterCriteria?: string;
@@ -70,6 +69,10 @@ export interface RecordCountPayload {
   itemId: string;
   countedQuantity: number;
   notes?: string;
+}
+
+export interface RecordCountBatchPayload {
+  counts: RecordCountPayload[];
 }
 
 export const STOCK_TAKE_STATUS_LABELS: Record<StockTakeStatus, string> = {
@@ -118,12 +121,6 @@ export const LOCATION_TYPE_LABELS: Record<DestinationType, string> = {
   STORE: "Store",
   WAREHOUSE: "Warehouse",
 };
-
-export const LOCATION_TYPE_OPTIONS: { value: DestinationType; label: string }[] = [
-  { value: "LOCATION", label: "Location" },
-  { value: "STORE", label: "Store" },
-  { value: "WAREHOUSE", label: "Warehouse" },
-];
 
 export const ABC_CLASS_OPTIONS: { value: AbcClass; label: string; hint: string }[] = [
   { value: "A", label: "A — high value", hint: "Top 70–80% of inventory value" },

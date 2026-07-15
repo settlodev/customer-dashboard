@@ -682,11 +682,15 @@ const getNormalMenuItems = (
 
 // Store mode — shown when the active destination is a store (a stockroom
 // attached to a parent location). A store cannot sell, so Sales, Accounting,
-// Business operations, Procurement and the product catalogue (Inventory
-// management) are all dropped; Reports collapses to stock (plus packaging,
-// when the location has the packaging module enabled). The store shares its
-// parent location's catalogue but holds its own quantities, which it manages
-// here and moves via Stock transfer / Stock request.
+// Business operations and the product catalogue (Inventory management) are
+// all dropped; Reports collapses to stock (plus packaging, when the location
+// has the packaging module enabled). The store shares its parent location's
+// catalogue but holds its own quantities, which it manages here and moves via
+// Stock transfer / Stock request. Procurement stays — buying from suppliers
+// is orthogonal to selling, and every procurement action already resolves
+// its destination generically (same getCurrentDestination()/X-Location-Id
+// pattern as Stock intake), so a store can requisition, RFQ, order, and
+// receive goods directly just like a location.
 const getStoreMenuItems = (args?: MenuItemArgType) => {
   const reportsReadAll = args?.reportsReadAll !== false; // default true
   const hasPackaging = args?.hasPackaging === true; // default false (hidden)
@@ -805,6 +809,69 @@ const getStoreMenuItems = (args?: MenuItemArgType) => {
           current: args?.isCurrentItem,
           icon: "cart",
           permission: "inventory:read",
+        },
+      ],
+    },
+
+    // Procurement — purchase-to-pay flow plus the parties on the other end.
+    // Same section as normal mode: buying stock for the store is unrelated
+    // to selling, and every action here resolves the active destination
+    // generically, so it works unchanged for a store.
+    {
+      label: "Procurement",
+      showSeparator: true,
+      collapsible: false,
+      current: args?.isCurrentItem,
+      icon: "stock",
+      items: [
+        {
+          title: "Suppliers",
+          link: "/suppliers",
+          current: args?.isCurrentItem,
+          icon: "truck",
+          permission: "suppliers:read",
+        },
+        {
+          title: "Purchase requisitions",
+          link: "/purchase-requisitions",
+          current: args?.isCurrentItem,
+          icon: "cart",
+          permission: "purchasing:read",
+        },
+        {
+          title: "RFQs",
+          link: "/rfqs",
+          current: args?.isCurrentItem,
+          icon: "cart",
+          permission: "purchasing:read",
+        },
+        {
+          title: "Purchase orders",
+          link: "/purchase-orders",
+          current: args?.isCurrentItem,
+          icon: "cart",
+          permission: "purchasing:read",
+        },
+        {
+          title: "Goods received",
+          link: "/goods-received",
+          current: args?.isCurrentItem,
+          icon: "cart",
+          permission: "purchasing:read",
+        },
+        {
+          title: "Supplier returns",
+          link: "/supplier-returns",
+          current: args?.isCurrentItem,
+          icon: "cart",
+          permission: "purchasing:read",
+        },
+        {
+          title: "Refunds owed",
+          link: "/supplier-refunds",
+          current: args?.isCurrentItem,
+          icon: "cart",
+          permission: "supplier_refunds:read",
         },
       ],
     },
