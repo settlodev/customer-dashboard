@@ -34,6 +34,13 @@ export interface StockMovement {
   variantId: string;
   stockName: string;
   variantName: string;
+  unitId: string;
+  unitName: string;
+  unitAbbreviation: string;
+  divisibleUnitId: string | null;
+  divisibleUnitName: string | null;
+  divisibleUnitAbbreviation: string | null;
+  divisibleUnitRatio: number | null;
   locationId: string;
   locationType: string;
   businessDate: string;

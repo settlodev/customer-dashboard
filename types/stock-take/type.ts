@@ -56,6 +56,13 @@ export interface StockTakeItem {
   countedBy: string | null;
   binId: string | null;
   binCode: string | null;
+  unitId: string | null;
+  unitName: string | null;
+  unitAbbreviation: string | null;
+  divisibleUnitId: string | null;
+  divisibleUnitName: string | null;
+  divisibleUnitAbbreviation: string | null;
+  divisibleUnitRatio: number | null;
 }
 
 export interface CreateStockTakePayload {
@@ -67,7 +74,9 @@ export interface CreateStockTakePayload {
 
 export interface RecordCountPayload {
   itemId: string;
-  countedQuantity: number;
+  countedQuantity?: number;
+  countedWholeUnits?: number;
+  countedSubUnits?: number;
   notes?: string;
 }
 

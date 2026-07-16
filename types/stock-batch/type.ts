@@ -8,6 +8,13 @@ export interface StockBatch {
   stockVariantId: string;
   variantName: string;
   stockName: string;
+  unitId: string;
+  unitName: string;
+  unitAbbreviation: string;
+  divisibleUnitId: string | null;
+  divisibleUnitName: string | null;
+  divisibleUnitAbbreviation: string | null;
+  divisibleUnitRatio: number | null;
   supplierId: string | null;
   grnId: string | null;
   expiryDate: string | null;
