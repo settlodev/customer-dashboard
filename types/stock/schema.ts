@@ -77,6 +77,16 @@ export const StockSchema = object({
   baseUnitId: string({ required_error: "Base unit is required" }).uuid(
     "Select a valid unit",
   ),
+  // `.or(string().length(0))` (matching preferredSupplierId's convention
+  // below) is required, not cosmetic: the form's default value for an
+  // unselected picker is `""`, and plain `.optional()` only tolerates
+  // `undefined` — without it, `.uuid()` rejects the empty-string default
+  // and blocks submission even though this field is optional.
+  divisibleUnitId: string()
+    .uuid("Select a valid unit")
+    .optional()
+    .or(string().length(0))
+    .nullish(),
   materialType: string().default("FINISHED_GOOD"),
   /**
    * Up to 5 image URLs for the stock gallery. Element 0 is the
