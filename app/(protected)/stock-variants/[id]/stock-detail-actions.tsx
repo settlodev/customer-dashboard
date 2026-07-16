@@ -42,44 +42,41 @@ export function StockDetailActions({ stock }: { stock: Stock }) {
 
   const handleArchive = async () => {
     setLoading(true);
-    try {
-      await archiveStock(stock.id);
+    const result = await archiveStock(stock.id);
+    if (result.responseType === "success") {
       invalidateStocksCache();
       toast({ title: "Archived", description: `${stock.name} has been archived.` });
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: (error as Error).message || "Failed to archive" });
-    } finally {
-      setLoading(false);
-      setArchiveOpen(false);
+    } else {
+      toast({ variant: "destructive", title: "Error", description: result.message });
     }
+    setLoading(false);
+    setArchiveOpen(false);
   };
 
   const handleUnarchive = async () => {
     setLoading(true);
-    try {
-      await unarchiveStock(stock.id);
+    const result = await unarchiveStock(stock.id);
+    if (result.responseType === "success") {
       invalidateStocksCache();
       toast({ title: "Restored", description: `${stock.name} has been restored.` });
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: (error as Error).message || "Failed to restore" });
-    } finally {
-      setLoading(false);
+    } else {
+      toast({ variant: "destructive", title: "Error", description: result.message });
     }
+    setLoading(false);
   };
 
   const handleDelete = async () => {
     setLoading(true);
-    try {
-      await deleteStock(stock.id);
+    const result = await deleteStock(stock.id);
+    if (result.responseType === "success") {
       invalidateStocksCache();
       toast({ title: "Deleted", description: `${stock.name} has been deleted.` });
       router.push("/stock-variants");
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: (error as Error).message || "Failed to delete" });
-    } finally {
-      setLoading(false);
-      setDeleteOpen(false);
+    } else {
+      toast({ variant: "destructive", title: "Error", description: result.message });
     }
+    setLoading(false);
+    setDeleteOpen(false);
   };
 
   return (

@@ -11,6 +11,10 @@ import { getCurrentLocation } from "./business/get-current-business";
 import { StockSchema } from "@/types/stock/schema";
 import { inventoryUrl } from "./inventory-client";
 import { rethrowIfBoundary } from "@/lib/list-fallback";
+import {
+  SettloApiError,
+  getUIErrorMessage,
+} from "@/lib/settlo-api-error-handler";
 
 // Returnable-crate gating: deposit belongs to a PACKAGING container variant;
 // the returnable-container link belongs to a sellable (non-PACKAGING) variant.
@@ -288,31 +292,88 @@ export async function updateStock(
   }
 }
 
-export async function deleteStock(id: string): Promise<void> {
-  if (!id) throw new Error("Stock ID is required");
-  const apiClient = new ApiClient();
-  await apiClient.delete(inventoryUrl(`/api/v1/stocks/${id}`));
-  revalidatePath("/stock-variants");
+// Errors thrown out of a Server Action are redacted to a generic message by
+// Next.js in production (only `digest` survives) — see SettloApiError's
+// docstring. So these catch internally and return a FormResponse instead of
+// throwing, letting the backend's actual message (e.g. "still referenced by
+// active BOM rule(s)") reach the toast.
+export async function deleteStock(id: string): Promise<FormResponse> {
+  try {
+    if (!id) throw new Error("Stock ID is required");
+    const apiClient = new ApiClient();
+    await apiClient.delete(inventoryUrl(`/api/v1/stocks/${id}`));
+    revalidatePath("/stock-variants");
+    return { responseType: "success", message: "Stock item deleted" };
+  } catch (error) {
+    const message =
+      error instanceof SettloApiError
+        ? getUIErrorMessage(error.code, error.message, "Failed to delete stock item")
+        : "Failed to delete stock item";
+    return {
+      responseType: "error",
+      message,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
 }
 
-export async function archiveStock(id: string): Promise<void> {
-  const apiClient = new ApiClient();
-  await apiClient.post(inventoryUrl(`/api/v1/stocks/${id}/archive`), {});
-  revalidatePath("/stock-variants");
+export async function archiveStock(id: string): Promise<FormResponse> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(inventoryUrl(`/api/v1/stocks/${id}/archive`), {});
+    revalidatePath("/stock-variants");
+    return { responseType: "success", message: "Stock item archived" };
+  } catch (error) {
+    const message =
+      error instanceof SettloApiError
+        ? getUIErrorMessage(error.code, error.message, "Failed to archive stock item")
+        : "Failed to archive stock item";
+    return {
+      responseType: "error",
+      message,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
 }
 
-export async function unarchiveStock(id: string): Promise<void> {
-  const apiClient = new ApiClient();
-  await apiClient.post(inventoryUrl(`/api/v1/stocks/${id}/unarchive`), {});
-  revalidatePath("/stock-variants");
+export async function unarchiveStock(id: string): Promise<FormResponse> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(inventoryUrl(`/api/v1/stocks/${id}/unarchive`), {});
+    revalidatePath("/stock-variants");
+    return { responseType: "success", message: "Stock item restored" };
+  } catch (error) {
+    const message =
+      error instanceof SettloApiError
+        ? getUIErrorMessage(error.code, error.message, "Failed to restore stock item")
+        : "Failed to restore stock item";
+    return {
+      responseType: "error",
+      message,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
 }
 
-export async function bulkArchiveStocks(stockIds: string[]): Promise<void> {
-  const apiClient = new ApiClient();
-  await apiClient.post(inventoryUrl("/api/v1/stocks/bulk-archive"), {
-    stockIds,
-  });
-  revalidatePath("/stock-variants");
+export async function bulkArchiveStocks(stockIds: string[]): Promise<FormResponse> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(inventoryUrl("/api/v1/stocks/bulk-archive"), {
+      stockIds,
+    });
+    revalidatePath("/stock-variants");
+    return { responseType: "success", message: "Stock items archived" };
+  } catch (error) {
+    const message =
+      error instanceof SettloApiError
+        ? getUIErrorMessage(error.code, error.message, "Failed to archive stock items")
+        : "Failed to archive stock items";
+    return {
+      responseType: "error",
+      message,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
 }
 
 export async function bulkAdjust(
@@ -363,40 +424,79 @@ export async function updateStockVariant(
 export async function deleteStockVariant(
   stockId: string,
   variantId: string,
-): Promise<void> {
-  const apiClient = new ApiClient();
-  await apiClient.delete(
-    inventoryUrl(`/api/v1/stocks/${stockId}/variants/${variantId}`),
-  );
-  revalidatePath("/stock-variants");
+): Promise<FormResponse> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.delete(
+      inventoryUrl(`/api/v1/stocks/${stockId}/variants/${variantId}`),
+    );
+    revalidatePath("/stock-variants");
+    return { responseType: "success", message: "Variant deleted" };
+  } catch (error) {
+    const message =
+      error instanceof SettloApiError
+        ? getUIErrorMessage(error.code, error.message, "Failed to delete variant")
+        : "Failed to delete variant";
+    return {
+      responseType: "error",
+      message,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
 }
 
 export async function archiveStockVariant(
   stockId: string,
   variantId: string,
-): Promise<void> {
-  const apiClient = new ApiClient();
-  await apiClient.post(
-    inventoryUrl(
-      `/api/v1/stocks/${stockId}/variants/${variantId}/archive`,
-    ),
-    {},
-  );
-  revalidatePath("/stock-variants");
+): Promise<FormResponse> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(
+      inventoryUrl(
+        `/api/v1/stocks/${stockId}/variants/${variantId}/archive`,
+      ),
+      {},
+    );
+    revalidatePath("/stock-variants");
+    return { responseType: "success", message: "Variant archived" };
+  } catch (error) {
+    const message =
+      error instanceof SettloApiError
+        ? getUIErrorMessage(error.code, error.message, "Failed to archive variant")
+        : "Failed to archive variant";
+    return {
+      responseType: "error",
+      message,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
 }
 
 export async function unarchiveStockVariant(
   stockId: string,
   variantId: string,
-): Promise<void> {
-  const apiClient = new ApiClient();
-  await apiClient.post(
-    inventoryUrl(
-      `/api/v1/stocks/${stockId}/variants/${variantId}/unarchive`,
-    ),
-    {},
-  );
-  revalidatePath("/stock-variants");
+): Promise<FormResponse> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(
+      inventoryUrl(
+        `/api/v1/stocks/${stockId}/variants/${variantId}/unarchive`,
+      ),
+      {},
+    );
+    revalidatePath("/stock-variants");
+    return { responseType: "success", message: "Variant restored" };
+  } catch (error) {
+    const message =
+      error instanceof SettloApiError
+        ? getUIErrorMessage(error.code, error.message, "Failed to restore variant")
+        : "Failed to restore variant";
+    return {
+      responseType: "error",
+      message,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
 }
 
 // ── CSV Export (local generation) ───────────────────────────────────

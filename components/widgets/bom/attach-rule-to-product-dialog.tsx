@@ -50,6 +50,7 @@ interface Props {
 
 interface VariantOption {
   variantId: string;
+  productId: string;
   productName: string;
   variantName: string;
   searchString: string;
@@ -104,6 +105,7 @@ export default function AttachRuleToProductDialog({
           .filter((v) => !v.archivedAt && !alreadyAttached.has(v.id))
           .map((v) => ({
             variantId: v.id,
+            productId: p.id,
             productName: p.name,
             variantName: v.name,
             searchString: `${p.name} ${v.name}`.toLowerCase(),
@@ -125,13 +127,17 @@ export default function AttachRuleToProductDialog({
   const onSubmit = () => {
     if (!variantId) return;
     startTransition(async () => {
-      const result = (await attachBomRule(rule.id, {
-        productVariantId: variantId,
-        modifierOptionId: null,
-        effectiveFrom: null,
-        effectiveTo: null,
-        notes: null,
-      })) as FormResponse | undefined;
+      const result = (await attachBomRule(
+        rule.id,
+        {
+          productVariantId: variantId,
+          modifierOptionId: null,
+          effectiveFrom: null,
+          effectiveTo: null,
+          notes: null,
+        },
+        selected?.productId,
+      )) as FormResponse | undefined;
 
       if (result?.responseType === "success") {
         toast({

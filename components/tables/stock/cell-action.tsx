@@ -47,67 +47,49 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
   const handleArchive = async () => {
     setLoading(true);
-    try {
-      await archiveStock(data.id);
+    const result = await archiveStock(data.id);
+    if (result.responseType === "success") {
       invalidateStocksCache();
       toast({
         title: "Archived",
         description: `${data.name} has been archived.`,
       });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description:
-          (error as Error).message || "Failed to archive stock item",
-      });
-    } finally {
-      setLoading(false);
-      setArchiveOpen(false);
+    } else {
+      toast({ variant: "destructive", title: "Error", description: result.message });
     }
+    setLoading(false);
+    setArchiveOpen(false);
   };
 
   const handleUnarchive = async () => {
     setLoading(true);
-    try {
-      await unarchiveStock(data.id);
+    const result = await unarchiveStock(data.id);
+    if (result.responseType === "success") {
       invalidateStocksCache();
       toast({
         title: "Restored",
         description: `${data.name} has been restored.`,
       });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description:
-          (error as Error).message || "Failed to restore stock item",
-      });
-    } finally {
-      setLoading(false);
+    } else {
+      toast({ variant: "destructive", title: "Error", description: result.message });
     }
+    setLoading(false);
   };
 
   const handleDelete = async () => {
     setLoading(true);
-    try {
-      await deleteStock(data.id);
+    const result = await deleteStock(data.id);
+    if (result.responseType === "success") {
       invalidateStocksCache();
       toast({
         title: "Deleted",
         description: `${data.name} has been deleted.`,
       });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description:
-          (error as Error).message || "Failed to delete stock item",
-      });
-    } finally {
-      setLoading(false);
-      setDeleteOpen(false);
+    } else {
+      toast({ variant: "destructive", title: "Error", description: result.message });
     }
+    setLoading(false);
+    setDeleteOpen(false);
   };
 
   return (

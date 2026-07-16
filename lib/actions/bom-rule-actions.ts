@@ -381,6 +381,7 @@ export async function deprecateBomRule(id: string): Promise<FormResponse | void>
 export async function attachBomRule(
   ruleId: string,
   values: AttachBomRuleValues,
+  productId?: string,
 ): Promise<FormResponse | void> {
   const validated = AttachBomRuleSchema.safeParse(values);
   if (!validated.success) {
@@ -398,6 +399,19 @@ export async function attachBomRule(
     );
     revalidatePath("/bom-rules");
     revalidatePath(`/bom-rules/${ruleId}`);
+    // The attach also flips the target variant into recipe mode and rolls
+    // up its cost server-side (BomRuleService.attachInternal /
+    // autoCalculateBaseCost) — but that's invisible here unless we also
+    // revalidate the product's own routes. Callers that know which product
+    // owns the attached variant (e.g. the standalone "attach to product"
+    // dialog) should always pass it; callers nested inside a product save
+    // (updateProduct/createProduct) already revalidate these paths
+    // themselves, so passing it there is harmless but redundant.
+    if (productId) {
+      revalidatePath("/products");
+      revalidatePath(`/products/${productId}`);
+      revalidatePath(`/products/${productId}/edit`);
+    }
     return parseStringify({
       responseType: "success",
       message: "Recipe attached",
@@ -414,6 +428,7 @@ export async function attachBomRule(
 
 export async function closeBomRuleAttachment(
   attachmentId: string,
+  productId?: string,
 ): Promise<FormResponse | void> {
   try {
     const apiClient = new ApiClient();
@@ -421,6 +436,11 @@ export async function closeBomRuleAttachment(
       inventoryUrl(`/api/v1/bom/rules/attachments/${attachmentId}`),
     );
     revalidatePath("/bom-rules");
+    if (productId) {
+      revalidatePath("/products");
+      revalidatePath(`/products/${productId}`);
+      revalidatePath(`/products/${productId}/edit`);
+    }
     return parseStringify({
       responseType: "success",
       message: "Attachment closed",
@@ -437,6 +457,7 @@ export async function closeBomRuleAttachment(
 export async function swapBomRuleAttachment(
   attachmentId: string,
   newRuleId: string,
+  productId?: string,
 ): Promise<FormResponse | void> {
   try {
     const apiClient = new ApiClient();
@@ -447,6 +468,11 @@ export async function swapBomRuleAttachment(
       {},
     );
     revalidatePath("/bom-rules");
+    if (productId) {
+      revalidatePath("/products");
+      revalidatePath(`/products/${productId}`);
+      revalidatePath(`/products/${productId}/edit`);
+    }
     return parseStringify({
       responseType: "success",
       message: "Recipe swapped",

@@ -35,6 +35,16 @@ import type { PaymentMethodReconciliation } from "@/types/payment-method-reconci
 const varianceClass = (n: number) =>
   n === 0 ? "text-muted-2" : n > 0 ? "text-warn" : "text-neg";
 
+// "incl. X tips, Y prepayment" — both already counted in expectedAmount;
+// this is purely so a reader can tell them apart from ordinary sales.
+function tipPrepaymentBreakdown(r: PaymentMethodReconciliation): string | null {
+  const parts: string[] = [];
+  if (r.expectedTip && r.expectedTip > 0) parts.push(`${fmt(r.expectedTip)} tips`);
+  if (r.expectedPrepayment && r.expectedPrepayment > 0)
+    parts.push(`${fmt(r.expectedPrepayment)} prepayment`);
+  return parts.length > 0 ? `incl. ${parts.join(", ")}` : null;
+}
+
 export function CashUpReconciliationCard({
   reconciliations,
   sessionId,
@@ -132,6 +142,7 @@ export function CashUpReconciliationCard({
                     r.paymentMethodCode !== r.paymentMethodName
                       ? r.paymentMethodCode
                       : (r.expectedSource ?? null);
+                  const breakdown = tipPrepaymentBreakdown(r);
                   return (
                     <tr
                       key={r.id}
@@ -144,6 +155,11 @@ export function CashUpReconciliationCard({
                         {subtitle ? (
                           <div className="mt-0.5 font-mono text-[10.5px] font-normal text-muted-foreground">
                             {subtitle}
+                          </div>
+                        ) : null}
+                        {breakdown ? (
+                          <div className="mt-0.5 font-mono text-[10.5px] font-normal text-muted-foreground">
+                            {breakdown}
                           </div>
                         ) : null}
                       </td>

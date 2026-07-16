@@ -54,6 +54,16 @@ const WARN = "text-[#B9791F]";
 // "good" — so a positive variance gets the amber warn tone.
 const varTone = (n: number) => (n === 0 ? "text-slate-400" : n > 0 ? WARN : NEG);
 
+// "incl. X tips, Y prepayment" — both already counted in expectedAmount;
+// this is purely so a reader can tell them apart from ordinary sales.
+function tipPrepaymentBreakdown(r: PaymentMethodReconciliation): string | null {
+  const parts: string[] = [];
+  if (r.expectedTip && r.expectedTip > 0) parts.push(`${fmt2(r.expectedTip)} tips`);
+  if (r.expectedPrepayment && r.expectedPrepayment > 0)
+    parts.push(`${fmt2(r.expectedPrepayment)} prepayment`);
+  return parts.length > 0 ? `incl. ${parts.join(", ")}` : null;
+}
+
 // Table class fragments (shared-document slate palette).
 const TH =
   "border-b border-slate-200 bg-slate-100 px-[15px] py-[11px] text-left font-mono text-[10px] font-semibold uppercase tracking-[0.09em] text-slate-600 whitespace-nowrap";
@@ -350,6 +360,7 @@ export function CloseOfDayReportSheet({
                     r.paymentMethodCode !== r.paymentMethodName
                       ? r.paymentMethodCode
                       : (r.expectedSource ?? null);
+                  const breakdown = tipPrepaymentBreakdown(r);
                   return (
                     <tr key={r.id}>
                       <td className={TD}>
@@ -357,6 +368,7 @@ export function CloseOfDayReportSheet({
                           {r.paymentMethodName ?? r.paymentMethodCode ?? "—"}
                         </div>
                         {subtitle && <div className={SUB}>{subtitle}</div>}
+                        {breakdown && <div className={SUB}>{breakdown}</div>}
                       </td>
                       <td className={cn(TD, NUM)}>{txns != null ? txns : "—"}</td>
                       <td className={cn(TD, NUM)}>{fmt2(r.expectedAmount)}</td>
