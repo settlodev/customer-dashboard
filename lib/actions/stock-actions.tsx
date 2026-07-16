@@ -171,6 +171,7 @@ export async function createStock(
       name: validated.data.name,
       description: validated.data.description,
       baseUnitId: validated.data.baseUnitId,
+      divisibleUnitId: validated.data.divisibleUnitId || undefined,
       materialType: validated.data.materialType,
       imageUrls: validated.data.imageUrls,
       variants: validated.data.variants.map((v) => ({
@@ -236,6 +237,7 @@ export async function updateStock(
       name: validated.data.name,
       description: validated.data.description,
       baseUnitId: validated.data.baseUnitId,
+      divisibleUnitId: validated.data.divisibleUnitId || undefined,
       materialType: validated.data.materialType,
       // Empty list clears the gallery on the backend; omit the field
       // entirely (undefined) to leave it untouched.
@@ -588,6 +590,7 @@ export async function createStockWithProduct(
       name: validated.data.name,
       description: validated.data.description,
       baseUnitId: validated.data.baseUnitId,
+      divisibleUnitId: validated.data.divisibleUnitId || undefined,
       materialType: validated.data.materialType,
       imageUrls: validated.data.imageUrls,
       variants: validated.data.variants.map((v) => ({
@@ -717,6 +720,7 @@ export async function saveStockDraft(
         name: values.name?.trim() || undefined,
         description: values.description || undefined,
         baseUnitId: values.baseUnitId || undefined,
+        divisibleUnitId: values.divisibleUnitId || undefined,
         materialType: values.materialType || undefined,
         imageUrls,
         variants: meaningfulVariants.length ? meaningfulVariants : undefined,
@@ -742,6 +746,7 @@ export async function saveStockDraft(
       name: values.name?.trim() || undefined,
       description: values.description ?? undefined,
       baseUnitId: values.baseUnitId || undefined,
+      divisibleUnitId: values.divisibleUnitId || undefined,
       materialType: values.materialType || undefined,
       imageUrls,
     });

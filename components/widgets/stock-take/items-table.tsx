@@ -9,6 +9,7 @@ import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { StockTakeCountRow, type CountDraft } from "@/components/widgets/stock-take/count-row";
 import { recordStockTakeCounts } from "@/lib/actions/stock-take-actions";
 import type { StockTakeItem } from "@/types/stock-take/type";
+import { splitDivisibleQuantity } from "@/lib/format-divisible-quantity";
 
 interface Props {
   takeId: string;
@@ -20,6 +21,10 @@ interface Props {
 }
 
 function initialDraft(item: StockTakeItem): CountDraft {
+  if (item.divisibleUnitRatio != null && item.countedQuantity != null) {
+    const { whole, sub } = splitDivisibleQuantity(item.countedQuantity, item.divisibleUnitRatio);
+    return { countedWholeUnits: whole, countedSubUnits: sub, notes: item.notes ?? "" };
+  }
   return {
     countedQuantity: item.countedQuantity ?? undefined,
     notes: item.notes ?? "",
@@ -64,8 +69,15 @@ export default function StockTakeItemsTable({
   // sit pending until the counter fills one in (mirrors the per-row Save
   // guard, which refuses an empty count too).
   const submittableIds = useMemo(
-    () => Array.from(dirtyIds).filter((id) => values[id]?.countedQuantity != null),
-    [dirtyIds, values],
+    () =>
+      Array.from(dirtyIds).filter((id) => {
+        const draft = values[id];
+        const item = items.find((i) => i.id === id);
+        return item?.divisibleUnitRatio != null
+          ? draft?.countedWholeUnits != null || draft?.countedSubUnits != null
+          : draft?.countedQuantity != null;
+      }),
+    [dirtyIds, values, items],
   );
 
   useUnsavedChangesGuard(dirtyIds.size > 0);
@@ -88,11 +100,17 @@ export default function StockTakeItemsTable({
     if (submittableIds.length === 0) return;
     startTransition(() => {
       recordStockTakeCounts(takeId, {
-        counts: submittableIds.map((id) => ({
-          itemId: id,
-          countedQuantity: values[id].countedQuantity!,
-          notes: values[id].notes.trim() || undefined,
-        })),
+        counts: submittableIds.map((id) => {
+          const item = items.find((i) => i.id === id)!;
+          const draft = values[id];
+          return {
+            itemId: id,
+            ...(item.divisibleUnitRatio != null
+              ? { countedWholeUnits: draft.countedWholeUnits ?? 0, countedSubUnits: draft.countedSubUnits ?? 0 }
+              : { countedQuantity: draft.countedQuantity! }),
+            notes: draft.notes.trim() || undefined,
+          };
+        }),
       }).then((res) => {
         if (res.responseType === "error") {
           toast({

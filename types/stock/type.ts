@@ -7,6 +7,10 @@ export interface Stock {
   baseUnitId: string;
   baseUnitName: string;
   baseUnitAbbreviation: string;
+  divisibleUnitId: string | null;
+  divisibleUnitName: string | null;
+  divisibleUnitAbbreviation: string | null;
+  divisibleUnitRatio: number | null;
   archived: boolean;
   materialType: MaterialType;
   /**
@@ -55,6 +59,10 @@ export interface StockVariant {
   unitId: string;
   unitName: string;
   unitAbbreviation: string;
+  divisibleUnitId: string | null;
+  divisibleUnitName: string | null;
+  divisibleUnitAbbreviation: string | null;
+  divisibleUnitRatio: number | null;
   archived: boolean;
   isDefault: boolean;
   barcode: string | null;

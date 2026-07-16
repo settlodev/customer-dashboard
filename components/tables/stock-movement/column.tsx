@@ -3,6 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { StockMovement, MOVEMENT_TYPE_LABELS } from "@/types/stock-movement/type";
 import { Money } from "@/components/widgets/money";
+import { formatDivisibleQuantity } from "@/lib/format-divisible-quantity";
 
 const TYPE_COLORS: Record<string, string> = {
   PURCHASE: "bg-green-50 text-green-700",
@@ -51,7 +52,12 @@ export const columns: ColumnDef<StockMovement>[] = [
       const isPositive = qty > 0;
       return (
         <span className={`font-medium ${isPositive ? "text-green-600" : "text-red-600"}`}>
-          {isPositive ? "+" : ""}{qty.toLocaleString()}
+          {isPositive ? "+" : ""}
+          {formatDivisibleQuantity(qty, {
+            baseUnitName: row.original.unitName ?? "",
+            divisibleUnitRatio: row.original.divisibleUnitRatio,
+            divisibleUnitName: row.original.divisibleUnitName,
+          })}
         </span>
       );
     },

@@ -112,6 +112,7 @@ import type { Category } from "@/types/category/type";
 import { StockSchema } from "@/types/stock/schema";
 import type { FormResponse } from "@/types/types";
 import UnitSelector from "@/components/widgets/unit-selector";
+import CompatibleUnitSelector from "@/components/widgets/compatible-unit-selector";
 import SupplierSelector from "@/components/widgets/supplier-selector";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 import CurrencySelector from "@/components/widgets/currency-selector";
@@ -207,6 +208,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
       name: item?.name ?? "",
       description: item?.description ?? "",
       baseUnitId: item?.baseUnitId ?? "",
+      divisibleUnitId: item?.divisibleUnitId ?? "",
       materialType: item?.materialType ?? "FINISHED_GOOD",
       imageUrls: item?.imageUrls?.length
         ? item.imageUrls
@@ -695,6 +697,29 @@ export default function StockForm({ item, balances }: StockFormProps) {
                               isDisabled={isPending}
                             />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="divisibleUnitId"
+                      render={({ field }) => (
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel optional>Divisible unit</FieldLabel>
+                          <FormControl>
+                            <CompatibleUnitSelector
+                              anchorUnitId={baseUnitId}
+                              value={field.value ?? ""}
+                              onChange={field.onChange}
+                              isDisabled={isPending || !baseUnitId}
+                              placeholder="None"
+                            />
+                          </FormControl>
+                          <FieldHint>
+                            Optional — count remaining stock in a smaller unit (e.g. Tots in a Bottle) instead of a decimal. Only units with a whole-number conversion to the base unit are accepted.
+                          </FieldHint>
                           <FormMessage />
                         </FormItem>
                       )}

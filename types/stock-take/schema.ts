@@ -92,16 +92,25 @@ export const CreateStockTakeSchema = z
 
 export type CreateStockTakeInput = z.infer<typeof CreateStockTakeSchema>;
 
-export const RecordCountSchema = z.object({
-  itemId: z.string({ required_error: "Item is required" }).uuid(),
-  countedQuantity: z.preprocess(
-    toNumber,
-    z
-      .number({ required_error: "Counted quantity is required" })
-      .nonnegative("Count cannot be negative"),
-  ),
-  notes: z.string().optional(),
-});
+export const RecordCountSchema = z
+  .object({
+    itemId: z.string({ required_error: "Item is required" }).uuid(),
+    countedQuantity: z.preprocess(toNumber, z.number().nonnegative("Count cannot be negative").optional()),
+    countedWholeUnits: z.preprocess(toNumber, z.number().int().nonnegative().optional()),
+    countedSubUnits: z.preprocess(toNumber, z.number().int().nonnegative().optional()),
+    notes: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const hasDecimal = data.countedQuantity != null;
+    const hasWholeSub = data.countedWholeUnits != null || data.countedSubUnits != null;
+    if (hasDecimal === hasWholeSub) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["countedQuantity"],
+        message: "Provide either countedQuantity or countedWholeUnits/countedSubUnits, not both",
+      });
+    }
+  });
 
 export const RecordCountBatchSchema = z.object({
   counts: z.array(RecordCountSchema).min(1, "At least one count is required"),
