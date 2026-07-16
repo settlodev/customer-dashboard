@@ -8,9 +8,12 @@ import { NumericFormat } from "react-number-format";
 import { useToast } from "@/hooks/use-toast";
 import type { StockTakeItem } from "@/types/stock-take/type";
 import { recordStockTakeCount } from "@/lib/actions/stock-take-actions";
+import { formatDivisibleQuantity, splitDivisibleQuantity } from "@/lib/format-divisible-quantity";
 
 export interface CountDraft {
   countedQuantity?: number;
+  countedWholeUnits?: number;
+  countedSubUnits?: number;
   notes: string;
 }
 
@@ -50,13 +53,23 @@ export function StockTakeCountRow({
   // so typing a count previews its variance immediately instead of only
   // after a save round trip. Stays hidden under blind count the same way
   // expectedQuantity already is (both null together).
+  const isDivisible = item.divisibleUnitRatio != null;
+
+  const effectiveCountedQuantity = isDivisible
+    ? (value.countedWholeUnits ?? 0) + (value.countedSubUnits ?? 0) / item.divisibleUnitRatio!
+    : value.countedQuantity;
+
+  const hasCount = isDivisible
+    ? value.countedWholeUnits != null || value.countedSubUnits != null
+    : value.countedQuantity != null;
+
   const liveVariance =
-    item.expectedQuantity != null && value.countedQuantity != null
-      ? value.countedQuantity - item.expectedQuantity
+    item.expectedQuantity != null && hasCount
+      ? effectiveCountedQuantity! - item.expectedQuantity
       : null;
 
   const save = () => {
-    if (value.countedQuantity == null) {
+    if (!hasCount) {
       toast({
         variant: "destructive",
         title: "Enter a count",
@@ -67,7 +80,9 @@ export function StockTakeCountRow({
     startTransition(() => {
       recordStockTakeCount(takeId, {
         itemId: item.id,
-        countedQuantity: value.countedQuantity!,
+        ...(isDivisible
+          ? { countedWholeUnits: value.countedWholeUnits ?? 0, countedSubUnits: value.countedSubUnits ?? 0 }
+          : { countedQuantity: value.countedQuantity! }),
         notes: value.notes.trim() || undefined,
       }).then((res) => {
         if (res.responseType === "error") {
@@ -94,12 +109,69 @@ export function StockTakeCountRow({
       <td className="px-3 py-3 text-right text-muted-foreground">
         {blindCount && item.expectedQuantity == null
           ? <span className="italic">hidden</span>
-          : Number(item.expectedQuantity ?? 0).toLocaleString()}
+          : formatDivisibleQuantity(Number(item.expectedQuantity ?? 0), {
+              baseUnitName: item.unitName ?? "",
+              divisibleUnitRatio: item.divisibleUnitRatio,
+              divisibleUnitName: item.divisibleUnitName,
+            })}
       </td>
-      <td className="px-3 py-3 w-36">
+      <td className="px-3 py-3 w-52">
         {readOnly ? (
           <div className="text-right">
-            {value.countedQuantity != null ? value.countedQuantity.toLocaleString() : "—"}
+            {hasCount
+              ? formatDivisibleQuantity(effectiveCountedQuantity!, {
+                  baseUnitName: item.unitName ?? "",
+                  divisibleUnitRatio: item.divisibleUnitRatio,
+                  divisibleUnitName: item.divisibleUnitName,
+                })
+              : "—"}
+          </div>
+        ) : isDivisible ? (
+          <div className="flex items-center gap-1.5">
+            <NumericFormat
+              customInput={Input}
+              className="w-20"
+              value={value.countedWholeUnits ?? ""}
+              onValueChange={(v) => onChange({ countedWholeUnits: v.value === "" ? undefined : Number(v.value) })}
+              onBlur={() => {
+                const ratio = item.divisibleUnitRatio!;
+                const whole = value.countedWholeUnits ?? 0;
+                const sub = value.countedSubUnits ?? 0;
+                if (sub >= ratio) {
+                  onChange({
+                    countedWholeUnits: whole + Math.floor(sub / ratio),
+                    countedSubUnits: sub % ratio,
+                  });
+                }
+              }}
+              decimalScale={0}
+              allowNegative={false}
+              disabled={isPending}
+              placeholder={item.unitAbbreviation ?? ""}
+            />
+            <span className="text-xs text-muted-foreground">{item.unitAbbreviation}</span>
+            <NumericFormat
+              customInput={Input}
+              className="w-20"
+              value={value.countedSubUnits ?? ""}
+              onValueChange={(v) => onChange({ countedSubUnits: v.value === "" ? undefined : Number(v.value) })}
+              onBlur={() => {
+                const ratio = item.divisibleUnitRatio!;
+                const whole = value.countedWholeUnits ?? 0;
+                const sub = value.countedSubUnits ?? 0;
+                if (sub >= ratio) {
+                  onChange({
+                    countedWholeUnits: whole + Math.floor(sub / ratio),
+                    countedSubUnits: sub % ratio,
+                  });
+                }
+              }}
+              decimalScale={0}
+              allowNegative={false}
+              disabled={isPending}
+              placeholder={item.divisibleUnitAbbreviation ?? ""}
+            />
+            <span className="text-xs text-muted-foreground">{item.divisibleUnitAbbreviation}</span>
           </div>
         ) : (
           <NumericFormat
@@ -117,9 +189,21 @@ export function StockTakeCountRow({
         {liveVariance == null ? (
           <span className="text-muted-foreground">—</span>
         ) : liveVariance > 0 ? (
-          <span className="text-green-700 font-medium">+{liveVariance.toLocaleString()}</span>
+          <span className="text-green-700 font-medium">
+            +{formatDivisibleQuantity(liveVariance, {
+              baseUnitName: item.unitName ?? "",
+              divisibleUnitRatio: item.divisibleUnitRatio,
+              divisibleUnitName: item.divisibleUnitName,
+            })}
+          </span>
         ) : liveVariance < 0 ? (
-          <span className="text-red-600 font-medium">{liveVariance.toLocaleString()}</span>
+          <span className="text-red-600 font-medium">
+            {formatDivisibleQuantity(liveVariance, {
+              baseUnitName: item.unitName ?? "",
+              divisibleUnitRatio: item.divisibleUnitRatio,
+              divisibleUnitName: item.divisibleUnitName,
+            })}
+          </span>
         ) : (
           <span className="text-muted-foreground">0</span>
         )}
