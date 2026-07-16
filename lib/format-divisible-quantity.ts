@@ -6,15 +6,31 @@
  *
  * The remainder is rounded to 6dp before flooring to neutralize float noise
  * (e.g. 8.999999999997 incorrectly flooring to 8 instead of 9) — 6dp matches
- * the backend's NUMERIC(19,6) quantity column scale.
+ * the backend's NUMERIC(19,6) quantity column scale. That same rounding step
+ * can push a remainder that's within 6dp of a full `ratio` up to `ratio`
+ * itself (e.g. quantity `4.1 - 0.1` === `3.9999999999999996` at ratio 30
+ * would otherwise yield `{ whole: 3, sub: 30 }`), so a rollover guard carries
+ * the overflow into `whole` to preserve the `sub < ratio` invariant.
+ *
+ * Expects a non-negative `quantity`; negative inputs floor toward -Infinity
+ * rather than mirroring the sign (e.g. `-1.0666666667` at ratio 30 yields
+ * `{ whole: -2, sub: 28 }`, not the `{ whole: -1, sub: 2 }` magnitude split
+ * that `formatDivisibleQuantity` displays as "-1 Bottle, 2 Tots" for that
+ * same value). Callers needing signed/negative handling should go through
+ * `formatDivisibleQuantity`, which applies `Math.abs()` before calling this
+ * function.
  */
 export function splitDivisibleQuantity(
   quantity: number,
   ratio: number,
 ): { whole: number; sub: number } {
-  const whole = Math.floor(quantity);
+  let whole = Math.floor(quantity);
   const remainder = Math.round((quantity - whole) * ratio * 1e6) / 1e6;
-  const sub = Math.floor(remainder);
+  let sub = Math.floor(remainder);
+  if (sub >= ratio) {
+    whole += 1;
+    sub -= ratio;
+  }
   return { whole, sub };
 }
 
