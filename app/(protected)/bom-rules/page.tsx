@@ -9,16 +9,52 @@ import {
   PageBody,
 } from "@/components/layouts/page-shell";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/bom-rule/column";
-import { getBomRules } from "@/lib/actions/bom-rule-actions";
+import { getBomRulesPage } from "@/lib/actions/bom-rule-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getBomRulesKpi } from "@/lib/actions/reports-analytics-actions";
 import { BomRulesKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
+import { softFetch } from "@/lib/list-fallback";
+import { BOM_LIFECYCLE_LABELS, BomLifecycleStatus } from "@/types/bom/type";
 
-export default async function BomRulesPage() {
-  const [rules, location] = await Promise.all([getBomRules(), getCurrentLocation()]);
-  const total = rules.length;
+const BOM_STATUS_VALUES: BomLifecycleStatus[] = ["DRAFT", "ACTIVE", "DEPRECATED"];
+
+type Params = {
+  searchParams: Promise<{
+    page?: string;
+    limit?: string;
+    status?: string;
+    search?: string;
+  }>;
+};
+
+export default async function BomRulesPage({ searchParams }: Params) {
+  const resolved = await searchParams;
+  const page = Number(resolved.page) || 0;
+  const pageLimit = Number(resolved.limit) || 20;
+  const status = BOM_STATUS_VALUES.find((s) => s === resolved.status);
+  const search = resolved.search?.trim() || undefined;
+  // Keep the toolbar on screen when a filter yields zero rows, otherwise the
+  // user lands on the empty state with no way to clear the filter.
+  const hasFilters = Boolean(status || search);
+
+  const [responseData, location] = await Promise.all([
+    softFetch(
+      getBomRulesPage({
+        page: page ? page - 1 : 0,
+        size: pageLimit,
+        status,
+        search,
+      }),
+    ),
+    getCurrentLocation(),
+  ]);
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
+
   const kpi = location?.id ? await getBomRulesKpi(location.id) : null;
 
   return (
@@ -37,17 +73,27 @@ export default async function BomRulesPage() {
         }
       />
       <PageBody>
-        {total > 0 ? (
+        {!responseData ? (
+          <DataLoadError itemName="consumption rules" />
+        ) : total > 0 || hasFilters ? (
           <>
             <BomRulesKpiStrip summary={kpi} />
             <DataTable
               columns={columns}
-              clientMode
-              data={rules}
+              data={data}
               searchKey="name"
-              pageNo={0}
+              searchPlaceholder="Search rule name…"
+              pageNo={page}
               total={total}
-              pageCount={1}
+              pageCount={pageCount}
+              defaultPageSize={pageLimit}
+              disableArchive
+              filterKey="status"
+              filterOptions={BOM_STATUS_VALUES.map((s) => ({
+                value: s,
+                label: BOM_LIFECYCLE_LABELS[s],
+              }))}
+              manualFilter
             />
           </>
         ) : (
