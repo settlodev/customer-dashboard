@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CellAction } from "@/components/tables/stock/cell-action";
 import type { StockWithBalance } from "@/types/stock/type";
 import { MATERIAL_TYPE_OPTIONS } from "@/types/catalogue/enums";
+import { formatDivisibleQuantity } from "@/lib/format-divisible-quantity";
 
 export const columns: ColumnDef<StockWithBalance>[] = [
   {
@@ -111,7 +112,11 @@ export const columns: ColumnDef<StockWithBalance>[] = [
                   : "text-gray-900 dark:text-gray-100"
             }`}
           >
-            {qty.toLocaleString()}
+            {formatDivisibleQuantity(qty, {
+              baseUnitName: row.original.baseUnitName,
+              divisibleUnitRatio: row.original.divisibleUnitRatio,
+              divisibleUnitName: row.original.divisibleUnitName,
+            })}
           </span>
           {(isLow || isOut) && (
             <AlertTriangle
