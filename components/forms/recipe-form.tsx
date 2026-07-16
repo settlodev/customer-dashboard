@@ -211,6 +211,17 @@ export default function RecipeForm({
     [products],
   );
 
+  // Attach/close (below) only know the variant being bound — resolve the
+  // owning product from the same catalogue so we can also revalidate its
+  // page, or the recipe/cost change won't show up there (see attachBomRule).
+  const variantIdToProductId = useMemo(
+    () =>
+      new Map(
+        products.flatMap((p) => (p.variants ?? []).map((v) => [v.id, p.id])),
+      ),
+    [products],
+  );
+
   const form = useForm<FormValues>({
     resolver: zodResolver(CreateRecipeSchema) as never,
     defaultValues: rule
@@ -303,16 +314,25 @@ export default function RecipeForm({
               const att = openOnNew.find(
                 (a) => a.productVariantId === variantId,
               );
-              if (att) await closeBomRuleAttachment(att.id);
+              if (att) {
+                await closeBomRuleAttachment(
+                  att.id,
+                  variantIdToProductId.get(variantId),
+                );
+              }
             }
             for (const variantId of toAdd) {
-              await attachBomRule(newRule.id, {
-                productVariantId: variantId,
-                modifierOptionId: null,
-                effectiveFrom: null,
-                effectiveTo: null,
-                notes: null,
-              });
+              await attachBomRule(
+                newRule.id,
+                {
+                  productVariantId: variantId,
+                  modifierOptionId: null,
+                  effectiveFrom: null,
+                  effectiveTo: null,
+                  notes: null,
+                },
+                variantIdToProductId.get(variantId),
+              );
             }
           }
 

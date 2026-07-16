@@ -295,27 +295,20 @@ export default function StockForm({ item, balances }: StockFormProps) {
       const variantId = form.getValues(`variants.${index}.id`);
       if (!variantId || !item) return;
       setArchivingIndex(index);
-      try {
-        if (shouldArchive) {
-          await archiveStockVariant(item.id, variantId);
-          invalidateStocksCache();
-          form.setValue(`variants.${index}.archived`, true);
-          toast({ title: "Archived", description: "Variant has been archived." });
-        } else {
-          await unarchiveStockVariant(item.id, variantId);
-          invalidateStocksCache();
-          form.setValue(`variants.${index}.archived`, false);
-          toast({ title: "Restored", description: "Variant has been restored." });
-        }
-      } catch {
+      const result = shouldArchive
+        ? await archiveStockVariant(item.id, variantId)
+        : await unarchiveStockVariant(item.id, variantId);
+      if (result.responseType === "success") {
+        invalidateStocksCache();
+        form.setValue(`variants.${index}.archived`, shouldArchive);
         toast({
-          variant: "destructive",
-          title: "Error",
-          description: `Failed to ${shouldArchive ? "archive" : "restore"} variant.`,
+          title: shouldArchive ? "Archived" : "Restored",
+          description: `Variant has been ${shouldArchive ? "archived" : "restored"}.`,
         });
-      } finally {
-        setArchivingIndex(null);
+      } else {
+        toast({ variant: "destructive", title: "Error", description: result.message });
       }
+      setArchivingIndex(null);
     },
     [form, item, toast],
   );

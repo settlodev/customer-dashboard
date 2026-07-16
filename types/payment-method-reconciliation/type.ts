@@ -22,6 +22,14 @@ export interface PaymentMethodReconciliation {
   expectedAmount: number;
   countedAmount: number;
   variance: number;
+  /**
+   * Portion of expectedAmount that was tips / a customer prepayment,
+   * rather than a completed sale. Purely informational — already
+   * included in expectedAmount. Present once the Accounts Service ->
+   * Accounting Service reconciliation event carries them; 0 otherwise.
+   */
+  expectedTip?: number;
+  expectedPrepayment?: number;
   expectedSource: string | null;
   triggerType: string | null;
   status: PaymentMethodReconciliationStatus;
