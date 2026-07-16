@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatDivisibleQuantity } from "@/lib/format-divisible-quantity";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import {
   Table,
@@ -201,7 +202,11 @@ export function StockDetailView({
         <KpiCard
           icon={<Boxes className="h-3 w-3" />}
           label="Qty on hand"
-          value={totalQty.toLocaleString()}
+          value={formatDivisibleQuantity(totalQty, {
+            baseUnitName: stock.baseUnitName,
+            divisibleUnitRatio: stock.divisibleUnitRatio,
+            divisibleUnitName: stock.divisibleUnitName,
+          })}
           unit={stock.baseUnitName}
         />
         <KpiCard
@@ -479,7 +484,11 @@ function OverviewTab({
                             : ""
                       }`}
                     >
-                      {qty.toLocaleString()}
+                      {formatDivisibleQuantity(qty, {
+                        baseUnitName: stock.baseUnitName,
+                        divisibleUnitRatio: v.divisibleUnitRatio,
+                        divisibleUnitName: v.divisibleUnitName,
+                      })}
                     </TableCell>
                     <TableCell className="text-right">
                       {(bal?.availableQuantity ?? 0).toLocaleString()}
@@ -724,7 +733,11 @@ function BatchesTab({
                         )}
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {b.quantityOnHand.toLocaleString()}
+                        {formatDivisibleQuantity(b.quantityOnHand, {
+                          baseUnitName: stock.baseUnitName,
+                          divisibleUnitRatio: b.divisibleUnitRatio,
+                          divisibleUnitName: b.divisibleUnitName,
+                        })}
                         <span className="block text-[10px] text-muted-foreground">
                           {consumed.toFixed(0)}% used
                         </span>
