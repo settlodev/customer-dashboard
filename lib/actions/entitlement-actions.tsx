@@ -14,6 +14,13 @@ export interface EntitlementItem {
   features: Record<string, boolean>;
   /** -1 means unlimited */
   limits: Record<string, number>;
+  /** Per-entity lifecycle — each entity's subscription expires SEPARATELY. The Billing Service's
+   *  EntityEntitlement already ships these. `active` = usable (in its own trial, ACTIVE, or
+   *  PAST_DUE grace); false once EXPIRED/SUSPENDED/CANCELLED. `inTrial` = still inside this
+   *  entity's own free trial. */
+  active: boolean;
+  inTrial: boolean;
+  trialEndDate?: string | null;
 }
 
 export interface EntitlementResponse {

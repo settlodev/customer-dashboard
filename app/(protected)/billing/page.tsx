@@ -15,7 +15,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import { BillingClient } from "@/components/billing/billing-client";
-import { Badge } from "@/components/ui/badge";
+import { StatusPill, toPillTone } from "@/components/billing/pill";
 import {
   getAddons,
   getCreditBalances,
@@ -29,7 +29,11 @@ import { getCurrentBusiness } from "@/lib/actions/business/get-current-business"
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { getWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { getAuthToken } from "@/lib/auth-utils";
-import { formatBillingDate, getSubscriptionStatusMeta } from "@/components/billing/shared";
+import {
+  formatBillingDate,
+  formatWhole,
+  getSubscriptionStatusMeta,
+} from "@/components/billing/shared";
 
 export const dynamic = "force-dynamic";
 
@@ -100,13 +104,22 @@ export default async function BillingPage() {
   for (const wh of warehouses ?? []) {
     if (wh.id && wh.name) entityLabels[wh.id] = wh.name;
   }
-  const activeItems = subscription.items.filter((i) => i.status === "ACTIVE");
+  // Every row shown in "Subscribed entities" — bundled units included, since
+  // they occupy a row even though their parent pays for them.
+  const subscribedItems = (subscription.manageableItems ?? subscription.items).filter(
+    (i) => i.status !== "REMOVED" && i.status !== "CANCELLED",
+  );
+  // Only non-bundled ACTIVE items carry their own price; counting bundled ones
+  // would bill the same plan twice.
+  const billableItems = subscription.items.filter(
+    (i) => i.status === "ACTIVE" && !i.isBundled,
+  );
   const pendingInvoices = invoices.filter((i) => i.status === "PENDING");
   const outstandingTotal = pendingInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
-  const monthlyCost = activeItems.reduce((sum, item) => {
+  const annualCost = billableItems.reduce((sum, item) => {
     const pkg = item.packageInfo;
     if (!pkg) return sum;
-    return sum + (pkg.billingInterval === "YEARLY" ? pkg.basePrice / 12 : pkg.basePrice);
+    return sum + (pkg.billingInterval === "YEARLY" ? pkg.basePrice : pkg.basePrice * 12);
   }, 0);
 
   const currency = invoices[0]?.currency ?? subscription.currency ?? "TZS";
@@ -118,17 +131,21 @@ export default async function BillingPage() {
       <PageHeader
         title="Billing"
         subtitle="Manage your subscription, invoices, and credits."
-        titleAccessory={<Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>}
+        titleAccessory={
+          <StatusPill tone={toPillTone(statusMeta.variant)}>
+            {statusMeta.label}
+          </StatusPill>
+        }
       />
 
       <PageBody>
         <KpiStrip cols={4}>
           <KpiCard
             icon={<Wallet className="h-3 w-3" />}
-            label="Monthly cost"
-            value={Math.round(monthlyCost).toLocaleString()}
-            unit={currency}
-            delta={`${activeItems.length} item${activeItems.length === 1 ? "" : "s"}`}
+            label="Plan cost"
+            value={formatWhole(annualCost)}
+            unit={`${currency} / yr`}
+            delta={`${billableItems.length} billable item${billableItems.length === 1 ? "" : "s"}`}
             deltaTone="neutral"
           />
           <KpiCard
@@ -136,28 +153,36 @@ export default async function BillingPage() {
             label="Paid through"
             value={formatBillingDate(subscription.paidThrough)}
             delta={
-              subscription.autoRenew
-                ? `Auto-renews ${formatBillingDate(subscription.nextBillingDate)}`
-                : "Auto-renew off"
+              !subscription.autoRenew
+                ? "Auto-renew off"
+                : subscription.nextBillingDate
+                  ? `Auto-renews ${formatBillingDate(subscription.nextBillingDate)}`
+                  : "Auto-renews on this date"
             }
             deltaTone={subscription.autoRenew ? "pos" : "neutral"}
           />
           <KpiCard
             icon={<Receipt className="h-3 w-3" />}
             label="Outstanding"
-            value={outstandingTotal > 0 ? outstandingTotal.toLocaleString() : "—"}
+            value={
+              outstandingTotal > 0 ? (
+                <span className="text-neg">{formatWhole(outstandingTotal)}</span>
+              ) : (
+                <span className="text-muted-2">—</span>
+              )
+            }
             unit={outstandingTotal > 0 ? currency : undefined}
             delta={
               pendingInvoices.length > 0
-                ? `${pendingInvoices.length} pending invoice${pendingInvoices.length === 1 ? "" : "s"}`
+                ? `${pendingInvoices.length} open invoice${pendingInvoices.length === 1 ? "" : "s"} · due now`
                 : "All invoices settled"
             }
             deltaTone={pendingInvoices.length > 0 ? "neg" : "pos"}
           />
           <KpiCard
             icon={<Building2 className="h-3 w-3" />}
-            label="Items"
-            value={activeItems.length.toLocaleString()}
+            label="Subscribed items"
+            value={formatWhole(subscribedItems.length)}
             delta={`${totalInvoiceCount} invoice${totalInvoiceCount === 1 ? "" : "s"} on file`}
             deltaTone="neutral"
           />

@@ -63,21 +63,25 @@ export function CreditsTab({ businessId, balances, packs, recentTransactions }: 
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-[30px]">
       <section>
         <SectionHeader
-          icon={<Coins className="h-3.5 w-3.5 text-pos" />}
+          icon={<Coins className="h-3.5 w-3.5" />}
           title="Credit balances"
           description="Available credit for SMS, email, and other usage-based features."
+          tone="text-pos"
         />
         {balances.length === 0 ? (
-          <EmptyState message="No credit balances yet. Purchase a pack below to top up." />
+          <EmptyState
+            icon={<Coins className="h-5 w-5" />}
+            message="No credit balances yet. Purchase a pack below to top up."
+          />
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {balances.map((bal) => (
               <div
                 key={bal.creditTypeId}
-                className="rounded-xl border border-line bg-card p-4"
+                className="rounded-xl border border-line bg-card p-4 shadow-[0_1px_2px_rgba(20,17,12,0.03)]"
               >
                 <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
                   {bal.creditTypeCode}
@@ -97,12 +101,16 @@ export function CreditsTab({ businessId, balances, packs, recentTransactions }: 
 
       <section>
         <SectionHeader
-          icon={<ShoppingBag className="h-3.5 w-3.5 text-primary" />}
+          icon={<ShoppingBag className="h-3.5 w-3.5" />}
           title="Top up credits"
           description="Purchase a credit pack — credits arrive immediately on your balance."
+          tone="text-[hsl(var(--primary-dark))]"
         />
         {packs.length === 0 ? (
-          <EmptyState message="No credit packs are available right now." />
+          <EmptyState
+            icon={<ShoppingBag className="h-5 w-5" />}
+            message="No credit packs are available right now."
+          />
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
             {packs.map((pack) => {
@@ -110,7 +118,7 @@ export function CreditsTab({ businessId, balances, packs, recentTransactions }: 
               return (
                 <div
                   key={pack.id}
-                  className="flex flex-col gap-3 rounded-xl border border-line bg-card p-4"
+                  className="flex flex-col gap-3 rounded-xl border border-line bg-card p-4 shadow-[0_1px_2px_rgba(20,17,12,0.03)]"
                 >
                   <div>
                     <Badge variant="soft" className="mb-2">
@@ -153,14 +161,17 @@ export function CreditsTab({ businessId, balances, packs, recentTransactions }: 
 
       <section>
         <SectionHeader
-          icon={<History className="h-3.5 w-3.5 text-muted-foreground" />}
+          icon={<History className="h-3.5 w-3.5" />}
           title="Recent activity"
           description="Latest credit movements — purchases, usage, and adjustments."
         />
         {recentTransactions.length === 0 ? (
-          <EmptyState message="No credit activity yet." />
+          <EmptyState
+            icon={<History className="h-5 w-5" />}
+            message="No credit activity yet."
+          />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-line bg-card">
+          <div className="overflow-hidden rounded-xl border border-line bg-card shadow-[0_1px_2px_rgba(20,17,12,0.03)]">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -212,28 +223,43 @@ function SectionHeader({
   icon,
   title,
   description,
+  tone = "text-ink-3",
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
+  /** Utility class colouring the mono section label + its icon. */
+  tone?: string;
 }) {
   return (
-    <div className="mb-3 flex items-baseline justify-between gap-3">
-      <div>
-        <p className="flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
-          {icon}
-          {title}
-        </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-      </div>
+    <div className="mb-4">
+      <h2
+        className={cn(
+          "flex items-center gap-2 font-mono text-[11.5px] font-semibold uppercase tracking-[0.1em]",
+          tone,
+        )}
+      >
+        {icon}
+        {title}
+      </h2>
+      <p className="mt-1.5 text-[13px] text-muted-foreground">{description}</p>
     </div>
   );
 }
 
-function EmptyState({ message }: { message: string }) {
+function EmptyState({
+  icon,
+  message,
+}: {
+  icon: React.ReactNode;
+  message: string;
+}) {
   return (
-    <div className="rounded-xl border border-line bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-      {message}
+    <div className="rounded-xl border border-line bg-card px-6 py-13 text-center shadow-[0_1px_2px_rgba(20,17,12,0.03)]">
+      <div className="mx-auto mb-3.5 grid h-11 w-11 place-items-center rounded-xl bg-canvas text-muted-2">
+        {icon}
+      </div>
+      <p className="text-[15px] text-muted-foreground">{message}</p>
     </div>
   );
 }

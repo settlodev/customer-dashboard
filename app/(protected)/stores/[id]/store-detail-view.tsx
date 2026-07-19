@@ -16,6 +16,8 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import StoreSubscriptionSetup from "@/components/subscription/StoreSubscriptionSetup";
+import { EntityLockedNotice } from "@/components/subscription/EntityLockedNotice";
+import { useEntitlements } from "@/context/entitlementContext";
 import { Store } from "@/types/store/type";
 
 const TABS = [
@@ -28,6 +30,15 @@ type TabKey = (typeof TABS)[number]["key"];
 
 export function StoreDetailView({ store }: { store: Store }) {
   const [tab, setTab] = useState<TabKey>("overview");
+  const { getEntityItem, loading, entitlements } = useEntitlements();
+
+  // Pay-first gate: a store is locked until its OWN subscription is active AND past its free trial
+  // (a new paid store's trial is gated too). Bundled/free stores are active + not-in-trial -> open.
+  // Permissive when entitlement data is absent (provisioning lag / billing not configured).
+  const item = getEntityItem(store.id);
+  const storeLocked =
+    !loading && entitlements != null && item != null && (!item.active || item.inTrial);
+  const lockReason: "expired" | "unpaid" = item && !item.active ? "expired" : "unpaid";
 
   const createdAt = store.createdAt
     ? new Date(store.createdAt).toLocaleDateString()
@@ -102,8 +113,26 @@ export function StoreDetailView({ store }: { store: Store }) {
         </div>
       </div>
 
-      {tab === "overview" && <OverviewTab store={store} />}
-      {tab === "address" && <AddressTab store={store} />}
+      {tab === "overview" &&
+        (storeLocked ? (
+          <EntityLockedNotice
+            entityType="STORE"
+            reason={lockReason}
+            onSetup={() => setTab("subscription")}
+          />
+        ) : (
+          <OverviewTab store={store} />
+        ))}
+      {tab === "address" &&
+        (storeLocked ? (
+          <EntityLockedNotice
+            entityType="STORE"
+            reason={lockReason}
+            onSetup={() => setTab("subscription")}
+          />
+        ) : (
+          <AddressTab store={store} />
+        ))}
       {tab === "subscription" && (
         <StoreSubscriptionSetup
           storeId={store.id}

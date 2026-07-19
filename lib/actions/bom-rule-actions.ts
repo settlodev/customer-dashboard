@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import { FormResponse } from "@/types/types";
+import { ApiResponse, FormResponse } from "@/types/types";
 import { inventoryUrl } from "./inventory-client";
 import { rethrowIfBoundary } from "@/lib/list-fallback";
 import {
   BomCostSnapshot,
+  BomLifecycleStatus,
   BomRule,
   BomRuleAttachment,
   BomRuleDiff,
@@ -45,52 +46,63 @@ import {
 
 // ── Reads ────────────────────────────────────────────────────────────
 
-/** Rank a zero-padded "R07" revision label numerically (so R100 > R99). */
-function revisionRank(rev?: string | null): number {
-  const n = parseInt(String(rev ?? "").replace(/[^0-9]/g, ""), 10);
-  return Number.isNaN(n) ? -1 : n;
+export interface BomRuleListParams {
+  page?: number;
+  size?: number;
+  /** Filter to families whose current head has this lifecycle status. */
+  status?: BomLifecycleStatus;
+  /** Case-insensitive match on rule name (server-side). */
+  search?: string;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
 }
 
 /**
- * Collapse a flat list of rule revisions to one row per rule — the head
- * (highest revision) for each name. Editing a rule creates a NEW revision
- * row (same name, bumped revisionNumber) and leaves the prior rows in
- * place, so an un-collapsed list shows every historical revision and it
- * looks like nothing changed after a revise. Mirrors the backend's family
- * key (business + location + name); getBomRules is already location-scoped
- * via the injected X-Location-Id, so grouping by name alone is sufficient.
- * Full history stays reachable on the rule's details screen.
+ * Paginated browse list for the consumption-rules table. The Inventory
+ * Service returns one row per rule — the latest revision (family head) — so
+ * prior revisions no longer clutter the list or make a fresh revise look
+ * like a no-op; full history stays on the rule's details screen. Pagination,
+ * status filtering, and name search are all applied server-side. Throws on
+ * failure so the page can wrap it in softFetch().
  */
-function latestRevisionPerName(rules: BomRule[]): BomRule[] {
-  const heads = new Map<string, BomRule>();
-  for (const r of rules) {
-    const current = heads.get(r.name);
-    if (!current || revisionRank(r.revisionNumber) > revisionRank(current.revisionNumber)) {
-      heads.set(r.name, r);
-    }
-  }
-  return Array.from(heads.values());
+export async function getBomRulesPage(
+  params: BomRuleListParams = {},
+): Promise<ApiResponse<BomRule>> {
+  const {
+    page = 0,
+    size = 20,
+    status,
+    search,
+    sortBy = "name",
+    sortDirection = "asc",
+  } = params;
+
+  const qs = new URLSearchParams();
+  qs.set("page", String(page));
+  qs.set("size", String(size));
+  qs.set("sortBy", sortBy);
+  qs.set("sortDirection", sortDirection);
+  if (status) qs.set("status", status);
+  if (search?.trim()) qs.set("search", search.trim());
+
+  const apiClient = new ApiClient();
+  const data = await apiClient.get(inventoryUrl(`/api/v1/bom/rules?${qs.toString()}`));
+  return parseStringify(data) as ApiResponse<BomRule>;
 }
 
+/**
+ * Flat list of rule heads for pickers (e.g. the consumption-rule selector) —
+ * every rule's latest revision, unpaginated. The Inventory Service already
+ * collapses to heads, so this is just its first (large) page; callers filter
+ * by status client-side.
+ */
 export async function getBomRules(status?: string): Promise<BomRule[]> {
   try {
-    const apiClient = new ApiClient();
-    const params = new URLSearchParams();
-    if (status) params.set("status", status);
-    // Pull the whole location's rules in one page (the list and the rule
-    // selector both render client-side), not Spring's default 20 —
-    // otherwise the latest-revision collapse below runs over a truncated
-    // slice and could drop or mis-pick a rule's head.
-    params.set("size", "1000");
-    const data = (await apiClient.get(
-      inventoryUrl(`/api/v1/bom/rules?${params.toString()}`),
-    )) as unknown;
-    // API returns Spring Page; the .content holds the rows.
-    const content = Array.isArray(data)
-      ? data
-      : (data as { content?: unknown[] })?.content ?? [];
-    const rules = parseStringify(content) as BomRule[];
-    return latestRevisionPerName(rules);
+    const page = await getBomRulesPage({
+      size: 1000,
+      status: status as BomLifecycleStatus | undefined,
+    });
+    return parseStringify(page.content ?? []) as BomRule[];
   } catch (error) {
     rethrowIfBoundary(error);
     return [];

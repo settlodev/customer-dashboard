@@ -1,6 +1,8 @@
 import { format, parseISO } from "date-fns";
 import type { BadgeProps } from "@/components/ui/badge";
 import type {
+  BillingTerm,
+  EntityType,
   InvoiceStatus,
   CreditTransactionType,
   SubscriptionItemStatus,
@@ -19,6 +21,27 @@ export function formatBillingDate(value: string | null | undefined): string {
   } catch {
     return "—";
   }
+}
+
+/**
+ * Money formatters for the billing surfaces. Locale is pinned to en-US
+ * on purpose: these render inside `"use client"` components that still
+ * SSR on Node, and an unpinned `toLocaleString()` resolves to the host
+ * locale — which differs between the server and the browser and trips
+ * hydration mismatches on every amount.
+ */
+export function formatAmount(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/** Same, rounded to whole units — used in button labels and KPI values. */
+export function formatWhole(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return Math.round(value).toLocaleString("en-US");
 }
 
 export function formatBillingDateTime(value: string | null | undefined): string {
@@ -130,6 +153,32 @@ export function getSubscriptionItemStatusMeta(
     variant: SUBSCRIPTION_ITEM_STATUS_VARIANT[status] ?? "soft",
   };
 }
+
+/** Cycle length in months for each billing term. */
+export const BILLING_TERM_MONTHS: Record<BillingTerm, number> = {
+  MONTHLY: 1,
+  QUARTERLY: 3,
+  SEMI_ANNUAL: 6,
+  ANNUAL: 12,
+};
+
+/**
+ * How many months the subscription's own cycle covers. This is what a
+ * server-side re-price bills for, so the pay dialog defaults its period
+ * picker here — assuming a year would show a monthly account a 12-month
+ * estimate for an invoice the service issues for one month.
+ */
+export function getTermMonths(term: BillingTerm | undefined | null): number {
+  return term ? BILLING_TERM_MONTHS[term] : 12;
+}
+
+/** Human label for a billable entity type. Shared by the items table and
+ *  the pay dialog so both read "Location" / "Warehouse" / "Store". */
+export const ENTITY_TYPE_LABEL: Record<EntityType, string> = {
+  LOCATION: "Location",
+  WAREHOUSE: "Warehouse",
+  STORE: "Store",
+};
 
 export function isUnlimited(limit: number | undefined | null): boolean {
   return limit === undefined || limit === null || limit === -1;
