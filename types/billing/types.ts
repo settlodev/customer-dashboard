@@ -89,11 +89,16 @@ export interface SubscriptionDiscount {
   validUntil: string | null;
 }
 
+/** Committed billing cycle length. Mirrors the service's BillingTerm enum. */
+export type BillingTerm = "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL";
+
 export interface Subscription {
   id: string;
   businessId: string;
   whitelabelId: string | null;
   status: SubscriptionStatus;
+  /** The cycle the business is committed to. Optional for responses that predate the field. */
+  term?: BillingTerm;
   trialStartDate: string | null;
   trialEndDate: string | null;
   billingCycleStart: string;

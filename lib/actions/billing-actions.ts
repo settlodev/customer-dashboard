@@ -150,6 +150,55 @@ export async function previewPlanChange(
   }
 }
 
+/**
+ * Re-issue the open renewal invoice for a SUBSET of entities — "keep both
+ * locations on the account, but only pay for one this cycle". The dropped
+ * entities are left untouched (still lapsed, simply not billed) rather than
+ * cancelled, so they can be picked up on a later invoice.
+ *
+ * Requires the open invoice to be the current cycle's renewal: the service
+ * matches it on `period == [billingCycleStart, billingCycleEnd]` and throws
+ * when nothing matches. Callers must check that before offering the action.
+ *
+ * Returns null when the keep-set is empty — the service cancels the invoice
+ * and deliberately generates nothing.
+ */
+export async function adjustRenewalKeepItems(
+  subscriptionId: string,
+  keepItemIds: string[],
+): Promise<BillingInvoice | null> {
+  const apiClient = new ApiClient();
+  const result = await apiClient.post<
+    BillingInvoice | null,
+    { keepItemIds: string[] }
+  >(billingUrl(`/api/v1/subscriptions/${subscriptionId}/renewal/adjust`), {
+    keepItemIds,
+  });
+  revalidateTag(LAYOUT_TAGS.entitlements);
+  // A 204 comes back as an empty body through axios — normalise to null.
+  return result && typeof result === "object" ? result : null;
+}
+
+/**
+ * Cancel one subscribed entity, leaving the rest of the subscription intact —
+ * the "I'm giving up this location, keep billing the others" path.
+ *
+ * The service marks the item CANCELLED, cascades to anything bundled by it, and
+ * accrues a prorated credit for the unused remainder ONLY when the entity was
+ * paid and current. A lapsed entity is removed with no credit, since it owed for
+ * the cycle rather than having prepaid any of it.
+ */
+export async function removeSubscriptionItem(
+  subscriptionId: string,
+  itemId: string,
+): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.delete<void>(
+    billingUrl(`/api/v1/subscriptions/${subscriptionId}/items/${itemId}`),
+  );
+  revalidateTag(LAYOUT_TAGS.entitlements);
+}
+
 export async function addItemAddon(
   subscriptionId: string,
   itemId: string,

@@ -234,7 +234,9 @@ export function PlanChangeDialog({
             className={cn(
               "rounded-lg border p-3 text-[12.5px]",
               blockedByCaps
-                ? "border-neg/40 bg-neg-tint/30 text-neg"
+                // --neg-tint already carries its own alpha; stacking an
+                // opacity modifier on it emits invalid CSS and drops the fill.
+                ? "border-neg/40 bg-neg-tint text-neg"
                 : "border-line bg-canvas/40 text-muted-foreground",
             )}
           >

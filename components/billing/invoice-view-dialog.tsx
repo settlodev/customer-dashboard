@@ -4,16 +4,12 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Ban,
   CheckCircle2,
-  FileText,
   Loader2,
   Wallet,
 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -27,21 +23,20 @@ import {
   AlertDialogIcon,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import {
   cancelInvoice,
   getInvoiceBillingParties,
   getInvoiceView,
 } from "@/lib/actions/billing-actions";
-import { formatMoney } from "@/lib/helpers";
+import { StatusPill, toPillTone } from "./pill";
 import {
   buildBillToParty,
+  formatAmount,
   formatBillingDate,
   getInvoiceStatusMeta,
-  SETTLO_SELLER,
   type InvoiceParty,
 } from "./shared";
 import { PaymentOptionsDialog } from "./payment-options-dialog";
@@ -50,7 +45,7 @@ import {
   InvoicePaymentAttempts,
 } from "./invoice-payment-attempts";
 import { listInvoicePayments } from "@/lib/actions/payment-actions";
-import type { InvoiceViewDto, PaymentResponse } from "@/types/billing/types";
+import type { InvoiceStatus, InvoiceViewDto, PaymentResponse } from "@/types/billing/types";
 
 interface InvoiceViewDialogProps {
   open: boolean;
@@ -70,6 +65,16 @@ interface InvoiceViewDialogProps {
   /** Fired once the invoice is cancelled. */
   onCancelled?: () => void;
 }
+
+/** Eyebrow above the invoice number — tells you at a glance what you're reading. */
+const DOC_LABEL: Partial<Record<InvoiceStatus, string>> = {
+  PENDING: "Invoice · due",
+  PAID: "Invoice · receipt",
+  CANCELLED: "Cancelled invoice",
+  REFUNDED: "Refunded invoice",
+  FAILED: "Invoice · payment failed",
+  DRAFT: "Draft invoice",
+};
 
 export function InvoiceViewDialog({
   open,
@@ -193,6 +198,7 @@ export function InvoiceViewDialog({
   // could still confirm) or has already SUCCEEDED (a real customer payment
   // we can't void). Server enforces the same rule on the cancel endpoint.
   const cancelBlocked = hasBlockingPayment(attempts);
+  const party = invoice ? (billTo ?? customerToParty(invoice)) : null;
 
   const handleCancel = useCallback(async () => {
     if (!invoice) return;
@@ -221,205 +227,177 @@ export function InvoiceViewDialog({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="max-w-2xl"
-          overlayClassName="bg-foreground/30 backdrop-blur-sm"
+          className="grid max-h-[calc(100vh-4rem)] max-w-[620px] grid-rows-[1fr_auto] gap-0 overflow-hidden p-0"
+          overlayClassName="bg-foreground/40 backdrop-blur-sm"
         >
-          <DialogHeader>
-            <DialogTitle className="flex flex-wrap items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <span>{invoice ? `Invoice ${invoice.invoiceNumber}` : "Invoice"}</span>
+          <div className="min-h-0 overflow-y-auto px-7 pb-6 pt-7">
+            <div className="flex items-start justify-between gap-5 pr-8">
+              <div className="min-w-0">
+                <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  {(invoice && DOC_LABEL[invoice.status]) ?? "Invoice"}
+                </p>
+                <DialogTitle className="mt-2 truncate font-mono text-[18px] font-semibold tracking-[-0.01em] text-ink">
+                  {invoice?.invoiceNumber ?? "Loading…"}
+                </DialogTitle>
+              </div>
               {statusMeta && (
-                <Badge variant={statusMeta.variant} className="ml-0.5">
+                <StatusPill tone={toPillTone(statusMeta.variant)}>
                   {statusMeta.label}
-                </Badge>
+                </StatusPill>
               )}
-            </DialogTitle>
-            <DialogDescription>
-              {invoice
-                ? `Issued ${formatBillingDate(invoice.invoiceDate)}`
-                : "Loading details…"}
-            </DialogDescription>
-          </DialogHeader>
-
-          {loading && (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          )}
 
-          {invoice && !loading && (
-            <div className="max-h-[60vh] space-y-4 overflow-y-auto pr-1">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                <div>
-                  <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
-                    Period
-                  </p>
-                  <p className="mt-0.5 text-ink">
-                    {formatBillingDate(invoice.periodStart)} –{" "}
-                    {formatBillingDate(invoice.periodEnd)}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
-                    Due
-                  </p>
-                  <p className="mt-0.5 text-ink">
-                    {formatBillingDate(invoice.dueDate)}
-                  </p>
-                </div>
-                <PartyBlock label="Bill to" party={billTo ?? customerToParty(invoice)} />
-                <PartyBlock label="From" party={SETTLO_SELLER} />
+            {loading && (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
+            )}
 
-              <Separator />
-
-              <div>
-                <p className="mb-2 font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
-                  Line items
-                </p>
-                <div className="overflow-hidden rounded-lg border border-line">
-                  <table className="w-full text-sm">
-                    <thead className="bg-canvas font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
-                      <tr>
-                        <th className="px-3 py-2 text-left">Description</th>
-                        <th className="px-3 py-2 text-right">Qty</th>
-                        <th className="px-3 py-2 text-right">Unit</th>
-                        <th className="px-3 py-2 text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-line">
-                      {invoice.items.map((line, idx) => (
-                        <tr key={line.id || `line-${idx}`}>
-                          <td className="px-3 py-2 text-ink">
-                            {line.description}
-                            {line.isProration && (
-                              <span className="ml-1.5 font-mono text-[10px] text-muted-foreground">
-                                (proration)
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums">
-                            {line.quantity}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums">
-                            {line.unitPrice.toLocaleString()}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums font-medium">
-                            {line.totalPrice.toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="space-y-1 rounded-lg border border-line bg-canvas px-4 py-3 text-sm">
-                <Row
-                  label="Subtotal"
-                  value={formatMoney(invoice.subtotal, invoice.currency)}
-                />
-                {invoice.discountAmount > 0 && (
-                  <Row
-                    label={invoice.discountDescription ?? "Discount"}
-                    value={`− ${formatMoney(invoice.discountAmount, invoice.currency)}`}
-                    tone="pos"
+            {invoice && !loading && (
+              <>
+                <div className="my-6 grid grid-cols-1 gap-4 border-y border-line py-5 sm:grid-cols-2 sm:gap-x-7">
+                  <MetaCell
+                    label="Issued"
+                    value={formatBillingDate(invoice.invoiceDate)}
+                    mono
                   />
-                )}
-                {invoice.taxAmount > 0 && (
-                  <Row
-                    label="Tax"
-                    value={formatMoney(invoice.taxAmount, invoice.currency)}
+                  <MetaCell
+                    label="Billing period"
+                    value={`${formatBillingDate(invoice.periodStart)} – ${formatBillingDate(invoice.periodEnd)}`}
+                    mono
                   />
-                )}
-                <Separator className="my-1" />
-                <Row
-                  label="Total"
-                  value={formatMoney(invoice.totalAmount, invoice.currency)}
-                  strong
-                />
-                {invoice.paidAt && (
-                  <Row label="Paid at" value={formatBillingDate(invoice.paidAt)} />
-                )}
-              </div>
+                  <MetaCell
+                    label="Billed to"
+                    value={party?.name ?? "—"}
+                    secondary={party?.secondaryName}
+                  />
+                  <MetaCell
+                    label={invoice.paidAt ? "Paid" : "Due"}
+                    value={formatBillingDate(invoice.paidAt ?? invoice.dueDate)}
+                    mono
+                  />
+                </div>
 
-              {invoice.notes && (
-                <p className="rounded-lg border border-line bg-canvas px-4 py-3 text-[12.5px] leading-relaxed text-muted-foreground">
-                  {invoice.notes}
-                </p>
-              )}
+                <div className="overflow-hidden rounded-xl border border-line">
+                  {invoice.items.map((line, idx) => (
+                    <div
+                      key={line.id || `line-${idx}`}
+                      className="flex items-start justify-between gap-4 border-b border-line px-4 py-3.5 last:border-b-0"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-semibold tracking-[-0.01em] text-ink">
+                          {line.description}
+                        </p>
+                        <p className="mt-0.5 font-mono text-[11.5px] text-muted-foreground">
+                          {line.quantity} × {formatAmount(line.unitPrice)}
+                          {line.isProration && " · proration"}
+                        </p>
+                      </div>
+                      <p className="flex-none font-mono text-[13.5px] tabular-nums text-ink-2">
+                        {formatAmount(line.totalPrice)} {invoice.currency}
+                      </p>
+                    </div>
+                  ))}
+                </div>
 
-              <Separator />
-
-              <InvoicePaymentAttempts
-                attempts={attempts}
-                loading={attemptsLoading}
-                error={attemptsError}
-              />
-            </div>
-          )}
-
-          {invoice && !loading && (
-            <DialogFooter className="gap-2 sm:gap-2">
-              {isPending ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="text-neg hover:bg-neg/10 hover:text-neg"
-                    onClick={() => setConfirmCancelOpen(true)}
-                    disabled={cancelBlocked}
-                    title={
-                      cancelBlocked
-                        ? "Can't cancel — a payment is in progress or already successful for this invoice."
-                        : undefined
+                <div className="mt-4 space-y-1.5 px-1">
+                  <SumRow
+                    label="Subtotal"
+                    value={`${formatAmount(invoice.subtotal)} ${invoice.currency}`}
+                  />
+                  <SumRow
+                    label={invoice.discountDescription ?? "Discounts"}
+                    value={
+                      invoice.discountAmount > 0
+                        ? `− ${formatAmount(invoice.discountAmount)} ${invoice.currency}`
+                        : "—"
                     }
-                  >
-                    <Ban className="mr-2 h-4 w-4" />
-                    Cancel invoice
-                  </Button>
-                  <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => onOpenChange(false)}
-                    >
-                      Close
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => setPayOpen(true)}
-                      disabled={!canPay}
-                      title={
-                        canPay
-                          ? undefined
-                          : "Missing business or location context — try the billing tab."
-                      }
-                    >
-                      <Wallet className="mr-2 h-4 w-4" />
-                      Make payment
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {invoice.status === "PAID" && (
-                    <span className="mr-auto inline-flex items-center gap-1.5 text-xs text-pos">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Paid
-                    </span>
+                    tone={invoice.discountAmount > 0 ? "pos" : undefined}
+                  />
+                  {invoice.taxAmount > 0 && (
+                    <SumRow
+                      label="Tax"
+                      value={`${formatAmount(invoice.taxAmount)} ${invoice.currency}`}
+                    />
                   )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => onOpenChange(false)}
-                  >
-                    Close
-                  </Button>
-                </>
+                  <div className="mt-2 flex items-baseline justify-between gap-4 border-t border-line pt-3">
+                    <span className="text-[15px] font-bold text-ink">
+                      {isPending ? "Total due" : "Total"}
+                    </span>
+                    <span className="text-[20px] font-bold tracking-[-0.02em] tabular-nums text-ink">
+                      {formatAmount(invoice.totalAmount)} {invoice.currency}
+                    </span>
+                  </div>
+                </div>
+
+                {invoice.notes && (
+                  <p className="mt-5 rounded-xl border border-line bg-surface px-4 py-3 text-[12.5px] leading-relaxed text-muted-foreground">
+                    {invoice.notes}
+                  </p>
+                )}
+
+                <div className="mt-6 border-t border-line pt-5">
+                  <InvoicePaymentAttempts
+                    attempts={attempts}
+                    loading={attemptsLoading}
+                    error={attemptsError}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 border-t border-line bg-surface px-7 py-4">
+            {invoice && isPending && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-10 text-neg hover:bg-neg-tint hover:text-neg"
+                onClick={() => setConfirmCancelOpen(true)}
+                disabled={cancelBlocked}
+                title={
+                  cancelBlocked
+                    ? "Can't cancel — a payment is in progress or already successful for this invoice."
+                    : undefined
+                }
+              >
+                <Ban className="h-3.5 w-3.5" />
+                Cancel invoice
+              </Button>
+            )}
+            {invoice?.status === "PAID" && (
+              <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-pos">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Settled {formatBillingDate(invoice.paidAt)}
+              </span>
+            )}
+            <div className="ml-auto flex items-center gap-2.5">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10"
+                onClick={() => onOpenChange(false)}
+              >
+                Close
+              </Button>
+              {invoice && isPending && (
+                <Button
+                  type="button"
+                  className="h-10"
+                  onClick={() => setPayOpen(true)}
+                  disabled={!canPay}
+                  title={
+                    canPay
+                      ? undefined
+                      : "Missing business context — open this invoice from the billing page."
+                  }
+                >
+                  <Wallet className="h-3.5 w-3.5" />
+                  Pay invoice
+                </Button>
               )}
-            </DialogFooter>
-          )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -492,26 +470,32 @@ export function InvoiceViewDialog({
   );
 }
 
-function PartyBlock({ label, party }: { label: string; party: InvoiceParty }) {
+function MetaCell({
+  label,
+  value,
+  secondary,
+  mono,
+}: {
+  label: string;
+  value: string;
+  secondary?: string;
+  mono?: boolean;
+}) {
   return (
-    <div>
-      <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+    <div className="min-w-0">
+      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-0.5 font-medium text-ink">{party.name}</p>
-      {party.secondaryName && (
-        <p className="text-[12.5px] text-ink-2">{party.secondaryName}</p>
-      )}
-      {party.addressLines.map((line, idx) => (
-        <p key={`${label}-addr-${idx}`} className="text-[12.5px] text-ink-2">
-          {line}
-        </p>
-      ))}
-      {party.phone && (
-        <p className="text-[12.5px] text-ink-2">{party.phone}</p>
-      )}
-      {party.email && (
-        <p className="text-[12.5px] text-ink-2">{party.email}</p>
+      <p
+        className={cn(
+          "mt-1.5 truncate text-ink",
+          mono ? "font-mono text-[13px]" : "text-[14px] font-medium",
+        )}
+      >
+        {value}
+      </p>
+      {secondary && (
+        <p className="truncate text-[12.5px] text-ink-3">{secondary}</p>
       )}
     </div>
   );
@@ -528,28 +512,23 @@ function customerToParty(invoice: InvoiceViewDto): InvoiceParty {
   };
 }
 
-function Row({
+function SumRow({
   label,
   value,
   tone,
-  strong,
 }: {
   label: string;
   value: string;
   tone?: "pos" | "neg";
-  strong?: boolean;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className="font-mono text-[11.5px] text-muted-foreground">
-        {label}
-      </span>
+    <div className="flex items-baseline justify-between gap-4 text-[13px]">
+      <span className="text-ink-3">{label}</span>
       <span
-        className={
-          (strong ? "text-base font-semibold text-ink " : "text-sm text-ink ") +
-          (tone === "pos" ? "text-pos " : tone === "neg" ? "text-neg " : "") +
-          "tabular-nums"
-        }
+        className={cn(
+          "font-mono tabular-nums",
+          tone === "pos" ? "text-pos" : tone === "neg" ? "text-neg" : "text-ink-2",
+        )}
       >
         {value}
       </span>
