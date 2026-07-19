@@ -16,6 +16,14 @@ interface EntitlementContextType {
   isWithinLimit: (entityId: string, limitKey: string, currentCount: number) => boolean;
   /** Get the package name for an entity */
   getPackageName: (entityId: string) => string | null;
+  /**
+   * Whether a specific entity is accessible right now (per-entity gate — each entity expires
+   * separately). LOCATION/WAREHOUSE: blocked once inactive (EXPIRED/SUSPENDED/CANCELLED). STORE:
+   * pay-first — also blocked while inside its own free trial (a new paid store is locked until its
+   * invoice is paid). Permissive (true) when the entity is unknown (provisioning lag / no billing
+   * data), matching the feature-guard default.
+   */
+  isEntityAccessible: (entityId: string, entityType?: "LOCATION" | "WAREHOUSE" | "STORE") => boolean;
 
   // Subscription status helpers
   subscriptionStatus: SubscriptionStatus;
@@ -37,6 +45,7 @@ const EntitlementContext = createContext<EntitlementContextType>({
   hasFeature: () => true,
   isWithinLimit: () => true,
   getPackageName: () => null,
+  isEntityAccessible: () => true,
   subscriptionStatus: null,
   isActive: true,
   isTrial: false,
@@ -88,6 +97,18 @@ export function EntitlementProvider({
     return item?.packageName ?? null;
   };
 
+  const isEntityAccessible = (
+    entityId: string,
+    entityType?: "LOCATION" | "WAREHOUSE" | "STORE",
+  ): boolean => {
+    const item = getEntityItem(entityId);
+    if (!item) return true; // unknown entity (provisioning lag / no billing data) -> permissive
+    if (!item.active) return false; // EXPIRED / SUSPENDED / CANCELLED
+    // Stores are pay-first: a new store's own free trial is gated until its invoice is paid.
+    if (entityType === "STORE" && item.inTrial) return false;
+    return true;
+  };
+
   // Derive status from entitlements.
   // Primary trial signal: a future trialEndDate on the entitlement response.
   // Fallback: status === "TRIAL" from the subscription header (retained for
@@ -110,6 +131,7 @@ export function EntitlementProvider({
         hasFeature,
         isWithinLimit,
         getPackageName,
+        isEntityAccessible,
         subscriptionStatus: status,
         isActive,
         isTrial,
