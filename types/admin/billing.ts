@@ -300,6 +300,11 @@ export interface CreatePackageRequest {
   name: string;
   description?: string;
   basePrice: number;
+  /**
+   * What `basePrice` is the price of. Omit and the service defaults a new package
+   * to MONTHLY and leaves an existing one's interval untouched.
+   */
+  billingInterval?: BillingInterval;
   entityType: SubscribableEntityType;
   includedWarehouseCount?: number;
   includedStoreCount?: number;

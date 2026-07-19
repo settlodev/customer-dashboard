@@ -150,6 +150,15 @@ export const CreatePackageSchema = z.object({
   name: z.string().min(1, "Name is required").max(120),
   description: z.string().max(500).optional().or(z.literal("")),
   basePrice: z.number().nonnegative("Price cannot be negative"),
+  /**
+   * What `basePrice` is the price OF. The service prices a term as
+   * `(basePrice ÷ intervalMonths) × termMonths`, so this decides whether the
+   * figure above is a monthly or an annual charge — the same number bills 12×
+   * differently either way.
+   */
+  billingInterval: z.enum(["MONTHLY", "YEARLY"], {
+    errorMap: () => ({ message: "Pick a billing interval" }),
+  }),
   entityType: z.enum(SUBSCRIBABLE_ENTITY_TYPES, {
     errorMap: () => ({ message: "Pick an entity type" }),
   }),

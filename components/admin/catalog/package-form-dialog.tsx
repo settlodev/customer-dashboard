@@ -50,11 +50,18 @@ type FormValues = z.infer<typeof CreatePackageSchema>;
 
 const ENTITY_TYPES = ["LOCATION", "WAREHOUSE", "STORE"] as const;
 
+/** Locale pinned — this renders during SSR on Node and again in the browser. */
+function formatPerMonth(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+
 function emptyValues(): FormValues {
   return {
     name: "",
     description: "",
     basePrice: 0,
+    billingInterval: "MONTHLY",
     entityType: "LOCATION",
     includedWarehouseCount: undefined,
     includedStoreCount: undefined,
@@ -66,6 +73,9 @@ function valuesFromPackage(pkg: PackageResponse): FormValues {
     name: pkg.name,
     description: pkg.description ?? "",
     basePrice: pkg.basePrice,
+    // Legacy rows can be null — treat those as monthly so an edit normalises them
+    // rather than silently preserving an interval the admin never chose.
+    billingInterval: pkg.billingInterval === "YEARLY" ? "YEARLY" : "MONTHLY",
     entityType: pkg.entityType,
     includedWarehouseCount: pkg.includedWarehouseCount ?? undefined,
     includedStoreCount: pkg.includedStoreCount ?? undefined,
@@ -223,6 +233,44 @@ export function PackageFormDialog({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="billingInterval"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Base price is per</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isPending}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pick an interval" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="MONTHLY">
+                        Month — base price is the monthly charge
+                      </SelectItem>
+                      <SelectItem value="YEARLY">
+                        Year — base price covers 12 months
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {/* Not cosmetic: the service prices a term as
+                      (basePrice ÷ intervalMonths) × termMonths, so the same number
+                      bills 12× differently depending on this. */}
+                  <p className="text-[11.5px] text-muted-foreground">
+                    {form.watch("billingInterval") === "YEARLY"
+                      ? `Charged ${formatPerMonth(form.watch("basePrice") / 12)} per month.`
+                      : `Charged ${formatPerMonth(form.watch("basePrice") * 12)} per year.`}
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="grid grid-cols-2 gap-3">
               <FormField
