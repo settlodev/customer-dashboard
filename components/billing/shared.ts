@@ -5,6 +5,7 @@ import type {
   EntityType,
   InvoiceStatus,
   CreditTransactionType,
+  Package,
   SubscriptionItemStatus,
 } from "@/types/billing/types";
 import type { SubscriptionStatus } from "@/types/types";
@@ -152,6 +153,31 @@ export function getSubscriptionItemStatusMeta(
     label: SUBSCRIPTION_ITEM_STATUS_LABEL[status] ?? status,
     variant: SUBSCRIPTION_ITEM_STATUS_VARIANT[status] ?? "soft",
   };
+}
+
+/**
+ * A package's price exactly as configured — "300,000/yr" for a YEARLY package,
+ * "30,000/mo" for a MONTHLY one.
+ *
+ * Deliberately NOT normalised. The service prices a term as
+ * `(basePrice ÷ intervalMonths) × termMonths`, so a package's interval is what
+ * decides whether its base price is a monthly or an annual charge. Re-expressing
+ * everything as "/yr" hides that: a package mistakenly stored as YEARLY looks
+ * identical to a correctly-stored MONTHLY one, and the term total silently comes
+ * out 12× low. Show the interval and a misconfiguration is obvious on sight.
+ */
+export function formatPackagePrice(
+  pkg: Pick<Package, "basePrice" | "billingInterval">,
+): string {
+  const suffix = pkg.billingInterval === "YEARLY" ? "/yr" : "/mo";
+  return `${formatWhole(pkg.basePrice)}${suffix}`;
+}
+
+/** What one month of a package costs, whatever interval it is priced in. */
+export function monthlyPrice(
+  pkg: Pick<Package, "basePrice" | "billingInterval">,
+): number {
+  return pkg.billingInterval === "YEARLY" ? pkg.basePrice / 12 : pkg.basePrice;
 }
 
 /** Cycle length in months for each billing term. */

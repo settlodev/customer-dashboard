@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 import { PackageFormDialog } from "@/components/admin/catalog/package-form-dialog";
 import { deactivatePackage } from "@/lib/actions/admin/billing";
@@ -159,6 +160,26 @@ export function PackagesListView({ packages }: PackagesListViewProps) {
                   </TableCell>
                   <TableCell className="text-right tabular-nums font-medium">
                     {formatMoney(pkg.basePrice)}
+                    {/* The interval decides whether this figure is a monthly or an
+                        annual charge — the service prices a term as
+                        (basePrice ÷ intervalMonths) × termMonths. Legacy rows seeded
+                        as YEARLY read 12× cheaper per month than they look, and the
+                        edit form can't change the interval, so surface it here. */}
+                    <span
+                      className={cn(
+                        "ml-1 font-mono text-[10.5px] font-normal",
+                        pkg.billingInterval === "YEARLY"
+                          ? "text-warn"
+                          : "text-muted-foreground",
+                      )}
+                      title={
+                        pkg.billingInterval === "YEARLY"
+                          ? "Priced per YEAR — this is basePrice ÷ 12 per month. New packages are created MONTHLY."
+                          : "Priced per month"
+                      }
+                    >
+                      {pkg.billingInterval === "YEARLY" ? "/yr" : "/mo"}
+                    </span>
                   </TableCell>
                   <TableCell className="font-mono text-[11px] text-muted-foreground">
                     {pkg.includedWarehouseCount

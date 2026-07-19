@@ -28,7 +28,13 @@ import { cn } from "@/lib/utils";
 import { previewPlanChange } from "@/lib/actions/billing-actions";
 import { StatusPill } from "./pill";
 import { CouponInput, type CouponInputHandle } from "./coupon-input";
-import { formatAmount, formatBillingDate, formatWhole } from "./shared";
+import {
+  formatAmount,
+  formatBillingDate,
+  formatPackagePrice,
+  formatWhole,
+  monthlyPrice,
+} from "./shared";
 import type { Coupon, Package, PlanChangePreview } from "@/types/billing/types";
 
 /**
@@ -225,6 +231,7 @@ export function PayInvoiceDialog({
       ...line,
       selectedId,
       dropped: isDropped,
+      perMonth: pkg ? monthlyPrice(pkg) : line.currentAnnual / 12,
       changed: !isDropped && !!selectedId && selectedId !== line.currentPackageId,
       amount: isDropped ? 0 : (annual * months) / 12,
       /** > 0 upgrade, < 0 downgrade, 0 unchanged. */
@@ -438,9 +445,17 @@ export function PayInvoiceDialog({
                           Not billed
                         </p>
                       ) : (
-                        <p className="flex-none font-mono text-[13.5px] tabular-nums text-ink-2">
-                          {formatAmount(line.amount)} {currency}
-                        </p>
+                        <div className="flex-none text-right">
+                          <p className="font-mono text-[13.5px] tabular-nums text-ink-2">
+                            {formatAmount(line.amount)} {currency}
+                          </p>
+                          {/* Spell out the rate the total is built from, so a package
+                              priced on the wrong interval is caught here rather than
+                              on the invoice. */}
+                          <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                            {formatWhole(line.perMonth)}/mo × {months}
+                          </p>
+                        </div>
                       )}
                     </div>
                     {line.dropped ? (
@@ -464,7 +479,7 @@ export function PayInvoiceDialog({
                         <SelectContent>
                           {line.options.map((pkg) => (
                             <SelectItem key={pkg.id} value={pkg.id}>
-                              {pkg.name} · {formatWhole(annualPrice(pkg))}/yr
+                              {pkg.name} · {formatPackagePrice(pkg)}
                             </SelectItem>
                           ))}
                         </SelectContent>
