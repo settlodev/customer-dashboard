@@ -25,6 +25,10 @@ import {
   StockBatchSummary,
 } from "@/types/traceability/type";
 import { Attachment } from "@/types/attachment/type";
+import type {
+  StockModification,
+  StockModificationItem,
+} from "@/types/stock-modification/type";
 import {
   fetchAffectedOrders,
   fetchBatchMovements,
@@ -35,7 +39,9 @@ import {
   listAttachments,
   registerAttachment,
 } from "@/lib/actions/attachment-actions";
+import { searchStockModifications } from "@/lib/actions/stock-modification-actions";
 import { useUpload } from "@/lib/uploads/use-upload";
+import { CorrectValueModal } from "@/components/widgets/inventory/correct-value-modal";
 
 const PAGE_SIZE = 50;
 
@@ -60,6 +66,18 @@ export function BatchDetailPanel({ batch, batchId, initialMovements }: Props) {
   const [page, setPage] = useState(0);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+
+  // The batch panel is the universal correction entry point — opening-stock,
+  // GRN and adjustment batches all land here since none of those have a
+  // parent-document UI of their own (contrast with the stock-intake detail
+  // page, which already knows its own batches). No sourceReference is passed:
+  // this panel has no parent document to attribute the correction to.
+  const [correctValueOpen, setCorrectValueOpen] = useState(false);
+  // Bumped whenever the modal closes, so the corrections history below
+  // refetches after a save (CorrectValueModal itself only distinguishes
+  // success from cancel via a toast, not a callback — refetching on every
+  // close is a harmless extra request on cancel).
+  const [correctionsRefreshKey, setCorrectionsRefreshKey] = useState(0);
 
   const totalPages = Math.max(1, Math.ceil(totalMovements / PAGE_SIZE));
   const canPrev = page > 0;
@@ -121,14 +139,26 @@ export function BatchDetailPanel({ batch, batchId, initialMovements }: Props) {
             <Field
               label="Unit cost"
               value={
-                batch.unitCost != null ? (
-                  <Money
-                    amount={Number(batch.unitCost)}
-                    currency={batch.currency || DEFAULT_CURRENCY}
-                  />
-                ) : (
-                  "—"
-                )
+                <div className="flex flex-col items-start gap-1.5">
+                  <span>
+                    {batch.unitCost != null ? (
+                      <Money
+                        amount={Number(batch.unitCost)}
+                        currency={batch.currency || DEFAULT_CURRENCY}
+                      />
+                    ) : (
+                      "—"
+                    )}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCorrectValueOpen(true)}
+                  >
+                    Correct value
+                  </Button>
+                </div>
               }
             />
             <Field
@@ -333,6 +363,24 @@ export function BatchDetailPanel({ batch, batchId, initialMovements }: Props) {
           )}
         </CardContent>
       </Card>
+
+      <CorrectionsSection batchId={batchId} refreshKey={correctionsRefreshKey} />
+
+      <CorrectValueModal
+        variantId={batch.stockVariantId}
+        variantName={batch.stockVariantDisplayName ?? "Unknown item"}
+        batchId={batch.id}
+        batchNumber={batch.batchNumber}
+        currentUnitCost={batch.unitCost ?? 0}
+        quantityOnHand={batch.quantityOnHand}
+        initialQuantity={batch.initialQuantity}
+        currency={batch.currency}
+        open={correctValueOpen}
+        onOpenChange={(open) => {
+          setCorrectValueOpen(open);
+          if (!open) setCorrectionsRefreshKey((k) => k + 1);
+        }}
+      />
     </div>
   );
 }
@@ -462,6 +510,151 @@ function AffectedOrdersSection({ batchId }: { batchId: string }) {
             <p className="text-xs text-muted-foreground pt-2">
               {orders.length} distinct order(s).
             </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * This batch's value-correction history — every CORRECTION-category stock
+ * modification whose line items target this batch, whether it originated
+ * from this panel's own "Correct value" button, the stock-intake detail
+ * page, or the modification form's value-only mode. There's no
+ * batch-scoped search endpoint, so this fetches CORRECTION modifications
+ * (bounded to a generous page) and filters client-side by `batchId`.
+ */
+function CorrectionsSection({
+  batchId,
+  refreshKey,
+}: {
+  batchId: string;
+  refreshKey: number;
+}) {
+  const [lines, setLines] = useState<
+    { correction: StockModification; item: StockModificationItem }[]
+  >([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    setLoading(true);
+    searchStockModifications(0, 100, "CORRECTION")
+      .then((res) => {
+        const matches = (res?.content ?? []).flatMap((correction) =>
+          (correction.items ?? [])
+            .filter((item) => item.batchId === batchId)
+            .map((item) => ({ correction, item })),
+        );
+        setLines(matches);
+      })
+      .catch(() => {
+        toast({
+          variant: "destructive",
+          title: "Couldn't load value corrections",
+          description: "Please try again.",
+        });
+        setLines([]);
+      })
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batchId, refreshKey]);
+
+  return (
+    <Card className="rounded-xl shadow-sm">
+      <CardContent className="pt-6 space-y-3">
+        <h3 className="text-lg font-medium">Value corrections</h3>
+
+        {loading ? (
+          <div className="space-y-1.5">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        ) : lines.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic">
+            No value corrections recorded against this batch yet.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50/60">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                    When
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                    Cost change
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                    On hand
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                    Already used
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                    Reason
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                    By
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {lines.map(({ correction, item }, idx) => (
+                  <tr key={`${correction.id}-${idx}`} className="align-top">
+                    <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
+                      {new Date(correction.modificationDate).toLocaleString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      {item.previousUnitCost != null && item.unitCost != null ? (
+                        <span className="flex flex-col items-end">
+                          <span className="text-muted-foreground line-through text-xs">
+                            <Money
+                              amount={item.previousUnitCost}
+                              currency={correction.currency || DEFAULT_CURRENCY}
+                            />
+                          </span>
+                          <span>
+                            <Money
+                              amount={item.unitCost}
+                              currency={correction.currency || DEFAULT_CURRENCY}
+                            />
+                          </span>
+                        </span>
+                      ) : (
+                        <Money
+                          amount={item.unitCost ?? 0}
+                          currency={correction.currency || DEFAULT_CURRENCY}
+                        />
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <Money
+                        amount={item.valueDeltaOnHand ?? 0}
+                        currency={correction.currency || DEFAULT_CURRENCY}
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <Money
+                        amount={item.valueDeltaConsumed ?? 0}
+                        currency={correction.currency || DEFAULT_CURRENCY}
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-gray-700">{correction.reason}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {correction.performedByName || "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </CardContent>
