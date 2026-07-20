@@ -47,8 +47,6 @@ export async function listAppVersionGates(): Promise<AppVersionGateRow[]> {
 export async function upsertAppVersionGate(
   payload: z.infer<typeof UpsertSchema>,
 ): Promise<{ ok: true; row: AppVersionGateRow } | { ok: false; message: string }> {
-  await requireOperatorPermission(PERM.APP_VERSION_MANAGE);
-
   const validated = UpsertSchema.safeParse(payload);
   if (!validated.success) {
     return {
@@ -65,6 +63,7 @@ export async function upsertAppVersionGate(
   };
 
   try {
+    await requireOperatorPermission(PERM.APP_VERSION_MANAGE);
     const row = await staffClient().put<
       AppVersionGateRow,
       UpsertAppVersionGateRequest
@@ -88,8 +87,8 @@ export async function deleteAppVersionGate(
   appType: string,
   platform: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  await requireOperatorPermission(PERM.APP_VERSION_MANAGE);
   try {
+    await requireOperatorPermission(PERM.APP_VERSION_MANAGE);
     await staffClient().delete<void>(
       `${BASE_PATH}/gate?appType=${encodeURIComponent(appType)}&platform=${encodeURIComponent(platform)}`,
     );
