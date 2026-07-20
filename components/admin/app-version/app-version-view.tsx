@@ -48,6 +48,16 @@ export function AppVersionView({ rows }: AppVersionViewProps) {
   const router = useRouter();
   const [platform, setPlatform] = useState<Platform>("ANDROID");
   const existing = findRow(rows, platform);
+  // Once a row exists, deploy-alpha.yml's post-upload report is the only
+  // writer of latestVersionCode/latestVersionName (see AppVersionGateService
+  // .recordPublishedVersion on the Auth Service) — an operator editing them
+  // here would just be overwritten by the next release, or could desync the
+  // displayed "latest" from what CI actually measured. Before the first
+  // report lands there's no row yet, so leave them editable to bootstrap.
+  const ciOwned = Boolean(existing);
+  const ciOwnedHelperText = ciOwned
+    ? "Published automatically by CI on each release."
+    : "CI will maintain this from the next release onwards.";
   const [draft, setDraft] = useState<Draft>(() => draftFrom(existing));
   const [pending, startTransition] = useTransition();
 
@@ -118,15 +128,24 @@ export function AppVersionView({ rows }: AppVersionViewProps) {
     });
   };
 
-  const field = (key: keyof Draft, label: string, placeholder: string) => (
+  const field = (
+    key: keyof Draft,
+    label: string,
+    placeholder: string,
+    options?: { disabled?: boolean; helperText?: string },
+  ) => (
     <div className="space-y-1.5">
       <Label htmlFor={key}>{label}</Label>
       <Input
         id={key}
         value={draft[key]}
         placeholder={placeholder}
+        disabled={options?.disabled}
         onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
       />
+      {options?.helperText ? (
+        <p className="text-xs text-muted-foreground">{options.helperText}</p>
+      ) : null}
     </div>
   );
 
@@ -165,8 +184,14 @@ export function AppVersionView({ rows }: AppVersionViewProps) {
           "latestVersionCode",
           "Latest version code (nag below)",
           "2000148",
+          { disabled: ciOwned, helperText: ciOwnedHelperText },
         )}
-        {field("latestVersionName", "Latest version name", "1.324.148")}
+        {field(
+          "latestVersionName",
+          "Latest version name",
+          "1.324.148",
+          { disabled: ciOwned, helperText: ciOwnedHelperText },
+        )}
         {field(
           "updateUrl",
           "Update URL (browser fallback)",
