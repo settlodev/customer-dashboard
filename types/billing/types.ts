@@ -145,6 +145,42 @@ export interface PlanChangePreview {
   violations: PlanChangeLimitViolation[];
 }
 
+// ── Capacity / addon recommendations ────────────────────────────────
+
+/** An addon offered against a specific limit. */
+export interface AddonOption {
+  addonId: string;
+  name: string;
+  description: string | null;
+  price: number;
+  /** The ceiling this addon raises the limit to — absolute, not an increment. */
+  newLimit: number;
+}
+
+/** One metered dimension for an entity: staff, products, and so on. */
+export interface CapacityLine {
+  featureKey: string;
+  featureName: string;
+  used: number;
+  /** Effective ceiling: the package value merged with every active addon. */
+  limit: number;
+  atLimit: boolean;
+  nearLimit: boolean;
+  /** Addons that would raise THIS limit, cheapest first. */
+  options: AddonOption[];
+}
+
+export interface EntityCapacity {
+  itemId: string;
+  limits: CapacityLine[];
+}
+
+/** An addon to attach as part of generating an invoice, billed on that invoice. */
+export interface StagedAddon {
+  itemId: string;
+  addonId: string;
+}
+
 // ── Invoices ────────────────────────────────────────────────────────
 
 export type InvoiceStatus =

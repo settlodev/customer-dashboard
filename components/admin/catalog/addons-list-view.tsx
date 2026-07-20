@@ -2,7 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Edit2, MoreHorizontal, PackagePlus, Plus, Power } from "lucide-react";
+import {
+  Edit2,
+  MoreHorizontal,
+  PackagePlus,
+  Plus,
+  Power,
+  SlidersHorizontal,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,11 +31,14 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 import { AddonFormDialog } from "@/components/admin/catalog/addon-form-dialog";
+import { AddonLimitsDialog } from "@/components/admin/catalog/addon-limits-dialog";
 import { deactivateAddon } from "@/lib/actions/admin/billing";
-import { AddonResponse } from "@/types/admin/billing";
+import { AddonResponse, FeatureResponse } from "@/types/admin/billing";
 
 interface AddonsListViewProps {
   addons: AddonResponse[];
+  /** Platform feature catalog, for the "limits lifted" picker. */
+  features: FeatureResponse[];
 }
 
 function formatMoney(value: number | null | undefined): string {
@@ -36,13 +46,14 @@ function formatMoney(value: number | null | undefined): string {
   return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
-export function AddonsListView({ addons }: AddonsListViewProps) {
+export function AddonsListView({ addons, features }: AddonsListViewProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AddonResponse | null>(null);
+  const [limitsFor, setLimitsFor] = useState<AddonResponse | null>(null);
 
   const handleNew = () => {
     setEditing(null);
@@ -171,6 +182,10 @@ export function AddonsListView({ addons }: AddonsListViewProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => setLimitsFor(addon)}>
+                          <SlidersHorizontal className="mr-2 h-3.5 w-3.5" />
+                          Limits lifted
+                        </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => handleEdit(addon)}>
                           <Edit2 className="mr-2 h-4 w-4" />
                           Edit
@@ -203,6 +218,12 @@ export function AddonsListView({ addons }: AddonsListViewProps) {
         open={formOpen}
         onOpenChange={setFormOpen}
         onSaved={() => router.refresh()}
+      />
+      <AddonLimitsDialog
+        addon={limitsFor}
+        features={features}
+        open={limitsFor !== null}
+        onOpenChange={(open) => !open && setLimitsFor(null)}
       />
     </div>
   );

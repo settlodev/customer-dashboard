@@ -380,6 +380,55 @@ export const resendStaffInvite = async (
   }
 };
 
+/**
+ * Change the address a dashboard-staff member signs in with. Updates the Settlo
+ * login and the staff record together, and signs them out everywhere.
+ *
+ * Rejected by the backend when the login isn't ours to change — it also belongs
+ * to the person's own Settlo account or to another business (SHARED_IDENTITY),
+ * or when it's the account owner's own record.
+ */
+export const changeStaffEmail = async (
+  staffId: string,
+  email: string,
+): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.patch(`/api/v1/staff/${staffId}/email`, { email });
+    revalidatePath("/staff");
+    revalidatePath(`/staff/${staffId}`);
+    return { responseType: "success", message: "Login email updated" };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message || "Failed to change login email",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+/**
+ * Email a dashboard-staff member a fresh set-password link and end their
+ * dashboard sessions. Their current password keeps working until they use the
+ * link, so a bounced email can't lock them out; POS PIN access is untouched.
+ */
+export const forceStaffPasswordReset = async (
+  staffId: string,
+): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/staff/${staffId}/force-password-reset`, {});
+    revalidatePath(`/staff/${staffId}`);
+    return { responseType: "success", message: "Password reset link sent" };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message || "Failed to reset password",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
 // ---------------------------------------------------------------------------
 // Multi-location assignments
 // ---------------------------------------------------------------------------

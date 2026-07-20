@@ -75,6 +75,8 @@ export interface StockIntakeRecordItem {
   purchaseQuantity: number | null;
   /** Per-unit serial numbers for serial-tracked variants. */
   serialNumbers: string[] | null;
+  /** Batch minted for this line at confirm. Null on DRAFT and pre-V80 rows. */
+  batchId?: string | null;
 }
 
 export const STOCK_INTAKE_RECORD_STATUS_LABELS: Record<StockIntakeRecordStatus, string> = {

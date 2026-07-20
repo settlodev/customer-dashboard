@@ -24,6 +24,10 @@ export interface StockModification {
   notes: string | null;
   /** Location base currency — applies to any cost on the items below. */
   currency: string | null;
+  /** True when every line restates a cost and no stock moved. */
+  valueCorrection?: boolean;
+  /** Denormalised so downstream consumers need no location→business lookup. */
+  businessId?: string | null;
   items: StockModificationItem[];
   createdAt: string;
   updatedAt: string;
@@ -46,6 +50,24 @@ export interface StockModificationItem {
   originalUnitCost: number | null;
   /** Exchange rate captured at write time. */
   rateUsed: number | null;
+  /** Primary batch consumed/added to (increment/decrement) or re-costed (value correction). Null for pre-batch variants. */
+  batchId?: string | null;
+  batchNumber?: string | null;
+
+  // ── Value-correction fields (null for ordinary quantity modifications) ──
+
+  /** Batch cost before this correction. */
+  previousUnitCost?: number | null;
+  /** (new - old) × quantity still on hand in the batch. Debits inventory. */
+  valueDeltaOnHand?: number | null;
+  /** (new - old) × quantity already consumed. Debits an expense variance. */
+  valueDeltaConsumed?: number | null;
+  /**
+   * Which account the original receipt credited, so accounting can post the
+   * difference to the same place. Null when not resolvable (e.g. not a
+   * value-correction line).
+   */
+  creditSideHint?: "CREDIT" | "CASH" | "BANK" | "GRNI" | "OPENING_BALANCE" | null;
 }
 
 export const MODIFICATION_CATEGORY_OPTIONS: { value: ModificationCategory; label: string }[] = [

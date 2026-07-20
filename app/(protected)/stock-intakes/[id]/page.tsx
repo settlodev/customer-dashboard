@@ -9,16 +9,22 @@ import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Building2, Boxes, DollarSign, MapPin } from "lucide-react";
-import { getStockIntakeRecord } from "@/lib/actions/stock-intake-record-actions";
+import {
+  getStockIntakeRecord,
+} from "@/lib/actions/stock-intake-record-actions";
 import {
   INTAKE_PAYMENT_TERMS_LABELS,
   STOCK_INTAKE_RECORD_STATUS_LABELS,
+  StockIntakeRecordItem,
   StockIntakeRecordStatus,
 } from "@/types/stock-intake-record/type";
 import StockIntakeRecordActions from "@/components/widgets/stock-intake-record-actions";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
 import { Money } from "@/components/widgets/money";
-import SerialNumbersViewer from "@/components/stock-intakes/serial-numbers-viewer";
+import StockIntakeItemsTable from "@/components/widgets/stock-intake/items-table";
+import { getBatchesByVariant } from "@/lib/actions/stock-batch-actions";
+import { searchStockModifications } from "@/lib/actions/stock-modification-actions";
+import type { StockBatch } from "@/types/stock-batch/type";
 
 type Params = Promise<{ id: string }>;
 
@@ -66,6 +72,44 @@ export default async function StockIntakePage({ params }: { params: Params }) {
   const hasSerialLine = item.items?.some(
     (line) => line.serialNumbers && line.serialNumbers.length > 0,
   );
+
+  // Batches only exist once an intake is confirmed — a "Correct value" action
+  // and its corrections history are only meaningful past that point.
+  const isConfirmed = item.status === "CONFIRMED";
+
+  const [batchDataByBatchId, corrections] = await Promise.all([
+    isConfirmed
+      ? loadBatchDataForItems(item.items)
+      : Promise.resolve({} as Record<string, StockBatch>),
+    isConfirmed
+      ? searchStockModifications(0, 50, undefined, {
+          sourceReferenceType: "STOCK_INTAKE",
+          sourceReferenceId: item.id,
+        })
+      : Promise.resolve(null),
+  ]);
+
+  // batchId -> most recent corrected unit cost (newest-last so the final
+  // correction wins). The intake document itself is never rewritten —
+  // StockIntakeItem.unitCost keeps the originally recorded value forever —
+  // so this is what lets the items table show the up-to-date effective cost
+  // alongside the frozen original.
+  const effectiveCostByBatch: Record<string, number> = {};
+  for (const correction of corrections?.content ?? []) {
+    for (const line of correction.items ?? []) {
+      if (line.batchId && line.unitCost != null) {
+        effectiveCostByBatch[line.batchId] = line.unitCost;
+      }
+    }
+  }
+
+  // Resolved 1:1 from how this intake was paid — matches the backend's own
+  // CreditSideHintResolver for STOCK_INTAKE-sourced batches (payment terms
+  // CASH/BANK map directly, anything else falls back to CREDIT/A-P).
+  const creditSideHint: "CREDIT" | "CASH" | "BANK" =
+    item.paymentTerms === "CASH" || item.paymentTerms === "BANK"
+      ? item.paymentTerms
+      : "CREDIT";
 
   return (
     <PageShell>
@@ -167,116 +211,105 @@ export default async function StockIntakePage({ params }: { params: Params }) {
                 </span>
               </div>
             </div>
+            <StockIntakeItemsTable
+              intakeId={item.id}
+              items={item.items}
+              currency={currency}
+              hasForeignLine={!!hasForeignLine}
+              hasSerialLine={!!hasSerialLine}
+              showCorrectAction={isConfirmed}
+              batchDataByBatchId={batchDataByBatchId}
+              effectiveCostByBatch={effectiveCostByBatch}
+              creditSideHint={creditSideHint}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Value corrections history */}
+      {corrections && corrections.content.length > 0 && (
+        <Card>
+          <CardContent className="px-2 sm:px-6 pt-6">
+            <h3 className="text-lg font-medium mb-4">Value corrections</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50/60">
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">
-                      Item
+                      Date
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">
-                      SKU
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
-                      Qty
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
-                      Unit cost
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
-                      Total
-                    </th>
-                    {hasForeignLine && (
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">
-                        Originally
-                      </th>
-                    )}
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">
                       Batch
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">
-                      Expiry
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
+                      Cost change
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
+                      On hand
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">
+                      Already used
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">
-                      Supplier ref
+                      Reason
                     </th>
-                    {hasSerialLine && (
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">
-                        Serial numbers
-                      </th>
-                    )}
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">
+                      By
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {item.items.map((line) => {
-                    const lineCurrency = line.currency || currency;
-                    const isForeign =
-                      line.originalCurrency && line.originalCurrency !== lineCurrency;
-                    return (
-                      <tr key={line.id} className="hover:bg-gray-50/50 align-top">
-                        <td className="px-4 py-3 font-medium text-gray-900">
-                          {line.stockVariantName}
-                          {line.notes && (
-                            <p className="text-[11px] text-gray-400 mt-0.5">
-                              {line.notes}
-                            </p>
-                          )}
+                  {corrections.content.flatMap((correction) =>
+                    (correction.items ?? []).map((line, idx) => (
+                      <tr
+                        key={`${correction.id}-${idx}`}
+                        className="hover:bg-gray-50/50 align-top"
+                      >
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                          {formatDateTime(correction.modificationDate) || "—"}
                         </td>
-                        <td className="px-4 py-3 text-gray-500">
-                          {line.stockVariantSku || "—"}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          {Number(line.quantity).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <Money amount={Number(line.unitCost)} currency={lineCurrency} />
-                        </td>
-                        <td className="px-4 py-3 text-right font-medium">
-                          <Money amount={Number(line.totalCost)} currency={lineCurrency} />
-                        </td>
-                        {hasForeignLine && (
-                          <td className="px-4 py-3 text-xs text-muted-foreground">
-                            {isForeign ? (
-                              <div className="flex flex-col">
-                                <Money
-                                  amount={Number(line.originalUnitCost ?? 0)}
-                                  currency={line.originalCurrency}
-                                />
-                                {line.rateUsed != null && line.rateUsed !== 1 && (
-                                  <span className="text-[10px]">
-                                    @{" "}
-                                    {Number(line.rateUsed).toLocaleString(undefined, {
-                                      maximumFractionDigits: 6,
-                                    })}
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                        )}
                         <td className="px-4 py-3 text-gray-500">
                           {line.batchNumber || "—"}
                         </td>
+                        <td className="px-4 py-3 text-right">
+                          {line.previousUnitCost != null && line.unitCost != null ? (
+                            <span className="flex flex-col items-end">
+                              <span className="text-muted-foreground line-through text-xs">
+                                <Money
+                                  amount={line.previousUnitCost}
+                                  currency={correction.currency ?? currency}
+                                />
+                              </span>
+                              <span>
+                                <Money
+                                  amount={line.unitCost}
+                                  currency={correction.currency ?? currency}
+                                />
+                              </span>
+                            </span>
+                          ) : (
+                            <Money amount={line.unitCost} currency={correction.currency ?? currency} />
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Money
+                            amount={line.valueDeltaOnHand ?? 0}
+                            currency={correction.currency ?? currency}
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Money
+                            amount={line.valueDeltaConsumed ?? 0}
+                            currency={correction.currency ?? currency}
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">{correction.reason}</td>
                         <td className="px-4 py-3 text-gray-500">
-                          {line.expiryDate || "—"}
+                          {correction.performedByName || "—"}
                         </td>
-                        <td className="px-4 py-3 text-gray-500 font-mono text-xs">
-                          {line.supplierBatchReference || "—"}
-                        </td>
-                        {hasSerialLine && (
-                          <td className="px-4 py-3 text-gray-600 text-xs">
-                            <SerialNumbersViewer
-                              serialNumbers={line.serialNumbers ?? []}
-                              itemName={line.stockVariantName}
-                              sku={line.stockVariantSku}
-                            />
-                          </td>
-                        )}
                       </tr>
-                    );
-                  })}
+                    )),
+                  )}
                 </tbody>
               </table>
             </div>
@@ -286,4 +319,27 @@ export default async function StockIntakePage({ params }: { params: Params }) {
       </PageBody>
     </PageShell>
   );
+}
+
+/**
+ * Batch snapshot (qty on hand, initial qty, current cost) for every item
+ * line that already has a minted batch — the "Correct value" modal needs
+ * these fields and StockIntakeItemResponse doesn't carry them. There is no
+ * single-batch-by-id getter today, so this fetches per unique variant (the
+ * batch listing endpoint is variant-scoped) and indexes the results by id.
+ */
+async function loadBatchDataForItems(
+  items: StockIntakeRecordItem[],
+): Promise<Record<string, StockBatch>> {
+  const variantIds = Array.from(
+    new Set(items.filter((line) => line.batchId).map((line) => line.stockVariantId)),
+  );
+  if (variantIds.length === 0) return {};
+
+  const results = await Promise.all(variantIds.map((id) => getBatchesByVariant(id)));
+  const map: Record<string, StockBatch> = {};
+  for (const batch of results.flat()) {
+    map[batch.id] = batch;
+  }
+  return map;
 }

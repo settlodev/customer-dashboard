@@ -25,6 +25,7 @@ import {
   ControlTextarea,
   FieldHint,
   FieldLabel,
+  SegmentedRadio,
   controlComboboxTriggerClass,
   controlInputClass,
   controlSelectTriggerClass,
@@ -66,9 +67,11 @@ import {
 } from "@/components/ui/alert";
 import { createStockModification } from "@/lib/actions/stock-modification-actions";
 import { getCurrentLocationBalance } from "@/lib/actions/inventory-balance-actions";
+import { getBatchesByVariant } from "@/lib/actions/stock-batch-actions";
 import { StockModificationSchema } from "@/types/stock-modification/schema";
 import { MODIFICATION_CATEGORY_OPTIONS } from "@/types/stock-modification/type";
 import { FormResponse } from "@/types/types";
+import type { StockBatch } from "@/types/stock-batch/type";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 import type { VariantMeta } from "@/components/widgets/stock-variant-selector";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
@@ -78,12 +81,18 @@ import { useInventoryEventRefresh } from "@/hooks/use-inventory-event-refresh";
 import styles from "./styles/form-shell.module.css";
 
 type FormValues = z.infer<typeof StockModificationSchema>;
+type ModificationMode = "QUANTITY" | "VALUE_ONLY";
 
 interface BalanceSnapshot {
   loading: boolean;
   variantName?: string;
   quantityOnHand: number;
   averageCost: number | null;
+}
+
+interface BatchOptionsSnapshot {
+  loading: boolean;
+  options: StockBatch[];
 }
 
 export default function StockModificationForm() {
@@ -94,10 +103,12 @@ export default function StockModificationForm() {
   const locationCurrency = useLocationCurrency();
 
   const [balances, setBalances] = useState<Record<string, BalanceSnapshot>>({});
+  const [batchOptions, setBatchOptions] = useState<Record<string, BatchOptionsSnapshot>>({});
 
   const form = useForm<FormValues>({
     resolver: zodResolver(StockModificationSchema),
     defaultValues: {
+      mode: "QUANTITY",
       category: "CORRECTION",
       reason: "",
       notes: "",
@@ -112,12 +123,13 @@ export default function StockModificationForm() {
     return d;
   }, []);
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "items",
   });
 
   const watchedItems = form.watch("items");
+  const mode: ModificationMode = form.watch("mode");
   const { config: locationConfig } = useLocationConfig();
 
   const loadBalance = useCallback(
@@ -157,34 +169,69 @@ export default function StockModificationForm() {
     [],
   );
 
+  // Value-only mode's batch picker — lists every batch for the row's
+  // variant so the operator can pick which one to re-cost. Unlike
+  // `loadBalance` (the variant's aggregate on-hand), this is per-batch.
+  const loadBatches = useCallback(async (fieldId: string, variantId: string) => {
+    setBatchOptions((prev) => ({
+      ...prev,
+      [fieldId]: { loading: true, options: prev[fieldId]?.options ?? [] },
+    }));
+    try {
+      const options = await getBatchesByVariant(variantId);
+      setBatchOptions((prev) => ({ ...prev, [fieldId]: { loading: false, options } }));
+    } catch {
+      setBatchOptions((prev) => ({ ...prev, [fieldId]: { loading: false, options: [] } }));
+    }
+  }, []);
+
   const handleVariantChange = useCallback(
     (fieldId: string, index: number, variantId: string) => {
       form.setValue(`items.${index}.stockVariantId`, variantId, {
         shouldDirty: true,
         shouldValidate: true,
       });
+      // Changing the variant invalidates whatever batch/cost was chosen for
+      // the previous one.
+      form.setValue(`items.${index}.batchId`, undefined, { shouldValidate: false });
+      form.setValue(`items.${index}.unitCost`, undefined, { shouldValidate: false });
       if (!variantId) {
         setBalances((prev) => {
           const next = { ...prev };
           delete next[fieldId];
           return next;
         });
+        setBatchOptions((prev) => {
+          const next = { ...prev };
+          delete next[fieldId];
+          return next;
+        });
         return;
       }
-      void loadBalance(fieldId, variantId);
+      if (mode === "VALUE_ONLY") {
+        void loadBatches(fieldId, variantId);
+      } else {
+        void loadBalance(fieldId, variantId);
+      }
     },
-    [form, loadBalance],
+    [form, loadBalance, loadBatches, mode],
   );
 
   // If an intake / sale / adjustment lands elsewhere while the form is
-  // open, refresh every row's displayed balance. Cooldown protects against
-  // POS event bursts; loadBalance preserves the prior variantName so the
-  // row label doesn't flicker during the refetch.
+  // open, refresh every row's displayed balance (or, in value-only mode,
+  // its batch list). Cooldown protects against POS event bursts; loadBalance
+  // preserves the prior variantName so the row label doesn't flicker during
+  // the refetch.
   useInventoryEventRefresh(locationConfig?.locationId, () => {
     const items = form.getValues("items");
     fields.forEach((field, index) => {
       const variantId = items[index]?.stockVariantId;
-      if (variantId) void loadBalance(field.id, variantId);
+      if (!variantId) return;
+      if (mode === "VALUE_ONLY") {
+        void loadBatches(field.id, variantId);
+      } else {
+        void loadBalance(field.id, variantId);
+      }
     });
   });
 
@@ -212,8 +259,32 @@ export default function StockModificationForm() {
         delete next[fieldId];
         return next;
       });
+      setBatchOptions((prev) => {
+        const next = { ...prev };
+        delete next[fieldId];
+        return next;
+      });
     },
     [remove],
+  );
+
+  // A document cannot mix modes — the backend rejects it outright, since
+  // Accounting filters on the resulting flag to decide whether to post a
+  // journal entry. Switching clears the rows rather than trying to carry
+  // them over.
+  const handleModeChange = useCallback(
+    (next: ModificationMode) => {
+      if (form.getValues("mode") === next) return;
+      form.setValue("mode", next, { shouldDirty: true });
+      replace([{ stockVariantId: "", quantityChange: 0 }]);
+      setBalances({});
+      setBatchOptions({});
+      form.clearErrors("items");
+      if (next === "VALUE_ONLY") {
+        form.setValue("category", "CORRECTION", { shouldDirty: true });
+      }
+    },
+    [form, replace],
   );
 
   const submitData = (values: FormValues) => {
@@ -282,6 +353,31 @@ export default function StockModificationForm() {
             </header>
 
             <div className={styles.formBody}>
+              <FormField
+                control={form.control}
+                name="mode"
+                render={({ field }) => (
+                  <FormItem className="mb-[15px] space-y-[7px]">
+                    <FieldLabel>Modification type</FieldLabel>
+                    <SegmentedRadio
+                      value={field.value}
+                      onChange={(v) => handleModeChange(v as ModificationMode)}
+                      disabled={isPending}
+                      stretch
+                      options={[
+                        { value: "QUANTITY", label: "Quantity change" },
+                        { value: "VALUE_ONLY", label: "Value only" },
+                      ]}
+                    />
+                    <FieldHint>
+                      {field.value === "VALUE_ONLY"
+                        ? "Re-cost a batch already on record — no stock moves. Switching type clears the items below."
+                        : "Add or remove stock. Switching type clears the items below."}
+                    </FieldHint>
+                  </FormItem>
+                )}
+              />
+
               <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
                 <FormField
                   control={form.control}
@@ -292,7 +388,7 @@ export default function StockModificationForm() {
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
-                        disabled={isPending}
+                        disabled={isPending || mode === "VALUE_ONLY"}
                       >
                         <FormControl>
                           <SelectTrigger className={controlSelectTriggerClass}>
@@ -403,7 +499,9 @@ export default function StockModificationForm() {
               <div className="flex-1 min-w-0">
                 <h3>Items</h3>
                 <p className={styles.formCardHeadDesc}>
-                  Quantity changes preview against the live on-hand balance.
+                  {mode === "VALUE_ONLY"
+                    ? "Pick the batch to re-cost — quantity does not change."
+                    : "Quantity changes preview against the live on-hand balance."}
                 </p>
               </div>
               <div className={styles.formCardActions}>
@@ -424,11 +522,17 @@ export default function StockModificationForm() {
               <div className="space-y-3">
                 {fields.map((field, index) => {
                   const balance = balances[field.id];
+                  const batchState = batchOptions[field.id];
+                  const variantId = watchedItems[index]?.stockVariantId;
+                  const selectedBatchId = watchedItems[index]?.batchId;
+                  const selectedBatch = batchState?.options.find(
+                    (b) => b.id === selectedBatchId,
+                  );
                   const change = Number(watchedItems[index]?.quantityChange) || 0;
                   const projected = (balance?.quantityOnHand ?? 0) + change;
                   const projectedNegative = projected < 0;
                   const showPreview =
-                    !!watchedItems[index]?.stockVariantId && change !== 0;
+                    mode === "QUANTITY" && !!variantId && change !== 0;
 
                   return (
                     <div
@@ -470,44 +574,96 @@ export default function StockModificationForm() {
                             </FormItem>
                           )}
                         />
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.quantityChange`}
-                          render={({ field: f }) => (
-                            <FormItem className="w-full md:flex-[3] min-w-0 space-y-[7px]">
-                              <FieldLabel required>Qty change</FieldLabel>
-                              <FormControl>
-                                <ControlBox>
-                                  <NumericFormat
-                                    className={cn(controlInputClass, "tabular-nums")}
-                                    value={f.value}
-                                    onValueChange={(v) =>
-                                      f.onChange(v.value ? Number(v.value) : 0)
-                                    }
-                                    thousandSeparator
-                                    allowNegative
-                                    placeholder="±0"
-                                    disabled={isPending}
-                                  />
-                                </ControlBox>
-                              </FormControl>
-                              <FieldHint>
-                                Positive to add stock, negative to reduce.
-                              </FieldHint>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        {mode === "QUANTITY" ? (
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.quantityChange`}
+                            render={({ field: f }) => (
+                              <FormItem className="w-full md:flex-[3] min-w-0 space-y-[7px]">
+                                <FieldLabel required>Qty change</FieldLabel>
+                                <FormControl>
+                                  <ControlBox>
+                                    <NumericFormat
+                                      className={cn(controlInputClass, "tabular-nums")}
+                                      value={f.value}
+                                      onValueChange={(v) =>
+                                        f.onChange(v.value ? Number(v.value) : 0)
+                                      }
+                                      thousandSeparator
+                                      allowNegative
+                                      placeholder="±0"
+                                      disabled={isPending}
+                                    />
+                                  </ControlBox>
+                                </FormControl>
+                                <FieldHint>
+                                  Positive to add stock, negative to reduce.
+                                </FieldHint>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        ) : (
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.batchId`}
+                            render={({ field: f }) => (
+                              <FormItem className="w-full md:flex-[5] min-w-0 space-y-[7px]">
+                                <FieldLabel required>Batch</FieldLabel>
+                                <Select
+                                  value={f.value ?? ""}
+                                  onValueChange={f.onChange}
+                                  disabled={
+                                    isPending || !variantId || !batchState?.options.length
+                                  }
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className={controlSelectTriggerClass}>
+                                      <SelectValue
+                                        placeholder={
+                                          !variantId
+                                            ? "Select a stock item first"
+                                            : batchState?.loading
+                                              ? "Loading batches…"
+                                              : !batchState?.options.length
+                                                ? "No batches for this item"
+                                                : "Select a batch"
+                                        }
+                                      />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {(batchState?.options ?? []).map((b) => (
+                                      <SelectItem key={b.id} value={b.id}>
+                                        {b.batchNumber} ·{" "}
+                                        {Number(b.quantityOnHand).toLocaleString()} on hand @{" "}
+                                        {b.unitCost != null
+                                          ? Number(b.unitCost).toLocaleString()
+                                          : "—"}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FieldHint>
+                                  Only this batch is re-costed; nothing else moves.
+                                </FieldHint>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
                         <FormField
                           control={form.control}
                           name={`items.${index}.unitCost`}
                           render={({ field: f }) => (
                             <FormItem className="w-full md:flex-[4] min-w-0 space-y-[7px]">
-                              <FieldLabel>
-                                Unit cost
-                                <span className="text-muted-foreground ml-1 font-normal">
-                                  ({locationCurrency}, optional)
-                                </span>
+                              <FieldLabel required={mode === "VALUE_ONLY"}>
+                                {mode === "VALUE_ONLY" ? "Corrected unit cost" : "Unit cost"}
+                                {mode === "QUANTITY" && (
+                                  <span className="text-muted-foreground ml-1 font-normal">
+                                    ({locationCurrency}, optional)
+                                  </span>
+                                )}
                               </FieldLabel>
                               <FormControl>
                                 <ControlBox>
@@ -518,19 +674,50 @@ export default function StockModificationForm() {
                                       f.onChange(v.value === "" ? undefined : Number(v.value))
                                     }
                                     thousandSeparator
-                                    placeholder="Defaults to average cost"
+                                    placeholder={
+                                      mode === "VALUE_ONLY"
+                                        ? selectedBatch?.unitCost != null
+                                          ? String(selectedBatch.unitCost)
+                                          : "Enter corrected cost"
+                                        : "Defaults to average cost"
+                                    }
                                     disabled={isPending}
                                   />
                                 </ControlBox>
                               </FormControl>
                               <FieldHint>
-                                Leave blank to use the variant&apos;s average cost.
+                                {mode === "VALUE_ONLY"
+                                  ? "The corrected per-unit cost for this batch."
+                                  : "Leave blank to use the variant's average cost."}
                               </FieldHint>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
                       </div>
+
+                      {mode === "VALUE_ONLY" && selectedBatch && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="rounded-md bg-white border px-3 py-2 flex flex-col">
+                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              Recorded cost
+                            </span>
+                            <span className="font-mono text-lg font-semibold text-gray-700">
+                              {selectedBatch.unitCost != null
+                                ? selectedBatch.unitCost.toLocaleString()
+                                : "—"}
+                            </span>
+                          </div>
+                          <div className="rounded-md bg-white border px-3 py-2 flex flex-col">
+                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              On hand
+                            </span>
+                            <span className="font-mono text-lg font-semibold text-gray-700">
+                              {Number(selectedBatch.quantityOnHand).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      )}
 
                       {showPreview &&
                         (balance?.loading ? (

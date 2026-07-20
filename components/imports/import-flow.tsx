@@ -223,12 +223,13 @@ export function ImportFlow({
           }
           if (r.status === "EXACT_MATCH") {
             if (preset === "update-existing-create-new") {
-              const targetId = r.suggestedMatches?.[0]?.id ?? null;
-              if (targetId) {
+              const target = r.suggestedMatches?.[0];
+              if (target?.id) {
                 next.set(r.rowIndex, {
                   ...current,
                   action: "UPDATE_EXISTING",
-                  targetId,
+                  targetId: target.id,
+                  targetType: target.targetType ?? null,
                 });
                 touched++;
               }
@@ -271,11 +272,16 @@ export function ImportFlow({
           const current = next.get(idx);
           if (!current) continue;
           const row = matchById.get(idx);
-          const targetId =
+          const first =
             action === "UPDATE_EXISTING" || action === "APPLY_INTAKE"
-              ? (row?.suggestedMatches?.[0]?.id ?? null)
-              : null;
-          next.set(idx, { ...current, action, targetId });
+              ? row?.suggestedMatches?.[0]
+              : undefined;
+          next.set(idx, {
+            ...current,
+            action,
+            targetId: first?.id ?? null,
+            targetType: first?.targetType ?? null,
+          });
         }
         return next;
       });
@@ -1235,7 +1241,10 @@ function ActionControls({
       {needsTarget(decision.action) && row.suggestedMatches?.length ? (
         <Select
           value={decision.targetId ?? ""}
-          onValueChange={(v) => setDecision({ targetId: v })}
+          onValueChange={(v) => {
+            const match = row.suggestedMatches?.find((m) => m.id === v);
+            setDecision({ targetId: v, targetType: match?.targetType ?? null });
+          }}
         >
           <SelectTrigger className="h-8 w-[160px]">
             <SelectValue placeholder="Match to…" />
@@ -1346,6 +1355,7 @@ function ResultStep({
 }) {
   const imported = result.created + result.updated;
   const failed = result.errors?.length ?? 0;
+  const notices = result.warnings?.length ?? 0;
   const state: "ok" | "partial" | "failed" =
     failed === 0 ? "ok" : imported > 0 ? "partial" : "failed";
 
@@ -1404,6 +1414,19 @@ function ResultStep({
               <p key={i} className="text-xs text-red-700">
                 <FileWarning className="inline h-3 w-3 mr-1" />
                 Row {e.rowIndex + 2}: {e.message}
+              </p>
+            ))}
+          </div>
+        )}
+        {notices > 0 && (
+          <div className="rounded border border-amber-200 bg-amber-50 p-3 space-y-1">
+            <p className="text-xs font-medium text-amber-800">
+              Committed, with notices
+            </p>
+            {result.warnings.map((w, i) => (
+              <p key={i} className="text-xs text-amber-700">
+                <AlertTriangle className="inline h-3 w-3 mr-1" />
+                {w}
               </p>
             ))}
           </div>

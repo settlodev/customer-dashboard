@@ -25,9 +25,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { previewPlanChange } from "@/lib/actions/billing-actions";
+import {
+  getEntityCapacity,
+  previewPlanChange,
+} from "@/lib/actions/billing-actions";
 import { StatusPill } from "./pill";
 import { CouponInput, type CouponInputHandle } from "./coupon-input";
+import { CapacityPicker } from "./capacity-picker";
 import {
   formatAmount,
   formatBillingDate,
@@ -35,7 +39,13 @@ import {
   formatWhole,
   monthlyPrice,
 } from "./shared";
-import type { Coupon, Package, PlanChangePreview } from "@/types/billing/types";
+import type {
+  CapacityLine,
+  Coupon,
+  Package,
+  PlanChangePreview,
+  StagedAddon,
+} from "@/types/billing/types";
 
 /**
  * PayInvoiceDialog — the single "settle / extend" surface from the billing
@@ -59,6 +69,9 @@ const DURATIONS: Array<{ months: number; label: string }> = [
   { months: 24, label: "2 years" },
   { months: 36, label: "3 years" },
 ];
+
+/** Shared empty selection — avoids allocating a new Set on every render. */
+const EMPTY_SELECTION: ReadonlySet<string> = new Set<string>();
 
 function durationLabelFor(months: number): string {
   return DURATIONS.find((d) => d.months === months)?.label ?? `${months} months`;
@@ -85,6 +98,11 @@ export interface PayConfirmPayload {
   /** Only the rows whose package the user actually changed. */
   planChanges: Array<{ itemId: string; packageId: string }>;
   couponCode?: string;
+  /**
+   * Capacity the owner picked. Attached during invoice generation so it bills on the
+   * invoice being paid rather than raising a separate prorated charge.
+   */
+  stagedAddons?: StagedAddon[];
   /**
    * Set only when the owner chose to bill a SUBSET of entities. Undefined means
    * "bill everything", which keeps the normal pay/prepay paths untouched.
@@ -157,6 +175,11 @@ export function PayInvoiceDialog({
   const [coupon, setCoupon] = useState<Coupon | null>(null);
   /** Entities the owner unticked — kept on the account, just not billed now. */
   const [dropped, setDropped] = useState<Set<string>>(new Set());
+  /** Per-entity capacity, loaded lazily once the dialog opens. */
+  const [capacity, setCapacity] = useState<Record<string, CapacityLine[]>>({});
+  const [capacityLoading, setCapacityLoading] = useState(false);
+  /** Addon ids staged per entity, keyed by itemId. */
+  const [stagedAddons, setStagedAddons] = useState<Record<string, Set<string>>>({});
   const couponRef = useRef<CouponInputHandle>(null);
 
   // Reset every time the dialog reopens so a previous session's period, package
@@ -168,6 +191,8 @@ export function PayInvoiceDialog({
     setPreviewing({});
     setCoupon(null);
     setDropped(new Set());
+    setCapacity({});
+    setStagedAddons({});
     setSelected(
       Object.fromEntries(
         lines
@@ -176,6 +201,42 @@ export function PayInvoiceDialog({
       ),
     );
   }, [open, lines, termMonths]);
+
+  // Capacity is only meaningful for entities we are actually billing, and it hits the
+  // accounts/inventory services — so load it once per open, in parallel, and fail soft.
+  useEffect(() => {
+    if (!open || lines.length === 0) return;
+    let cancelled = false;
+    setCapacityLoading(true);
+    Promise.all(
+      lines.map((line) =>
+        getEntityCapacity(subscriptionId, line.itemId)
+          .then((c) => [line.itemId, c?.limits ?? []] as const)
+          .catch(() => [line.itemId, [] as CapacityLine[]] as const),
+      ),
+    )
+      .then((entries) => {
+        if (cancelled) return;
+        setCapacity(Object.fromEntries(entries));
+      })
+      .finally(() => {
+        if (!cancelled) setCapacityLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, lines, subscriptionId]);
+
+  const toggleAddon = useCallback((itemId: string, addonId: string) => {
+    setStagedAddons((prev) => {
+      const next = { ...prev };
+      const forItem = new Set(next[itemId] ?? []);
+      if (forItem.has(addonId)) forItem.delete(addonId);
+      else forItem.add(addonId);
+      next[itemId] = forItem;
+      return next;
+    });
+  }, []);
 
   const packagesByEntity = useMemo(() => {
     const map = new Map<string, Package[]>();
@@ -258,14 +319,23 @@ export function PayInvoiceDialog({
   // subscription's own term and takes no coupon. Rather than silently ignoring a period or
   // coupon the owner picked, lock both while a keep-set is in play — and vice versa, so the
   // two never fight over the same invoice.
+  const stagedCount = Object.values(stagedAddons).reduce((n, set) => n + set.size, 0);
   const periodOrCouponInUse = months !== termMonths || !!coupon;
-  const keepSetLocked = periodOrCouponInUse;
+  const keepSetLocked = periodOrCouponInUse || stagedCount > 0;
   const periodLocked = hasDropped;
+  // Staged capacity is attached by the prepayment call. Billing a subset goes through
+  // renewal/adjust instead, which has nowhere to put it — so the two are mutually exclusive
+  // rather than one silently discarding the other.
+  const capacityLocked = hasDropped;
 
   const periodChanged = months !== termMonths;
   const reissues =
     !isGenerate &&
-    (periodChanged || planChanges.length > 0 || !!coupon || hasDropped);
+    (periodChanged ||
+      planChanges.length > 0 ||
+      !!coupon ||
+      hasDropped ||
+      stagedCount > 0);
 
   // A single changed row can use the service's own re-priced figure. Two or more
   // can't be composed — each preview answers "what if only this row changed" —
@@ -277,13 +347,30 @@ export function PayInvoiceDialog({
       ? soloChange.preview.outstandingAfterChange
       : null;
 
-  const computed = priced.reduce((sum, line) => sum + line.amount, 0);
+  // Staged capacity, priced the way buildSubscriptionInvoice does it: the addon's price is
+  // per month, multiplied by the months being billed. Dropped entities contribute nothing.
+  const stagedList: StagedAddon[] = keptLines.flatMap((line) =>
+    [...(stagedAddons[line.itemId] ?? [])].map((addonId) => ({
+      itemId: line.itemId,
+      addonId,
+    })),
+  );
+  const addonMonthly = stagedList.reduce((sum, staged) => {
+    const option = (capacity[staged.itemId] ?? [])
+      .flatMap((l) => l.options)
+      .find((o) => o.addonId === staged.addonId);
+    return sum + (option?.price ?? 0);
+  }, 0);
+
+  const computed =
+    priced.reduce((sum, line) => sum + line.amount, 0) + addonMonthly * months;
   const settleAsBilled = !isGenerate && !reissues && invoice;
   // Once entities are dropped the invoice total no longer describes what will be billed,
   // so the estimate wins even where a single-row preview exists.
-  const subtotal = hasDropped
-    ? computed
-    : (serverTotal ?? (settleAsBilled ? invoice.total : computed));
+  const subtotal =
+    hasDropped || stagedCount > 0
+      ? computed
+      : (serverTotal ?? (settleAsBilled ? invoice.total : computed));
   // Anything that isn't the invoice's own total is PRE-DISCOUNT — that holds for
   // the client estimate and for outstandingAfterChange alike, which the service
   // documents as pre-discount (annual prepay, subscription discounts, and any
@@ -301,8 +388,18 @@ export function PayInvoiceDialog({
       planChanges,
       couponCode: resolution?.coupon?.code ?? coupon?.code,
       keepItemIds: hasDropped ? keptLines.map((line) => line.itemId) : undefined,
+      stagedAddons: stagedList.length > 0 ? stagedList : undefined,
     });
-  }, [months, subtotal, planChanges, coupon, hasDropped, keptLines, onConfirm]);
+  }, [
+    months,
+    subtotal,
+    planChanges,
+    coupon,
+    hasDropped,
+    keptLines,
+    stagedList,
+    onConfirm,
+  ]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -493,6 +590,16 @@ export function PayInvoiceDialog({
                         <PlanDeltaBadge delta={line.delta} />
                       )}
                     </div>
+                    )}
+                    {!line.dropped && (
+                      <CapacityPicker
+                        lines={capacity[line.itemId] ?? null}
+                        loading={capacityLoading && !capacity[line.itemId]}
+                        selected={stagedAddons[line.itemId] ?? EMPTY_SELECTION}
+                        currency={currency}
+                        disabled={submitting || capacityLocked}
+                        onToggle={(addonId) => toggleAddon(line.itemId, addonId)}
+                      />
                     )}
                     {!line.dropped && line.preview?.grandfathered === false && (
                       <p className="flex items-start gap-2 rounded-lg bg-neg-tint px-3 py-2 text-[12px] leading-relaxed text-neg">

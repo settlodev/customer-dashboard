@@ -20,6 +20,8 @@ import type {
   CreditTransaction,
   Page,
   PlanChangePreview,
+  EntityCapacity,
+  StagedAddon,
 } from "@/types/billing/types";
 import type { Business } from "@/types/business/type";
 import type { Location } from "@/types/location/type";
@@ -243,16 +245,50 @@ export async function prepaySubscription(
   subscriptionId: string,
   monthsToPrepay: number,
   couponCode?: string,
+  /**
+   * Capacity picked on the pay screen. Attached as part of generating this invoice so it
+   * appears as a line item and is settled in the same payment — deliberately not via
+   * addItemAddon, which raises a separate proration that this endpoint would then cancel.
+   */
+  addons?: StagedAddon[],
 ): Promise<BillingInvoice> {
   const apiClient = new ApiClient();
   return apiClient.post<
     BillingInvoice,
-    { subscriptionId: string; monthsToPrepay: number; couponCode?: string }
+    {
+      subscriptionId: string;
+      monthsToPrepay: number;
+      couponCode?: string;
+      addons?: StagedAddon[];
+    }
   >(billingUrl("/api/v1/prepayments"), {
     subscriptionId,
     monthsToPrepay,
     ...(couponCode ? { couponCode } : {}),
+    ...(addons && addons.length > 0 ? { addons } : {}),
   });
+}
+
+/**
+ * Usage against each limit for one entity, plus the addons that would lift whichever ones it
+ * is running out of. Fails soft: a usage-service outage returns null so the pay screen degrades
+ * to "no recommendations" rather than blocking payment.
+ */
+export async function getEntityCapacity(
+  subscriptionId: string,
+  itemId: string,
+): Promise<EntityCapacity | null> {
+  if (!BILLING_SERVICE_URL) return null;
+  try {
+    const apiClient = new ApiClient();
+    return await apiClient.get<EntityCapacity>(
+      billingUrl(
+        `/api/v1/subscriptions/${subscriptionId}/items/${itemId}/capacity`,
+      ),
+    );
+  } catch {
+    return null;
+  }
 }
 
 // ── Invoices ────────────────────────────────────────────────────────

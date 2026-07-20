@@ -22,6 +22,7 @@ export const PERM = {
   ACTIVITY_LOG_READ: "internal:activity:read",
   REPAIR_EXECUTE: "internal:repair:execute",
   REPAIR_APPROVE: "internal:repair:approve",
+  APP_VERSION_MANAGE: "internal:app_version:manage",
   // Loans / Financing — lender/operator (admin.localhost). Deliberately the
   // unprefixed `loans:*` keys (NOT `internal:*`) so they match the Loan
   // Management Service's PERM_loans:* @PreAuthorize — see Auth InternalPermissions.

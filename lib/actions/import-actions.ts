@@ -167,6 +167,7 @@ function invalidatePaths(type: ImportType) {
   switch (type) {
     case "PRODUCT":
     case "PRODUCT_WITH_STOCK":
+    case "STOCK_WITH_PRODUCT":
       revalidatePath("/products");
       revalidatePath("/stock-variants");
       break;

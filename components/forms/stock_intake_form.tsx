@@ -64,9 +64,15 @@ import {
   AlertTitle,
   AlertDescription,
 } from "@/components/ui/alert";
-import { createStockIntakeRecord } from "@/lib/actions/stock-intake-record-actions";
+import {
+  createStockIntakeRecord,
+  updateStockIntakeRecord,
+} from "@/lib/actions/stock-intake-record-actions";
 import { StockIntakeRecordSchema } from "@/types/stock-intake-record/schema";
-import { INTAKE_PAYMENT_TERMS_LABELS } from "@/types/stock-intake-record/type";
+import {
+  INTAKE_PAYMENT_TERMS_LABELS,
+  type StockIntakeRecord,
+} from "@/types/stock-intake-record/type";
 import { FormResponse } from "@/types/types";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 import type { VariantMeta } from "@/components/widgets/stock-variant-selector";
@@ -81,37 +87,78 @@ import styles from "./styles/form-shell.module.css";
 
 type StockIntakePayload = Parameters<typeof createStockIntakeRecord>[0];
 
-export default function StockIntakeForm() {
+export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) {
   const router = useRouter();
+  const isEditing = !!item;
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
   const locationCurrency = useLocationCurrency();
   const businessDayGuard = useBusinessDayGuard();
 
-  const [serialTrackedMap, setSerialTrackedMap] = useState<Record<number, boolean>>({});
-  const [serialInputs, setSerialInputs] = useState<Record<number, string[]>>({});
+  // Seeded from `item` in edit mode so a line that already has recorded
+  // serials shows them immediately. `StockVariantSelector` independently
+  // re-resolves serialTracked/unitId once its catalogue fetch settles (it
+  // emits meta for a pre-filled value on mount — see its onVariantMeta
+  // effect), so this seed only needs to cover the serial text itself.
+  const [serialTrackedMap, setSerialTrackedMap] = useState<Record<number, boolean>>(() => {
+    const map: Record<number, boolean> = {};
+    item?.items?.forEach((line, index) => {
+      if (line.serialNumbers && line.serialNumbers.length > 0) map[index] = true;
+    });
+    return map;
+  });
+  const [serialInputs, setSerialInputs] = useState<Record<number, string[]>>(() => {
+    const map: Record<number, string[]> = {};
+    item?.items?.forEach((line, index) => {
+      if (line.serialNumbers && line.serialNumbers.length > 0) map[index] = line.serialNumbers;
+    });
+    return map;
+  });
   // Variant tracking unit per row — anchors the purchase-pack picker so it
   // only surfaces units convertible to the variant's stock unit.
   const [variantUnitMap, setVariantUnitMap] = useState<Record<number, string | undefined>>({});
 
   const form = useForm<z.infer<typeof StockIntakeRecordSchema>>({
     resolver: zodResolver(StockIntakeRecordSchema),
-    defaultValues: {
-      notes: "",
-      orderedDate: "",
-      receivedDate: "",
-      supplierId: "",
-      supplierReference: "",
-      paymentTerms: "CREDIT",
-      items: [{ stockVariantId: "", quantity: 0, unitCost: 0, currency: locationCurrency }],
-    },
+    defaultValues: item
+      ? {
+          notes: item.notes ?? "",
+          orderedDate: item.orderedDate ?? "",
+          receivedDate: item.receivedDate ?? "",
+          supplierId: item.supplierId ?? "",
+          supplierReference: item.supplierReference ?? "",
+          paymentTerms: item.paymentTerms ?? "CREDIT",
+          items: item.items.length
+            ? item.items.map((line) => ({
+                stockVariantId: line.stockVariantId,
+                quantity: line.quantity,
+                unitCost: line.unitCost,
+                purchaseUnitId: line.purchaseUnitId ?? undefined,
+                currency: line.currency ?? locationCurrency,
+                batchNumber: line.batchNumber ?? "",
+                expiryDate: line.expiryDate ?? "",
+                supplierBatchReference: line.supplierBatchReference ?? "",
+                notes: line.notes ?? "",
+                serialNumbers: line.serialNumbers ?? undefined,
+              }))
+            : [{ stockVariantId: "", quantity: 0, unitCost: 0, currency: locationCurrency }],
+        }
+      : {
+          notes: "",
+          orderedDate: "",
+          receivedDate: "",
+          supplierId: "",
+          supplierReference: "",
+          paymentTerms: "CREDIT",
+          items: [{ stockVariantId: "", quantity: 0, unitCost: 0, currency: locationCurrency }],
+        },
   });
 
   useEffect(() => {
     const items = form.getValues("items") ?? [];
-    items.forEach((item, index) => {
-      if (!item?.currency) {
+    items.forEach((row, index) => {
+      if (!row?.currency) {
         form.setValue(`items.${index}.currency`, locationCurrency, { shouldDirty: false });
       }
     });
@@ -174,9 +221,9 @@ export default function StockIntakeForm() {
       ...values,
       supplierId: values.supplierId || undefined,
       supplierReference: values.supplierReference?.trim() || undefined,
-      items: values.items.map((item, i) => ({
-        ...item,
-        currency: item.currency ? item.currency.toUpperCase() : locationCurrency,
+      items: values.items.map((row, i) => ({
+        ...row,
+        currency: row.currency ? row.currency.toUpperCase() : locationCurrency,
         serialNumbers: serialTrackedMap[i]
           ? (serialInputs[i] || []).filter((s) => s.trim() !== "")
           : undefined,
@@ -189,7 +236,10 @@ export default function StockIntakeForm() {
 
   const submitPayload = (payload: StockIntakePayload) => {
     startTransition(() => {
-      createStockIntakeRecord(payload).then((data) => {
+      const action = item
+        ? updateStockIntakeRecord(item.id, payload)
+        : createStockIntakeRecord(payload);
+      action.then((data) => {
         if (businessDayGuard.catch(data, () => submitPayload(payload))) return;
         if (data) setResponse(data);
         if (data?.responseType === "success") {
@@ -803,7 +853,7 @@ export default function StockIntakeForm() {
             </AlertDialog>
             <Button type="submit" disabled={isPending}>
               <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-              Record stock intake
+              {isEditing ? "Update intake" : "Record stock intake"}
             </Button>
           </div>
         </form>

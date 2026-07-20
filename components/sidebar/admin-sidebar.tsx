@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ArrowUpCircle,
   BarChart3,
   Briefcase,
   Building2,
@@ -200,6 +201,12 @@ const NAV_GROUPS: NavGroup[] = [
         href: "/stuck-writes",
         icon: WifiOff,
         permissions: [PERM.ACTIVITY_LOG_READ],
+      },
+      {
+        title: "App Version",
+        href: "/app-version",
+        icon: ArrowUpCircle,
+        permissions: [PERM.APP_VERSION_MANAGE],
       },
     ],
   },

@@ -365,6 +365,20 @@ export interface FeatureResponse {
   isActive: boolean | null;
 }
 
+/**
+ * One feature an addon lifts, and the ceiling it lifts it to.
+ *
+ * `featureValue` is the NEW CEILING, not a delta — entitlements merge the package value and
+ * every active addon value with `Math.max`. A staff addon on a 10-staff package stores `20`.
+ * That also means a second copy of the same addon raises nothing, which is why only one
+ * active copy per entity is allowed.
+ */
+export interface AddonFeatureResponse {
+  feature: FeatureResponse;
+  featureValue: string | null;
+  isIncluded: boolean | null;
+}
+
 export interface CreateFeatureRequest {
   name: string;
   featureKey: string;
@@ -676,8 +690,13 @@ export interface BillingConfigResponse {
   reminderDays: number | null;
   gracePeriodDays: number | null;
   suspensionDays: number | null;
-  quarterlyDiscountPct: number | null;
-  semiAnnualDiscountPct: number | null;
+  /**
+   * Whether the prepayment discount is switched on. Off by default, and it only ever
+   * applies to a 12-month-or-longer commitment — the old quarterly/semi-annual tiers
+   * were removed.
+   */
+  prepayDiscountEnabled: boolean | null;
+  /** Percentage off a 12-month-or-longer prepayment. Ignored while disabled. */
   annualDiscountPct: number | null;
   defaultCurrency: string | null;
 }

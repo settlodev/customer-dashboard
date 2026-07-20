@@ -12,10 +12,16 @@ import { StockModificationSchema } from "@/types/stock-modification/schema";
 import { inventoryUrl } from "./inventory-client";
 import { getCurrentDestination } from "./context";
 
+export interface StockModificationSourceReference {
+  sourceReferenceType: "STOCK_INTAKE" | "OPENING_STOCK";
+  sourceReferenceId: string;
+}
+
 export async function searchStockModifications(
   page: number = 0,
   size: number = 20,
   category?: string,
+  sourceReference?: StockModificationSourceReference,
 ): Promise<ApiResponse<StockModification>> {
   try {
     const apiClient = new ApiClient();
@@ -25,6 +31,10 @@ export async function searchStockModifications(
     params.set("sortBy", "createdAt");
     params.set("sortDirection", "desc");
     if (category) params.set("category", category);
+    if (sourceReference) {
+      params.set("sourceReferenceType", sourceReference.sourceReferenceType);
+      params.set("sourceReferenceId", sourceReference.sourceReferenceId);
+    }
 
     const data = await apiClient.get(
       inventoryUrl(`/api/v1/stock-modifications?${params.toString()}`),

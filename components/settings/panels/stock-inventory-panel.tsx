@@ -1,10 +1,38 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
+import {
+  SettingsSection,
+  SettingsSwitchRow,
+  SettingsRadioRows,
+} from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
 import type { LocationSettings } from "@/types/location-settings/type";
+
+/**
+ * Stock is cut at exactly one point in the order lifecycle — the three
+ * backend flags are mutually exclusive, so they render as one choice.
+ */
+const DEDUCT_OPTIONS = [
+  {
+    value: "deductStockOnItemChange",
+    label: "Deduct on item change",
+    description: "Cut stock the moment an item is added or modified in an order.",
+  },
+  {
+    value: "deductStockOnOrderClose",
+    label: "Deduct on order close",
+    description: "Cut stock when the order is finalised and closed.",
+  },
+  {
+    value: "deductStockOnPartialPay",
+    label: "Deduct on partial pay",
+    description: "Cut stock as soon as any payment is received — useful for pre-orders.",
+  },
+] as const;
+
+type DeductKey = (typeof DEDUCT_OPTIONS)[number]["value"];
 
 const KEYS = [
   "deductStockOnItemChange",
@@ -34,6 +62,15 @@ export function StockInventoryPanel({
   const p = useSettingsPanel(KEYS, settings, onSaved);
   const v = p.values;
 
+  // First flag wins if a legacy record has more than one set; picking an
+  // option clears the others, which normalises the record on save. Records
+  // with no flag set fall back to item change — the POS default.
+  const deductTrigger =
+    DEDUCT_OPTIONS.find((o) => v[o.value])?.value ?? "deductStockOnItemChange";
+  const setDeductTrigger = (next: DeductKey) => {
+    for (const o of DEDUCT_OPTIONS) p.setField(o.value, o.value === next);
+  };
+
   return (
     <div className="space-y-6">
       <PanelHeader
@@ -43,30 +80,15 @@ export function StockInventoryPanel({
 
       <SettingsSection
         title="Stock deduction timing"
-        description="When the POS actually cuts inventory. Pick any combination — more triggers = more accurate on-hand counts."
+        description="When the POS actually cuts inventory. Choose one — stock is deducted once, at this point in the order."
         onSave={p.save}
         isPending={p.isPending}
         isDirty={p.isDirty}
       >
-        <SettingsSwitchRow
-          label="Deduct on item change"
-          description="Cut stock the moment an item is added or modified in an order."
-          checked={!!v.deductStockOnItemChange}
-          onChange={(x) => p.setField("deductStockOnItemChange", x)}
-          disabled={p.isPending}
-        />
-        <SettingsSwitchRow
-          label="Deduct on order close"
-          description="Cut stock when the order is finalised and closed."
-          checked={!!v.deductStockOnOrderClose}
-          onChange={(x) => p.setField("deductStockOnOrderClose", x)}
-          disabled={p.isPending}
-        />
-        <SettingsSwitchRow
-          label="Deduct on partial pay"
-          description="Cut stock as soon as any payment is received — useful for pre-orders."
-          checked={!!v.deductStockOnPartialPay}
-          onChange={(x) => p.setField("deductStockOnPartialPay", x)}
+        <SettingsRadioRows
+          value={deductTrigger}
+          onChange={setDeductTrigger}
+          options={DEDUCT_OPTIONS}
           disabled={p.isPending}
         />
       </SettingsSection>
