@@ -9,8 +9,8 @@ import {
 import { AddonsListView } from "@/components/admin/catalog/addons-list-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
-import { listAddons } from "@/lib/actions/admin/billing";
-import type { AddonResponse } from "@/types/admin/billing";
+import { listAddons, listFeatures } from "@/lib/actions/admin/billing";
+import type { AddonResponse, FeatureResponse } from "@/types/admin/billing";
 
 export const metadata = {
   title: "Addons",
@@ -44,6 +44,15 @@ export default async function AdminAddonsPage() {
     loadError = err?.message ?? "Failed to load addons.";
   }
 
+  // Soft-fail: the feature catalog only drives the "limits lifted" picker, so it must
+  // never take the addon list down with it.
+  let features: FeatureResponse[] = [];
+  try {
+    features = await listFeatures();
+  } catch {
+    features = [];
+  }
+
   addons.sort((a, b) => {
     if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
     if (a.entityType !== b.entityType)
@@ -64,7 +73,7 @@ export default async function AdminAddonsPage() {
               {loadError}
             </p>
           ) : (
-            <AddonsListView addons={addons} />
+            <AddonsListView addons={addons} features={features} />
           )}
         </PageBody>
       </PageShell>

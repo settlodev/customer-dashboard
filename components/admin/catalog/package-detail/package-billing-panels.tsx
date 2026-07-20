@@ -112,9 +112,12 @@ export function PricingBillingPanel({
     },
     {
       label: "Prepay discount",
-      value:
-        config?.annualDiscountPct != null
-          ? `up to ${num(config.annualDiscountPct)}% (annual)`
+      // Annual-only now, and off unless an admin switched it on — "up to N%" read as
+      // if a scale of tiers still existed.
+      value: !config?.prepayDiscountEnabled
+        ? "Off"
+        : config?.annualDiscountPct != null
+          ? `${num(config.annualDiscountPct)}% on annual`
           : "—",
     },
   ];

@@ -84,6 +84,7 @@ export const ErrorCodes = {
     EMAIL_ALREADY_EXISTS: 'EMAIL_ALREADY_EXISTS',
     PHONE_ALREADY_EXISTS: 'PHONE_ALREADY_EXISTS',
     EMAIL_ROLE_CONFLICT: 'EMAIL_ROLE_CONFLICT',
+    SHARED_IDENTITY: 'SHARED_IDENTITY',
     DESTINATION_NOT_IN_SCOPE: 'DESTINATION_NOT_IN_SCOPE',
     USER_NOT_FOUND: 'USER_NOT_FOUND',
     SUBSCRIPTION_EXPIRED: 'SUBSCRIPTION_EXPIRED',
@@ -109,6 +110,10 @@ const UI_ERROR_MESSAGES: Record<string, string> = {
     // The backend returns a direction-specific message (already staff / already a member);
     // this is only the fallback if that message is missing.
     EMAIL_ROLE_CONFLICT: "This email is already used in another role on this account. A person can be a staff member or an account member, not both.",
+    // Changing a staff member's login was refused because the login isn't this
+    // business's to change — it's also their own Settlo account, or one another
+    // business created. Rewriting it would hand over someone else's access.
+    SHARED_IDENTITY: "This Settlo login isn't managed by your business — it may be their own account, or one created by another business. Revoke their dashboard access and invite the new address instead.",
     // Per-request destination-scope enforcement (staff/member scoped to specific
     // locations). The active location isn't one they're assigned to.
     DESTINATION_NOT_IN_SCOPE: "You're not assigned to this location. Switch to a location you have access to.",

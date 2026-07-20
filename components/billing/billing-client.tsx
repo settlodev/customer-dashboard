@@ -122,7 +122,12 @@ export function BillingClient({
       const isGenerate = payMode === "generate";
       // A different period or a coupon means the invoice has to be re-issued;
       // package swaps re-issue it on the service side as a side effect.
-      const reissues = payload.months !== termMonths || !!payload.couponCode;
+      const reissues =
+        payload.months !== termMonths ||
+        !!payload.couponCode ||
+        // Capacity is attached BY the prepayment call, so picking any forces that path —
+        // the keep-set and pay-as-billed routes have nowhere to put it.
+        (payload.stagedAddons?.length ?? 0) > 0;
 
       // Untouched invoice — settle exactly what was billed, no regeneration.
       // A keep-set counts as touched even on its own: dropping an entity changes
@@ -188,6 +193,7 @@ export function BillingClient({
               subscription.id,
               payload.months,
               payload.couponCode,
+              payload.stagedAddons,
             );
           } catch (prepayError) {
             const err = prepayError as { status?: number; message?: string };

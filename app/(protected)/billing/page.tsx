@@ -1,6 +1,7 @@
 import {
   AlertCircle,
   CalendarClock,
+  Lock,
   Receipt,
   Wallet,
   Building2,
@@ -37,7 +38,15 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function BillingPage() {
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ expired?: string }>;
+}) {
+  // Set by the protected layout when the active destination's own subscription has lapsed and
+  // it redirected here. Tells the owner why they landed on this page rather than the one they
+  // asked for — without it the redirect reads as the app losing their click.
+  const lockedEntity = (await searchParams)?.expired;
   const subscription = await getCurrentSubscription();
 
   if (!subscription) {
@@ -139,6 +148,21 @@ export default async function BillingPage() {
       />
 
       <PageBody>
+        {lockedEntity && (
+          <div className="flex items-start gap-3 rounded-xl border border-warn/30 bg-warn-tint px-4 py-3.5">
+            <Lock className="mt-0.5 h-4 w-4 flex-none text-warn" />
+            <div>
+              <p className="text-[13.5px] font-semibold text-ink">
+                This {lockedEntity}&apos;s subscription has lapsed
+              </p>
+              <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">
+                It stays locked until it&apos;s paid for. Settle it below to restore
+                access — or switch to another destination and come back to this
+                whenever you&apos;re ready.
+              </p>
+            </div>
+          </div>
+        )}
         <KpiStrip cols={4}>
           <KpiCard
             icon={<Wallet className="h-3 w-3" />}

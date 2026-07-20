@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArchiveRestore,
+  AtSign,
   KeyRound,
+  LockKeyhole,
   Mail,
   MoreVertical,
   Shield,
@@ -18,6 +20,7 @@ import type { Staff } from "@/types/staff";
 import {
   clearStaffPin,
   deactivateStaff,
+  forceStaffPasswordReset,
   grantDashboardAccess,
   grantPosAccess,
   reactivateStaff,
@@ -26,6 +29,7 @@ import {
   revokePosAccess,
   setStaffPin,
 } from "@/lib/actions/staff-actions";
+import { StaffChangeEmailDialog } from "@/components/staff/staff-change-email-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -63,6 +67,8 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [dashboardOpen, setDashboardOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
 
   const [dashboardEmail, setDashboardEmail] = useState(staff.email ?? "");
@@ -133,6 +139,26 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
                 <Mail className="mr-2 h-4 w-4" />
                 Resend invite
               </DropdownMenuItem>
+              {/* Owners manage their own login from their profile — the backend
+                  rejects both of these for the owner record, so don't offer them. */}
+              {!staff.owner && (
+                <>
+                  <DropdownMenuItem
+                    disabled={loading !== null}
+                    onClick={() => setEmailOpen(true)}
+                  >
+                    <AtSign className="mr-2 h-4 w-4" />
+                    Change login email…
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={loading !== null}
+                    onClick={() => setResetOpen(true)}
+                  >
+                    <LockKeyhole className="mr-2 h-4 w-4" />
+                    Reset password…
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuItem
                 disabled={loading !== null || staff.owner}
                 onClick={() =>
@@ -249,6 +275,53 @@ export function StaffDetailActions({ staff }: { staff: Staff }) {
           )
         }
       />
+
+      {/* Change login email */}
+      <StaffChangeEmailDialog
+        staffId={staff.id}
+        fullName={fullName}
+        currentEmail={staff.email}
+        open={emailOpen}
+        onOpenChange={setEmailOpen}
+      />
+
+      {/* Force password reset */}
+      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset dashboard password</DialogTitle>
+            <DialogDescription>
+              We&apos;ll email {staff.email || fullName} a link to choose a new
+              password and sign them out of the dashboard everywhere. Their
+              current password keeps working until they use the link, so a
+              missed email won&apos;t lock them out. Their POS PIN is
+              unaffected.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setResetOpen(false)}
+              disabled={loading === "pw-reset"}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={loading === "pw-reset"}
+              onClick={() =>
+                run(
+                  "pw-reset",
+                  () => forceStaffPasswordReset(staff.id),
+                  "Password reset link sent",
+                  () => setResetOpen(false),
+                )
+              }
+            >
+              {loading === "pw-reset" ? "Sending…" : "Send reset link"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Grant dashboard access */}
       <Dialog open={dashboardOpen} onOpenChange={setDashboardOpen}>

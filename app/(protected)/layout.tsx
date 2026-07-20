@@ -18,6 +18,8 @@ import { hasPackagingStock } from "@/lib/actions/stock-actions";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { getAuthToken } from "@/lib/auth-utils";
 import { getMyPermissionsCached, hasReportsReadAll } from "@/lib/permissions/me";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { EntitlementProvider } from "@/context/entitlementContext";
 import { PermissionsProvider } from "@/context/permissionsContext";
 import { getEntitlements } from "@/lib/actions/entitlement-actions";
@@ -91,6 +93,56 @@ export default async function RootLayout({
   // allSettled rejection branch below is only a defensive backstop — it
   // should never actually trigger.
   const hasPackaging = results[9].status === "fulfilled" ? results[9].value : false;
+
+  // ── Per-destination entitlement gate ──────────────────────────────
+  //
+  // Each entity's subscription expires SEPARATELY, but the middleware gate reads the JWT's
+  // subscription_status claim, which Auth caches per BUSINESS
+  // (auth:subscription:status:{businessId}) — there is no location dimension in it at all.
+  // So on a business with two locations where one is still paid, an expired or cancelled
+  // location stayed fully accessible: the business reads ACTIVE, and nothing else checked.
+  //
+  // EntitlementResponse.items is the per-entity truth. Note the shape: the Billing Service
+  // builds items from ACTIVE + PAST_DUE only, so a lapsed entity is ABSENT rather than present
+  // with active:false — except a bundled entity under a lapsed parent, which IS present with
+  // active:false. `some(entitled && active)` covers both.
+  //
+  // Fails OPEN when entitlements are unavailable (billing unreachable / not configured), which
+  // matches SubscriptionGuard's documented stance — a billing outage must not lock everyone out.
+  const activeDestinationId =
+    currentStore?.id ?? currentWarehouse?.id ?? currentLocation?.id;
+  const destinationLocked =
+    !!entitlements?.items &&
+    !!activeDestinationId &&
+    !entitlements.items.some(
+      (entity) => entity.entityId === activeDestinationId && entity.active,
+    );
+
+  // Billing has to stay reachable, or a locked destination is a dead end. Destination pickers
+  // too — the owner's other locations may be perfectly fine and they need a way back to them.
+  // Only the final NextResponse.next() forwards this. If it is absent for any reason we cannot
+  // tell whether we are already ON /billing — and redirecting there unconditionally would loop.
+  // Absent header therefore means "don't lock".
+  const pathname = (await headers()).get("x-pathname");
+  const isEscapeHatch =
+    !pathname ||
+    pathname.startsWith("/billing") ||
+    pathname.startsWith("/select-location") ||
+    pathname.startsWith("/select-business") ||
+    pathname.startsWith("/subscription");
+
+  // Land them on the billing screen rather than blocking in place. Two reasons: the owner needs
+  // somewhere they can actually pay from, and they may well want to pay LATER — the sidebar and
+  // destination switcher stay available there (the business itself is fine), so they can carry on
+  // in another location and come back to settle this one whenever they choose.
+  if (destinationLocked && !isEscapeHatch) {
+    const lockedType = currentStore?.id
+      ? "store"
+      : currentWarehouse?.id
+        ? "warehouse"
+        : "location";
+    redirect(`/billing?expired=${lockedType}`);
+  }
 
   const locationCount = locationList?.length ?? 0;
   const storeCount = storeList?.length ?? 0;

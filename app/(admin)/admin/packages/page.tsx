@@ -7,10 +7,11 @@ import {
   PageShell,
 } from "@/components/layouts/page-shell";
 import { PackagesListView } from "@/components/admin/catalog/packages-list-view";
+import { PrepayDiscountCard } from "@/components/admin/catalog/prepay-discount-card";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
-import { listPackages } from "@/lib/actions/admin/billing";
-import type { PackageResponse } from "@/types/admin/billing";
+import { getBillingConfig, listPackages } from "@/lib/actions/admin/billing";
+import type { BillingConfigResponse, PackageResponse } from "@/types/admin/billing";
 
 export const metadata = {
   title: "Packages",
@@ -44,6 +45,15 @@ export default async function AdminPackagesPage() {
     loadError = err?.message ?? "Failed to load packages.";
   }
 
+  // Soft-fail: the discount switch is useful but must never take the catalog down
+  // with it if the config endpoint is unavailable.
+  let billingConfig: BillingConfigResponse | null = null;
+  try {
+    billingConfig = await getBillingConfig();
+  } catch {
+    billingConfig = null;
+  }
+
   // Sort: active first, then by entity type, then by price ascending — so
   // the most relevant rows are at the top whatever the catalog size.
   packages.sort((a, b) => {
@@ -66,7 +76,10 @@ export default async function AdminPackagesPage() {
               {loadError}
             </p>
           ) : (
-            <PackagesListView packages={packages} />
+            <>
+              {billingConfig && <PrepayDiscountCard config={billingConfig} />}
+              <PackagesListView packages={packages} />
+            </>
           )}
         </PageBody>
       </PageShell>

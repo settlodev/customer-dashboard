@@ -20,6 +20,9 @@ const ACTION_LABEL: Record<string, string> = {
   ROLES_ASSIGNED: "Roles changed",
   PIN_SET: "PIN set",
   PIN_CLEARED: "PIN cleared",
+  DASHBOARD_INVITE_RESENT: "Invite re-sent",
+  EMAIL_CHANGED: "Login email changed",
+  PASSWORD_RESET_FORCED: "Password reset forced",
 };
 
 function summarize(e: StaffAuditEvent): string {
@@ -37,6 +40,12 @@ function summarize(e: StaffAuditEvent): string {
   }
   if (e.action === "PIN_SET" && typeof d.via === "string") {
     return `via ${d.via}`;
+  }
+  if (e.action === "EMAIL_CHANGED" && typeof d.to === "string") {
+    return typeof d.from === "string" && d.from ? `${d.from} → ${d.to}` : d.to;
+  }
+  if (e.action === "PASSWORD_RESET_FORCED" && typeof d.reason === "string") {
+    return d.reason;
   }
   return "—";
 }

@@ -61,7 +61,7 @@ interface Props {
  * the destination Accepts or Rejects while it's REQUESTED, and the source can only
  * Confirm once it's ACCEPTED. Otherwise the source Confirms straight from REQUESTED:
  *   REQUESTED → [ACCEPTED] → CONFIRMED → DISPATCHED → (PARTIALLY_)RECEIVED / CANCELLED
- *   pending → REJECTED (no stock moved); post-dispatch → DECLINED → RETURN_IN_TRANSIT → RETURNED
+ *   pending → REJECTED (no stock moved); post-dispatch → DECLINED → [RETURN_IN_TRANSIT] → RETURNED
  */
 export function StockTransferStatusActions({ transfer, activeDestinationId }: Props) {
   const { status, awaitingApproval } = transfer;
@@ -84,7 +84,12 @@ export function StockTransferStatusActions({ transfer, activeDestinationId }: Pr
   const showDecline =
     (status === "DISPATCHED" || status === "PARTIALLY_RECEIVED") && isDestination;
   const showReturn = status === "DECLINED" && isDestination;
-  const showConfirmReturn = status === "RETURN_IN_TRANSIT" && isSource;
+  // The source can confirm receipt of the returned stock straight from DECLINED
+  // — the RETURN_IN_TRANSIT hop is worth recording for a multi-day return, but
+  // a driver who turns round the same hour shouldn't need it logged before the
+  // stock can go back on the shelf. Backend accepts either status.
+  const showConfirmReturn =
+    (status === "RETURN_IN_TRANSIT" || status === "DECLINED") && isSource;
   const showCancel = CANCELLABLE.includes(status) && isSource;
 
   const anyVisible =

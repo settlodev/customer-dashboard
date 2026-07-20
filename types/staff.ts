@@ -198,6 +198,16 @@ export interface StaffReportItem {
 }
 
 // ---------------------------------------------------------------------------
+// Schema for changing a dashboard-staff member's login email
+// ---------------------------------------------------------------------------
+
+export const ChangeStaffEmailSchema = object({
+  email: string({ required_error: "Email is required" }).email(
+    "Enter a valid email address",
+  ),
+});
+
+// ---------------------------------------------------------------------------
 // Schema for create/update staff form
 // ---------------------------------------------------------------------------
 

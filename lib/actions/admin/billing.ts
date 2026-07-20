@@ -17,6 +17,7 @@ import {
   CreateCouponRequest,
   CreateCreditPackRequest,
   CreateDiscountRequest,
+  AddonFeatureResponse,
   CreateFeatureRequest,
   CreatePackageRequest,
   CreditPackResponse,
@@ -724,6 +725,48 @@ export async function getBillingConfig(): Promise<BillingConfigResponse> {
   return parseStringify(data);
 }
 
+/**
+ * Switch the platform prepayment discount on/off and set its rate.
+ *
+ * Annual-only by design: a commitment shorter than 12 months never earns it, whatever
+ * rate is stored. Off means every term is billed gross.
+ */
+export async function updatePrepayDiscount(
+  enabled: boolean,
+  annualPercentage: number,
+): Promise<FormResponse<BillingConfigResponse>> {
+  if (annualPercentage < 0 || annualPercentage > 100) {
+    return parseStringify({
+      responseType: "error",
+      message: "Discount must be between 0 and 100%",
+      error: new Error("annualPercentage out of range"),
+    });
+  }
+  try {
+    const data = await staffBilling().put<
+      BillingConfigResponse,
+      { enabled: boolean; annualPercentage: number }
+    >(`/api/v1/admin/billing-config/prepay-discount`, {
+      enabled,
+      annualPercentage,
+    });
+    revalidateCatalog("packages");
+    return parseStringify({
+      responseType: "success",
+      message: enabled
+        ? `Prepay discount on — ${annualPercentage}% off annual commitments`
+        : "Prepay discount off — every term bills gross",
+      data,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to update the prepay discount",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
 /** Package config/pricing change history (audit trail), most-recent first. */
 export async function getPackageHistory(
   packageId: string,
@@ -983,6 +1026,80 @@ export async function deactivateCoupon(
     return parseStringify({
       responseType: "error",
       message: error?.message || "Failed to deactivate coupon",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+// ── Catalog: addon → feature bindings (super admin) ─────────────────
+//
+// What makes an addon actually DO something. Without a binding an addon is priced and
+// billable but lifts no limit at all — only the seeded capacity addons had bindings,
+// because they were written directly into migration V8.
+
+/** Feature ceilings this addon lifts. Empty means the addon changes nothing. */
+export async function getAddonFeatures(
+  addonId: string,
+): Promise<AddonFeatureResponse[]> {
+  const data = await staffBilling().get<AddonFeatureResponse[]>(
+    `/api/v1/admin/addons/${addonId}/features`,
+  );
+  return parseStringify(data);
+}
+
+/**
+ * Bind a feature to this addon at `featureValue`, upserting by feature.
+ *
+ * `featureValue` is the NEW CEILING for the feature, not an increment: entitlements take
+ * `Math.max` of the package value and each active addon value. To turn a 10-staff package
+ * into a 20-staff one, store `20`.
+ */
+export async function setAddonFeature(
+  addonId: string,
+  featureId: string,
+  featureValue: string,
+): Promise<FormResponse<AddonFeatureResponse>> {
+  try {
+    const data = await staffBilling().post<
+      AddonFeatureResponse,
+      { featureId: string; featureValue: string; isIncluded: boolean }
+    >(`/api/v1/admin/addons/${addonId}/features`, {
+      featureId,
+      featureValue,
+      isIncluded: true,
+    });
+    revalidateCatalog("addons");
+    return parseStringify({
+      responseType: "success",
+      message: "Addon limit saved",
+      data,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to save the addon limit",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function removeAddonFeature(
+  addonId: string,
+  featureKey: string,
+): Promise<FormResponse<void>> {
+  try {
+    await staffBilling().delete<void>(
+      `/api/v1/admin/addons/${addonId}/features/${featureKey}`,
+    );
+    revalidateCatalog("addons");
+    return parseStringify({
+      responseType: "success",
+      message: "Addon limit removed",
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to remove the addon limit",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }

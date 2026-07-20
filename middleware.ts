@@ -633,7 +633,14 @@ export async function middleware(request: NextRequest) {
     ));
   }
 
-  return withRefreshedCookies(NextResponse.next());
+  // Forward the path so server layouts can gate on it. The protected layout needs it for the
+  // per-destination entitlement check: an entity whose OWN subscription has lapsed is locked,
+  // but /billing must stay reachable or the owner has no way to pay for it.
+  const forwarded = new Headers(request.headers);
+  forwarded.set("x-pathname", pathname);
+  return withRefreshedCookies(
+    NextResponse.next({ request: { headers: forwarded } }),
+  );
 }
 
 export const config = {
