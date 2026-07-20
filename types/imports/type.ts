@@ -85,4 +85,5 @@ export interface CommitResponse {
   updated: number;
   skipped: number;
   errors: RowError[];
+  warnings: string[];
 }

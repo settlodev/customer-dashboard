@@ -1355,6 +1355,7 @@ function ResultStep({
 }) {
   const imported = result.created + result.updated;
   const failed = result.errors?.length ?? 0;
+  const notices = result.warnings?.length ?? 0;
   const state: "ok" | "partial" | "failed" =
     failed === 0 ? "ok" : imported > 0 ? "partial" : "failed";
 
@@ -1413,6 +1414,19 @@ function ResultStep({
               <p key={i} className="text-xs text-red-700">
                 <FileWarning className="inline h-3 w-3 mr-1" />
                 Row {e.rowIndex + 2}: {e.message}
+              </p>
+            ))}
+          </div>
+        )}
+        {notices > 0 && (
+          <div className="rounded border border-amber-200 bg-amber-50 p-3 space-y-1">
+            <p className="text-xs font-medium text-amber-800">
+              Committed, with notices
+            </p>
+            {result.warnings.map((w, i) => (
+              <p key={i} className="text-xs text-amber-700">
+                <AlertTriangle className="inline h-3 w-3 mr-1" />
+                {w}
               </p>
             ))}
           </div>
