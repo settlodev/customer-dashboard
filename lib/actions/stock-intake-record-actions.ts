@@ -87,6 +87,50 @@ export async function createStockIntakeRecord(
   redirect(`/stock-intakes/${createdId}`);
 }
 
+/**
+ * Full replacement of a DRAFT intake's editable fields — DRAFT-only on the
+ * backend, since a confirmed intake has already moved the ledger and can
+ * only have its batch values corrected (see stock-value-correction-actions).
+ */
+export async function updateStockIntakeRecord(
+  id: string,
+  intake: z.infer<typeof StockIntakeRecordSchema>,
+): Promise<FormResponse | void> {
+  const validated = StockIntakeRecordSchema.safeParse(intake);
+
+  if (!validated.success) {
+    return parseStringify({
+      responseType: "error",
+      message: "Please fill all required fields",
+      error: new Error(validated.error.message),
+    });
+  }
+
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.put(inventoryUrl(`/api/v1/stock-intakes/${id}`), validated.data);
+  } catch (error: unknown) {
+    const err = error as {
+      digest?: string;
+      message?: string;
+      code?: string;
+      metadata?: Record<string, unknown>;
+    };
+    if (err?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    return parseStringify({
+      responseType: "error",
+      message: err?.message ?? "Failed to update stock intake",
+      error: error instanceof Error ? error : new Error(String(error)),
+      errorCode: err?.code,
+      metadata: err?.metadata,
+    });
+  }
+
+  revalidatePath("/stock-intakes");
+  revalidatePath(`/stock-intakes/${id}`);
+  redirect(`/stock-intakes/${id}`);
+}
+
 export async function confirmStockIntakeRecord(id: string): Promise<FormResponse | void> {
   try {
     const apiClient = new ApiClient();

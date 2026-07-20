@@ -1,8 +1,9 @@
 "use client";
 
 import { useTransition } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Check, X } from "lucide-react";
+import { Check, X, Pencil } from "lucide-react";
 import {
   confirmStockIntakeRecord,
   cancelStockIntakeRecord,
@@ -53,6 +54,11 @@ export default function StockIntakeRecordActions({ id }: { id: string }) {
 
   return (
     <div className="flex gap-2">
+      <Button size="sm" variant="outline" asChild>
+        <Link href={`/stock-intakes/${id}/edit`}>
+          <Pencil className="w-4 h-4 mr-1" /> Edit
+        </Link>
+      </Button>
       <Button size="sm" onClick={handleConfirm} disabled={isPending}>
         <Check className="w-4 h-4 mr-1" /> Confirm
       </Button>
