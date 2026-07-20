@@ -223,12 +223,13 @@ export function ImportFlow({
           }
           if (r.status === "EXACT_MATCH") {
             if (preset === "update-existing-create-new") {
-              const targetId = r.suggestedMatches?.[0]?.id ?? null;
-              if (targetId) {
+              const target = r.suggestedMatches?.[0];
+              if (target?.id) {
                 next.set(r.rowIndex, {
                   ...current,
                   action: "UPDATE_EXISTING",
-                  targetId,
+                  targetId: target.id,
+                  targetType: target.targetType ?? null,
                 });
                 touched++;
               }
@@ -271,11 +272,16 @@ export function ImportFlow({
           const current = next.get(idx);
           if (!current) continue;
           const row = matchById.get(idx);
-          const targetId =
+          const first =
             action === "UPDATE_EXISTING" || action === "APPLY_INTAKE"
-              ? (row?.suggestedMatches?.[0]?.id ?? null)
-              : null;
-          next.set(idx, { ...current, action, targetId });
+              ? row?.suggestedMatches?.[0]
+              : undefined;
+          next.set(idx, {
+            ...current,
+            action,
+            targetId: first?.id ?? null,
+            targetType: first?.targetType ?? null,
+          });
         }
         return next;
       });
@@ -1235,7 +1241,10 @@ function ActionControls({
       {needsTarget(decision.action) && row.suggestedMatches?.length ? (
         <Select
           value={decision.targetId ?? ""}
-          onValueChange={(v) => setDecision({ targetId: v })}
+          onValueChange={(v) => {
+            const match = row.suggestedMatches?.find((m) => m.id === v);
+            setDecision({ targetId: v, targetType: match?.targetType ?? null });
+          }}
         >
           <SelectTrigger className="h-8 w-[160px]">
             <SelectValue placeholder="Match to…" />

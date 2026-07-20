@@ -23,11 +23,14 @@ export type RowStatus =
 
 export type Decision = "SKIP" | "CREATE" | "UPDATE_EXISTING" | "APPLY_INTAKE";
 
+export type ImportTargetType = "STOCK" | "STOCK_VARIANT" | "PRODUCT";
+
 export interface SuggestedMatch {
   id: string;
   name: string;
   subtitle?: string | null;
   similarity?: number | null;
+  targetType?: ImportTargetType | null;
 }
 
 export interface PreviewRow {
@@ -63,6 +66,7 @@ export interface RowDecision {
   rowIndex: number;
   action: Decision;
   targetId?: string | null;
+  targetType?: ImportTargetType | null;
   overrides?: Record<string, unknown> | null;
 }
 
