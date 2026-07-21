@@ -12,6 +12,7 @@ import { getProduct } from "@/lib/actions/product-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import { getItemSalesSummary } from "@/lib/actions/item-sales-actions";
+import { getUnits } from "@/lib/actions/unit-actions";
 // Reads come from the Reports Service so the Inventory Service stays out
 // of the read path. Mutations (reorder config, threshold writes) still go
 // through the Inventory Service via {@code inventory-balance-actions}.
@@ -55,9 +56,10 @@ export default async function ProductPage({
     throw new Error("Failed to load product details");
   }
 
-  const [location, currency] = await Promise.all([
+  const [location, currency, units] = await Promise.all([
     getCurrentLocation().catch(() => null),
     getLocationCurrency(),
+    getUnits().catch(() => []),
   ]);
 
   const locationId = location?.id ?? null;
@@ -209,6 +211,7 @@ export default async function ProductPage({
           auditEntries={auditPage.content ?? []}
           currency={currency}
           recipeSummary={recipeSummary}
+          units={units}
           initialTab={tab}
           from={salesFrom}
           to={salesTo}

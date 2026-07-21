@@ -41,6 +41,7 @@ import type { ItemSalesAggregate } from "@/types/item-sales/type";
 import type { InventorySnapshot } from "@/types/inventory-snapshot/type";
 import type { AuditLogEntry } from "@/types/audit-log/type";
 import type { ProductRecipeSummary, VariantRecipeSummary } from "@/types/bom/type";
+import type { UnitOfMeasure } from "@/types/unit/type";
 import { AUDIT_ACTION_LABELS } from "@/types/audit-log/type";
 import {
   PRICING_STRATEGY_OPTIONS,
@@ -71,6 +72,12 @@ interface Props {
   currency: string;
   /** Per-variant recipe payload — empty when the product has no RECIPE-mode variants. */
   recipeSummary: ProductRecipeSummary;
+  /**
+   * Full units-of-measure catalogue, fetched server-side (page.tsx) alongside
+   * the page's other data. Resolves a DIRECT variant's `saleUnitId` to a
+   * display name — the backend response carries only the id.
+   */
+  units: UnitOfMeasure[];
   /** Tab to open on mount (from `?tab=`), e.g. "sales" when arriving from a report. */
   initialTab?: string;
   /** Sales-window start (yyyy-MM-dd) — scopes the sales KPIs + Sales tab. */
@@ -143,6 +150,7 @@ export function ProductDetailView({
   auditEntries,
   currency,
   recipeSummary,
+  units,
   initialTab,
   from,
   to,
@@ -357,6 +365,7 @@ export function ProductDetailView({
           stockBalanceMap={stockBalanceMap}
           currency={currency}
           recipeSummary={recipeSummary}
+          units={units}
         />
       )}
       {tab === "sales" && (
@@ -793,11 +802,13 @@ function InventoryTab({
   stockBalanceMap,
   currency,
   recipeSummary,
+  units,
 }: {
   product: Product;
   stockBalanceMap: Record<string, InventoryBalanceSummary>;
   currency: string;
   recipeSummary: ProductRecipeSummary;
+  units: UnitOfMeasure[];
 }) {
   const trackedVariants = product.variants.filter(
     (v) =>
@@ -925,11 +936,29 @@ function InventoryTab({
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
-                        {v.directQuantity != null && v.directQuantity !== 1 && (
-                          <span className="block text-[10px] text-muted-foreground">
-                            {v.directQuantity} per sale
-                          </span>
-                        )}
+                        {(() => {
+                          const unitName = v.saleUnitId
+                            ? units.find((u) => u.id === v.saleUnitId)?.name
+                            : undefined;
+                          // "1 Bottle per sale" is worth showing even at
+                          // quantity 1 — the unit is the whole point. Without a
+                          // unit, keep the old "only when != 1" rule.
+                          if (v.saleUnitQuantity != null && unitName) {
+                            return (
+                              <span className="block text-[10px] text-muted-foreground">
+                                {v.saleUnitQuantity} {unitName} per sale
+                              </span>
+                            );
+                          }
+                          if (v.directQuantity != null && v.directQuantity !== 1) {
+                            return (
+                              <span className="block text-[10px] text-muted-foreground">
+                                {v.directQuantity} per sale
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
                       </TableCell>
                       <TableCell
                         className={`text-right font-medium ${

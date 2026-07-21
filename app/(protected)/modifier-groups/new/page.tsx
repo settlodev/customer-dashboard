@@ -19,6 +19,7 @@ export default async function NewModifierGroupPage() {
       stockVariants.push({
         id: v.id,
         label: `${stock.name} — ${v.name}`,
+        unitId: v.unitId,
       });
     }
   }

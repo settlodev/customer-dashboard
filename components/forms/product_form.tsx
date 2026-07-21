@@ -3341,7 +3341,7 @@ function CreateLibraryGroupButton({
         for (const s of stocks ?? []) {
           for (const v of s.variants ?? []) {
             if (v.archived) continue;
-            opts.push({ id: v.id, label: `${s.name} — ${v.name}` });
+            opts.push({ id: v.id, label: `${s.name} — ${v.name}`, unitId: v.unitId });
           }
         }
         setStockVariants(opts);
