@@ -43,6 +43,17 @@ interface Props {
   isDisabled?: boolean;
   onChange: (value: string) => void;
   onBlur?: () => void;
+  /**
+   * Fires with the full compatible-unit row whenever the selection resolves —
+   * including on mount from an existing value. Callers that need
+   * `factorFromAnchor` (e.g. to derive a cost per sale unit) use this;
+   * `onChange` alone only yields the id. `null` when cleared, while the
+   * compatibility set is still loading, or when the selected id isn't in the
+   * anchor's compatible set.
+   *
+   * Memoise this with `useCallback` — it is an effect dependency.
+   */
+  onUnitMeta?: (unit: CompatibleUnit | null) => void;
 }
 
 // Per-anchor compatibility lookups stay local — they're parameterised by
@@ -90,6 +101,7 @@ const CompatibleUnitSelector: React.FC<Props> = ({
   isDisabled,
   onChange,
   onBlur,
+  onUnitMeta,
 }) => {
   const [open, setOpen] = useState(false);
   const { data: allUnitsData, loading: allUnitsLoading } = useCachedUnits();
@@ -141,6 +153,18 @@ const CompatibleUnitSelector: React.FC<Props> = ({
       cancelled = true;
     };
   }, [anchorUnitId, allUnitsData]);
+
+  // Surface the resolved row — not just the id — so callers can use
+  // factorFromAnchor. Runs on mount too, once `compat` has loaded, so an
+  // edit-mode form gets the factor for its pre-existing selection.
+  useEffect(() => {
+    if (!onUnitMeta) return;
+    if (!value || !compat) {
+      onUnitMeta(null);
+      return;
+    }
+    onUnitMeta(compat.find((u) => u.unitId === value) ?? null);
+  }, [value, compat, onUnitMeta]);
 
   const isLoading = anchorUnitId ? compatLoading : allUnitsLoading;
 
