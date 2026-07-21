@@ -160,6 +160,12 @@ export interface ProductVariant {
   stockVariantId: string | null;
   stockVariantName: string | null;
   directQuantity: number | null;
+  /** Unit the per-sale quantity is expressed in; the stock item's base unit by default. */
+  saleUnitId: string | null;
+  saleUnitName: string | null;
+  saleUnitAbbreviation: string | null;
+  /** The number the merchant typed, in `saleUnitId`. `directQuantity` is its base-unit equivalent. */
+  saleUnitQuantity: number | null;
   /**
    * Live unit cost as of the read. The inventory service joins the matching
    * `inventory_balance` row server-side for DIRECT-linked variants
@@ -242,6 +248,12 @@ export interface ModifierOption {
   stockVariantId: string | null;
   stockVariantName: string | null;
   directQuantity: number | null;
+  /** Unit the per-sale quantity is expressed in; the stock item's base unit by default. */
+  saleUnitId: string | null;
+  saleUnitName: string | null;
+  saleUnitAbbreviation: string | null;
+  /** The number the merchant typed, in `saleUnitId`. `directQuantity` is its base-unit equivalent. */
+  saleUnitQuantity: number | null;
   sortOrder: number;
   active: boolean;
   archivedAt: string | null;

@@ -50,6 +50,9 @@ export const ProductVariantSchema = object({
   // DIRECT-mode wiring
   stockVariantId: string().uuid().optional().nullish(),
   directQuantity: preprocess(toOptionalNumber, number().positive().optional().nullish()),
+  // The unit `directQuantity` is typed in. Defaults to the linked stock
+  // item's base unit, which is what the backend assumes when this is absent.
+  saleUnitId: string().uuid().optional().nullish(),
 
   // RECIPE-mode wiring. Lives in form state only — the product backend
   // doesn't take this field. The action fans out attachBomRule(ruleId, {
@@ -285,6 +288,9 @@ export const ModifierOptionSchema = object({
   sellabilityMode: z.enum(["UNLIMITED", "DIRECT", "RECIPE"]).default("UNLIMITED"),
   stockVariantId: string().uuid().optional().nullish(),
   directQuantity: preprocess(toOptionalNumber, number().positive().optional().nullish()),
+  // The unit `directQuantity` is typed in. Defaults to the linked stock
+  // item's base unit, which is what the backend assumes when this is absent.
+  saleUnitId: string().uuid().optional().nullish(),
   sortOrder: preprocess(toNumber, number().int().nonnegative()).default(0),
   active: boolean().default(true),
 }).superRefine((val, ctx) => {
