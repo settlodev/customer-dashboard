@@ -24,13 +24,24 @@ function stockFieldsFor(input: ModifierOptionInput) {
     return {
       sellabilityMode: "DIRECT" as const,
       stockVariantId: input.stockVariantId || undefined,
-      directQuantity: input.directQuantity ?? undefined,
+      // With a unit chosen the backend derives directQuantity from the pair;
+      // sending a raw directQuantity too would be a second number in a
+      // different unit.
+      ...(input.saleUnitId
+        ? {
+            saleUnitId: input.saleUnitId,
+            saleUnitQuantity: input.directQuantity ?? undefined,
+            directQuantity: undefined,
+          }
+        : { directQuantity: input.directQuantity ?? undefined }),
     };
   }
   return {
     sellabilityMode: input.sellabilityMode,
     stockVariantId: undefined,
     directQuantity: undefined,
+    saleUnitId: undefined,
+    saleUnitQuantity: undefined,
   };
 }
 
