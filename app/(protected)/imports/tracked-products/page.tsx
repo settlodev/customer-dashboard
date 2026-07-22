@@ -5,7 +5,7 @@ export default function TrackedProductsImportPage() {
     <ImportFlow
       type="STOCK_WITH_PRODUCT"
       title="Import tracked products"
-      description="Create a product + stock item per row, linked 1:1 so every sale decrements stock automatically."
+      description="Create a product + stock item per row, linked 1:1 so every sale decrements stock automatically. Only the selling price is required — leave quantity and cost blank (or 0) to load a catalogue before you have taken any delivery, and the items start at zero on hand."
       templateColumns={[
         "name",
         "description",
