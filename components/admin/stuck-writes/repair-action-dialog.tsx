@@ -22,7 +22,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { createRepairCommand } from "@/lib/actions/admin/stuck-writes";
+import { createRepairCommand, retryDeadLetter } from "@/lib/actions/admin/stuck-writes";
 import type { DeadLetterRow, RepairVerb } from "@/types/admin/stuck-writes";
 
 const VERB_META: Record<
@@ -56,6 +56,10 @@ export function RepairActionDialog({
   const isMoneyDiscard = activeVerb === "DISCARD_MUTATION" && row.isMoneyOp;
   const isNonMoneyDiscard = activeVerb === "DISCARD_MUTATION" && !row.isMoneyOp;
   const isSafeVerb = activeVerb !== null && activeVerb !== "DISCARD_MUTATION";
+  // Server-side replay is valid only for rows the device provably discarded.
+  // Money / stale rows are still queued on the device and must use the
+  // RETRY_MUTATION device command instead (replaying them would double-apply).
+  const isReplayable = !row.isMoneyOp && row.classification !== "stale";
 
   function open(verb: RepairVerb) {
     setReason("");
@@ -107,6 +111,28 @@ export function RepairActionDialog({
             ? err.message
             : "Failed to dispatch command. Please try again.";
         setError(message);
+      }
+    });
+  }
+
+  // Eligible RETRY replays the stored payload server-side and reports the real
+  // outcome synchronously (DRAINED/FAILED), rather than firing a device command.
+  function handleServerReplay() {
+    setError("");
+    startTransition(async () => {
+      const res = await retryDeadLetter(row.id);
+      if (res.responseType === "success") {
+        toast({
+          variant: "success",
+          title: "Mutation replayed",
+          description: res.message,
+        });
+        close();
+        onActionDone();
+      } else {
+        // FAILED replay, RETRY_IN_PROGRESS, or another rejection — keep the
+        // dialog open with the reason so the operator can read it.
+        setError(res.message);
       }
     });
   }
@@ -175,9 +201,10 @@ export function RepairActionDialog({
               {isSafeVerb &&
                 activeVerb === "FORCE_DRAIN" &&
                 `This is a safe, idempotent operation. It will signal device ${row.deviceId.slice(0, 8)}… to force-drain its mutation queue.`}
-              {isSafeVerb &&
-                activeVerb === "RETRY_MUTATION" &&
-                `This is a safe, idempotent operation. It will signal device ${row.deviceId.slice(0, 8)}… to retry mutation ${row.idempotencyKey?.slice(0, 8)}….`}
+              {activeVerb === "RETRY_MUTATION" &&
+                (isReplayable
+                  ? "Replays this mutation on the server from its stored payload and reports the result immediately. Safe to retry — it only lands if it hasn't already."
+                  : `This mutation is still held on device ${row.deviceId.slice(0, 8)}… (it touches money or is a version conflict). This re-queues it for the device to retry on its next sync.`)}
               {isNonMoneyDiscard && (
                 <>
                   This will permanently discard mutation{" "}
@@ -220,17 +247,25 @@ export function RepairActionDialog({
               Cancel
             </Button>
             <Button
-              onClick={handleConfirm}
+              onClick={
+                activeVerb === "RETRY_MUTATION" && isReplayable
+                  ? handleServerReplay
+                  : handleConfirm
+              }
               disabled={confirmDisabled}
               variant={activeVerb === "DISCARD_MUTATION" ? "destructive" : "default"}
             >
               {isPending ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Sending…
+                  {activeVerb === "RETRY_MUTATION" && isReplayable
+                    ? "Replaying…"
+                    : "Sending…"}
                 </span>
               ) : isMoneyDiscard ? (
                 "Request approval"
+              ) : activeVerb === "RETRY_MUTATION" && isReplayable ? (
+                "Retry now"
               ) : (
                 "Dispatch"
               )}
