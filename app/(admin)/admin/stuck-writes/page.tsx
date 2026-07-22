@@ -8,9 +8,14 @@ import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import {
   listDeadLetters,
   listPendingApprovals,
+  listRepairCommands,
 } from "@/lib/actions/admin/stuck-writes";
 import { getPlatformLocations } from "@/lib/actions/admin/platform-metrics";
-import type { DeadLetterPage, RepairCommandPage } from "@/types/admin/stuck-writes";
+import type {
+  DeadLetterPage,
+  RepairCommandPage,
+  RepairCommandStatus,
+} from "@/types/admin/stuck-writes";
 import type { PlatformLocationRow } from "@/types/admin/platform-metrics";
 
 // Force dynamic so every filter change re-runs this Server Component with the new params.
@@ -33,6 +38,7 @@ interface StuckWritesPageProps {
     to?: string;
     tab?: string;
     resolved?: string;
+    historyStatus?: string;
   }>;
 }
 
@@ -99,14 +105,16 @@ export default async function StuckWritesPage({
   const { fromIso, toIso } = dayBounds(params.from, params.to);
   const tab = params.tab ?? "mutations";
   const resolved = params.resolved === "true";
+  const historyStatus = params.historyStatus ?? "DISPATCHED";
 
   let deadLetters: DeadLetterPage | null = null;
   let approvals: RepairCommandPage = EMPTY_APPROVAL_PAGE;
+  let history: RepairCommandPage = EMPTY_APPROVAL_PAGE;
   let locations: PlatformLocationRow[] = [];
   let loadError: string | null = null;
 
   try {
-    [deadLetters, approvals, locations] = await Promise.all([
+    [deadLetters, approvals, history, locations] = await Promise.all([
       listDeadLetters({
         page: backendPage,
         size,
@@ -122,6 +130,13 @@ export default async function StuckWritesPage({
       // Always fetch approvals to show badge count even on the mutations tab.
       canApprove
         ? listPendingApprovals({ status: "REQUESTED", size: 100 })
+        : Promise.resolve(EMPTY_APPROVAL_PAGE),
+      // History is heavier and needs no badge, so only fetch it on its own tab.
+      tab === "history"
+        ? listRepairCommands({
+            status: historyStatus as RepairCommandStatus,
+            size: 50,
+          })
         : Promise.resolve(EMPTY_APPROVAL_PAGE),
       getPlatformLocations({ size: 200 })
         .then((p) => p.content)
@@ -162,6 +177,8 @@ export default async function StuckWritesPage({
               defaultPageSize={size}
               initialTab={tab}
               initialResolved={resolved}
+              initialHistory={history}
+              initialHistoryStatus={historyStatus}
             />
           )}
         </PageBody>

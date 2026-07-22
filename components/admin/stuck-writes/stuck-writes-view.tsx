@@ -9,6 +9,7 @@ import { DateRange } from "react-day-picker";
 import { DataTable } from "@/components/tables/data-table";
 import { buildDeadLetterColumns } from "@/components/tables/admin-stuck-writes/columns";
 import { buildApprovalsColumns } from "@/components/tables/admin-stuck-writes/approvals-columns";
+import { buildCommandHistoryColumns } from "@/components/tables/admin-stuck-writes/command-history-columns";
 import {
   LocationCombobox,
   locationDisplayLabel,
@@ -30,7 +31,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type { DeadLetterPage, RepairCommandPage } from "@/types/admin/stuck-writes";
+import type {
+  DeadLetterPage,
+  RepairCommandPage,
+  RepairCommandStatus,
+} from "@/types/admin/stuck-writes";
 import type { PlatformLocationRow } from "@/types/admin/platform-metrics";
 
 const CLASSIFICATIONS = [
@@ -63,6 +68,10 @@ export interface StuckWritesViewProps {
   initialTab: string;
   /** true → showing the resolved archive; false → still-stuck rows. */
   initialResolved: boolean;
+  /** Repair-command history page (populated only on the history tab). */
+  initialHistory: RepairCommandPage;
+  /** Selected history status filter: REQUESTED | APPROVED | REJECTED | DISPATCHED. */
+  initialHistoryStatus: string;
 }
 
 function parseDateInput(v: string | null): Date | undefined {
@@ -88,6 +97,8 @@ export function StuckWritesView({
   defaultPageSize,
   initialTab,
   initialResolved,
+  initialHistory,
+  initialHistoryStatus,
 }: StuckWritesViewProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -148,6 +159,8 @@ export function StuckWritesView({
     [canApprove, operatorId, onActionDone],
   );
 
+  const historyCols = useMemo(() => buildCommandHistoryColumns(), []);
+
   const applyDateRange = () => {
     const from = pendingDate?.from ? format(pendingDate.from, "yyyy-MM-dd") : null;
     const to = pendingDate?.to ? format(pendingDate.to, "yyyy-MM-dd") : from;
@@ -170,7 +183,12 @@ export function StuckWritesView({
 
   const hasDateFilter = !!initialFrom;
   const today = new Date();
-  const tabValue = initialTab === "approvals" && canApprove ? "approvals" : "mutations";
+  const tabValue =
+    initialTab === "approvals" && canApprove
+      ? "approvals"
+      : initialTab === "history"
+        ? "history"
+        : "mutations";
 
   const {
     content: dlContent,
@@ -184,6 +202,12 @@ export function StuckWritesView({
     totalPages: appPages,
     page: appPage,
   } = initialApprovals;
+  const {
+    content: histContent,
+    totalElements: histTotal,
+    totalPages: histPages,
+    page: histPage,
+  } = initialHistory;
 
   return (
     <Tabs
@@ -210,6 +234,7 @@ export function StuckWritesView({
             )}
           </TabsTrigger>
         )}
+        <TabsTrigger value="history">History</TabsTrigger>
       </TabsList>
 
       {/* ── Stuck Mutations tab ── */}
@@ -410,6 +435,42 @@ export function StuckWritesView({
           />
         </TabsContent>
       )}
+
+      {/* ── Command history tab ── */}
+      <TabsContent value="history" className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={initialHistoryStatus}
+            onValueChange={(v) => updateParams({ historyStatus: v, page: "1" })}
+          >
+            <SelectTrigger className="h-9 w-[180px] text-[12.5px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="DISPATCHED">Dispatched</SelectItem>
+              <SelectItem value="REQUESTED">Requested</SelectItem>
+              <SelectItem value="APPROVED">Approved</SelectItem>
+              <SelectItem value="REJECTED">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="ml-auto font-mono text-[12px] text-muted-foreground">
+            {histTotal === 0
+              ? "No commands"
+              : `Page ${histPage + 1} of ${Math.max(1, histPages)} · ${histTotal.toLocaleString()} total`}
+          </span>
+        </div>
+        <DataTable
+          columns={historyCols}
+          data={histContent}
+          searchKey="verb"
+          hideSearch
+          pageNo={histPage}
+          total={histTotal}
+          pageCount={Math.max(1, histPages)}
+          defaultPageSize={50}
+          disableArchive
+        />
+      </TabsContent>
     </Tabs>
   );
 }
