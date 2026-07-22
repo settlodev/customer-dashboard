@@ -30,6 +30,7 @@ export default async function Page({ params }: { params: Params }) {
       stockVariants.push({
         id: v.id,
         label: `${stock.name} — ${v.name}`,
+        unitId: v.unitId,
       });
     }
   }

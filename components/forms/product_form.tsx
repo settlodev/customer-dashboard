@@ -80,6 +80,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import ConsumptionRuleSelector from "@/components/widgets/consumption-rule-selector";
+import CompatibleUnitSelector from "@/components/widgets/compatible-unit-selector";
 import RecipeForm from "@/components/forms/recipe-form";
 import {
   ModifierGroupForm,
@@ -172,6 +173,7 @@ import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import type { TaxType } from "@/types/tax-type/type";
 import type { FormResponse } from "@/types/types";
+import type { CompatibleUnit } from "@/types/unit/type";
 import {
   DAYS_OF_WEEK,
   DAY_LABELS,
@@ -186,6 +188,8 @@ interface StockVariantOption {
   id: string;
   label: string;
   unitAbbreviation: string;
+  /** The stock item's base unit — the anchor for the sale-unit dropdown. */
+  unitId: string;
 }
 
 // Default variant — UNLIMITED ("no tracking") is the simplest default. The
@@ -207,6 +211,7 @@ const DEFAULT_VARIANT: ProductVariantInput = {
   availableQuantity: undefined,
   stockVariantId: undefined,
   directQuantity: undefined,
+  saleUnitId: undefined,
   bomRuleId: undefined,
   autoRetireOnSellout: false,
   giveaway: false,
@@ -241,7 +246,10 @@ function variantToInput(
     markupAmount: v.markupAmount ?? undefined,
     availableQuantity: v.availableQuantity ?? undefined,
     stockVariantId: v.stockVariantId ?? undefined,
-    directQuantity: v.directQuantity ?? undefined,
+    // Prefer the round-tripped typed number; directQuantity is its base-unit
+    // equivalent and would show 0.041667 in the box instead of 1.
+    directQuantity: v.saleUnitQuantity ?? v.directQuantity ?? undefined,
+    saleUnitId: v.saleUnitId ?? undefined,
     // For RECIPE-mode variants, the active rule is held on a separate
     // BomRuleAttachment table — the form fetches it lazily and primes
     // the field when the variant first renders. Default undefined here.
@@ -360,6 +368,7 @@ export default function ProductForm({ item }: ProductFormProps) {
               id: v.id,
               label: `${stock.name} — ${v.name}`,
               unitAbbreviation: v.unitAbbreviation,
+              unitId: v.unitId,
             });
           }
         }
@@ -1546,6 +1555,20 @@ function VariantEditorImpl({
     pricingStrategy === "FIXED_MARKUP";
   const isGiveaway = !!variant?.giveaway;
 
+  // The stock item's own tracking unit — the anchor the compatible-unit
+  // dropdown narrows against.
+  const anchorUnitId = useMemo(
+    () => stockVariants.find((sv) => sv.id === stockVariantId)?.unitId,
+    [stockVariants, stockVariantId],
+  );
+  // factorFromAnchor: multiply a quantity in the stock's base unit by this to
+  // get it in the chosen sale unit. 1 Crate = 24 Bottle -> 24.
+  const [saleUnitFactor, setSaleUnitFactor] = useState<number | null>(null);
+  const handleUnitMeta = useCallback(
+    (u: CompatibleUnit | null) => setSaleUnitFactor(u?.factorFromAnchor ?? null),
+    [],
+  );
+
   const handleTrackToggle = (track: boolean) => {
     if (track) {
       form.setValue(`variants.${index}.sellabilityMode`, "DIRECT");
@@ -1567,17 +1590,41 @@ function VariantEditorImpl({
     }
   }, [mode, index, form]);
 
+  // Re-anchor on stock-item change: the previously-picked unit almost
+  // certainly isn't convertible against the new item's tracking unit.
+  const previousStockVariantId = useRef(stockVariantId);
+  useEffect(() => {
+    if (previousStockVariantId.current === stockVariantId) return;
+    previousStockVariantId.current = stockVariantId;
+    form.setValue(`variants.${index}.saleUnitId`, anchorUnitId ?? null, {
+      shouldDirty: true,
+    });
+    setSaleUnitFactor(null);
+  }, [stockVariantId, anchorUnitId, form, index]);
+
   useEffect(() => {
     if (mode !== "DIRECT") return;
     if (!stockVariantId || directQuantity == null || directQuantity <= 0)
       return;
     const unitCost = stockVariantCosts[stockVariantId];
     if (unitCost == null) return;
-    const derivedCost = Number((unitCost * directQuantity).toFixed(4));
+    // unitCost is per stock BASE unit; factorFromAnchor converts base -> sale
+    // unit (1 Crate = 24 Bottle -> 24), so the cost of one sale unit is
+    // unitCost / factor. No factor (base unit picked, or still loading) is 1:1.
+    const factor = saleUnitFactor && saleUnitFactor > 0 ? saleUnitFactor : 1;
+    const derivedCost = Number(((unitCost * directQuantity) / factor).toFixed(4));
     form.setValue(`variants.${index}.costPrice`, derivedCost, {
       shouldValidate: true,
     });
-  }, [mode, stockVariantId, directQuantity, stockVariantCosts, index, form]);
+  }, [
+    mode,
+    stockVariantId,
+    directQuantity,
+    stockVariantCosts,
+    saleUnitFactor,
+    index,
+    form,
+  ]);
 
   useEffect(() => {
     if (isGiveaway || !isMarkupMode || costPrice == null) return;
@@ -2026,7 +2073,7 @@ function VariantEditorImpl({
           />
 
           {mode === "DIRECT" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name={`variants.${index}.stockVariantId`}
@@ -2077,9 +2124,29 @@ function VariantEditorImpl({
               />
               <FormField
                 control={form.control}
+                name={`variants.${index}.saleUnitId`}
+                render={({ field }) => (
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel>Unit</FieldLabel>
+                    <FormControl>
+                      <CompatibleUnitSelector
+                        anchorUnitId={anchorUnitId}
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        onUnitMeta={handleUnitMeta}
+                        placeholder="Unit"
+                        isDisabled={!anchorUnitId}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name={`variants.${index}.autoRetireOnSellout`}
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2 flex items-start gap-3 rounded-md border border-dashed border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+                  <FormItem className="md:col-span-3 flex items-start gap-3 rounded-md border border-dashed border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 p-3">
                     <FormControl>
                       <Switch
                         checked={!!field.value}
@@ -3274,7 +3341,7 @@ function CreateLibraryGroupButton({
         for (const s of stocks ?? []) {
           for (const v of s.variants ?? []) {
             if (v.archived) continue;
-            opts.push({ id: v.id, label: `${s.name} — ${v.name}` });
+            opts.push({ id: v.id, label: `${s.name} — ${v.name}`, unitId: v.unitId });
           }
         }
         setStockVariants(opts);

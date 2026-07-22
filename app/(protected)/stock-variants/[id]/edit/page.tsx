@@ -1,11 +1,11 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   PageShell,
   PageHeader,
   PageBreadcrumbs,
   PageBody,
 } from "@/components/layouts/page-shell";
-import { getStock } from "@/lib/actions/stock-actions";
+import { getStock, getStockByVariantId } from "@/lib/actions/stock-actions";
 import { getCurrentDestination } from "@/lib/actions/context";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import StockForm from "@/components/forms/stock_form";
@@ -31,7 +31,13 @@ export default async function EditStockPage({
     locationPromise,
     balancesPromise,
   ]);
-  if (!stock) notFound();
+  // Same variant-id fallback as the detail route — the variants table's
+  // "Edit" action passes a variant id.
+  if (!stock) {
+    const parent = await getStockByVariantId(id);
+    if (parent) redirect(`/stock-variants/${parent.id}/edit`);
+    notFound();
+  }
 
   const variantIds = new Set(stock.variants.map((v) => v.id));
   const balances: Record<

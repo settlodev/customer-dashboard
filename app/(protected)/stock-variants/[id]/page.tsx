@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import {
   PageShell,
@@ -6,7 +6,7 @@ import {
   PageBreadcrumbs,
   PageBody,
 } from "@/components/layouts/page-shell";
-import { getStock } from "@/lib/actions/stock-actions";
+import { getStock, getStockByVariantId } from "@/lib/actions/stock-actions";
 import { getCurrentDestination } from "@/lib/actions/context";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import {
@@ -62,7 +62,14 @@ export default async function StockDetailPage({
     getLocationConfig(),
   ]);
 
-  if (!stock) notFound();
+  // Inbound links from the product detail page, the movement report and the
+  // variants table carry a *variant* id, which this stock-keyed route can't
+  // fetch. Resolve it to its parent stock and bounce to the canonical URL.
+  if (!stock) {
+    const parent = await getStockByVariantId(id);
+    if (parent) redirect(`/stock-variants/${parent.id}`);
+    notFound();
+  }
 
   const locationId = location?.id;
   const now = new Date();

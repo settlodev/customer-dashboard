@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useTransition } from "react";
+import React, { useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -65,6 +65,8 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 
+import CompatibleUnitSelector from "@/components/widgets/compatible-unit-selector";
+
 import { useToast } from "@/hooks/use-toast";
 import type { ModifierGroup } from "@/types/product/type";
 import { SELECTION_TYPE_OPTIONS } from "@/types/catalogue/enums";
@@ -82,6 +84,8 @@ import styles from "./styles/form-shell.module.css";
 export interface StockVariantOption {
   id: string;
   label: string;
+  /** The stock item's tracking unit — anchors the sale-unit dropdown. */
+  unitId: string;
 }
 
 interface Props {
@@ -103,6 +107,7 @@ const BLANK_OPTION: ModifierOptionInput = {
   sellabilityMode: "UNLIMITED",
   stockVariantId: undefined,
   directQuantity: undefined,
+  saleUnitId: undefined,
   sortOrder: 0,
   active: true,
 };
@@ -117,7 +122,10 @@ function optionFromExisting(
     isDefault: o.isDefault,
     sellabilityMode: o.sellabilityMode,
     stockVariantId: o.stockVariantId ?? undefined,
-    directQuantity: o.directQuantity ?? undefined,
+    // Prefer the round-tripped typed number; directQuantity is its base-unit
+    // equivalent and would show 0.041667 in the box instead of 1.
+    directQuantity: o.saleUnitQuantity ?? o.directQuantity ?? undefined,
+    saleUnitId: o.saleUnitId ?? undefined,
     sortOrder: o.sortOrder,
     active: o.active,
   };
@@ -903,6 +911,22 @@ function OptionTracking({
   const mode = form.watch(`options.${index}.sellabilityMode`) ?? "UNLIMITED";
   const tracksStock = mode !== "UNLIMITED";
 
+  const stockVariantId = form.watch(`options.${index}.stockVariantId`);
+  const anchorUnitId = stockVariants.find((sv) => sv.id === stockVariantId)?.unitId;
+
+  // Re-anchor on stock-item change: the previously-picked unit almost
+  // certainly isn't convertible against the new item's tracking unit. This
+  // also cleans up saleUnitId when Track stock is toggled off, since that
+  // path clears stockVariantId too.
+  const previousStockVariantId = useRef(stockVariantId);
+  useEffect(() => {
+    if (previousStockVariantId.current === stockVariantId) return;
+    previousStockVariantId.current = stockVariantId;
+    form.setValue(`options.${index}.saleUnitId`, anchorUnitId ?? null, {
+      shouldDirty: true,
+    });
+  }, [stockVariantId, anchorUnitId, form, index]);
+
   const handleTrackToggle = (next: boolean) => {
     if (next) {
       // Off → On: jump straight into DIRECT (the most common case);
@@ -986,7 +1010,7 @@ function OptionTracking({
           />
 
           {mode === "DIRECT" && (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               <FormField
                 control={form.control}
                 name={`options.${index}.stockVariantId`}
@@ -1033,6 +1057,25 @@ function OptionTracking({
                           disabled={disabled}
                         />
                       </ControlBox>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name={`options.${index}.saleUnitId`}
+                render={({ field }) => (
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel>Unit</FieldLabel>
+                    <FormControl>
+                      <CompatibleUnitSelector
+                        anchorUnitId={anchorUnitId}
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        placeholder="Unit"
+                        isDisabled={disabled || !anchorUnitId}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

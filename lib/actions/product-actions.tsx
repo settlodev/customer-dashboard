@@ -62,6 +62,8 @@ type VariantPayload = {
   stockLinkType?: "DIRECT" | null;
   stockVariantId?: string | null;
   directQuantity?: number | null;
+  saleUnitId?: string;
+  saleUnitQuantity?: number;
   // Auto-retire-on-sellout (V36): forwarded straight to the backend.
   // Only meaningful for tracked variants — the order consumer reads it
   // when a DIRECT-link deduction empties the stock.
@@ -125,7 +127,12 @@ function mapVariant(
         unlimited: false,
         stockLinkType: "DIRECT",
         stockVariantId: v.stockVariantId ?? undefined,
-        directQuantity: v.directQuantity ?? undefined,
+        // When a unit is chosen the backend derives directQuantity from the
+        // pair — sending a raw directQuantity too would be a second, wrong
+        // number in a different unit.
+        ...(v.saleUnitId
+          ? { saleUnitId: v.saleUnitId, saleUnitQuantity: v.directQuantity ?? undefined }
+          : { directQuantity: v.directQuantity ?? undefined }),
       };
     case "RECIPE":
       return {
@@ -957,7 +964,12 @@ function mapVariantPartial(
       sellMode === "QUANTITY" ? v.availableQuantity ?? 0 : undefined,
     stockLinkType: sellMode === "DIRECT" ? "DIRECT" : undefined,
     stockVariantId: sellMode === "DIRECT" ? v.stockVariantId ?? undefined : undefined,
-    directQuantity: sellMode === "DIRECT" ? v.directQuantity ?? undefined : undefined,
+    // When a unit is chosen the backend derives directQuantity from the
+    // pair — sending a raw directQuantity too would be a second, wrong
+    // number in a different unit.
+    ...(sellMode === "DIRECT" && v.saleUnitId
+      ? { saleUnitId: v.saleUnitId, saleUnitQuantity: v.directQuantity ?? undefined }
+      : { directQuantity: sellMode === "DIRECT" ? v.directQuantity ?? undefined : undefined }),
     // Forward the toggle for tracked variants only — UNLIMITED ignores
     // it on the backend, no point sending it.
     autoRetireOnSellout:

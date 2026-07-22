@@ -151,6 +151,25 @@ export async function getStock(id: string): Promise<Stock | null> {
   }
 }
 
+/**
+ * Finds the stock item that owns a given variant id.
+ *
+ * Several places link to a variant rather than its parent stock — the
+ * product detail page's tracked-variant table, the stock movement report,
+ * the stock-variants table row action — but the detail route is keyed on
+ * the *stock* id, so those links would 404 on `/stocks/{variantId}`. There
+ * is no by-variant lookup on the Inventory Service, so resolve it off the
+ * (backend-cached) list. Runs on the 404 path only.
+ */
+export async function getStockByVariantId(
+  variantId: string,
+): Promise<Stock | null> {
+  const stocks = await getStocks("all");
+  return (
+    stocks.find((s) => s.variants?.some((v) => v.id === variantId)) ?? null
+  );
+}
+
 export async function createStock(
   stock: z.infer<typeof StockSchema>,
 ): Promise<FormResponse | void> {
