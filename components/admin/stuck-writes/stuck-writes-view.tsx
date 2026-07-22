@@ -34,7 +34,6 @@ import { cn } from "@/lib/utils";
 import type {
   DeadLetterPage,
   RepairCommandPage,
-  RepairCommandStatus,
 } from "@/types/admin/stuck-writes";
 import type { PlatformLocationRow } from "@/types/admin/platform-metrics";
 
