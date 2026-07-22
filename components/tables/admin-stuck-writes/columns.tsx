@@ -32,6 +32,35 @@ const CLASSIFICATION_STYLES: Record<string, string> = {
   stale: "border-line bg-canvas text-ink-3",
 };
 
+/** Derives the badge shown in the Status column from the row's resolution state. */
+function deriveStatus(row: DeadLetterRow): { label: string; className: string } {
+  if (row.resolvedAt) {
+    switch (row.resolution) {
+      case "DRAINED":
+        return {
+          label: "Drained",
+          className: "border-emerald-300/40 bg-emerald-50 text-emerald-700",
+        };
+      case "DISCARDED":
+        return { label: "Discarded", className: "border-line bg-canvas text-ink-3" };
+      case "SOFT_DROPPED":
+        return { label: "Soft-dropped", className: "border-line bg-canvas text-ink-3" };
+      default:
+        return { label: "Resolved", className: "border-line bg-canvas text-ink-3" };
+    }
+  }
+  if (row.retryCount > 0) {
+    return {
+      label: `Retried ×${row.retryCount} — failed`,
+      className: "border-amber-300/40 bg-amber-50 text-amber-700",
+    };
+  }
+  return {
+    label: "Stuck",
+    className: "border-destructive/30 bg-destructive/5 text-destructive",
+  };
+}
+
 export function buildDeadLetterColumns({
   locationNameById,
   canExecute,
@@ -84,6 +113,24 @@ export function buildDeadLetterColumns({
             )}
           >
             {c}
+          </span>
+        );
+      },
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const s = deriveStatus(row.original);
+        return (
+          <span
+            className={cn(
+              "inline-flex whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium",
+              s.className,
+            )}
+            title={row.original.resolutionDetail ?? undefined}
+          >
+            {s.label}
           </span>
         );
       },
