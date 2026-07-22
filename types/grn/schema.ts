@@ -19,7 +19,7 @@ export const CreateGrnItemSchema = z
       toNumber,
       z
         .number({ required_error: "Unit cost is required" })
-        .nonnegative("Unit cost cannot be negative"),
+        .positive("Unit cost must be greater than zero"),
     ),
     /**
      * Optional purchase pack (e.g. "Crate" while the variant is tracked in

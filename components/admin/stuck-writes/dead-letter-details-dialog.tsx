@@ -15,9 +15,13 @@ import {
 import { formatDateTime, timeSince } from "@/components/admin/shared/format";
 import { getAdminDevice } from "@/lib/actions/admin/devices";
 import { getAdminStaff } from "@/lib/actions/admin/staff";
+import { getDeadLetterContext } from "@/lib/actions/admin/stuck-writes";
 import type { AdminDeviceSummary } from "@/types/admin/device";
 import type { AdminStaffSummary } from "@/types/admin/staff";
-import type { DeadLetterRow } from "@/types/admin/stuck-writes";
+import type {
+  DeadLetterContextResponse,
+  DeadLetterRow,
+} from "@/types/admin/stuck-writes";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -118,6 +122,29 @@ function useActorDetails(
   };
 }
 
+// ── diagnostic context (merged server + device timeline, fetched on open) ────
+
+function useDeadLetterContext(id: string, open: boolean) {
+  const [ctx, setCtx] = useState<DeadLetterContextResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!open) {
+      setCtx(null);
+      return;
+    }
+    setLoading(true);
+    startTransition(async () => {
+      const data = await getDeadLetterContext(id);
+      setCtx(data);
+      setLoading(false);
+    });
+  }, [id, open]);
+
+  return { ctx, loading };
+}
+
 // ── main component ─────────────────────────────────────────────────────────
 
 interface DeadLetterDetailsDialogProps {
@@ -128,6 +155,10 @@ export function DeadLetterDetailsDialog({ row }: DeadLetterDetailsDialogProps) {
   const [open, setOpen] = useState(false);
   const { deviceDisplayName, lastActiveAt, appVersion, staffDisplayName } =
     useActorDetails(row.deviceId, row.staffId, open);
+  const { ctx: context, loading: contextLoading } = useDeadLetterContext(
+    row.id,
+    open,
+  );
 
   const deviceLabel = deviceDisplayName
     ? `${deviceDisplayName} (${shortId(row.deviceId)})`
@@ -255,6 +286,66 @@ export function DeadLetterDetailsDialog({ row }: DeadLetterDetailsDialogProps) {
                 </pre>
               </section>
             )}
+
+            {/* What happened — merged server + device timeline */}
+            <section className="mb-1 mt-3">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                What happened
+              </p>
+              {contextLoading && (
+                <p className="text-[12.5px] text-muted-foreground">
+                  Loading timeline…
+                </p>
+              )}
+              {!contextLoading && !context && (
+                <p className="text-[12.5px] text-muted-foreground">
+                  Timeline unavailable.
+                </p>
+              )}
+              {!contextLoading && context && (
+                <>
+                  {context.orderNumber && (
+                    <p className="mb-1.5 text-[12.5px] text-ink-2">
+                      Order {context.orderNumber}
+                      {context.orderStatus ? ` · ${context.orderStatus}` : ""}
+                    </p>
+                  )}
+                  {!context.orderFound && (
+                    <p className="mb-1.5 text-[12.5px] text-muted-foreground">
+                      No matching order on the server — it may never have synced.
+                    </p>
+                  )}
+                  {context.timeline.length === 0 ? (
+                    <p className="text-[12.5px] text-muted-foreground">
+                      No timeline entries.
+                    </p>
+                  ) : (
+                    <ol className="space-y-1.5">
+                      {context.timeline.map((e, i) => (
+                        <li key={i} className="flex gap-2 text-[12.5px]">
+                          <span
+                            className={`mt-0.5 inline-block shrink-0 rounded px-1 font-mono text-[10px] font-medium ${
+                              e.source === "SERVER"
+                                ? "bg-sky-100 text-sky-700"
+                                : "bg-violet-100 text-violet-700"
+                            }`}
+                          >
+                            {e.source}
+                          </span>
+                          <span className="shrink-0 whitespace-nowrap text-muted-foreground">
+                            {e.at ? formatDateTime(e.at) : "—"}
+                          </span>
+                          <span className="text-ink-2">
+                            <span className="font-medium text-ink">{e.type}</span>
+                            {e.description ? ` — ${e.description}` : ""}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </>
+              )}
+            </section>
           </div>
 
           <DialogFooter className="flex-none">

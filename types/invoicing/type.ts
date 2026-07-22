@@ -31,6 +31,8 @@ export type InvoicePaymentStatus = "UNPAID" | "PARTIALLY_PAID" | "PAID";
 export interface ProformaLine {
   id?: string;
   productId?: string | null;
+  /** Catalogue variant quoted — what Inventory resolves the stock hold from. */
+  productVariantId?: string | null;
   stockVariantId?: string | null;
   locationType?: string | null;
   description: string;
@@ -79,6 +81,8 @@ export interface Proforma {
 export interface InvoiceLine {
   id: string;
   productId?: string | null;
+  /** Catalogue variant invoiced — what Inventory resolves the deduction from. */
+  productVariantId?: string | null;
   stockVariantId?: string | null;
   locationType?: string | null;
   description: string;

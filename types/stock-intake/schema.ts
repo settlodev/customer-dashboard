@@ -41,7 +41,7 @@ export const MultiStockIntakeSchema = object({
 
 export const UpdatedStockIntakeSchema = object({
   value: number()
-    .min(0, { message: "Value must be a positive number" })
+    .gt(0, { message: "Value must be greater than zero" })
     .refine((val) => !isNaN(val), {
       message: "Please enter a valid number",
     }),

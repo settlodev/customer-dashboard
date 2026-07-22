@@ -7,6 +7,13 @@ import { z } from "zod";
  */
 export const ProformaLineSchema = z.object({
   productId: z.string().uuid().optional().or(z.literal("")),
+  /**
+   * The catalogue variant being quoted. Inventory resolves what stock the line
+   * consumes from this — a DIRECT link scaled by the variant's per-unit
+   * quantity, or a recipe's ingredients — so `quantity` stays in product units.
+   */
+  productVariantId: z.string().uuid().optional().or(z.literal("")),
+  /** Stock link carried alongside for reporting; only a fallback for Inventory. */
   stockVariantId: z.string().uuid().optional().or(z.literal("")),
   description: z
     .string()
