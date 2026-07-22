@@ -21,7 +21,7 @@ import { searchProducts, getProductCounts } from "@/lib/actions/product-actions"
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getProductsKpi } from "@/lib/actions/reports-analytics-actions";
 import { Plus, Upload } from "lucide-react";
-import TableExport from "@/components/widgets/export";
+import { ProductsExportButton } from "@/components/widgets/products/products-export-button";
 import { ProductStatusTabs } from "@/components/tables/product/status-tabs";
 import { ProductsKpiStrip } from "@/components/widgets/products/products-kpi-strip";
 import { BulkBarcodeGenerator } from "@/components/widgets/products/bulk-barcode-generator";
@@ -176,7 +176,18 @@ async function Page({ searchParams }: Params) {
         subtitle="Catalog of items sold from this location."
         actions={
           <>
-            <TableExport filename="products" useEndpoint />
+            <ProductsExportButton
+              view={
+                status === "archived"
+                  ? "ARCHIVED"
+                  : status === "draft"
+                    ? "DRAFT"
+                    : status === "all"
+                      ? "ALL"
+                      : "ACTIVE"
+              }
+              search={q}
+            />
             <BulkBarcodeGenerator scope="all" />
             <Button asChild variant="outline" size="sm">
               <Link href="/imports/products">

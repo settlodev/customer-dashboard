@@ -15,6 +15,7 @@ import {
 } from "@/lib/actions/department-actions";
 import { fetchSupportedCurrencies } from "@/lib/actions/exchange-rate-actions";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
+import { fetchProductCatalogue } from "@/lib/actions/product-actions";
 import { getStocks } from "@/lib/actions/stock-actions";
 import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
 import { fetchAllTaxTypes } from "@/lib/actions/tax-type-actions";
@@ -27,6 +28,7 @@ import type { Department } from "@/types/department/type";
 import type { SupportedCurrency } from "@/types/exchange-rate/type";
 import type { Staff } from "@/types/staff";
 import type { Stock } from "@/types/stock/type";
+import type { Product } from "@/types/product/type";
 import type { Supplier } from "@/types/supplier/type";
 import type { TaxType } from "@/types/tax-type/type";
 import type { UnitOfMeasure } from "@/types/unit/type";
@@ -164,6 +166,25 @@ export const stocksCache = createReferenceCache<Stock[]>({
 });
 
 /**
+ * Products (with embedded variants) — the sellable catalogue behind the
+ * quoting/invoicing line pickers. Same scaling trade-off as stocks, so the
+ * same shape: memory store, short TTL, explicit invalidation from the
+ * product mutation paths.
+ */
+export const productsCache = createReferenceCache<Product[]>({
+  key: "products",
+  fetcher: async () => {
+    try {
+      return (await fetchProductCatalogue()) ?? [];
+    } catch {
+      return [];
+    }
+  },
+  ttlMs: FIVE_MINUTES,
+  store: "memory",
+});
+
+/**
  * Customers — same scaling trade-off as stocks. A typical B2C catalogue
  * can run into the tens of thousands, so localStorage is off the table
  * (quota + sync parse cost). Memory cache with a 5-minute TTL bounds
@@ -199,6 +220,7 @@ export const getCachedBrands = () => brandsCache.get();
 export const getCachedCategories = () => categoriesCache.get();
 export const getCachedStaff = () => staffCache.get();
 export const getCachedStocks = () => stocksCache.get();
+export const getCachedProducts = () => productsCache.get();
 export const getCachedCustomers = () => customersCache.get();
 
 export const invalidateCountriesCache = () => countriesCache.invalidate();
@@ -211,6 +233,7 @@ export const invalidateBrandsCache = () => brandsCache.invalidate();
 export const invalidateCategoriesCache = () => categoriesCache.invalidate();
 export const invalidateStaffCache = () => staffCache.invalidate();
 export const invalidateStocksCache = () => stocksCache.invalidate();
+export const invalidateProductsCache = () => productsCache.invalidate();
 export const invalidateCustomersCache = () => customersCache.invalidate();
 
 export function useCachedCountries(): ReferenceCacheState<Country[]> {

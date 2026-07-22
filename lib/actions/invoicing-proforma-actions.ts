@@ -212,6 +212,7 @@ function toRequest(values: ProformaFormValues) {
     notes: values.notes || undefined,
     lines: values.lines.map((l) => ({
       productId: l.productId || undefined,
+      productVariantId: l.productVariantId || undefined,
       stockVariantId: l.stockVariantId || undefined,
       description: l.description,
       quantity: l.quantity,

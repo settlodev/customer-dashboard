@@ -26,6 +26,13 @@ export interface FieldLabelProps
   optional?: boolean;
 }
 
+/**
+ * `FieldLabel`'s look as a bare class, for plain `<label>`s that sit outside a
+ * `FormField` (where `FormLabel`'s `useFormField()` would throw).
+ */
+export const standaloneLabelClass =
+  "flex items-center gap-1.5 text-[13px] font-semibold leading-none text-ink";
+
 export const FieldLabel = React.forwardRef<
   React.ElementRef<typeof FormLabel>,
   FieldLabelProps
@@ -33,10 +40,7 @@ export const FieldLabel = React.forwardRef<
   return (
     <FormLabel
       ref={ref}
-      className={cn(
-        "flex items-center gap-1.5 text-[13px] font-semibold leading-none text-ink",
-        className,
-      )}
+      className={cn(standaloneLabelClass, className)}
       {...props}
     >
       {children}

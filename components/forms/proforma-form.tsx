@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -62,7 +63,9 @@ import { cn } from "@/lib/utils";
 
 import CustomerSelector from "@/components/widgets/customer-selector";
 import CurrencySelector from "@/components/widgets/currency-selector";
-import StockVariantSelector from "@/components/widgets/stock-variant-selector";
+import ProductItemSelector, {
+  type ProductItemMeta,
+} from "@/components/widgets/product-item-selector";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import QuickCustomerDialog from "@/components/widgets/quick-customer-dialog";
@@ -101,6 +104,7 @@ interface Props {
 
 const blankLine = {
   productId: "",
+  productVariantId: "",
   stockVariantId: "",
   description: "",
   quantity: 1,
@@ -141,6 +145,7 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
         item?.lines && item.lines.length > 0
           ? item.lines.map((l) => ({
               productId: l.productId ?? "",
+              productVariantId: l.productVariantId ?? "",
               stockVariantId: l.stockVariantId ?? "",
               description: l.description,
               quantity: l.quantity,
@@ -229,6 +234,63 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
     form.setValue("customerEmail", c.email ?? "");
     form.setValue("customerTin", c.tinNumber ?? "");
   };
+
+  /**
+   * Apply a catalogue pick to a line. The line stores the product and the
+   * variant picked — Inventory resolves the stock the sale consumes from the
+   * variant, so a product that draws several stock units (or a recipe) holds
+   * the right amount. The stock link rides along for reporting. Description,
+   * price, and tax are pre-filled from the variant but only where the user
+   * hasn't already typed something — a quote often prices differently from the
+   * shelf price, and we never clobber that.
+   */
+  const applyProductToLine = useCallback(
+    (index: number, meta: ProductItemMeta | null) => {
+      if (!meta) {
+        form.setValue(`lines.${index}.productId`, "", { shouldDirty: true });
+        form.setValue(`lines.${index}.productVariantId`, "", {
+          shouldDirty: true,
+        });
+        form.setValue(`lines.${index}.stockVariantId`, "", {
+          shouldDirty: true,
+        });
+        return;
+      }
+      form.setValue(`lines.${index}.productId`, meta.productId, {
+        shouldDirty: true,
+      });
+      form.setValue(`lines.${index}.productVariantId`, meta.variantId, {
+        shouldDirty: true,
+      });
+      form.setValue(
+        `lines.${index}.stockVariantId`,
+        meta.stockVariantId ?? "",
+        { shouldDirty: true },
+      );
+      if (!form.getValues(`lines.${index}.description`)) {
+        form.setValue(`lines.${index}.description`, meta.displayName, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+      }
+      if (!form.getValues(`lines.${index}.unitPrice`) && meta.price > 0) {
+        form.setValue(`lines.${index}.unitPrice`, meta.price, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+      }
+      if (meta.taxRatePercent != null) {
+        form.setValue(`lines.${index}.taxRate`, meta.taxRatePercent, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+        form.setValue(`lines.${index}.taxInclusive`, meta.taxInclusive, {
+          shouldDirty: true,
+        });
+      }
+    },
+    [form],
+  );
 
   const currency = form.watch("currencyCode") || defaultCurrency;
   const watchedLines = form.watch("lines");
@@ -394,7 +456,7 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
             <SectionCard
               icon={<Receipt className="h-4 w-4" />}
               title="Line items"
-              subtitle="Add what you're quoting. Link a stock item to reserve inventory."
+              subtitle="Add what you're quoting. Pick a product to pull its price and reserve inventory."
             >
               <div className="space-y-3">
                 {fields.map((fieldRow, index) => {
@@ -435,30 +497,18 @@ export default function ProformaForm({ item, defaultCurrency, railExtra }: Props
                       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                         <FormField
                           control={form.control}
-                          name={`lines.${index}.stockVariantId`}
+                          name={`lines.${index}.productVariantId`}
                           render={({ field }) => (
                             <FormItem className="space-y-[7px]">
-                              <FieldLabel optional>Stock item</FieldLabel>
+                              <FieldLabel optional>Product</FieldLabel>
                               <FormControl>
-                                <StockVariantSelector
+                                <ProductItemSelector
                                   value={field.value || ""}
                                   isDisabled={isPending || isLocked}
-                                  placeholder="Link to inventory…"
-                                  onChange={(v) => field.onChange(v)}
-                                  onVariantMeta={(meta) => {
-                                    if (
-                                      meta &&
-                                      !form.getValues(
-                                        `lines.${index}.description`,
-                                      )
-                                    ) {
-                                      form.setValue(
-                                        `lines.${index}.description`,
-                                        meta.displayName,
-                                        { shouldValidate: true },
-                                      );
-                                    }
-                                  }}
+                                  placeholder="Pick from your catalogue…"
+                                  onChange={(meta) =>
+                                    applyProductToLine(index, meta)
+                                  }
                                 />
                               </FormControl>
                             </FormItem>

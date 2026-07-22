@@ -224,61 +224,8 @@
   margin-top: 2px;
 }
 
-/* ── Tag-input ───────────────────────────────────────────────────── */
-.tagInput {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  border: 1px solid var(--pf-line-2);
-  border-radius: 6px;
-  padding: 5px 6px;
-  background: var(--pf-card);
-  min-height: 36px;
-  align-items: center;
-}
-.tagInput:focus-within {
-  border-color: var(--pf-primary);
-  box-shadow: 0 0 0 3px var(--pf-primary-tint);
-}
-.tagChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--pf-canvas);
-  border: 1px solid var(--pf-line);
-  border-radius: 4px;
-  padding: 2px 4px 2px 8px;
-  font-size: 11.5px;
-  color: var(--pf-ink-2);
-  font-family: var(--pf-mono);
-}
-.tagChipX {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  display: grid;
-  place-items: center;
-  color: var(--pf-muted);
-  cursor: pointer;
-  border: 0;
-  background: transparent;
-  padding: 0;
-}
-.tagChipX:hover {
-  background: var(--pf-line);
-  color: var(--pf-ink);
-}
-.tagInput input {
-  border: 0;
-  outline: 0;
-  flex: 1;
-  font-size: 12.5px;
-  padding: 4px 6px;
-  background: transparent;
-  font-family: inherit;
-  min-width: 100px;
-  color: var(--pf-ink);
-}
+/* Tag-input lives on the shared control box (`controlBoxClass`) now — see
+   ChipTagsInput in product_form.tsx. */
 
 /* ── Tabs (segmented bottom-border) ──────────────────────────────── */
 .formTabs {

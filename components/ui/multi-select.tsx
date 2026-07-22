@@ -61,7 +61,7 @@ interface MultiSelectProps
 
 /** One selected-item chip. */
 const chipClass =
-  "inline-flex max-w-full items-center gap-1 rounded-md border border-line-2 bg-canvas py-0.5 pl-2 pr-1 text-[12px] font-medium text-ink";
+  "inline-flex max-w-full items-center gap-1 rounded-[7px] border border-line-2 bg-canvas py-0.5 pl-2 pr-1 text-[12px] font-medium text-ink";
 
 /** A small inline remove (×) control shared by the chips and the clear button. */
 const removeControlClass =
@@ -157,7 +157,9 @@ export const MultiSelect = React.forwardRef<
               onClick={() => setIsPopoverOpen((prev) => !prev)}
               className={cn(
                 controlComboboxTriggerClass,
-                "h-auto min-h-11 py-1.5",
+                // py-2 keeps wrapped chip rows clear of the trigger's 10px
+                // corner radius, so chips never sit in the rounded corner.
+                "h-auto min-h-11 py-2",
                 className,
               )}
             >
@@ -195,7 +197,7 @@ export const MultiSelect = React.forwardRef<
                     );
                   })}
                   {selectedValues.length > maxCount && (
-                    <span className="inline-flex items-center gap-1 rounded-md border border-dashed border-line-2 bg-card py-0.5 pl-2 pr-1 text-[12px] font-medium text-muted-foreground">
+                    <span className="inline-flex items-center gap-1 rounded-[7px] border border-dashed border-line-2 bg-card py-0.5 pl-2 pr-1 text-[12px] font-medium text-muted-foreground">
                       +{selectedValues.length - maxCount} more
                       <span
                         role="button"

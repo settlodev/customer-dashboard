@@ -54,7 +54,9 @@ import {
   FieldLabel,
   SegmentedRadio,
   SegmentedBoolean,
+  controlBoxClass,
   controlInputClass,
+  standaloneLabelClass,
 } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -168,6 +170,7 @@ import {
   getCachedCategories,
   getCachedStocks,
   getCachedTaxTypes,
+  invalidateProductsCache,
 } from "@/lib/cache/reference-data";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
@@ -486,6 +489,7 @@ export default function ProductForm({ item }: ProductFormProps) {
               })
             : await createProduct(effectiveValues);
           if (result?.responseType === "error") setResponse(result);
+          else invalidateProductsCache();
           return;
         }
 
@@ -517,11 +521,17 @@ export default function ProductForm({ item }: ProductFormProps) {
           }
         }
         setRemovedVariantIds([]);
+        invalidateProductsCache();
 
         toast({ title: "Saved", description: "Product updated successfully." });
         router.push(`/products/${item!.id}`);
       } catch (e: any) {
-        if (e?.digest?.startsWith("NEXT_REDIRECT")) throw e;
+        // A create that succeeded ends in a server redirect — flush the
+        // picker cache on the way out so the new product shows immediately.
+        if (e?.digest?.startsWith("NEXT_REDIRECT")) {
+          invalidateProductsCache();
+          throw e;
+        }
         setResponse({
           responseType: "error",
           message: e?.message ?? "Failed to save product",
@@ -909,8 +919,8 @@ export default function ProductForm({ item }: ProductFormProps) {
                                   }
                                   maxCount={5}
                                   disabled={categoriesLoading}
-                                  badgeClassName="m-0.5 rounded border border-line bg-canvas px-2 py-0.5 text-[11.5px] font-mono text-ink-2 hover:bg-canvas"
-                                  badgeIconClassName="ml-1 h-3 w-3 rounded-sm text-muted-foreground hover:text-foreground"
+                                  badgeClassName="rounded-[7px] border border-line bg-canvas pl-2 pr-1 py-0.5 text-[11.5px] font-mono text-ink-2 hover:bg-canvas"
+                                  badgeIconClassName="h-4 w-4 rounded-[5px] text-muted-foreground hover:text-foreground"
                                 />
                               </FormControl>
                             </div>
@@ -936,7 +946,9 @@ export default function ProductForm({ item }: ProductFormProps) {
                                   variant="outline"
                                   size="icon"
                                   disabled={categoriesLoading}
-                                  className="shrink-0"
+                                  // Match the MultiSelect trigger's box: 44px
+                                  // tall, same 10px radius.
+                                  className="h-11 w-11 shrink-0 rounded-[10px]"
                                   title="Create a new category"
                                 >
                                   <Plus className="h-4 w-4" />
@@ -2382,7 +2394,10 @@ function ChipTagsInput({
 
   return (
     <div
-      className={styles.tagInput}
+      data-disabled={disabled ? "" : undefined}
+      // Same control box as the text inputs / pickers, but free to grow as
+      // chips wrap. py-2 keeps wrapped rows clear of the 10px corner radius.
+      className={cn(controlBoxClass, "h-auto min-h-11 flex-wrap gap-1.5 py-2")}
       onClick={(e) => {
         const target = e.target as HTMLElement;
         if (target === e.currentTarget) {
@@ -2391,11 +2406,14 @@ function ChipTagsInput({
       }}
     >
       {tags.map((t) => (
-        <span key={t} className={styles.tagChip}>
-          {t}
+        <span
+          key={t}
+          className="inline-flex max-w-full items-center gap-1 rounded-[7px] border border-line bg-canvas py-0.5 pl-2 pr-1 font-mono text-[11.5px] text-ink-2"
+        >
+          <span className="truncate">{t}</span>
           <button
             type="button"
-            className={styles.tagChipX}
+            className="grid h-4 w-4 shrink-0 place-items-center rounded-[5px] text-muted-2 transition-colors hover:bg-line hover:text-ink"
             aria-label={`Remove tag ${t}`}
             onClick={() => removeTag(t)}
             disabled={disabled}
@@ -2405,6 +2423,7 @@ function ChipTagsInput({
         </span>
       ))}
       <input
+        className={cn(controlInputClass, "min-w-[100px]")}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
@@ -4733,8 +4752,8 @@ function PriceOverridesSection({
             room (~880px+) for 4 in a row at that viewport size; below
             that it gracefully falls back to 2x2. */}
         <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div>
-            <label className={styles.fieldLabel}>Variant</label>
+          <div className="space-y-[7px]">
+            <label className={standaloneLabelClass}>Variant</label>
             <Combobox
               options={uniqueVariants.map((v) => ({
                 value: v.id,
@@ -4749,8 +4768,8 @@ function PriceOverridesSection({
             />
           </div>
 
-          <div>
-            <label className={styles.fieldLabel}>Currency</label>
+          <div className="space-y-[7px]">
+            <label className={standaloneLabelClass}>Currency</label>
             <CurrencySelector
               value={draft.currency || null}
               onChange={(v) => setDraft({ ...draft, currency: v })}
@@ -4760,25 +4779,27 @@ function PriceOverridesSection({
             />
           </div>
 
-          <div>
-            <label className={styles.fieldLabel}>Price</label>
-            <NumericFormat
-              customInput={Input}
-              value={draft.price || ""}
-              onValueChange={(v) =>
-                setDraft({ ...draft, price: v.floatValue ?? 0 })
-              }
-              decimalScale={4}
-              allowNegative={false}
-              thousandSeparator=","
-              disabled={busy}
-              placeholder="0.00"
-            />
+          <div className="space-y-[7px]">
+            <label className={standaloneLabelClass}>Price</label>
+            <ControlBox suffix={draft.currency || undefined}>
+              <NumericFormat
+                className={cn(controlInputClass, "tabular-nums")}
+                value={draft.price || ""}
+                onValueChange={(v) =>
+                  setDraft({ ...draft, price: v.floatValue ?? 0 })
+                }
+                decimalScale={4}
+                allowNegative={false}
+                thousandSeparator=","
+                disabled={busy}
+                placeholder="0.00"
+              />
+            </ControlBox>
           </div>
 
           <Button
             type="button"
-            className="h-10 w-full"
+            className="h-11 w-full"
             onClick={add}
             disabled={busy || !draft.currency || !draft.price}
           >

@@ -197,6 +197,36 @@ export async function fetchAllProducts(): Promise<Product[]> {
   }
 }
 
+/**
+ * Full sellable catalogue for dropdowns (proforma/invoice line pickers).
+ * Unlike {@link fetchAllProducts} — which stops at the first 200 rows — this
+ * walks every page so a large catalogue isn't silently truncated in a picker.
+ * Only live products are returned (the `active` view), and the page walk is
+ * capped so a runaway `totalPages` can't spin forever.
+ */
+const CATALOGUE_PAGE_SIZE = 200;
+const CATALOGUE_MAX_PAGES = 25;
+
+export async function fetchProductCatalogue(): Promise<Product[]> {
+  try {
+    const apiClient = new ApiClient();
+    const products: Product[] = [];
+    for (let page = 0; page < CATALOGUE_MAX_PAGES; page++) {
+      const data = await apiClient.get(
+        inventoryUrl(
+          `/api/v1/products?view=ACTIVE&size=${CATALOGUE_PAGE_SIZE}&page=${page}`,
+        ),
+      );
+      const res = parseStringify(data) as ApiResponse<Product>;
+      products.push(...(res.content ?? []));
+      if (res.last || (res.content?.length ?? 0) < CATALOGUE_PAGE_SIZE) break;
+    }
+    return products;
+  } catch {
+    return [];
+  }
+}
+
 // Tab-aligned view filter mirroring the backend's ProductListView enum.
 // The dashboard sends one of these values per merchant tab and renders
 // the response unchanged — no client-side row filtering.
@@ -852,13 +882,10 @@ Requirements:
   }
 };
 
-// CSV upload + download were migrated off the Rust service. Upload is now
-// handled by /api/v1/imports — see lib/actions/import-actions.ts. The
-// product-CSV export is not yet re-implemented in the inventory service.
-
-export const downloadProductsCSV = async (_locationId?: string): Promise<Blob | string> => {
-  throw new Error("Product CSV export is not available yet.");
-};
+// CSV upload + download were migrated off the Rust service. Upload is handled
+// by /api/v1/imports — see lib/actions/import-actions.ts. Download lives in
+// lib/actions/export-actions.ts (exportProductsCsv), which streams from
+// /api/v1/exports/products on the inventory service.
 
 // ── Menu (kept — different service) ─────────────────────────────────
 
