@@ -32,6 +32,7 @@ interface StuckWritesPageProps {
     from?: string;
     to?: string;
     tab?: string;
+    resolved?: string;
   }>;
 }
 
@@ -97,6 +98,7 @@ export default async function StuckWritesPage({
         : undefined;
   const { fromIso, toIso } = dayBounds(params.from, params.to);
   const tab = params.tab ?? "mutations";
+  const resolved = params.resolved === "true";
 
   let deadLetters: DeadLetterPage | null = null;
   let approvals: RepairCommandPage = EMPTY_APPROVAL_PAGE;
@@ -115,6 +117,7 @@ export default async function StuckWritesPage({
         moneyOp,
         from: fromIso,
         to: toIso,
+        resolved,
       }),
       // Always fetch approvals to show badge count even on the mutations tab.
       canApprove
@@ -158,6 +161,7 @@ export default async function StuckWritesPage({
               initialTo={params.to ?? null}
               defaultPageSize={size}
               initialTab={tab}
+              initialResolved={resolved}
             />
           )}
         </PageBody>

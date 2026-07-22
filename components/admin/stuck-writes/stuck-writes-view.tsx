@@ -59,8 +59,10 @@ export interface StuckWritesViewProps {
   initialFrom: string | null;
   initialTo: string | null;
   defaultPageSize: number;
-  /** "mutations" | "approvals" */
+  /** "mutations" | "approvals" | "history" */
   initialTab: string;
+  /** true → showing the resolved archive; false → still-stuck rows. */
+  initialResolved: boolean;
 }
 
 function parseDateInput(v: string | null): Date | undefined {
@@ -85,6 +87,7 @@ export function StuckWritesView({
   initialTo,
   defaultPageSize,
   initialTab,
+  initialResolved,
 }: StuckWritesViewProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -255,6 +258,24 @@ export function StuckWritesView({
               <SelectItem value="all">Any type</SelectItem>
               <SelectItem value="true">Money ops only</SelectItem>
               <SelectItem value="false">Non-money only</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={initialResolved ? "resolved" : "stuck"}
+            onValueChange={(v) =>
+              updateParams({
+                resolved: v === "resolved" ? "true" : null,
+                page: "1",
+              })
+            }
+          >
+            <SelectTrigger className="h-9 w-[150px] text-[12.5px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="stuck">Still stuck</SelectItem>
+              <SelectItem value="resolved">Resolved</SelectItem>
             </SelectContent>
           </Select>
 
