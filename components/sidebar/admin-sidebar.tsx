@@ -21,6 +21,7 @@ import {
   LogOut,
   MapPin,
   Menu,
+  DatabaseZap,
   Package,
   PackagePlus,
   RotateCcw,
@@ -200,6 +201,12 @@ const NAV_GROUPS: NavGroup[] = [
         title: "Stuck Writes",
         href: "/stuck-writes",
         icon: WifiOff,
+        permissions: [PERM.ACTIVITY_LOG_READ],
+      },
+      {
+        title: "Data Repair",
+        href: "/data-repair",
+        icon: DatabaseZap,
         permissions: [PERM.ACTIVITY_LOG_READ],
       },
       {

@@ -218,6 +218,7 @@ export const LocationSettingsSchema = z.object({
   defaultLowStockThreshold: z.preprocess(toNumber, z.number().min(0).optional()),
   allowNegativeStock: z.boolean().optional(),
   trackExpiryDates: z.boolean().optional(),
+  allowStockRequestsOverAvailable: z.boolean().optional(),
   deductStockOnItemChange: z.boolean().optional(),
   deductStockOnOrderClose: z.boolean().optional(),
   deductStockOnPartialPay: z.boolean().optional(),

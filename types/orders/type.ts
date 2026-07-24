@@ -659,24 +659,6 @@ export interface OrderItems {
   [key: string]: unknown;
 }
 
-interface PaymentMethods {
-  paymentMethodName: string;
-  amount: number;
-}
-
-export interface CashFlow {
-  startDate: Date;
-  endDate: Date;
-  transactions: number;
-  expensePayments: number;
-  refunds: number;
-  transactionsAmount: number;
-  refundsAmount: number;
-  expensesPaidAmount: number;
-  closingBalance: number;
-  paymentMethodTotals: PaymentMethods[];
-}
-
 /**
  * One day on the cash-flow trend, from
  * `GET /api/v2/analytics/cash-flow/daily` (Reports Service). Summing each

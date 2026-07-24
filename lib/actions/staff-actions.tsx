@@ -650,19 +650,30 @@ interface StaffRollupRow {
   totalGrossProfit: number | null;
 }
 
+/**
+ * Sales-by-staff leaderboard for a business-date range.
+ *
+ * <p>Takes `yyyy-MM-dd` strings, like every other reports action, and passes
+ * them through untouched. It used to take `Date`s and re-derive the strings
+ * with `toISOString()`, which silently moved the range: callers built the
+ * bounds as `new Date(\`${from}T00:00:00\`)`, parsed in the SERVER's timezone,
+ * and `toISOString()` then converted to UTC — so on an EAT host the start date
+ * came out a day early and the tab reported an extra day the dashboard did not.
+ * There is nothing to widen to "whole days" either: `startDate`/`endDate` are
+ * business dates, not timestamps, and the range is inclusive on both ends.
+ */
 export const staffReport = async (
-  startDate?: Date,
-  endDate?: Date,
+  startDate?: string,
+  endDate?: string,
 ): Promise<StaffSummaryReport | null> => {
   try {
     const location = await getCurrentLocation();
     if (!location?.id) return { staffReports: [] };
 
     const apiClient = new ApiClient("reports");
-    const fmt = (d: Date) => d.toISOString().split("T")[0];
     const params: Record<string, unknown> = { locationId: location.id };
-    if (startDate) params.startDate = fmt(startDate);
-    if (endDate) params.endDate = fmt(endDate);
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
 
     // Reports Service returns a flat per-staff rollup list; the dashboard's
     // StaffSummaryReport wraps it under `staffReports`. Stock-intake counts

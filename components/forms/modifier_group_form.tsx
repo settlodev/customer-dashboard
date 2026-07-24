@@ -927,6 +927,20 @@ function OptionTracking({
     });
   }, [stockVariantId, anchorUnitId, form, index]);
 
+  // Default the sale unit to the stock item's tracking unit. Level-triggered,
+  // so an anchor that resolves after the pick (catalogue still loading) still
+  // lands in the field. Fires once per anchor — a deliberate clear sticks.
+  const defaultedAnchorRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!tracksStock || !anchorUnitId) return;
+    if (defaultedAnchorRef.current === anchorUnitId) return;
+    defaultedAnchorRef.current = anchorUnitId;
+    if (form.getValues(`options.${index}.saleUnitId`)) return;
+    form.setValue(`options.${index}.saleUnitId`, anchorUnitId, {
+      shouldDirty: true,
+    });
+  }, [tracksStock, anchorUnitId, form, index]);
+
   const handleTrackToggle = (next: boolean) => {
     if (next) {
       // Off → On: jump straight into DIRECT (the most common case);
@@ -1074,7 +1088,7 @@ function OptionTracking({
                         value={field.value ?? ""}
                         onChange={field.onChange}
                         placeholder="Unit"
-                        isDisabled={disabled || !anchorUnitId}
+                        isDisabled={disabled || !stockVariantId}
                       />
                     </FormControl>
                     <FormMessage />

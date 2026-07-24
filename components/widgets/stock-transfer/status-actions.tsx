@@ -470,7 +470,7 @@ function ReceiveButton({ transfer }: { transfer: StockTransfer }) {
           <PackagePlus className="h-4 w-4 mr-1.5" /> Receive
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl flex flex-col max-h-[calc(100dvh-2rem)] overflow-y-hidden">
         <DialogHeader>
           <DialogTitle>Receive transfer {transfer.transferNumber}</DialogTitle>
           <DialogDescription>
@@ -478,7 +478,7 @@ function ReceiveButton({ transfer }: { transfer: StockTransfer }) {
             can handle the rest.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-4 flex-1 min-h-0 overflow-y-auto">
           <div>
             <label className="text-xs font-medium">Notes</label>
             <Textarea

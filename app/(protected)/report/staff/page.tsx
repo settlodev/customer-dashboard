@@ -44,9 +44,7 @@ export default async function StaffReportPage({ searchParams }: Params) {
   const page = Number(resolved.page) || 1;
   const limit = Number(resolved.limit) || 10;
 
-  const start = new Date(`${from}T00:00:00`);
-  const end = new Date(`${to}T23:59:59`);
-  const report = await staffReport(start, end).catch(() => null);
+  const report = await staffReport(from, to).catch(() => null);
 
   const subtitle =
     from === to

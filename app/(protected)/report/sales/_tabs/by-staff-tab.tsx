@@ -24,13 +24,8 @@ interface Props {
  * searches or paginates.
  */
 export async function ByStaffTab({ from, to, search, page, limit }: Props) {
-  // staffReport takes Date objects; widen the range to whole days so the
-  // last day's evening trade is included.
-  const start = new Date(`${from}T00:00:00`);
-  const end = new Date(`${to}T23:59:59`);
-
   const [report, currency] = await Promise.all([
-    staffReport(start, end).catch(() => null),
+    staffReport(from, to).catch(() => null),
     getLocationCurrency().catch(() => "TZS"),
   ]);
 

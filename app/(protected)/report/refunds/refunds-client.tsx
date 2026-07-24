@@ -58,7 +58,10 @@ export default function RefundReportClient() {
   useEffect(() => {
     const { start, end } = getTodayRange();
     setLoading(true);
-    GetRefundReport(start.toISOString(), end.toISOString())
+    // yyyy-MM-dd in LOCAL time. toISOString() would convert to UTC and, in
+    // EAT, hand the API the previous day — or be rejected outright, since
+    // /refunds/details binds LocalDate and refuses a time component.
+    GetRefundReport(format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd"))
       .then(setRefunds)
       .catch(() =>
         toast({
@@ -82,8 +85,8 @@ export default function RefundReportClient() {
     setLoading(true);
     try {
       const data = await GetRefundReport(
-        formValues.startDate.toISOString(),
-        formValues.endDate.toISOString(),
+        format(formValues.startDate, "yyyy-MM-dd"),
+        format(formValues.endDate, "yyyy-MM-dd"),
       );
       setRefunds(data);
     } catch {

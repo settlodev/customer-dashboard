@@ -278,6 +278,11 @@ export default function ProductForm({ item }: ProductFormProps) {
   );
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [stockVariants, setStockVariants] = useState<StockVariantOption[]>([]);
+  // The stock catalogue lands after first paint (see the effect below), and
+  // the variant editor's unit picker is anchored on the selected stock item's
+  // tracking unit — so it needs to tell "still loading" apart from "loaded,
+  // no anchor" rather than sitting disabled either way.
+  const [stocksLoading, setStocksLoading] = useState(true);
   const [taxTypes, setTaxTypes] = useState<TaxType[]>([]);
   // Map of stockVariantId → weighted-average cost at the current location.
   // Used by the variant editor to derive a variant's cost when DIRECT mode
@@ -376,6 +381,7 @@ export default function ProductForm({ item }: ProductFormProps) {
           }
         }
         setStockVariants(sv);
+        setStocksLoading(false);
       });
     return () => {
       cancelled = true;
@@ -1207,6 +1213,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                             onRemove={removeVariant}
                             stockVariants={stockVariants}
                             stockVariantCosts={stockVariantCosts}
+                            stocksLoading={stocksLoading}
                             disabled={isPending}
                             showHeader
                             canRemove
@@ -1221,6 +1228,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                         onRemove={removeVariant}
                         stockVariants={stockVariants}
                         stockVariantCosts={stockVariantCosts}
+                        stocksLoading={stocksLoading}
                         disabled={isPending}
                         showHeader={false}
                         canRemove={false}
@@ -1514,6 +1522,8 @@ interface VariantEditorProps {
   onRemove: (index: number) => void;
   stockVariants: StockVariantOption[];
   stockVariantCosts: Record<string, number>;
+  /** Stock catalogue still in flight — the unit anchor can't be resolved yet. */
+  stocksLoading?: boolean;
   disabled: boolean;
   showHeader: boolean;
   canRemove: boolean;
@@ -1532,6 +1542,7 @@ function VariantEditorImpl({
   onRemove,
   stockVariants,
   stockVariantCosts,
+  stocksLoading = false,
   disabled,
   showHeader,
   canRemove,
@@ -1573,6 +1584,12 @@ function VariantEditorImpl({
     () => stockVariants.find((sv) => sv.id === stockVariantId)?.unitId,
     [stockVariants, stockVariantId],
   );
+  // A stock item is picked but its tracking unit hasn't resolved — the
+  // catalogue is still loading. Show the unit picker as loading rather than
+  // as an inert disabled control. Once the catalogue is in and there's still
+  // no anchor (legacy row without a unit), the picker falls back to the full
+  // unit catalogue instead of staying dead.
+  const anchorPending = !!stockVariantId && !anchorUnitId && stocksLoading;
   // factorFromAnchor: multiply a quantity in the stock's base unit by this to
   // get it in the chosen sale unit. 1 Crate = 24 Bottle -> 24.
   const [saleUnitFactor, setSaleUnitFactor] = useState<number | null>(null);
@@ -1613,6 +1630,22 @@ function VariantEditorImpl({
     });
     setSaleUnitFactor(null);
   }, [stockVariantId, anchorUnitId, form, index]);
+
+  // Default the sale unit to the stock item's own tracking unit. Level- rather
+  // than edge-triggered on the stock-item change above: the anchor can land a
+  // render (or a catalogue fetch) after the pick, and the edge-triggered reset
+  // would then have written `null` and never revisited it. Fires once per
+  // anchor so a deliberate clear stays cleared.
+  const defaultedAnchorRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (mode !== "DIRECT" || !anchorUnitId) return;
+    if (defaultedAnchorRef.current === anchorUnitId) return;
+    defaultedAnchorRef.current = anchorUnitId;
+    if (form.getValues(`variants.${index}.saleUnitId`)) return;
+    form.setValue(`variants.${index}.saleUnitId`, anchorUnitId, {
+      shouldDirty: true,
+    });
+  }, [mode, anchorUnitId, form, index]);
 
   useEffect(() => {
     if (mode !== "DIRECT") return;
@@ -2102,7 +2135,11 @@ function VariantEditorImpl({
                         onChange={(v) => field.onChange(v ?? "")}
                         placeholder="Pick a stock item"
                         searchPlaceholder="Search stock items…"
-                        emptyText="No stock items found."
+                        emptyText={
+                          stocksLoading
+                            ? "Loading stock items…"
+                            : "No stock items found."
+                        }
                         disabled={disabled}
                         ariaLabel="Stock item"
                       />
@@ -2147,7 +2184,8 @@ function VariantEditorImpl({
                         onChange={field.onChange}
                         onUnitMeta={handleUnitMeta}
                         placeholder="Unit"
-                        isDisabled={!anchorUnitId}
+                        isLoading={anchorPending}
+                        isDisabled={disabled || !stockVariantId}
                       />
                     </FormControl>
                     <FormMessage />

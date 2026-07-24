@@ -68,7 +68,12 @@ const CreditReportClient = () => {
   const fetchCreditReport = async (startDate: Date, endDate: Date) => {
     setIsLoading(true);
     try {
-      const response = await creditReport(startDate, endDate);
+      // yyyy-MM-dd in LOCAL time — the picker's Dates must not be serialised as
+      // ISO datetimes: /credit/unpaid-orders binds LocalDate and rejects them.
+      const response = await creditReport(
+        format(startDate, "yyyy-MM-dd"),
+        format(endDate, "yyyy-MM-dd"),
+      );
       setCreditData(response);
     } catch {
       toast({

@@ -337,7 +337,13 @@ export function SidebarAccountMenu({
   const canViewSubscription = canAny(["billing:view", "subscription:view"]);
   const canManageSubscription = canAny(["billing:manage", "subscription:renew"]);
   const canAddBusiness = canAny(["businesses:create"]);
-  const canOpenSettings = canAny(["settings:business", "settings:locations"]);
+  // `settings:stores` included so a store manager keeps the link in store
+  // mode, where /settings is that store's settings.
+  const canOpenSettings = canAny([
+    "settings:business",
+    "settings:locations",
+    "settings:stores",
+  ]);
 
   // Theme toggle. `useColorMode` reads from localStorage on the client,
   // so we render a placeholder until mounted to avoid an icon flicker

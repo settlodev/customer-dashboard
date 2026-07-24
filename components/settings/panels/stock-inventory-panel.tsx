@@ -50,6 +50,7 @@ const KEYS = [
   "defaultLowStockThreshold",
   "allowNegativeStock",
   "trackExpiryDates",
+  "allowStockRequestsOverAvailable",
 ] as const;
 
 export function StockInventoryPanel({
@@ -135,6 +136,22 @@ export function StockInventoryPanel({
           description="Capture and act on expiry per stock batch."
           checked={!!v.trackExpiryDates}
           onChange={(x) => p.setField("trackExpiryDates", x)}
+          disabled={p.isPending}
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Stock requests against this location"
+        description="Applies when a store or another location raises a stock request with this location as the source."
+        onSave={p.save}
+        isPending={p.isPending}
+        isDirty={p.isDirty}
+      >
+        <SettingsSwitchRow
+          label="Allow stock requests over available quantity"
+          description="Let others request more than this location currently has on hand — useful when restock is already inbound. Off means each requested line is capped at available stock when the request is raised."
+          checked={!!v.allowStockRequestsOverAvailable}
+          onChange={(x) => p.setField("allowStockRequestsOverAvailable", x)}
           disabled={p.isPending}
         />
       </SettingsSection>

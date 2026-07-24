@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
-import { Menu, X, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
 import {
   PageShell,
@@ -14,17 +14,21 @@ import {
 import { settingsNavItems } from "@/types/constants";
 import Loading from "@/components/ui/loading";
 import SessionExpired, { isSessionExpiredError } from "@/components/auth/session-expired";
+import { SettingsNavShell } from "@/components/settings/shared/settings-nav-shell";
 
 import { getLocationSettings } from "@/lib/actions/location-settings-actions";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentStore } from "@/lib/actions/store-actions";
 import { getAuthToken } from "@/lib/auth-utils";
 import { getSingleBusiness } from "@/lib/actions/business-actions";
 import { getBusinessSettings } from "@/lib/actions/business-settings-actions";
 import { getLocationById } from "@/lib/actions/location-actions";
 
+import { StoreSettingsView } from "@/components/settings/store-settings-view";
+
 import type { LocationSettings } from "@/types/location-settings/type";
 import type { Business, BusinessSettings } from "@/types/business/type";
 import type { Location } from "@/types/location/type";
+import type { Store } from "@/types/store/type";
 import type { UUID } from "node:crypto";
 
 // Non-rebuilt (kept as-is)
@@ -89,7 +93,48 @@ type TabId =
   | "devices"
   | "integrations";
 
+/**
+ * Settings is destination-scoped. When the active destination is a store the
+ * whole page becomes that store's settings — a store is a stockroom, so
+ * business- and location-level configuration is neither its concern nor its
+ * to change. Everything below the branch is the location/business view.
+ */
 export default function SettingsPage() {
+  // `undefined` while we're still reading the destination cookie, `null` once
+  // we know we're not in store mode.
+  const [store, setStore] = useState<Store | null | undefined>(undefined);
+  const { tab } = useSettingsParams();
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        setStore((await getCurrentStore()) ?? null);
+      } catch {
+        setStore(null);
+      }
+    })();
+  }, []);
+
+  if (store === undefined) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loading />
+      </div>
+    );
+  }
+
+  if (store) {
+    return (
+      <PageShell>
+        <StoreSettingsView store={store} initialTab={tab} />
+      </PageShell>
+    );
+  }
+
+  return <LocationSettingsPage />;
+}
+
+function LocationSettingsPage() {
   const [settings, setSettings] = useState<LocationSettings | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
   const [businessSettings, setBusinessSettings] =
@@ -245,7 +290,6 @@ function SettingsLayout({
 }) {
   const { tab: initialTab, subtab } = useSettingsParams();
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const onSettingsSaved = (next: LocationSettings) => setSettings(next);
   const onBusinessSettingsSaved = (next: BusinessSettings) =>
@@ -357,14 +401,6 @@ function SettingsLayout({
     }
   };
 
-  const currentLabel =
-    settingsNavItems.find((item) => item.id === activeTab)?.label || "Settings";
-
-  const handleTabChange = (id: TabId) => {
-    setActiveTab(id);
-    setIsMobileMenuOpen(false);
-  };
-
   return (
     <>
       <PageBreadcrumbs items={[{ title: "Settings" }]} />
@@ -375,82 +411,13 @@ function SettingsLayout({
         }${isLocationLoading ? "…" : ""}`}
       />
       <PageBody>
-        {/* Mobile selector */}
-        <div className="lg:hidden">
-        <button
-          onClick={() => setIsMobileMenuOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 bg-card border rounded-xl shadow-sm"
+        <SettingsNavShell
+          items={settingsNavItems}
+          activeId={activeTab}
+          onSelect={(id) => setActiveTab(id as TabId)}
         >
-          <span className="font-medium">{currentLabel}</span>
-          {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
-        {isMobileMenuOpen && (
-          <div className="absolute z-50 left-4 right-4 mt-2 bg-white border rounded-xl shadow-lg">
-            <nav className="py-1">
-              {settingsNavItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleTabChange(item.id as TabId)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left ${isActive ? "bg-primary/10 text-primary" : "hover:bg-gray-100"}`}
-                  >
-                    <Icon className={`h-5 w-5 ${isActive ? "text-primary" : "text-gray-400"}`} />
-                    <div>
-                      <span className="font-medium text-sm">{item.label}</span>
-                      <p className={`text-xs mt-0.5 ${isActive ? "text-primary/70" : "text-gray-400"}`}>{item.description}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-        <nav className="hidden lg:block lg:w-64 flex-shrink-0">
-          <div className="bg-card border rounded-xl p-2 space-y-1 sticky top-24 shadow-sm">
-            {settingsNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id as TabId)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg transition-all ${
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600"
-                  }`}
-                >
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${isActive ? "bg-primary/15" : "bg-gray-100 dark:bg-gray-800"}`}>
-                    <Icon className={`h-4 w-4 ${isActive ? "text-primary" : "text-gray-500"}`} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className={`text-sm font-medium block ${isActive ? "text-primary" : ""}`}>
-                      {item.label}
-                    </span>
-                    <span className={`text-xs block truncate ${isActive ? "text-primary/60" : "text-gray-400"}`}>
-                      {item.description}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-
-        <main className="flex-1 min-w-0">{content()}</main>
-      </div>
-
-        {isMobileMenuOpen && (
-          <div
-            className="fixed inset-0 bg-black/25 z-40 lg:hidden"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-        )}
+          {content()}
+        </SettingsNavShell>
       </PageBody>
     </>
   );

@@ -41,6 +41,13 @@ interface Props {
   placeholder?: string;
   value?: string;
   isDisabled?: boolean;
+  /**
+   * Caller-side loading — e.g. the stock catalogue that supplies
+   * `anchorUnitId` hasn't resolved yet. Rendered exactly like the internal
+   * compatibility fetch: spinner in the trigger instead of a silently dead
+   * control.
+   */
+  isLoading?: boolean;
   onChange: (value: string) => void;
   onBlur?: () => void;
   /**
@@ -63,20 +70,49 @@ interface Props {
 const compatCache = new Map<string, CompatibleUnit[]>();
 const compatPromises = new Map<string, Promise<CompatibleUnit[]>>();
 
+// Bumped whenever the shared units cache notifies — that covers both a real
+// mutation (invalidate) and the cache merely finishing its own first load.
+// Mounted selectors re-fetch on a bump, but only in the background: a picker
+// that already has a list must never flip back to a disabled "Loading…".
+let compatVersion = 0;
+const versionListeners = new Set<() => void>();
+
 unitsCache.subscribe(() => {
   compatCache.clear();
   compatPromises.clear();
+  compatVersion += 1;
+  for (const listener of versionListeners) listener();
 });
+
+function useCompatVersion(): number {
+  const [version, setVersion] = useState(compatVersion);
+  useEffect(() => {
+    const listener = () => setVersion(compatVersion);
+    versionListeners.add(listener);
+    // Catch a bump that landed between render and effect.
+    listener();
+    return () => {
+      versionListeners.delete(listener);
+    };
+  }, []);
+  return version;
+}
 
 function fetchCompat(anchorId: string): Promise<CompatibleUnit[]> {
   const cached = compatCache.get(anchorId);
   if (cached) return Promise.resolve(cached);
   let p = compatPromises.get(anchorId);
   if (!p) {
-    p = getCompatibleUnits(anchorId).then((d) => {
-      compatCache.set(anchorId, d);
-      return d;
-    });
+    p = getCompatibleUnits(anchorId)
+      .then((d) => {
+        compatCache.set(anchorId, d);
+        return d;
+      })
+      .finally(() => {
+        // Never leave a settled promise memoised — a rejected one would be
+        // replayed to every later mount and pin the picker to "no units".
+        if (compatPromises.get(anchorId) === p) compatPromises.delete(anchorId);
+      });
     compatPromises.set(anchorId, p);
   }
   return p;
@@ -99,6 +135,7 @@ const CompatibleUnitSelector: React.FC<Props> = ({
   placeholder = "Select unit",
   value,
   isDisabled,
+  isLoading: externalLoading = false,
   onChange,
   onBlur,
   onUnitMeta,
@@ -106,7 +143,20 @@ const CompatibleUnitSelector: React.FC<Props> = ({
   const [open, setOpen] = useState(false);
   const { data: allUnitsData, loading: allUnitsLoading } = useCachedUnits();
   const allUnits = allUnitsData ?? EMPTY_UNITS;
-  const [compat, setCompat] = useState<CompatibleUnit[] | null>(null);
+  const compatEpoch = useCompatVersion();
+  // Keyed by anchor so a list fetched for the *previous* anchor is never read
+  // as this one's — the old behaviour briefly grouped the wrong units and
+  // flagged the freshly-defaulted selection as "not compatible".
+  const [compatState, setCompatState] = useState<{
+    anchor: string;
+    units: CompatibleUnit[];
+  } | null>(null);
+  const compat =
+    anchorUnitId && compatState?.anchor === anchorUnitId
+      ? compatState.units
+      : null;
+  const hasCompatRef = useRef(false);
+  hasCompatRef.current = compat !== null;
   const [compatLoading, setCompatLoading] = useState<boolean>(!!anchorUnitId);
   const [search, setSearch] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -122,29 +172,32 @@ const CompatibleUnitSelector: React.FC<Props> = ({
     return () => ro.disconnect();
   }, []);
 
-  // Refetch compatibility set whenever the anchor changes or the units cache
-  // is invalidated (a mutation clears compatCache via the module-level
+  // Refetch the compatibility set whenever the anchor changes or the units
+  // cache notifies (a mutation clears compatCache via the module-level
   // subscription, so we re-fetch from scratch).
   useEffect(() => {
     if (!anchorUnitId) {
-      setCompat(null);
       setCompatLoading(false);
       return;
     }
-    const cached = compatCache.get(anchorUnitId);
+    const anchor = anchorUnitId;
+    const cached = compatCache.get(anchor);
     if (cached) {
-      setCompat(cached);
+      setCompatState({ anchor, units: cached });
       setCompatLoading(false);
       return;
     }
-    setCompatLoading(true);
+    // Only the first load for this anchor blocks the control. A version bump
+    // re-fetches silently over the list already on screen, so a usable picker
+    // can't be dragged back into a disabled state by unrelated cache traffic.
+    if (!hasCompatRef.current) setCompatLoading(true);
     let cancelled = false;
-    fetchCompat(anchorUnitId)
+    fetchCompat(anchor)
       .then((d) => {
-        if (!cancelled) setCompat(d);
+        if (!cancelled) setCompatState({ anchor, units: d });
       })
       .catch(() => {
-        if (!cancelled) setCompat([]);
+        if (!cancelled) setCompatState({ anchor, units: [] });
       })
       .finally(() => {
         if (!cancelled) setCompatLoading(false);
@@ -152,7 +205,7 @@ const CompatibleUnitSelector: React.FC<Props> = ({
     return () => {
       cancelled = true;
     };
-  }, [anchorUnitId, allUnitsData]);
+  }, [anchorUnitId, compatEpoch]);
 
   // Surface the resolved row — not just the id — so callers can use
   // factorFromAnchor. Runs on mount too, once `compat` has loaded, so an
@@ -166,7 +219,14 @@ const CompatibleUnitSelector: React.FC<Props> = ({
     onUnitMeta(compat.find((u) => u.unitId === value) ?? null);
   }, [value, compat, onUnitMeta]);
 
-  const isLoading = anchorUnitId ? compatLoading : allUnitsLoading;
+  // Anchored: waiting on this anchor's compatibility set (or on the caller
+  // still resolving the anchor itself). Unanchored: waiting on the shared
+  // units catalogue.
+  const isLoading =
+    externalLoading ||
+    (anchorUnitId
+      ? compatLoading && compat === null
+      : allUnitsLoading && allUnits.length === 0);
 
   const anchorAbbr = useMemo(() => {
     if (!anchorUnitId) return null;
@@ -250,7 +310,6 @@ const CompatibleUnitSelector: React.FC<Props> = ({
   );
 
   const popoverWidth = Math.max(triggerWidth, 280);
-  const showLoadingText = isLoading && !compat && allUnits.length === 0;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -260,18 +319,26 @@ const CompatibleUnitSelector: React.FC<Props> = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          aria-busy={isLoading}
           className={cn(controlComboboxTriggerClass, "overflow-hidden")}
-          disabled={isDisabled || showLoadingText}
+          disabled={isDisabled || isLoading}
           onBlur={onBlur}
         >
-          <span
-            className={cn(
-              "truncate text-left flex-1",
-              !selectedLabel && "text-muted-2",
-            )}
-          >
-            {showLoadingText ? "Loading..." : selectedLabel ?? placeholder}
-          </span>
+          {isLoading ? (
+            <span className="flex flex-1 items-center gap-2 truncate text-left text-muted-2">
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+              Loading units…
+            </span>
+          ) : (
+            <span
+              className={cn(
+                "truncate text-left flex-1",
+                !selectedLabel && "text-muted-2",
+              )}
+            >
+              {selectedLabel ?? placeholder}
+            </span>
+          )}
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-2" />
         </Button>
       </PopoverTrigger>
@@ -289,10 +356,10 @@ const CompatibleUnitSelector: React.FC<Props> = ({
           />
           <CommandList className="max-h-[320px]">
             <CommandEmpty>
-              {isLoading ? "Loading..." : "No units found."}
+              {isLoading ? "Loading units…" : "No units found."}
             </CommandEmpty>
 
-            {isLoading && !compat && allUnits.length === 0 ? (
+            {isLoading ? (
               <div className="py-6 text-center">
                 <Loader2 className="mx-auto h-5 w-5 animate-spin opacity-50" />
               </div>

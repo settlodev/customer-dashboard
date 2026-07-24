@@ -98,8 +98,6 @@ export default async function CashflowReportPage({ searchParams }: Params) {
   const page = Math.max(1, Number(resolved.page) || 1);
   const limit = Math.max(1, Number(resolved.limit) || DEFAULT_PAGE_SIZE);
 
-  // `cashFlowReport` takes Date objects; widen to whole days so the last
-  // day's evening trade is included (same convention as the sales report).
   const [
     overview,
     currency,
