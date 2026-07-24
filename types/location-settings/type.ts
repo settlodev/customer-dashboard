@@ -142,6 +142,11 @@ export interface LocationSettings {
   defaultLowStockThreshold: number | null;
   allowNegativeStock: boolean;
   trackExpiryDates: boolean;
+  /**
+   * Let other destinations raise a stock request against this location for
+   * more than it has on hand. Enforced by Inventory on the source side.
+   */
+  allowStockRequestsOverAvailable: boolean;
 
   // Order naming
   orderNamePrefix: string | null;

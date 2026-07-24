@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Bell, Boxes, Building2, CalendarClock, CalendarOff, Calculator, CreditCard, Link2, MapPin, Monitor, Palette, Printer, ShoppingBag, Smartphone, Star, Sun, UtensilsCrossed, Truck, Wallet, UserCheck, Search } from "lucide-react";
+import { ArrowLeftRight, Bell, Boxes, Building2, CalendarClock, CalendarOff, Calculator, ClipboardCheck, CreditCard, Link2, MapPin, Monitor, Palette, PackageCheck, Printer, ScanLine, ShoppingBag, Smartphone, Star, Store, Sun, UtensilsCrossed, Truck, Wallet, UserCheck, Search } from "lucide-react";
 
 export const taxClasses=
     [
@@ -109,4 +109,19 @@ export const settingsNavItems = [
     { id: 'payments', label: 'Payment methods', icon: CreditCard, description: 'Accepted payment methods' },
     { id: 'devices', label: 'Devices', icon: Smartphone, description: 'Linked devices & access' },
     { id: 'integrations', label: 'Integrations', icon: Link2, description: 'Service integrations' },
+];
+
+/**
+ * Settings nav shown when the active destination is a STORE. A store is a
+ * stockroom: it holds stock but never sells, so nothing business- or
+ * location-scoped belongs here — only the store's own record and the
+ * inventory / transfer / receiving policies on `store_settings`.
+ */
+export const storeSettingsNavItems = [
+    { id: 'store', label: 'Store', icon: Store, description: 'Store details, code & address' },
+    { id: 'store-inventory', label: 'Stock & inventory', icon: Boxes, description: 'Tracking, negative stock, reorder defaults' },
+    { id: 'store-transfers', label: 'Transfers & requests', icon: ArrowLeftRight, description: 'Inbound, outbound, approvals, over-requests' },
+    { id: 'store-receiving', label: 'Receiving', icon: PackageCheck, description: 'Quality checks, photos, auto-receive' },
+    { id: 'store-tracking', label: 'Storage & tracking', icon: ScanLine, description: 'Bins, lots, serials, barcode scanning' },
+    { id: 'store-counting', label: 'Counting & audit', icon: ClipboardCheck, description: 'Cycle counts and adjustment approvals' },
 ];

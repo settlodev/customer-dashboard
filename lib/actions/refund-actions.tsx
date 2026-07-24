@@ -69,14 +69,30 @@ export const getRefund = async (
   return parseStringify(refund);
 };
 
+/**
+ * Refund details for a business-date range.
+ *
+ * <p>`startDate`/`endDate` are `yyyy-MM-dd` — `/refunds/details` binds them as
+ * `LocalDate` with `@DateTimeFormat(iso = ISO.DATE)`, which rejects anything
+ * carrying a time component. Callers used to hand it
+ * `new Date(...).toISOString()`, so every request 400'd and the page's
+ * `.catch(() => null)` rendered an empty report instead of an error.
+ *
+ * <p>`locationId` is a required query param on that endpoint and was missing
+ * too — the `X-Location-Id` header ApiClient attaches does not satisfy it. So
+ * the request had two independent reasons to fail; fixing only the dates would
+ * have left the report just as empty.
+ */
 export const GetRefundReport = async (
   startDate?: string,
   endDate?: string,
 ): Promise<RefundReport> => {
   try {
     const apiClient = new ApiClient("reports");
+    const location = await getCurrentLocation();
     const queryParams = new URLSearchParams();
 
+    if (location?.id) queryParams.append("locationId", location.id);
     if (startDate) queryParams.append("startDate", startDate);
     if (endDate) queryParams.append("endDate", endDate);
 

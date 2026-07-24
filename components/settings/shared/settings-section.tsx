@@ -75,6 +75,27 @@ export function SettingsSection({
   );
 }
 
+/** Small labelled wrapper for an input inside a SettingsSection. */
+export function SettingsField({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+        {label}
+      </label>
+      {children}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
 /** Labelled switch row with description — pairs with SettingsSection. */
 export function SettingsSwitchRow({
   label,

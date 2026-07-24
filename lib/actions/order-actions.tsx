@@ -10,7 +10,6 @@ import type { OrdersKpis } from "@/components/orders/orders-panel";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { CartState } from "@/context/cartContext";
 import {
-  CashFlow,
   CashFlowDailyPoint,
   Credit,
   DaySessionRefundsResponse,
@@ -461,20 +460,6 @@ export const printOrderVfd = async (
 
 // ─── Reports (reports service) ──────────────────────────────────────
 
-export const cashFlowReport = async (
-  startDate?: Date,
-  endDate?: Date,
-): Promise<CashFlow | null> => {
-  const apiClient = new ApiClient("reports");
-  const location = await getCurrentLocation();
-  const params = { startDate, endDate };
-  const report = await apiClient.get(
-    `/api/reports/${location?.id}/cash-flow/summary`,
-    { params },
-  );
-  return parseStringify(report);
-};
-
 /**
  * Daily cash-flow series (money in vs out per day) for the cash-flow trend
  * chart. Backed by `GET /api/v2/analytics/cash-flow/daily` (Reports Service);
@@ -500,12 +485,24 @@ export const cashFlowDaily = async (
   }
 };
 
+/**
+ * Unpaid ("credit") orders for a business-date range.
+ *
+ * <p>Takes `yyyy-MM-dd` strings and requires the caller's location. It used to
+ * take `Date`s and omit `locationId`, so every request failed twice over:
+ * `/credit/unpaid-orders` binds `startDate`/`endDate` as `LocalDate` with
+ * `@DateTimeFormat(iso = ISO.DATE)`, which rejects the ISO *datetime* axios
+ * serialises a `Date` into, and `locationId` is a required param. The page
+ * caught the 400 and rendered an empty report, so the failure looked like
+ * "this location has no credit orders".
+ */
 export const creditReport = async (
-  startDate?: Date,
-  endDate?: Date,
+  startDate?: string,
+  endDate?: string,
 ): Promise<Credit | null> => {
   const apiClient = new ApiClient("reports");
-  const params = { startDate, endDate };
+  const location = await getCurrentLocation();
+  const params = { locationId: location?.id, startDate, endDate };
   const report = await apiClient.get(`/api/v2/analytics/credit/unpaid-orders`, {
     params,
   });

@@ -38,12 +38,10 @@ export default async function RefundReportPage({ searchParams }: Params) {
   const page = Number(resolved.page) || 1;
   const limit = Number(resolved.limit) || 10;
 
-  // GetRefundReport takes ISO datetime strings; widen the range to whole
-  // days so the last day's evening trade is included.
-  const start = new Date(`${from}T00:00:00`).toISOString();
-  const end = new Date(`${to}T23:59:59`).toISOString();
-
-  const report = await GetRefundReport(start, end).catch(() => null);
+  // Business dates, passed through as-is. There is nothing to widen to "whole
+  // days": the range is inclusive on both ends and business_date is a date,
+  // not a timestamp.
+  const report = await GetRefundReport(from, to).catch(() => null);
 
   const subtitle =
     from === to

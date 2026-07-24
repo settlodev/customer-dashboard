@@ -1,16 +1,31 @@
 /**
+ * Half a ULP of the finest quantity the backend writes, in base units — the
+ * mirror of `SellableUnits.QUANTISATION_SLACK` on the inventory service.
+ *
+ * A quantity arrives here already rounded to its column's scale, so a value
+ * that is truly 23/24 of a crate reads back as 0.958333 and multiplies out to
+ * 22.999992 bottles. Flooring that reports 22, losing a bottle that is
+ * physically on the shelf. The gap is never larger than half a ULP, so
+ * forgiving exactly that much before splitting recovers the true count while
+ * still refusing to round up anything genuinely short: it is worth about one
+ * hundred-thousandth of a bottle.
+ */
+const QUANTISATION_SLACK = 5e-7;
+
+/**
  * Splits a base-unit quantity into whole + sub-unit counts using a
  * divisible-unit ratio (sub-units per 1 base unit). Floors both parts —
  * matches the backend's RoundingMode.DOWN convention (BomYieldService) and
- * never overstates what's actually countable.
+ * never overstates what's actually countable — after forgiving the stored
+ * value's own quantisation (see `QUANTISATION_SLACK`).
  *
  * The remainder is rounded to 6dp before flooring to neutralize float noise
- * (e.g. 8.999999999997 incorrectly flooring to 8 instead of 9) — 6dp matches
- * the backend's NUMERIC(19,6) quantity column scale. That same rounding step
- * can push a remainder that's within 6dp of a full `ratio` up to `ratio`
- * itself (e.g. quantity `4.1 - 0.1` === `3.9999999999999996` at ratio 30
- * would otherwise yield `{ whole: 3, sub: 30 }`), so a rollover guard carries
- * the overflow into `whole` to preserve the `sub < ratio` invariant.
+ * (e.g. 8.999999999997 incorrectly flooring to 8 instead of 9). That rounding
+ * step, and the slack above it, can each push a remainder that's within 6dp of
+ * a full `ratio` up to `ratio` itself (e.g. quantity `4.1 - 0.1` ===
+ * `3.9999999999999996` at ratio 30 would otherwise yield `{ whole: 3, sub: 30 }`),
+ * so a rollover guard carries the overflow into `whole` to preserve the
+ * `sub < ratio` invariant.
  *
  * Expects a non-negative `quantity`; negative inputs floor toward -Infinity
  * rather than mirroring the sign (e.g. `-1.0666666667` at ratio 30 yields
@@ -24,8 +39,9 @@ export function splitDivisibleQuantity(
   quantity: number,
   ratio: number,
 ): { whole: number; sub: number } {
-  let whole = Math.floor(quantity);
-  const remainder = Math.round((quantity - whole) * ratio * 1e6) / 1e6;
+  const forgiving = quantity + QUANTISATION_SLACK;
+  let whole = Math.floor(forgiving);
+  const remainder = Math.round((forgiving - whole) * ratio * 1e6) / 1e6;
   let sub = Math.floor(remainder);
   if (sub >= ratio) {
     whole += 1;

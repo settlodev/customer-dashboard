@@ -58,14 +58,9 @@ export async function exportSalesReportWorkbook(
   const cur = currency || "TZS";
   const money = (label: string) => `${label} (${cur})`;
 
-  // staffReport takes Date objects; widen to whole days so the last day's
-  // evening trade is included (same convention as the tabs).
-  const start = new Date(`${from}T00:00:00`);
-  const end = new Date(`${to}T23:59:59`);
-
   const [staff, products, category, department, tableReport, tables] =
     await Promise.all([
-      staffReport(start, end).catch(() => null),
+      staffReport(from, to).catch(() => null),
       listTopSellingProducts({
         fromDate: from,
         toDate: to,

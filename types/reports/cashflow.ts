@@ -1,13 +1,12 @@
 // View-model types + helpers for the cashflow report screen.
 //
-// The screen is backed by the existing `cashFlowReport` action
-// (`GET /api/reports/{location}/cash-flow/summary` → `CashFlow`). That
-// endpoint returns period TOTALS plus an inflow split by payment method;
-// it does not (yet) return a daily series, so the trend chart consumes a
-// modeled distribution (see `lib/reports/cashflow-trend.ts`) until the
-// reports service grows a real per-day endpoint.
+// The screen is backed by the Reports Service analytics endpoints:
+// `/api/v2/analytics/overview` for the totals, `/cash-flow/daily` for the
+// real per-day trend, and `/transactions/by-payment-method` for the inflow
+// split. The pre-migration `/api/reports/{location}/cash-flow/summary`
+// summary endpoint never existed on the analytics service and has been
+// removed along with its `cashFlowReport` action and `CashFlow` type.
 
-import type { CashFlow } from "@/types/orders/type";
 import type { PaymentMethodBreakdown } from "@/types/reports/payment-methods";
 
 // ─── Trend (chart) ──────────────────────────────────────────────────
@@ -78,24 +77,6 @@ export function breakdownToMethodRows(
       id: r.acceptedPaymentMethodType ? String(r.acceptedPaymentMethodType) : null,
     }))
     .filter((r) => r.amount !== 0)
-    .sort((a, b) => b.amount - a.amount);
-}
-
-/**
- * Fallback inflow-by-method rows derived from the cash-flow summary's
- * embedded `paymentMethodTotals` (name + amount only — no counts). Used
- * when the richer by-payment-method endpoint returns nothing.
- */
-export function toMethodRows(report: CashFlow | null): CashflowMethodRow[] {
-  const totals = report?.paymentMethodTotals ?? [];
-  const sum = totals.reduce((acc, m) => acc + (m.amount || 0), 0);
-  return totals
-    .map((m) => ({
-      name: m.paymentMethodName?.trim() || "Unspecified",
-      amount: m.amount || 0,
-      share: sum > 0 ? ((m.amount || 0) / sum) * 100 : 0,
-    }))
-    .filter((m) => m.amount !== 0)
     .sort((a, b) => b.amount - a.amount);
 }
 

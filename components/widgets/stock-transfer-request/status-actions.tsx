@@ -291,7 +291,7 @@ function ApproveButton({ request }: { request: TransferRequest }) {
           <ThumbsUp className="h-4 w-4 mr-1.5" /> Approve
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl flex flex-col max-h-[calc(100dvh-2rem)] overflow-y-hidden">
         <DialogHeader>
           <DialogTitle>Approve request {request.requestNumber}</DialogTitle>
           <DialogDescription>
@@ -299,7 +299,7 @@ function ApproveButton({ request }: { request: TransferRequest }) {
             stock transfer you then dispatch. Set a line to 0 to drop it.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-4 flex-1 min-h-0 overflow-y-auto">
           <div className="overflow-x-auto border rounded-lg">
             <table className="w-full text-sm">
               <thead>

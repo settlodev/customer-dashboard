@@ -40,13 +40,8 @@ export default async function CreditReportPage({ searchParams }: Params) {
   const page = Number(resolved.page) || 1;
   const limit = Number(resolved.limit) || 10;
 
-  // creditReport takes Date objects; widen to whole days so the last
-  // day's evening trade is included.
-  const start = new Date(`${from}T00:00:00`);
-  const end = new Date(`${to}T23:59:59`);
-
   const [creditData, location] = await Promise.all([
-    creditReport(start, end).catch(() => null),
+    creditReport(from, to).catch(() => null),
     getCurrentLocation().catch(() => null),
   ]);
 
