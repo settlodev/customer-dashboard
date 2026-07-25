@@ -28,6 +28,10 @@ import type {
  */
 
 const HEARTBEAT_INTERVAL_MS = 25_000;
+// If nothing (not even the HEARTBEAT ack) arrives for this long, treat the
+// socket as half-open (dead TCP with no FIN) and force a reconnect instead of
+// showing "connected" over a socket that receives nothing for minutes.
+const HEARTBEAT_LIVENESS_THRESHOLD_MS = HEARTBEAT_INTERVAL_MS * 2 + 5_000;
 const FALLBACK_AFTER_FAILED_ATTEMPTS = 3;
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const BASE_RECONNECT_DELAY_MS = 1_500;
@@ -62,6 +66,10 @@ export class GatewayClient {
 
   private status: RealtimeStatus = "idle";
   private statusListeners = new Set<(s: RealtimeStatus) => void>();
+  // Fired when a CONNECTED arrives after a reconnect (not the first connect).
+  // USER sessions get no server-side replay, so consumers must refetch to catch
+  // up on anything missed while the socket was down.
+  private reconnectListeners = new Set<() => void>();
 
   private subscriptions = new Map<string, SubscriptionEntry>();
   private pendingSubscribes = new Map<string, PendingSubscribe>();
@@ -71,6 +79,9 @@ export class GatewayClient {
   private reconnectAttempt = 0;
   private explicitlyClosed = false;
   private connecting: Promise<void> | null = null;
+  // Wall-clock ms of the last frame received from the server (any type, incl.
+  // the HEARTBEAT ack). Drives half-open detection in the heartbeat loop.
+  private lastInboundAt = 0;
 
   constructor(url: string, tokenProvider: () => Promise<string | null>) {
     this.url = url;
@@ -87,6 +98,17 @@ export class GatewayClient {
     this.statusListeners.add(listener);
     listener(this.status);
     return () => this.statusListeners.delete(listener);
+  }
+
+  /**
+   * Register a callback fired when the socket RE-connects (a CONNECTED after a
+   * prior drop) — NOT on the first connect. USER sessions have no server-side
+   * replay, so consumers use this to refetch and catch up on whatever changed
+   * while the socket was down. Returns an unsubscribe.
+   */
+  onReconnect(listener: () => void): () => void {
+    this.reconnectListeners.add(listener);
+    return () => this.reconnectListeners.delete(listener);
   }
 
   /**
@@ -179,6 +201,7 @@ export class GatewayClient {
       };
 
       socket.onmessage = (event) => {
+        this.lastInboundAt = Date.now();
         let message: WsMessage;
         try {
           message = JSON.parse(event.data as string);
@@ -212,6 +235,7 @@ export class GatewayClient {
   private handleFrame(message: WsMessage, onConnected: () => void): void {
     switch (message.type) {
       case "CONNECTED": {
+        const wasReconnect = this.reconnectAttempt > 0;
         this.reconnectAttempt = 0;
         this.setStatus("connected");
         this.startHeartbeat();
@@ -220,6 +244,17 @@ export class GatewayClient {
         const channels = Array.from(this.subscriptions.keys());
         if (channels.length > 0) this.sendSubscribe(channels);
         onConnected();
+        // A re-connect means we may have missed live events while down (USER
+        // sessions get no replay). Tell consumers to refetch and catch up.
+        if (wasReconnect) {
+          for (const l of this.reconnectListeners) {
+            try {
+              l();
+            } catch (e) {
+              console.error("[realtime] reconnect listener threw", e);
+            }
+          }
+        }
         return;
       }
       case "HEARTBEAT":
@@ -297,7 +332,16 @@ export class GatewayClient {
 
   private startHeartbeat(): void {
     this.stopHeartbeat();
+    this.lastInboundAt = Date.now(); // fresh baseline on (re)connect
     this.heartbeatTimer = setInterval(() => {
+      if (Date.now() - this.lastInboundAt > HEARTBEAT_LIVENESS_THRESHOLD_MS) {
+        // Half-open: nothing received (not even the HEARTBEAT ack) for too long.
+        // Force-close so onclose drives a reconnect instead of sitting
+        // "connected" on a dead socket until the browser's TCP timeout.
+        console.warn("[realtime] heartbeat liveness timeout — forcing reconnect");
+        this.socket?.close();
+        return;
+      }
       this.sendFrame({ type: "HEARTBEAT", payload: {} });
     }, HEARTBEAT_INTERVAL_MS);
   }
