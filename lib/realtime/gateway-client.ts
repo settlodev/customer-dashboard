@@ -32,6 +32,18 @@ const FALLBACK_AFTER_FAILED_ATTEMPTS = 3;
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const BASE_RECONNECT_DELAY_MS = 1_500;
 
+/**
+ * Gateway ERROR-frame codes meaning the token we presented is no good for this
+ * connection. On these we drop the socket to reconnect promptly (re-fetching a
+ * freshly-refreshed token from /api/realtime/token) rather than idle until the
+ * gateway reaps the unauthenticated socket ~15s later.
+ */
+const AUTH_ERROR_CODES = new Set([
+  "AUTH_FAILED",
+  "AUTH_EXPIRED",
+  "TOKEN_REFRESH_FAILED",
+]);
+
 interface SubscriptionEntry {
   refCount: number;
   handlers: Set<ChannelHandler>;
@@ -236,9 +248,21 @@ export class GatewayClient {
         }
         return;
       }
-      case "ERROR":
+      case "ERROR": {
+        const payload = message.payload as
+          | { code?: string; message?: string }
+          | undefined;
         console.warn("[realtime] gateway error", message.payload);
+        // Auth rejection → the token we presented is stale/invalid. Drop the
+        // socket so onclose drives a prompt reconnect, which re-fetches a fresh
+        // token from /api/realtime/token. We do NOT set explicitlyClosed, so
+        // scheduleReconnect still runs; the backoff keeps escalating (it only
+        // resets on CONNECTED), so a persistently-bad token can't tight-loop.
+        if (payload?.code && AUTH_ERROR_CODES.has(payload.code)) {
+          this.socket?.close();
+        }
         return;
+      }
       default: {
         // Domain event — fan to every handler on the message's channel.
         // The server's WsMessage doesn't carry the channel name, so we
