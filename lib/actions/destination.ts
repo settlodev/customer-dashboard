@@ -7,6 +7,7 @@ import type { Store } from "@/types/store/type";
 import type { Warehouses } from "@/types/warehouse/warehouse/type";
 import { getAuthToken, updateAuthToken } from "@/lib/auth-utils";
 import { extractSubscriptionStatus } from "@/lib/jwt-utils";
+import { getCurrentDestination } from "@/lib/actions/context";
 import { clearDaySessionCookie } from "./day-session-cookie-actions";
 
 // ── Unified destination switcher ────────────────────────────────────
@@ -39,27 +40,57 @@ async function clearAllDestinationCookies(keep?: string) {
 }
 
 /**
- * Refreshes the access token so its claims (subscription status, assignment)
- * match the destination the user just switched to. Non-fatal if it fails —
- * the next API call will refresh reactively.
+ * Mints an access token scoped to the destination the user just switched to,
+ * via `/auth/switch-location`, so its claims (subscription status, assignment,
+ * destination scope) match that destination. Falls back to a plain
+ * `/auth/token-refresh` only when no destination is resolvable (defensive —
+ * the switch callers always set the destination cookie first). Non-fatal if
+ * it fails — the next API call will refresh reactively.
  */
-async function refreshTokenForDestination(): Promise<void> {
+async function mintTokenForCurrentDestination(): Promise<void> {
   try {
     const authToken = await getAuthToken();
-    if (!authToken?.refreshToken) return;
+    if (!authToken?.accessToken) return;
 
     const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || "";
     const clientId = process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID;
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (clientId) headers["X-Client-Id"] = clientId;
 
-    const res = await fetch(`${AUTH_SERVICE_URL}/auth/token-refresh`, {
+    const destination = await getCurrentDestination();
+
+    // No resolvable destination (shouldn't happen on the switch path, which sets one
+    // first) → fall back to a plain refresh, which now preserves scope server-side.
+    if (!destination) {
+      if (!authToken.refreshToken) return;
+      const res = await fetch(`${AUTH_SERVICE_URL}/auth/token-refresh`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ refreshToken: authToken.refreshToken }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      await updateAuthToken({
+        ...authToken,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken || authToken.refreshToken,
+        subscriptionStatus: extractSubscriptionStatus(data.accessToken),
+      });
+      return;
+    }
+
+    headers["Authorization"] = `Bearer ${authToken.accessToken}`;
+    const res = await fetch(`${AUTH_SERVICE_URL}/auth/switch-location`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ refreshToken: authToken.refreshToken }),
+      body: JSON.stringify({
+        destinationId: destination.id,
+        destinationType: destination.type, // already "LOCATION"|"STORE"|"WAREHOUSE"
+      }),
     });
+    // Best-effort: a failure (incl. a not-yet-deployed 404, or an ACCESS_DENIED for a
+    // destination the user can't reach) leaves the current token in place. The switcher
+    // only offers destinations the user can access, so a denial is not expected here.
     if (!res.ok) return;
 
     const data = await res.json();
@@ -70,7 +101,7 @@ async function refreshTokenForDestination(): Promise<void> {
       subscriptionStatus: extractSubscriptionStatus(data.accessToken),
     });
   } catch {
-    // Non-critical
+    // Non-critical — keep the existing token.
   }
 }
 
@@ -84,7 +115,7 @@ async function refreshTokenForDestination(): Promise<void> {
  * the new status.
  */
 export async function refreshSubscriptionToken(): Promise<void> {
-  await refreshTokenForDestination();
+  await mintTokenForCurrentDestination();
   revalidatePath("/", "layout");
 }
 
@@ -101,7 +132,7 @@ export async function switchToLocation(data: Location): Promise<void> {
     ...cookieOptions(),
   });
 
-  await refreshTokenForDestination();
+  await mintTokenForCurrentDestination();
   revalidatePath("/", "layout");
 }
 
@@ -116,7 +147,7 @@ export async function switchToStore(data: Store): Promise<void> {
     ...cookieOptions(),
   });
 
-  await refreshTokenForDestination();
+  await mintTokenForCurrentDestination();
   revalidatePath("/", "layout");
 }
 
@@ -131,7 +162,7 @@ export async function switchToWarehouse(data: Warehouses): Promise<void> {
     ...cookieOptions(),
   });
 
-  await refreshTokenForDestination();
+  await mintTokenForCurrentDestination();
   revalidatePath("/", "layout");
 }
 
