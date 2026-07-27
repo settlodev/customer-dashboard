@@ -36,6 +36,7 @@ import { ChartOfAccountSelector } from "@/components/widgets/chart-of-account-se
 import { receiveRefund } from "@/lib/actions/supplier-refund-actions";
 import { SupplierRefundReceiveSchema } from "@/types/expense/schema";
 import type { SupplierRefund } from "@/types/supplier-refund/type";
+import { ASSET_TYPES } from "@/types/accounting-mapping/type";
 
 type FormValues = z.infer<typeof SupplierRefundReceiveSchema>;
 
@@ -129,7 +130,7 @@ export default function SupplierRefundForm({
                   <FormLabel>Deposit to</FormLabel>
                   <FormControl>
                     <ChartOfAccountSelector
-                      accountType="ASSET"
+                      accountTypes={ASSET_TYPES}
                       value={field.value}
                       onChange={(v) => field.onChange(v)}
                       isDisabled={isPending}

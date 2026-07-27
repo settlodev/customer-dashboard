@@ -43,6 +43,7 @@ import type {
   AccountType,
   SettlementTreatment,
 } from "@/types/accounting-mapping/type";
+import { ASSET_TYPES } from "@/types/accounting-mapping/type";
 import type { Product } from "@/types/product/type";
 import type { PaymentMethod, PaymentMethodChild } from "@/types/payments/type";
 
@@ -301,13 +302,13 @@ function MappingDialog({
           <div className="space-y-1">
             <label className="text-xs font-medium">Chart of account</label>
             <ChartOfAccountSelector
-              accountType={"ASSET" as AccountType}
+              accountTypes={ASSET_TYPES}
               value={chartOfAccountId}
               onChange={(val) => setChartOfAccountId(val)}
               placeholder={
                 settlementTreatment === "RECEIVABLE"
                   ? "Provider holding / receivable account (e.g. 15xx / A/R)"
-                  : "Typically an ASSET (cash/bank/till)"
+                  : "Typically an asset account (cash/bank/till)"
               }
               isDisabled={isPending}
             />
