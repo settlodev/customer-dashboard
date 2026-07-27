@@ -41,7 +41,7 @@ import { cn } from "@/lib/utils";
 import { ChartOfAccountSelector } from "@/components/widgets/chart-of-account-selector";
 import { createProviderSettlement } from "@/lib/actions/provider-settlement-actions";
 import { ProviderSettlementSchema } from "@/types/provider-settlement/schema";
-import type { AccountType } from "@/types/accounting-mapping/type";
+import { ASSET_TYPES } from "@/types/accounting-mapping/type";
 
 import styles from "./styles/form-shell.module.css";
 import { NumericInput } from "@/components/ui/numeric-input";
@@ -223,7 +223,7 @@ export default function ProviderSettlementForm({
                       <FieldLabel optional>Bank account</FieldLabel>
                       <FormControl>
                         <ChartOfAccountSelector
-                          accountType={"ASSET" as AccountType}
+                          accountTypes={ASSET_TYPES}
                           value={field.value}
                           onChange={(v) => field.onChange(v)}
                           placeholder="Defaults to Bank - Primary"
