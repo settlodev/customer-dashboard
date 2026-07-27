@@ -7,6 +7,7 @@ import type { InventoryBalance } from "@/types/inventory-balance/type";
 import type { FormResponse } from "@/types/types";
 import { inventoryUrl } from "./inventory-client";
 import { getCurrentDestination } from "@/lib/actions/context";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 
 /**
  * Resolve the inventory balance for a variant at the user's current
@@ -27,6 +28,17 @@ export async function getCurrentLocationBalance(
   return getBalance(destination.id, variantId);
 }
 
+/**
+ * Every balance for a destination, used to enrich stock lists with "Qty on
+ * Hand" / "Value".
+ *
+ * <p>Degrading to an empty array keeps the list rendering, but it makes every
+ * stock item read 0 on hand and — value, which is indistinguishable from a
+ * location that genuinely holds no stock. That has previously been mistaken
+ * for a CSV import failing to post its quantities, so the failure is logged
+ * rather than swallowed outright: a 403 on {@code PERM_inventory:read}, a
+ * transient 5xx, or the wrong destination being active all land here.
+ */
 export async function getBalancesByLocation(
   locationId: string,
 ): Promise<InventoryBalance[]> {
@@ -36,7 +48,13 @@ export async function getBalancesByLocation(
       inventoryUrl(`/api/v1/inventory/locations/${locationId}`),
     );
     return parseStringify(data) as InventoryBalance[];
-  } catch {
+  } catch (error) {
+    rethrowIfBoundary(error);
+    console.error(
+      `getBalancesByLocation failed for location ${locationId} — ` +
+        "every stock item will render as 0 on hand / — value",
+      error,
+    );
     return [];
   }
 }
