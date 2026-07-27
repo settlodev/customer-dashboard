@@ -13,6 +13,11 @@ import type {
 
 import { getCurrentDestination } from "./context";
 import { inventoryUrl } from "./inventory-client";
+import { getDaySessionCookie } from "./day-session-cookie-actions";
+import {
+  getCurrentDaySession,
+  openDaySession,
+} from "./location-day-sessions-actions";
 
 export type PreviewResult =
   | { ok: true; data: PreviewResponse }
@@ -59,6 +64,81 @@ export async function previewImport(
   }
 }
 
+/**
+ * Import types whose commit posts stock — an opening balance or an intake —
+ * and which therefore reach a session-anchored write on the server.
+ * PRODUCT is absent on purpose: it creates untracked products and never
+ * touches the ledger, so it must not open a business day as a side effect.
+ */
+const STOCK_POSTING_IMPORTS: readonly ImportType[] = [
+  "STOCK",
+  "STOCK_INTAKE",
+  "STOCK_WITH_PRODUCT",
+  "PRODUCT_WITH_STOCK",
+];
+
+/**
+ * Guarantees an {@code X-Day-Session-Id} will be attached to the commit.
+ *
+ * <p>Why this exists: the commit endpoint itself has no day-session
+ * requirement, but the opening-stock / intake write nested inside it calls
+ * {@code BusinessDayResolver.requireSessionForRequest}, which throws
+ * {@code BUSINESS_DAY_SESSION_HEADER_MISSING} when the header is absent.
+ * The inventory service caught that and logged it, so a merchant importing
+ * before opening the day got a green "N created" and zero on hand.
+ *
+ * <p>Opening a business day is not free — it sets the business date that
+ * cash-up and close-of-day reports hang off — so this only ever opens one
+ * when Accounts confirms there genuinely is none. The {@code /current}
+ * probe first is what stops a merchant whose day is already open on the POS
+ * (dashboard cookie merely missing or stale) from getting a second one.
+ *
+ * <p>Scoped to LOCATION destinations. A store or warehouse day session
+ * belongs to its parent location, and the destination cookie carries no
+ * parent id — the same limit the existing business-day-closed dialog has.
+ * In that case this no-ops and the server's warning stands.
+ */
+async function ensureBusinessDayOpen(type: ImportType): Promise<void> {
+  if (!STOCK_POSTING_IMPORTS.includes(type)) return;
+
+  const destination = await getCurrentDestination();
+  if (destination?.type !== "LOCATION") return;
+
+  // Mirrors the interceptor's own guard: the header is only attached when the
+  // cookie exists AND belongs to the location being targeted.
+  const cookie = await getDaySessionCookie();
+  if (cookie?.id && cookie.locationId === destination.id) return;
+
+  try {
+    // Refreshes the cookie as a side effect when a session already exists.
+    const current = await getCurrentDaySession(destination.id);
+    if (current?.id) return;
+  } catch {
+    // Transient Accounts blip. Fall through and try to open — an
+    // already-open day comes back as DAY_SESSION_ALREADY_OPEN, which
+    // openDaySession treats as success rather than an error.
+  }
+
+  const opened = await openDaySession(destination.id);
+  if (opened.responseType !== "success") {
+    console.error(
+      `Could not open a business day at ${destination.id} before a ${type} import — ` +
+        "quantities will not post",
+      opened.message,
+    );
+    return;
+  }
+  // ALREADY_OPEN returns success carrying no session, so the cookie the
+  // interceptor reads may still be unset. One more probe writes it.
+  if (!opened.data?.id) {
+    try {
+      await getCurrentDaySession(destination.id);
+    } catch {
+      // Best effort — the server-side warning covers the remaining gap.
+    }
+  }
+}
+
 export async function commitImport(
   type: ImportType,
   previewId: string,
@@ -68,6 +148,8 @@ export async function commitImport(
   if (!decisions.length)
     return { ok: false, message: "No decisions to commit" };
   try {
+    // Before the POST, so the interceptor picks the cookie up on this request.
+    await ensureBusinessDayOpen(type);
     const apiClient = new ApiClient();
     const data = (await apiClient.post(
       inventoryUrl("/api/v1/imports/commit"),
