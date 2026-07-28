@@ -1,8 +1,10 @@
 // ── Chart of account (shared) ──────────────────────────────────────
 
 export type AccountType =
-  | "ASSET"
-  | "LIABILITY"
+  | "CURRENT_ASSET"
+  | "NON_CURRENT_ASSET"
+  | "CURRENT_LIABILITY"
+  | "NON_CURRENT_LIABILITY"
   | "EQUITY"
   | "REVENUE"
   | "EXPENSE";
@@ -27,12 +29,30 @@ export interface ChartOfAccount {
 }
 
 export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
-  ASSET: "Asset",
-  LIABILITY: "Liability",
+  CURRENT_ASSET: "Current Asset",
+  NON_CURRENT_ASSET: "Non-Current Asset",
+  CURRENT_LIABILITY: "Current Liability",
+  NON_CURRENT_LIABILITY: "Non-Current Liability",
   EQUITY: "Equity",
   REVENUE: "Revenue",
   EXPENSE: "Expense",
 };
+
+/** Both asset classes — for pickers that used to pass accountType="ASSET". */
+export const ASSET_TYPES: AccountType[] = ["CURRENT_ASSET", "NON_CURRENT_ASSET"];
+
+/** Both liability classes. */
+export const LIABILITY_TYPES: AccountType[] = [
+  "CURRENT_LIABILITY",
+  "NON_CURRENT_LIABILITY",
+];
+
+/** Everything that appears on the balance sheet rather than the P&L. */
+export const BALANCE_SHEET_ACCOUNT_TYPES: AccountType[] = [
+  ...ASSET_TYPES,
+  ...LIABILITY_TYPES,
+  "EQUITY",
+];
 
 // ── Payment method → account mapping ───────────────────────────────
 

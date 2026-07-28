@@ -1,4 +1,4 @@
-import { format, subDays } from "date-fns";
+import { format } from "date-fns";
 
 import {
   PageBody,
@@ -14,7 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/refunds/report-column";
 import { GetRefundReport } from "@/lib/actions/refund-actions";
-import { RotateCcwIcon, ShoppingCart, Wallet } from "lucide-react";
+import { Coins, RotateCcwIcon, Wallet } from "lucide-react";
 
 type Params = {
   searchParams: Promise<{
@@ -35,28 +35,28 @@ export default async function RefundReportPage({ searchParams }: Params) {
   const today = format(new Date(), "yyyy-MM-dd");
   const from = resolved.from ?? today;
   const to = resolved.to ?? today;
-  const page = Number(resolved.page) || 1;
-  const limit = Number(resolved.limit) || 10;
+  const page = Math.max(1, Number(resolved.page) || 1);
+  const limit = Math.max(1, Number(resolved.limit) || 10);
 
-  // Business dates, passed through as-is. There is nothing to widen to "whole
-  // days": the range is inclusive on both ends and business_date is a date,
-  // not a timestamp.
-  const report = await GetRefundReport(from, to).catch(() => null);
+  // Server-paginated: the Reports service slices the rows (backend `page` is
+  // 0-indexed) and returns range-wide summary totals, so the KPI strip stays
+  // constant across pages and the table never truncates at the backend's
+  // default page size.
+  const report = await GetRefundReport({
+    startDate: from,
+    endDate: to,
+    page: page - 1,
+    size: limit,
+  }).catch(() => null);
+
+  const rows = report?.refunds ?? [];
+  const total = report?.totalElements ?? 0;
+  const pageCount = report?.totalPages ?? 0;
 
   const subtitle =
     from === to
       ? `Refunds on ${format(new Date(from), "MMM d, yyyy")}`
       : `Refunds ${format(new Date(from), "MMM d")} – ${format(new Date(to), "MMM d, yyyy")}`;
-
-  const items = (report?.refundedItems ?? []).map((item, index) => ({
-    ...item,
-    id: String(index),
-  }));
-
-  const total = items.length;
-  const pageCount = Math.max(1, Math.ceil(total / limit));
-  const startIdx = (page - 1) * limit;
-  const pageData = items.slice(startIdx, startIdx + limit);
 
   return (
     <PageShell>
@@ -81,19 +81,19 @@ export default async function RefundReportPage({ searchParams }: Params) {
               <KpiCard
                 icon={<RotateCcwIcon className="h-3 w-3" />}
                 label="Total refunds"
-                value={report.totalRefunds.toLocaleString()}
+                value={report.totalRefundCount.toLocaleString()}
                 delta="transactions"
                 deltaTone="neutral"
               />
               <KpiCard
                 icon={<Wallet className="h-3 w-3" />}
                 label="Total refunded amount"
-                value={formatCurrency(report.totalRefundsAmount)}
+                value={formatCurrency(report.totalRefundedAmount)}
                 unit="TZS"
                 deltaTone="neg"
               />
               <KpiCard
-                icon={<ShoppingCart className="h-3 w-3" />}
+                icon={<Coins className="h-3 w-3" />}
                 label="Total returned cost"
                 value={formatCurrency(report.totalReturnedCost)}
                 unit="TZS"
@@ -110,11 +110,13 @@ export default async function RefundReportPage({ searchParams }: Params) {
                 </div>
                 <DataTable
                   columns={columns}
-                  data={pageData}
+                  data={rows}
                   searchKey="orderItemName"
+                  hideSearch
                   pageNo={page - 1}
                   total={total}
                   pageCount={pageCount}
+                  defaultPageSize={limit}
                 />
               </CardContent>
             </Card>

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { getAuthToken } from "@/lib/auth-utils";
+import { getAuthToken, updateAuthToken } from "@/lib/auth-utils";
+import { isAccessTokenExpired, isAccessTokenExpiringSoon } from "@/lib/jwt-utils";
+import { refreshUserAccessToken } from "@/lib/realtime/refresh-token";
 
 /**
  * Hands an access token to client JavaScript so the WebSocket Gateway
@@ -50,9 +52,48 @@ export async function GET() {
   if (!token?.accessToken) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
+
+  let accessToken = token.accessToken;
+
+  // Refresh a stale token BEFORE handing it out. getAuthToken() returns the
+  // cookie's access token as-is, and the WS client re-fetches this route on
+  // every (re)connect — so without this, an expired token is handed to the
+  // CONNECT frame, the gateway rejects it (AUTH_FAILED) and reaps the socket
+  // ~15s later, and the client reconnects onto the same stale token. With the
+  // USER access-token TTL at 15 min, an idle tab hits this routinely. Refresh
+  // here so the CONNECT always carries a live token, independent of whether a
+  // navigation happened to let middleware refresh the cookie first.
+  if (token.refreshToken && isAccessTokenExpiringSoon(accessToken)) {
+    const refreshed = await refreshUserAccessToken(token.refreshToken);
+    if (refreshed) {
+      accessToken = refreshed.accessToken;
+      // Persist so subsequent API calls / middleware see the fresh token too.
+      // Best-effort: the fresh token is still returned even if the write fails.
+      try {
+        await updateAuthToken({
+          ...token,
+          accessToken: refreshed.accessToken,
+          refreshToken: refreshed.refreshToken,
+        });
+      } catch {
+        /* cookie write is best-effort */
+      }
+    } else if (isAccessTokenExpired(accessToken)) {
+      // Already expired and refresh failed (refresh token dead, or auth service
+      // unreachable) — there is no usable token to hand out. 401 makes the WS
+      // client go idle rather than loop on a token the gateway will reject.
+      return NextResponse.json(
+        { error: "token_refresh_failed" },
+        { status: 401 },
+      );
+    }
+    // else: expiring-soon but not yet expired and refresh failed — return the
+    // still-valid current token; the next fetch retries the refresh.
+  }
+
   return NextResponse.json(
     {
-      accessToken: token.accessToken,
+      accessToken,
     },
     {
       headers: {

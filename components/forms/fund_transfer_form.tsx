@@ -42,6 +42,7 @@ import { ChartOfAccountSelector } from "@/components/widgets/chart-of-account-se
 import CurrencySelector from "@/components/widgets/currency-selector";
 import { createFundTransfer } from "@/lib/actions/fund-transfer-actions";
 import { FundTransferSchema } from "@/types/fund-transfer/schema";
+import { ASSET_TYPES } from "@/types/accounting-mapping/type";
 
 import styles from "./styles/form-shell.module.css";
 import { NumericInput } from "@/components/ui/numeric-input";
@@ -129,7 +130,7 @@ export default function FundTransferForm({
               <div className="flex-1 min-w-0">
                 <h3>Source &amp; destination</h3>
                 <p className={styles.formCardHeadDesc}>
-                  Both accounts must be ASSET type at this location.
+                  Both accounts must be asset accounts at this location.
                 </p>
               </div>
               <div className={styles.formCardActions}>
@@ -146,7 +147,7 @@ export default function FundTransferForm({
                       <FieldLabel required>From</FieldLabel>
                       <FormControl>
                         <ChartOfAccountSelector
-                          accountType="ASSET"
+                          accountTypes={ASSET_TYPES}
                           value={field.value}
                           onChange={(v) => field.onChange(v)}
                           isDisabled={isPending}
@@ -164,7 +165,7 @@ export default function FundTransferForm({
                       <FieldLabel required>To</FieldLabel>
                       <FormControl>
                         <ChartOfAccountSelector
-                          accountType="ASSET"
+                          accountTypes={ASSET_TYPES}
                           value={field.value}
                           onChange={(v) => field.onChange(v)}
                           isDisabled={isPending}

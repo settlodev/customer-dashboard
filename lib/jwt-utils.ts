@@ -31,6 +31,23 @@ export function isAccessTokenExpired(accessToken: string): boolean {
 }
 
 /**
+ * True when a JWT access token is expired OR will expire within `marginSec`
+ * seconds. Use to refresh proactively before handing a token out (e.g. the
+ * realtime WS token) so it isn't rejected the moment it's presented. A token
+ * with no usable `exp` is treated as expiring. Mirrors the edge-local copy in
+ * `middleware.ts`; kept here as the shared (Node/edge-safe) helper.
+ */
+export function isAccessTokenExpiringSoon(
+  accessToken: string,
+  marginSec = 60,
+): boolean {
+  const claims = decodeJwtClaims(accessToken);
+  const exp = claims?.exp;
+  if (typeof exp !== "number") return true;
+  return Date.now() / 1000 > exp - marginSec;
+}
+
+/**
  * Extract subscription_status from a JWT access token.
  */
 export function extractSubscriptionStatus(accessToken: string): SubscriptionStatus {

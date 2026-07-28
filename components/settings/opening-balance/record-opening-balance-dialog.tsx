@@ -19,9 +19,8 @@ import { useToast } from "@/hooks/use-toast";
 import { postOpeningBalance } from "@/lib/actions/opening-balance-actions";
 import { computeOpeningBalanceResidual } from "@/lib/opening-balance";
 import { formatNumber } from "@/lib/utils";
-import type { ChartOfAccount, AccountType } from "@/types/accounting-mapping/type";
-
-const BALANCE_SHEET_TYPES: AccountType[] = ["ASSET", "LIABILITY", "EQUITY"];
+import type { ChartOfAccount } from "@/types/accounting-mapping/type";
+import { BALANCE_SHEET_ACCOUNT_TYPES } from "@/types/accounting-mapping/type";
 
 interface Row {
   key: string;
@@ -149,7 +148,7 @@ export function RecordOpeningBalanceDialog({
                 <div key={row.key} className="flex items-start gap-2">
                   <div className="flex-1">
                     <ChartOfAccountSelector
-                      accountTypes={BALANCE_SHEET_TYPES}
+                      accountTypes={BALANCE_SHEET_ACCOUNT_TYPES}
                       excludeIds={excludeIds}
                       value={row.chartOfAccountId}
                       placeholder="Select account"

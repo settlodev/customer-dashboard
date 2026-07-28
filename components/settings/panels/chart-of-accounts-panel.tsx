@@ -42,8 +42,10 @@ import {
 } from "@/types/accounting-mapping/type";
 
 const NORMAL_BALANCE_BY_TYPE: Record<AccountType, "DEBIT" | "CREDIT"> = {
-  ASSET: "DEBIT",
-  LIABILITY: "CREDIT",
+  CURRENT_ASSET: "DEBIT",
+  NON_CURRENT_ASSET: "DEBIT",
+  CURRENT_LIABILITY: "CREDIT",
+  NON_CURRENT_LIABILITY: "CREDIT",
   EQUITY: "CREDIT",
   REVENUE: "CREDIT",
   EXPENSE: "DEBIT",

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useRealtimeChannel } from "@/hooks/use-realtime-channel";
+import { useRealtimeReconnect } from "@/hooks/use-realtime-reconnect";
 import type { WsMessage } from "@/lib/realtime/types";
 
 /**
@@ -66,6 +67,15 @@ export function SettloRealtimeListener({
       }
     };
   }, []);
+
+  // On reconnect, catch up on whatever changed while the socket was down. USER
+  // sessions get no server-side replay, so without this the server-rendered
+  // tree stays stale until a later live event happens to touch it. Stamp
+  // lastRefreshAt so a burst of events right after reconnect doesn't double-fire.
+  useRealtimeReconnect(() => {
+    lastRefreshAtRef.current = Date.now();
+    router.refresh();
+  });
 
   useRealtimeChannel(channels, handler);
   return null;

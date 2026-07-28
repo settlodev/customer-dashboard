@@ -5,7 +5,7 @@ import { parseStringify } from "@/lib/utils";
 import { ApiResponse } from "@/types/types";
 import { UUID } from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
-import { OrderItemRefunds, RefundReport } from "@/types/refunds/type";
+import { OrderItemRefunds, RefundDetailsResponse } from "@/types/refunds/type";
 
 export const searchOrderItemRefunds = async (
   q: string,
@@ -70,38 +70,42 @@ export const getRefund = async (
 };
 
 /**
- * Refund details for a business-date range.
+ * One page of refund details for a business-date range, server-paginated.
  *
- * <p>`startDate`/`endDate` are `yyyy-MM-dd` — `/refunds/details` binds them as
- * `LocalDate` with `@DateTimeFormat(iso = ISO.DATE)`, which rejects anything
- * carrying a time component. Callers used to hand it
- * `new Date(...).toISOString()`, so every request 400'd and the page's
- * `.catch(() => null)` rendered an empty report instead of an error.
+ * <p>Hits `/refunds/details`, which returns a `RefundDetailsResponse` — the
+ * current page's rows plus range-wide summary totals and paging metadata. Pass
+ * `page`/`size` so the Reports service does the slicing (its default is only 20
+ * rows); reading `totalElements`/`totalPages` off the response drives the pager.
  *
- * <p>`locationId` is a required query param on that endpoint and was missing
- * too — the `X-Location-Id` header ApiClient attaches does not satisfy it. So
- * the request had two independent reasons to fail; fixing only the dates would
- * have left the report just as empty.
+ * <p>Notes carried from the earlier fix: dates are `yyyy-MM-dd` (the endpoint
+ * binds `LocalDate` and rejects a time component), and `locationId` is a
+ * required query param — the `X-Location-Id` header ApiClient attaches does not
+ * satisfy it.
  */
-export const GetRefundReport = async (
-  startDate?: string,
-  endDate?: string,
-): Promise<RefundReport> => {
-  try {
-    const apiClient = new ApiClient("reports");
-    const location = await getCurrentLocation();
-    const queryParams = new URLSearchParams();
+export const GetRefundReport = async ({
+  startDate,
+  endDate,
+  page = 0,
+  size = 20,
+}: {
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  size?: number;
+}): Promise<RefundDetailsResponse | null> => {
+  const apiClient = new ApiClient("reports");
+  const location = await getCurrentLocation();
+  if (!location?.id) return null;
 
-    if (location?.id) queryParams.append("locationId", location.id);
-    if (startDate) queryParams.append("startDate", startDate);
-    if (endDate) queryParams.append("endDate", endDate);
+  const queryParams = new URLSearchParams();
+  queryParams.append("locationId", location.id);
+  if (startDate) queryParams.append("startDate", startDate);
+  if (endDate) queryParams.append("endDate", endDate);
+  queryParams.append("page", String(page));
+  queryParams.append("size", String(size));
 
-    const queryString = queryParams.toString();
-    const url = `/api/v2/analytics/refunds/details${queryString ? `?${queryString}` : ""}`;
-    const report = await apiClient.get(url);
-
-    return parseStringify(report);
-  } catch (error) {
-    throw error;
-  }
+  const report = await apiClient.get<RefundDetailsResponse>(
+    `/api/v2/analytics/refunds/details?${queryParams.toString()}`,
+  );
+  return parseStringify(report);
 };

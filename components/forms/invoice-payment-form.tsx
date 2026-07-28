@@ -44,6 +44,7 @@ import {
   type InvoicePaymentFormValues,
 } from "@/types/invoicing/schema";
 import { invoiceBalanceDue, type Invoice } from "@/types/invoicing/type";
+import { ASSET_TYPES } from "@/types/accounting-mapping/type";
 
 interface Props {
   invoice: Invoice;
@@ -168,7 +169,7 @@ export default function InvoicePaymentForm({
                   </FormLabel>
                   <FormControl>
                     <ChartOfAccountSelector
-                      accountType="ASSET"
+                      accountTypes={ASSET_TYPES}
                       value={field.value ?? ""}
                       onChange={(v) => field.onChange(v)}
                       isDisabled={isPending}

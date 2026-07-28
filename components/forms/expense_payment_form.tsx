@@ -51,6 +51,7 @@ import { recordExpensePayment } from "@/lib/actions/expense-payment-actions";
 import { fetchExchangeRate } from "@/lib/actions/exchange-rate-actions";
 import { ExpensePaymentSchema } from "@/types/expense/schema";
 import type { Expense } from "@/types/expense/type";
+import { ASSET_TYPES } from "@/types/accounting-mapping/type";
 import { NumericFormat } from "react-number-format";
 import { NumericInput } from "@/components/ui/numeric-input";
 
@@ -327,7 +328,7 @@ export default function ExpensePaymentForm({
                   <FormLabel>Pay from</FormLabel>
                   <FormControl>
                     <ChartOfAccountSelector
-                      accountType="ASSET"
+                      accountTypes={ASSET_TYPES}
                       value={field.value}
                       onChange={(v) => field.onChange(v)}
                       isDisabled={isPending}
