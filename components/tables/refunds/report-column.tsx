@@ -1,91 +1,92 @@
 "use client";
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import { ItemRefunds } from "@/types/refunds/type";
+import { RefundReportRow } from "@/types/refunds/type";
 
-export const columns: ColumnDef<ItemRefunds>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        aria-label="Select all"
-        checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        aria-label="Select row"
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
+const money = (n: number | null | undefined) =>
+  n === null || n === undefined
+    ? "—"
+    : new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
+
+const shortDate = (iso: string | null | undefined) =>
+  iso
+    ? new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date(iso))
+    : "—";
+
+export const columns: ColumnDef<RefundReportRow>[] = [
   {
     accessorKey: "orderNumber",
+    header: "Order #",
     enableHiding: false,
-    header: ({ column }) => {
-      return (
-        <Button
-          className="text-left p-0"
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Order Number
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    cell: ({ row }) => row.original.orderNumber ?? "—",
   },
   {
     accessorKey: "orderItemName",
     header: "Item",
     enableHiding: false,
+    cell: ({ row }) => row.original.orderItemName ?? "—",
   },
   {
-    accessorKey: "staffName",
-    header: "Closed Date",
-    enableHiding: false,
+    accessorKey: "quantity",
+    header: "Qty",
+    cell: ({ row }) => money(row.original.quantity),
+  },
+  {
+    accessorKey: "refundNetAmount",
+    header: "Refund amount",
+    cell: ({ row }) => (
+      <span className="tabular-nums">{money(row.original.refundNetAmount)}</span>
+    ),
+  },
+  {
+    accessorKey: "returnedCost",
+    header: "Returned cost",
+    cell: ({ row }) => (
+      <span className="tabular-nums text-muted-foreground">
+        {money(row.original.returnedCost)}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "refundType",
+    header: "Type",
+    cell: ({ row }) => row.original.refundType || "—",
+  },
+  {
+    accessorKey: "reason",
+    header: "Reason",
+    cell: ({ row }) => row.original.reason ?? "—",
+  },
+  {
+    accessorKey: "refundedByName",
+    header: "Refunded by",
+    cell: ({ row }) => row.original.refundedByName ?? "—",
   },
   {
     accessorKey: "approvedByName",
-    header: "Approved By",
-    enableHiding: false,
+    header: "Approved by",
+    cell: ({ row }) => row.original.approvedByName ?? "—",
   },
   {
     accessorKey: "stockReturned",
-    header: "Stock Returned",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const stock = row.original.stockReturned;
-      return (
-        <div className="flex items-center px-2 py-1 rounded">
-          {stock && (
-            <span className="text-white bg-green-500 p-1 rounded-sm">Yes</span>
-          )}
-          {!stock && (
-            <span className="text-white bg-yellow-500 p-1 rounded-sm">No</span>
-          )}
-        </div>
-      );
-    },
+    header: "Stock returned",
+    cell: ({ row }) =>
+      row.original.stockReturned ? (
+        <span className="rounded-sm bg-green-500 px-1.5 py-0.5 text-xs text-white">
+          Yes
+        </span>
+      ) : (
+        <span className="rounded-sm bg-yellow-500 px-1.5 py-0.5 text-xs text-white">
+          No
+        </span>
+      ),
   },
   {
-    accessorKey: "dateOfRefund",
-    header: "Date of Refund",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const date = row.original.dateOfReturn;
-      const formattedDate = new Intl.DateTimeFormat("en-US", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(new Date(date));
-      return <div>{formattedDate}</div>;
-    },
+    accessorKey: "refundDate",
+    header: "Date of refund",
+    cell: ({ row }) => shortDate(row.original.refundDate),
   },
 ];
