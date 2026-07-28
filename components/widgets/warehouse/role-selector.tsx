@@ -8,7 +8,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import {Role, WarehouseRole} from "@/types/roles/type";
+import {WarehouseRole} from "@/types/roles/type";
 import { searchWarehouseRoles } from "@/lib/actions/warehouse/roles-action";
 
 interface Props {

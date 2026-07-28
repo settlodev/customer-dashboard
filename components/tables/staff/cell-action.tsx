@@ -1,22 +1,32 @@
 "use client";
 
-import { Edit, KeyRound, MoreHorizontal, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React from "react";
+import React, { useState } from "react";
+import {
+  MoreVertical,
+  Pencil as EditIcon,
+  Archive as ArchiveIcon,
+  ArchiveRestore,
+  KeyRound,
+} from "lucide-react";
 
+import DeleteModal from "@/components/tables/delete-modal";
+import {
+  archiveStaff,
+  unarchiveStaff,
+  resetStaffPasscode,
+} from "@/lib/actions/staff-actions";
+import { Staff } from "@/types/staff";
+import { toast } from "@/hooks/use-toast";
+import { UUID } from "crypto";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import DeleteModal from "@/components/tables/delete-modal";
-import { deleteStaff, resetStaffPasscode } from "@/lib/actions/staff-actions";
-import { Staff } from "@/types/staff";
-import { toast } from "@/hooks/use-toast";
-import { UUID } from "crypto";
 import {
   Dialog,
   DialogContent,
@@ -24,8 +34,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"; // Import Dialog components from shadcn
+} from "@/components/ui/dialog";
 
 interface CellActionProps {
   data: Staff;
@@ -33,26 +42,19 @@ interface CellActionProps {
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
-  const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
+  const [isArchiveModalOpen, setArchiveModalOpen] = useState(false);
+  const [isResetModalOpen, setResetModalOpen] = useState(false);
+  const [isUnarchiving, setIsUnarchiving] = useState(false);
 
-  const onDelete = async () => {
+  const fullName = `${data.firstName} ${data.lastName}`;
+
+  const handleArchive = async () => {
     try {
-      if (data) {
-        await deleteStaff(data.id);
-        toast({
-          variant: "default",
-          title: "Success",
-          description: "Staff deleted successfully!",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Uh oh! Something went wrong.",
-          description:
-            "There was an issue with your request, please try again later",
-        });
-      }
+      await archiveStaff(data.id);
+      toast({
+        title: "Archived",
+        description: `${fullName} has been archived successfully.`,
+      });
     } catch (error) {
       toast({
         variant: "destructive",
@@ -62,101 +64,126 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           "There was an issue with your request, please try again later",
       });
     } finally {
-      setIsDeleteModalOpen(false);
+      setArchiveModalOpen(false);
     }
   };
 
-  const handleResetPasscode = async (staffId: string) => {
+  const handleUnarchive = async () => {
+    setIsUnarchiving(true);
     try {
-      await resetStaffPasscode(staffId as UUID);
+      await unarchiveStaff(data.id);
       toast({
-        title: "Success",
-        description: "Staff passcode has been reset",
-        variant: "default",
+        title: "Restored",
+        description: `${fullName} has been restored successfully.`,
       });
-    }  catch (error: any) {
-      const errorMessage = error?.response?.data?.message  
-        || error?.message  
-        || "Failed to reset staff passcode";  
-
+    } catch (error) {
       toast({
-        title: "Error",
-        description: errorMessage,
         variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description:
+          (error as Error).message ||
+          "There was an issue with your request, please try again later",
       });
     } finally {
-      setIsResetModalOpen(false);
+      setIsUnarchiving(false);
+    }
+  };
+
+  const handleResetPasscode = async () => {
+    try {
+      await resetStaffPasscode(data.id as UUID);
+      toast({
+        variant: "success",
+        title: "Success",
+        description: "Staff passcode has been reset.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Failed to reset staff passcode",
+      });
+    } finally {
+      setResetModalOpen(false);
     }
   };
 
   return (
     <>
-      <div className="relative flex items-center gap-2">
-        {/* Reset Passcode Button */}
-        <Dialog open={isResetModalOpen} onOpenChange={setIsResetModalOpen}>
-          <DialogTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <KeyRound className="h-4 w-4" />
-              <span className="sr-only">Reset Passcode</span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Reset Passcode</DialogTitle>
-              <DialogDescription>
-                Would you like to reset the passcode for this staff?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsResetModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="default"
-                onClick={() => handleResetPasscode(data.id)}
-              >
-                Confirm
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Actions Dropdown Menu */}
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button className="h-8 w-8 p-0" variant="ghost">
-              <span className="sr-only">Actions</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => router.push(`/staff/${data.id}`)}>
-              <Edit className="mr-2 h-4 w-4" /> Update
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onClick={() => router.push(`/staff/${data.id}/edit`)}
+          >
+            <EditIcon className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setResetModalOpen(true)}>
+            <KeyRound className="mr-2 h-4 w-4" />
+            Reset Passcode
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {data.isArchived ? (
+            <DropdownMenuItem
+              onClick={handleUnarchive}
+              disabled={isUnarchiving}
+              className="text-green-600 focus:text-green-600"
+            >
+              <ArchiveRestore className="mr-2 h-4 w-4" />
+              {isUnarchiving ? "Restoring..." : "Unarchive"}
             </DropdownMenuItem>
-            {data.canDelete && (
-              <>
-                <DropdownMenuItem onClick={() => setIsDeleteModalOpen(true)}>
-                  <Trash className="mr-2 h-4 w-4" /> Delete
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+          ) : (
+            <DropdownMenuItem
+              onClick={() => setArchiveModalOpen(true)}
+              className="text-red-600 focus:text-red-600"
+            >
+              <ArchiveIcon className="mr-2 h-4 w-4" />
+              Archive
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      {/* Delete Modal */}
-      {data.canDelete && (
-        <DeleteModal
-          isOpen={isDeleteModalOpen}
-          itemName={data.firstName + " " + data.lastName}
-          onDelete={onDelete}
-          onOpenChange={() => setIsDeleteModalOpen(!isDeleteModalOpen)}
-        />
-      )}
+      {/* Archive Modal */}
+      <DeleteModal
+        isOpen={isArchiveModalOpen}
+        itemName={fullName}
+        onDelete={handleArchive}
+        onOpenChange={() => setArchiveModalOpen(false)}
+      />
+
+      {/* Reset Passcode Modal */}
+      <Dialog open={isResetModalOpen} onOpenChange={setResetModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset Passcode</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reset the passcode for{" "}
+              <span className="font-medium text-gray-900 dark:text-gray-100">
+                {fullName}
+              </span>
+              ?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setResetModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleResetPasscode}>Confirm</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

@@ -1,28 +1,44 @@
 import { UUID } from "crypto";
 
-
-export declare interface Device  {
-    id: UUID;
-    deviceId:string
-    model:string
-    serialNumber:string
-    manufacturer:string
-    imei:string
-    macAddress:string
-    operatingSystem:string
-    operatingSystemVersion:string
-    displayResolution:string
-    storageInGB:number
-    ramInGB:number
-    processor:string
-    batteryLevel:number
-    firebaseToken:string
-    canDelete:boolean
-    status:boolean
-    isArchived:boolean
-    location:UUID
+export declare interface Device {
+  id: UUID;
+  deviceId: string;
+  name: string;
+  customName: string;
+  model: string;
+  manufacturer: string;
+  brand: string;
+  serialNumber: string;
+  operatingSystem: string;
+  operatingSystemVersion: string;
+  displayResolution: string;
+  storageInGB: number;
+  ramInGB: number;
+  processor: string | null;
+  batteryLevel: number;
+  batteryInMah: number | null;
+  firebaseToken: string | null;
+  deviceType: string;
+  appVersion: string;
+  buildNumber: string;
+  isTablet: boolean;
+  isEmulator: boolean;
+  ipAddress: string;
+  timezone: string;
+  deviceLocale: string;
+  availableStorage: number;
+  firstInstallTime: number;
+  isCharging: boolean;
+  apiLevel: number | null;
+  loginCode: string | null;
+  imei: string;
+  macAddress: string;
+  userId: UUID;
+  locationId: UUID;
+  departmentId: UUID | null;
+  departmentName: string | null;
+  suspended: boolean;
+  canDelete: boolean;
+  status: boolean;
+  isArchived: boolean;
 }
-
-
-
- 

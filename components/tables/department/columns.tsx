@@ -1,102 +1,122 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, Component } from "lucide-react";
-
-import { CellAction } from "@/components/tables/department/cell-action";
+import { ArrowUpDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { CellAction } from "@/components/tables/department/cell-action";
 import { Department } from "@/types/department/type";
-import { StateColumn } from "../state-column";
 import Image from "next/image";
 
 export const columns: ColumnDef<Department>[] = [
   {
     id: "select",
     header: ({ table }) => (
-      <Checkbox
-        aria-label="Select all"
-        checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-      />
+      <div className="w-4">
+        <Checkbox
+          aria-label="Select all"
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) =>
+            table.toggleAllPageRowsSelected(!!value)
+          }
+        />
+      </div>
     ),
     cell: ({ row }) => (
-      <Checkbox
-        aria-label="Select row"
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-      />
+      <div className="w-4">
+        <Checkbox
+          aria-label="Select row"
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+        />
+      </div>
     ),
     enableSorting: false,
     enableHiding: false,
   },
-  {
-    accessorKey: "image",
-    header: "Image",
-    enableHiding: false,
-    cell: ({ row }) => {
-        const image = row.original.image;
-
-        // Check if image is a valid URL or path
-        const isValidImageUrl = image &&
-            (image.startsWith('http://') ||
-                image.startsWith('https://') ||
-                image.startsWith('/'));
-
-        return isValidImageUrl ? (
-            <Image
-                src={image}
-                alt={row.original.name}
-                className="w-10 h-10 rounded-lg"
-                width={50}
-                height={50}
-                loading="lazy"
-            />
-        ) : (
-            // Fallback for invalid and missing images
-            <div className="w-10 h-10 rounded-lg bg-emerald-500 flex items-center justify-center">
-                <Component className="w-6 h-6 text-white" />
-            </div>
-        );
-    }
-},
   {
     accessorKey: "name",
     enableHiding: false,
     header: ({ column }) => {
       return (
         <Button
-          className="text-left p-0"
+          className="text-left p-0 font-semibold"
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          onClick={() =>
+            column.toggleSorting(column.getIsSorted() === "asc")
+          }
         >
           Department Name
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
     },
+    cell: ({ row }) => {
+      const image = row.original.image;
+      const color = row.original.color;
+      const name = row.original.name;
+      const initial = name?.charAt(0)?.toUpperCase() || "D";
+
+      const isValidImageUrl =
+        image &&
+        (image.startsWith("http://") ||
+          image.startsWith("https://") ||
+          image.startsWith("/"));
+
+      return (
+        <div className="flex items-center gap-3">
+          {isValidImageUrl ? (
+            <Image
+              src={image}
+              alt={name}
+              className="w-8 h-8 rounded-lg object-cover shrink-0"
+              width={32}
+              height={32}
+              loading="lazy"
+            />
+          ) : (
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-semibold shrink-0"
+              style={{ backgroundColor: color || "#6b7280" }}
+            >
+              {initial}
+            </div>
+          )}
+          <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
+            {name}
+          </span>
+        </div>
+      );
+    },
   },
   {
     id: "status",
     accessorKey: "status",
-    header: ({ column }) => {
-        return (
-            <Button
-                className="text-left p-0"
-                variant="ghost"
-                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            >
-                Status
-                <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-        );
+    header: "Status",
+    enableHiding: true,
+    cell: ({ row }) => {
+      const isActive = row.original.status;
+      return (
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+            isActive
+              ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
+              : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+          }`}
+        >
+          {isActive ? "Active" : "Inactive"}
+        </span>
+      );
     },
-    cell: ({ row }) => <StateColumn state={row.original.status} />,
+  },
+  {
+    id: "actions",
     enableHiding: false,
-},
-
-{
-  id: "actions",
-  cell: ({ row }) => <CellAction data={row.original} />,
-},
+    header: () => null,
+    cell: ({ row }) => (
+      <div className="flex justify-end">
+        <CellAction data={row.original} />
+      </div>
+    ),
+  },
 ];

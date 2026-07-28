@@ -1,71 +1,93 @@
-"use client"
+"use client";
 
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetTrigger } from "@/components/ui/sheet";
-import {ChevronRight, MenuIcon} from "lucide-react";
+import { ChevronRight, MenuIcon } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import DarkModeSwitcher from "./dark-mode-switcher";
-import {UserDropdown} from "./user-menu-button";
-import {Session} from "next-auth";
+import { UserDropdown } from "./user-menu-button";
+import { LocationSwitcher } from "./location-switcher";
+import { Session } from "next-auth";
+import { BusinessPropsType } from "@/types/business/business-props-type";
+import { Warehouses } from "@/types/warehouse/warehouse/type";
 
 interface HeaderProps {
-  sidebarOpen: boolean;
-  setSidebarOpen: (open: boolean) => void;
   session: Session | null;
+  onMenuClick?: () => void;
+  businessData?: BusinessPropsType;
+  warehouseList: Warehouses[]; // new
 }
 
-const Header = ({sidebarOpen, setSidebarOpen, session}: HeaderProps) => {
+const Header = ({
+  session,
+  onMenuClick,
+  businessData,
+  warehouseList,
+}: HeaderProps) => {
   return (
-      <header className="sticky top-0 z-50 w-full border-b bg-background">
-        <div className="flex h-16 items-center justify-between px-4 md:px-6">
-          <div className="flex items-center gap-4 lg:hidden">
-            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden">
-                  <MenuIcon className="h-6 w-6"/>
-                  <span className="sr-only">Toggle navigation menu</span>
-                </Button>
-              </SheetTrigger>
-            </Sheet>
+    <header className="z-50 w-full rounded-xl bg-white dark:bg-gray-900">
+      <div className="flex h-16 items-center">
+        {/* Left: hamburger (mobile) + logo + location switcher */}
+        <div className="flex items-center gap-3 pl-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onMenuClick}
+            className="lg:hidden"
+          >
+            <MenuIcon className="h-5 w-5" />
+            <span className="sr-only">Toggle navigation menu</span>
+          </Button>
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/images/logo_new.png"
+              alt="Settlo"
+              width={120}
+              height={40}
+              className="h-10 w-auto object-contain dark:brightness-0 dark:invert"
+            />
+          </Link>
 
-            <Link href="/" className="flex items-center space-x-2">
-              <Image
-                  src="/images/logo.png"
-                  alt="Settlo"
-                  width={32}
-                  height={32}
-                  className="h-8 w-8"
+          {session?.user &&
+            businessData &&
+            ((businessData.locationList?.length ?? 0) > 1 ||
+              warehouseList.length > 0) && (
+              <LocationSwitcher
+                locationList={businessData.locationList}
+                currentLocation={businessData.currentLocation}
+                warehouse={businessData.warehouse}
+                warehouseList={warehouseList} // new
               />
-            </Link>
-          </div>
-
-          <div className="flex flex-1 items-center justify-end space-x-4">
-            <nav className="flex items-center space-x-2">
-              <DarkModeSwitcher/>
-
-              <div className="hidden md:flex items-center space-x-2">
-                {/*<DropdownNotification />*/}
-                {/*<DropdownMessage />*/}
-              </div>
-
-              {(!session?.user) &&
-                  <Button
-                      asChild
-                      className="hidden md:inline-flex bg-emerald-500 hover:bg-emerald-600 text-white rounded-sm transition-all duration-200 ease-in-out transform hover:scale-105"
-                  >
-                    <Link href="/login" className="flex items-center">
-                      Login
-                      <ChevronRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1"/>
-                    </Link>
-                  </Button>
-              }
-
-              { session &&  <UserDropdown user={session.user}/> }
-            </nav>
-          </div>
+            )}
         </div>
-      </header>
+
+        {/* Right: nav items */}
+        <div className="flex flex-1 items-center justify-end px-4 md:px-6">
+          <nav className="flex items-center space-x-2">
+            <DarkModeSwitcher />
+
+            {!session?.user && (
+              <Button
+                asChild
+                className="hidden md:inline-flex bg-primary hover:bg-primary/90 text-white rounded-sm transition-all duration-200 ease-in-out transform hover:scale-105"
+              >
+                <Link href="/login" className="flex items-center">
+                  Login
+                  <ChevronRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </Button>
+            )}
+          </nav>
+        </div>
+
+        {/* Right edge: user dropdown flush to the edge */}
+        {session && (
+          <div className="flex-shrink-0 h-full">
+            <UserDropdown user={session.user} />
+          </div>
+        )}
+      </div>
+    </header>
   );
 };
 

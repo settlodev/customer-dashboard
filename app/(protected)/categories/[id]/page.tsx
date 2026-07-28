@@ -1,71 +1,58 @@
 import { UUID } from "node:crypto";
-
 import { notFound } from "next/navigation";
-
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+import { ApiResponse } from "@/types/types";
+import { Category } from "@/types/category/type";
 import { getCategory } from "@/lib/actions/category-actions";
-import {ApiResponse} from "@/types/types";
-import {Category} from "@/types/category/type";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import CategoryForm from "@/components/forms/category_form";
+import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 
 type Params = Promise<{ id: string }>;
-export default async function CategoryPage({params}: {params: Params}) {
+export default async function CategoryPage({
+  params,
+}: {
+  params: Params;
+}) {
+  const resolvedParams = await params;
+  const isNewItem = resolvedParams.id === "new";
+  let item: ApiResponse<Category> | null = null;
 
-    const resolvedParams = await params;
-    const isNewItem = resolvedParams.id === "new";
-    let item: ApiResponse<Category> | null = null;
-
-    if (!isNewItem) {
-        try {
-            item = await getCategory(resolvedParams.id as UUID);
-            if (item.totalElements == 0) notFound();
-        } catch (error) {
-            console.log(error)
-            // Ignore redirect error
-            throw new Error("Failed to load category data");
-        }
+  if (!isNewItem) {
+    try {
+      item = await getCategory(resolvedParams.id as UUID);
+      if (item.totalElements == 0) notFound();
+    } catch (error) {
+      console.log(error);
+      throw new Error("Failed to load category data");
     }
+  }
 
-    const breadcrumbItems = [
-        { title: "Categories", link: "/categories" },
-        {
-            title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
-            link: "",
-        },
-    ];
+  const breadcrumbItems = [
+    { title: "Categories", link: "/categories" },
+    {
+      title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
+      link: "",
+    },
+  ];
 
-    return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <div className="flex items-center justify-between mb-2">
-                <div className="relative flex-1 md:max-w-md">
-                    <BreadcrumbsNav items={breadcrumbItems} />
-                </div>
-            </div>
-
-            <BranchCard isNewItem={isNewItem} item={item?.content[0]} />
+  return (
+    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 mt-12">
+      <div className="space-y-6">
+        <div>
+          <div className="hidden sm:block mb-2">
+            <BreadcrumbsNav items={breadcrumbItems} />
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+            {isNewItem ? "Add Category" : "Edit Category"}
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {isNewItem
+              ? "Create a new category for your business"
+              : "Update category details and settings"}
+          </p>
         </div>
-    );
-}
 
-const BranchCard = ({isNewItem, item}: { isNewItem: boolean; item: Category | null | undefined; }) => (
-    <Card>
-        <CardHeader>
-            <CardTitle>{isNewItem ? "Create category" : "Edit category"}</CardTitle>
-            <CardDescription>
-                {isNewItem
-                    ? "Add a new category to your business"
-                    : "Edit category details"}
-            </CardDescription>
-        </CardHeader>
-        <CardContent>
-            <CategoryForm item={item} />
-        </CardContent>
-    </Card>
-);
+        <CategoryForm item={isNewItem ? null : item?.content[0]} />
+      </div>
+    </div>
+  );
+}

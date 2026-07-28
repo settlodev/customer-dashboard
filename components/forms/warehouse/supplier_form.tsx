@@ -54,6 +54,7 @@ function WarehouseSupplierForm({ item }: { item: Supplier | null | undefined }) 
           if (data && data.responseType === "success") {
             setSuccess(data.message);
             toast({
+              variant: "success",
               title: "Success",
               description: data.message,
               duration: 5000
@@ -77,6 +78,7 @@ function WarehouseSupplierForm({ item }: { item: Supplier | null | undefined }) 
             if (data && data.responseType === "success") {
               setSuccess(data.message);
               toast({
+                variant: "success",
                 title: "Success",
                 description: data.message,
                 duration: 5000

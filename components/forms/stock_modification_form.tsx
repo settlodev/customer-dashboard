@@ -84,7 +84,7 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
 
     const onInvalid = useCallback(
         (errors: any) => {
-            console.error("Validation errors:", errors);
+            
             toast({
                 variant: "destructive",
                 title: "Uh oh! Something went wrong",
@@ -105,6 +105,7 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
                         if (data) setResponse(data);
                         if (data && data.responseType === "success") {
                             toast({
+                                variant: "success",
                                 title: "Success",
                                 description: data.message,
                             });

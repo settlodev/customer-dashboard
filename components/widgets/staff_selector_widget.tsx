@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Staff } from "@/types/staff";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
@@ -22,6 +22,10 @@ function StaffSelectorWidget({
 }: StaffProps) {
     const [staffs, setStaffs] = useState<Staff[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
+    const valueRef = useRef(value);
+    valueRef.current = value;
 
     useEffect(() => {
         async function loadStaffs() {
@@ -29,9 +33,9 @@ function StaffSelectorWidget({
                 setIsLoading(true);
                 const fetchedStaffs = await fetchAllStaff();
                 setStaffs(fetchedStaffs);
-               
-                if (!value && fetchedStaffs.length > 0) {
-                    onChange(fetchedStaffs[0].id);
+
+                if (!valueRef.current && fetchedStaffs.length > 0) {
+                    onChangeRef.current(fetchedStaffs[0].id);
                 }
             } catch (error: any) {
                 console.log("Error fetching staff:", error);
@@ -40,7 +44,7 @@ function StaffSelectorWidget({
             }
         }
         loadStaffs();
-    }, [onChange, value]);
+    }, []);
 
     return (
         <Select 

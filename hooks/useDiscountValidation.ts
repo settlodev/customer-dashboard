@@ -37,7 +37,7 @@ export const useDiscountValidation = () => {
       toast({
         title: "Discount Code Valid",
         description,
-        variant: "default"
+        variant: "success"
       });
     } catch (error) {
       setDiscountValid(false);

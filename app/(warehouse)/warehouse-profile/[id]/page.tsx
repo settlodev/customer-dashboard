@@ -1,6 +1,6 @@
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import WarehouseSupplierForm from "@/components/forms/warehouse/supplier_form";
+
 import { Warehouses } from "@/types/warehouse/warehouse/type";
 import { getWarehouse } from "@/lib/actions/warehouse/list-warehouse";
 import { notFound } from "next/navigation";

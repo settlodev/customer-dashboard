@@ -65,6 +65,7 @@ function SalaryForm({ item }: { item: Salary | null | undefined }) {
           if (data) setResponse(data);
           if (data && data.responseType === "success") {
             toast({
+              variant: "success",
               title: "Success",
               description: data.message,
             });
@@ -77,6 +78,7 @@ function SalaryForm({ item }: { item: Salary | null | undefined }) {
             if (data) setResponse(data);
             if (data && data.responseType === "success") {
               toast({
+                variant: "success",
                 title: "Success",
                 description: data.message,
               });

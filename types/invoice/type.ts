@@ -1,5 +1,6 @@
 import { UUID } from "crypto";
 import { invoiceStatus } from "../enums";
+import { Subscriptions } from "../subscription/type";
 
 export declare interface Invoice  {
     id: UUID;
@@ -7,23 +8,46 @@ export declare interface Invoice  {
     totalAmount: number;
     paidAmount: number;
     unpaidAmount: number;
-    invoiceStatus: string;
-    location: UUID;
+    paymentStatus:string;
     isArchived: boolean;
     locationInvoiceStatus: invoiceStatus;
     locationSubscriptions:locationSubscriptions[];
+    warehouseSubscriptions:warehouseSubscriptions[];
+    locationFreeStandingAddonSubscriptions:locationFreeStandingAddonSubscriptions[]
     dateCreated: string;
     locationName:string
 }
 
 declare interface locationSubscriptions {
     id: UUID;
-    numberOfMonths: number;
-    amountPerSubscription: number;
-    totalSubscriptionAmount: number;
-    subscription:UUID;
-    subscriptionPackageName:string;
-    invoice:UUID
+    startDate: string;
+    endDate:string;
+    subscriptionStatus:string;
+    active:boolean;
+    isTrial:boolean;
+    status:boolean;
+    canDelete:boolean;
+    location:UUID;
+    subscription:Subscriptions
+}
+declare interface warehouseSubscriptions {
+    id: UUID;
+    startDate: string;
+    endDate:string;
+    active:boolean;
+    istrial:boolean;
+    subscriptionStatus:string    
+}
+
+declare interface locationFreeStandingAddonSubscriptions {
+    targetedLocationSubscriptionId:string;
+    targetedLocationSubscriptionStartDate:string;
+    targetedLocationSubscriptionEndDate:string;
+    targetedLocationSubscriptionSubscriptionPackageId:string;
+    targetedLocationSubscriptionSubscriptionPackageName:string;
+    subscriptionAddonId:string;
+    targetedLocationSubscriptionLocationId:string;
+    targetedLocationSubscriptionLocationName:string;   
 }
 
 export interface InvoiceItem {

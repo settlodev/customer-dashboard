@@ -76,6 +76,7 @@ function KDSForm({ item }: { item: KDS | null | undefined }) {
           if (data) setResponse(data);
           if (data && data.responseType === "success") {
             toast({
+              variant: "success",
               title: "Success",
               description: data.message,
             });
@@ -89,6 +90,7 @@ function KDSForm({ item }: { item: KDS | null | undefined }) {
             if (data) setResponse(data);
             if (data && data.responseType === "success") {
               toast({
+                variant: "success",
                 title: "Success",
                 description: data.message,
               });

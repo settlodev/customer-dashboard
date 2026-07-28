@@ -14,14 +14,14 @@ import {
 } from 'lucide-react'
 import { LowStockItem, OutOfStockItem, StockHistory } from './dashboard'
 import { stockReportFromWarehouse } from '@/lib/actions/warehouse/stock-actions'
-import Loading from '@/app/loading'
+import Loading from '@/components/ui/loading'
 
 
 const SummaryCard = ({ 
   title, 
   value, 
   colorClass = "", 
-  progress = null, 
+  progress: _progress = null,
   icon: Icon,
   subtitle = ""
 }: { 

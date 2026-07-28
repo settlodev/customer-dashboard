@@ -7,10 +7,10 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import NoItems from "@/components/layouts/no-items";
 import {columns} from "@/components/tables/warehouse/purchase/columns";
 import { searchStockIntakePurchases } from "@/lib/actions/warehouse/purchases-action";
 import { DataTable } from "@/components/tables/data-table";
+import { FileSearch } from "lucide-react";
 
 const breadcrumbItems = [{ title: "Purchase", link: "/purchases" }];
 
@@ -65,7 +65,15 @@ export default async function Page({searchParams}:Params) {
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`Purchase`} newItemUrl={`/purchases/new`} />
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                            <FileSearch className="w-12 h-12 text-muted-foreground" />
+                            <div className="text-center space-y-1">
+                                <h3 className="text-lg font-medium">No records found</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    {q ? "No results match your search criteria." : "No stock supplier payable records have been created yet."}
+                                </p>
+                            </div>
+                        </div>
             )}
         </div>
     );

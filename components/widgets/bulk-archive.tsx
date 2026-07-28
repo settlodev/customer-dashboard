@@ -17,7 +17,14 @@ import { getCurrentLocation } from "@/lib/actions/business/get-current-business"
 
 interface BulkArchiveProps {
   selectedIds: string[];
-  entityType: 'product' | 'stock' | 'staff' |'stock-intake';
+  entityType:
+    | "product"
+    | "stock"
+    | "staff"
+    | "stock-intake"
+    | "supplier"
+    | "customer"
+    | "category";
   onSuccess?: () => void;
   entityNameSingular?: string;
   entityNamePlural?: string;
@@ -35,8 +42,12 @@ export function BulkArchive({
 
   // Format entity name for display (e.g., 'product' -> 'Product', 'stock' -> 'Stock')
   const displayName = {
-    singular: entityNameSingular || entityType.charAt(0).toUpperCase() + entityType.slice(1),
-    plural: entityNamePlural || entityType.charAt(0).toUpperCase() + entityType.slice(1) + 's'
+    singular:
+      entityNameSingular ||
+      entityType.charAt(0).toUpperCase() + entityType.slice(1),
+    plural:
+      entityNamePlural ||
+      entityType.charAt(0).toUpperCase() + entityType.slice(1) + "s",
   };
 
   const handleBulkArchive = async () => {
@@ -50,20 +61,19 @@ export function BulkArchive({
 
       const locationId = await getCurrentLocation();
 
-      
       // Call the archive service
       const result = await archiveEntity({
         ids: selectedIds,
         entityType: entityType,
-        locationId: locationId?.id
+        locationId: locationId?.id,
       });
-      
+
       if (result.success) {
         toast.success(result.message);
-        
+
         // Call onSuccess callback if provided
         if (onSuccess) onSuccess();
-        
+
         // Close dialog
         setOpenArchiveDialog(false);
       } else {
@@ -100,24 +110,29 @@ export function BulkArchive({
           <DialogHeader>
             <DialogTitle>Archive Selected {displayName.plural}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to archive {selectedIds.length} selected {selectedIds.length === 1 ? displayName.singular.toLowerCase() : displayName.plural.toLowerCase()}?
-              This action cannot be undone.
+              Are you sure you want to archive {selectedIds.length} selected{" "}
+              {selectedIds.length === 1
+                ? displayName.singular.toLowerCase()
+                : displayName.plural.toLowerCase()}
+              ? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setOpenArchiveDialog(false)} 
+            <Button
+              variant="outline"
+              onClick={() => setOpenArchiveDialog(false)}
               disabled={archiveInProgress}
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               variant="destructive"
               onClick={handleBulkArchive}
               disabled={archiveInProgress}
             >
-              {archiveInProgress ? "Archiving..." : `Archive ${selectedIds.length} ${selectedIds.length === 1 ? displayName.singular : displayName.plural}`}
+              {archiveInProgress
+                ? "Archiving..."
+                : `Archive ${selectedIds.length} ${selectedIds.length === 1 ? displayName.singular : displayName.plural}`}
             </Button>
           </DialogFooter>
         </DialogContent>

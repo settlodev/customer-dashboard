@@ -3,7 +3,7 @@
 import { Edit, MoreHorizontal, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
-import { useDisclosure } from "@nextui-org/react";
+import { useDisclosure } from "@/hooks/use-disclosure";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +31,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       if (data) {
         await deleteSpace(data.id);
         toast({
-          variant: "default",
+          variant: "success",
           title: "Success",
           description: "Space / Section deleted successfully!",
         });

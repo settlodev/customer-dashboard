@@ -10,7 +10,7 @@ import { ApiResponse, FormResponse } from "@/types/types";
 import {getAuthenticatedUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import { RoleSchema, WarehouseRoleSchema } from "@/types/roles/schema";
+import { WarehouseRoleSchema } from "@/types/roles/schema";
 import { getCurrentWarehouse } from "./current-warehouse-action";
 
 
@@ -112,8 +112,6 @@ export const updateWarehouseRole = async (
 
     const validatedData = WarehouseRoleSchema.safeParse(role);
 
-    console.log("The validated data is",validatedData)
-
     if (!validatedData.success) {
         formResponse = {
             responseType: "error",
@@ -133,7 +131,7 @@ export const updateWarehouseRole = async (
             warehouse: warehouse?.id
         }
 
-        console.log("The payload passed",payload)
+    
 
         await apiClient.put(
             `/api/warehouse-roles/${warehouse?.id}/${id}`,

@@ -8,6 +8,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LayoutGrid } from "lucide-react";
 import { DataTable } from "@/components/tables/data-table";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
@@ -47,8 +48,14 @@ export default async function Page({ searchParams }: Params) {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                    <Button>
-                        <Link key="add-space" href={`/spaces/new`}>Add Space</Link>
+                    <Button variant="outline" asChild>
+                        <Link href="/spaces/manage">
+                            <LayoutGrid className="h-4 w-4 mr-2" />
+                            Floor Plans & Combinations
+                        </Link>
+                    </Button>
+                    <Button asChild>
+                        <Link href="/spaces/new">Add Table/Space</Link>
                     </Button>
                 </div>
             </div>

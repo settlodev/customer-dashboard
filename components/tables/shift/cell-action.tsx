@@ -13,7 +13,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import DeleteModal from "@/components/tables/delete-modal";
-import {useDisclosure} from "@nextui-org/modal";
+import {useDisclosure} from "@/hooks/use-disclosure";
 import {toast} from "@/hooks/use-toast";
 import { Shift } from "@/types/shift/type";
 import { deleteShift } from "@/lib/actions/shift-actions";
@@ -31,7 +31,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             if (data) {
                 await deleteShift(data.id);
                 toast({
-                    variant: "default",
+                    variant: "success",
                     title: "Success",
                     description: "Shift deleted successfully!",
                 });

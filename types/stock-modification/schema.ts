@@ -10,7 +10,7 @@ export const StockModificationSchema = object({
             }
             return val
         },
-        number({message:"Quantity is required"}).nonnegative({message:"Quantity can not be negative"}).gt(0,{message:"Quantity can not be zero"})
+        number({message:"Quantity is required"})
     ),
     staff:string({message:"Please select a staff"}).uuid(),
     status: boolean().optional(),
