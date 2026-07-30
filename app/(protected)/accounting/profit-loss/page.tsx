@@ -61,10 +61,13 @@ function LineRow({
 }
 
 /**
- * One statement section: a caption, its lines (any children indented
- * beneath their parent, which shows its own rolled-up total), and a total
- * row. Always renders, even with zero lines, so a merchant can see the
- * section is genuinely nil rather than missing from the statement.
+ * One statement section: a caption, its lines, and a total row. A parent
+ * line shows its own amount; any children render indented beneath it,
+ * followed by an explicit "<parent> total" subtotal row carrying the
+ * rolled-up figure — so it's never ambiguous whether the sub-lines are
+ * included in the parent's own number or additional to it. Always renders,
+ * even with zero lines, so a merchant can see the section is genuinely nil
+ * rather than missing from the statement.
  */
 function SectionRows({
   title,
@@ -95,12 +98,14 @@ function SectionRows({
       ) : (
         group.lines.map((line) => (
           <Fragment key={line.accountId ?? line.code}>
-            {/* A parent's own row shows its rolled-up total, which equals
-                its amount when it has no children. */}
+            {/* The parent's own row shows its own amount — what was posted
+                directly to it, before any children are rolled in. Showing
+                `total` here instead would make the children's amounts
+                indistinguishable from being included twice. */}
             <LineRow
               code={line.code}
               name={line.name}
-              amount={line.total}
+              amount={line.amount}
               emphasize={line.children.length > 0}
             />
             {line.children.map((child) => (
@@ -112,6 +117,22 @@ function SectionRows({
                 indent
               />
             ))}
+            {/* Explicit subtotal: only meaningful when there are children to
+                roll up, and labelled with the parent's own name so it reads
+                as "this group's total" rather than another account line. */}
+            {line.children.length > 0 && (
+              <tr className="border-t hover:bg-gray-50/50">
+                <td
+                  colSpan={2}
+                  className="py-2 pl-10 pr-4 text-xs italic text-muted-foreground"
+                >
+                  {line.name} total
+                </td>
+                <td className="px-4 py-2 text-right font-mono text-xs italic tabular-nums text-muted-foreground">
+                  {fmtSigned(line.total)}
+                </td>
+              </tr>
+            )}
           </Fragment>
         ))
       )}

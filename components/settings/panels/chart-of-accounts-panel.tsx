@@ -38,6 +38,7 @@ import {
 import type { ChartOfAccountFormValues } from "@/types/chart-of-account/schema";
 import {
   ACCOUNT_TYPE_LABELS,
+  DEFAULT_PL_SECTION_BY_ACCOUNT_TYPE,
   PL_SECTION_LABELS,
   PL_SECTIONS_BY_ACCOUNT_TYPE,
   type AccountType,
@@ -67,7 +68,7 @@ export function ChartOfAccountsPanel() {
     name: "",
     description: "",
     accountType: "EXPENSE",
-    plSection: null,
+    plSection: DEFAULT_PL_SECTION_BY_ACCOUNT_TYPE.EXPENSE,
     accountSubType: "",
     normalBalance: "DEBIT",
     parentId: "",
@@ -91,7 +92,7 @@ export function ChartOfAccountsPanel() {
       name: "",
       description: "",
       accountType: "EXPENSE",
-      plSection: null,
+      plSection: DEFAULT_PL_SECTION_BY_ACCOUNT_TYPE.EXPENSE,
       accountSubType: "",
       normalBalance: "DEBIT",
       parentId: "",
@@ -205,7 +206,6 @@ export function ChartOfAccountsPanel() {
                     value={form.accountType}
                     onValueChange={(v) => {
                       const nextType = v as AccountType;
-                      const sections = PL_SECTIONS_BY_ACCOUNT_TYPE[nextType];
                       setForm({
                         ...form,
                         accountType: nextType,
@@ -213,8 +213,12 @@ export function ChartOfAccountsPanel() {
                         // A section (or parent) picked for the previous
                         // account type is almost never valid for the new
                         // one — stale values here get silently submitted
-                        // and rejected by the backend, so reset both.
-                        plSection: sections.length > 0 ? sections[0] : null,
+                        // and rejected by the backend, so reset both. The
+                        // default section is type-specific (see
+                        // DEFAULT_PL_SECTION_BY_ACCOUNT_TYPE), not just
+                        // "whichever section sorts first" — expenses must
+                        // default to Operating Expenses, not Cost of Sales.
+                        plSection: DEFAULT_PL_SECTION_BY_ACCOUNT_TYPE[nextType],
                         parentId: "",
                       });
                     }}
