@@ -8,6 +8,7 @@ import {
 } from "./reference-cache";
 import { fetchAllBrands } from "@/lib/actions/brand-actions";
 import { fetchAllCategories } from "@/lib/actions/category-actions";
+import { fetchAllStockCategories } from "@/lib/actions/stock-category-actions";
 import { fetchCountries } from "@/lib/actions/countries-actions";
 import { fetchAllCustomers } from "@/lib/actions/customer-actions";
 import {
@@ -28,6 +29,7 @@ import type { Department } from "@/types/department/type";
 import type { SupportedCurrency } from "@/types/exchange-rate/type";
 import type { Staff } from "@/types/staff";
 import type { Stock } from "@/types/stock/type";
+import type { StockCategory } from "@/types/stock-category/type";
 import type { Product } from "@/types/product/type";
 import type { Supplier } from "@/types/supplier/type";
 import type { TaxType } from "@/types/tax-type/type";
@@ -118,6 +120,25 @@ export const categoriesCache = createReferenceCache<Category[]>({
   fetcher: async () => {
     try {
       return (await fetchAllCategories()) ?? [];
+    } catch {
+      return [];
+    }
+  },
+  ttlMs: ONE_DAY,
+  store: "memory",
+});
+
+/**
+ * Inventory-side stock taxonomy — distinct from {@link categoriesCache},
+ * which holds POS-facing product categories. Holds ALL non-deleted stock
+ * categories including inactive ones; assignment surfaces filter to
+ * active themselves, since `active` gates assignment, not visibility.
+ */
+export const stockCategoriesCache = createReferenceCache<StockCategory[]>({
+  key: "stock-categories",
+  fetcher: async () => {
+    try {
+      return (await fetchAllStockCategories()) ?? [];
     } catch {
       return [];
     }
@@ -231,6 +252,7 @@ export const invalidateSuppliersCache = () => suppliersCache.invalidate();
 export const invalidateTaxTypesCache = () => taxTypesCache.invalidate();
 export const invalidateBrandsCache = () => brandsCache.invalidate();
 export const invalidateCategoriesCache = () => categoriesCache.invalidate();
+export const invalidateStockCategoriesCache = () => stockCategoriesCache.invalidate();
 export const invalidateStaffCache = () => staffCache.invalidate();
 export const invalidateStocksCache = () => stocksCache.invalidate();
 export const invalidateProductsCache = () => productsCache.invalidate();
@@ -266,6 +288,10 @@ export function useCachedBrands(): ReferenceCacheState<Brand[]> {
 
 export function useCachedCategories(): ReferenceCacheState<Category[]> {
   return useReferenceCache(categoriesCache);
+}
+
+export function useCachedStockCategories(): ReferenceCacheState<StockCategory[]> {
+  return useReferenceCache(stockCategoriesCache);
 }
 
 /**
