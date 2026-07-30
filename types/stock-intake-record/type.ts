@@ -4,10 +4,12 @@ export type StockIntakeRecordStatus = "DRAFT" | "CONFIRMED" | "CANCELLED";
 
 export type IntakePaymentTerms = "CREDIT" | "CASH" | "BANK";
 
+// Order drives the form's dropdown. Cash leads because it is the default —
+// an intake nobody edited is treated as paid on receipt, not owed.
 export const INTAKE_PAYMENT_TERMS_LABELS: Record<IntakePaymentTerms, string> = {
-  CREDIT: "On credit (A/P)",
   CASH: "Cash on receipt",
   BANK: "Bank transfer / card",
+  CREDIT: "On credit (A/P)",
 };
 
 export interface StockIntakeRecord {

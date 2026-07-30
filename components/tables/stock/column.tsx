@@ -83,6 +83,16 @@ export const columns: ColumnDef<StockWithBalance>[] = [
     },
   },
   {
+    accessorKey: "categoryName",
+    header: "Category",
+    enableHiding: true,
+    cell: ({ row }) => (
+      <span className="text-sm text-muted-foreground">
+        {row.original.categoryName ?? "—"}
+      </span>
+    ),
+  },
+  {
     id: "quantity",
     header: ({ column }) => (
       <Button

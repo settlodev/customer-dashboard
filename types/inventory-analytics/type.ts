@@ -62,6 +62,26 @@ export interface InventoryValuationItem {
   averageCost: number;
   currentBatchCost: number;
   totalValue: number;
+  /** Null when the stock item is uncategorised. */
+  categoryId?: string | null;
+  categoryName?: string | null;
+}
+
+/**
+ * One bucket of `GET /api/v1/reports/inventory-valuation`'s `byCategory`
+ * rollup. Always includes an "Uncategorised" bucket (null `categoryId`)
+ * when any on-hand stock has no category, so the buckets reconcile to the
+ * response's `totalValue` and `totalVariants`.
+ *
+ * NOTE: no dashboard screen renders the valuation report yet —
+ * `getInventoryValuation` currently has no UI consumer. These types exist so
+ * the backend's category data is typed and ready when that screen is built.
+ */
+export interface InventoryValuationCategoryBucket {
+  categoryId: string | null;
+  categoryName: string;
+  totalValue: number;
+  variantCount: number;
 }
 
 export const RISK_LEVEL_CONFIG: Record<

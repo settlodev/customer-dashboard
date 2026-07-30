@@ -128,7 +128,7 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
           receivedDate: item.receivedDate ?? "",
           supplierId: item.supplierId ?? "",
           supplierReference: item.supplierReference ?? "",
-          paymentTerms: item.paymentTerms ?? "CREDIT",
+          paymentTerms: item.paymentTerms ?? "CASH",
           items: item.items.length
             ? item.items.map((line) => ({
                 stockVariantId: line.stockVariantId,
@@ -150,7 +150,7 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
           receivedDate: "",
           supplierId: "",
           supplierReference: "",
-          paymentTerms: "CREDIT",
+          paymentTerms: "CASH",
           items: [{ stockVariantId: "", quantity: 0, unitCost: 0, currency: locationCurrency }],
         },
   });
@@ -433,7 +433,7 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                       <FormItem className="space-y-[7px]">
                         <FieldLabel>Payment terms</FieldLabel>
                         <Select
-                          value={field.value ?? "CREDIT"}
+                          value={field.value ?? "CASH"}
                           onValueChange={field.onChange}
                           disabled={isPending}
                         >

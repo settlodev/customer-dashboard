@@ -14,6 +14,13 @@ export interface Stock {
   archived: boolean;
   materialType: MaterialType;
   /**
+   * Optional stock category. Null when uncategorised. Distinct from
+   * product categories — see `@/types/stock-category/type`. Optional on
+   * read so response payloads that pre-date the feature still type-check.
+   */
+  categoryId?: string | null;
+  categoryName?: string | null;
+  /**
    * Legacy single-image field. New rows return {@link imageUrls};
    * keep this around for any callers still reading the cover via
    * the old shape.

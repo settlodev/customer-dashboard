@@ -21,6 +21,8 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { InventoryKpiStrip } from "@/components/widgets/inventory/inventory-kpi-strip";
 import { StockVariantsHeaderActions } from "@/components/widgets/inventory/stock-variants-header-actions";
+import { StockCategoryFilter } from "@/components/widgets/inventory/stock-category-filter";
+import { fetchAllStockCategories } from "@/lib/actions/stock-category-actions";
 
 type Props = {
   searchParams: Promise<{
@@ -28,6 +30,7 @@ type Props = {
     search?: string;
     page?: string;
     limit?: string;
+    category?: string;
   }>;
 };
 
@@ -48,10 +51,13 @@ export default async function Page({ searchParams }: Props) {
   // Active destination (location OR store). getCurrentLocation() is null in
   // store mode, which would blank a store's balances + KPI; the stock list /
   // counts already follow the X-Location-Id header (the active destination).
-  const [responseData, counts, destination] = await Promise.all([
-    searchStocks(q, page, pageLimit, view),
+  const categoryId = sp.category || undefined;
+
+  const [responseData, counts, destination, stockCategories] = await Promise.all([
+    searchStocks(q, page, pageLimit, view, categoryId),
     getStockCounts(),
     getCurrentDestination(),
+    fetchAllStockCategories(),
   ]);
 
   const [balances, summary] = destination?.id
@@ -90,11 +96,20 @@ export default async function Page({ searchParams }: Props) {
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;
 
+  // Carry the category filter across tab switches, or picking a tab would
+  // silently drop it. Counts stay whole-view totals — /stocks/counts takes no
+  // category, and the badges answer "how many drafts do I have", not "how many
+  // drafts in this category".
+  const withCategory = (base: string) =>
+    categoryId
+      ? `${base}${base.includes("?") ? "&" : "?"}category=${categoryId}`
+      : base;
+
   const tabs = [
-    { key: "active", label: "Active", count: counts.active, href: "/stock-variants" },
-    { key: "draft", label: "Drafts", count: counts.draft, href: "/stock-variants?filter=draft" },
-    { key: "archived", label: "Archived", count: counts.archived, href: "/stock-variants?filter=archived" },
-    { key: "all", label: "All", count: counts.all, href: "/stock-variants?filter=all" },
+    { key: "active", label: "Active", count: counts.active, href: withCategory("/stock-variants") },
+    { key: "draft", label: "Drafts", count: counts.draft, href: withCategory("/stock-variants?filter=draft") },
+    { key: "archived", label: "Archived", count: counts.archived, href: withCategory("/stock-variants?filter=archived") },
+    { key: "all", label: "All", count: counts.all, href: withCategory("/stock-variants?filter=all") },
   ];
 
 
@@ -115,7 +130,8 @@ export default async function Page({ searchParams }: Props) {
         {total > 0 && <InventoryKpiStrip summary={summary} />}
 
         {/* Filter tabs — design's `.tabs` pill (matches Active/Archived
-            on the products list). */}
+            on the products list) — with the category filter alongside. */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
         <div
           role="tablist"
           className="inline-flex w-fit items-center gap-0.5 rounded-md border border-line bg-card p-[3px]"
@@ -151,7 +167,12 @@ export default async function Page({ searchParams }: Props) {
           })}
         </div>
 
-        {total > 0 || q !== "" ? (
+          {stockCategories.length > 0 && (
+            <StockCategoryFilter categories={stockCategories} />
+          )}
+        </div>
+
+        {total > 0 || q !== "" || categoryId ? (
           <DataTable
             columns={columns}
             data={filtered}
