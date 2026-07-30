@@ -76,6 +76,7 @@ export async function searchStocks(
   page: number,
   pageLimit: number,
   view?: StockView,
+  categoryId?: string,
 ): Promise<ApiResponse<Stock>> {
   try {
     const apiClient = new ApiClient();
@@ -87,6 +88,7 @@ export async function searchStocks(
     params.set("sortBy", "createdAt");
     params.set("sortDirection", "DESC");
     if (view) params.set("view", view.toUpperCase());
+    if (categoryId) params.set("categoryId", categoryId);
 
     const data = await apiClient.get(
       inventoryUrl(`/api/v1/stocks/search?${params.toString()}`),
