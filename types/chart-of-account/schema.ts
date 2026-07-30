@@ -20,6 +20,16 @@ export const ChartOfAccountSchema = z.object({
     "REVENUE",
     "EXPENSE",
   ]),
+  plSection: z
+    .enum([
+      "REVENUE",
+      "COST_OF_SALES",
+      "OPERATING_EXPENSE",
+      "OTHER_INCOME_AND_EXPENSE",
+      "TAX_EXPENSE",
+    ])
+    .optional()
+    .nullable(),
   accountSubType: z.string().max(50).optional().or(z.literal("")),
   normalBalance: z.enum(["DEBIT", "CREDIT"]),
   parentId: z.string().uuid().optional().nullable().or(z.literal("")),

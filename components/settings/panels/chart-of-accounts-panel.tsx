@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 
 import { SettingsSection } from "../shared/settings-section";
 import { OpeningBalanceSection } from "../opening-balance/opening-balance-section";
+import { ChartOfAccountSelector } from "@/components/widgets/chart-of-account-selector";
 import { listChartOfAccounts } from "@/lib/actions/accounting-mapping-actions";
 import {
   createChartOfAccount,
@@ -37,8 +38,11 @@ import {
 import type { ChartOfAccountFormValues } from "@/types/chart-of-account/schema";
 import {
   ACCOUNT_TYPE_LABELS,
+  PL_SECTION_LABELS,
+  PL_SECTIONS_BY_ACCOUNT_TYPE,
   type AccountType,
   type ChartOfAccount,
+  type PlSection,
 } from "@/types/accounting-mapping/type";
 
 const NORMAL_BALANCE_BY_TYPE: Record<AccountType, "DEBIT" | "CREDIT"> = {
@@ -63,6 +67,7 @@ export function ChartOfAccountsPanel() {
     name: "",
     description: "",
     accountType: "EXPENSE",
+    plSection: null,
     accountSubType: "",
     normalBalance: "DEBIT",
     parentId: "",
@@ -86,6 +91,7 @@ export function ChartOfAccountsPanel() {
       name: "",
       description: "",
       accountType: "EXPENSE",
+      plSection: null,
       accountSubType: "",
       normalBalance: "DEBIT",
       parentId: "",
@@ -100,6 +106,7 @@ export function ChartOfAccountsPanel() {
       name: a.name,
       description: a.description ?? "",
       accountType: a.accountType,
+      plSection: a.plSection,
       accountSubType: a.accountSubType ?? "",
       normalBalance: a.normalBalance,
       parentId: a.parentId ?? "",
@@ -153,6 +160,15 @@ export function ChartOfAccountsPanel() {
       if (result.responseType === "success") await reload();
     });
 
+  // "Reports under" only makes sense within the selected section, and an
+  // account can't be its own parent — hide both kinds of row from the
+  // candidate list rather than let the picker offer a choice the backend
+  // (PARENT_SECTION_MISMATCH / "An account cannot be its own parent") would
+  // reject anyway.
+  const parentExcludeIds = items
+    .filter((a) => a.id === editing?.id || a.plSection !== form.plSection)
+    .map((a) => a.id);
+
   return (
     <SettingsSection
       title="Chart of accounts"
@@ -187,13 +203,21 @@ export function ChartOfAccountsPanel() {
                   <Label>Type</Label>
                   <Select
                     value={form.accountType}
-                    onValueChange={(v) =>
+                    onValueChange={(v) => {
+                      const nextType = v as AccountType;
+                      const sections = PL_SECTIONS_BY_ACCOUNT_TYPE[nextType];
                       setForm({
                         ...form,
-                        accountType: v as AccountType,
-                        normalBalance: NORMAL_BALANCE_BY_TYPE[v as AccountType],
-                      })
-                    }
+                        accountType: nextType,
+                        normalBalance: NORMAL_BALANCE_BY_TYPE[nextType],
+                        // A section (or parent) picked for the previous
+                        // account type is almost never valid for the new
+                        // one — stale values here get silently submitted
+                        // and rejected by the backend, so reset both.
+                        plSection: sections.length > 0 ? sections[0] : null,
+                        parentId: "",
+                      });
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -210,6 +234,67 @@ export function ChartOfAccountsPanel() {
                   </Select>
                 </div>
               </div>
+              {PL_SECTIONS_BY_ACCOUNT_TYPE[form.accountType].length > 0 && (
+                <div>
+                  <Label>P&L section</Label>
+                  <Select
+                    value={form.plSection ?? undefined}
+                    onValueChange={(v) =>
+                      setForm({
+                        ...form,
+                        plSection: v as PlSection,
+                        // The parent picker below is filtered by section —
+                        // a parent chosen under the old section is very
+                        // likely no longer a legal (or even visible) choice.
+                        parentId: "",
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PL_SECTIONS_BY_ACCOUNT_TYPE[form.accountType].map(
+                        (s) => (
+                          <SelectItem key={s} value={s}>
+                            {PL_SECTION_LABELS[s]}
+                          </SelectItem>
+                        ),
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {form.plSection && (
+                <div>
+                  <Label>Reports under</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={form.parentId === "" ? "default" : "outline"}
+                      onClick={() => setForm({ ...form, parentId: "" })}
+                    >
+                      Its own line
+                    </Button>
+                    <div className="min-w-0 flex-1">
+                      <ChartOfAccountSelector
+                        value={form.parentId || undefined}
+                        onChange={(id) =>
+                          setForm({ ...form, parentId: id })
+                        }
+                        excludeIds={parentExcludeIds}
+                        placeholder="Choose a parent account"
+                      />
+                    </div>
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Pick a parent to report this account as a sub-line
+                    rolled into that account&apos;s total, or leave it as
+                    its own line.
+                  </p>
+                </div>
+              )}
               <div>
                 <Label>Name</Label>
                 <Input

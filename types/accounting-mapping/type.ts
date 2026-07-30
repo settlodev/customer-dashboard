@@ -20,6 +20,7 @@ export interface ChartOfAccount {
   accountSubType: string | null;
   normalBalance: NormalBalance;
   parentId: string | null;
+  plSection: PlSection | null;
   systemAccount: boolean;
   active: boolean;
   locationId: string | null;
@@ -36,6 +37,40 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   EQUITY: "Equity",
   REVENUE: "Revenue",
   EXPENSE: "Expense",
+};
+
+export type PlSection =
+  | "REVENUE"
+  | "COST_OF_SALES"
+  | "OPERATING_EXPENSE"
+  | "OTHER_INCOME_AND_EXPENSE"
+  | "TAX_EXPENSE";
+
+export const PL_SECTION_LABELS: Record<PlSection, string> = {
+  REVENUE: "Revenue / Sales",
+  COST_OF_SALES: "Cost of Sales",
+  OPERATING_EXPENSE: "Operating Expenses",
+  OTHER_INCOME_AND_EXPENSE: "Other Income & Expenses",
+  TAX_EXPENSE: "Tax Expense",
+};
+
+/**
+ * Which sections each account type may use. Mirrors PlSection.validFor on the
+ * backend — an empty array means the account takes no section at all.
+ */
+export const PL_SECTIONS_BY_ACCOUNT_TYPE: Record<AccountType, PlSection[]> = {
+  REVENUE: ["REVENUE", "OTHER_INCOME_AND_EXPENSE"],
+  EXPENSE: [
+    "COST_OF_SALES",
+    "OPERATING_EXPENSE",
+    "OTHER_INCOME_AND_EXPENSE",
+    "TAX_EXPENSE",
+  ],
+  CURRENT_ASSET: [],
+  NON_CURRENT_ASSET: [],
+  CURRENT_LIABILITY: [],
+  NON_CURRENT_LIABILITY: [],
+  EQUITY: [],
 };
 
 /** Both asset classes — for pickers that used to pass accountType="ASSET". */
