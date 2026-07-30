@@ -112,6 +112,7 @@ import type { Category } from "@/types/category/type";
 import { StockSchema } from "@/types/stock/schema";
 import type { FormResponse } from "@/types/types";
 import UnitSelector from "@/components/widgets/unit-selector";
+import StockCategorySelector from "@/components/widgets/stock-category-selector";
 import CompatibleUnitSelector from "@/components/widgets/compatible-unit-selector";
 import SupplierSelector from "@/components/widgets/supplier-selector";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
@@ -210,6 +211,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
       baseUnitId: item?.baseUnitId ?? "",
       divisibleUnitId: item?.divisibleUnitId ?? "",
       materialType: item?.materialType ?? "FINISHED_GOOD",
+      categoryId: item?.categoryId ?? "",
       imageUrls: item?.imageUrls?.length
         ? item.imageUrls
         : item?.imageUrl
@@ -680,6 +682,28 @@ export default function StockForm({ item, balances }: StockFormProps) {
                               ? "This item IS a returnable container — set the deposit it carries on each variant."
                               : "Sold or consumed as-is; can link a returnable container per variant."}
                           </FieldHint>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="categoryId"
+                      render={({ field }) => (
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Stock category</FieldLabel>
+                          <FormControl>
+                            <StockCategorySelector
+                              value={field.value ?? ""}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              isDisabled={isPending}
+                            />
+                          </FormControl>
+                          <FieldHint>
+                            Optional — used for filtering and reporting.
+                          </FieldHint>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />

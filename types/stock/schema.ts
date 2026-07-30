@@ -88,6 +88,15 @@ export const StockSchema = object({
     .or(string().length(0))
     .nullish(),
   materialType: string().default("FINISHED_GOOD"),
+  // `.or(string().length(0))` is required, not cosmetic — the form's default
+  // value for an unselected picker is `""`, and plain `.optional()` only
+  // tolerates `undefined`, so `.uuid()` would reject the default and silently
+  // block submission on an optional field. Same trap as `divisibleUnitId`.
+  categoryId: string()
+    .uuid("Select a valid stock category")
+    .optional()
+    .or(string().length(0))
+    .nullish(),
   /**
    * Up to 5 image URLs for the stock gallery. Element 0 is the
    * cover/thumbnail. Matches the backend's {@code List<String>

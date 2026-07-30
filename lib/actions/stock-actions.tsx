@@ -192,6 +192,10 @@ export async function createStock(
       baseUnitId: validated.data.baseUnitId,
       divisibleUnitId: validated.data.divisibleUnitId || undefined,
       materialType: validated.data.materialType,
+      // Empty string is the form's unselected-picker default; send
+      // undefined so the backend reads it as "not supplied" rather
+      // than trying to resolve a blank id.
+      categoryId: validated.data.categoryId || undefined,
       imageUrls: validated.data.imageUrls,
       variants: validated.data.variants.map((v) => ({
         name: v.name,
@@ -258,6 +262,13 @@ export async function updateStock(
       baseUnitId: validated.data.baseUnitId,
       divisibleUnitId: validated.data.divisibleUnitId || undefined,
       materialType: validated.data.materialType,
+      // Empty string is the form's unselected-picker default; send
+      // undefined so the backend reads it as "not supplied" rather
+      // than trying to resolve a blank id.
+      categoryId: validated.data.categoryId || undefined,
+      // On update, undefined means "leave alone" server-side, so clearing
+      // the picker needs an explicit remove flag or the old category sticks.
+      removeCategory: !validated.data.categoryId,
       // Empty list clears the gallery on the backend; omit the field
       // entirely (undefined) to leave it untouched.
       imageUrls: validated.data.imageUrls,
@@ -611,6 +622,10 @@ export async function createStockWithProduct(
       baseUnitId: validated.data.baseUnitId,
       divisibleUnitId: validated.data.divisibleUnitId || undefined,
       materialType: validated.data.materialType,
+      // Empty string is the form's unselected-picker default; send
+      // undefined so the backend reads it as "not supplied" rather
+      // than trying to resolve a blank id.
+      categoryId: validated.data.categoryId || undefined,
       imageUrls: validated.data.imageUrls,
       variants: validated.data.variants.map((v) => ({
         name: v.name,
