@@ -16,6 +16,8 @@ interface LineItemsTableProps {
    * When set, takes precedence over {@link headerClassName}.
    */
   headerStyle?: React.CSSProperties;
+  /** Quantities-only documents (delivery notes): drop the Price/Amount columns. */
+  hideAmounts?: boolean;
 }
 
 export function LineItemsTable({
@@ -23,6 +25,7 @@ export function LineItemsTable({
   currency,
   headerClassName = "bg-blue-700",
   headerStyle,
+  hideAmounts,
 }: LineItemsTableProps) {
   // Drop the default Tailwind bg when an inline style is provided so the
   // tenant colour wins; keep text-white for legibility on saturated brands.
@@ -34,8 +37,12 @@ export function LineItemsTable({
           <tr className={`${headerCls} text-white`} style={headerStyle}>
             <th className="px-4 py-3 text-left font-medium">Items</th>
             <th className="w-24 px-4 py-3 text-right font-medium">Quantity</th>
-            <th className="w-28 px-4 py-3 text-right font-medium">Price</th>
-            <th className="w-28 px-4 py-3 text-right font-medium">Amount</th>
+            {!hideAmounts && (
+              <>
+                <th className="w-28 px-4 py-3 text-right font-medium">Price</th>
+                <th className="w-28 px-4 py-3 text-right font-medium">Amount</th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -56,12 +63,16 @@ export function LineItemsTable({
                   {item.quantity}
                   {item.unitOfMeasure ? ` ${item.unitOfMeasure}` : ""}
                 </td>
-                <td className="px-4 py-3.5 text-right text-slate-700">
-                  {formatCurrency(item.unitPrice, currency)}
-                </td>
-                <td className="px-4 py-3.5 text-right text-slate-900">
-                  {formatCurrency(amount, currency)}
-                </td>
+                {!hideAmounts && (
+                  <>
+                    <td className="px-4 py-3.5 text-right text-slate-700">
+                      {formatCurrency(item.unitPrice, currency)}
+                    </td>
+                    <td className="px-4 py-3.5 text-right text-slate-900">
+                      {formatCurrency(amount, currency)}
+                    </td>
+                  </>
+                )}
               </tr>
             );
           })}

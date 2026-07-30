@@ -6,12 +6,18 @@ import {
   PageBody,
 } from "@/components/layouts/page-shell";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
-import { Boxes, Layers, DollarSign } from "lucide-react";
+import { Boxes, FileDown, Layers, DollarSign } from "lucide-react";
 import { getStockTransfer } from "@/lib/actions/stock-transfer-actions";
 import { getCurrentDestination } from "@/lib/actions/context";
 import StockTransferForm from "@/components/forms/stock_transfer_form";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getTransferStatusLabel } from "@/types/stock-transfer/type";
+import {
+  TRANSFER_DOCUMENT_STATUSES,
+  TRANSFER_STATUS_COLORS,
+  getTransferStatusLabel,
+} from "@/types/stock-transfer/type";
+import { TransferShareButton } from "@/components/widgets/stock-transfer/share-dialog";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
 import { Money } from "@/components/widgets/money";
 import { StockTransferStatusActions } from "@/components/widgets/stock-transfer/status-actions";
@@ -48,6 +54,11 @@ export default async function StockTransferPage({
       0,
     );
 
+    const pendingMappingCount = (item.items ?? []).filter(
+      (line) => line.mappingStatus === "PENDING",
+    ).length;
+    const isDestinationViewer = destination?.id === item.destinationLocationId;
+
     return (
       <PageShell>
         <PageBreadcrumbs
@@ -58,15 +69,38 @@ export default async function StockTransferPage({
         />
         <PageHeader
           title={item.transferNumber}
-          subtitle={`${item.sourceLocationName} → ${item.destinationLocationName} — ${getTransferStatusLabel(item, destination?.id ?? null)}`}
+          subtitle={`${item.sourceLocationName} → ${item.destinationLocationName}`}
           actions={
             <span className="flex items-center gap-3">
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+                  TRANSFER_STATUS_COLORS[item.status] ??
+                  "bg-gray-100 text-gray-600"
+                }`}
+              >
+                {getTransferStatusLabel(item, destination?.id ?? null)}
+              </span>
               <span className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.02em] text-muted-foreground">
                 Source currency:{" "}
                 <span className="rounded bg-canvas px-2 py-0.5 font-semibold text-ink">
                   {currency}
                 </span>
               </span>
+              {TRANSFER_DOCUMENT_STATUSES.includes(item.status) && (
+                <>
+                  <Button asChild variant="outline" size="sm">
+                    <a
+                      href={`/stock-transfers/${item.id}/print`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <FileDown className="mr-1.5 h-4 w-4" />
+                      Delivery Note
+                    </a>
+                  </Button>
+                  <TransferShareButton transfer={item} />
+                </>
+              )}
               <StockTransferStatusActions
                 transfer={item}
                 activeDestinationId={destination?.id ?? null}
@@ -75,6 +109,33 @@ export default async function StockTransferPage({
           }
         />
         <PageBody>
+          {item.status === "PENDING_MAPPING" && pendingMappingCount > 0 && (
+            <div className="rounded-lg border border-violet-200 bg-violet-50/60 px-4 py-3 text-sm text-violet-900">
+              {isDestinationViewer ? (
+                <>
+                  <span className="font-semibold">
+                    {pendingMappingCount}{" "}
+                    {pendingMappingCount === 1 ? "item isn't" : "items aren't"}{" "}
+                    in this location&apos;s catalogue yet.
+                  </span>{" "}
+                  Use <span className="font-semibold">Map items</span> to link
+                  each one to a stock item you already carry — or create it as a
+                  new item — and the outstanding quantity will be booked into
+                  your stock.
+                </>
+              ) : (
+                <>
+                  Waiting for{" "}
+                  <span className="font-semibold">
+                    {item.destinationLocationName ?? "the destination"}
+                  </span>{" "}
+                  to map {pendingMappingCount}{" "}
+                  {pendingMappingCount === 1 ? "item" : "items"} into their own
+                  catalogue before those quantities can be credited there.
+                </>
+              )}
+            </div>
+          )}
           <KpiStrip cols={3}>
             <KpiCard
               icon={<Layers className="h-3 w-3" />}
@@ -117,7 +178,29 @@ export default async function StockTransferPage({
                       const lineTotal = (line.unitCost ?? 0) * line.quantity;
                       return (
                         <tr key={line.id} className="hover:bg-gray-50/50">
-                          <td className="px-4 py-3 font-medium text-gray-900">{line.variantName}</td>
+                          <td className="px-4 py-3 font-medium text-gray-900">
+                            <span className="inline-flex flex-wrap items-center gap-2">
+                              {line.variantName}
+                              {line.mappingStatus === "PENDING" && (
+                                <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700">
+                                  Awaiting mapping
+                                </span>
+                              )}
+                              {line.mappingStatus === "AUTO_UNCONFIRMED" && (
+                                <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                                  Auto-matched
+                                </span>
+                              )}
+                            </span>
+                            {line.resolvedDestVariantName &&
+                              line.resolvedDestVariantName !== line.variantName && (
+                                <p className="mt-0.5 text-xs font-normal text-muted-foreground">
+                                  Matched to {line.resolvedDestVariantName}
+                                  {line.mappingStatus === "AUTO_UNCONFIRMED" &&
+                                    " — check this is the right item"}
+                                </p>
+                              )}
+                          </td>
                           <td className="px-4 py-3 text-right">{line.quantity.toLocaleString()}</td>
                           <td className="px-4 py-3 text-right text-muted-foreground">
                             {line.receivedQuantity != null ? line.receivedQuantity.toLocaleString() : "—"}

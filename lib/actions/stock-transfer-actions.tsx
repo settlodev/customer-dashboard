@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type {
   DestinationOption,
+  PublicStockTransfer,
   StockTransfer,
   TransferStatus,
 } from "@/types/stock-transfer/type";
@@ -233,5 +234,107 @@ export async function confirmReturnTransfer(id: string): Promise<void> {
 export async function cancelTransfer(id: string): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post(inventoryUrl(`/api/v1/stock-transfers/${id}/cancel`), {});
+  revalidatePath("/stock-transfers");
+}
+
+// ── Delivery-note sharing (mirrors GRN sharing) ─────────────────────
+
+/**
+ * Mint (or fetch the existing) public delivery-note link. Idempotent —
+ * repeated calls return the same token until {@link revokeStockTransferShare}.
+ */
+export async function shareStockTransfer(
+  id: string,
+): Promise<{ shareToken: string; shareUrl: string } | { error: string }> {
+  try {
+    const apiClient = new ApiClient();
+    const updated = (await apiClient.post(
+      inventoryUrl(`/api/v1/stock-transfers/${id}/share`),
+      {},
+    )) as StockTransfer;
+    revalidatePath(`/stock-transfers/${id}`);
+    if (!updated?.shareToken) {
+      return { error: "Share token missing from server response" };
+    }
+    return {
+      shareToken: updated.shareToken,
+      shareUrl: buildTransferShareUrl(updated.shareToken),
+    };
+  } catch (error: any) {
+    return { error: error?.message ?? "Failed to create share link" };
+  }
+}
+
+export async function revokeStockTransferShare(id: string): Promise<FormResponse> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.delete(inventoryUrl(`/api/v1/stock-transfers/${id}/share`));
+    revalidatePath(`/stock-transfers/${id}`);
+    return { responseType: "success", message: "Share link revoked" };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message ?? "Failed to revoke share link",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
+/** Public (unauthenticated) delivery-note payload for the /dn/[token] page. */
+export async function getPublicStockTransfer(
+  token: string,
+): Promise<PublicStockTransfer | null> {
+  try {
+    const apiClient = new ApiClient();
+    apiClient.isPlain = true;
+    const data = await apiClient.get<PublicStockTransfer>(
+      inventoryUrl(`/api/v1/public/stock-transfers/${encodeURIComponent(token)}`),
+    );
+    return parseStringify(data);
+  } catch (error: any) {
+    if (error?.status === 404) return null;
+    throw error;
+  }
+}
+
+function buildTransferShareUrl(token: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "";
+  return `${base}/dn/${token}`;
+}
+
+/**
+ * Resolve ONE pending-mapping line on a PENDING_MAPPING transfer — link it to
+ * a destination-catalogue variant the receiver already carries, or have the
+ * backend provision a brand-new (draft) stock item from the source line's
+ * attributes. When the linked item is the same product tracked under a
+ * DIFFERENT base unit, pass `merge: true` + `mergedUnitId` (one of the two
+ * items' current units): both catalogues are re-labelled onto that unit —
+ * quantities keep their numbers, nothing converts — and the items stay
+ * connected via the shared product identity. Either way the backend credits
+ * the line's full outstanding quantity immediately and recomputes the
+ * transfer status (RECEIVED / PARTIALLY_RECEIVED / still PENDING_MAPPING
+ * while other lines wait).
+ */
+export async function reconcileTransferLine(
+  id: string,
+  line: {
+    transferItemId: string;
+    linkToVariantId?: string;
+    createNew?: boolean;
+    merge?: boolean;
+    mergedUnitId?: string;
+  },
+): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(
+    inventoryUrl(`/api/v1/stock-transfers/${id}/reconcile-line`),
+    {
+      transferItemId: line.transferItemId,
+      linkToVariantId: line.linkToVariantId ?? null,
+      createNew: line.createNew ?? false,
+      merge: line.merge ?? false,
+      mergedUnitId: line.mergedUnitId ?? null,
+    },
+  );
   revalidatePath("/stock-transfers");
 }

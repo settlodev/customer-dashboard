@@ -6,11 +6,24 @@ export type TransferStatus =
   | "DISPATCHED"
   | "PARTIALLY_RECEIVED"
   | "RECEIVED"
+  /** Received on the source side, but ≥1 line has no destination-catalogue match yet. */
+  | "PENDING_MAPPING"
   | "ACCEPTED"
+  /** Destination refused a pending (pre-dispatch) transfer. Terminal, no stock moved. */
+  | "REJECTED"
   | "DECLINED"
   | "RETURN_IN_TRANSIT"
   | "RETURNED"
   | "CANCELLED";
+
+/**
+ * How a transfer line resolved against the DESTINATION's own catalogue at
+ * dispatch. PENDING lines are not credited at receive — the destination must
+ * map them (link or create) via the reconcile flow. AUTO_UNCONFIRMED is a
+ * fuzzy auto-match: credited like RESOLVED, surfaced so a human can spot a
+ * wrong guess. Null on rows that pre-date the mapping feature.
+ */
+export type TransferItemMappingStatus = "RESOLVED" | "AUTO_UNCONFIRMED" | "PENDING";
 
 export type TransferType =
   | "SUPPLY"
@@ -49,8 +62,51 @@ export interface StockTransfer {
   approvalRequired: boolean;
   /** Derived (approvalRequired && status === "REQUESTED") — drives Accept/Reject. */
   awaitingApproval: boolean;
+  /** Public delivery-note link token — null until shared (mirrors GRN sharing). */
+  shareToken?: string | null;
+  shareTokenIssuedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Statuses at which the delivery note exists as a document — the goods have
+ * physically left the source, so there is something for a driver to carry
+ * (and, later, an audit record of what was shipped).
+ */
+export const TRANSFER_DOCUMENT_STATUSES: TransferStatus[] = [
+  "DISPATCHED",
+  "PARTIALLY_RECEIVED",
+  "PENDING_MAPPING",
+  "RECEIVED",
+  "DECLINED",
+  "RETURN_IN_TRANSIT",
+  "RETURNED",
+];
+
+/** Public (share-token) delivery-note payload — no costs, letterhead embedded. */
+export interface PublicStockTransferItem {
+  variantName: string;
+  quantity: number;
+  receivedQuantity: number | null;
+  baseUnitName: string | null;
+}
+
+export interface PublicStockTransfer {
+  id: string;
+  transferNumber: string;
+  status: TransferStatus;
+  notes: string | null;
+  transferDate: string;
+  receivedDate: string | null;
+  createdAt: string;
+  shareTokenIssuedAt: string | null;
+  sourceLocationName: string | null;
+  destinationLocationName: string | null;
+  transferredByName: string | null;
+  receivedByName: string | null;
+  items: PublicStockTransferItem[];
+  letterhead: import("@/types/letterhead/type").LocationLetterhead | null;
 }
 
 export interface StockTransferItem {
@@ -62,6 +118,13 @@ export interface StockTransferItem {
   receivedQuantity: number | null;
   /** Inherited from the parent transfer (source location currency). */
   currency: string | null;
+  /** Base unit the line's quantities are expressed in (the source variant's unit). */
+  baseUnitId?: string | null;
+  baseUnitName?: string | null;
+  mappingStatus?: TransferItemMappingStatus | null;
+  /** The destination catalogue's own variant this line is credited to once mapped. */
+  resolvedDestVariantId?: string | null;
+  resolvedDestVariantName?: string | null;
 }
 
 /**
@@ -83,11 +146,33 @@ export const TRANSFER_STATUS_LABELS: Record<TransferStatus, string> = {
   DISPATCHED: "Dispatched",
   PARTIALLY_RECEIVED: "Partially Received",
   RECEIVED: "Received",
+  PENDING_MAPPING: "Pending Item Mapping",
   ACCEPTED: "Accepted",
+  REJECTED: "Rejected",
   DECLINED: "Declined",
   RETURN_IN_TRANSIT: "Return In Transit",
   RETURNED: "Returned",
   CANCELLED: "Cancelled",
+};
+
+/**
+ * Status badge colours, shared by the list table and the detail header so the
+ * two can't drift. Typed against TransferStatus so a new status won't compile
+ * until it gets a colour (and, above, a label).
+ */
+export const TRANSFER_STATUS_COLORS: Record<TransferStatus, string> = {
+  REQUESTED: "bg-blue-50 text-blue-700",
+  CONFIRMED: "bg-cyan-50 text-cyan-700",
+  DISPATCHED: "bg-indigo-50 text-indigo-700",
+  PARTIALLY_RECEIVED: "bg-amber-50 text-amber-700",
+  RECEIVED: "bg-emerald-50 text-emerald-700",
+  PENDING_MAPPING: "bg-violet-50 text-violet-700",
+  ACCEPTED: "bg-green-50 text-green-700",
+  REJECTED: "bg-rose-50 text-rose-700",
+  DECLINED: "bg-red-50 text-red-700",
+  RETURN_IN_TRANSIT: "bg-orange-50 text-orange-700",
+  RETURNED: "bg-gray-50 text-gray-700",
+  CANCELLED: "bg-gray-100 text-gray-500",
 };
 
 function resolveTransferSide(
@@ -102,12 +187,15 @@ function resolveTransferSide(
 
 const SOURCE_STATUS_LABEL_OVERRIDES: Partial<Record<TransferStatus, string>> = {
   DECLINED: "Declined — return pending",
+  PENDING_MAPPING: "Awaiting destination mapping",
 };
 
 const DESTINATION_STATUS_LABEL_OVERRIDES: Partial<Record<TransferStatus, string>> = {
   DISPATCHED: "In Transit",
   DECLINED: "Declined by you",
+  REJECTED: "Rejected by you",
   RETURN_IN_TRANSIT: "Returning",
+  PENDING_MAPPING: "Needs item mapping",
 };
 
 /**

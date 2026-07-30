@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Archive,
@@ -9,6 +10,7 @@ import {
   AlertTriangle,
   MonitorSmartphone,
   MoreVertical,
+  Pencil,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import type { Stock } from "@/types/stock/type";
@@ -81,13 +83,55 @@ export function StockDetailActions({ stock }: { stock: Stock }) {
 
   return (
     <>
+      {/* Desktop: separate buttons */}
+      <div className="hidden items-center gap-2 md:flex">
+        <Button asChild variant="outline" size="sm">
+          <Link href={`/stock-variants/${stock.id}/edit`}>
+            <Pencil className="mr-1.5 h-4 w-4" />
+            Edit
+          </Link>
+        </Button>
+        {stock.archived ? (
+          <Button variant="outline" size="sm" onClick={handleUnarchive} disabled={loading}>
+            <ArchiveRestore className="mr-1.5 h-4 w-4" />
+            Unarchive
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-amber-600 hover:text-amber-700"
+            onClick={() => setArchiveOpen(true)}
+          >
+            <Archive className="mr-1.5 h-4 w-4" />
+            Archive
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-red-600 hover:text-red-700"
+          onClick={() => setDeleteOpen(true)}
+        >
+          <Trash2 className="mr-1.5 h-4 w-4" />
+          Delete
+        </Button>
+      </div>
+
+      {/* Mobile: 3-dot menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="md:hidden">
             <MoreVertical className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem asChild>
+            <Link href={`/stock-variants/${stock.id}/edit`}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </Link>
+          </DropdownMenuItem>
           {stock.archived ? (
             <DropdownMenuItem onClick={handleUnarchive} disabled={loading}>
               <ArchiveRestore className="mr-2 h-4 w-4" />
