@@ -216,6 +216,13 @@ const getNormalMenuItems = (
           permission: "inventory:read",
         },
         {
+          title: "Stock categories",
+          link: "/stock-categories",
+          current: args?.isCurrentItem,
+          icon: "cart",
+          permission: "inventory:read",
+        },
+        {
           title: "Stock intake",
           link: "/stock-intakes",
           current: args?.isCurrentItem,
@@ -750,6 +757,13 @@ const getStoreMenuItems = (args?: MenuItemArgType) => {
         {
           title: "Stock items",
           link: "/stock-variants",
+          current: args?.isCurrentItem,
+          icon: "cart",
+          permission: "inventory:read",
+        },
+        {
+          title: "Stock categories",
+          link: "/stock-categories",
           current: args?.isCurrentItem,
           icon: "cart",
           permission: "inventory:read",
