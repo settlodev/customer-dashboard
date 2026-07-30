@@ -24,6 +24,28 @@ export interface TrialBalanceReport {
   generatedAt: string;
 }
 
+export interface PlSectionLine {
+  accountId: string | null;
+  code: string;
+  name: string;
+  amount: number;
+  children: PlSectionLine[];
+  total: number;
+}
+
+export interface PlSectionGroup {
+  lines: PlSectionLine[];
+  total: number;
+}
+
+export interface PlSections {
+  revenue: PlSectionGroup;
+  costOfSales: PlSectionGroup;
+  operatingExpenses: PlSectionGroup;
+  otherIncomeAndExpenses: PlSectionGroup;
+  taxExpense: PlSectionGroup;
+}
+
 export interface ProfitAndLossReport {
   locationId: string;
   businessId: string;
@@ -35,6 +57,16 @@ export interface ProfitAndLossReport {
   totalRevenue: number;
   totalExpenses: number;
   grossProfit: number;
+  /**
+   * The statement in IAS 1 section form. Namespaced deliberately: the legacy
+   * `totalRevenue` is every revenue account, while `sections.revenue.total`
+   * is only the Revenue section — two different numbers that flat sibling
+   * names would invite confusing.
+   */
+  sections: PlSections;
+  operatingProfit: number;
+  netProfitBeforeTax: number;
+  netProfitAfterTax: number;
   netIncome: number;
   generatedAt: string;
 }

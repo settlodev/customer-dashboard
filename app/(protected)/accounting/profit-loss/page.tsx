@@ -1,5 +1,6 @@
+import { Fragment } from "react";
 import { format, startOfYear } from "date-fns";
-import { TrendingUp, TrendingDown, CircleDollarSign } from "lucide-react";
+import { Activity, TrendingUp, CircleDollarSign } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -12,70 +13,141 @@ import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
 import { fetchProfitAndLoss } from "@/lib/actions/accounting-reports-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
-import type { AccountBalanceRow } from "@/types/reports/type";
+import { cn } from "@/lib/utils";
+import type { PlSectionGroup } from "@/types/reports/type";
 
 const fmt = (n: number) =>
-  n.toLocaleString(undefined, {
+  Math.abs(n).toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 
-function Section({
-  title,
-  rows,
-  total,
-  currency,
+// IAS 1 statements render negative amounts in parentheses rather than with a
+// leading minus sign — the accounting convention. Covers contra-account
+// lines and the expense lines netted inside Other Income & Expenses.
+const fmtSigned = (n: number) => (n < 0 ? `(${fmt(n)})` : fmt(n));
+
+/** One account line. `indent` renders it as a sub-line beneath its parent. */
+function LineRow({
+  code,
+  name,
+  amount,
+  emphasize,
+  indent,
 }: {
-  title: string;
-  rows: AccountBalanceRow[];
-  total: number;
-  currency: string;
+  code: string;
+  name: string;
+  amount: number;
+  emphasize?: boolean;
+  indent?: boolean;
 }) {
   return (
-    <div>
-      <h3 className="mb-2 text-base font-semibold">{title}</h3>
-      <div className="overflow-hidden rounded-lg border">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-gray-50/60 text-left text-xs font-semibold uppercase text-gray-400">
-              <th className="px-4 py-2.5">Code</th>
-              <th className="px-4 py-2.5">Account</th>
-              <th className="px-4 py-2.5 text-right">Amount</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {rows.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={3}
-                  className="px-4 py-4 text-center text-xs text-muted-foreground"
-                >
-                  No activity
-                </td>
-              </tr>
-            ) : (
-              rows.map((r) => (
-                <tr key={r.accountId ?? r.code} className="hover:bg-gray-50/50">
-                  <td className="px-4 py-2.5 font-mono text-xs">{r.code}</td>
-                  <td className="px-4 py-2.5">{r.name}</td>
-                  <td className="px-4 py-2.5 text-right font-mono tabular-nums">
-                    {fmt(r.balance)}
-                  </td>
-                </tr>
-              ))
-            )}
-            <tr className="border-t bg-gray-50/60 font-medium">
-              <td colSpan={2} className="px-4 py-2.5">
-                Total {title.toLowerCase()}
-              </td>
-              <td className="px-4 py-2.5 text-right font-mono tabular-nums">
-                {fmt(total)} {currency}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <tr className="hover:bg-gray-50/50">
+      <td className="px-4 py-2.5 font-mono text-xs">{code}</td>
+      <td
+        className={cn(
+          "py-2.5",
+          indent ? "pl-10 pr-4" : "px-4",
+          emphasize && "font-medium",
+        )}
+      >
+        {name}
+      </td>
+      <td className="px-4 py-2.5 text-right font-mono tabular-nums">
+        {fmtSigned(amount)}
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * One statement section: a caption, its lines (any children indented
+ * beneath their parent, which shows its own rolled-up total), and a total
+ * row. Always renders, even with zero lines, so a merchant can see the
+ * section is genuinely nil rather than missing from the statement.
+ */
+function SectionRows({
+  title,
+  group,
+}: {
+  title: string;
+  group: PlSectionGroup;
+}) {
+  return (
+    <>
+      <tr>
+        <td
+          colSpan={3}
+          className="bg-gray-50/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+        >
+          {title}
+        </td>
+      </tr>
+      {group.lines.length === 0 ? (
+        <tr>
+          <td
+            colSpan={3}
+            className="px-4 py-3 text-center text-xs text-muted-foreground"
+          >
+            No activity
+          </td>
+        </tr>
+      ) : (
+        group.lines.map((line) => (
+          <Fragment key={line.accountId ?? line.code}>
+            {/* A parent's own row shows its rolled-up total, which equals
+                its amount when it has no children. */}
+            <LineRow
+              code={line.code}
+              name={line.name}
+              amount={line.total}
+              emphasize={line.children.length > 0}
+            />
+            {line.children.map((child) => (
+              <LineRow
+                key={child.accountId ?? child.code}
+                code={child.code}
+                name={child.name}
+                amount={child.amount}
+                indent
+              />
+            ))}
+          </Fragment>
+        ))
+      )}
+      <tr className="border-t bg-gray-50/60 font-medium">
+        <td colSpan={2} className="px-4 py-2.5">
+          Total {title.toLowerCase()}
+        </td>
+        <td className="px-4 py-2.5 text-right font-mono tabular-nums">
+          {fmtSigned(group.total)}
+        </td>
+      </tr>
+    </>
+  );
+}
+
+/**
+ * One of the statement's four computed milestones — Gross Profit, Operating
+ * Profit, Net Profit Before Tax, Net Profit After Tax. Always renders a
+ * figure the backend computed; never re-derives one from section totals in
+ * the browser, so the page and the API cannot disagree.
+ */
+function MilestoneRow({ label, amount }: { label: string; amount: number }) {
+  return (
+    <tr className="border-y bg-gray-100/70">
+      <td colSpan={2} className="px-4 py-3 text-sm font-semibold">
+        {label}
+      </td>
+      <td
+        className={cn(
+          "px-4 py-3 text-right font-mono text-base font-semibold tabular-nums",
+          amount < 0 ? "text-neg" : "text-pos",
+        )}
+      >
+        {fmtSigned(amount)}
+      </td>
+    </tr>
   );
 }
 
@@ -117,49 +189,78 @@ export default async function ProfitLossPage({
             <KpiStrip cols={3}>
               <KpiCard
                 icon={<TrendingUp className="h-3 w-3" />}
-                label="Revenue"
-                value={fmt(report.totalRevenue)}
+                label="Gross profit"
+                value={fmtSigned(report.grossProfit)}
                 unit={report.currencyCode}
-                deltaTone="pos"
+                deltaTone={report.grossProfit >= 0 ? "pos" : "neg"}
               />
               <KpiCard
-                icon={<TrendingDown className="h-3 w-3" />}
-                label="Expenses"
-                value={fmt(report.totalExpenses)}
+                icon={<Activity className="h-3 w-3" />}
+                label="Operating profit"
+                value={fmtSigned(report.operatingProfit)}
                 unit={report.currencyCode}
-                deltaTone="neg"
+                deltaTone={report.operatingProfit >= 0 ? "pos" : "neg"}
               />
               <KpiCard
                 icon={<CircleDollarSign className="h-3 w-3" />}
-                label="Net income"
-                value={fmt(report.netIncome)}
+                label="Net profit after tax"
+                value={fmtSigned(report.netProfitAfterTax)}
                 unit={report.currencyCode}
-                deltaTone={report.netIncome >= 0 ? "pos" : "neg"}
+                deltaTone={report.netProfitAfterTax >= 0 ? "pos" : "neg"}
               />
             </KpiStrip>
             <Card>
-              <CardContent className="space-y-6 pt-6">
-                <Section
-                  title="Revenue"
-                  rows={report.revenue}
-                  total={report.totalRevenue}
-                  currency={report.currencyCode}
-                />
-                <Section
-                  title="Expenses"
-                  rows={report.expenses}
-                  total={report.totalExpenses}
-                  currency={report.currencyCode}
-                />
-                <div className="rounded-lg border bg-card p-4 flex items-center justify-between">
-                  <span className="text-base font-semibold">Net income</span>
-                  <span
-                    className={`font-mono tabular-nums text-lg font-semibold ${
-                      report.netIncome >= 0 ? "text-green-600" : "text-red-600"
-                    }`}
-                  >
-                    {fmt(report.netIncome)} {report.currencyCode}
-                  </span>
+              <CardContent className="pt-6">
+                <div className="overflow-hidden rounded-lg border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-gray-50/60 text-left text-xs font-semibold uppercase text-gray-400">
+                        <th className="px-4 py-2.5">Code</th>
+                        <th className="px-4 py-2.5">Account</th>
+                        <th className="px-4 py-2.5 text-right">
+                          Amount ({report.currencyCode})
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      <SectionRows
+                        title="Revenue / Sales"
+                        group={report.sections.revenue}
+                      />
+                      <SectionRows
+                        title="Cost of Sales"
+                        group={report.sections.costOfSales}
+                      />
+                      <MilestoneRow
+                        label="Gross Profit"
+                        amount={report.grossProfit}
+                      />
+                      <SectionRows
+                        title="Operating Expenses"
+                        group={report.sections.operatingExpenses}
+                      />
+                      <MilestoneRow
+                        label="Operating Profit"
+                        amount={report.operatingProfit}
+                      />
+                      <SectionRows
+                        title="Other Income & Expenses"
+                        group={report.sections.otherIncomeAndExpenses}
+                      />
+                      <MilestoneRow
+                        label="Net Profit Before Tax"
+                        amount={report.netProfitBeforeTax}
+                      />
+                      <SectionRows
+                        title="Tax Expense"
+                        group={report.sections.taxExpense}
+                      />
+                      <MilestoneRow
+                        label="Net Profit After Tax"
+                        amount={report.netProfitAfterTax}
+                      />
+                    </tbody>
+                  </table>
                 </div>
               </CardContent>
             </Card>
