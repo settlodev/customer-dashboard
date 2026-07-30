@@ -142,4 +142,11 @@ export interface BusinessDocumentData {
    * Optional signature block(s) — useful for purchase orders / requisitions.
    */
   signatures?: { label: string; name?: string; date?: string }[];
+  /**
+   * Quantities-only rendering: hides the per-line Price/Amount columns, the
+   * totals summary, and the Amount Due box. For documents where money has no
+   * place — delivery notes handed to a driver, internal movement slips.
+   * `totals` still needs to be present (zeros are fine); it just won't render.
+   */
+  hideAmounts?: boolean;
 }

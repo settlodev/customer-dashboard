@@ -25,8 +25,12 @@ const STATUS_OPTIONS = [
   { label: "Confirmed", value: "CONFIRMED" },
   { label: "Dispatched", value: "DISPATCHED" },
   { label: "Partially Received", value: "PARTIALLY_RECEIVED" },
+  { label: "Pending Item Mapping", value: "PENDING_MAPPING" },
   { label: "Received", value: "RECEIVED" },
+  { label: "Rejected", value: "REJECTED" },
   { label: "Declined", value: "DECLINED" },
+  { label: "Return In Transit", value: "RETURN_IN_TRANSIT" },
+  { label: "Returned", value: "RETURNED" },
   { label: "Cancelled", value: "CANCELLED" },
 ];
 

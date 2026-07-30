@@ -12,6 +12,8 @@ interface DocumentMetaBlockProps {
   meta: DocumentMeta;
   totals: DocumentTotals;
   currency: string;
+  /** Quantities-only documents (delivery notes): drop the Amount Due box. */
+  hideAmounts?: boolean;
 }
 
 const STATUS_TONE_CLASSES: Record<string, string> = {
@@ -27,6 +29,7 @@ export function DocumentMetaBlock({
   meta,
   totals,
   currency,
+  hideAmounts,
 }: DocumentMetaBlockProps) {
   const recipientLabel = getRecipientLabel(meta.type);
   const numberLabel = getDocumentNumberLabel(meta.type);
@@ -88,14 +91,16 @@ export function DocumentMetaBlock({
           )}
         </dl>
 
-        <div className="mt-3 flex items-center justify-between bg-slate-100 px-3 py-2">
-          <span className="font-medium text-slate-900">
-            Amount Due ({currency}):
-          </span>
-          <span className="font-medium text-slate-900">
-            {formatCurrency(totals.amountDue, currency)}
-          </span>
-        </div>
+        {!hideAmounts && (
+          <div className="mt-3 flex items-center justify-between bg-slate-100 px-3 py-2">
+            <span className="font-medium text-slate-900">
+              Amount Due ({currency}):
+            </span>
+            <span className="font-medium text-slate-900">
+              {formatCurrency(totals.amountDue, currency)}
+            </span>
+          </div>
+        )}
       </div>
     </section>
   );

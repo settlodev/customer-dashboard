@@ -65,14 +65,18 @@ export function BusinessDocument({
         meta={data.meta}
         totals={data.totals}
         currency={data.currency}
+        hideAmounts={data.hideAmounts}
       />
       <LineItemsTable
         items={data.items}
         currency={data.currency}
         headerClassName={tableHeaderClassName}
         headerStyle={headerStyle}
+        hideAmounts={data.hideAmounts}
       />
-      <TotalsSummary totals={data.totals} currency={data.currency} />
+      {!data.hideAmounts && (
+        <TotalsSummary totals={data.totals} currency={data.currency} />
+      )}
       <NotesFooter
         notes={data.notes}
         bankDetails={data.bankDetails}

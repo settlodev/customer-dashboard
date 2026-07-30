@@ -1,5 +1,4 @@
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
 import {
   PageShell,
   PageHeader,
@@ -42,8 +41,6 @@ import type { InventorySnapshot } from "@/types/inventory-snapshot/type";
 import type { AuditLogEntry } from "@/types/audit-log/type";
 import type { RsMovementSummary } from "@/types/reports-analytics/type";
 import { MATERIAL_TYPE_OPTIONS } from "@/types/catalogue/enums";
-import { Button } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
 import { StockDetailActions } from "./stock-detail-actions";
 import { StockDetailView } from "./stock-detail-view";
 
@@ -276,17 +273,8 @@ export default async function StockDetailPage({
             {stock.description ? ` \u00B7 ${stock.description}` : ""}
           </>
         }
-        actions={
-          <>
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/stock-variants/${id}/edit`}>
-                <Pencil className="mr-1.5 h-4 w-4" />
-                Edit
-              </Link>
-            </Button>
-            <StockDetailActions stock={stock} />
-          </>
-        }
+        className="flex-row items-start justify-between"
+        actions={<StockDetailActions stock={stock} />}
       />
 
       <PageBody>
