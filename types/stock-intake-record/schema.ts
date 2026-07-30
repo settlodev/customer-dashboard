@@ -50,7 +50,10 @@ export const StockIntakeRecordSchema = object({
    * How this intake was paid for. Drives the credit side of the
    * inventory-receipt journal in accounting: CREDIT → A/P, CASH →
    * Cash on Hand, BANK → Bank Primary.
+   *
+   * Defaults to CASH — an intake nobody edited means paid on receipt.
+   * Defaulting to CREDIT accrued A/P the merchant did not owe.
    */
-  paymentTerms: zEnum(INTAKE_PAYMENT_TERMS).default("CREDIT"),
+  paymentTerms: zEnum(INTAKE_PAYMENT_TERMS).default("CASH"),
   items: array(StockIntakeRecordItemSchema).min(1, "At least one item is required"),
 });

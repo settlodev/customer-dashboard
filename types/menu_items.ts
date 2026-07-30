@@ -31,15 +31,21 @@ const getNormalMenuItems = (
   const hasPackaging = args?.hasPackaging === true; // default false (hidden)
   return [
     // Top-level link — appears as its own row in the sidebar (no submenu).
-    {
-      label: "Business overview",
-      link: "/business-overview",
-      showSeparator: true,
-      collapsible: false,
-      current: args?.isCurrentItem,
-      icon: "inventory",
-      items: [],
-    },
+    // The page aggregates across all locations, which is meaningless for a
+    // single-destination business, so those users don't get the link at all.
+    ...(args?.hasMultipleDestinations
+      ? [
+          {
+            label: "Business overview",
+            link: "/business-overview",
+            showSeparator: true,
+            collapsible: false,
+            current: args?.isCurrentItem,
+            icon: "inventory",
+            items: [],
+          },
+        ]
+      : []),
 
     // Analytics & Reporting
     {
@@ -705,15 +711,21 @@ const getStoreMenuItems = (args?: MenuItemArgType) => {
   return [
     // Whole-business overview — business-scoped and permission-guarded, kept
     // for context (it is not store-scoped, so it shows the parent business).
-    {
-      label: "Business overview",
-      link: "/business-overview",
-      showSeparator: true,
-      collapsible: false,
-      current: args?.isCurrentItem,
-      icon: "inventory",
-      items: [],
-    },
+    // Same multi-destination gate as the normal menu; a store implies the
+    // business has more than one destination, so this stays visible here.
+    ...(args?.hasMultipleDestinations
+      ? [
+          {
+            label: "Business overview",
+            link: "/business-overview",
+            showSeparator: true,
+            collapsible: false,
+            current: args?.isCurrentItem,
+            icon: "inventory",
+            items: [],
+          },
+        ]
+      : []),
 
     // Reports — stock (plus packaging, when enabled) in store mode; no
     // sales/finance reports.
