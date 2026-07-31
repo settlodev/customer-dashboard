@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { AdminShell } from "@/components/layouts/admin-shell";
 import { PageBody, PageHeader, PageShell } from "@/components/layouts/page-shell";
+import { ArchivedStockBackfillView } from "@/components/admin/data-repair/archived-stock-backfill-view";
 import { ReparentedDuplicatesView } from "@/components/admin/data-repair/reparented-duplicates-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
@@ -50,7 +51,10 @@ export default async function DataRepairPage() {
           subtitle="Settlo-internal backfills that repair analytics facts in place."
         />
         <PageBody>
-          <ReparentedDuplicatesView locations={locations} canExecute={canExecute} />
+          <div className="space-y-8">
+            <ReparentedDuplicatesView locations={locations} canExecute={canExecute} />
+            <ArchivedStockBackfillView canExecute={canExecute} />
+          </div>
         </PageBody>
       </PageShell>
     </AdminShell>
