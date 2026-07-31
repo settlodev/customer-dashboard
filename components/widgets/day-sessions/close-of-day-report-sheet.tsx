@@ -54,6 +54,10 @@ const WARN = "text-[#B9791F]";
 // "good" — so a positive variance gets the amber warn tone.
 const varTone = (n: number) => (n === 0 ? "text-slate-400" : n > 0 ? WARN : NEG);
 
+// Quantities keep fractions ("2.5") unlike money's integer `fmt`.
+const qtyFmt = (q?: number | null): string =>
+  (q ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
 // "incl. X tips, Y prepayment" — both already counted in expectedAmount;
 // this is purely so a reader can tell them apart from ordinary sales.
 function tipPrepaymentBreakdown(r: PaymentMethodReconciliation): string | null {
@@ -169,6 +173,14 @@ export function CloseOfDayReportSheet({
   const cancelledOrders = extras.voids?.cancelledOrders ?? [];
   const cancelledTotal =
     extras.voids?.totalCancelledAmount ?? report?.voids?.cancelledAmount ?? 0;
+
+  // Department rollup (item-level snapshot) + comp'd-order detail.
+  const departments = report?.salesByDepartment ?? [];
+  const deptNetTotal = departments.reduce((s, d) => s + (d.net ?? 0), 0);
+  const compOrders = report?.complimentaryDetails ?? [];
+  const compTotal =
+    report?.complimentaryAmount ??
+    compOrders.reduce((s, c) => s + (c.amount ?? 0), 0);
   const refundItems = extras.refunds?.refunds ?? [];
   const prepayItems = extras.prepayments?.items ?? [];
   const expenseItems = extras.expenses?.items ?? [];
@@ -318,6 +330,57 @@ export function CloseOfDayReportSheet({
           />
         </div>
       </Section>
+
+      {/* ── Sales by department ────────────────────────────────────── */}
+      {departments.length > 1 && (
+        <Section
+          title="Sales by department"
+          count={`${departments.length} departments`}
+          note="Item sales, department at time of sale"
+        >
+          <TableBox>
+            <thead>
+              <tr>
+                <th className={TH}>Department</th>
+                <th className={cn(TH, "text-right")}>Qty</th>
+                <th className={cn(TH, "text-right")}>Gross ({currency})</th>
+                <th className={cn(TH, "text-right")}>Net ({currency})</th>
+                <th className={cn(TH, "text-right")}>Share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {departments.map((d) => (
+                <tr key={d.departmentId ?? "unassigned"}>
+                  <td className={cn(TD, PRIM)}>
+                    {d.departmentName ?? "Unassigned"}
+                  </td>
+                  <td className={cn(TD, NUM)}>{qtyFmt(d.quantity)}</td>
+                  <td className={cn(TD, NUM)}>{fmt2(d.gross)}</td>
+                  <td className={cn(TD, NUM)}>{fmt2(d.net)}</td>
+                  <td className={cn(TD, NUM)}>
+                    {deptNetTotal > 0
+                      ? `${Math.round(((d.net ?? 0) / deptNetTotal) * 100)}%`
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <TFootLabel>Total item sales</TFootLabel>
+                <TFootNum>
+                  {qtyFmt(departments.reduce((s, d) => s + (d.quantity ?? 0), 0))}
+                </TFootNum>
+                <TFootNum>
+                  {fmt2(departments.reduce((s, d) => s + (d.gross ?? 0), 0))}
+                </TFootNum>
+                <TFootNum>{fmt2(deptNetTotal)}</TFootNum>
+                <TFootNum>100%</TFootNum>
+              </tr>
+            </tfoot>
+          </TableBox>
+        </Section>
+      )}
 
       {/* ── Cash-up by payment method (brand-themed, like GRN items) ── */}
       <Section
@@ -519,6 +582,70 @@ export function CloseOfDayReportSheet({
                 <TFootNum>
                   {fmt2((extras.voids?.totalVoidedAmount ?? 0) + cancelledTotal)}
                 </TFootNum>
+              </tr>
+            </tfoot>
+          </TableBox>
+        )}
+      </Section>
+
+      {/* ── Complimentary (on the house) ───────────────────────────── */}
+      <Section
+        title="Complimentary (on the house)"
+        count={`${compOrders.length} order${compOrders.length === 1 ? "" : "s"}`}
+        note="Excluded from net sales & cash-up"
+      >
+        {compOrders.length === 0 ? (
+          <EmptyBox>No complimentary orders recorded this session.</EmptyBox>
+        ) : (
+          <TableBox>
+            <thead>
+              <tr>
+                <th className={TH}>Ticket · items</th>
+                <th className={TH}>Responsible</th>
+                <th className={cn(TH, "text-right")}>Time</th>
+                <th className={cn(TH, "text-right")}>Amount ({currency})</th>
+              </tr>
+            </thead>
+            <tbody>
+              {compOrders.map((c) => {
+                const who = c.staffName || c.orderStaffName || null;
+                return (
+                  <tr key={c.orderId}>
+                    <td className={TD}>
+                      <div className={PRIM}>
+                        #{c.orderNumber || shortId(c.orderId)}
+                        {c.items.length > 0
+                          ? ` · ${c.items
+                              .map(
+                                (it) => `${qtyFmt(it.quantity)}× ${it.itemName}`,
+                              )
+                              .join(", ")}`
+                          : ""}
+                      </div>
+                      <Chip tone="unpaid">COMP</Chip>
+                    </td>
+                    <td className={TD}>
+                      <div className="text-[12.5px] text-slate-700">
+                        {who ?? "—"}
+                      </div>
+                      {c.orderStaffName && c.orderStaffName !== who ? (
+                        <div className="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1">
+                          <Appr label="Waiter" value={c.orderStaffName} />
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className={cn(TD, NUM)}>
+                      {c.compedAt ? fmtClock(c.compedAt).slice(0, 5) : "—"}
+                    </td>
+                    <td className={cn(TD, NUM)}>{fmt2(c.amount)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr>
+                <TFootLabel colSpan={3}>Total given on the house</TFootLabel>
+                <TFootNum>{fmt2(compTotal)}</TFootNum>
               </tr>
             </tfoot>
           </TableBox>
