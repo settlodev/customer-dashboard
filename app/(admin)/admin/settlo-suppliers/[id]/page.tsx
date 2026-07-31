@@ -10,6 +10,8 @@ import {
 import { SupplierStatusBadge } from "@/components/admin/settlo-suppliers/supplier-status-badge";
 import { SupplierProfileCard } from "@/components/admin/settlo-suppliers/supplier-profile-card";
 import { SupplierDecisionPanel } from "@/components/admin/settlo-suppliers/supplier-decision-panel";
+import { PaymentAccountsCard } from "@/components/admin/settlo-suppliers/payment-accounts-card";
+import { FinancingCard } from "@/components/admin/settlo-suppliers/financing-card";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { getSettloSupplier } from "@/lib/actions/admin/settlo-suppliers";
@@ -74,14 +76,14 @@ export default async function AdminSettloSupplierDetailPage({
             <div className="space-y-4 lg:col-span-2">
               <SupplierProfileCard supplier={supplier} canManage={canManage} />
 
-              {/* TODO(Task 5): payment accounts card mounts here. */}
-
-              {/* TODO(Task 5): financing profile card mounts here. */}
+              <PaymentAccountsCard supplier={supplier} canManage={canManage} />
             </div>
 
             {/* Decision panel */}
-            <div className="lg:col-span-1">
+            <div className="space-y-4 lg:col-span-1">
               <SupplierDecisionPanel supplier={supplier} canManage={canManage} />
+
+              <FinancingCard supplier={supplier} canManage={canManage} />
             </div>
           </div>
         </PageBody>
