@@ -203,6 +203,20 @@ export function PaymentAccountDialog({
                     onValueChange={(value) => {
                       field.onChange(value);
                       form.setValue("provider", undefined);
+                      // Clear the rail fields that no longer apply so the
+                      // form doesn't silently carry over a stale identifier
+                      // from the previous method (mirrors the scrub in
+                      // `paymentAccountFields` server-side).
+                      if (value === "BANK_TRANSFER") {
+                        form.setValue("mobileNumber", "");
+                      } else if (value === "MOBILE_MONEY") {
+                        form.setValue("accountNumber", "");
+                        form.setValue("bankName", "");
+                      } else {
+                        form.setValue("accountNumber", "");
+                        form.setValue("bankName", "");
+                        form.setValue("mobileNumber", "");
+                      }
                     }}
                     disabled={isPending}
                   >

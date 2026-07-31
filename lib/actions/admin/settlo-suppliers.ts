@@ -179,17 +179,29 @@ export async function setSupplierVerificationStatus(
 
 const PAYMENT_ACCOUNTS_PATH = `${SUPPLIERS_PATH}/payment-accounts`;
 
-/** Fields shared by the add + update payment-account payloads. */
+/**
+ * Fields shared by the add + update payment-account payloads.
+ *
+ * The backend persists whatever rail fields are present in the request
+ * verbatim on a method change — it does not clear the fields of the rail
+ * being switched away from. So a MOBILE_MONEY → BANK_TRANSFER switch that
+ * still sends `mobileNumber` would leave the stale mobile number persisted
+ * alongside the new bank details (and vice versa). Scrub the non-applicable
+ * rail's fields to `undefined` here so the backend has nothing stale to
+ * restate; the rail-required identifier itself is enforced separately by
+ * `paymentAccountSchema` (client) and the backend's own validation.
+ */
 function paymentAccountFields(v: PaymentAccountInput) {
-  const isCashOrCheque = v.paymentMethod === "CASH" || v.paymentMethod === "CHEQUE";
+  const isMobile = v.paymentMethod === "MOBILE_MONEY";
+  const isBank = v.paymentMethod === "BANK_TRANSFER";
   return {
     paymentMethod: v.paymentMethod,
-    provider: isCashOrCheque ? undefined : v.provider,
+    provider: isMobile || isBank ? v.provider : undefined,
     accountName: strOrUndefined(v.accountName),
-    accountNumber: strOrUndefined(v.accountNumber),
-    bankName: strOrUndefined(v.bankName),
-    mobileProvider: strOrUndefined(v.mobileProvider),
-    mobileNumber: strOrUndefined(v.mobileNumber),
+    accountNumber: isBank ? strOrUndefined(v.accountNumber) : undefined,
+    bankName: isBank ? strOrUndefined(v.bankName) : undefined,
+    mobileProvider: isMobile ? strOrUndefined(v.mobileProvider) : undefined,
+    mobileNumber: isMobile ? strOrUndefined(v.mobileNumber) : undefined,
   };
 }
 
