@@ -24,6 +24,28 @@ export interface TrialBalanceReport {
   generatedAt: string;
 }
 
+export interface PlSectionLine {
+  accountId: string | null;
+  code: string;
+  name: string;
+  amount: number;
+  children: PlSectionLine[];
+  total: number;
+}
+
+export interface PlSectionGroup {
+  lines: PlSectionLine[];
+  total: number;
+}
+
+export interface PlSections {
+  revenue: PlSectionGroup;
+  costOfSales: PlSectionGroup;
+  operatingExpenses: PlSectionGroup;
+  otherIncomeAndExpenses: PlSectionGroup;
+  taxExpense: PlSectionGroup;
+}
+
 export interface ProfitAndLossReport {
   locationId: string;
   businessId: string;
@@ -35,8 +57,41 @@ export interface ProfitAndLossReport {
   totalRevenue: number;
   totalExpenses: number;
   grossProfit: number;
+  /**
+   * The statement in IAS 1 section form. Namespaced deliberately: the legacy
+   * `totalRevenue` is every revenue account, while `sections.revenue.total`
+   * is only the Revenue section — two different numbers that flat sibling
+   * names would invite confusing.
+   */
+  sections: PlSections;
+  operatingProfit: number;
+  netProfitBeforeTax: number;
+  netProfitAfterTax: number;
   netIncome: number;
   generatedAt: string;
+}
+
+/** One line of the nested balance-sheet view. `total` = own amount + children. */
+export interface BalanceSheetLine {
+  accountId: string | null;
+  code: string;
+  name: string;
+  amount: number;
+  children: BalanceSheetLine[];
+  total: number;
+}
+
+/**
+ * The same accounts as the flat lists, grouped by section with sub-lines
+ * nested. A section is an account type, so nesting never crosses the
+ * current / non-current boundary.
+ */
+export interface BalanceSheetSections {
+  currentAssets: BalanceSheetLine[];
+  nonCurrentAssets: BalanceSheetLine[];
+  currentLiabilities: BalanceSheetLine[];
+  nonCurrentLiabilities: BalanceSheetLine[];
+  equity: BalanceSheetLine[];
 }
 
 export interface BalanceSheetReport {
@@ -47,6 +102,12 @@ export interface BalanceSheetReport {
   assets: AccountBalanceRow[];
   liabilities: AccountBalanceRow[];
   equity: AccountBalanceRow[];
+  /**
+   * Optional on purpose: an accounting service that predates the nested
+   * view omits it, and the page falls back to rendering the flat lists.
+   * Lets either side deploy first.
+   */
+  sections?: BalanceSheetSections;
   totalAssets: number;
   totalLiabilities: number;
   totalEquity: number;

@@ -12,7 +12,10 @@ import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
 import { fetchBalanceSheet } from "@/lib/actions/accounting-reports-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
-import type { AccountBalanceRow } from "@/types/reports/type";
+import type {
+  AccountBalanceRow,
+  BalanceSheetLine,
+} from "@/types/reports/type";
 
 const fmt = (n: number) =>
   n.toLocaleString(undefined, {
@@ -20,14 +23,77 @@ const fmt = (n: number) =>
     maximumFractionDigits: 2,
   });
 
+/**
+ * Fallback for an accounting service that predates the nested `sections`
+ * view — every account becomes its own top-level, childless line, which is
+ * exactly how this page rendered before.
+ */
+const asFlatLines = (rows: AccountBalanceRow[]): BalanceSheetLine[] =>
+  rows.map((r) => ({
+    accountId: r.accountId,
+    code: r.code,
+    name: r.name,
+    amount: r.balance,
+    children: [],
+    total: r.balance,
+  }));
+
+/**
+ * Current and non-current are separate sections server-side, but this page
+ * presents assets (and liabilities) as one list, so they merge back by code
+ * — matching the order of the flat `assets` list, where a current account
+ * with a high code like 9000 sorts after a non-current one like 1800.
+ * Concatenating the sections instead would silently reorder them.
+ */
+const mergedByCode = (...groups: BalanceSheetLine[][]): BalanceSheetLine[] =>
+  groups.flat().sort((a, b) => a.code.localeCompare(b.code));
+
+function LineRows({
+  line,
+  depth = 0,
+}: {
+  line: BalanceSheetLine;
+  depth?: number;
+}) {
+  const hasChildren = line.children.length > 0;
+  return (
+    <>
+      <tr className="hover:bg-gray-50/50">
+        <td className="px-4 py-2.5 font-mono text-xs">{line.code}</td>
+        <td
+          className="px-4 py-2.5"
+          style={{ paddingLeft: `${1 + depth * 1.25}rem` }}
+        >
+          {line.name}
+        </td>
+        <td className="px-4 py-2.5 text-right font-mono tabular-nums">
+          {/* A parent shows its own balance here and the rolled-up figure
+              in the total column, so the two are never conflated. */}
+          {fmt(line.amount)}
+        </td>
+        <td className="px-4 py-2.5 text-right font-mono tabular-nums">
+          {hasChildren ? fmt(line.total) : ""}
+        </td>
+      </tr>
+      {line.children.map((child) => (
+        <LineRows
+          key={child.accountId ?? child.code}
+          line={child}
+          depth={depth + 1}
+        />
+      ))}
+    </>
+  );
+}
+
 function Section({
   title,
-  rows,
+  lines,
   total,
   currency,
 }: {
   title: string;
-  rows: AccountBalanceRow[];
+  lines: BalanceSheetLine[];
   total: number;
   currency: string;
 }) {
@@ -41,34 +107,26 @@ function Section({
               <th className="px-4 py-2.5">Code</th>
               <th className="px-4 py-2.5">Account</th>
               <th className="px-4 py-2.5 text-right">Balance</th>
+              <th className="px-4 py-2.5 text-right">Incl. sub-lines</th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {rows.length === 0 ? (
+            {lines.length === 0 ? (
               <tr>
                 <td
-                  colSpan={3}
+                  colSpan={4}
                   className="px-4 py-4 text-center text-xs text-muted-foreground"
                 >
                   No activity
                 </td>
               </tr>
             ) : (
-              rows.map((r) => (
-                <tr
-                  key={r.accountId ?? r.code}
-                  className="hover:bg-gray-50/50"
-                >
-                  <td className="px-4 py-2.5 font-mono text-xs">{r.code}</td>
-                  <td className="px-4 py-2.5">{r.name}</td>
-                  <td className="px-4 py-2.5 text-right font-mono tabular-nums">
-                    {fmt(r.balance)}
-                  </td>
-                </tr>
+              lines.map((line) => (
+                <LineRows key={line.accountId ?? line.code} line={line} />
               ))
             )}
             <tr className="border-t bg-gray-50/60 font-medium">
-              <td colSpan={2} className="px-4 py-2.5">
+              <td colSpan={3} className="px-4 py-2.5">
                 Total {title.toLowerCase()}
               </td>
               <td className="px-4 py-2.5 text-right font-mono tabular-nums">
@@ -145,19 +203,37 @@ export default async function BalanceSheetPage({
               <CardContent className="space-y-6 pt-6">
                 <Section
                   title="Assets"
-                  rows={report.assets}
+                  lines={
+                    report.sections
+                      ? mergedByCode(
+                          report.sections.currentAssets,
+                          report.sections.nonCurrentAssets,
+                        )
+                      : asFlatLines(report.assets)
+                  }
                   total={report.totalAssets}
                   currency={report.currencyCode}
                 />
                 <Section
                   title="Liabilities"
-                  rows={report.liabilities}
+                  lines={
+                    report.sections
+                      ? mergedByCode(
+                          report.sections.currentLiabilities,
+                          report.sections.nonCurrentLiabilities,
+                        )
+                      : asFlatLines(report.liabilities)
+                  }
                   total={report.totalLiabilities}
                   currency={report.currencyCode}
                 />
                 <Section
                   title="Equity"
-                  rows={report.equity}
+                  lines={
+                    report.sections
+                      ? report.sections.equity
+                      : asFlatLines(report.equity)
+                  }
                   total={report.totalEquity}
                   currency={report.currencyCode}
                 />
