@@ -28,7 +28,10 @@ import { useToast } from "@/hooks/use-toast";
 import { SettingsSection } from "../shared/settings-section";
 import { OpeningBalanceSection } from "../opening-balance/opening-balance-section";
 import { ChartOfAccountSelector } from "@/components/widgets/chart-of-account-selector";
-import { listChartOfAccounts } from "@/lib/actions/accounting-mapping-actions";
+import {
+  listChartOfAccounts,
+  listCoaSubTypes,
+} from "@/lib/actions/accounting-mapping-actions";
 import {
   createChartOfAccount,
   deleteChartOfAccount,
@@ -38,13 +41,19 @@ import {
 import type { ChartOfAccountFormValues } from "@/types/chart-of-account/schema";
 import {
   ACCOUNT_TYPE_LABELS,
+  BALANCE_SHEET_PARENT_TYPES,
   DEFAULT_PL_SECTION_BY_ACCOUNT_TYPE,
   PL_SECTION_LABELS,
   PL_SECTIONS_BY_ACCOUNT_TYPE,
   type AccountType,
   type ChartOfAccount,
+  type CoaSubTypeOption,
   type PlSection,
 } from "@/types/accounting-mapping/type";
+
+// Radix Select rejects an empty-string item value, so "no sub-type" needs a
+// sentinel; it is mapped back to "" before it reaches the form state.
+const NO_SUB_TYPE = "__none__";
 
 const NORMAL_BALANCE_BY_TYPE: Record<AccountType, "DEBIT" | "CREDIT"> = {
   CURRENT_ASSET: "DEBIT",
@@ -74,6 +83,8 @@ export function ChartOfAccountsPanel() {
     parentId: "",
   });
 
+  const [subTypes, setSubTypes] = useState<CoaSubTypeOption[]>([]);
+
   const reload = async () => {
     setLoading(true);
     const data = await listChartOfAccounts();
@@ -83,6 +94,7 @@ export function ChartOfAccountsPanel() {
 
   useEffect(() => {
     reload();
+    listCoaSubTypes().then(setSubTypes);
   }, []);
 
   const openNew = () => {
@@ -161,13 +173,45 @@ export function ChartOfAccountsPanel() {
       if (result.responseType === "success") await reload();
     });
 
-  // "Reports under" only makes sense within the selected section, and an
-  // account can't be its own parent — hide both kinds of row from the
-  // candidate list rather than let the picker offer a choice the backend
-  // (PARENT_SECTION_MISMATCH / "An account cannot be its own parent") would
-  // reject anyway.
+  // Candidate parents, by the rule that applies to this account's class:
+  // a P&L sub-line must sit in the same section as its parent, while a
+  // balance-sheet account (which has no section at all) is constrained to
+  // its own type family. Either way an account can't be its own parent.
+  // Hide the bad rows rather than let the picker offer a choice the
+  // backend (PARENT_SECTION_MISMATCH / "An account cannot be its own
+  // parent") would reject anyway — or, for the balance sheet, would
+  // silently accept as a nonsense tree.
+  //
+  // The filtering lives here rather than in the selector's `accountTypes`
+  // prop because that prop only takes effect on the selector's initial
+  // fetch (its effect is guarded on `accounts.length === 0`), so it would
+  // go stale the moment the account type changed in this form.
+  // Sub-types valid for the type being edited, plus — critically — whatever
+  // this account already carries, even if it is not in the catalogue. A
+  // value typed before this field became a picker (or seeded under a type
+  // since changed) must stay selectable: the update path writes sub-type
+  // from the form on every save and republishes it, so dropping it from the
+  // list would silently rewrite the account's sub-type downstream the next
+  // time someone opened the dialog and pressed Save.
+  const subTypeChoices = (() => {
+    const forType = subTypes.filter((s) => s.accountType === form.accountType);
+    const current = form.accountSubType;
+    if (!current || forType.some((s) => s.code === current)) return forType;
+    return [
+      ...forType,
+      { code: current, label: `${current} (current)`, accountType: form.accountType },
+    ];
+  })();
+
+  const parentTypes = BALANCE_SHEET_PARENT_TYPES[form.accountType];
   const parentExcludeIds = items
-    .filter((a) => a.id === editing?.id || a.plSection !== form.plSection)
+    .filter(
+      (a) =>
+        a.id === editing?.id ||
+        (parentTypes
+          ? !parentTypes.includes(a.accountType)
+          : a.plSection !== form.plSection),
+    )
     .map((a) => a.id);
 
   return (
@@ -269,7 +313,7 @@ export function ChartOfAccountsPanel() {
                   </Select>
                 </div>
               )}
-              {form.plSection && (
+              {(form.plSection || parentTypes) && (
                 <div>
                   <Label>Reports under</Label>
                   <div className="flex gap-2">
@@ -292,6 +336,10 @@ export function ChartOfAccountsPanel() {
                       />
                     </div>
                   </div>
+                  {/* One wording for both classes: the candidate list is
+                      filtered to exactly what will nest — same section for
+                      a P&L account, same type for a balance-sheet one — so
+                      anything offered here does roll up. */}
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     Pick a parent to report this account as a sub-line
                     rolled into that account&apos;s total, or leave it as
@@ -318,13 +366,43 @@ export function ChartOfAccountsPanel() {
               </div>
               <div>
                 <Label>Sub-type (optional)</Label>
-                <Input
-                  value={form.accountSubType ?? ""}
-                  onChange={(e) =>
-                    setForm({ ...form, accountSubType: e.target.value })
-                  }
-                  maxLength={50}
-                />
+                {subTypes.length === 0 ? (
+                  // Accounting service predates /sub-types (or the call
+                  // failed) — free text beats a dropdown with nothing in it.
+                  <Input
+                    value={form.accountSubType ?? ""}
+                    onChange={(e) =>
+                      setForm({ ...form, accountSubType: e.target.value })
+                    }
+                    maxLength={50}
+                  />
+                ) : (
+                  <Select
+                    value={form.accountSubType || NO_SUB_TYPE}
+                    onValueChange={(v) =>
+                      setForm({
+                        ...form,
+                        accountSubType: v === NO_SUB_TYPE ? "" : v,
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_SUB_TYPE}>None</SelectItem>
+                      {subTypeChoices.map((s) => (
+                        <SelectItem key={s.code} value={s.code}>
+                          {s.label} · {s.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Groups this account for analytics. Reporting matches these
+                  codes exactly, so pick one rather than inventing a label.
+                </p>
               </div>
             </div>
             <DialogFooter>

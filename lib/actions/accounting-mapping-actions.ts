@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { FormResponse } from "@/types/types";
 import type {
   ChartOfAccount,
+  CoaSubTypeOption,
   PaymentMethodAccountMapping,
   PaymentMethodMappingPayload,
   ProductRevenueMapping,
@@ -41,6 +42,25 @@ export async function listChartOfAccounts(
     // dropdowns. Server-action logs end up in the next.js process
     // output, which is visible in the dashboard's runtime logs.
     console.error("listChartOfAccounts failed", error);
+    return [];
+  }
+}
+
+/**
+ * The selectable account sub-types, from the accounting service's template
+ * registry. Returns [] when the endpoint isn't there yet (an accounting
+ * service predating it 404s), and the sub-type field falls back to free
+ * text — so either side can deploy first.
+ */
+export async function listCoaSubTypes(): Promise<CoaSubTypeOption[]> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(
+      accountingUrl("/api/v1/chart-of-accounts/sub-types"),
+    );
+    return (parseStringify(data) ?? []) as CoaSubTypeOption[];
+  } catch (error) {
+    console.error("listCoaSubTypes failed", error);
     return [];
   }
 }

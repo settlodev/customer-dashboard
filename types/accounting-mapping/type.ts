@@ -93,6 +93,18 @@ export const DEFAULT_PL_SECTION_BY_ACCOUNT_TYPE: Record<AccountType, PlSection |
   EQUITY: null,
 };
 
+/**
+ * One selectable account sub-type, from the accounting service's template
+ * registry. `code` is what gets stored and published — Reports Service
+ * classifies balance-sheet ML buckets by matching these exact codes, which
+ * is why the field is a picker rather than free text.
+ */
+export interface CoaSubTypeOption {
+  code: string;
+  label: string;
+  accountType: AccountType;
+}
+
 /** Both asset classes — for pickers that used to pass accountType="ASSET". */
 export const ASSET_TYPES: AccountType[] = ["CURRENT_ASSET", "NON_CURRENT_ASSET"];
 
@@ -108,6 +120,37 @@ export const BALANCE_SHEET_ACCOUNT_TYPES: AccountType[] = [
   ...LIABILITY_TYPES,
   "EQUITY",
 ];
+
+/**
+ * Which account types may parent a balance-sheet account, or null for the
+ * P&L types that are constrained by section instead.
+ *
+ * A P&L sub-line must sit in the same section as its parent, and the
+ * backend enforces that (PARENT_SECTION_MISMATCH). Balance-sheet accounts
+ * carry no plSection at all, so that rule can't tell them apart — every
+ * one of them matches every other, and a section-only filter would offer
+ * an Equity account as the parent of an asset with the backend raising no
+ * objection.
+ *
+ * The equivalent constraint for them is the exact account type, because on
+ * the balance sheet a section IS an account type: the report nests a
+ * sub-line only under a same-type parent, since nesting a non-current
+ * account under a current one would move its amount into the current
+ * subtotal. Offering a wider family here would let you pick a parent that
+ * silently refuses to nest.
+ *
+ * A `Record` over AccountType makes a missed type a compile error rather
+ * than a silently-unfiltered picker.
+ */
+export const BALANCE_SHEET_PARENT_TYPES: Record<AccountType, AccountType[] | null> = {
+  CURRENT_ASSET: ["CURRENT_ASSET"],
+  NON_CURRENT_ASSET: ["NON_CURRENT_ASSET"],
+  CURRENT_LIABILITY: ["CURRENT_LIABILITY"],
+  NON_CURRENT_LIABILITY: ["NON_CURRENT_LIABILITY"],
+  EQUITY: ["EQUITY"],
+  REVENUE: null,
+  EXPENSE: null,
+};
 
 // ── Payment method → account mapping ───────────────────────────────
 
