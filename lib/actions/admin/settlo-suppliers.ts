@@ -1,17 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import type { FormResponse } from "@/types/types";
 import {
-  BANK_PROVIDERS,
-  MOBILE_PROVIDERS,
   SUPPLIER_STATUS_LABELS,
+  financingProfileSchema,
+  paymentAccountSchema,
   supplierFormSchema,
   type AdminSettloSupplier,
+  type FinancingProfileInput,
+  type PaymentAccountInput,
   type SettloSupplierVerificationStatus,
   type SupplierFinancingProfile,
   type SupplierFormInput,
@@ -177,104 +178,6 @@ export async function setSupplierVerificationStatus(
 // that instead of requiring callers to pass the supplier id around.
 
 const PAYMENT_ACCOUNTS_PATH = `${SUPPLIERS_PATH}/payment-accounts`;
-
-/**
- * All disbursement-rail provider codes (mobile money + bank), used to
- * validate `paymentAccountSchema`'s `provider` field against the enum the
- * backend's `DisbursementProviders` type accepts.
- */
-const ALL_PROVIDERS = [...MOBILE_PROVIDERS, ...BANK_PROVIDERS] as const;
-
-const optionalPaymentText = (max: number) =>
-  z
-    .string()
-    .trim()
-    .max(max, `Max ${max} characters`)
-    .optional()
-    .or(z.literal(""));
-
-/**
- * Payment-account create/update form. Shared by `addSupplierPaymentAccount`
- * and `updateSupplierPaymentAccount` — the backend's update DTO technically
- * allows a partial patch, but the admin dialog always submits the full set
- * (same create/update reuse as `supplierFormSchema` in Task 1).
- *
- * `provider` is the strongly-typed disbursement rail the backend validates
- * against `paymentMethod` (`DisbursementProviders` enum — MOBILE_PROVIDERS
- * for MOBILE_MONEY, BANK_PROVIDERS for BANK_TRANSFER, must be unset for
- * CASH/CHEQUE). `mobileProvider` is a separate, unvalidated free-text field
- * the backend stores independently (e.g. a display label) — it is never
- * cross-checked against `provider`.
- */
-export const paymentAccountSchema = z
-  .object({
-    paymentMethod: z.enum(["BANK_TRANSFER", "MOBILE_MONEY", "CASH", "CHEQUE"], {
-      required_error: "Payment method is required",
-    }),
-    provider: z.enum(ALL_PROVIDERS).optional(),
-    accountName: optionalPaymentText(255),
-    accountNumber: optionalPaymentText(50),
-    bankName: optionalPaymentText(120),
-    mobileProvider: optionalPaymentText(50),
-    mobileNumber: optionalPaymentText(20),
-  })
-  .superRefine((v, ctx) => {
-    const accountName = v.accountName?.trim();
-    if (v.paymentMethod === "MOBILE_MONEY") {
-      if (!v.provider || !(MOBILE_PROVIDERS as readonly string[]).includes(v.provider)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["provider"],
-          message: "Select a mobile money provider",
-        });
-      }
-      if (!v.mobileNumber?.trim()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["mobileNumber"],
-          message: "Mobile number is required for mobile money accounts",
-        });
-      }
-      if (!accountName) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["accountName"],
-          message: "Account name is required",
-        });
-      }
-    } else if (v.paymentMethod === "BANK_TRANSFER") {
-      if (!v.provider || !(BANK_PROVIDERS as readonly string[]).includes(v.provider)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["provider"],
-          message: "Select a bank",
-        });
-      }
-      if (!v.accountNumber?.trim()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["accountNumber"],
-          message: "Account number is required for bank transfer accounts",
-        });
-      }
-      if (!accountName) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["accountName"],
-          message: "Account name is required",
-        });
-      }
-    } else if (v.provider) {
-      // CASH / CHEQUE — the backend rejects a provider on these methods.
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["provider"],
-        message: "Provider must not be set for cash or cheque payment accounts",
-      });
-    }
-  });
-
-export type PaymentAccountInput = z.infer<typeof paymentAccountSchema>;
 
 /** Fields shared by the add + update payment-account payloads. */
 function paymentAccountFields(v: PaymentAccountInput) {
@@ -454,31 +357,6 @@ export async function setDefaultSupplierPaymentAccount(
     });
   }
 }
-
-const toOptionalNonNegativeNumber = (val: unknown): number | undefined => {
-  if (val === null || val === undefined || val === "") return undefined;
-  if (typeof val === "string" && val.trim() !== "") {
-    const n = Number(val);
-    return Number.isFinite(n) ? n : undefined;
-  }
-  if (typeof val === "number") return Number.isFinite(val) ? val : undefined;
-  return undefined;
-};
-
-/** Financing caps + opt-in form for `updateSupplierFinancingProfile`. */
-export const financingProfileSchema = z.object({
-  maxLoanPerOrder: z.preprocess(
-    toOptionalNonNegativeNumber,
-    z.number().nonnegative("Must be zero or greater").optional(),
-  ),
-  maxOutstandingExposure: z.preprocess(
-    toOptionalNonNegativeNumber,
-    z.number().nonnegative("Must be zero or greater").optional(),
-  ),
-  allowFinancing: z.boolean(),
-});
-
-export type FinancingProfileInput = z.infer<typeof financingProfileSchema>;
 
 /** Update a supplier's financing caps / opt-in. Requires `internal:accounts:manage`. */
 export async function updateSupplierFinancingProfile(
