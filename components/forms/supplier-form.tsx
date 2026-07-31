@@ -50,7 +50,10 @@ import {
 import { FormError } from "@/components/widgets/form-error";
 import { useToast } from "@/hooks/use-toast";
 import type { FormResponse } from "@/types/types";
-import type { Supplier, SettloSupplier } from "@/types/supplier/type";
+import type {
+  Supplier,
+  SettloSupplierCatalogEntry,
+} from "@/types/supplier/type";
 import { SupplierSchema } from "@/types/supplier/schema";
 import { createSupplier, updateSupplier } from "@/lib/actions/supplier-actions";
 import { invalidateSuppliersCache } from "@/lib/cache/reference-data";
@@ -65,7 +68,7 @@ const UNLINKED = "__unlinked__";
 function SupplierForm({ item }: { item: Supplier | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
-  const [catalog, setCatalog] = useState<SettloSupplier[]>([]);
+  const [catalog, setCatalog] = useState<SettloSupplierCatalogEntry[]>([]);
   const { toast } = useToast();
   const router = useRouter();
   const isEditing = !!item;
@@ -134,12 +137,6 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
       form.setValue("phone", picked.phone);
     if (!form.getValues("address") && picked.address) {
       form.setValue("address", picked.address);
-    }
-    if (!form.getValues("registrationNumber") && picked.registrationNumber) {
-      form.setValue("registrationNumber", picked.registrationNumber);
-    }
-    if (!form.getValues("tinNumber") && picked.tinNumber) {
-      form.setValue("tinNumber", picked.tinNumber);
     }
   };
 
@@ -216,9 +213,6 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                           {catalog.map((c) => (
                             <SelectItem key={c.id} value={c.id}>
                               {c.name}
-                              {c.verificationStatus === "VERIFIED"
-                                ? " · Verified"
-                                : ""}
                             </SelectItem>
                           ))}
                         </SelectContent>

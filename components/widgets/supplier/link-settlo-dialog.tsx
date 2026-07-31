@@ -25,11 +25,11 @@ import {
   unlinkSettloSupplier,
 } from "@/lib/actions/supplier-actions";
 import { fetchSettloSupplierCatalog } from "@/lib/actions/settlo-supplier-actions";
-import type { SettloSupplier, Supplier } from "@/types/supplier/type";
+import type { SettloSupplierCatalogEntry, Supplier } from "@/types/supplier/type";
 
 export function LinkSettloSupplierDialog({ supplier }: { supplier: Supplier }) {
   const [open, setOpen] = useState(false);
-  const [catalog, setCatalog] = useState<SettloSupplier[]>([]);
+  const [catalog, setCatalog] = useState<SettloSupplierCatalogEntry[]>([]);
   const [picked, setPicked] = useState<string>(supplier.settloSupplierId ?? "");
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -118,7 +118,6 @@ export function LinkSettloSupplierDialog({ supplier }: { supplier: Supplier }) {
               {catalog.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
                   {c.name}
-                  {c.verificationStatus === "VERIFIED" ? " · Verified" : ""}
                 </SelectItem>
               ))}
             </SelectContent>
