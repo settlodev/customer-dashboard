@@ -106,7 +106,7 @@ export function ArchivedStockBackfillView({ canExecute }: Props) {
           <CardDescription>
             Stock deleted or archived before the July 2026 propagation fix left
             its variant SKUs and <code>fact_inventory_current</code> rows
-            active, so inventory dashboards keep counting the retired stock's
+            active, so inventory dashboards keep counting the retired stock&apos;s
             value and units. Scan to see the size of the gap, then apply to
             archive the orphaned SKUs and flag their live-value rows. The
             backfill is platform-wide and idempotent; a genuine new balance
