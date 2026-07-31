@@ -254,16 +254,21 @@ export function ChartOfAccountsPanel() {
                         ...form,
                         accountType: nextType,
                         normalBalance: NORMAL_BALANCE_BY_TYPE[nextType],
-                        // A section (or parent) picked for the previous
-                        // account type is almost never valid for the new
-                        // one — stale values here get silently submitted
-                        // and rejected by the backend, so reset both. The
-                        // default section is type-specific (see
+                        // A section, parent or sub-type picked for the
+                        // previous account type is almost never valid for
+                        // the new one — stale values here get silently
+                        // submitted and rejected by the backend, so reset
+                        // all three. Sub-type in particular is validated
+                        // as a (code, account type) pair server-side, so
+                        // carrying one across a type change is a
+                        // guaranteed INVALID_ACCOUNT_SUB_TYPE. The default
+                        // section is type-specific (see
                         // DEFAULT_PL_SECTION_BY_ACCOUNT_TYPE), not just
                         // "whichever section sorts first" — expenses must
                         // default to Operating Expenses, not Cost of Sales.
                         plSection: DEFAULT_PL_SECTION_BY_ACCOUNT_TYPE[nextType],
                         parentId: "",
+                        accountSubType: "",
                       });
                     }}
                   >
@@ -367,14 +372,22 @@ export function ChartOfAccountsPanel() {
               <div>
                 <Label>Sub-type (optional)</Label>
                 {subTypes.length === 0 ? (
-                  // Accounting service predates /sub-types (or the call
-                  // failed) — free text beats a dropdown with nothing in it.
+                  // Catalogue unavailable — the accounting service predates
+                  // /sub-types, or the call failed. Deliberately read-only
+                  // rather than free text: the server validates sub-type
+                  // against the same catalogue, so anything typed here would
+                  // come back INVALID_ACCOUNT_SUB_TYPE on save. A disabled
+                  // field is a visibly unavailable control instead of a
+                  // save-time error with no obvious cause.
+                  //
+                  // The account's existing value still round-trips untouched
+                  // — it stays in form state and submits unchanged, which the
+                  // server grandfathers.
                   <Input
-                    value={form.accountSubType ?? ""}
-                    onChange={(e) =>
-                      setForm({ ...form, accountSubType: e.target.value })
-                    }
-                    maxLength={50}
+                    value={form.accountSubType || ""}
+                    placeholder="None"
+                    disabled
+                    readOnly
                   />
                 ) : (
                   <Select
@@ -400,8 +413,9 @@ export function ChartOfAccountsPanel() {
                   </Select>
                 )}
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  Groups this account for analytics. Reporting matches these
-                  codes exactly, so pick one rather than inventing a label.
+                  {subTypes.length === 0
+                    ? "Sub-type options are unavailable right now, so this field can't be changed. Any existing value is kept as it is."
+                    : "Groups this account for analytics. Reporting matches these codes exactly, so pick one rather than inventing a label."}
                 </p>
               </div>
             </div>
