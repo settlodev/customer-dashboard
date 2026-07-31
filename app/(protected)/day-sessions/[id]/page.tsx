@@ -34,6 +34,8 @@ import { ExportButton } from "@/components/widgets/day-sessions/print-button";
 import {
   CancellationsVoids,
   CashDrawer,
+  ComplimentaryList,
+  DepartmentMix,
   ExpensesList,
   PaymentMix,
   Prepayments,
@@ -409,6 +411,11 @@ export default async function DaySessionDetailPage({
             <PaymentMix report={report} />
           ) : null}
 
+          {/* Only meaningful when the session sold under >1 department. */}
+          {report && (report.salesByDepartment?.length ?? 0) > 1 ? (
+            <DepartmentMix report={report} />
+          ) : null}
+
           <CancellationsVoids
             voids={extras.voids}
             report={report}
@@ -430,6 +437,10 @@ export default async function DaySessionDetailPage({
               </CardContent>
             </Card>
           )}
+
+          {report && (report.complimentaryDetails?.length ?? 0) > 0 ? (
+            <ComplimentaryList report={report} currency={currency} />
+          ) : null}
 
           <Prepayments
             prepayments={extras.prepayments}

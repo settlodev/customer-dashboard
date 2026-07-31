@@ -298,6 +298,35 @@ export interface DaySessionReport {
   /** In-house / complimentary (gifted) transactions this session (Reports). */
   complimentaryAmount?: number;
   complimentaryCount?: number;
+  /**
+   * Per-order detail behind complimentaryAmount: which orders were settled
+   * on the house, their line items, and who was responsible. staffName is
+   * the staff that processed the comp; orderStaffName the order's owner.
+   */
+  complimentaryDetails?: Array<{
+    orderId: string;
+    orderNumber?: string | null;
+    amount: number;
+    staffId?: string | null;
+    staffName?: string | null;
+    orderStaffName?: string | null;
+    compedAt?: string | null;
+    items: Array<{ itemName: string; quantity: number; amount: number }>;
+  }>;
+  /**
+   * Session item sales rolled up by the per-line department snapshot,
+   * ordered by net desc. Null id/name = sold without a department
+   * ("Unassigned"). One row on single-department locations — sections
+   * only render this when there is more than one row.
+   */
+  salesByDepartment?: Array<{
+    departmentId: string | null;
+    departmentName: string | null;
+    quantity: number;
+    gross: number;
+    net: number;
+    grossProfit: number;
+  }>;
   refunds: { count: number; amount: number };
   expenses: { count: number; amount: number };
   cogs: number;

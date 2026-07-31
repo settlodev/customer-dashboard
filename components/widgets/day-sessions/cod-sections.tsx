@@ -17,7 +17,9 @@ import {
   BarChart3,
   Banknote,
   Coins,
+  Gift,
   HandCoins,
+  LayoutGrid,
   Receipt,
   Undo2,
   XCircle,
@@ -427,6 +429,136 @@ export function PaymentMix({ report }: { report: DaySessionReport }) {
             );
           })}
         </div>
+      )}
+    </CodCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Department mix — share of item net sales per department snapshot.
+// The page only renders this when the session sold under more than one
+// department; a one-row breakdown adds nothing.
+// ─────────────────────────────────────────────────────────────────────
+
+export function DepartmentMix({ report }: { report: DaySessionReport }) {
+  const departments = report.salesByDepartment ?? [];
+  const total = departments.reduce((sum, d) => sum + (d.net ?? 0), 0) || 1;
+
+  return (
+    <CodCard
+      title="Sales by department"
+      icon={<LayoutGrid />}
+      sub="Share of item net sales"
+    >
+      {departments.length === 0 ? (
+        <EmptyRow>No item sales recorded yet.</EmptyRow>
+      ) : (
+        <div className="flex flex-col gap-0.5">
+          {departments.map((d, i) => {
+            const pct = ((d.net ?? 0) / total) * 100;
+            const color = pmColor(i);
+            return (
+              <div
+                key={d.departmentId ?? "unassigned"}
+                className="flex items-center gap-3.5 border-b border-line py-[9px] last:border-0"
+              >
+                <div className="flex w-[104px] shrink-0 items-center gap-2 text-[13px] font-semibold tracking-[-0.01em] text-ink">
+                  <span
+                    className="h-[9px] w-[9px] shrink-0 rounded-[3px]"
+                    style={{ background: color }}
+                  />
+                  <span
+                    className={cn("truncate", !d.departmentName && "text-ink-3")}
+                  >
+                    {d.departmentName ?? "Unassigned"}
+                  </span>
+                </div>
+                <div className="h-[7px] flex-1 overflow-hidden rounded-full bg-canvas">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${pct}%`, background: color }}
+                  />
+                </div>
+                <div className="shrink-0 text-right font-mono text-[12.5px] font-semibold tabular-nums text-ink">
+                  {fmt(d.net)}
+                  <span className="mt-px block text-[10px] font-normal text-muted-foreground">
+                    {pct.toFixed(1)}% · {fmtQty(d.quantity)} items
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </CodCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// In-house / comps — comp'd orders with their items and who was
+// responsible (the staff that processed the complimentary settlement,
+// falling back to the order's owner).
+// ─────────────────────────────────────────────────────────────────────
+
+/** Quantities keep fractions ("2.5") unlike money's integer `fmt`. */
+const fmtQty = (q?: number | null): string =>
+  (q ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+export function ComplimentaryList({
+  report,
+  currency,
+}: {
+  report: DaySessionReport;
+  currency: string;
+}) {
+  const comps = report.complimentaryDetails ?? [];
+
+  return (
+    <CodCard
+      title="In-house / comps"
+      icon={<Gift />}
+      sub={`${comps.length} order${comps.length === 1 ? "" : "s"}`}
+    >
+      {comps.length === 0 ? (
+        <EmptyRow>No complimentary orders this session.</EmptyRow>
+      ) : (
+        <>
+          {comps.map((c) => {
+            const who = c.staffName || c.orderStaffName || null;
+            const items = c.items
+              .map((it) => `${fmtQty(it.quantity)}× ${it.itemName}`)
+              .join(", ");
+            return (
+              <RecordRow
+                key={c.orderId}
+                title={<>#{c.orderNumber || shortId(c.orderId)}</>}
+                tag={<Tag tone="cancel">COMP</Tag>}
+                reason={items || undefined}
+                meta={
+                  <>
+                    {who ? (
+                      <span className={META}>
+                        By <span className={METAB}>{who}</span>
+                      </span>
+                    ) : null}
+                    {c.compedAt ? (
+                      <span className={META}>{fmtTime(c.compedAt)}</span>
+                    ) : null}
+                  </>
+                }
+                amount={c.amount}
+                currency={currency}
+              />
+            );
+          })}
+          <RecFoot
+            split={`${comps.length} order${comps.length === 1 ? "" : "s"} on the house`}
+            total={
+              report.complimentaryAmount ??
+              comps.reduce((sum, c) => sum + (c.amount ?? 0), 0)
+            }
+          />
+        </>
       )}
     </CodCard>
   );
