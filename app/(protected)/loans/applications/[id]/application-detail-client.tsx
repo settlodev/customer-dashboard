@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Ban, Check, Clock, Sparkles, XCircle } from "lucide-react";
+import {
+  ArrowRight,
+  Ban,
+  Check,
+  CheckCircle2,
+  Clock,
+  Sparkles,
+  XCircle,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { formatTzs } from "@/types/loans/type";
@@ -11,11 +19,14 @@ import type {
 } from "@/types/loans/applications";
 import { OfferPanel } from "@/components/loans/offer-panel";
 
-const TERMINAL_STATUSES: ApplicationStatus[] = [
-  "REJECTED",
-  "WITHDRAWN",
-  "EXPIRED",
-];
+const TERMINAL_STATUSES = ["REJECTED", "WITHDRAWN", "EXPIRED"] as const;
+type TerminalApplicationStatus = (typeof TERMINAL_STATUSES)[number];
+
+function isTerminalStatus(
+  status: ApplicationStatus,
+): status is TerminalApplicationStatus {
+  return (TERMINAL_STATUSES as readonly ApplicationStatus[]).includes(status);
+}
 
 export function ApplicationDetailClient({
   application,
@@ -26,8 +37,6 @@ export function ApplicationDetailClient({
   canApply: boolean;
   lpoId: string | null;
 }) {
-  const terminal = TERMINAL_STATUSES.includes(application.status);
-
   return (
     <div className="space-y-6">
       {/* Summary */}
@@ -69,7 +78,7 @@ export function ApplicationDetailClient({
       </div>
 
       {/* Status */}
-      {terminal ? (
+      {isTerminalStatus(application.status) ? (
         <TerminalPanel
           status={application.status}
           declineReason={application.declineReason}
@@ -81,6 +90,13 @@ export function ApplicationDetailClient({
       {/* Offer acceptance */}
       {application.status === "APPROVED" && (
         <OfferPanel application={application} canApply={canApply} />
+      )}
+
+      {/* Durable post-acceptance link — driven by the DTO's own `loanId`, not
+       *  OfferPanel's local success state, so it survives router.refresh() and
+       *  any later revisit (OfferPanel unmounts once status leaves APPROVED). */}
+      {application.status === "ACCEPTED" && (
+        <AcceptedPanel loanId={application.loanId} />
       )}
     </div>
   );
@@ -206,7 +222,7 @@ function StatusTimeline({ status }: { status: ApplicationStatus }) {
 }
 
 const TERMINAL_COPY: Record<
-  "REJECTED" | "WITHDRAWN" | "EXPIRED",
+  TerminalApplicationStatus,
   { title: string; fallbackBody: string; tone: "neg" | "muted" }
 > = {
   REJECTED: {
@@ -231,10 +247,10 @@ function TerminalPanel({
   status,
   declineReason,
 }: {
-  status: ApplicationStatus;
+  status: TerminalApplicationStatus;
   declineReason: string | null;
 }) {
-  const copy = TERMINAL_COPY[status as "REJECTED" | "WITHDRAWN" | "EXPIRED"];
+  const copy = TERMINAL_COPY[status];
   const body = declineReason ?? copy.fallbackBody;
   const Icon = status === "REJECTED" ? XCircle : status === "EXPIRED" ? Clock : Ban;
   const neg = copy.tone === "neg";
@@ -254,6 +270,35 @@ function TerminalPanel({
           {copy.title}
         </div>
         <div className="mt-0.5 text-[12.5px] leading-relaxed">{body}</div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Persistent post-acceptance affordance — the durable counterpart to
+ * `OfferPanel`'s in-place success state. That panel only lives in
+ * component state while `status === "APPROVED"`; the moment `router.refresh()`
+ * lands (or the borrower revisits this page later) `status` is `ACCEPTED` and
+ * `OfferPanel` stops mounting entirely, so this is the only place the loan
+ * link survives. Sourced straight from the DTO's own `loanId` field.
+ */
+function AcceptedPanel({ loanId }: { loanId: string | null }) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-pos/30 bg-pos-tint p-4">
+      <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-pos" />
+      <div>
+        <div className="text-[13.5px] font-semibold text-ink">
+          Offer accepted — Settlo pays your supplier directly.
+        </div>
+        {loanId && (
+          <Link
+            href={`/loans/${loanId}`}
+            className="mt-1.5 inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
+          >
+            View loan
+          </Link>
+        )}
       </div>
     </div>
   );
