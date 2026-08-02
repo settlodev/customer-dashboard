@@ -102,9 +102,16 @@ export default function FinancingOptionCard({
   );
 
   const [preview, setPreview] = useState<FinancingPreview | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
   const [preQual, setPreQual] = useState<PreQualifiedProduct[] | null>(null);
-  const [preQualLoading, setPreQualLoading] = useState(false);
+  // Seeded `true` (not `false`) so the very first render right after
+  // selecting financing shows the spinner immediately instead of a
+  // one-frame flash of the "couldn't check eligibility" fallback before the
+  // fetch effect below has had a chance to flip these on. Harmless while
+  // `isFinancing` is false (DIRECT) — this whole block only renders once
+  // financing is selected, and the effect re-arms both flags on every
+  // supplier/financing change anyway.
+  const [previewLoading, setPreviewLoading] = useState(true);
+  const [preQualLoading, setPreQualLoading] = useState(true);
 
   useEffect(() => {
     if (!isFinancing || !supplier?.id) return;
@@ -149,9 +156,21 @@ export default function FinancingOptionCard({
   const effectiveFinanced = isPartial
     ? (value.financedAmount ?? 0)
     : orderTotal;
+  // True when a previously-entered partial amount has been stranded above
+  // the order total by a later edit (e.g. an item removed/shrunk after the
+  // amount was set). The input's own `isAllowed` clamp only fires on
+  // keystrokes, so it can't catch drift caused by the total itself moving —
+  // this is recomputed every render straight off the current `orderTotal`.
+  const overTotal = isFinancing && effectiveFinanced > orderTotal;
   const remainder = Math.max(orderTotal - effectiveFinanced, 0);
 
   const warnings: { title: string; description: string }[] = [];
+  if (overTotal) {
+    warnings.push({
+      title: "Above the order total",
+      description: `Your financed amount now exceeds the order total of ${money(orderTotal)} — reduce it or it will be rejected.`,
+    });
+  }
   if (
     isFinancing &&
     preview?.maxLoanPerOrder != null &&
@@ -353,9 +372,15 @@ export default function FinancingOptionCard({
                   disabled={disabled}
                 />
               </ControlBox>
-              <p className="text-[11.5px] text-muted-foreground">
-                You&apos;ll pay {money(remainder)} to the supplier directly.
-              </p>
+              {value.financedAmount === undefined ? (
+                <p className="text-[11.5px] text-muted-foreground">
+                  Leave blank to finance the full order.
+                </p>
+              ) : overTotal ? null : (
+                <p className="text-[11.5px] text-muted-foreground">
+                  You&apos;ll pay {money(remainder)} to the supplier directly.
+                </p>
+              )}
             </div>
           ) : (
             <p className="text-[12.5px] text-muted-foreground">
