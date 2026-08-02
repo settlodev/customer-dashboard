@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Ban, Check, Wallet, XCircle } from "lucide-react";
+import { AlertTriangle, Ban, Check, Wallet, XCircle } from "lucide-react";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -69,14 +69,22 @@ export function FinancingCard({ lpo }: { lpo: Lpo }) {
   const loanApplicationId = lpo.loanApplicationId;
 
   const cancelled = lpo.status === "CANCELLED";
+  // Cancellation never resets financingStatus (verified against the
+  // Inventory Service source: `resolveFinancingStatus` reads only the
+  // shadow order's own field, and `cancelInternal` never touches it) — so a
+  // cancelled LPO can still carry financingStatus PAID if Settlo had already
+  // disbursed before the order was called off. That combination needs its
+  // own truthful rendering: the money moved, so the split stays visible and
+  // the badge/panel say so, instead of the blanket "did not proceed" that's
+  // correct for every other cancelled case.
+  const cancelledAfterPaid = cancelled && financingStatus === "PAID";
   const declined = !cancelled && financingStatus === "DECLINED";
-  // Once cancelled or declined, financing categorically did not proceed —
-  // the whole order reverts to being payable to the supplier directly.
-  // `financedAmount`/`merchantPayableAmount` still reflect what was
-  // originally requested, not that outcome, so the split is suppressed
-  // below rather than shown alongside a terminal message it would
-  // contradict. Same reasoning for the header badge: a stale in-progress
-  // label (e.g. "Underwriting") would read oddly next to "Cancelled".
+  // Once cancelled-without-payment or declined, financing categorically did
+  // not proceed — the whole order reverts to being payable to the supplier
+  // directly. `financedAmount`/`merchantPayableAmount` still reflect what
+  // was originally requested, not that outcome, so the split is suppressed
+  // rather than shown alongside a terminal message it would contradict.
+  const showSplit = cancelledAfterPaid || (!cancelled && !declined);
 
   return (
     <Card className="rounded-xl shadow-sm">
@@ -92,44 +100,61 @@ export function FinancingCard({ lpo }: { lpo: Lpo }) {
               financing.
             </p>
           </div>
-          <Badge
-            variant={
-              cancelled ? "neg" : FINANCING_BADGE_VARIANT[financingStatus]
-            }
-          >
-            {cancelled ? "Cancelled" : FINANCING_STATUS_LABELS[financingStatus]}
-          </Badge>
+          <div className="flex items-center gap-1.5">
+            {cancelledAfterPaid ? (
+              <>
+                <Badge variant="pos">Paid by Settlo</Badge>
+                <Badge variant="warn">Cancelled</Badge>
+              </>
+            ) : (
+              <Badge
+                variant={
+                  cancelled ? "neg" : FINANCING_BADGE_VARIANT[financingStatus]
+                }
+              >
+                {cancelled
+                  ? "Cancelled"
+                  : FINANCING_STATUS_LABELS[financingStatus]}
+              </Badge>
+            )}
+          </div>
         </div>
 
-        {cancelled ? (
+        {showSplit && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <SplitRow
+              label="Settlo finances"
+              amount={financedAmount}
+              currency={currency}
+            />
+            {merchantPayable > 0 && (
+              <SplitRow
+                label="You pay directly"
+                amount={merchantPayable}
+                currency={currency}
+              />
+            )}
+          </div>
+        )}
+
+        {cancelledAfterPaid ? (
+          <CancelledAfterPaidPanel
+            amount={financedAmount}
+            currency={currency}
+          />
+        ) : cancelled ? (
           <CancelledPanel ack={lpo.supplierAcknowledgement} />
         ) : declined ? (
           <DeclinedPanel />
         ) : (
-          <>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <SplitRow
-                label="Settlo finances"
-                amount={financedAmount}
-                currency={currency}
-              />
-              {merchantPayable > 0 && (
-                <SplitRow
-                  label="You pay directly"
-                  amount={merchantPayable}
-                  currency={currency}
-                />
-              )}
-            </div>
-
-            <FinancingTimeline
-              ack={lpo.supplierAcknowledgement}
-              financingStatus={financingStatus}
-            />
-          </>
+          <FinancingTimeline
+            ack={lpo.supplierAcknowledgement}
+            financingStatus={financingStatus}
+          />
         )}
 
-        {loanApplicationId &&
+        {!cancelled &&
+          loanApplicationId &&
           (financingStatus === "REQUESTED" ||
             financingStatus === "OFFER_MADE") && (
             <Button
@@ -190,6 +215,28 @@ function CancelledPanel({ ack }: { ack: SupplierAcknowledgement }) {
         {ack === "REJECTED"
           ? "The supplier declined this order, so financing did not proceed."
           : "This purchase order was cancelled, so financing did not proceed."}
+      </span>
+    </div>
+  );
+}
+
+/** Cancelled *after* Settlo had already disbursed — the one cancelled state
+ *  where money actually moved, so the copy (and the split above) says so
+ *  instead of the standard "did not proceed" line. */
+function CancelledAfterPaidPanel({
+  amount,
+  currency,
+}: {
+  amount: number;
+  currency: string;
+}) {
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs text-amber-800">
+      <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+      <span>
+        This order was cancelled after Settlo paid the supplier{" "}
+        <Money amount={amount} currency={currency} className="font-semibold" />{" "}
+        — contact support about recovery.
       </span>
     </div>
   );
