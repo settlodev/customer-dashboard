@@ -28,11 +28,32 @@ export const CreateLpoItemSchema = z.object({
   currency: currencyCode.optional().or(z.literal("").transform(() => undefined)),
 });
 
-export const CreateLpoSchema = z.object({
-  supplierId: z.string({ required_error: "Supplier is required" }).uuid("Supplier is required"),
-  notes: z.string().optional(),
-  items: z.array(CreateLpoItemSchema).min(1, "Add at least one item"),
-});
+export const CreateLpoSchema = z
+  .object({
+    supplierId: z
+      .string({ required_error: "Supplier is required" })
+      .uuid("Supplier is required"),
+    notes: z.string().optional(),
+    items: z.array(CreateLpoItemSchema).min(1, "Add at least one item"),
+    paymentMethod: z.enum(["DIRECT", "SETTLO_FINANCING"]).optional(),
+    financedAmount: z.coerce.number().positive().optional(),
+  })
+  // Mirrors the backend: CreateLpoRequest.financedAmount is "rejected outright
+  // on a DIRECT (or unset) payment method" — only meaningful alongside
+  // SETTLO_FINANCING, where omitting it just requests full financing.
+  .superRefine((data, ctx) => {
+    if (
+      data.financedAmount !== undefined &&
+      data.paymentMethod !== "SETTLO_FINANCING"
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["financedAmount"],
+        message:
+          "Financed amount can only be set when paying via Settlo financing",
+      });
+    }
+  });
 
 export const UpdateLpoStatusSchema = z.object({
   status: z.enum([
