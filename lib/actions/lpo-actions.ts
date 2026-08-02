@@ -97,6 +97,29 @@ export async function getSupplierFinancingPreview(supplierId: string): Promise<{
   }
 }
 
+/**
+ * Resolve the LPO id backing a shadow Inventory `SupplierOrder` — the reverse
+ * of `Lpo.supplierOrderId`. Used by the borrower loan-application detail page
+ * to link back to the purchase order a supplier-financed (order-first) stock
+ * loan application financed. Soft-fails to `null` on any error (404,
+ * transport, or a response that doesn't carry the field) so the caller can
+ * just hide the "View purchase order" link — same contract as
+ * `getSupplierFinancingPreview`.
+ */
+export async function getSupplierOrderLpoId(
+  orderId: string,
+): Promise<string | null> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get<{ lpoId?: string | null }>(
+      inventoryUrl(`/api/v1/supplier-orders/${orderId}`),
+    );
+    return parseStringify(data)?.lpoId ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ── Mutations ───────────────────────────────────────────────────────
 
 export async function createLpo(

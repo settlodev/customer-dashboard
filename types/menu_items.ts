@@ -626,6 +626,13 @@ const getNormalMenuItems = (
                 permission: "loans:read",
               },
               {
+                title: "Loan applications",
+                link: "/loans/applications",
+                current: args?.isCurrentItem,
+                icon: "cart",
+                permission: "loans:read",
+              },
+              {
                 title: "Apply for a loan",
                 link: "/loans/apply",
                 current: args?.isCurrentItem,
