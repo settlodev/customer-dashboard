@@ -31,6 +31,15 @@ interface Props {
   description?: string;
   onChange: (value: string) => void;
   onBlur: () => void;
+  /**
+   * Additive companion to `onChange` — fires with the full resolved
+   * `Supplier` object (or `null` when nothing matches, including while the
+   * supplier cache is still loading) whenever the resolved selection
+   * changes. Reactive to the resolved value, not just interactive picks, so
+   * it also resolves a pre-filled `value` once the supplier cache loads —
+   * consumers don't need to separately re-derive the object from `value`.
+   */
+  onSupplierSelected?: (supplier: Supplier | null) => void;
 }
 
 /**
@@ -55,6 +64,7 @@ function SupplierSelector({
   description,
   onChange,
   onBlur,
+  onSupplierSelected,
 }: Props) {
   const [open, setOpen] = useState(false);
   const { data: suppliersData, loading: isLoading } = useCachedSuppliers();
@@ -103,6 +113,14 @@ function SupplierSelector({
     () => (value ? suppliers.find((s) => s.id === value) ?? null : null),
     [suppliers, value],
   );
+
+  // Reactive to the resolved object rather than wired only into
+  // `handleSelect` — this also resolves a pre-filled `value` once the
+  // (async, cached) supplier list loads, so callers get the full object
+  // without needing their own lookup against the same cache.
+  useEffect(() => {
+    onSupplierSelected?.(selected);
+  }, [selected, onSupplierSelected]);
 
   const handleSelect = useCallback(
     (supplierId: string) => {
