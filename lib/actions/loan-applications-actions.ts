@@ -26,7 +26,16 @@ const BASE = "/api/v1/loan-applications";
 
 // ── Reads ───────────────────────────────────────────────────────────
 
-/** The caller's own applications, newest first (server's default page/sort). Empty array on failure. */
+/**
+ * The caller's own applications, newest first (server's default page/sort).
+ * `[]` means a genuinely empty account (a real 200 with no content) — never a
+ * failure. Every error, boundary or not, is rethrown: the list page wraps
+ * this call in `softFetch()` (`lib/list-fallback.ts`), which needs the
+ * rejection to reach it in order to render `DataLoadError` (with retry).
+ * Swallowing a transport failure (LMS outage, gateway 502, timeout, …) into
+ * `[]` here would render as "No loan applications" — indistinguishable from
+ * an empty account — instead of a visible, retryable error.
+ */
 export async function listMyApplications(): Promise<LoanApplication[]> {
   try {
     const apiClient = new ApiClient("loans");
@@ -39,7 +48,7 @@ export async function listMyApplications(): Promise<LoanApplication[]> {
   } catch (error) {
     rethrowIfBoundary(error);
     console.error("listMyApplications failed", error);
-    return [];
+    throw error;
   }
 }
 
@@ -65,6 +74,16 @@ export async function getMyApplication(
  * directly since this action (unlike `getLoanEligibility`) takes no
  * parameters. Returns `null` when no business is selected or the call fails
  * (soft signal — same contract as the rest of the loans reads).
+ *
+ * Deliberately does NOT use `rethrowIfBoundary` — unlike the rest of this
+ * file, this action's callers span permission-diverse personas.
+ * `financing-option-card.tsx` calls it for anyone opening the LPO form,
+ * including purchasing-only staff with no `loans:apply`, so a FORBIDDEN here
+ * is an expected outcome, not an exceptional one. That caller also awaits
+ * this inside a bare `Promise.all` with no boundary around it, so rethrowing
+ * would surface as an unhandled rejection that leaves its loading flags
+ * spinning forever instead of resolving to the "couldn't check eligibility"
+ * fallback. Catch everything and return `null`.
  */
 export async function getPreQualification(): Promise<
   PreQualifiedProduct[] | null
@@ -81,7 +100,6 @@ export async function getPreQualification(): Promise<
     );
     return parseStringify(data);
   } catch (error) {
-    rethrowIfBoundary(error);
     console.error("getPreQualification failed", error);
     return null;
   }

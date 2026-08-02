@@ -122,9 +122,15 @@ export default function FinancingOptionCard({
     setPreQualLoading(true);
 
     void (async () => {
+      // Both actions already soft-fail internally (return `null` on error),
+      // but `.catch(() => null)` is added here too as a second line of
+      // defense: this awaits inside a bare `Promise.all` with no boundary
+      // around it, so if either action ever regresses back to throwing, the
+      // rejection won't turn into an unhandled promise that leaves the
+      // loading flags below spinning forever.
       const [previewRes, preQualRes] = await Promise.all([
-        getSupplierFinancingPreview(supplierId),
-        getPreQualification(),
+        getSupplierFinancingPreview(supplierId).catch(() => null),
+        getPreQualification().catch(() => null),
       ]);
       if (cancelled) return;
       setPreview(previewRes);

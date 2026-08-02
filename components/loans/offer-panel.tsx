@@ -22,9 +22,16 @@ import type { LoanApplication } from "@/types/loans/applications";
 export function OfferPanel({
   application,
   canApply,
+  loanDetailReady,
 }: {
   application: LoanApplication;
   canApply: boolean;
+  /** Whether `/loans/{loanId}` resolves to real data yet — see `FINANCING_BACKEND_READY`
+   *  in `lib/actions/loans-client.ts`. That module is server-only (reads
+   *  `process.env` directly), so the flag is read once in the server
+   *  `[id]/page.tsx` and threaded down through `ApplicationDetailClient` as a
+   *  prop rather than imported directly into this client component. */
+  loanDetailReady: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -66,12 +73,19 @@ export function OfferPanel({
               Your loan is being prepared — Settlo pays your supplier
               directly.
             </div>
-            {accepted.loanId && (
+            {loanDetailReady && accepted.loanId ? (
               <Link
                 href={`/loans/${accepted.loanId}`}
                 className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
               >
                 View loan
+              </Link>
+            ) : (
+              <Link
+                href="/loans/applications"
+                className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
+              >
+                Back to applications
               </Link>
             )}
           </div>
@@ -115,10 +129,11 @@ export function OfferPanel({
                 checked={agreeRepayment}
                 onToggle={() => setAgreeRepayment((v) => !v)}
               >
-                I agree to repay{" "}
+                I agree to repay the amount due under the loan agreement for
+                this{" "}
                 <b className="font-semibold text-ink">{formatTzs(amount)}</b>{" "}
-                over <b className="font-semibold text-ink">{termDays} days</b>{" "}
-                per the loan agreement.
+                facility over{" "}
+                <b className="font-semibold text-ink">{termDays} days</b>.
               </AcceptanceRow>
             </div>
             <Button

@@ -11,6 +11,7 @@ import { ensureLoanAccess, getLoanAccess } from "@/lib/loans/access";
 import { LOAN_PERMISSIONS } from "@/lib/loans/permissions";
 import { getMyApplication } from "@/lib/actions/loan-applications-actions";
 import { getSupplierOrderLpoId } from "@/lib/actions/lpo-actions";
+import { FINANCING_BACKEND_READY } from "@/lib/actions/loans-client";
 import { ApplicationStatusBadge } from "@/components/loans/application-status-badge";
 
 import { ApplicationDetailClient } from "./application-detail-client";
@@ -59,6 +60,7 @@ export default async function LoanApplicationDetailPage({
           application={application}
           canApply={canApply}
           lpoId={lpoId}
+          loanDetailReady={FINANCING_BACKEND_READY}
         />
       </PageBody>
     </PageShell>

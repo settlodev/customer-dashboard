@@ -32,10 +32,16 @@ export function ApplicationDetailClient({
   application,
   canApply,
   lpoId,
+  loanDetailReady,
 }: {
   application: LoanApplication;
   canApply: boolean;
   lpoId: string | null;
+  /** Whether `/loans/{loanId}` resolves to real data yet — see `FINANCING_BACKEND_READY`
+   *  in `lib/actions/loans-client.ts`. That module is server-only (reads
+   *  `process.env` directly), so the flag is read once in the server `page.tsx`
+   *  and threaded down as a prop rather than imported here or in `OfferPanel`. */
+  loanDetailReady: boolean;
 }) {
   return (
     <div className="space-y-6">
@@ -89,14 +95,21 @@ export function ApplicationDetailClient({
 
       {/* Offer acceptance */}
       {application.status === "APPROVED" && (
-        <OfferPanel application={application} canApply={canApply} />
+        <OfferPanel
+          application={application}
+          canApply={canApply}
+          loanDetailReady={loanDetailReady}
+        />
       )}
 
       {/* Durable post-acceptance link — driven by the DTO's own `loanId`, not
        *  OfferPanel's local success state, so it survives router.refresh() and
        *  any later revisit (OfferPanel unmounts once status leaves APPROVED). */}
       {application.status === "ACCEPTED" && (
-        <AcceptedPanel loanId={application.loanId} />
+        <AcceptedPanel
+          loanId={application.loanId}
+          loanDetailReady={loanDetailReady}
+        />
       )}
     </div>
   );
@@ -282,8 +295,19 @@ function TerminalPanel({
  * lands (or the borrower revisits this page later) `status` is `ACCEPTED` and
  * `OfferPanel` stops mounting entirely, so this is the only place the loan
  * link survives. Sourced straight from the DTO's own `loanId` field.
+ *
+ * `/loans/{loanId}` only resolves once `loanDetailReady` (see
+ * `FINANCING_BACKEND_READY`) is on — until then that route is still
+ * mock-backed and a real `loanId` 404s there. Point at the applications list
+ * instead so the success state never ships a dead CTA.
  */
-function AcceptedPanel({ loanId }: { loanId: string | null }) {
+function AcceptedPanel({
+  loanId,
+  loanDetailReady,
+}: {
+  loanId: string | null;
+  loanDetailReady: boolean;
+}) {
   return (
     <div className="flex items-start gap-3 rounded-xl border border-pos/30 bg-pos-tint p-4">
       <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-pos" />
@@ -291,12 +315,19 @@ function AcceptedPanel({ loanId }: { loanId: string | null }) {
         <div className="text-[13.5px] font-semibold text-ink">
           Offer accepted — Settlo pays your supplier directly.
         </div>
-        {loanId && (
+        {loanDetailReady && loanId ? (
           <Link
             href={`/loans/${loanId}`}
             className="mt-1.5 inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
           >
             View loan
+          </Link>
+        ) : (
+          <Link
+            href="/loans/applications"
+            className="mt-1.5 inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
+          >
+            Back to applications
           </Link>
         )}
       </div>
