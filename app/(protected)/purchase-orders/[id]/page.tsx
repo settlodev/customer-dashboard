@@ -15,6 +15,7 @@ import { effectiveLpoStatus } from "@/types/lpo/type";
 import { LpoStatusActions } from "@/components/widgets/lpo/status-actions";
 import { LpoShareButton } from "@/components/widgets/lpo/share-dialog";
 import { LpoShareAcknowledgement } from "@/components/widgets/lpo/share-acknowledgement";
+import { FinancingCard } from "@/components/widgets/lpo/financing-card";
 import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
 import { FileText, Layers, Boxes, PackageCheck, AlertCircle } from "lucide-react";
 
@@ -227,6 +228,8 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
         </Card>
 
         <LpoShareAcknowledgement lpo={lpo} supplier={supplier} />
+
+        <FinancingCard lpo={lpo} />
 
         <AttachmentsPanel
           entityType="LPO"
