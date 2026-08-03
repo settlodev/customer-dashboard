@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2 } from "lucide-react";
 
@@ -78,8 +78,22 @@ export function FinanceFlowModal({
   // the banner and financing card re-render from fresh data.
   const [progressed, setProgressed] = useState(false);
 
+  // Bumped once per modal open (see the entry effect below). The component
+  // stays mounted across a close/reopen (only the Dialog's portal content
+  // unmounts), so a response from a PREVIOUS open — e.g. a slow
+  // startLpoFinancing/acceptFinancingTerms call still in flight when the
+  // merchant closed and quickly reopened — must not be allowed to mutate
+  // state the new session already computed. `startFinancing` and
+  // `handleAgree` each capture the session id in effect at call time and
+  // compare it to `sessionRef.current` before acting on their result,
+  // mirroring the `cancelled` guard the entry effect already uses for its
+  // own continuation.
+  const sessionRef = useRef(0);
+
   const startFinancing = useCallback(async (): Promise<boolean> => {
+    const session = sessionRef.current;
     const res = await startLpoFinancing(lpo.id);
+    if (session !== sessionRef.current) return false; // superseded by a later open — dropped, no state touched
     if (res.responseType === "error") {
       setFlowError(res.message);
       setStep("error");
@@ -92,10 +106,17 @@ export function FinanceFlowModal({
   // Entry sequencing on every open.
   useEffect(() => {
     if (!open) return;
+    sessionRef.current += 1;
     let cancelled = false;
     setStep("loading");
     setTermsError(null);
     setFlowError(null);
+    // Per-open resets: neither flag describes anything that happened in
+    // THIS session yet. `phoneJustVerified` in particular has a documented
+    // this-session-only contract (it unlocks OfferStep's projection-lag
+    // retry) that a stale `true` from a previous open would silently break.
+    setTermsSubmitting(false);
+    setPhoneJustVerified(false);
 
     void (async () => {
       const [termsRes, phoneRes] = await Promise.all([
@@ -126,7 +147,7 @@ export function FinanceFlowModal({
         const started = await startFinancing();
         if (!started || cancelled) return;
       }
-      // Fail-open to the phone step when the status read failed — sending
+      // Fail-closed to the phone step when the status read failed — sending
       // works by userId, and a verified user just re-verifies harmlessly
       // rather than being blocked.
       setStep(phoneStatus?.phoneVerified ? "offer" : "phone");
@@ -141,16 +162,23 @@ export function FinanceFlowModal({
 
   const handleAgree = () => {
     if (!terms) return;
+    // Captured once, before the first await — if the modal is closed and
+    // reopened before this chain settles, `sessionRef.current` moves on and
+    // every check below drops the stale continuation instead of mutating
+    // the new session's state (same pattern as `startFinancing` above).
+    const session = sessionRef.current;
     setTermsError(null);
     setTermsSubmitting(true);
     void (async () => {
       const res = await acceptFinancingTerms(terms.currentVersion);
+      if (session !== sessionRef.current) return;
       if (res.responseType === "error") {
         setTermsSubmitting(false);
         if (
           res.errorCode === SUPPLIER_FINANCING_GATE_CODES.TERMS_VERSION_STALE
         ) {
           const fresh = await getFinancingTerms();
+          if (session !== sessionRef.current) return;
           if (fresh) setTerms(fresh);
           setTermsError(
             "The terms were updated — please review and accept the latest version.",
@@ -162,6 +190,7 @@ export function FinanceFlowModal({
       }
       setProgressed(true);
       const started = await startFinancing();
+      if (session !== sessionRef.current) return;
       setTermsSubmitting(false);
       if (!started) return;
       setStep(phone?.phoneVerified ? "offer" : "phone");
