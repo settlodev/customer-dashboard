@@ -100,7 +100,7 @@ Both write paths `revalidatePath` their surfaces (`/suppliers` and `/admin/settl
 - Modify: `app/(protected)/suppliers/[id]/page.tsx` (fetch + mount), `components/widgets/supplier/link-settlo-dialog.tsx` (empty-state CTA), `components/tables/supplier/columns.tsx` (status chip)
 
 **Interfaces:**
-- Consumes Task 1's actions/types; the existing `getSupplierFinancingPreview(supplierId)` from `lib/actions/lpo-actions.ts` (returns `{financeable, reason, maxLoanPerOrder} | null`).
+- Consumes Task 1's actions/types **only**. **Plan correction (2026-08-03):** an earlier `getSupplierFinancingPreview(supplierId)` action was removed from `lib/actions/lpo-actions.ts` when financing moved off the LPO-creation form — do not call it, and do not reintroduce it. The nomination card shows no financing cap.
 - Produces: `<SettloFinancingCard supplier={supplier} nomination={latestNomination} preview={preview} />`, `<SubmitNominationDialog supplier open onOpenChange onSubmitted />`.
 
 **Five states** (derive from `supplier.linkedToSettloSupplier` + the latest nomination; a `WITHDRAWN` latest nomination falls back to *not submitted*):
@@ -110,7 +110,7 @@ Both write paths `revalidatePath` their surfaces (`/suppliers` and `/admin/settl
 | Not submitted | not linked; no nomination, or latest is `WITHDRAWN` | One-line explainer ("Settlo can pay this supplier directly for stock you finance") + **Submit for Settlo financing** button |
 | Under review | latest is `SUBMITTED` | "Under review — submitted {date}" + **Withdraw** (confirm dialog) |
 | Approved, onboarding | latest is `APPROVED` and not linked | "Approved — Settlo is setting {name} up. We'll tell you when financing is available." |
-| Financing available | `supplier.linkedToSettloSupplier` | "Financing available" + the `maxLoanPerOrder` cap when `preview.financeable`, and a link to `/purchase-orders/new` to create a financed order |
+| Financing available | `supplier.linkedToSettloSupplier` | "Settlo financing available" + how to use it, matching how financing actually starts today: create a purchase order for this supplier, then use **Finance this order** on it (financing is requested from an existing LPO via `components/widgets/lpo/financing-banner.tsx`, never at creation). Link to `/purchase-orders/new`. |
 | Not approved | latest is `REJECTED` | The `rejectionReason` + "Update the supplier's details and submit again" + **Submit** button |
 
 **Submit dialog** shows the exact snapshot that will be sent — name, contact person, phone, email, TIN, registration number — reading from the supplier record, with any blank field rendered as a muted "Not set" so the merchant can close, fill it in, and resubmit. Plus a `note` textarea ("Tell us about your trading relationship — how often you order and roughly how much") and a short "what happens next: Settlo reviews and contacts the supplier; you'll be notified." Submit calls `submitNomination({sourceSupplierId, note})`, toasts the backend message on failure, and calls `onSubmitted` → `router.refresh()`.
@@ -118,7 +118,7 @@ Both write paths `revalidatePath` their surfaces (`/suppliers` and `/admin/settl
 Link-dialog empty state (no catalog matches) gains: "Not in the directory? Submit this supplier for review" opening the same dialog. Suppliers list gains a compact chip: linked → "Settlo" (pos), latest `SUBMITTED` → "Under review" (warn), else nothing.
 
 - [ ] **Step 1:** Read `app/(protected)/suppliers/[id]/page.tsx` and `link-settlo-dialog.tsx` end-to-end, plus one existing card widget for the visual idiom.
-- [ ] **Step 2:** Implement both components; mount the card in the detail page (server-fetch `getNominationsForSupplier(id)` + `getSupplierFinancingPreview(id)` in parallel with the existing supplier fetch, taking the newest nomination as `latest`).
+- [ ] **Step 2:** Implement both components; mount the card in the detail page (server-fetch `getNominationsForSupplier(id)` alongside the existing supplier fetch, taking the newest nomination as `latest`).
 - [ ] **Step 3:** tsc + lint + `npm run build` green.
 - [ ] **Step 4: Commit** — `git commit -m "feat(nominations): merchant financing card and submit dialog"`
 
