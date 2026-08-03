@@ -67,7 +67,12 @@ export function PhoneStep({
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } else {
       // A backend RATE_LIMITED "please wait…" message is surfaced verbatim.
+      // Throttle identically to a successful send: whether it's the 60s
+      // cooldown or the per-phone daily cap being refused, the button must
+      // not stay live and inviting an immediate identical retry — the
+      // client never contradicts an endpoint the server is rejecting.
       setError(res.message);
+      setCooldown(RESEND_COOLDOWN_SECONDS);
     }
   };
 
