@@ -31,13 +31,51 @@ const badgeVariants = cva(
   }
 )
 
+export type BadgeTone = "ok" | "open" | "warn" | "neg" | "muted" | "primary";
+
+// Dot-pill tone vocabulary — the `.od-badge` treatment. Distinct from the
+// `variant` prop above: `tone` is additive and, when set, takes over
+// rendering entirely (see `Badge` below), so every existing `variant`-based
+// call site keeps working unchanged.
+const BADGE_TONE_CLASSES: Record<BadgeTone, string> = {
+  ok: "bg-pos-tint text-pos",
+  open: "bg-blue-500/10 text-blue-600 dark:bg-blue-400/10 dark:text-blue-400",
+  warn: "bg-warn-tint text-warn",
+  neg: "bg-neg-tint text-neg",
+  muted: "bg-canvas text-ink-3",
+  primary: "bg-primary/10 text-primary-dark dark:text-primary",
+};
+
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
+    VariantProps<typeof badgeVariants> {
+  /** Renders the `.od-badge` dot-pill treatment instead of `variant`, using
+   *  the design's tone vocabulary. Takes precedence over `variant` when set. */
+  tone?: BadgeTone;
+  /** Leading status dot — only meaningful together with `tone`. */
+  dot?: boolean;
+}
 
-function Badge({ className, variant, ...props }: BadgeProps) {
+function Badge({ className, variant, tone, dot, children, ...props }: BadgeProps) {
+  if (tone) {
+    return (
+      <div
+        className={cn(
+          "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[11.5px] font-semibold leading-none",
+          BADGE_TONE_CLASSES[tone],
+          className,
+        )}
+        {...props}
+      >
+        {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+        {children}
+      </div>
+    )
+  }
   return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+    <div className={cn(badgeVariants({ variant }), className)} {...props}>
+      {children}
+    </div>
   )
 }
 
