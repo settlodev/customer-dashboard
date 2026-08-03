@@ -291,8 +291,10 @@ function toFormValues(
     name: item?.name ?? "",
     type: item?.type ?? "OWN_EQUITY",
     currency: item?.currency ?? "TZS",
-    disbursementMethod: item?.disbursementMethod ?? "MANUAL",
-    bankGatewayKey: item?.bankGatewayKey ?? "",
+    disbursementMethod: item?.disbursementMethod ?? "AUTOMATED",
+    // Hidden for now — one transport runs today and the backend defaults it
+    // (SETTLO_DISBURSEMENT). Always blank so saves never carry a stale key.
+    bankGatewayKey: "",
     capitalLimit: item?.capitalLimit == null ? "" : item.capitalLimit,
     glAccountRef: item?.glAccountRef ?? "",
     active: item?.active ?? true,
@@ -344,7 +346,7 @@ function FundingSourcePreview({
     { label: "Currency", done: /^[A-Za-z]{3}$/.test((v.currency ?? "").trim()) },
     {
       label: "Disbursement setup",
-      done: !automated || Boolean(v.bankGatewayKey?.trim()),
+      done: Boolean(v.disbursementMethod),
     },
   ];
   const doneCount = checks.filter((c) => c.done).length;
@@ -375,9 +377,7 @@ function FundingSourcePreview({
             {v.glAccountRef?.trim() || "—"}
           </PreviewRow>
           {automated ? (
-            <PreviewRow label="Gateway">
-              {v.bankGatewayKey?.trim() || "—"}
-            </PreviewRow>
+            <PreviewRow label="Gateway">Settlo engine (default)</PreviewRow>
           ) : null}
         </dl>
 
@@ -447,7 +447,6 @@ export default function FundingSourceForm({
     defaultValues: toFormValues(item),
   });
 
-  const method = form.watch("disbursementMethod");
   const currency = (form.watch("currency") || "TZS").toUpperCase();
 
   const onSubmit = (values: FundingSourceFormValues) => {
@@ -560,17 +559,9 @@ export default function FundingSourceForm({
                 disabled={disabled}
                 hint="Automated routes through a bank/mobile gateway."
               />
-              {method === "AUTOMATED" ? (
-                <TextField
-                  form={form}
-                  name="bankGatewayKey"
-                  label="Gateway key"
-                  required
-                  placeholder="e.g. NMB_B2C"
-                  disabled={disabled}
-                  hint="Identifies the payout gateway integration."
-                />
-              ) : null}
+              {/* Gateway key intentionally not collected: one transport runs today and
+                  the backend defaults AUTOMATED sources to the Settlo disbursement
+                  engine. Reintroduce a selector here when a second transport exists. */}
             </FieldRow>
             <FieldRow cols={2} className="mt-[15px]">
               <NumberField

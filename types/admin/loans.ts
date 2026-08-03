@@ -807,20 +807,13 @@ export const FundingSourceFormSchema = z
     disbursementMethod: z.enum(["MANUAL", "AUTOMATED"], {
       required_error: "Select a disbursement method",
     }),
+    // Single transport today: the backend defaults AUTOMATED sources to the Settlo
+    // disbursement engine, so the key is no longer collected on the form.
     bankGatewayKey: z.string().max(255, "Max 255 characters"),
     capitalLimit: optionalNonNegative,
     glAccountRef: z.string().max(255, "Max 255 characters"),
     active: z.boolean(),
-  })
-  .refine(
-    (d) =>
-      d.disbursementMethod !== "AUTOMATED" ||
-      d.bankGatewayKey.trim().length > 0,
-    {
-      message: "Gateway key is required for automated disbursement",
-      path: ["bankGatewayKey"],
-    },
-  );
+  });
 
 export type FundingSourceFormOutput = z.infer<typeof FundingSourceFormSchema>;
 
