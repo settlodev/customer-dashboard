@@ -211,7 +211,15 @@ export function OfferStep({
         if (res.responseType === "success") break;
         const code = res.errorCode;
         const retryable =
+          // ERR-6215 kept here to document the intended mapping, but it
+          // never actually arrives: the LMS throws it as a 503, and
+          // `handleSettloApiError`'s 502/503/504 branch hard-codes the
+          // errorCode to SERVICE_UNAVAILABLE instead of passing the parsed
+          // serverCode through (unlike the 409 branch). `res.status === 503`
+          // is what actually catches it, so both checks stay — one for
+          // correctness today, one documenting the wire contract.
           code === SUPPLIER_FINANCING_GATE_CODES.PHONE_VERIFICATION_UNAVAILABLE ||
+          res.status === 503 ||
           // Right after in-modal OTP success, the Accounts PHONE_VERIFIED
           // projection may not have landed yet — the gate then reads
           // phoneVerified=false. Retry instead of bouncing the user back

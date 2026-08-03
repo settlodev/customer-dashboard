@@ -141,6 +141,13 @@ export async function acceptOffer(
       // OFFER_EXPIRED) — the finance-flow modal branches on this to route
       // the user back to the right step or retry with backoff.
       errorCode: error instanceof SettloApiError ? error.code : undefined,
+      // The LMS throws PHONE_VERIFICATION_UNAVAILABLE (ERR-6215) as a 503,
+      // but `handleSettloApiError`'s 502/503/504 branch hard-codes
+      // `SERVICE_UNAVAILABLE` as the errorCode (discarding the parsed
+      // `serverCode`) — so ERR-6215 never actually reaches the client via
+      // `errorCode`. Surfacing the raw HTTP status lets the caller retry on
+      // transport-level unavailability too, independent of that collapse.
+      status: error instanceof SettloApiError ? error.status : undefined,
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
