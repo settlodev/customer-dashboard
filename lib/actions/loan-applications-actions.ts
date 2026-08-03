@@ -6,11 +6,16 @@ import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { rethrowIfBoundary } from "@/lib/list-fallback";
 import { getCurrentBusinessId } from "@/lib/actions/business/get-current-business";
+import { SettloApiError } from "@/lib/settlo-api-error-handler";
 import type { FormResponse } from "@/types/types";
 import type {
   LoanApplication,
   PreQualifiedProduct,
 } from "@/types/loans/applications";
+import type {
+  FinancingTermsStatus,
+  SupplierFinancingEligibility,
+} from "@/types/loans/supplier-financing";
 
 import { loansUrl } from "./loans-client";
 
@@ -135,6 +140,83 @@ export async function acceptOffer(
     return {
       responseType: "error",
       message: error?.message ?? "Failed to accept offer",
+      // Wire code (e.g. the supplier accept gates TERMS_NOT_ACCEPTED /
+      // PHONE_NOT_VERIFIED / PHONE_VERIFICATION_UNAVAILABLE, or
+      // OFFER_EXPIRED) — the finance-flow modal branches on this to route
+      // the user back to the right step or retry with backoff.
+      errorCode: error instanceof SettloApiError ? error.code : undefined,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
+// ── Supplier financing (LPO post-acceptance flow) ───────────────────
+
+/**
+ * Stateless eligibility check for financing an accepted LPO — mirrors the
+ * LMS's `GET /api/v1/supplier-financing/eligibility?lpoId=`. Declines are a
+ * normal 200 with `eligible: false` + a friendly `reason`; `eligible: null`
+ * means an application already exists (resume from `existingApplicationId`).
+ * Returns `null` only on genuine failure (transport, 404 foreign/missing
+ * LPO, permission) so the banner can show a "couldn't check" state with a
+ * re-run affordance — same soft contract as `getPreQualification`.
+ */
+export async function getSupplierFinancingEligibility(
+  lpoId: string,
+): Promise<SupplierFinancingEligibility | null> {
+  try {
+    const apiClient = new ApiClient("loans");
+    const data = await apiClient.get(
+      loansUrl(
+        `/api/v1/supplier-financing/eligibility?lpoId=${encodeURIComponent(lpoId)}`,
+      ),
+    );
+    return parseStringify(data);
+  } catch (error) {
+    console.error("getSupplierFinancingEligibility failed", error);
+    return null;
+  }
+}
+
+/**
+ * The caller's account-level financing-terms state — mirrors the LMS's
+ * `GET /api/v1/financing-terms` → `{ currentVersion, accepted, acceptedAt }`.
+ * `null` on failure (the modal shows an error state; the FinancingCard
+ * tracker treats it as "not yet accepted").
+ */
+export async function getFinancingTerms(): Promise<FinancingTermsStatus | null> {
+  try {
+    const apiClient = new ApiClient("loans");
+    const data = await apiClient.get(loansUrl(`/api/v1/financing-terms`));
+    return parseStringify(data);
+  } catch (error) {
+    console.error("getFinancingTerms failed", error);
+    return null;
+  }
+}
+
+/**
+ * Accept the current supplier-financing terms version for the caller's
+ * account — `POST /api/v1/financing-terms/accept` body `{ version }`.
+ * Idempotent on re-accept. A 409 TERMS_VERSION_STALE (version raced a
+ * backend bump) surfaces through `errorCode` so the modal can re-fetch and
+ * re-show the terms step.
+ */
+export async function acceptFinancingTerms(
+  version: string,
+): Promise<FormResponse> {
+  try {
+    const apiClient = new ApiClient("loans");
+    await apiClient.post<void, { version: string }>(
+      loansUrl(`/api/v1/financing-terms/accept`),
+      { version },
+    );
+    return { responseType: "success", message: "Terms accepted" };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message ?? "Failed to accept the financing terms",
+      errorCode: error instanceof SettloApiError ? error.code : undefined,
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
