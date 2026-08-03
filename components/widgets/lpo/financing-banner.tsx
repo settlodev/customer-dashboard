@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { usePermissions } from "@/context/permissionsContext";
 import { getSupplierFinancingEligibility } from "@/lib/actions/loan-applications-actions";
 import {
   formatFeeRate,
@@ -91,6 +92,21 @@ function classifyApplicationStatus(
 }
 
 /**
+ * Whether a raw wire status string (from `eligibility.applicationStatus`,
+ * typed loosely as `string | null` since it mirrors the LMS's stateless
+ * eligibility response rather than the strict `ApplicationStatus` union) is
+ * one of the three terminal, non-accepted outcomes. Used to stop the
+ * "in progress" strip from rendering for a dead application, and to pick
+ * honest copy for the declined/expired strip — see the fix for the
+ * `markFinancingTerminated` collapse below.
+ */
+function isTerminalApplicationStatus(
+  status: string | null | undefined,
+): status is "REJECTED" | "WITHDRAWN" | "EXPIRED" {
+  return status === "REJECTED" || status === "WITHDRAWN" || status === "EXPIRED";
+}
+
+/**
  * Post-acceptance financing banner on the PO detail page (spec §7). The
  * page mounts it only when LOANS_ENABLED and the viewer holds loans:read;
  * the component additionally self-gates on the LPO being supplier-accepted
@@ -108,6 +124,17 @@ export function FinancingBanner({
   application: LoanApplication | null;
   canApply: boolean;
 }) {
+  // `startLpoFinancing` (the Inventory endpoint `startFinancing()` calls to
+  // both first-time initiate AND retry-a-declined-shadow) requires
+  // purchasing:approve, NOT loans:apply — `canApply` alone gates a CTA the
+  // caller can't actually complete, landing on the modal's error step. Every
+  // CTA below that triggers `startFinancing()` (i.e. opens the modal with
+  // `resumeApplicationId = null`) needs both permissions; CTAs that only
+  // resume an existing application (Review offer / View progress) still use
+  // `canApply` alone since they never call that endpoint.
+  const { hasPermission } = usePermissions();
+  const canStartFinancing = canApply && hasPermission("purchasing:approve");
+
   const bannerEligible =
     lpo.supplierAcknowledgement === "ACCEPTED" &&
     (lpo.status === "APPROVED" || lpo.status === "PARTIALLY_RECEIVED");
@@ -164,20 +191,35 @@ export function FinancingBanner({
   if (!bannerEligible) return null;
 
   const eligibility = check.kind === "done" ? check.result : null;
+  // The LMS's eligibility endpoint reports `eligible: null` whenever
+  // Inventory's financing-context still carries a live order/application —
+  // including, transiently, one that has ALREADY resolved terminal on the
+  // LMS side but whose termination Inventory hasn't finished processing yet
+  // (`markFinancingTerminated` nulls the shadow order's `loanApplicationId`
+  // asynchronously, off the same `LOAN_APPLICATION_TERMINATED` event this
+  // reads live). `applicationStatus` in that response reflects the real,
+  // current LMS status, so a terminal value here means "dead," not
+  // "in progress" — see `eligibilityTerminal` below.
+  const eligibilityTerminal =
+    eligibility != null &&
+    eligibility.eligible === null &&
+    isTerminalApplicationStatus(eligibility.applicationStatus);
   // Resume only a genuinely LIVE application — `FinanceFlowModal` treats
   // any non-null id as "resume" and skips `startFinancing()`, the only path
   // that creates a NEW application. A terminal application (REJECTED /
   // WITHDRAWN / EXPIRED, i.e. `applicationBucket` is "declined" or
-  // "reQualify") must never seed this: handing the modal a dead id would
-  // dead-end the merchant on OfferStep's "unavailable" panel with no way
-  // to actually start a fresh request (the retry path — Inventory resetting
-  // the shadow order and re-publishing SUPPLIER_ORDER_CREATED — only fires
-  // from `startFinancing()`). `lpo.loanApplicationId` is redundant with
-  // `application.id` whenever `application` resolved (same source), so it
-  // is only consulted as a fallback when the application couldn't be read
-  // at all (transient LMS failure — the `inProgress` fail-open case above,
-  // presumed live) or when eligibility itself reports a live application
-  // (`existingApplicationId`, set only when `eligible === null`).
+  // "reQualify", or `eligibilityTerminal`) must never seed this: handing the
+  // modal a dead id would dead-end the merchant on OfferStep's "unavailable"
+  // panel with no way to actually start a fresh request (the retry path —
+  // Inventory resetting the shadow order and re-publishing
+  // SUPPLIER_ORDER_CREATED — only fires from `startFinancing()`, which
+  // requires `resumeApplicationId == null`). `lpo.loanApplicationId` is
+  // redundant with `application.id` whenever `application` resolved (same
+  // source), so it is only consulted as a fallback when the application
+  // couldn't be read at all (transient LMS failure — the `inProgress`
+  // fail-open case above, presumed live) or when eligibility itself reports
+  // a live, NON-terminal application (`existingApplicationId`, set only
+  // when `eligible === null`).
   const applicationIsLive =
     applicationBucket === "financed" ||
     applicationBucket === "offerReady" ||
@@ -186,7 +228,9 @@ export function FinancingBanner({
     ? applicationIsLive
       ? application.id
       : null
-    : (lpo.loanApplicationId ?? eligibility?.existingApplicationId ?? null);
+    : eligibilityTerminal
+      ? null
+      : (lpo.loanApplicationId ?? eligibility?.existingApplicationId ?? null);
 
   let body: React.ReactNode;
 
@@ -226,7 +270,7 @@ export function FinancingBanner({
     );
   } else if (
     inProgress ||
-    (eligibility && eligibility.eligible === null)
+    (eligibility && eligibility.eligible === null && !eligibilityTerminal)
   ) {
     body = (
       <Strip
@@ -248,20 +292,73 @@ export function FinancingBanner({
         }
       />
     );
-  } else if (declined) {
+  } else if (declined || eligibilityTerminal) {
+    // The specific terminal reason (REJECTED vs WITHDRAWN vs EXPIRED) is
+    // only known here in the narrow window before Inventory processes
+    // `LOAN_APPLICATION_TERMINATED`: `markFinancingTerminated` collapses all
+    // three into the SAME bare `financingStatus = DECLINED` + nulled
+    // `loanApplicationId`, permanently erasing the distinction server-side.
+    // Prefer whichever live signal is actually available (the fetched
+    // `application`, then a still-live `eligibility.applicationStatus`);
+    // once both are gone, fall back to reason-agnostic copy instead of
+    // asserting "didn't qualify" — false for an expired-but-never-acted-on
+    // offer or a withdrawn request, and unverifiable either way at that
+    // point.
+    const knownStatus: string | null =
+      application?.status ??
+      (eligibilityTerminal ? eligibility?.applicationStatus ?? null : null);
+    const expired = knownStatus === "EXPIRED";
+    const withdrawn = knownStatus === "WITHDRAWN";
     body = (
-      <Strip
-        icon={
-          <span className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-full bg-canvas text-ink-3">
-            <Info className="h-5 w-5" />
-          </span>
-        }
-        title="Financing isn't available for this order"
-        detail={
-          application?.declineReason ??
-          "This order didn't qualify for financing — you can pay the supplier directly."
-        }
-      />
+      <div className="space-y-3">
+        <Strip
+          icon={
+            <span className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-full bg-canvas text-ink-3">
+              <Info className="h-5 w-5" />
+            </span>
+          }
+          title={
+            expired
+              ? "Your financing offer expired"
+              : withdrawn
+                ? "Financing request withdrawn"
+                : "Financing isn't available for this order"
+          }
+          detail={
+            expired
+              ? "The offer window for this order closed before it was accepted. You can pay the supplier directly, or try financing again."
+              : withdrawn
+                ? "This financing request is no longer active. You can pay the supplier directly, or try financing again."
+                : (application?.declineReason ??
+                  "This financing request didn't go through. You can pay the supplier directly, or try financing again.")
+          }
+          action={
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setModalOpen(true)}
+              disabled={!canStartFinancing}
+              title={
+                canStartFinancing
+                  ? undefined
+                  : "Starting financing needs the loans:apply and purchasing:approve permissions"
+              }
+            >
+              <Wallet className="mr-1.5 h-3.5 w-3.5" />
+              Try financing again
+            </Button>
+          }
+        />
+        {!canStartFinancing && (
+          <p className="text-[11.5px] text-muted-foreground">
+            You can see this order&apos;s financing status, but starting a
+            new request needs the{" "}
+            <b className="font-medium text-ink-2">loans:apply</b> and{" "}
+            <b className="font-medium text-ink-2">purchasing:approve</b>{" "}
+            permissions.
+          </p>
+        )}
+      </div>
     );
   } else if (check.kind === "checking" || check.kind === "idle") {
     body = (
@@ -312,11 +409,11 @@ export function FinancingBanner({
               <Button
                 size="sm"
                 onClick={() => setModalOpen(true)}
-                disabled={!canApply}
+                disabled={!canStartFinancing}
                 title={
-                  canApply
+                  canStartFinancing
                     ? undefined
-                    : "Requesting financing needs the loans:apply permission"
+                    : "Requesting financing needs the loans:apply and purchasing:approve permissions"
                 }
               >
                 <Wallet className="mr-1.5 h-3.5 w-3.5" />
@@ -325,10 +422,12 @@ export function FinancingBanner({
             </div>
           }
         />
-        {!canApply && (
+        {!canStartFinancing && (
           <p className="text-[11.5px] text-muted-foreground">
             You can see this check, but requesting financing needs the{" "}
-            <b className="font-medium text-ink-2">loans:apply</b> permission.
+            <b className="font-medium text-ink-2">loans:apply</b> and{" "}
+            <b className="font-medium text-ink-2">purchasing:approve</b>{" "}
+            permissions.
           </p>
         )}
       </div>
