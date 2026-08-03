@@ -69,6 +69,24 @@ export const APPLICATION_STATUS_TONES: Record<ApplicationStatus, string> = {
 
 // ── Application ──────────────────────────────────────────────────────
 
+/**
+ * Re-quoted offer economics on an APPROVED supplier-product application —
+ * mirrors the `offerQuote` block the LMS adds to
+ * `CustomerApplicationResponse` on `GET /api/v1/loan-applications/mine/{id}`
+ * (re-quoted via `LoanQuoteEngine` on read). Null/absent for non-approved
+ * states and non-supplier products.
+ */
+export interface OfferQuote {
+  financedAmount: number;
+  feeAmount: number;
+  /** Fraction of principal (0.05 = 5%) — same convention as `SupplierFinancingQuote.feeRate`. */
+  feeRate: number;
+  termDays: number;
+  totalRepayable: number;
+  indicativeDueDate: string;
+  offerExpiresAt: string;
+}
+
 /** Mirrors the LMS's `CustomerApplicationResponse` — see file header for what's deliberately excluded. */
 export interface LoanApplication {
   id: string;
@@ -95,6 +113,8 @@ export interface LoanApplication {
   /** Set for a supplier-financed (order-first) stock loan — the Inventory supplier order this application finances. */
   supplierOrderId: string | null;
   settloSupplierId: string | null;
+  /** See {@link OfferQuote}. Optional (`?`) because pre-rollout LMS responses omit the key entirely. */
+  offerQuote?: OfferQuote | null;
 }
 
 // ── Pre-qualification catalog ───────────────────────────────────────
