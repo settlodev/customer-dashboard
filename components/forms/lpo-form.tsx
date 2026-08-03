@@ -12,7 +12,6 @@ import {
   Plus,
   Trash2,
   AlertTriangle,
-  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -55,14 +54,10 @@ import SupplierSelector from "../widgets/supplier-selector";
 import StockVariantSelector from "../widgets/stock-variant-selector";
 import type { VariantMeta } from "../widgets/stock-variant-selector";
 import CurrencySelector from "../widgets/currency-selector";
-import FinancingOptionCard, {
-  type FinancingCardValue,
-} from "../widgets/lpo/financing-option-card";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
 import { createLpo } from "@/lib/actions/lpo-actions";
 import { CreateLpoSchema } from "@/types/lpo/schema";
 import type { FormResponse } from "@/types/types";
-import type { Supplier } from "@/types/supplier/type";
 
 import styles from "./styles/form-shell.module.css";
 
@@ -95,16 +90,12 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
   const locationCurrency = useLocationCurrency();
 
   const [, setItemMeta] = useState<Record<string, ItemMeta>>({});
-  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
-    null,
-  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(CreateLpoSchema),
     defaultValues: {
       supplierId: initialValues?.supplierId ?? "",
       notes: initialValues?.notes ?? "",
-      paymentMethod: "DIRECT",
       items:
         initialValues?.items && initialValues.items.length > 0
           ? initialValues.items.map((it) => ({
@@ -194,33 +185,6 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
     [watchedItems],
   );
 
-  // Running order total the financing card's full-financing default (and its
-  // remainder/cap math) tracks live as items change.
-  const orderTotal = useMemo(
-    () => lineTotals.reduce((sum, total) => sum + total, 0),
-    [lineTotals],
-  );
-
-  const handleFinancingChange = useCallback(
-    (next: FinancingCardValue) => {
-      form.setValue("paymentMethod", next.paymentMethod, {
-        shouldDirty: true,
-        shouldValidate: true,
-      });
-      form.setValue("financedAmount", next.financedAmount, {
-        shouldDirty: true,
-        shouldValidate: true,
-      });
-    },
-    [form],
-  );
-
-  const paymentMethod = form.watch("paymentMethod") ?? "DIRECT";
-  const financedAmount = form.watch("financedAmount");
-  const financingErrorMessage =
-    form.formState.errors.financedAmount?.message ??
-    form.formState.errors.paymentMethod?.message;
-
   const submitData = (values: FormValues) => {
     setResponse(undefined);
     startTransition(() => {
@@ -285,7 +249,6 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
                         placeholder="Select supplier"
                         value={field.value}
                         onChange={field.onChange}
-                        onSupplierSelected={setSelectedSupplier}
                         onBlur={field.onBlur}
                         isDisabled={isPending}
                       />
@@ -493,39 +456,6 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
                   );
                 })}
               </div>
-            </div>
-          </section>
-
-          <section className={styles.formCard}>
-            <header className={styles.formCardHead}>
-              <div className={styles.icoBox}>
-                <Wallet className="h-3.5 w-3.5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3>Payment</h3>
-                <p className={styles.formCardHeadDesc}>
-                  Settle this order directly with the supplier, or pay with
-                  Settlo financing if they&apos;re linked.
-                </p>
-              </div>
-              <div className={styles.formCardActions}>
-                <span className={styles.stepBadge}>STEP 03</span>
-              </div>
-            </header>
-
-            <div className={styles.formBody}>
-              <FinancingOptionCard
-                supplier={selectedSupplier}
-                orderTotal={orderTotal}
-                value={{ paymentMethod, financedAmount }}
-                onChange={handleFinancingChange}
-                disabled={isPending}
-              />
-              {financingErrorMessage && (
-                <p className="mt-2 text-xs font-medium text-destructive">
-                  {financingErrorMessage}
-                </p>
-              )}
             </div>
           </section>
         </div>

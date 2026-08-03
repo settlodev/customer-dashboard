@@ -75,30 +75,6 @@ export async function getOpenLposForReceiving(): Promise<Lpo[]> {
 // ── Financing (pay-via-Settlo) ───────────────────────────────────────
 
 /**
- * Merchant-facing soft signal for the pay-via-Settlo LPO form: is this
- * supplier currently financeable, and if not, why. Mirrors the Inventory
- * Service's `SupplierFinancingPreviewResponse` — a "not financeable" answer
- * is a normal 200 (`financeable: false` + a human `reason`), never an error.
- * Returns `null` on any failure (transport, 404 foreign/missing supplier,
- * etc.) so the create-LPO form can just fall back to DIRECT payment.
- */
-export async function getSupplierFinancingPreview(supplierId: string): Promise<{
-  financeable: boolean;
-  reason: string | null;
-  maxLoanPerOrder: number | null;
-} | null> {
-  try {
-    const apiClient = new ApiClient();
-    const data = await apiClient.get(
-      inventoryUrl(`/api/v1/suppliers/${supplierId}/financing-preview`),
-    );
-    return parseStringify(data);
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Merchant opt-in: flip an accepted LPO to Settlo financing — mirrors the
  * Inventory Service's `POST /api/v1/lpos/{id}/financing`. The backend
  * validates scope/status/acknowledgement, sets paymentMethod =
@@ -141,8 +117,7 @@ export async function startLpoFinancing(id: string): Promise<FormResponse<Lpo>> 
  * to link back to the purchase order a supplier-financed (order-first) stock
  * loan application financed. Soft-fails to `null` on any error (404,
  * transport, or a response that doesn't carry the field) so the caller can
- * just hide the "View purchase order" link — same contract as
- * `getSupplierFinancingPreview`.
+ * just hide the "View purchase order" link.
  */
 export async function getSupplierOrderLpoId(
   orderId: string,
@@ -173,9 +148,9 @@ export async function createLpo(
   }
 
   const payload: CreateLpoPayload = {
-    // paymentMethod / financedAmount pass through here when present — the
-    // schema only allows financedAmount alongside SETTLO_FINANCING, and the
-    // backend defaults a missing/undefined paymentMethod to DIRECT.
+    // Always DIRECT: create-time financing is retired (D1). The schema no
+    // longer carries paymentMethod/financedAmount, so the backend defaults
+    // the method; financing is opted into post-acceptance on the order page.
     ...validated.data,
     locationType: (await getCurrentDestination())?.type ?? "LOCATION",
     items: validated.data.items.map((item) => ({

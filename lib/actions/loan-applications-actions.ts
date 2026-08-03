@@ -81,14 +81,10 @@ export async function getMyApplication(
  * (soft signal — same contract as the rest of the loans reads).
  *
  * Deliberately does NOT use `rethrowIfBoundary` — unlike the rest of this
- * file, this action's callers span permission-diverse personas.
- * `financing-option-card.tsx` calls it for anyone opening the LPO form,
- * including purchasing-only staff with no `loans:apply`, so a FORBIDDEN here
- * is an expected outcome, not an exceptional one. That caller also awaits
- * this inside a bare `Promise.all` with no boundary around it, so rethrowing
- * would surface as an unhandled rejection that leaves its loading flags
- * spinning forever instead of resolving to the "couldn't check eligibility"
- * fallback. Catch everything and return `null`.
+ * file, this action's callers span permission-diverse personas (it has been
+ * called from permissionless surfaces such as the retired LPO create-form
+ * financing card), so a FORBIDDEN here is an expected outcome, not an
+ * exceptional one. Catch everything and return `null`.
  */
 export async function getPreQualification(): Promise<
   PreQualifiedProduct[] | null

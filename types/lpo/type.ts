@@ -160,10 +160,10 @@ export interface CreateLpoPayload {
   locationType: DestinationType;
   notes?: string;
   items: CreateLpoItemPayload[];
-  /** Null/omitted defaults to DIRECT server-side — only SETTLO_FINANCING triggers the financing-eligibility checks. */
-  paymentMethod?: LpoPaymentMethod;
-  /** Only meaningful with paymentMethod SETTLO_FINANCING. Omitted requests full financing of the order. */
-  financedAmount?: number;
+  // paymentMethod / financedAmount are deliberately absent: create-time
+  // financing is retired (D1) — omitting the method makes the backend
+  // default to DIRECT, and financing is opted into post-acceptance via
+  // POST /api/v1/lpos/{id}/financing.
 }
 
 export interface UpdateLpoStatusPayload {
