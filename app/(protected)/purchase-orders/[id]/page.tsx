@@ -291,7 +291,8 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
                     const pct =
                       ordered > 0 ? Math.round((received / ordered) * 100) : 0;
                     const offCurrency =
-                      Boolean(item.currency) && item.currency !== lpoCurrency;
+                      Boolean(item.currency) &&
+                      lineCurrency.toUpperCase() !== lpoCurrency.toUpperCase();
                     return (
                       <tr key={item.id}>
                         <DetailTd>
@@ -300,7 +301,7 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
                           </div>
                           {offCurrency && (
                             <div className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
-                              Billed in {lineCurrency}
+                              Billed in {lineCurrency.toUpperCase()}
                             </div>
                           )}
                         </DetailTd>
