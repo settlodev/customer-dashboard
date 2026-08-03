@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { inventoryUrl } from "./inventory-client";
 import { getCurrentDestination } from "./context";
+import { SettloApiError } from "@/lib/settlo-api-error-handler";
 import type {
   Lpo,
   LpoStatus,
@@ -94,6 +95,43 @@ export async function getSupplierFinancingPreview(supplierId: string): Promise<{
     return parseStringify(data);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Merchant opt-in: flip an accepted LPO to Settlo financing — mirrors the
+ * Inventory Service's `POST /api/v1/lpos/{id}/financing`. The backend
+ * validates scope/status/acknowledgement, sets paymentMethod =
+ * SETTLO_FINANCING with full-order financing (financedAmount null), mints
+ * the shadow supplier order and publishes SUPPLIER_ORDER_CREATED — the LMS
+ * consumer then creates + submits the loan application asynchronously.
+ *
+ * An already-financed LPO with a live shadow order returns 200 with the
+ * current state (modal resume), so callers can treat every success the same
+ * way. Requires purchasing:approve + an active location (X-Location-Id is
+ * attached by ApiClient).
+ */
+export async function startLpoFinancing(id: string): Promise<FormResponse<Lpo>> {
+  try {
+    const apiClient = new ApiClient();
+    const updated = (await apiClient.post(
+      inventoryUrl(`${BASE}/${id}/financing`),
+      {},
+    )) as Lpo;
+    revalidatePath("/purchase-orders");
+    revalidatePath(`/purchase-orders/${id}`);
+    return {
+      responseType: "success",
+      message: "Financing requested",
+      data: parseStringify(updated),
+    };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message ?? "Failed to start financing for this order",
+      errorCode: error instanceof SettloApiError ? error.code : undefined,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
   }
 }
 
