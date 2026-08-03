@@ -1,6 +1,6 @@
 import { AlertTriangle, Ban, Check, Wallet, XCircle } from "lucide-react";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHead } from "@/components/ui/card";
 import { Money } from "@/components/widgets/money";
 import { cn } from "@/lib/utils";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
@@ -95,19 +95,11 @@ export function FinancingCard({
   const showSplit = cancelledAfterPaid || (!cancelled && !declined);
 
   return (
-    <Card className="rounded-xl shadow-sm">
-      <CardContent className="pt-6 space-y-4">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h3 className="text-base font-semibold flex items-center gap-2">
-              <Wallet className="h-4 w-4 text-gray-500" />
-              Settlo financing
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              This order is settled through Settlo&apos;s pay-via-Settlo
-              financing.
-            </p>
-          </div>
+    <Card className="rounded-xl shadow-sm overflow-hidden">
+      <CardHead
+        icon={<Wallet className="h-3.5 w-3.5" />}
+        title="Settlo financing"
+        trailing={
           <div className="flex items-center gap-1.5">
             {cancelledAfterPaid ? (
               <>
@@ -126,10 +118,16 @@ export function FinancingCard({
               </Badge>
             )}
           </div>
-        </div>
+        }
+      />
+      <CardContent pad0 className="px-5 pb-5 space-y-4">
+        <p className="text-xs text-muted-foreground">
+          This order is settled through Settlo&apos;s pay-via-Settlo
+          financing.
+        </p>
 
         {showSplit && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3">
             <SplitRow
               label="Settlo finances"
               amount={financedAmount}
@@ -190,10 +188,10 @@ function SplitRow({
 }) {
   return (
     <div className="rounded-lg border border-line bg-canvas/60 px-3.5 py-3">
-      <p className="text-[11px] uppercase tracking-wide text-gray-400">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1 text-sm font-semibold text-gray-900">
+      <p className="mt-1 text-sm font-semibold text-ink">
         <Money amount={amount} currency={currency} />
       </p>
     </div>
