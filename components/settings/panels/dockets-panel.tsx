@@ -132,7 +132,14 @@ export function DocketsPanel({
         isDirty={p.isDirty}
       >
         <SettingsRadioRows
-          value={v.printDensity ?? "STANDARD"}
+          // Whitelist rather than `?? "STANDARD"`: a value this build doesn't
+          // know (an older/newer Accounts, a hand-edited row) is non-null, so
+          // the nullish default would miss it and render no selected radio.
+          value={
+            v.printDensity === "COMPACT" || v.printDensity === "ULTRA"
+              ? v.printDensity
+              : "STANDARD"
+          }
           onChange={(next) => p.setField("printDensity", next)}
           options={DENSITY_OPTIONS}
           disabled={p.isPending}
