@@ -16,6 +16,11 @@ import { LpoStatusActions } from "@/components/widgets/lpo/status-actions";
 import { LpoShareButton } from "@/components/widgets/lpo/share-dialog";
 import { LpoShareAcknowledgement } from "@/components/widgets/lpo/share-acknowledgement";
 import { FinancingCard } from "@/components/widgets/lpo/financing-card";
+import { FinancingBanner } from "@/components/widgets/lpo/financing-banner";
+import { LOANS_ENABLED } from "@/lib/loans/config";
+import { getLoanAccess } from "@/lib/loans/access";
+import { getMyApplication } from "@/lib/actions/loan-applications-actions";
+import type { LoanApplication } from "@/types/loans/applications";
 import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
 import { FileText, Layers, Boxes, PackageCheck, AlertCircle } from "lucide-react";
 
@@ -42,6 +47,19 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
   if (!lpo) notFound();
 
   const supplier = suppliers.find((s) => s.id === lpo.supplierId) ?? null;
+
+  // ── Financing gating + context (spec §7) ─────────────────────────
+  // Banner + modal render only for viewers with the loans module enabled
+  // AND loans:read. The application (when one exists) is read here so the
+  // banner renders in-progress / offer-ready / declined states without a
+  // client round-trip; a transient LMS failure degrades to null (the banner
+  // then shows honest in-progress off financingStatus alone).
+  const loanAccess = LOANS_ENABLED ? await getLoanAccess() : null;
+  const showFinancing = Boolean(LOANS_ENABLED && loanAccess?.canRead);
+  const application: LoanApplication | null =
+    showFinancing && lpo.loanApplicationId
+      ? await getMyApplication(lpo.loanApplicationId).catch(() => null)
+      : null;
 
   const lpoCurrency = lpo.currency || lpo.items[0]?.currency || DEFAULT_CURRENCY;
   const totalOrdered = lpo.items.reduce(
@@ -228,6 +246,14 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
         </Card>
 
         <LpoShareAcknowledgement lpo={lpo} supplier={supplier} />
+
+        {showFinancing && (
+          <FinancingBanner
+            lpo={lpo}
+            application={application}
+            canApply={loanAccess?.canApply ?? false}
+          />
+        )}
 
         <FinancingCard lpo={lpo} />
 
