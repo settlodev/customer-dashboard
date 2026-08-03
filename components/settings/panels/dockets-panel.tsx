@@ -33,7 +33,7 @@ const DENSITY_OPTIONS = [
     value: "ULTRA" as const,
     label: "Ultra compact",
     description:
-      "Smallest legible type, and drops the header logo, the receipt QR caption and the order duration. About 50% shorter.",
+      "Smallest legible type. Drops the header logo, the receipt QR caption and the order duration on receipts, and the SETTLO wordmark on dockets. Receipts run about 50% shorter; dockets save less — roughly 30–38%, since kitchen type has less room to shrink.",
   },
 ];
 
