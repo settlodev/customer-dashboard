@@ -144,7 +144,9 @@ export default async function AdminLoanApplicationsPage({
                   </thead>
                   <tbody className="divide-y divide-line">
                     {applications.map((a) => {
-                      const product = products.get(a.loanProductId);
+                      const product = a.loanProductId
+                        ? products.get(a.loanProductId)
+                        : undefined;
                       return (
                         <tr key={a.id} className="hover:bg-canvas/60">
                           <td className="px-4 py-3">
@@ -160,11 +162,14 @@ export default async function AdminLoanApplicationsPage({
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            {product?.name ?? (
-                              <span className="font-mono text-[11px] text-muted-foreground">
-                                {a.loanProductId.slice(0, 8)}…
-                              </span>
-                            )}
+                            {product?.name ??
+                              (a.loanProductId ? (
+                                <span className="font-mono text-[11px] text-muted-foreground">
+                                  {a.loanProductId.slice(0, 8)}…
+                                </span>
+                              ) : (
+                                "—"
+                              ))}
                           </td>
                           <td className="px-4 py-3 text-right font-mono tabular-nums">
                             {fmtAmount(a.requestedAmount)}
@@ -173,7 +178,9 @@ export default async function AdminLoanApplicationsPage({
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right font-mono tabular-nums">
-                            {a.requestedTermDays}d
+                            {a.requestedTermDays != null
+                              ? `${a.requestedTermDays}d`
+                              : "—"}
                           </td>
                           <td className="px-4 py-3">
                             <span

@@ -14,6 +14,7 @@ import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { cn } from "@/lib/utils";
 import {
+  getApplicationSupplierOrder,
   getLoan,
   getLoanProduct,
   listFundingSources,
@@ -110,18 +111,26 @@ export default async function AdminLoanDetailPage({ params }: PageProps) {
 
   // Disbursement inputs are only needed (and permitted) for a disbursing officer.
   const pending = loan.status === "PENDING_DISBURSEMENT";
+  // SUPPLIER-payee loans disburse to the supplier's payment account, never a
+  // borrower payout account — the panel drops the payout-account requirement.
+  const supplierPayee = product?.payeeType === "SUPPLIER";
   let fundingSources: FundingSourceResponse[] = [];
   let payoutAccounts: PayoutAccountResponse[] = [];
   let disbursements: DisbursementResponse[] = [];
+  let supplierName: string | null = null;
   if (canDisburse) {
-    const [fs, pa, ds] = await Promise.allSettled([
+    const [fs, pa, ds, so] = await Promise.allSettled([
       listFundingSources({ size: 100 }),
       listPayoutAccounts(loan.businessId),
       listLoanDisbursements(loan.id),
+      supplierPayee
+        ? getApplicationSupplierOrder(loan.applicationId)
+        : Promise.resolve(null),
     ]);
     if (fs.status === "fulfilled") fundingSources = fs.value.content ?? [];
     if (pa.status === "fulfilled") payoutAccounts = pa.value.content ?? [];
     if (ds.status === "fulfilled") disbursements = ds.value ?? [];
+    if (so.status === "fulfilled") supplierName = so.value?.supplierName ?? null;
   }
 
   return (
@@ -241,6 +250,8 @@ export default async function AdminLoanDetailPage({ params }: PageProps) {
                     fundingSources={fundingSources}
                     payoutAccounts={payoutAccounts}
                     disbursements={disbursements}
+                    supplierPayee={supplierPayee}
+                    supplierName={supplierName}
                   />
                 ) : (
                   <div className="rounded-xl border border-dashed border-line-2 bg-card p-5 text-sm text-muted-foreground">

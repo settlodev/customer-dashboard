@@ -23,7 +23,6 @@ import {
   Landmark,
   Loader2,
   Percent,
-  Power,
   Wand2,
 } from "lucide-react";
 
@@ -52,7 +51,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import {
   Alert,
   AlertBody,
@@ -406,7 +404,8 @@ function toFormValues(item: LoanProductResponse | null): LoanProductFormValues {
     lateFeeFlat: num(item?.lateFeeFlat),
     defaultThresholdDays: num(item?.defaultThresholdDays),
     termsTemplate: item?.termsTemplate ?? "",
-    active: item?.active ?? true,
+    defaultTermDays: item?.defaultTermDays ?? "",
+    selectionPriority: item?.selectionPriority ?? "",
   };
 }
 
@@ -972,6 +971,27 @@ export default function LoanProductForm({
                 disabled={disabled}
               />
             </FieldRow>
+            <FieldRow cols={2}>
+              <NumberField
+                form={form}
+                name="defaultTermDays"
+                label="Default term (days)"
+                required
+                decimalScale={0}
+                placeholder="30"
+                hint="Term used when the system auto-selects this product (supplier-order financing). Must be within the min–max range — required before the product can go live."
+                disabled={disabled}
+              />
+              <NumberField
+                form={form}
+                name="selectionPriority"
+                label="Selection priority"
+                decimalScale={0}
+                placeholder="0"
+                hint="When several supplier products qualify for an order, the lowest number wins (ties go to the cheapest quote). Leave blank to rank last."
+                disabled={disabled}
+              />
+            </FieldRow>
           </Section>
 
           {/* 04 — Repayment */}
@@ -1139,37 +1159,6 @@ export default function LoanProductForm({
               </span>
             </div>
           </Section>
-
-          {/* Availability (edit only) */}
-          {isEditing ? (
-            <Section
-              icon={<Power className="h-3.5 w-3.5" />}
-              title="Availability"
-              desc="Inactive products are hidden from borrowers and cannot receive new applications. Existing active loans are not affected."
-            >
-              <FormField
-                control={form.control}
-                name="active"
-                render={({ field }) => (
-                  <div className={styles.toggleRow}>
-                    <div>
-                      <div className="text-[13px] font-medium text-ink">
-                        Active
-                      </div>
-                      <div className="mt-0.5 text-xs text-muted-foreground">
-                        Product is available for new applications.
-                      </div>
-                    </div>
-                    <Switch
-                      checked={!!field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={disabled}
-                    />
-                  </div>
-                )}
-              />
-            </Section>
-          ) : null}
 
           </div>
 

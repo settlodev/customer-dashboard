@@ -35,6 +35,11 @@ interface DisbursementPanelProps {
   fundingSources: FundingSourceResponse[];
   payoutAccounts: PayoutAccountResponse[];
   disbursements: DisbursementResponse[];
+  /** SUPPLIER-payee loan: funds go to the supplier's payment account, never a borrower
+   *  payout account (the LMS rejects payoutAccountId for these). */
+  supplierPayee?: boolean;
+  /** Supplier display name (best-effort, from the linked LPO). */
+  supplierName?: string | null;
 }
 
 export function LoanDisbursementPanel({
@@ -42,6 +47,8 @@ export function LoanDisbursementPanel({
   fundingSources,
   payoutAccounts,
   disbursements,
+  supplierPayee = false,
+  supplierName,
 }: DisbursementPanelProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -77,10 +84,14 @@ export function LoanDisbursementPanel({
   const initiate = () => {
     setError("");
     startTransition(async () => {
-      const res = await initiateDisbursement(loan.id, {
-        fundingSourceId,
-        payoutAccountId,
-      });
+      // Supplier-payee: no payoutAccountId — the LMS resolves the supplier's
+      // default payment account itself (and rejects a payoutAccountId if sent).
+      const res = await initiateDisbursement(
+        loan.id,
+        supplierPayee
+          ? { fundingSourceId }
+          : { fundingSourceId, payoutAccountId },
+      );
       if (res.responseType === "error") {
         setError(res.message);
         return;
@@ -189,19 +200,34 @@ export function LoanDisbursementPanel({
 
   // ── Initiate step ─────────────────────────────────────────────────
   const priorFailure = disbursements.find((d) => d.status === "FAILED");
-  const canInitiate =
-    activeSources.length > 0 &&
-    payoutAccounts.length > 0 &&
-    Boolean(fundingSourceId) &&
-    Boolean(payoutAccountId);
+  const canInitiate = supplierPayee
+    ? activeSources.length > 0 && Boolean(fundingSourceId)
+    : activeSources.length > 0 &&
+      payoutAccounts.length > 0 &&
+      Boolean(fundingSourceId) &&
+      Boolean(payoutAccountId);
 
   return (
     <section className="rounded-xl border border-line bg-card">
       <header className="border-b border-line px-5 py-3.5">
         <h3 className="text-sm font-semibold text-ink">Disburse loan</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Release {fmtAmount(loan.principal)} {loan.currency} to the borrower&apos;s
-          payout account.
+          {supplierPayee ? (
+            <>
+              Release {fmtAmount(loan.principal)} {loan.currency} to{" "}
+              {supplierName ? (
+                <span className="font-medium text-ink">{supplierName}</span>
+              ) : (
+                "the supplier"
+              )}
+              &apos;s payment account (supplier-financed order).
+            </>
+          ) : (
+            <>
+              Release {fmtAmount(loan.principal)} {loan.currency} to the
+              borrower&apos;s payout account.
+            </>
+          )}
         </p>
       </header>
       <div className="space-y-4 p-5">
@@ -221,14 +247,23 @@ export function LoanDisbursementPanel({
             No active funding source — add one under Funding sources first.
           </div>
         ) : null}
-        {payoutAccounts.length === 0 ? (
+        {!supplierPayee && payoutAccounts.length === 0 ? (
           <div className="flex items-start gap-2 rounded-lg border border-warn/30 bg-warn/5 px-3 py-2 text-xs text-warn">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
             This business hasn&apos;t set up a payout account yet.
           </div>
         ) : null}
 
-        {activeSources.length > 0 && payoutAccounts.length > 0 ? (
+        {supplierPayee ? (
+          <div className="rounded-lg border border-line bg-surface/50 px-3 py-2 text-xs text-muted-foreground">
+            Supplier-financed order — funds go directly to{" "}
+            {supplierName ?? "the supplier"}&apos;s default verified payment
+            account, not the borrower.
+          </div>
+        ) : null}
+
+        {activeSources.length > 0 &&
+        (supplierPayee || payoutAccounts.length > 0) ? (
           <>
             <div className="space-y-1.5">
               <Label className="text-xs">Funding source</Label>
@@ -250,26 +285,28 @@ export function LoanDisbursementPanel({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Payout account</Label>
-              <Select
-                value={payoutAccountId}
-                onValueChange={setPayoutAccountId}
-                disabled={isPending}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a payout account" />
-                </SelectTrigger>
-                <SelectContent>
-                  {payoutAccounts.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {payoutAccountLabel(a)}
-                      {a.defaultAccount ? " · default" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!supplierPayee ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Payout account</Label>
+                <Select
+                  value={payoutAccountId}
+                  onValueChange={setPayoutAccountId}
+                  disabled={isPending}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a payout account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {payoutAccounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {payoutAccountLabel(a)}
+                        {a.defaultAccount ? " · default" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
           </>
         ) : null}
 

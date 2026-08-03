@@ -12,6 +12,8 @@ import {
   LoanProductFormSchema,
   type AllocationPriority,
   type ApplicationStatus,
+  type ApplicationSupplierOrderResponse,
+  type ComplianceResolveRequest,
   type ConfirmDisbursementRequest,
   type CreateFundingSourceRequest,
   type CreateLoanProductRequest,
@@ -153,6 +155,8 @@ function sharedProductFields(v: LoanProductFormOutput) {
     lateFeeFlat: v.lateFeeFlat,
     defaultThresholdDays: v.defaultThresholdDays,
     termsTemplate: strOrUndefined(v.termsTemplate),
+    defaultTermDays: v.defaultTermDays,
+    selectionPriority: v.selectionPriority,
   };
 }
 
@@ -213,10 +217,7 @@ export async function updateLoanProduct(
     );
   }
   const v = parsed.data;
-  const body: UpdateLoanProductRequest = {
-    ...sharedProductFields(v),
-    active: v.active,
-  };
+  const body: UpdateLoanProductRequest = sharedProductFields(v);
   try {
     const result = await loansClient().put<
       LoanProductResponse,
@@ -292,6 +293,24 @@ export async function getLoanApplication(
   return parseStringify(data);
 }
 
+/**
+ * The supplier order (LPO) a supplier-financed application pays for — best-effort:
+ * returns null when the application isn't order-linked or Inventory is unreachable,
+ * so the detail page can render without it.
+ */
+export async function getApplicationSupplierOrder(
+  id: string,
+): Promise<ApplicationSupplierOrderResponse | null> {
+  try {
+    const data = await loansClient().get<ApplicationSupplierOrderResponse>(
+      `${APPLICATIONS_PATH}/${id}/supplier-order`,
+    );
+    return parseStringify(data);
+  } catch {
+    return null;
+  }
+}
+
 export interface DecideApplicationInput {
   approve: boolean;
   approvedAmount?: number;
@@ -351,6 +370,43 @@ export async function decideLoanApplication(
     return parseStringify({
       responseType: "error",
       message: error?.message || "Failed to record decision",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+/**
+ * Resolve a COMPLIANCE_HOLD — CLEAR resumes the application into credit
+ * assessment; REJECT terminally rejects it (notes become the rejection
+ * reason). Requires `loans:approve`.
+ */
+export async function resolveApplicationCompliance(
+  id: string,
+  input: ComplianceResolveRequest,
+): Promise<FormResponse<LoanApplicationResponse>> {
+  const body: ComplianceResolveRequest = {
+    decision: input.decision,
+    notes: input.notes?.trim() || undefined,
+  };
+  try {
+    const result = await loansClient().post<
+      LoanApplicationResponse,
+      ComplianceResolveRequest
+    >(`${APPLICATIONS_PATH}/${id}/compliance/resolve`, body);
+    revalidatePath("/admin/loans/applications");
+    revalidatePath(`/admin/loans/applications/${id}`);
+    return parseStringify({
+      responseType: "success",
+      message:
+        input.decision === "CLEAR"
+          ? "Hold cleared — assessment resumed"
+          : "Application rejected on compliance grounds",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to resolve compliance hold",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
@@ -428,10 +484,12 @@ export async function initiateDisbursement(
   loanId: string,
   input: InitiateDisbursementRequest,
 ): Promise<FormResponse<DisbursementResponse>> {
-  if (!input.fundingSourceId || !input.payoutAccountId) {
+  // payoutAccountId is conditionally required (borrower-payee only) and FORBIDDEN for
+  // SUPPLIER-payee loans — the LMS enforces both; here we only require the funding source.
+  if (!input.fundingSourceId) {
     return {
       responseType: "error",
-      message: "Select a funding source and a payout account.",
+      message: "Select a funding source.",
     };
   }
   try {
@@ -763,62 +821,58 @@ export async function restructureLoan(
 // values through the update DTO with the new `active` flag. The stored
 // values were valid at create/update time, so the PUT re-validates cleanly.
 
-function productToUpdateBody(
-  p: LoanProductResponse,
-): Omit<UpdateLoanProductRequest, "active"> {
-  return {
-    name: p.name,
-    description: p.description ?? undefined,
-    pricingType: p.pricingType,
-    interestMethod: p.interestMethod,
-    repaymentFrequency: p.repaymentFrequency,
-    flatFeeRate: p.flatFeeRate ?? undefined,
-    factorRate: p.factorRate ?? undefined,
-    annualInterestRate: p.annualInterestRate ?? undefined,
-    originationFeeRate: p.originationFeeRate ?? undefined,
-    minPrincipal: p.minPrincipal,
-    maxPrincipal: p.maxPrincipal,
-    minTermDays: p.minTermDays,
-    maxTermDays: p.maxTermDays,
-    maxConcurrentLoansPerBorrower: p.maxConcurrentLoansPerBorrower,
-    holdbackPercent: p.holdbackPercent ?? undefined,
-    processingFee: p.processingFee ?? undefined,
-    minInterestRate: p.minInterestRate ?? undefined,
-    allocationOrder: p.allocationOrder ?? undefined,
-    gracePeriodDays: p.gracePeriodDays ?? undefined,
-    penaltyRatePerDay: p.penaltyRatePerDay ?? undefined,
-    lateFeeFlat: p.lateFeeFlat ?? undefined,
-    defaultThresholdDays: p.defaultThresholdDays ?? undefined,
-    termsTemplate: p.termsTemplate ?? undefined,
-  };
-}
-
-/** Toggle a loan product's availability. Requires `loans:product_manage`. */
-export async function setLoanProductActive(
+/**
+ * Publish a product — DRAFT (or already-PUBLISHED) → PUBLISHED + active, live for
+ * borrowers. The LMS gate rejects a SUPPLIER-payee product without `defaultTermDays`.
+ * Requires `loans:product_manage`.
+ */
+export async function publishLoanProduct(
   id: string,
-  active: boolean,
 ): Promise<FormResponse<LoanProductResponse>> {
   try {
-    const current = await getLoanProduct(id);
-    const body: UpdateLoanProductRequest = {
-      ...productToUpdateBody(current),
-      active,
-    };
-    const result = await loansClient().put<
+    const result = await loansClient().post<
       LoanProductResponse,
-      UpdateLoanProductRequest
-    >(`${PRODUCTS_PATH}/${id}`, body);
+      Record<string, never>
+    >(`${PRODUCTS_PATH}/${id}/publish`, {});
     revalidatePath("/admin/loans/products");
     revalidatePath(`/admin/loans/products/${id}`);
     return parseStringify({
       responseType: "success",
-      message: active ? "Product reactivated" : "Product deactivated",
+      message: "Product published — now live for borrowers",
       data: result,
     });
   } catch (error: any) {
     return parseStringify({
       responseType: "error",
-      message: error?.message || "Failed to update product",
+      message: error?.message || "Failed to publish product",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+/**
+ * Retire a product — permanently removes it from lending; a retired product can
+ * never be re-published. Requires `loans:product_manage`.
+ */
+export async function retireLoanProduct(
+  id: string,
+): Promise<FormResponse<LoanProductResponse>> {
+  try {
+    const result = await loansClient().post<
+      LoanProductResponse,
+      Record<string, never>
+    >(`${PRODUCTS_PATH}/${id}/retire`, {});
+    revalidatePath("/admin/loans/products");
+    revalidatePath(`/admin/loans/products/${id}`);
+    return parseStringify({
+      responseType: "success",
+      message: "Product retired",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to retire product",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }

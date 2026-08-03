@@ -49,7 +49,14 @@ export function ApplicationDetailClient({
       <div className="rounded-xl border border-line bg-card p-5 sm:p-6">
         <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
           <Fact label="Requested" value={formatTzs(application.requestedAmount)} />
-          <Fact label="Requested term" value={`${application.requestedTermDays} days`} />
+          <Fact
+            label="Requested term"
+            value={
+              application.requestedTermDays != null
+                ? `${application.requestedTermDays} days`
+                : "—"
+            }
+          />
           {application.approvedAmount != null && (
             <Fact
               label="Approved"

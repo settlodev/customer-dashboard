@@ -74,9 +74,11 @@ export interface LoanApplication {
   id: string;
   applicationNumber: string;
   businessId: string;
-  loanProductId: string;
+  /** Null only on system-rejected supplier-financing declines (no product qualified). */
+  loanProductId: string | null;
   requestedAmount: number;
-  requestedTermDays: number;
+  /** Null only on system-rejected supplier-financing declines (no term was selected). */
+  requestedTermDays: number | null;
   purpose: string | null;
   status: ApplicationStatus;
   approvedAmount: number | null;
