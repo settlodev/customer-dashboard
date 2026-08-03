@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { AlertTriangle, Ban, Check, Wallet, XCircle } from "lucide-react";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Money } from "@/components/widgets/money";
 import { cn } from "@/lib/utils";
@@ -77,7 +75,6 @@ export function FinancingCard({
   const financedAmount = lpo.financedAmount ?? total;
   const merchantPayable = lpo.merchantPayableAmount ?? 0;
   const financingStatus: OrderFinancingStatus = lpo.financingStatus ?? "NONE";
-  const loanApplicationId = lpo.loanApplicationId;
 
   const cancelled = lpo.status === "CANCELLED";
   // Cancellation never resets financingStatus (verified against the
@@ -165,21 +162,18 @@ export function FinancingCard({
             applicationStatus={applicationStatus}
           />
         )}
-
-        {!cancelled &&
-          loanApplicationId &&
-          (financingStatus === "REQUESTED" ||
-            financingStatus === "OFFER_MADE") && (
-            <Button
-              asChild
-              size="sm"
-              variant={financingStatus === "OFFER_MADE" ? "default" : "outline"}
-            >
-              <Link href={`/loans/applications/${loanApplicationId}`}>
-                Review offer in Loans
-              </Link>
-            </Button>
-          )}
+        {/*
+         * No "Review offer in Loans" link here anymore (previously shown for
+         * REQUESTED/OFFER_MADE). This card only ever renders for
+         * paymentMethod === SETTLO_FINANCING — exactly the post-acceptance
+         * journey the FinancingBanner above now owns end-to-end (terms →
+         * phone → offer, with the accept-gate handling this component's
+         * `offer-panel.tsx` never had). Linking out to
+         * /loans/applications/{id} routed a supplier-payee merchant to a
+         * surface that raw-409'd on the gate codes with no way to finish —
+         * a second, ungated, un-completable accept surface duplicating the
+         * banner's own CTA.
+         */}
       </CardContent>
     </Card>
   );
