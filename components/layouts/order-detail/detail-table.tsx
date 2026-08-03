@@ -42,6 +42,7 @@ export function DetailTh({
 }) {
   return (
     <th
+      scope="col"
       className={cn(
         "whitespace-nowrap border-b border-line bg-canvas px-3.5 py-2.5 font-mono text-[10px] font-semibold uppercase tracking-[0.07em] text-muted-foreground",
         align === "right" ? "text-right" : "text-left",

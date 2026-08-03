@@ -147,7 +147,7 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
   // every currency's subtotal stacked when the LPO's lines are mixed (same
   // per-currency data the items table's totals row uses).
   const orderValueNode = hasMixedCurrency ? (
-    <div className="flex flex-col items-end gap-0.5 text-[15px] leading-tight">
+    <span className="inline-flex flex-col items-end gap-0.5 text-[15px] leading-tight">
       {Array.from(totalsByCurrency.entries()).map(([cur, amt]) => (
         <span key={cur}>
           {amt.toLocaleString()}{" "}
@@ -156,7 +156,7 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
           </span>
         </span>
       ))}
-    </div>
+    </span>
   ) : (
     (Array.from(totalsByCurrency.values())[0] ?? 0).toLocaleString()
   );
