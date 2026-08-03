@@ -12,7 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHead } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -53,19 +53,11 @@ export function LpoShareAcknowledgement({ lpo, supplier }: Props) {
   const ack = lpo.supplierAcknowledgement;
 
   return (
-    <Card className="rounded-xl shadow-sm">
-      <CardContent className="pt-6 space-y-4">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h3 className="text-base font-semibold flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-gray-500" />
-              Supplier acceptance
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              GRNs cannot be received against this LPO until the supplier
-              accepts the order.
-            </p>
-          </div>
+    <Card className="rounded-xl shadow-sm overflow-hidden">
+      <CardHead
+        icon={<ShieldCheck className="h-3.5 w-3.5" />}
+        title="Supplier acceptance"
+        trailing={
           <span
             className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${SUPPLIER_ACK_TONES[ack]}`}
           >
@@ -78,17 +70,27 @@ export function LpoShareAcknowledgement({ lpo, supplier }: Props) {
             )}
             {SUPPLIER_ACK_LABELS[ack]}
           </span>
-        </div>
+        }
+      />
+      <CardContent pad0 className="px-5 pb-5 space-y-4">
+        <p className="text-xs text-muted-foreground">
+          GRNs cannot be received against this LPO until the supplier
+          accepts the order.
+        </p>
 
         {/* Share link block — only available once approved */}
         {shareUrl ? (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-gray-600 flex items-center gap-1.5">
+            <p className="text-xs font-medium text-ink-3 flex items-center gap-1.5">
               <LinkIcon className="h-3.5 w-3.5" />
               Share with supplier
             </p>
             <div className="flex items-center gap-2">
-              <Input value={shareUrl} readOnly className="font-mono text-xs" />
+              <Input
+                value={shareUrl}
+                readOnly
+                className="min-w-0 font-mono text-xs"
+              />
               <CopyButton text={shareUrl} />
               {supplierEmail && (
                 <Button
