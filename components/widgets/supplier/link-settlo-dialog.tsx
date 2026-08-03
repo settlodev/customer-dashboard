@@ -35,6 +35,12 @@ export function LinkSettloSupplierDialog({ supplier }: { supplier: Supplier }) {
   const [catalog, setCatalog] = useState<SettloSupplierCatalogEntry[] | null>(
     null,
   );
+  // Set when the catalog fetch itself rejects (e.g. the server action's RPC
+  // fails outright) — distinct from `catalog === []`, which is a successful
+  // fetch that just found nothing. Without this, a rejected fetch never
+  // resolves `catalog` and the select is stuck on "Loading marketplace…"
+  // forever.
+  const [catalogError, setCatalogError] = useState(false);
   const [picked, setPicked] = useState<string>(supplier.settloSupplierId ?? "");
   const [submitOpen, setSubmitOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -42,13 +48,20 @@ export function LinkSettloSupplierDialog({ supplier }: { supplier: Supplier }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (open && catalog === null) {
-      fetchSettloSupplierCatalog().then(setCatalog);
+    if (open && catalog === null && !catalogError) {
+      fetchSettloSupplierCatalog()
+        .then(setCatalog)
+        .catch(() => setCatalogError(true));
     }
-  }, [open, catalog]);
+  }, [open, catalog, catalogError]);
 
-  const loading = catalog === null;
+  const loading = catalog === null && !catalogError;
   const noMatches = catalog !== null && catalog.length === 0;
+  // Once the fetch has settled (success or failure), the merchant has seen
+  // whatever the directory has to offer (or the fact that it failed to
+  // load) — either way, the "submit for review" discovery path should be
+  // reachable, not just when the catalog happens to be empty.
+  const catalogSettled = !loading;
 
   const onLink = () => {
     if (!picked) return;
@@ -113,16 +126,18 @@ export function LinkSettloSupplierDialog({ supplier }: { supplier: Supplier }) {
             <Select
               value={picked}
               onValueChange={setPicked}
-              disabled={isPending || loading || noMatches}
+              disabled={isPending || loading || catalogError || noMatches}
             >
               <SelectTrigger>
                 <SelectValue
                   placeholder={
                     loading
                       ? "Loading marketplace…"
-                      : noMatches
-                        ? "No matches in the directory"
-                        : "Pick a supplier"
+                      : catalogError
+                        ? "Couldn't load the marketplace directory"
+                        : noMatches
+                          ? "No matches in the directory"
+                          : "Pick a supplier"
                   }
                 />
               </SelectTrigger>
@@ -134,7 +149,10 @@ export function LinkSettloSupplierDialog({ supplier }: { supplier: Supplier }) {
                 ))}
               </SelectContent>
             </Select>
-            {noMatches && (
+            {/* Persistent discovery path, not gated on `noMatches` — a
+                merchant scanning a long catalog for a supplier that isn't
+                in it (or one that failed to load) needs this route too. */}
+            {catalogSettled && (
               <p className="text-xs text-muted-foreground">
                 Not in the directory?{" "}
                 <button

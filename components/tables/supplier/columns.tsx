@@ -1,47 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, ShieldCheck } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TableAvatar } from "@/components/tables/shared/table-avatar";
-import { getNominationsForSupplier } from "@/lib/actions/supplier-nomination-actions";
 import type { Supplier } from "@/types/supplier/type";
 
 /**
  * Compact marketplace-status chip for the name cell: linked suppliers show
- * "Settlo" immediately (already on the row); everyone else lazily checks
- * whether their newest nomination is under review, since that status isn't
- * denormalised onto `Supplier` itself. Best-effort — a failed check just
- * renders nothing, same as "no nomination yet".
+ * "Settlo" immediately (already on the row); everyone else shows "Under
+ * review" when the row's id is in `underReviewSupplierIds` — the business's
+ * suppliers whose latest nomination is `SUBMITTED`, resolved once
+ * server-side by the page from a single bulk fetch (see `getColumns`
+ * below) instead of a per-row check. Purely presentational — no fetching.
  */
 function SupplierMarketplaceChip({
-  supplierId,
   linked,
+  underReview,
 }: {
-  supplierId: string;
   linked: boolean;
+  underReview: boolean;
 }) {
-  const [underReview, setUnderReview] = useState(false);
-
-  useEffect(() => {
-    if (linked) return;
-    let cancelled = false;
-    getNominationsForSupplier(supplierId)
-      .then((nominations) => {
-        if (cancelled) return;
-        setUnderReview(nominations[0]?.status === "SUBMITTED");
-      })
-      .catch(() => {
-        // Best-effort chip — leave it blank on failure.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [supplierId, linked]);
-
   if (linked) {
     return (
       <Badge variant="pos" className="shrink-0">
@@ -60,7 +41,21 @@ function SupplierMarketplaceChip({
   return null;
 }
 
-export const columns: ColumnDef<Supplier>[] = [
+interface ColumnOptions {
+  /**
+   * The business's suppliers whose latest marketplace nomination is
+   * `SUBMITTED` — fetched once, server-side, by the suppliers list page
+   * (app/(protected)/suppliers/page.tsx) via a single bulk
+   * `listNominations()` call, instead of one `getNominationsForSupplier`
+   * request per row (that was a client-side N+1: up to a page-size worth of
+   * server actions firing from `useEffect` on every sort/paginate remount).
+   */
+  underReviewSupplierIds: Set<string>;
+}
+
+export const getColumns = ({
+  underReviewSupplierIds,
+}: ColumnOptions): ColumnDef<Supplier>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -112,8 +107,8 @@ export const columns: ColumnDef<Supplier>[] = [
                 {name}
               </span>
               <SupplierMarketplaceChip
-                supplierId={id}
                 linked={linkedToSettloSupplier}
+                underReview={underReviewSupplierIds.has(id)}
               />
             </div>
             {contactPersonName && (

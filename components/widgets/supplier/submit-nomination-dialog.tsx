@@ -31,13 +31,18 @@ interface Props {
 
 /**
  * Preview-then-submit dialog for nominating one of the merchant's own
- * suppliers for Settlo review. The fields below are exactly what the
- * backend snapshots onto the nomination at submit time — see
- * `SupplierNominationService.submit` (Inventory Service) — including the
- * phone fallback (company `phone` wins; `contactPersonPhone` only when the
- * company phone is blank). Nothing here is editable: a blank field renders
- * as a muted "Not set" so the merchant can close, fix it on the supplier's
- * edit page, and reopen to resubmit.
+ * suppliers for Settlo review. Previews the fields the backend snapshots
+ * onto the nomination at submit time — see `SupplierNominationService.submit`
+ * (Inventory Service) — including the phone fallback (company `phone` wins;
+ * `contactPersonPhone` only when the company phone is blank). This is a
+ * subset, not the full snapshot: the backend also captures `address` and
+ * `contactPersonEmail` (visible to staff on the nomination, just not
+ * previewed here) plus `city`/`country`, which aren't part of the
+ * dashboard's `Supplier` shape at all. Hence the dialog copy says the
+ * details "will be sent" rather than claiming this is everything Settlo
+ * receives. Nothing here is editable: a blank field renders as a muted
+ * "Not set" so the merchant can close, fix it on the supplier's edit page,
+ * and reopen to resubmit.
  */
 export function SubmitNominationDialog({
   supplier,
@@ -89,7 +94,7 @@ export function SubmitNominationDialog({
         <DialogHeader>
           <DialogTitle>Submit {supplier.name} for Settlo review</DialogTitle>
           <DialogDescription>
-            This is exactly what Settlo will receive. Close this dialog to
+            The details below will be sent to Settlo. Close this dialog to
             fix anything below on the supplier&apos;s details, then reopen to
             resubmit.
           </DialogDescription>

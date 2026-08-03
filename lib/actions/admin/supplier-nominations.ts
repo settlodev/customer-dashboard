@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import { rethrowIfBoundary } from "@/lib/list-fallback";
 import type { FormResponse } from "@/types/types";
 import type {
   NominationReview,
@@ -34,25 +33,22 @@ function revalidateNominationSurfaces(id?: string): void {
 /**
  * The review queue, optionally filtered by status. Note: the backend
  * defaults to `SUBMITTED` when `status` is omitted — it does not mean "all
- * statuses". Soft-fails to `[]` on any non-boundary error so the list page
- * can degrade; auth/permission errors still propagate. Requires
- * `internal:accounts:read`.
+ * statuses". Throws on any error, including transient backend failures —
+ * the caller (the admin nominations page) must catch and render a distinct
+ * failure state, since a swallowed error here would otherwise render as an
+ * indistinguishable "no nominations to review" and let a real outage hide
+ * behind an empty queue. Requires `internal:accounts:read`.
  */
 export async function listNominations(
   status?: NominationStatus,
 ): Promise<NominationReview[]> {
-  try {
-    const params = new URLSearchParams();
-    if (status) params.set("status", status);
-    const qs = params.toString();
-    const data = await nominationsClient().get<NominationReview[]>(
-      qs ? `${NOMINATIONS_PATH}?${qs}` : NOMINATIONS_PATH,
-    );
-    return parseStringify(data) ?? [];
-  } catch (error) {
-    rethrowIfBoundary(error);
-    return [];
-  }
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  const qs = params.toString();
+  const data = await nominationsClient().get<NominationReview[]>(
+    qs ? `${NOMINATIONS_PATH}?${qs}` : NOMINATIONS_PATH,
+  );
+  return parseStringify(data) ?? [];
 }
 
 /**

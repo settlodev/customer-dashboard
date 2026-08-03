@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { listNominations } from "@/lib/actions/admin/supplier-nominations";
 import {
   NOMINATION_STATUS_LABELS,
+  type NominationReview,
   type NominationStatus,
 } from "@/types/supplier/nomination";
 
@@ -60,11 +61,14 @@ export default async function AdminNominationsPage({
       ? (raw as NominationStatus)
       : DEFAULT_STATUS;
 
-  // listNominations soft-fails to `[]` on a backend error (see Task 1) so
-  // there is no separate failure state to render here — an empty queue and
-  // a failed fetch look identical from this call, and the copy below is
-  // worded to not claim more than that.
-  const nominations = await listNominations(activeStatus);
+  let nominations: NominationReview[] = [];
+  let loadError: string | null = null;
+  try {
+    nominations = await listNominations(activeStatus);
+  } catch (err) {
+    loadError =
+      err instanceof Error ? err.message : "Failed to load nominations.";
+  }
 
   return (
     <AdminShell token={token}>
@@ -99,7 +103,11 @@ export default async function AdminNominationsPage({
             })}
           </div>
 
-          {nominations.length === 0 ? (
+          {loadError ? (
+            <p className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {loadError}
+            </p>
+          ) : nominations.length === 0 ? (
             <div className="mt-4 rounded-xl border border-dashed border-line-2 bg-card py-16 text-center text-sm text-muted-foreground">
               No nominations to review.
             </div>

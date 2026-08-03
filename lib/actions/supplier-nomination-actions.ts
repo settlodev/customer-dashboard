@@ -57,6 +57,29 @@ export async function getNominationsForSupplier(
   }
 }
 
+/**
+ * All of the caller's nominations across every one of their suppliers in one
+ * request — `sourceSupplierId` omitted. Used by the suppliers list page to
+ * derive each row's marketplace-status chip from a single bulk fetch instead
+ * of one `getNominationsForSupplier` call per row (previously a client-side
+ * N+1 — up to a page-size worth of server actions firing from `useEffect` on
+ * every sort/paginate). Soft-fails to `[]` on any non-boundary error, same
+ * best-effort semantics as the per-row chip it replaced — a failed fetch
+ * just means no chips render, not a broken page; auth/permission errors
+ * still propagate to the route error boundary.
+ */
+export async function listNominations(): Promise<SupplierNomination[]> {
+  try {
+    const data = await nominationsClient().get<SupplierNomination[]>(
+      inventoryUrl(BASE),
+    );
+    return parseStringify(data) ?? [];
+  } catch (error) {
+    rethrowIfBoundary(error);
+    return [];
+  }
+}
+
 // ── Mutations ───────────────────────────────────────────────────────
 
 /**
