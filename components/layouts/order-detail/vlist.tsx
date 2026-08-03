@@ -20,7 +20,10 @@ export function VRow({
       <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
         {label}
       </span>
-      <span className="min-w-0 truncate text-right font-medium text-ink">
+      <span
+        className="min-w-0 truncate text-right font-medium text-ink"
+        title={typeof value === "string" ? value : undefined}
+      >
         {value}
       </span>
     </div>
