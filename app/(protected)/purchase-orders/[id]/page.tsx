@@ -6,12 +6,25 @@ import {
   PageBody,
 } from "@/components/layouts/page-shell";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  PanelCard,
+  RailCard,
+  StatusPill,
+  VList,
+  VRow,
+  DetailTable,
+  DetailTableHead,
+  DetailTh,
+  DetailTableBody,
+  DetailTd,
+  DetailTableTotals,
+  type Tone,
+} from "@/components/layouts/order-detail";
 import { Money } from "@/components/widgets/money";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
 import { getLpo } from "@/lib/actions/lpo-actions";
 import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
-import { effectiveLpoStatus } from "@/types/lpo/type";
+import { effectiveLpoStatus, type Lpo } from "@/types/lpo/type";
 import { LpoStatusActions } from "@/components/widgets/lpo/status-actions";
 import { LpoShareButton } from "@/components/widgets/lpo/share-dialog";
 import { LpoShareAcknowledgement } from "@/components/widgets/lpo/share-acknowledgement";
@@ -25,7 +38,16 @@ import {
 } from "@/lib/actions/loan-applications-actions";
 import type { LoanApplication } from "@/types/loans/applications";
 import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
-import { FileText, Layers, Boxes, PackageCheck, AlertCircle } from "lucide-react";
+import {
+  FileText,
+  Layers,
+  Boxes,
+  PackageCheck,
+  AlertCircle,
+  Building2,
+  Coins,
+  Package,
+} from "lucide-react";
 
 type Params = Promise<{ id: string }>;
 
@@ -41,6 +63,34 @@ const formatDateTime = (iso: string | null | undefined) => {
     minute: "2-digit",
   });
 };
+
+// Maps the LPO's internal status (plus the supplier-acknowledgement override
+// `effectiveLpoStatus` already applies for its label) onto the shared
+// `StatusPill` tone vocabulary. Kept local — it's LPO-specific, not a
+// generic order-detail concern.
+function lpoStatusTone(lpo: Lpo): Tone {
+  if (lpo.status === "APPROVED" && lpo.supplierAcknowledgement === "PENDING") {
+    return "warn";
+  }
+  if (lpo.status === "CANCELLED" && lpo.supplierAcknowledgement === "REJECTED") {
+    return "neg";
+  }
+  switch (lpo.status) {
+    case "DRAFT":
+      return "muted";
+    case "SUBMITTED":
+    case "APPROVED":
+      return "info";
+    case "PARTIALLY_RECEIVED":
+      return "warn";
+    case "RECEIVED":
+      return "pos";
+    case "CANCELLED":
+      return "neg";
+    default:
+      return "muted";
+  }
+}
 
 export default async function LpoDetailPage({ params }: { params: Params }) {
   const { id } = await params;
@@ -93,6 +143,24 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
 
   const statusInfo = effectiveLpoStatus(lpo.status, lpo.supplierAcknowledgement);
 
+  // KpiStrip's "Order value" tile — a single figure in the common case, or
+  // every currency's subtotal stacked when the LPO's lines are mixed (same
+  // per-currency data the items table's totals row uses).
+  const orderValueNode = hasMixedCurrency ? (
+    <div className="flex flex-col items-end gap-0.5 text-[15px] leading-tight">
+      {Array.from(totalsByCurrency.entries()).map(([cur, amt]) => (
+        <span key={cur}>
+          {amt.toLocaleString()}{" "}
+          <span className="font-mono text-[10px] font-normal text-muted-foreground">
+            {cur}
+          </span>
+        </span>
+      ))}
+    </div>
+  ) : (
+    (Array.from(totalsByCurrency.values())[0] ?? 0).toLocaleString()
+  );
+
   return (
     <PageShell>
       <PageBreadcrumbs
@@ -103,29 +171,34 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
       />
       <PageHeader
         title={lpo.lpoNumber}
-        subtitle={`${supplier?.name || "Unknown supplier"} · Created ${formatDateTime(lpo.createdAt)}`}
+        subtitle={`${supplier?.name || "Unknown supplier"} · Created ${formatDateTime(lpo.createdAt)} · ${lpoCurrency}`}
         titleAccessory={
-          <span
-            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusInfo.tone}`}
-          >
-            {statusInfo.label}
+          <span className="flex items-center gap-2">
+            <StatusPill tone={lpoStatusTone(lpo)} dot>
+              {statusInfo.label}
+            </StatusPill>
+            {lpo.paymentMethod === "SETTLO_FINANCING" && (
+              <StatusPill tone="info">Settlo financed</StatusPill>
+            )}
           </span>
         }
         actions={
-          <span className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.02em] text-muted-foreground">
-              Primary currency:{" "}
-              <span className="rounded bg-canvas px-2 py-0.5 font-semibold text-ink">
-                {lpoCurrency}
-              </span>
-            </span>
+          <div className="flex flex-wrap items-center gap-2">
             <LpoShareButton lpo={lpo} />
             <LpoStatusActions lpo={lpo} />
-          </span>
+          </div>
         }
       />
       <PageBody>
-        <KpiStrip cols={4}>
+        {showFinancing && (
+          <FinancingBanner
+            lpo={lpo}
+            application={application}
+            canApply={loanAccess?.canApply ?? false}
+          />
+        )}
+
+        <KpiStrip cols={5}>
           <KpiCard
             icon={<Layers className="h-3 w-3" />}
             label="Items"
@@ -151,159 +224,160 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
             value={totalOutstanding.toLocaleString()}
             deltaTone={totalOutstanding === 0 ? "pos" : "neutral"}
           />
+          <KpiCard
+            icon={<Coins className="h-3 w-3" />}
+            label="Order value"
+            value={orderValueNode}
+            unit={!hasMixedCurrency ? lpoCurrency : undefined}
+          />
         </KpiStrip>
 
-        <Card>
-          <CardContent className="pt-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <Field label="Supplier" value={supplier?.name || "—"} />
-            <Field
-              label="Supplier contact"
-              value={
-                supplier
-                  ? [supplier.phone, supplier.email]
-                      .filter(Boolean)
-                      .join(" · ") || "—"
-                  : "—"
-              }
-            />
-            <Field label="Location type" value={lpo.locationType} />
-            <Field label="Last updated" value={formatDateTime(lpo.updatedAt)} />
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+          <aside className="flex flex-col gap-3.5 lg:sticky lg:top-4">
+            <RailCard icon={<Building2 className="h-3.5 w-3.5" />} title="Supplier">
+              <VList>
+                <VRow label="Supplier" value={supplier?.name || "—"} />
+                <VRow
+                  label="Contact"
+                  value={
+                    supplier
+                      ? [supplier.phone, supplier.email].filter(Boolean).join(" · ") ||
+                        "—"
+                      : "—"
+                  }
+                />
+                <VRow label="Location type" value={lpo.locationType} />
+                <VRow label="Last updated" value={formatDateTime(lpo.updatedAt)} />
+              </VList>
+            </RailCard>
 
-        <Card>
-          <CardContent className="px-2 sm:px-6 pt-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">Items</h3>
+            <LpoShareAcknowledgement lpo={lpo} supplier={supplier} />
+
+            <FinancingCard
+              lpo={lpo}
+              termsAcceptedAt={financingTerms?.acceptedAt ?? null}
+              applicationStatus={application?.status ?? null}
+            />
+          </aside>
+
+          <main className="flex min-w-0 flex-col gap-3.5">
+            <PanelCard
+              icon={<Package className="h-3.5 w-3.5" />}
+              title="Items"
+              count={lpo.items.length}
+              pad0
+            >
               {hasMixedCurrency && (
-                <span className="text-xs text-amber-700">
+                <div className="border-b border-line bg-warn-tint px-5 py-2 text-[11.5px] font-medium text-warn">
                   Lines span multiple currencies — conversion happens at GRN receive.
-                </span>
+                </div>
               )}
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-gray-50/60">
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Item</th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Ordered</th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Received</th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Outstanding</th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Unit Cost</th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Line Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
+              <DetailTable>
+                <DetailTableHead>
+                  <DetailTh>Item</DetailTh>
+                  <DetailTh align="right">Ordered</DetailTh>
+                  <DetailTh align="right">Received</DetailTh>
+                  <DetailTh align="right">Outstanding</DetailTh>
+                  <DetailTh align="right">Unit cost</DetailTh>
+                  <DetailTh align="right">Line total</DetailTh>
+                </DetailTableHead>
+                <DetailTableBody>
                   {lpo.items.map((item) => {
                     const lineCurrency = item.currency || lpoCurrency;
                     const ordered = Number(item.orderedQuantity || 0);
                     const received = Number(item.receivedQuantity || 0);
                     const outstanding = Math.max(0, ordered - received);
                     const lineTotal = ordered * Number(item.unitCost || 0);
-                    const pct = ordered > 0 ? Math.round((received / ordered) * 100) : 0;
+                    const pct =
+                      ordered > 0 ? Math.round((received / ordered) * 100) : 0;
+                    const offCurrency =
+                      Boolean(item.currency) && item.currency !== lpoCurrency;
                     return (
-                      <tr key={item.id} className="hover:bg-gray-50/40">
-                        <td className="px-3 py-2 font-medium text-gray-900">
-                          {item.variantName || "—"}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          {ordered.toLocaleString()}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <div className="flex flex-col items-end">
-                            <span>{received.toLocaleString()}</span>
-                            <span className="text-[10px] text-muted-foreground">{pct}%</span>
+                      <tr key={item.id}>
+                        <DetailTd>
+                          <div className="text-[13.5px] font-semibold tracking-tight text-ink">
+                            {item.variantName || "—"}
                           </div>
-                        </td>
-                        <td
-                          className={`px-3 py-2 text-right ${
+                          {offCurrency && (
+                            <div className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
+                              Billed in {lineCurrency}
+                            </div>
+                          )}
+                        </DetailTd>
+                        <DetailTd align="right">{ordered.toLocaleString()}</DetailTd>
+                        <DetailTd align="right">
+                          <div className="flex flex-col items-end">
+                            <span className="font-semibold tabular-nums text-ink">
+                              {received.toLocaleString()}
+                            </span>
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              {pct}%
+                            </span>
+                          </div>
+                        </DetailTd>
+                        <DetailTd
+                          align="right"
+                          className={
                             outstanding === 0
-                              ? "text-green-700"
+                              ? "font-semibold text-pos"
                               : outstanding === ordered
-                                ? "text-muted-foreground"
-                                : "text-amber-700"
-                          }`}
+                                ? "font-medium text-muted-2"
+                                : "font-semibold text-warn"
+                          }
                         >
                           {outstanding.toLocaleString()}
-                        </td>
-                        <td className="px-3 py-2 text-right">
+                        </DetailTd>
+                        <DetailTd align="right">
                           <Money amount={Number(item.unitCost)} currency={lineCurrency} />
-                        </td>
-                        <td className="px-3 py-2 text-right font-semibold">
+                        </DetailTd>
+                        <DetailTd align="right" strong>
                           <Money amount={lineTotal} currency={lineCurrency} />
-                        </td>
+                        </DetailTd>
                       </tr>
                     );
                   })}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-gray-50/60 font-semibold">
-                    <td className="px-3 py-2 text-right">Totals</td>
-                    <td className="px-3 py-2 text-right">{totalOrdered.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-right">{totalReceived.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-right">{totalOutstanding.toLocaleString()}</td>
-                    <td />
-                    <td className="px-3 py-2 text-right">
+                </DetailTableBody>
+                <DetailTableTotals>
+                  <DetailTd align="right" strong>
+                    Totals
+                  </DetailTd>
+                  <DetailTd align="right" strong>
+                    {totalOrdered.toLocaleString()}
+                  </DetailTd>
+                  <DetailTd align="right" strong>
+                    {totalReceived.toLocaleString()}
+                  </DetailTd>
+                  <DetailTd align="right" strong>
+                    {totalOutstanding.toLocaleString()}
+                  </DetailTd>
+                  <DetailTd />
+                  <DetailTd align="right" strong>
+                    <div className="flex flex-col items-end gap-0.5">
                       {Array.from(totalsByCurrency.entries()).map(([cur, amt]) => (
-                        <div key={cur} className="leading-tight">
-                          <Money amount={amt} currency={cur} />
-                        </div>
+                        <Money key={cur} amount={amt} currency={cur} />
                       ))}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                    </div>
+                  </DetailTd>
+                </DetailTableTotals>
+              </DetailTable>
+            </PanelCard>
 
-        <LpoShareAcknowledgement lpo={lpo} supplier={supplier} />
+            <AttachmentsPanel
+              entityType="LPO"
+              entityId={lpo.id}
+              description="Quotations, approval letters, supplier correspondence. Max 10 MB per file."
+            />
 
-        {showFinancing && (
-          <FinancingBanner
-            lpo={lpo}
-            application={application}
-            canApply={loanAccess?.canApply ?? false}
-          />
-        )}
-
-        <FinancingCard
-          lpo={lpo}
-          termsAcceptedAt={financingTerms?.acceptedAt ?? null}
-          applicationStatus={application?.status ?? null}
-        />
-
-        <AttachmentsPanel
-          entityType="LPO"
-          entityId={lpo.id}
-          description="Quotations, approval letters, supplier correspondence. Max 10 MB per file."
-        />
-
-        {lpo.notes && (
-          <Card>
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-start gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-gray-400 uppercase">Notes</p>
-                  <p className="text-sm mt-1 whitespace-pre-wrap">{lpo.notes}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+            {lpo.notes && (
+              <PanelCard icon={<FileText className="h-3.5 w-3.5" />} title="Notes">
+                <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink-2">
+                  {lpo.notes}
+                </p>
+              </PanelCard>
+            )}
+          </main>
+        </div>
       </PageBody>
     </PageShell>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-[11px] uppercase tracking-wide text-gray-400">
-        {label}
-      </span>
-      <span className="font-medium text-gray-900">{value}</span>
-    </div>
   );
 }
