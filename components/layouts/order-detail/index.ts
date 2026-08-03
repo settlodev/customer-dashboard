@@ -5,10 +5,9 @@ export {
   CountChip,
   RailCard,
   PanelCard,
-  SegTabs,
   type Tone,
-  type SegTab,
 } from "./primitives";
+export { SegTabs, type SegTab } from "./seg-tabs";
 export { VList, VRow } from "./vlist";
 export {
   DetailTable,
