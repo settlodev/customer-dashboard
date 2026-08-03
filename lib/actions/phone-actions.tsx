@@ -7,6 +7,7 @@ import {
   SettloApiError,
   getUIErrorMessage,
 } from "@/lib/settlo-api-error-handler";
+import { getAuthToken } from "@/lib/auth-utils";
 
 // ── Auth Service verifiable phone number ────────────────────────────
 // All endpoints are authenticated and target the AUTH service
@@ -123,6 +124,92 @@ export const confirmPhoneCode = async (
     return {
       responseType: "error",
       message,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+// ── Verify the EXISTING auth phone (no change) ──────────────────────
+// Used by the LPO financing modal: the LMS's supplier accept gate requires
+// phoneVerified, and the merchant verifies the number already on file.
+// These target the Auth service's VerificationController
+// (`/auth/verify/phone/*`), which addresses the user BY ID — the id comes
+// from the auth cookie (`getAuthToken().userId`), the same value ApiClient
+// stamps into X-User-Id on every request. Distinct from submitPhone /
+// confirmPhoneCode above, which run the CHANGE flow and replace the number.
+
+/**
+ * Text a 6-digit verification code to the user's existing auth phone.
+ * The Auth endpoint is a GET keyed by userId. The backend enforces a 60s
+ * resend cooldown; when hit it returns a RATE_LIMITED "please wait…"
+ * message which is surfaced verbatim.
+ */
+export const requestPhoneVerificationCode = async (): Promise<FormResponse> => {
+  const token = await getAuthToken();
+  if (!token?.userId) {
+    return {
+      responseType: "error",
+      message: "Your session has expired. Please log in again.",
+      error: new Error("No userId on auth token"),
+    };
+  }
+  try {
+    const apiClient = new ApiClient(true);
+    await apiClient.get(`/auth/verify/phone/request/${token.userId}`);
+    return {
+      responseType: "success",
+      message: "We sent a verification code to your phone",
+    };
+  } catch (error) {
+    const message =
+      error instanceof SettloApiError
+        ? getUIErrorMessage(
+            error.code,
+            error.message,
+            "Couldn't send the verification code. Please try again.",
+          )
+        : "Couldn't send the verification code. Please try again.";
+    return {
+      responseType: "error",
+      message,
+      errorCode: error instanceof SettloApiError ? error.code : undefined,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+/**
+ * Confirm the SMS code and mark the existing auth phone verified —
+ * `POST /auth/verify/phone/code` with `{ userId, code }` (the Auth DTO is
+ * `VerifyByCodeRequest`). On success Auth publishes PHONE_VERIFIED; the
+ * Accounts projection the LMS reads at accept time follows shortly (the
+ * accept path retries to absorb that lag).
+ */
+export const verifyPhoneCode = async (code: string): Promise<FormResponse> => {
+  const token = await getAuthToken();
+  if (!token?.userId) {
+    return {
+      responseType: "error",
+      message: "Your session has expired. Please log in again.",
+      error: new Error("No userId on auth token"),
+    };
+  }
+  try {
+    const apiClient = new ApiClient(true);
+    await apiClient.post<void, { userId: string; code: string }>(
+      `/auth/verify/phone/code`,
+      { userId: token.userId, code },
+    );
+    return { responseType: "success", message: "Phone number verified" };
+  } catch (error) {
+    const message =
+      error instanceof SettloApiError
+        ? getUIErrorMessage(error.code, error.message, "Invalid code. Please try again.")
+        : "Invalid code. Please try again.";
+    return {
+      responseType: "error",
+      message,
+      errorCode: error instanceof SettloApiError ? error.code : undefined,
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
