@@ -65,9 +65,12 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
       : null;
   // Terms acceptance drives the "Terms accepted" tracker stage on the
   // financing card; only worth a call once the LPO is actually financed.
+  // Best-effort like `application` above — financing is secondary content on
+  // this page and a transient LMS failure here must never take down the
+  // primary purchase-order view.
   const financingTerms =
     showFinancing && lpo.paymentMethod === "SETTLO_FINANCING"
-      ? await getFinancingTerms()
+      ? await getFinancingTerms().catch(() => null)
       : null;
 
   const lpoCurrency = lpo.currency || lpo.items[0]?.currency || DEFAULT_CURRENCY;
