@@ -1,12 +1,64 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, ShieldCheck } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TableAvatar } from "@/components/tables/shared/table-avatar";
+import { getNominationsForSupplier } from "@/lib/actions/supplier-nomination-actions";
 import type { Supplier } from "@/types/supplier/type";
+
+/**
+ * Compact marketplace-status chip for the name cell: linked suppliers show
+ * "Settlo" immediately (already on the row); everyone else lazily checks
+ * whether their newest nomination is under review, since that status isn't
+ * denormalised onto `Supplier` itself. Best-effort — a failed check just
+ * renders nothing, same as "no nomination yet".
+ */
+function SupplierMarketplaceChip({
+  supplierId,
+  linked,
+}: {
+  supplierId: string;
+  linked: boolean;
+}) {
+  const [underReview, setUnderReview] = useState(false);
+
+  useEffect(() => {
+    if (linked) return;
+    let cancelled = false;
+    getNominationsForSupplier(supplierId)
+      .then((nominations) => {
+        if (cancelled) return;
+        setUnderReview(nominations[0]?.status === "SUBMITTED");
+      })
+      .catch(() => {
+        // Best-effort chip — leave it blank on failure.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [supplierId, linked]);
+
+  if (linked) {
+    return (
+      <Badge variant="pos" className="shrink-0">
+        <ShieldCheck className="h-3 w-3" />
+        Settlo
+      </Badge>
+    );
+  }
+  if (underReview) {
+    return (
+      <Badge variant="warn" className="shrink-0">
+        Under review
+      </Badge>
+    );
+  }
+  return null;
+}
 
 export const columns: ColumnDef<Supplier>[] = [
   {
@@ -59,12 +111,10 @@ export const columns: ColumnDef<Supplier>[] = [
               <span className="truncate text-[13px] font-medium text-ink">
                 {name}
               </span>
-              {linkedToSettloSupplier && (
-                <Badge variant="pos" className="shrink-0">
-                  <ShieldCheck className="h-3 w-3" />
-                  Linked
-                </Badge>
-              )}
+              <SupplierMarketplaceChip
+                supplierId={id}
+                linked={linkedToSettloSupplier}
+              />
             </div>
             {contactPersonName && (
               <div className="mt-0.5 truncate text-[11px] text-muted-foreground">

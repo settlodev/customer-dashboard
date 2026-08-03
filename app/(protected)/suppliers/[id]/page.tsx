@@ -15,8 +15,10 @@ import { fetchSourceListForSupplier } from "@/lib/actions/supplier-source-list-a
 import { getSupplierPerformance } from "@/lib/actions/supplier-performance-actions";
 import { getAuditLogByEntity } from "@/lib/actions/audit-log-actions";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
+import { getNominationsForSupplier } from "@/lib/actions/supplier-nomination-actions";
 import { LinkSettloSupplierDialog } from "@/components/widgets/supplier/link-settlo-dialog";
 import { SupplierStatusActions } from "@/components/widgets/supplier/status-actions";
+import { SettloFinancingCard } from "@/components/widgets/supplier/settlo-financing-card";
 import { SupplierDetailView } from "./supplier-detail-view";
 
 type Params = Promise<{ id: string }>;
@@ -31,13 +33,16 @@ export default async function SupplierDetailPage({
   const supplier = await getSupplier(id);
   if (!supplier) notFound();
 
-  const [currency, pricing, sourceList, performance, auditPage] = await Promise.all([
-    getLocationCurrency(),
-    fetchSupplierPricing(id),
-    fetchSourceListForSupplier(id),
-    getSupplierPerformance(id),
-    getAuditLogByEntity("SUPPLIER", id, 0, 100),
-  ]);
+  const [currency, pricing, sourceList, performance, auditPage, nominations] =
+    await Promise.all([
+      getLocationCurrency(),
+      fetchSupplierPricing(id),
+      fetchSourceListForSupplier(id),
+      getSupplierPerformance(id),
+      getAuditLogByEntity("SUPPLIER", id, 0, 100),
+      getNominationsForSupplier(id),
+    ]);
+  const latestNomination = nominations[0] ?? null;
 
   return (
     <PageShell>
@@ -92,6 +97,8 @@ export default async function SupplierDetailPage({
         <InfoCard label="Company phone" value={supplier.phone || "\u2014"} />
         <InfoCard label="Registration" value={registrationSummary(supplier)} />
       </div>
+
+        <SettloFinancingCard supplier={supplier} nomination={latestNomination} />
 
         <SupplierDetailView
           supplier={supplier}
