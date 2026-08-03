@@ -12,6 +12,7 @@ import {
   type OrderFinancingStatus,
   type SupplierAcknowledgement,
 } from "@/types/lpo/type";
+import type { ApplicationStatus } from "@/types/loans/applications";
 
 /** Badge tone per financing state — shared with the LPO list table so the
  *  detail card and the list badge read as the same signal. */
@@ -30,20 +31,20 @@ type StageState = "done" | "now" | "todo";
 
 const STAGES: { title: string; detail: string }[] = [
   {
-    title: "Awaiting supplier acceptance",
-    detail: "The supplier must accept the order before financing begins.",
+    title: "Supplier accepted",
+    detail: "The supplier confirmed this order — financing can begin.",
   },
   {
-    title: "Underwriting",
-    detail: "Settlo is reviewing the financing request.",
+    title: "Terms accepted",
+    detail: "You agreed to the Settlo supplier financing terms.",
   },
   {
-    title: "Offer ready",
-    detail: "Review and accept the loan terms on the Loans page.",
+    title: "Offer accepted",
+    detail: "You accepted the financing offer for this order.",
   },
   {
-    title: "Paid",
-    detail: "Settlo has paid the supplier on your behalf.",
+    title: "Supplier paid",
+    detail: "Settlo pays the supplier on your behalf.",
   },
 ];
 
@@ -52,7 +53,17 @@ const STAGES: { title: string; detail: string }[] = [
  * for a DIRECT (non-financed) LPO — mount unconditionally, the component
  * self-gates.
  */
-export function FinancingCard({ lpo }: { lpo: Lpo }) {
+export function FinancingCard({
+  lpo,
+  termsAcceptedAt = null,
+  applicationStatus = null,
+}: {
+  lpo: Lpo;
+  /** Account-level financing-terms acceptance timestamp (null = not accepted / unknown). */
+  termsAcceptedAt?: string | null;
+  /** Borrower-read status of the backing loan application, when readable. */
+  applicationStatus?: ApplicationStatus | null;
+}) {
   if (lpo.paymentMethod !== "SETTLO_FINANCING") return null;
 
   const currency = lpo.currency || lpo.items[0]?.currency || DEFAULT_CURRENCY;
@@ -150,6 +161,8 @@ export function FinancingCard({ lpo }: { lpo: Lpo }) {
           <FinancingTimeline
             ack={lpo.supplierAcknowledgement}
             financingStatus={financingStatus}
+            termsAcceptedAt={termsAcceptedAt}
+            applicationStatus={applicationStatus}
           />
         )}
 
@@ -245,22 +258,28 @@ function CancelledAfterPaidPanel({
 function FinancingTimeline({
   ack,
   financingStatus,
+  termsAcceptedAt,
+  applicationStatus,
 }: {
   ack: SupplierAcknowledgement;
   financingStatus: OrderFinancingStatus;
+  termsAcceptedAt: string | null;
+  applicationStatus: ApplicationStatus | null;
 }) {
-  // Current stage index into STAGES. Supplier acceptance gates everything
-  // else, so it's checked first. The backend resolves financingStatus
-  // synchronously in the same transaction as acceptance (REQUESTED, or
-  // DECLINED if the mint didn't happen) — by the time `ack` is ACCEPTED and
-  // we're rendering the timeline (DECLINED/CANCELLED are handled by the
-  // caller before this component is reached), financingStatus can only be
-  // REQUESTED, OFFER_MADE, or PAID.
+  // Current stage index into STAGES (design's four post-acceptance steps).
+  // Supplier acceptance gates everything, so it's checked first (only
+  // grandfathered create-time-financed LPOs can render this timeline while
+  // still PENDING). Between offer-accept and PAID the payout is settling —
+  // "Supplier paid" carries the "Now" pill (index 3). Terms acceptance is
+  // an account-level fact; when it's unknown/null on a grandfathered
+  // OFFER_MADE row, financingStatus alone advances the index so legacy
+  // rows don't appear stuck on a step that never existed for them.
   const stageIndex = (() => {
     if (ack === "PENDING") return 0;
-    if (financingStatus === "OFFER_MADE") return 2;
     if (financingStatus === "PAID") return STAGES.length; // past the last — all done
-    return 1; // REQUESTED
+    if (applicationStatus === "ACCEPTED") return 3; // settling — "Now" on Supplier paid
+    if (termsAcceptedAt || financingStatus === "OFFER_MADE") return 2;
+    return 1;
   })();
 
   return (

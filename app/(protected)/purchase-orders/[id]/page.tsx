@@ -19,7 +19,10 @@ import { FinancingCard } from "@/components/widgets/lpo/financing-card";
 import { FinancingBanner } from "@/components/widgets/lpo/financing-banner";
 import { LOANS_ENABLED } from "@/lib/loans/config";
 import { getLoanAccess } from "@/lib/loans/access";
-import { getMyApplication } from "@/lib/actions/loan-applications-actions";
+import {
+  getMyApplication,
+  getFinancingTerms,
+} from "@/lib/actions/loan-applications-actions";
 import type { LoanApplication } from "@/types/loans/applications";
 import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
 import { FileText, Layers, Boxes, PackageCheck, AlertCircle } from "lucide-react";
@@ -59,6 +62,12 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
   const application: LoanApplication | null =
     showFinancing && lpo.loanApplicationId
       ? await getMyApplication(lpo.loanApplicationId).catch(() => null)
+      : null;
+  // Terms acceptance drives the "Terms accepted" tracker stage on the
+  // financing card; only worth a call once the LPO is actually financed.
+  const financingTerms =
+    showFinancing && lpo.paymentMethod === "SETTLO_FINANCING"
+      ? await getFinancingTerms()
       : null;
 
   const lpoCurrency = lpo.currency || lpo.items[0]?.currency || DEFAULT_CURRENCY;
@@ -255,7 +264,11 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
           />
         )}
 
-        <FinancingCard lpo={lpo} />
+        <FinancingCard
+          lpo={lpo}
+          termsAcceptedAt={financingTerms?.acceptedAt ?? null}
+          applicationStatus={application?.status ?? null}
+        />
 
         <AttachmentsPanel
           entityType="LPO"
