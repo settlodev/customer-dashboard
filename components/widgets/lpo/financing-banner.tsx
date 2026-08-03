@@ -20,7 +20,10 @@ import {
   type SupplierFinancingEligibility,
 } from "@/types/loans/supplier-financing";
 import { formatTzs } from "@/types/loans/type";
-import type { LoanApplication } from "@/types/loans/applications";
+import type {
+  ApplicationStatus,
+  LoanApplication,
+} from "@/types/loans/applications";
 import type { Lpo } from "@/types/lpo/type";
 
 import { FinanceFlowModal } from "./finance-flow/finance-flow-modal";
@@ -30,6 +33,62 @@ type EligibilityFetch =
   | { kind: "checking" }
   | { kind: "done"; result: SupplierFinancingEligibility }
   | { kind: "failed" };
+
+type ApplicationBucket =
+  | "financed"
+  | "offerReady"
+  | "inProgress"
+  | "declined"
+  | "reQualify";
+
+/**
+ * Exhaustive mapping over the full 9-value `ApplicationStatus` union (spec
+ * §7), mirroring the pattern `OfferStep` uses for its own status switch —
+ * a `default` arm typed `never` so a future status addition fails to
+ * compile here instead of silently falling into the wrong banner state.
+ *
+ * WITHDRAWN / EXPIRED are terminal but RE-QUALIFIABLE: they bucket as
+ * "reQualify" rather than "declined" so the banner falls through to a
+ * fresh eligibility check instead of a dead none-state. Critically, they
+ * must NOT be treated as resumable (see `resumeApplicationId` below) —
+ * `FinanceFlowModal` treats any non-null id as "resume" and skips
+ * `startFinancing()`, which is the only path that creates a new
+ * application, so handing it a terminal id would dead-end the merchant.
+ */
+function classifyApplicationStatus(
+  status: ApplicationStatus,
+): ApplicationBucket {
+  switch (status) {
+    case "ACCEPTED":
+      return "financed";
+    case "APPROVED":
+      return "offerReady";
+    case "DRAFT":
+    case "SUBMITTED":
+    case "IN_REVIEW":
+    case "COMPLIANCE_HOLD":
+      return "inProgress";
+    case "REJECTED":
+      return "declined";
+    case "WITHDRAWN":
+    case "EXPIRED":
+      return "reQualify";
+    default: {
+      // Defensive fallback for a status this banner doesn't know about.
+      // `status` is typed `never` here because every real ApplicationStatus
+      // member is handled above — a status added to the union without a
+      // case here fails this assignment at compile time, matching the
+      // pattern `OfferStep` uses for the same union. At runtime (e.g. an
+      // unrecognised wire value from an older/newer LMS build), the raw
+      // value passes through untouched — it won't equal any of the five
+      // known buckets, so every `applicationBucket === "…"` check below
+      // is false and the banner falls through to a fresh eligibility
+      // check rather than guessing at resume.
+      const exhaustiveCheck: never = status;
+      return exhaustiveCheck;
+    }
+  }
+}
 
 /**
  * Post-acceptance financing banner on the PO detail page (spec §7). The
@@ -54,16 +113,16 @@ export function FinancingBanner({
     (lpo.status === "APPROVED" || lpo.status === "PARTIALLY_RECEIVED");
 
   const financingStatus = lpo.financingStatus ?? "NONE";
-  const financed =
-    financingStatus === "PAID" || application?.status === "ACCEPTED";
-  const offerReady = !financed && application?.status === "APPROVED";
+  const applicationBucket = application
+    ? classifyApplicationStatus(application.status)
+    : null;
+
+  const financed = financingStatus === "PAID" || applicationBucket === "financed";
+  const offerReady = !financed && applicationBucket === "offerReady";
   const inProgress =
     !financed &&
     !offerReady &&
-    ((application != null &&
-      ["DRAFT", "SUBMITTED", "IN_REVIEW", "COMPLIANCE_HOLD"].includes(
-        application.status,
-      )) ||
+    (applicationBucket === "inProgress" ||
       // The LPO carries an application we couldn't read (transient LMS
       // failure server-side) — show honest in-progress, not a fresh check.
       (application == null &&
@@ -73,8 +132,11 @@ export function FinancingBanner({
     !financed &&
     !offerReady &&
     !inProgress &&
-    (application?.status === "REJECTED" ||
+    (applicationBucket === "declined" ||
       (application == null && financingStatus === "DECLINED"));
+  // Neither matched above → either no application at all, or one bucketed
+  // "reQualify" (WITHDRAWN/EXPIRED — terminal, but the merchant may qualify
+  // again): both cases call eligibility fresh (spec §7 point 4).
   const needsEligibility =
     bannerEligible && !financed && !offerReady && !inProgress && !declined;
 
@@ -102,11 +164,29 @@ export function FinancingBanner({
   if (!bannerEligible) return null;
 
   const eligibility = check.kind === "done" ? check.result : null;
-  const resumeApplicationId =
-    application?.id ??
-    lpo.loanApplicationId ??
-    eligibility?.existingApplicationId ??
-    null;
+  // Resume only a genuinely LIVE application — `FinanceFlowModal` treats
+  // any non-null id as "resume" and skips `startFinancing()`, the only path
+  // that creates a NEW application. A terminal application (REJECTED /
+  // WITHDRAWN / EXPIRED, i.e. `applicationBucket` is "declined" or
+  // "reQualify") must never seed this: handing the modal a dead id would
+  // dead-end the merchant on OfferStep's "unavailable" panel with no way
+  // to actually start a fresh request (the retry path — Inventory resetting
+  // the shadow order and re-publishing SUPPLIER_ORDER_CREATED — only fires
+  // from `startFinancing()`). `lpo.loanApplicationId` is redundant with
+  // `application.id` whenever `application` resolved (same source), so it
+  // is only consulted as a fallback when the application couldn't be read
+  // at all (transient LMS failure — the `inProgress` fail-open case above,
+  // presumed live) or when eligibility itself reports a live application
+  // (`existingApplicationId`, set only when `eligible === null`).
+  const applicationIsLive =
+    applicationBucket === "financed" ||
+    applicationBucket === "offerReady" ||
+    applicationBucket === "inProgress";
+  const resumeApplicationId = application
+    ? applicationIsLive
+      ? application.id
+      : null
+    : (lpo.loanApplicationId ?? eligibility?.existingApplicationId ?? null);
 
   let body: React.ReactNode;
 
