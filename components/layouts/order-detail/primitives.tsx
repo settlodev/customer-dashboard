@@ -95,9 +95,9 @@ export function RailCard({
     <Card className="p-5">
       <div className="mb-3.5 flex items-center gap-2.5">
         <IconChip>{icon}</IconChip>
-        <span className="text-[13.5px] font-semibold tracking-tight text-ink">
+        <h3 className="text-[13.5px] font-semibold tracking-tight text-ink">
           {title}
-        </span>
+        </h3>
       </div>
       {children}
     </Card>
@@ -128,9 +128,9 @@ export function PanelCard({
         )}
       >
         <IconChip>{icon}</IconChip>
-        <span className="text-[14px] font-semibold tracking-tight text-ink">
+        <h3 className="text-[14px] font-semibold tracking-tight text-ink">
           {title}
-        </span>
+        </h3>
         {count != null && <CountChip>{count}</CountChip>}
       </div>
       <div className={pad0 ? "" : "px-5 pb-5 pt-3.5"}>{children}</div>
