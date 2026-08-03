@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Loader2, Smartphone } from "lucide-react";
 
@@ -45,6 +45,19 @@ export function PhoneStep({
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
 
+  // Neither `sendCode` nor `submitCode` had an unmount guard — a merchant
+  // closing the modal mid-request (e.g. right after tapping "Send code" or
+  // while a code is verifying) let the response go on to call `onVerified()`
+  // or touch state on a component that's gone. Same pattern as
+  // `OfferStep.mountedRef`.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // Tick the resend countdown once a second while it's running.
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -60,6 +73,7 @@ export function PhoneStep({
     setError(null);
     setSending(true);
     const res = await requestPhoneVerificationCode();
+    if (!mountedRef.current) return;
     setSending(false);
     if (res.responseType === "success") {
       setSent(true);
@@ -81,6 +95,7 @@ export function PhoneStep({
     setError(null);
     setVerifying(true);
     const res = await verifyPhoneCode(value);
+    if (!mountedRef.current) return;
     setVerifying(false);
     if (res.responseType === "success") {
       onVerified();

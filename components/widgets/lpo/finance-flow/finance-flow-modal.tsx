@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Clock3, Loader2 } from "lucide-react";
 
 import {
   Dialog,
@@ -30,7 +30,24 @@ import { TermsStep } from "./terms-step";
 import { PhoneStep } from "./phone-step";
 import { OfferStep } from "./offer-step";
 
-type FlowStep = "loading" | "terms" | "phone" | "offer" | "error";
+type FlowStep =
+  | "loading"
+  | "terms"
+  | "phone"
+  /**
+   * The accept gate said PHONE_NOT_VERIFIED, but a re-read of the Auth
+   * phone status (`onNeedsPhone` below) reports it's actually verified —
+   * this is the Accounts `PHONE_VERIFIED` projection lagging behind Auth,
+   * not a genuinely unverified number. Dropping the merchant into `phone`
+   * here would show "Enter the code we sent…" for a code that Auth's
+   * anti-enumeration guard never actually sends when the number is already
+   * verified (see `validateAndSendPhoneVerification`) — a permanent
+   * dead end. This step is an honest "still syncing" state instead, with a
+   * way back to retry the accept once the projection catches up.
+   */
+  | "phone-syncing"
+  | "offer"
+  | "error";
 
 const STEP_LABELS: { key: Exclude<FlowStep, "loading" | "error">; label: string }[] = [
   { key: "terms", label: "Terms" },
@@ -205,7 +222,13 @@ export function FinanceFlowModal({
   };
 
   const activeIndex =
-    step === "terms" ? 0 : step === "phone" ? 1 : step === "offer" ? 2 : -1;
+    step === "terms"
+      ? 0
+      : step === "phone" || step === "phone-syncing"
+        ? 1
+        : step === "offer"
+          ? 2
+          : -1;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -309,14 +332,63 @@ export function FinanceFlowModal({
             onNeedsTerms={() => {
               // The gate said terms are missing (e.g. version bumped since
               // this account accepted) — reload and re-show the terms step.
+              // Same close-mid-flight guard as `startFinancing`/`handleAgree`
+              // above — this is the one async chain in the shell that was
+              // missing it.
+              const session = sessionRef.current;
               void (async () => {
                 const fresh = await getFinancingTerms();
+                if (session !== sessionRef.current) return;
                 if (fresh) setTerms(fresh);
                 setStep("terms");
               })();
             }}
-            onNeedsPhone={() => setStep("phone")}
+            onNeedsPhone={() => {
+              // The gate said PHONE_NOT_VERIFIED. Before dropping the
+              // merchant into OTP entry, re-read the AUTH phone status:
+              // `PhoneStep` is reachable purely off a 409 the LMS derives
+              // from the ACCOUNTS projection, which can lag (or have missed
+              // a PHONE_VERIFIED event) behind Auth's own record. If Auth
+              // already reports verified, sending a code is a silent no-op
+              // (anti-enumeration on an already-verified number) and the
+              // merchant would sit on a code that was never sent — show the
+              // honest syncing state instead. Same close-mid-flight guard as
+              // the other async chains in this shell.
+              const session = sessionRef.current;
+              void (async () => {
+                const res = await getPhoneStatus();
+                if (session !== sessionRef.current) return;
+                const status =
+                  res.responseType === "success" ? (res.data ?? null) : null;
+                if (status) setPhone(status);
+                setStep(status?.phoneVerified ? "phone-syncing" : "phone");
+              })();
+            }}
           />
+        )}
+
+        {step === "phone-syncing" && (
+          <div className="space-y-4 py-2">
+            <div className="flex items-start gap-3 rounded-xl border border-warn/30 bg-warn-tint p-5 text-warn">
+              <Clock3 className="mt-0.5 h-5 w-5 flex-shrink-0" />
+              <div>
+                <div className="text-[14px] font-semibold text-ink">
+                  Your verification is still syncing
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-ink-2">
+                  Your phone is verified, but that hasn&apos;t finished
+                  syncing across our systems yet. This usually clears in a
+                  few seconds — try again in a moment.
+                </p>
+              </div>
+            </div>
+            <Button
+              className="w-full justify-center"
+              onClick={() => setStep("offer")}
+            >
+              Try again
+            </Button>
+          </div>
         )}
       </DialogContent>
     </Dialog>
