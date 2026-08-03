@@ -90,14 +90,18 @@ const CardHead = React.forwardRef<HTMLDivElement, CardHeadProps>(
       ref={ref}
       className={cn("flex items-center gap-2.5 px-5 pt-4 pb-3", className)}
     >
+      {/* Inlines the `IconChip` markup rather than importing it: `IconChip`
+       * lives in `components/layouts/order-detail/primitives.tsx`, which
+       * imports `Card` from this file, so importing it back here would
+       * create a cycle. Keep this in sync with `IconChip` by hand. */}
       {icon && (
         <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px] bg-primary/10 text-primary-dark dark:text-primary">
           {icon}
         </span>
       )}
-      <span className="min-w-0 flex-1 text-[14px] font-semibold tracking-tight text-ink">
+      <h3 className="min-w-0 flex-1 text-[14px] font-semibold tracking-tight text-ink">
         {title}
-      </span>
+      </h3>
       {trailing}
     </div>
   ),
