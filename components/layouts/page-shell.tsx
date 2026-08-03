@@ -147,7 +147,7 @@ export function PageHeader({
       )}
     >
       <div className="min-w-0 flex-1">
-        <h1 className="flex items-center gap-3 text-[26px] font-semibold leading-tight tracking-tight text-ink">
+        <h1 className="flex items-center gap-3 text-[26px] font-bold leading-tight tracking-[-0.03em] text-ink">
           {title}
           {titleAccessory && (
             <span className="self-center">{titleAccessory}</span>
