@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { inventoryUrl } from "./inventory-client";
 import { getCurrentDestination } from "./context";
+import { SettloApiError } from "@/lib/settlo-api-error-handler";
 import type {
   Lpo,
   LpoStatus,
@@ -71,6 +72,67 @@ export async function getOpenLposForReceiving(): Promise<Lpo[]> {
   }
 }
 
+// ── Financing (pay-via-Settlo) ───────────────────────────────────────
+
+/**
+ * Merchant opt-in: flip an accepted LPO to Settlo financing — mirrors the
+ * Inventory Service's `POST /api/v1/lpos/{id}/financing`. The backend
+ * validates scope/status/acknowledgement, sets paymentMethod =
+ * SETTLO_FINANCING with full-order financing (financedAmount null), mints
+ * the shadow supplier order and publishes SUPPLIER_ORDER_CREATED — the LMS
+ * consumer then creates + submits the loan application asynchronously.
+ *
+ * An already-financed LPO with a live shadow order returns 200 with the
+ * current state (modal resume), so callers can treat every success the same
+ * way. Requires purchasing:approve + an active location (X-Location-Id is
+ * attached by ApiClient).
+ */
+export async function startLpoFinancing(id: string): Promise<FormResponse<Lpo>> {
+  try {
+    const apiClient = new ApiClient();
+    const updated = (await apiClient.post(
+      inventoryUrl(`${BASE}/${id}/financing`),
+      {},
+    )) as Lpo;
+    revalidatePath("/purchase-orders");
+    revalidatePath(`/purchase-orders/${id}`);
+    return {
+      responseType: "success",
+      message: "Financing requested",
+      data: parseStringify(updated),
+    };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message ?? "Failed to start financing for this order",
+      errorCode: error instanceof SettloApiError ? error.code : undefined,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
+/**
+ * Resolve the LPO id backing a shadow Inventory `SupplierOrder` — the reverse
+ * of `Lpo.supplierOrderId`. Used by the borrower loan-application detail page
+ * to link back to the purchase order a supplier-financed (order-first) stock
+ * loan application financed. Soft-fails to `null` on any error (404,
+ * transport, or a response that doesn't carry the field) so the caller can
+ * just hide the "View purchase order" link.
+ */
+export async function getSupplierOrderLpoId(
+  orderId: string,
+): Promise<string | null> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get<{ lpoId?: string | null }>(
+      inventoryUrl(`/api/v1/supplier-orders/${orderId}`),
+    );
+    return parseStringify(data)?.lpoId ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ── Mutations ───────────────────────────────────────────────────────
 
 export async function createLpo(
@@ -86,6 +148,9 @@ export async function createLpo(
   }
 
   const payload: CreateLpoPayload = {
+    // Always DIRECT: create-time financing is retired (D1). The schema no
+    // longer carries paymentMethod/financedAmount, so the backend defaults
+    // the method; financing is opted into post-acceptance on the order page.
     ...validated.data,
     locationType: (await getCurrentDestination())?.type ?? "LOCATION",
     items: validated.data.items.map((item) => ({

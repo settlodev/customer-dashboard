@@ -25,6 +25,7 @@ export type RepaymentFrequency =
 export type ApplicationStatus =
   | "DRAFT"
   | "SUBMITTED"
+  | "COMPLIANCE_HOLD"
   | "IN_REVIEW"
   | "APPROVED"
   | "ACCEPTED"
@@ -57,6 +58,10 @@ export type FundingSourceType =
 
 // ── Loan product ──────────────────────────────────────────────────────
 
+/** Editorial lifecycle. `active` is a synced mirror of `status === "PUBLISHED"` —
+ *  the LMS has no pause/resume; activation is publish, deactivation is retire (terminal). */
+export type LoanProductStatus = "DRAFT" | "PUBLISHED" | "RETIRED";
+
 export interface LoanProductResponse {
   id: string;
   code: string;
@@ -88,9 +93,25 @@ export interface LoanProductResponse {
   termsTemplate?: string | null;
   currency: string;
   active: boolean;
+  status: LoanProductStatus;
+  defaultTermDays?: number | null;
+  selectionPriority?: number | null;
 }
 
 // ── Display labels & tones ────────────────────────────────────────────
+
+export const LOAN_PRODUCT_STATUS_LABELS: Record<LoanProductStatus, string> = {
+  DRAFT: "Draft",
+  PUBLISHED: "Published",
+  RETIRED: "Retired",
+};
+
+/** Badge classes per product status (list + detail pages). */
+export const LOAN_PRODUCT_STATUS_BADGES: Record<LoanProductStatus, string> = {
+  DRAFT: "bg-amber-50 text-amber-700",
+  PUBLISHED: "bg-green-50 text-green-700",
+  RETIRED: "bg-gray-100 text-gray-500",
+};
 
 export const LOAN_PRODUCT_TYPE_LABELS: Record<LoanProductType, string> = {
   POS_DEVICE: "Device financing",
@@ -121,6 +142,7 @@ export const REPAYMENT_FREQUENCY_LABELS: Record<RepaymentFrequency, string> = {
 export const APPLICATION_STATUS_TONES: Record<ApplicationStatus, string> = {
   DRAFT: "bg-gray-100 text-gray-700",
   SUBMITTED: "bg-orange-50 text-orange-700",
+  COMPLIANCE_HOLD: "bg-purple-50 text-purple-700",
   IN_REVIEW: "bg-amber-50 text-amber-700",
   APPROVED: "bg-emerald-50 text-emerald-700",
   ACCEPTED: "bg-green-50 text-green-700",
@@ -329,7 +351,10 @@ export const REPAYMENT_FREQUENCY_OPTIONS = toOptions(REPAYMENT_FREQUENCY_LABELS)
 // ── Write requests (mirror the LMS record DTOs) ───────────────────────
 // On CREATE all identity fields are set. On UPDATE the LMS DTO omits the
 // immutable identity (`code`, `productType`, `payeeType`, `repaymentType`,
-// `currency`) and adds `active` — the form disables those fields in edit mode.
+// `currency`) — the form disables those fields in edit mode. Neither request
+// carries `active`/`status`: the lifecycle moves only via POST /publish and
+// POST /retire (LMS silently drops unknown fields, so sending `active` is a
+// no-op — the bug that made the activate toggle appear stuck).
 
 export interface CreateLoanProductRequest {
   code: string;
@@ -360,6 +385,8 @@ export interface CreateLoanProductRequest {
   defaultThresholdDays?: number;
   termsTemplate?: string;
   currency: string;
+  defaultTermDays?: number;
+  selectionPriority?: number;
 }
 
 export interface UpdateLoanProductRequest {
@@ -386,7 +413,8 @@ export interface UpdateLoanProductRequest {
   lateFeeFlat?: number;
   defaultThresholdDays?: number;
   termsTemplate?: string;
-  active: boolean;
+  defaultTermDays?: number;
+  selectionPriority?: number;
 }
 
 // ── Form state + validation ───────────────────────────────────────────
@@ -422,7 +450,8 @@ export interface LoanProductFormValues {
   lateFeeFlat: number | "";
   defaultThresholdDays: number | "";
   termsTemplate: string;
-  active: boolean;
+  defaultTermDays: number | "";
+  selectionPriority: number | "";
 }
 
 const emptyToUndefined = (v: unknown): unknown =>
@@ -518,7 +547,8 @@ export const LoanProductFormSchema = z
     lateFeeFlat: optionalNonNegative,
     defaultThresholdDays: optionalNonNegativeInt,
     termsTemplate: z.string().max(20000, "Max 20000 characters"),
-    active: z.boolean(),
+    defaultTermDays: requiredPositiveInt("Default term is required"),
+    selectionPriority: optionalNonNegativeInt,
   })
   .refine(
     (d) =>
@@ -544,6 +574,14 @@ export const LoanProductFormSchema = z
   .refine(
     (d) => !(d.interestMethod === "NONE" && d.pricingType === "DECLINING_INTEREST"),
     { message: "Declining interest requires a flat or reducing-balance interest method — or switch pricing to Flat Fee / Factor Rate", path: ["pricingType"] },
+  )
+  .refine(
+    (d) =>
+      d.defaultTermDays == null ||
+      d.minTermDays == null ||
+      d.maxTermDays == null ||
+      (d.defaultTermDays >= d.minTermDays && d.defaultTermDays <= d.maxTermDays),
+    { message: "Must be within the min–max term range", path: ["defaultTermDays"] },
   );
 
 /** Parsed (coerced) output — empties become `undefined`, numerics become numbers. */
@@ -558,9 +596,11 @@ export interface LoanApplicationResponse {
   applicationNumber: string;
   businessId: string;
   accountId: string;
-  loanProductId: string;
+  /** Null only on born-REJECTED supplier-financing declines (no product qualified). */
+  loanProductId: string | null;
   requestedAmount: number;
-  requestedTermDays: number;
+  /** Null only on born-REJECTED supplier-financing declines (no term was selected). */
+  requestedTermDays: number | null;
   purpose?: string | null;
   status: ApplicationStatus;
   approvedAmount?: number | null;
@@ -570,6 +610,44 @@ export interface LoanApplicationResponse {
   decisionedById?: string | null;
   decisionedAt?: string | null;
   loanId?: string | null;
+  // Compliance screening (populated at submit; hold reason set on COMPLIANCE_HOLD)
+  kycVerified?: boolean | null;
+  sanctionsStatus?: string | null;
+  sanctionsCheckId?: string | null;
+  complianceCheckedAt?: string | null;
+  complianceHoldReason?: string | null;
+  complianceClearedById?: string | null;
+  // Latest credit assessment (denormalized read-model)
+  grade?: string | null;
+  recommendedLimit?: number | null;
+  assessmentOutcome?: string | null;
+  latestAssessmentId?: string | null;
+  // Supplier-financing loop link
+  supplierOrderId?: string | null;
+  settloSupplierId?: string | null;
+}
+
+/** Mirrors the LMS `ComplianceResolveRequest` — officer resolution of a COMPLIANCE_HOLD. */
+export interface ComplianceResolveRequest {
+  decision: "CLEAR" | "REJECT";
+  notes?: string;
+}
+
+/** Mirrors the LMS `ApplicationSupplierOrderResponse` — the LPO a supplier-financed
+ *  application pays for (staff view; payment accounts deliberately excluded). */
+export interface ApplicationSupplierOrderResponse {
+  orderId: string;
+  orderStatus: string;
+  totalAmount: number;
+  /** Null = the order is fully financed (fall back to totalAmount). */
+  financedAmount?: number | null;
+  settloSupplierId: string;
+  supplierName: string;
+  supplierVerificationStatus?: string | null;
+  supplierFinancingEligible: boolean;
+  maxLoanPerOrder?: number | null;
+  maxOutstandingExposure?: number | null;
+  currentExposure?: number | null;
 }
 
 /** Mirrors the LMS `DecisionRequest`. `approvedAmount`/`approvedTermDays` required when approving. */
@@ -585,6 +663,7 @@ export interface LoanDecisionRequest {
 export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
   DRAFT: "Draft",
   SUBMITTED: "Submitted",
+  COMPLIANCE_HOLD: "Compliance hold",
   IN_REVIEW: "In review",
   APPROVED: "Approved",
   ACCEPTED: "Accepted",
@@ -596,6 +675,7 @@ export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
 /** Statuses the admin queue can filter by (order = segmented-tab order). */
 export const APPLICATION_STATUS_FILTERS: ApplicationStatus[] = [
   "IN_REVIEW",
+  "COMPLIANCE_HOLD",
   "SUBMITTED",
   "APPROVED",
   "ACCEPTED",
@@ -673,7 +753,10 @@ export interface PayoutAccountResponse {
 
 export interface InitiateDisbursementRequest {
   fundingSourceId: string;
-  payoutAccountId: string;
+  /** Required for borrower-payee loans; FORBIDDEN for SUPPLIER-payee (LMS-validated). */
+  payoutAccountId?: string;
+  /** SUPPLIER-payee only: which supplier payment account to pay (omit → supplier's default). */
+  supplierPaymentAccountId?: string;
 }
 
 export interface ConfirmDisbursementRequest {
@@ -807,20 +890,13 @@ export const FundingSourceFormSchema = z
     disbursementMethod: z.enum(["MANUAL", "AUTOMATED"], {
       required_error: "Select a disbursement method",
     }),
+    // Single transport today: the backend defaults AUTOMATED sources to the Settlo
+    // disbursement engine, so the key is no longer collected on the form.
     bankGatewayKey: z.string().max(255, "Max 255 characters"),
     capitalLimit: optionalNonNegative,
     glAccountRef: z.string().max(255, "Max 255 characters"),
     active: z.boolean(),
-  })
-  .refine(
-    (d) =>
-      d.disbursementMethod !== "AUTOMATED" ||
-      d.bankGatewayKey.trim().length > 0,
-    {
-      message: "Gateway key is required for automated disbursement",
-      path: ["bankGatewayKey"],
-    },
-  );
+  });
 
 export type FundingSourceFormOutput = z.infer<typeof FundingSourceFormSchema>;
 

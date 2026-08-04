@@ -33,7 +33,7 @@ export function LoanApplicationDecisionPanel({
     application.requestedAmount,
   );
   const [approvedTermDays, setApprovedTermDays] = useState<number | "">(
-    application.requestedTermDays,
+    application.requestedTermDays ?? "",
   );
   const [notes, setNotes] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
@@ -42,7 +42,7 @@ export function LoanApplicationDecisionPanel({
     setMode(null);
     setError("");
     setApprovedAmount(application.requestedAmount);
-    setApprovedTermDays(application.requestedTermDays);
+    setApprovedTermDays(application.requestedTermDays ?? "");
     setNotes("");
     setRejectionReason("");
   };

@@ -3,8 +3,14 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { Lpo, effectiveLpoStatus } from "@/types/lpo/type";
+import {
+  FINANCING_STATUS_LABELS,
+  Lpo,
+  effectiveLpoStatus,
+} from "@/types/lpo/type";
+import { FINANCING_BADGE_VARIANT } from "@/components/widgets/lpo/financing-card";
 import { Money } from "@/components/widgets/money";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
 
@@ -116,12 +122,31 @@ export const columns: ColumnDef<LpoRow>[] = [
         row.original.status,
         row.original.supplierAcknowledgement,
       );
+      const financingStatus = row.original.financingStatus;
+      // Cancellation never resets financingStatus (the backend resolves it
+      // purely from the shadow order, independent of the LPO's own status),
+      // so a cancelled row can still carry a stale REQUESTED/OFFER_MADE from
+      // before it was called off — suppress those in-progress labels here.
+      // PAID stays: if Settlo already disbursed, that's still true and worth
+      // surfacing even on a cancelled order (mirrors the detail-page card).
+      const suppressFinancingBadge =
+        row.original.status === "CANCELLED" &&
+        (financingStatus === "REQUESTED" || financingStatus === "OFFER_MADE");
       return (
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${tone}`}
-        >
-          {label}
-        </span>
+        <div className="flex flex-col items-start gap-1">
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${tone}`}
+          >
+            {label}
+          </span>
+          {financingStatus &&
+            financingStatus !== "NONE" &&
+            !suppressFinancingBadge && (
+              <Badge variant={FINANCING_BADGE_VARIANT[financingStatus]}>
+                {FINANCING_STATUS_LABELS[financingStatus]}
+              </Badge>
+            )}
+        </div>
       );
     },
   },

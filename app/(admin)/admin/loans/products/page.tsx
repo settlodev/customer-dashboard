@@ -9,11 +9,13 @@ import {
   PageShell,
 } from "@/components/layouts/page-shell";
 import { Button } from "@/components/ui/button";
-import { LoanActiveToggle } from "@/components/admin/loan-active-toggle";
+import { LoanProductLifecycle } from "@/components/admin/loan-product-lifecycle";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { listLoanProducts } from "@/lib/actions/admin/loans";
 import {
+  LOAN_PRODUCT_STATUS_BADGES,
+  LOAN_PRODUCT_STATUS_LABELS,
   LOAN_PRODUCT_TYPE_LABELS,
   PRICING_TYPE_LABELS,
   REPAYMENT_FREQUENCY_LABELS,
@@ -135,21 +137,18 @@ export default async function AdminLoanProductsPage() {
                         <td className="px-4 py-3">
                           <span
                             className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                              p.active
-                                ? "bg-green-50 text-green-700"
-                                : "bg-gray-100 text-gray-500"
+                              LOAN_PRODUCT_STATUS_BADGES[p.status]
                             }`}
                           >
-                            {p.active ? "Active" : "Inactive"}
+                            {LOAN_PRODUCT_STATUS_LABELS[p.status]}
                           </span>
                         </td>
                         {canManage ? (
                           <td className="px-4 py-3 text-right">
-                            <LoanActiveToggle
-                              kind="product"
+                            <LoanProductLifecycle
                               id={p.id}
                               name={p.name}
-                              active={p.active}
+                              status={p.status}
                             />
                           </td>
                         ) : null}

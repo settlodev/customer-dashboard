@@ -65,6 +65,15 @@ export interface FormResponse<T = unknown> {
     error?: Error | null;
     data?: T;
     errorCode?: string;
+    /**
+     * HTTP status of the underlying failure, when known (set from
+     * `SettloApiError.status`). Lets a caller distinguish transport-level
+     * unavailability (502/503/504, all mapped to the same `SERVICE_UNAVAILABLE`
+     * errorCode by `handleSettloApiError` — the server's own `serverCode` is
+     * discarded on that branch) from a real domain conflict that happens to
+     * share a code. See `acceptOffer` / `offer-step.tsx`'s 503 retry.
+     */
+    status?: number;
     metadata?: Record<string, unknown>;
 }
 

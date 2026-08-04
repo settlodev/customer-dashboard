@@ -146,6 +146,7 @@ export const LocationSettingsSchema = z.object({
   allowDuplicateDocketPrinting: z.boolean().optional(),
   useModernPrintTemplate: z.boolean().optional(),
   mergeIdenticalReceiptItems: z.boolean().optional(),
+  printDensity: z.enum(["STANDARD", "COMPACT", "ULTRA"]).optional(),
   orderPrintsCountEnabled: z.boolean().optional(),
 
   // Receipt

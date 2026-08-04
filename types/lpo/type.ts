@@ -12,6 +12,33 @@ export type LpoStatus =
 
 export type SupplierAcknowledgement = "PENDING" | "ACCEPTED" | "REJECTED";
 
+// ── Financing (pay-via-Settlo) ───────────────────────────────────────
+// Mirrors the Inventory Service's `LpoPaymentMethod` / `OrderFinancingStatus`
+// enums (co.tz.settlo.inventory.lpo.enums / .supplierorder.enums).
+
+/** How an LPO is settled with the supplier. DIRECT unless financing was requested. */
+export type LpoPaymentMethod = "DIRECT" | "SETTLO_FINANCING";
+
+/**
+ * Read-through financing state — `NONE` for DIRECT LPOs, derived from the
+ * shadow supplier order once minted, or the terminal `DECLINED` state when
+ * the supplier accepted but no shadow order was ever minted.
+ */
+export type OrderFinancingStatus =
+  | "NONE"
+  | "REQUESTED"
+  | "OFFER_MADE"
+  | "DECLINED"
+  | "PAID";
+
+export const FINANCING_STATUS_LABELS: Record<OrderFinancingStatus, string> = {
+  NONE: "—",
+  REQUESTED: "Underwriting",
+  OFFER_MADE: "Offer ready",
+  DECLINED: "Declined",
+  PAID: "Paid by Settlo",
+};
+
 // ── Entities ───────────────────────────────────────────────────────
 
 export interface Lpo {
@@ -45,6 +72,28 @@ export interface Lpo {
   items: LpoItem[];
   createdAt: string;
   updatedAt: string;
+
+  /** How this LPO is settled with the supplier; DIRECT unless pay-via-Settlo financing was requested. */
+  paymentMethod?: LpoPaymentMethod;
+  /**
+   * Settlo-financed share of the order total. `null` means FULL financing on a
+   * SETTLO_FINANCING LPO — render the LPO's total client-side in that case; the
+   * wire deliberately does not substitute it here. Always `null` on a DIRECT LPO.
+   */
+  financedAmount?: number | null;
+  /**
+   * What the merchant themself owes the supplier after any Settlo financing:
+   * `total - financedAmount` when a partial amount was requested, `0` when
+   * `financedAmount` is null on a SETTLO_FINANCING LPO (full financing), or
+   * `null` on a DIRECT LPO (not applicable).
+   */
+  merchantPayableAmount?: number | null;
+  /** Derived financing state — see {@link OrderFinancingStatus}. */
+  financingStatus?: OrderFinancingStatus | null;
+  /** Shadow SupplierOrder id minted on supplier acceptance of a financed LPO, once it exists. */
+  supplierOrderId?: string | null;
+  /** Loan application backing the shadow order's financing, resolved from that order once minted. */
+  loanApplicationId?: string | null;
 }
 
 // ── Public (supplier-facing) view served by the share link ─────────
@@ -74,6 +123,12 @@ export interface PublicLpo {
   notes: string | null;
   currency: string | null;
   totalAmount: number | null;
+  /** How this LPO is settled — tells the supplier whether to expect direct payment or a Settlo-financed payout. */
+  paymentMethod?: LpoPaymentMethod;
+  /** Settlo-financed share of `totalAmount`. `null` means full financing on a SETTLO_FINANCING LPO, or the LPO is DIRECT. */
+  financedAmount?: number | null;
+  /** What the merchant will pay the supplier after Settlo's financed share (if any). `0` for full financing, `null` for DIRECT. */
+  merchantPayableAmount?: number | null;
   items: PublicLpoItem[];
   issuedAt: string;
   letterhead: import("@/types/letterhead/type").LocationLetterhead | null;
@@ -105,6 +160,10 @@ export interface CreateLpoPayload {
   locationType: DestinationType;
   notes?: string;
   items: CreateLpoItemPayload[];
+  // paymentMethod / financedAmount are deliberately absent: create-time
+  // financing is retired (D1) — omitting the method makes the backend
+  // default to DIRECT, and financing is opted into post-acceptance via
+  // POST /api/v1/lpos/{id}/financing.
 }
 
 export interface UpdateLpoStatusPayload {

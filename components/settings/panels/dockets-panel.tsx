@@ -1,6 +1,6 @@
 "use client";
 
-import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
+import { SettingsSection, SettingsSwitchRow, SettingsRadioRows } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
 import type { LocationSettings } from "@/types/location-settings/type";
@@ -14,8 +14,28 @@ const KEYS = [
   "autoPrintDockets",
   "allowDuplicateDocketPrinting",
   "useModernPrintTemplate",
+  "printDensity",
   "orderPrintsCountEnabled",
 ] as const;
+
+const DENSITY_OPTIONS = [
+  {
+    value: "STANDARD" as const,
+    label: "Standard",
+    description: "Full-size layout. The most legible, and the most paper.",
+  },
+  {
+    value: "COMPACT" as const,
+    label: "Compact",
+    description: "Smaller type and tighter spacing, same content. About 30% shorter.",
+  },
+  {
+    value: "ULTRA" as const,
+    label: "Ultra compact",
+    description:
+      "Smallest legible type. Drops the header logo, the receipt QR caption and the order duration on receipts, and the SETTLO wordmark on dockets. Receipts run about 50% shorter; dockets save less — roughly 30–38%, since kitchen type has less room to shrink.",
+  },
+];
 
 export function DocketsPanel({
   settings,
@@ -100,6 +120,28 @@ export function DocketsPanel({
           description="Tracks how many times each order has been printed."
           checked={!!v.orderPrintsCountEnabled}
           onChange={(x) => p.setField("orderPrintsCountEnabled", x)}
+          disabled={p.isPending}
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Print density"
+        description="How tightly the modern layout packs bills, receipts and dockets. Kitchen dockets shrink less than receipts so they stay readable from a rail. The classic text layout ignores this."
+        onSave={p.save}
+        isPending={p.isPending}
+        isDirty={p.isDirty}
+      >
+        <SettingsRadioRows
+          // Whitelist rather than `?? "STANDARD"`: a value this build doesn't
+          // know (an older/newer Accounts, a hand-edited row) is non-null, so
+          // the nullish default would miss it and render no selected radio.
+          value={
+            v.printDensity === "COMPACT" || v.printDensity === "ULTRA"
+              ? v.printDensity
+              : "STANDARD"
+          }
+          onChange={(next) => p.setField("printDensity", next)}
+          options={DENSITY_OPTIONS}
           disabled={p.isPending}
         />
       </SettingsSection>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AdminShell } from "@/components/layouts/admin-shell";
@@ -7,11 +8,13 @@ import {
   PageHeader,
   PageShell,
 } from "@/components/layouts/page-shell";
+import { LoanApplicationCompliancePanel } from "@/components/admin/loan-application-compliance-panel";
 import { LoanApplicationDecisionPanel } from "@/components/admin/loan-application-decision-panel";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { cn } from "@/lib/utils";
 import {
+  getApplicationSupplierOrder,
   getLoanApplication,
   getLoanProduct,
   resolveBusinessDirectory,
@@ -94,9 +97,12 @@ export default async function AdminLoanApplicationDetailPage({
   if (!application) notFound();
 
   // Product is best-effort — a deleted product shouldn't 404 the application.
+  // Born-REJECTED supplier declines have no product at all (loanProductId null).
   let product: LoanProductResponse | null = null;
   try {
-    product = await getLoanProduct(application.loanProductId);
+    product = application.loanProductId
+      ? await getLoanProduct(application.loanProductId)
+      : null;
   } catch {
     product = null;
   }
@@ -105,6 +111,10 @@ export default async function AdminLoanApplicationDetailPage({
   const biz = (await resolveBusinessDirectory([application.businessId]))[
     application.businessId
   ];
+  // LPO context for supplier-financed applications — best-effort (null if Inventory is down).
+  const supplierOrder = application.supplierOrderId
+    ? await getApplicationSupplierOrder(application.id)
+    : null;
 
   return (
     <AdminShell token={token}>
@@ -139,23 +149,33 @@ export default async function AdminLoanApplicationDetailPage({
                 </header>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-5 p-5 sm:grid-cols-3">
                   <Field label="Product">
-                    {product?.name ?? (
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {application.loanProductId.slice(0, 8)}…
-                      </span>
-                    )}
+                    {product?.name ??
+                      (application.loanProductId ? (
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {application.loanProductId.slice(0, 8)}…
+                        </span>
+                      ) : (
+                        "—"
+                      ))}
                   </Field>
                   <Field label="Requested amount" mono>
                     {fmtAmount(application.requestedAmount)} {currency}
                   </Field>
                   <Field label="Requested term" mono>
-                    {application.requestedTermDays} days
+                    {application.requestedTermDays != null
+                      ? `${application.requestedTermDays} days`
+                      : "—"}
                   </Field>
                   <Field label="Business">
                     {biz?.name ?? `••${application.businessId.slice(-8)}`}
                   </Field>
                   <Field label="Owner">
-                    {biz?.owner ?? `••${application.accountId.slice(-8)}`}
+                    <Link
+                      href={`/accounts/${application.accountId}`}
+                      className="text-primary hover:underline"
+                    >
+                      {biz?.owner ?? `••${application.accountId.slice(-8)}`}
+                    </Link>
                   </Field>
                   <Field label="Status">
                     {APPLICATION_STATUS_LABELS[application.status]}
@@ -167,6 +187,70 @@ export default async function AdminLoanApplicationDetailPage({
                   ) : null}
                 </div>
               </section>
+
+              {/* Supplier order (LPO) — supplier-financed applications only */}
+              {application.supplierOrderId ? (
+                <section className="rounded-xl border border-line bg-card">
+                  <header className="border-b border-line px-5 py-3.5">
+                    <h3 className="text-sm font-semibold text-ink">
+                      Supplier order (LPO)
+                    </h3>
+                  </header>
+                  {supplierOrder ? (
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-5 p-5 sm:grid-cols-3">
+                      <Field label="Supplier">
+                        {supplierOrder.supplierName}
+                        {supplierOrder.supplierVerificationStatus ? (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {supplierOrder.supplierVerificationStatus}
+                          </span>
+                        ) : null}
+                      </Field>
+                      <Field label="Order status">
+                        {supplierOrder.orderStatus}
+                      </Field>
+                      <Field label="Order total" mono>
+                        {fmtAmount(supplierOrder.totalAmount)} {currency}
+                      </Field>
+                      <Field label="Financed amount" mono>
+                        {fmtAmount(
+                          supplierOrder.financedAmount ??
+                            supplierOrder.totalAmount,
+                        )}{" "}
+                        {currency}
+                        {supplierOrder.financedAmount == null ? (
+                          <span className="ml-1 text-[11px] text-muted-foreground">
+                            (full)
+                          </span>
+                        ) : null}
+                      </Field>
+                      <Field label="Supplier financing-eligible">
+                        {supplierOrder.supplierFinancingEligible ? "Yes" : "No"}
+                      </Field>
+                      <Field label="Supplier exposure" mono>
+                        {fmtAmount(supplierOrder.currentExposure)}
+                        {supplierOrder.maxOutstandingExposure != null
+                          ? ` / ${fmtAmount(supplierOrder.maxOutstandingExposure)}`
+                          : ""}{" "}
+                        {currency}
+                      </Field>
+                      <div className="col-span-2 sm:col-span-3">
+                        <Field label="Order ID" mono>
+                          {supplierOrder.orderId}
+                        </Field>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-5 text-sm text-muted-foreground">
+                      Order details are unavailable right now (Inventory service
+                      unreachable). Order ID:{" "}
+                      <span className="font-mono">
+                        {application.supplierOrderId}
+                      </span>
+                    </div>
+                  )}
+                </section>
+              ) : null}
 
               {/* Decision summary (once decided) */}
               {decided ? (
@@ -214,9 +298,22 @@ export default async function AdminLoanApplicationDetailPage({
               ) : null}
             </div>
 
-            {/* Decision panel / hint */}
+            {/* Decision / compliance panel / hint */}
             <div className="lg:col-span-1">
-              {isDecidable(application.status) ? (
+              {application.status === "COMPLIANCE_HOLD" ? (
+                canApprove ? (
+                  <LoanApplicationCompliancePanel
+                    application={application}
+                    accountName={biz?.owner}
+                  />
+                ) : (
+                  <div className="rounded-xl border border-dashed border-line-2 bg-card p-5 text-sm text-muted-foreground">
+                    This application is on a compliance hold; resolving it needs
+                    the <span className="font-mono">loans:approve</span>{" "}
+                    permission.
+                  </div>
+                )
+              ) : isDecidable(application.status) ? (
                 canApprove ? (
                   <LoanApplicationDecisionPanel
                     application={application}
@@ -231,7 +328,8 @@ export default async function AdminLoanApplicationDetailPage({
                 )
               ) : (
                 <div className="rounded-xl border border-dashed border-line-2 bg-card p-5 text-sm text-muted-foreground">
-                  No action needed — only applications in review can be decided.
+                  No action needed — only applications in review or on a
+                  compliance hold can be actioned.
                 </div>
               )}
             </div>

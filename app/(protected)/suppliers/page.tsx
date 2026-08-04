@@ -2,8 +2,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/supplier/columns";
+import { SupplierTable } from "@/components/tables/supplier/table";
 import {
   PageShell,
   PageHeader,
@@ -14,6 +13,8 @@ import { StatusTabs } from "@/components/layouts/status-tabs";
 import { parseListStatus } from "@/components/layouts/list-status";
 import NoItems from "@/components/layouts/no-items";
 import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
+import { listNominations } from "@/lib/actions/supplier-nomination-actions";
+import type { SupplierNomination } from "@/types/supplier/nomination";
 
 type Props = {
   searchParams: Promise<{
@@ -31,7 +32,27 @@ export default async function SuppliersPage({ searchParams }: Props) {
   const page = Number(params.page) || 0;
   const pageLimit = Number(params.limit) || 25;
 
-  const all = await fetchAllSuppliers();
+  const [all, nominations] = await Promise.all([
+    fetchAllSuppliers(),
+    listNominations(),
+  ]);
+
+  // Latest nomination per supplier (by submittedAt) → which suppliers are
+  // currently under review, so the table's marketplace chip can render
+  // without a per-row fetch. Computed here from one bulk fetch instead of
+  // the table doing one `getNominationsForSupplier` call per row.
+  const latestBySupplier = new Map<string, SupplierNomination>();
+  for (const n of nominations) {
+    const existing = latestBySupplier.get(n.sourceSupplierId);
+    if (!existing || new Date(n.submittedAt) > new Date(existing.submittedAt)) {
+      latestBySupplier.set(n.sourceSupplierId, n);
+    }
+  }
+  const underReviewSupplierIds = new Set(
+    [...latestBySupplier.values()]
+      .filter((n) => n.status === "SUBMITTED")
+      .map((n) => n.sourceSupplierId),
+  );
 
   const scope =
     status === "archived"
@@ -75,15 +96,13 @@ export default async function SuppliersPage({ searchParams }: Props) {
         {total > 0 || q !== "" ? (
           <Card>
             <CardContent className="px-2 pt-6 sm:px-6">
-              <DataTable
-                columns={columns}
+              <SupplierTable
                 data={data}
+                underReviewSupplierIds={underReviewSupplierIds}
                 pageCount={pageCount}
                 defaultPageSize={pageLimit}
                 pageNo={page}
-                searchKey="name"
                 total={total}
-                rowClickBasePath="/suppliers"
               />
             </CardContent>
           </Card>

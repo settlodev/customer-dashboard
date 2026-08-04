@@ -8,7 +8,54 @@ import { Badge } from "@/components/ui/badge";
 import { TableAvatar } from "@/components/tables/shared/table-avatar";
 import type { Supplier } from "@/types/supplier/type";
 
-export const columns: ColumnDef<Supplier>[] = [
+/**
+ * Compact marketplace-status chip for the name cell: linked suppliers show
+ * "Settlo" immediately (already on the row); everyone else shows "Under
+ * review" when the row's id is in `underReviewSupplierIds` — the business's
+ * suppliers whose latest nomination is `SUBMITTED`, resolved once
+ * server-side by the page from a single bulk fetch (see `getColumns`
+ * below) instead of a per-row check. Purely presentational — no fetching.
+ */
+function SupplierMarketplaceChip({
+  linked,
+  underReview,
+}: {
+  linked: boolean;
+  underReview: boolean;
+}) {
+  if (linked) {
+    return (
+      <Badge variant="pos" className="shrink-0">
+        <ShieldCheck className="h-3 w-3" />
+        Settlo
+      </Badge>
+    );
+  }
+  if (underReview) {
+    return (
+      <Badge variant="warn" className="shrink-0">
+        Under review
+      </Badge>
+    );
+  }
+  return null;
+}
+
+interface ColumnOptions {
+  /**
+   * The business's suppliers whose latest marketplace nomination is
+   * `SUBMITTED` — fetched once, server-side, by the suppliers list page
+   * (app/(protected)/suppliers/page.tsx) via a single bulk
+   * `listNominations()` call, instead of one `getNominationsForSupplier`
+   * request per row (that was a client-side N+1: up to a page-size worth of
+   * server actions firing from `useEffect` on every sort/paginate remount).
+   */
+  underReviewSupplierIds: Set<string>;
+}
+
+export const getColumns = ({
+  underReviewSupplierIds,
+}: ColumnOptions): ColumnDef<Supplier>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -59,12 +106,10 @@ export const columns: ColumnDef<Supplier>[] = [
               <span className="truncate text-[13px] font-medium text-ink">
                 {name}
               </span>
-              {linkedToSettloSupplier && (
-                <Badge variant="pos" className="shrink-0">
-                  <ShieldCheck className="h-3 w-3" />
-                  Linked
-                </Badge>
-              )}
+              <SupplierMarketplaceChip
+                linked={linkedToSettloSupplier}
+                underReview={underReviewSupplierIds.has(id)}
+              />
             </div>
             {contactPersonName && (
               <div className="mt-0.5 truncate text-[11px] text-muted-foreground">

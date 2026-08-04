@@ -13,7 +13,7 @@ import {
   Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHead } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -166,22 +166,21 @@ export function AttachmentsPanel({
   };
 
   return (
-    <Card className="rounded-xl shadow-sm">
-      <CardContent className="pt-6 space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-medium flex items-center gap-2">
-              <Paperclip className="h-4 w-4" />
-              {title}
-              {items.length > 0 && (
-                <span className="text-xs font-normal text-muted-foreground">
-                  ({items.length})
-                </span>
-              )}
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-          </div>
-          {!readOnly && (
+    <Card className="rounded-xl shadow-sm overflow-hidden">
+      <CardHead
+        icon={<Paperclip className="h-3.5 w-3.5" />}
+        title={
+          <>
+            {title}
+            {items.length > 0 && (
+              <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                ({items.length})
+              </span>
+            )}
+          </>
+        }
+        trailing={
+          !readOnly && (
             <Button
               type="button"
               variant="outline"
@@ -196,15 +195,18 @@ export function AttachmentsPanel({
               )}
               {isUploading && progress ? `${progress.percent}%` : "Upload"}
             </Button>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept={accept}
-            onChange={(e) => onFiles(e.target.files)}
-          />
-        </div>
+          )
+        }
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept={accept}
+        onChange={(e) => onFiles(e.target.files)}
+      />
+      <CardContent pad0 className="px-5 pb-5 space-y-4">
+        <p className="text-xs text-muted-foreground">{description}</p>
 
         {!readOnly && (
           <div

@@ -25,8 +25,15 @@ import {
   Users,
 } from "lucide-react";
 
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import {
+  PanelCard,
+  RailCard,
+  SegTabs,
+  StatusPill,
+  StatusTag,
+  type Tone,
+} from "@/components/layouts/order-detail";
 import {
   FulfillmentStatus,
   FULFILLMENT_STATUS_LABELS,
@@ -119,19 +126,6 @@ const fulfillmentLabel = (o: OrderDetail) =>
 
 // ─── tones ───────────────────────────────────────────────────────────
 
-type Tone = "pos" | "neg" | "warn" | "info" | "muted";
-
-// Semantic chip colours. pos/neg/warn map onto the dashboard's status
-// tokens (theme-aware); "info" is the design's blue for open / in-progress
-// states — it follows the same convention the orders list already uses.
-const CHIP: Record<Tone, string> = {
-  pos: "bg-pos-tint text-pos",
-  neg: "bg-neg-tint text-neg",
-  warn: "bg-warn-tint text-warn",
-  info: "bg-blue-500/10 text-blue-600 dark:bg-blue-400/10 dark:text-blue-400",
-  muted: "bg-canvas text-ink-3",
-};
-
 // Fixed hues for chips rendered on the always-dark money hero, where the
 // translucent tint classes above would wash out.
 const TONE_HEX: Record<Tone, string> = {
@@ -217,113 +211,6 @@ const txnToneOf = (s?: string | null): Tone => {
   if (["PENDING", "PROCESSING"].includes(v)) return "warn";
   return "muted";
 };
-
-// ─── primitives ──────────────────────────────────────────────────────
-
-function StatusPill({
-  tone,
-  dot,
-  children,
-}: {
-  tone: Tone;
-  dot?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[11.5px] font-semibold leading-none",
-        CHIP[tone],
-      )}
-    >
-      {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
-      {children}
-    </span>
-  );
-}
-
-function StatusTag({ tone, children }: { tone: Tone; children: React.ReactNode }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center whitespace-nowrap rounded-md px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.04em]",
-        CHIP[tone],
-      )}
-    >
-      {children}
-    </span>
-  );
-}
-
-function IconChip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px] bg-primary/10 text-primary-dark dark:text-primary">
-      {children}
-    </span>
-  );
-}
-
-function CountChip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded-md border border-line bg-canvas px-2 py-0.5 font-mono text-[11px] font-semibold text-ink-3">
-      {children}
-    </span>
-  );
-}
-
-function RailCard({
-  icon,
-  title,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Card className="p-5">
-      <div className="mb-3.5 flex items-center gap-2.5">
-        <IconChip>{icon}</IconChip>
-        <span className="text-[13.5px] font-semibold tracking-tight text-ink">
-          {title}
-        </span>
-      </div>
-      {children}
-    </Card>
-  );
-}
-
-function PanelCard({
-  icon,
-  title,
-  count,
-  flush,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  count?: number;
-  flush?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <Card className="overflow-hidden">
-      <div
-        className={cn(
-          "flex items-center gap-2.5 px-5 pt-4",
-          flush ? "pb-3" : "pb-0",
-        )}
-      >
-        <IconChip>{icon}</IconChip>
-        <span className="text-[14px] font-semibold tracking-tight text-ink">
-          {title}
-        </span>
-        {count != null && <CountChip>{count}</CountChip>}
-      </div>
-      <div className={flush ? "" : "px-5 pb-5 pt-3.5"}>{children}</div>
-    </Card>
-  );
-}
 
 // ─── money rail ──────────────────────────────────────────────────────
 
@@ -601,60 +488,6 @@ function Ledger({ order }: { order: OrderDetail }) {
           strong
         />
       )}
-    </div>
-  );
-}
-
-// ─── segmented tabs (reuses the date-filter pill control) ────────────
-
-function SegTabs({
-  tabs,
-  active,
-  onSelect,
-}: {
-  tabs: { id: TabKey; label: string; icon: typeof Receipt; count?: number }[];
-  active: TabKey;
-  onSelect: (id: TabKey) => void;
-}) {
-  return (
-    <div className="overflow-x-auto pb-0.5">
-      <div
-        role="tablist"
-        className="inline-flex items-center gap-0.5 rounded-[10px] border border-line-2 bg-card p-[3px]"
-      >
-        {tabs.map((tb) => {
-          const on = active === tb.id;
-          const Icon = tb.icon;
-          return (
-            <button
-              key={tb.id}
-              type="button"
-              role="tab"
-              aria-selected={on}
-              onClick={() => onSelect(tb.id)}
-              className={cn(
-                "inline-flex items-center gap-1.5 whitespace-nowrap rounded-[7px] px-3 py-1.5 text-[12.5px] font-semibold transition-colors",
-                on
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-ink-3 hover:text-ink",
-              )}
-            >
-              <Icon className={cn("h-3.5 w-3.5", on ? "opacity-100" : "opacity-70")} />
-              {tb.label}
-              {tb.count != null && (
-                <span
-                  className={cn(
-                    "rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none",
-                    on ? "bg-white/20 text-white" : "bg-canvas text-ink-3",
-                  )}
-                >
-                  {tb.count}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 }
@@ -1129,7 +962,7 @@ function ItemsPanel({ order }: { order: OrderDetail }) {
         icon={<Package className="h-3.5 w-3.5" />}
         title="Items"
         count={items.length}
-        flush={items.length > 0}
+        pad0={items.length > 0}
       >
         {items.length ? (
           <ItemsTable rows={items} voided={cancelled} />
@@ -1147,7 +980,7 @@ function ItemsPanel({ order }: { order: OrderDetail }) {
           icon={<Undo2 className="h-3.5 w-3.5" />}
           title="Removed items"
           count={removed.length}
-          flush
+          pad0
         >
           <ItemsTable rows={removed} muted voided />
         </PanelCard>
@@ -1172,7 +1005,7 @@ function PaymentsPanel({
         icon={<CreditCard className="h-3.5 w-3.5" />}
         title="Transactions"
         count={txs.length || undefined}
-        flush={txs.length > 0}
+        pad0={txs.length > 0}
       >
         {txs.length ? (
           <TxnTable order={order} />

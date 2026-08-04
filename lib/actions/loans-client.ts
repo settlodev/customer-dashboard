@@ -49,6 +49,11 @@ export const LOAN_ENDPOINTS = {
   list: "/api/v1/loans",
   detail: (id: string) => `/api/v1/loans/${id}`,
   schedule: (id: string) => `/api/v1/loans/${id}/schedule`,
-  apply: "/api/v1/loans/applications",
+  // Corrected path — the LMS's LoanApplicationController is mounted at
+  // /api/v1/loan-applications (POST creates a DRAFT application), not
+  // /api/v1/loans/applications (which doesn't exist on the LMS). Path-only
+  // fix: applyForLoan() in loans-actions.ts stays mock-gated behind
+  // FINANCING_BACKEND_READY, so the still-mock legacy surfaces are unaffected.
+  apply: "/api/v1/loan-applications",
   pay: (id: string) => `/api/v1/loans/${id}/payments`,
 } as const;

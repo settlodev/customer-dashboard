@@ -9,6 +9,7 @@ export type OrderingMode = "STANDARD" | "TABLE_MANAGEMENT";
 export type LoginMode = "PIN_AND_FINGERPRINT" | "FINGERPRINT_ONLY" | "PIN_ONLY";
 export type LoyaltyAwardType = "PER_ORDER" | "PER_ORDER_VALUE";
 export type StaffPointsRecipient = "FINISHED_BY" | "ASSIGNED_TO" | "SPLIT";
+export type PrintDensity = "STANDARD" | "COMPACT" | "ULTRA";
 
 export type DayOfWeek =
   | "MONDAY"
@@ -51,6 +52,7 @@ export interface LocationSettings {
   allowDuplicateDocketPrinting: boolean;
   useModernPrintTemplate: boolean;
   mergeIdenticalReceiptItems: boolean;
+  printDensity: PrintDensity;
 
   // Stock deduction
   deductStockOnItemChange: boolean;

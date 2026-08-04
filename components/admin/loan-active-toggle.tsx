@@ -18,20 +18,18 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import {
-  setFundingSourceActive,
-  setLoanProductActive,
-} from "@/lib/actions/admin/loans";
+import { setFundingSourceActive } from "@/lib/actions/admin/loans";
 
+// Funding sources only. Loan products have no pause/resume — their lifecycle
+// (publish/retire) lives in LoanProductLifecycle.
 interface LoanActiveToggleProps {
-  kind: "product" | "funding";
+  kind: "funding";
   id: string;
   name: string;
   active: boolean;
 }
 
 export function LoanActiveToggle({
-  kind,
   id,
   name,
   active,
@@ -43,10 +41,7 @@ export function LoanActiveToggle({
 
   const run = (next: boolean) =>
     startTransition(async () => {
-      const res =
-        kind === "product"
-          ? await setLoanProductActive(id, next)
-          : await setFundingSourceActive(id, next);
+      const res = await setFundingSourceActive(id, next);
       if (res.responseType === "error") {
         toast({
           variant: "destructive",
@@ -79,8 +74,7 @@ export function LoanActiveToggle({
     );
   }
 
-  const scope =
-    kind === "product" ? "new loan applications" : "new disbursements";
+  const scope = "new disbursements";
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>

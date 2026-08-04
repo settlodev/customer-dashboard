@@ -8,10 +8,15 @@ import {
   PageShell,
 } from "@/components/layouts/page-shell";
 import LoanProductForm from "@/components/forms/loan-product-form";
+import { LoanProductLifecycle } from "@/components/admin/loan-product-lifecycle";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { getLoanProduct } from "@/lib/actions/admin/loans";
-import type { LoanProductResponse } from "@/types/admin/loans";
+import {
+  LOAN_PRODUCT_STATUS_BADGES,
+  LOAN_PRODUCT_STATUS_LABELS,
+  type LoanProductResponse,
+} from "@/types/admin/loans";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Loan product" };
@@ -65,6 +70,24 @@ export default async function EditLoanProductPage({
           subtitle={`${product.code} · ${product.currency}${
             canManage ? "" : " · read-only"
           }`}
+          titleAccessory={
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                LOAN_PRODUCT_STATUS_BADGES[product.status]
+              }`}
+            >
+              {LOAN_PRODUCT_STATUS_LABELS[product.status]}
+            </span>
+          }
+          actions={
+            canManage ? (
+              <LoanProductLifecycle
+                id={product.id}
+                name={product.name}
+                status={product.status}
+              />
+            ) : undefined
+          }
         />
         <PageBody>
           <LoanProductForm item={product} canManage={canManage} />

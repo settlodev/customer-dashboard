@@ -200,7 +200,14 @@ export default async function SharedLpoPage({
         documentTitle={documentTitle}
       />
       {lpo.supplierAcknowledgement === "PENDING" && (
-        <PublicLpoAcknowledge token={token} lpoNumber={lpo.lpoNumber} />
+        <PublicLpoAcknowledge
+          token={token}
+          lpoNumber={lpo.lpoNumber}
+          paymentMethod={lpo.paymentMethod}
+          financedAmount={lpo.financedAmount}
+          merchantPayableAmount={lpo.merchantPayableAmount}
+          totalAmount={subtotal}
+        />
       )}
     </>
   );

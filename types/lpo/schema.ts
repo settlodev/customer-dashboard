@@ -28,8 +28,15 @@ export const CreateLpoItemSchema = z.object({
   currency: currencyCode.optional().or(z.literal("").transform(() => undefined)),
 });
 
+// Create-time financing is retired (2026-08-03 LPO-financing design, D1):
+// the backend rejects SETTLO_FINANCING at POST /api/v1/lpos, and financing
+// is requested from the order page after supplier acceptance. New LPOs are
+// always DIRECT — the payload simply omits paymentMethod and the backend
+// defaults it.
 export const CreateLpoSchema = z.object({
-  supplierId: z.string({ required_error: "Supplier is required" }).uuid("Supplier is required"),
+  supplierId: z
+    .string({ required_error: "Supplier is required" })
+    .uuid("Supplier is required"),
   notes: z.string().optional(),
   items: z.array(CreateLpoItemSchema).min(1, "Add at least one item"),
 });

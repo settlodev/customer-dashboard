@@ -1,17 +1,33 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  HandCoins,
+  Loader2,
+  XCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { acknowledgePublicLpo } from "@/lib/actions/lpo-actions";
+import type { LpoPaymentMethod } from "@/types/lpo/type";
 import {
   ActionBarSpacer,
   PublicActionBar,
 } from "@/components/documents/PublicActionBar";
 
 type Decision = "ACCEPTED" | "REJECTED";
+
+// Literal "TZS" prefix (not the LPO's actual currency code) — matches the
+// wording used across the rest of the pay-via-Settlo feature (the LPO
+// create-side financing card's copy).
+const formatTzs = (n: number) =>
+  `TZS ${n.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 
 /**
  * Supplier-facing accept/decline strip for a shared LPO. Renders below the
@@ -21,9 +37,19 @@ type Decision = "ACCEPTED" | "REJECTED";
 export function PublicLpoAcknowledge({
   token,
   lpoNumber,
+  paymentMethod,
+  financedAmount,
+  merchantPayableAmount,
+  totalAmount,
 }: {
   token: string;
   lpoNumber: string;
+  /** Pass the LPO's split fields through so this panel can render the
+   *  payment-split disclosure before the supplier accepts. */
+  paymentMethod?: LpoPaymentMethod;
+  financedAmount?: number | null;
+  merchantPayableAmount?: number | null;
+  totalAmount: number;
 }) {
   const [decision, setDecision] = useState<Decision | null>(null);
   const [note, setNote] = useState("");
@@ -66,8 +92,35 @@ export function PublicLpoAcknowledge({
     );
   }
 
+  const isFinanced = paymentMethod === "SETTLO_FINANCING";
+  // Null financedAmount on a SETTLO_FINANCING LPO means full financing — the
+  // wire deliberately omits it, so the order total is the figure to show.
+  const financedFigure = financedAmount ?? totalAmount;
+  const merchantPayable = merchantPayableAmount ?? 0;
+
   return (
     <>
+      {isFinanced && (
+        <div className="mx-auto max-w-[210mm] px-4 print:hidden">
+          <div className="mb-3 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            <HandCoins className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+            <div>
+              <p>
+                <span className="font-semibold">
+                  Settlo pays you {formatTzs(financedFigure)} directly
+                </span>{" "}
+                once the merchant&apos;s financing completes.
+              </p>
+              {merchantPayable > 0 && (
+                <p className="mt-1 text-emerald-800">
+                  {formatTzs(merchantPayable)} is payable by the merchant
+                  directly.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <ActionBarSpacer />
       <PublicActionBar className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>

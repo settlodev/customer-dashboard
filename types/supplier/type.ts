@@ -49,6 +49,23 @@ export interface SettloSupplier {
   updatedAt: string;
 }
 
+/**
+ * Catalog entry returned by the merchant-facing supplier catalog
+ * (`/api/v1/supplier-catalog/suppliers`). Sanitized: every entry is, by
+ * construction, a verified, marketplace-enabled supplier, so verification
+ * and financing fields are not part of this shape.
+ */
+export interface SettloSupplierCatalogEntry {
+  id: string;
+  name: string;
+  contactPerson: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  city: string | null;
+  country: string | null;
+}
+
 export type SettloSupplierVerificationStatus =
   | "PENDING"
   | "VERIFIED"
