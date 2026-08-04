@@ -13,6 +13,12 @@ export const PERM = {
   ACCOUNTS_SUSPEND: "internal:accounts:suspend",
   ACCOUNTS_DELETE: "internal:accounts:delete",
   USERS_IMPERSONATE: "internal:users:impersonate",
+  // Staff impersonation — deliberately separate from USERS_IMPERSONATE, which
+  // only reaches the account OWNER. This one reaches any staff identity on any
+  // account, so Auth grants it to SYSTEM_ADMIN / SUPER_ADMIN only (never
+  // SUPPORT_AGENT) and additionally requires the rotating master key. It also
+  // gates reading and rotating that key.
+  USERS_IMPERSONATE_STAFF: "internal:users:impersonate_staff",
   USERS_MANAGE_INTERNAL: "internal:users:manage_internal",
   ROLES_MANAGE: "internal:roles:manage",
   SAAS_METRICS_READ: "internal:saas:metrics:read",
