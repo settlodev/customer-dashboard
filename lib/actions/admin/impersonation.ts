@@ -144,3 +144,121 @@ export async function impersonateAccount(
     });
   }
 }
+
+/**
+ * Roles allowed to impersonate a STAFF member. Deliberately stricter than
+ * {@link IMPERSONATE_ROLES}: owner impersonation reaches one identity per
+ * account, this reaches any staff identity on any account. SUPPORT_AGENT is
+ * excluded. A UX guard only — Auth re-checks `internal:users:impersonate_staff`
+ * AND the master key, and neither is satisfiable from here.
+ */
+const IMPERSONATE_STAFF_ROLES: InternalRole[] = ["SYSTEM_ADMIN", "SUPER_ADMIN"];
+
+/**
+ * Staff "log in as" — mints a short-lived customer session as one staff member
+ * and returns a one-time URL on the customer origin that establishes it, exactly
+ * like {@link impersonateAccount}. Differs in requiring the rotating master key
+ * as a second factor and a mandatory reason, both of which Auth enforces.
+ *
+ * The master key is passed straight through and never logged, stored, or echoed
+ * back — including in the error paths below.
+ */
+export async function impersonateStaffMember(params: {
+  accountId: string;
+  staffId: string;
+  masterKey: string;
+  reason: string;
+}): Promise<FormResponse<{ url: string }>> {
+  const staff = await getStaffAuthToken();
+  if (!staff?.accessToken) {
+    return parseStringify({
+      responseType: "error",
+      message: "Your staff session has expired. Sign in again to continue.",
+    });
+  }
+
+  const role = staff.internalRole;
+  if (!role || !IMPERSONATE_STAFF_ROLES.includes(role)) {
+    return parseStringify({
+      responseType: "error",
+      message: "Your role isn't permitted to log in as staff members.",
+    });
+  }
+
+  try {
+    const response = await fetch(`${AUTH_SERVICE_URL}/auth/impersonate/staff`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${staff.accessToken}`,
+        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+      },
+      body: JSON.stringify({
+        accountId: params.accountId,
+        staffId: params.staffId,
+        masterKey: params.masterKey,
+        reason: params.reason.trim(),
+      }),
+    });
+
+    if (!response.ok) {
+      // Fixed copy per status — never surface the upstream body, which would be
+      // the one place a bad key could be reflected back.
+      let message =
+        "Couldn't start the impersonation session. Please try again.";
+      if (response.status === 403) {
+        message =
+          "That master key was rejected, or your role isn't permitted to log in as staff.";
+      } else if (response.status === 429) {
+        message =
+          "Too many failed master key attempts. Wait a few minutes and try again.";
+      } else if (response.status === 404) {
+        message =
+          "That staff member is no longer eligible — check they're active and still have dashboard access.";
+      } else if (response.status === 400) {
+        message = "A reason is required, and the master key can't be blank.";
+      } else if (response.status === 401) {
+        message = "Your staff session has expired. Sign in again to continue.";
+      }
+      return parseStringify({
+        responseType: "error",
+        message,
+        error: new Error(`HTTP ${response.status}`),
+      });
+    }
+
+    const data: LoginResponse = await response.json();
+    if (!data.accessToken || !data.refreshToken || !data.accountId) {
+      return parseStringify({
+        responseType: "error",
+        message: "The impersonation service returned an incomplete session.",
+        error: new Error("INCOMPLETE_IMPERSONATION_RESPONSE"),
+      });
+    }
+
+    const blob = sealHandoff({
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      accountId: data.accountId,
+      appId: data.appId,
+      impersonatorId: data.impersonatorId,
+    });
+
+    const origin = await customerOrigin();
+    const url = `${origin}/impersonate/consume?h=${encodeURIComponent(blob)}`;
+
+    return parseStringify({
+      responseType: "success",
+      message: "Opening staff session…",
+      data: { url },
+    });
+  } catch (error: any) {
+    console.error("[IMPERSONATE-STAFF] Failed to start session:", error?.message);
+    return parseStringify({
+      responseType: "error",
+      message:
+        "Couldn't start the impersonation session. Please try again or contact engineering.",
+      error: new Error(error?.message || "Staff impersonation failed"),
+    });
+  }
+}
