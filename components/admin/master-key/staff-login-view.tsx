@@ -168,8 +168,9 @@ export function StaffLoginView() {
 
         {targets !== null && targets.length === 0 ? (
           <p className="mt-4 rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-            No eligible staff member for that address. They may be inactive, have
-            no dashboard access, or never have finished setting up their sign-in.
+            No staff member matched that address. Check the spelling, then that
+            they&apos;re active, still have dashboard access, and have finished
+            setting up their sign-in.
           </p>
         ) : null}
 
