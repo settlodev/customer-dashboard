@@ -54,7 +54,9 @@ interface Props {
 }
 
 const dt = (d?: string | null) =>
-  d ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(d)) : "—";
+  d
+    ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(d))
+    : "—";
 
 export function ProformaDetailClient({ proforma, timeline }: Props) {
   const router = useRouter();
@@ -155,9 +157,15 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
           Details
         </div>
         <div className="space-y-2.5">
-          <RailRow label="Status" value={<StatusPill status={proforma.status} />} />
+          <RailRow
+            label="Status"
+            value={<StatusPill status={proforma.status} />}
+          />
           <RailRow label="Valid until" value={dt(proforma.validUntil)} />
-          <RailRow label="Line items" value={String(proforma.lines?.length ?? 0)} />
+          <RailRow
+            label="Line items"
+            value={String(proforma.lines?.length ?? 0)}
+          />
           <RailRow label="Currency" value={currency} />
         </div>
       </div>
@@ -184,7 +192,12 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
               )}
               {copied ? "Copied" : "Copy"}
             </Button>
-            <Button asChild size="sm" variant="ghost" className="flex-1 justify-center">
+            <Button
+              asChild
+              size="sm"
+              variant="ghost"
+              className="flex-1 justify-center"
+            >
               <a href={shareUrl} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                 Open
@@ -229,7 +242,9 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
         <TabsList>
           {canEdit && <TabsTrigger value="edit">Edit</TabsTrigger>}
           <TabsTrigger value="summary">Summary</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline ({timeline.length})</TabsTrigger>
+          <TabsTrigger value="timeline">
+            Timeline ({timeline.length})
+          </TabsTrigger>
         </TabsList>
 
         {canEdit && (
@@ -248,8 +263,14 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
               <div className="rounded-xl border border-line bg-card p-4 sm:p-5">
                 <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
                   <RoField label="Customer" value={proforma.customerName} />
-                  <RoField label="Phone" value={proforma.customerPhone ?? "—"} />
-                  <RoField label="Email" value={proforma.customerEmail ?? "—"} />
+                  <RoField
+                    label="Phone"
+                    value={proforma.customerPhone ?? "—"}
+                  />
+                  <RoField
+                    label="Email"
+                    value={proforma.customerEmail ?? "—"}
+                  />
                   <RoField label="TIN" value={proforma.customerTin ?? "—"} />
                 </div>
               </div>
@@ -270,7 +291,9 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
                     <tbody className="divide-y divide-line">
                       {proforma.lines?.map((l) => (
                         <tr key={l.id ?? l.description}>
-                          <td className="px-4 py-3 font-medium">{l.description}</td>
+                          <td className="px-4 py-3 font-medium">
+                            {l.description}
+                          </td>
                           <td className="px-4 py-3 text-right font-mono tabular-nums">
                             {l.quantity}
                           </td>
@@ -283,7 +306,9 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
                               : "—"}
                           </td>
                           <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-2">
-                            {l.taxAmount ? formatMoney(l.taxAmount, currency) : "—"}
+                            {l.taxAmount
+                              ? formatMoney(l.taxAmount, currency)
+                              : "—"}
                           </td>
                           <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums">
                             {formatMoney(l.lineTotal ?? 0, currency)}
@@ -300,7 +325,9 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
                   <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
                     Notes
                   </p>
-                  <p className="whitespace-pre-wrap text-ink-2">{proforma.notes}</p>
+                  <p className="whitespace-pre-wrap text-ink-2">
+                    {proforma.notes}
+                  </p>
                 </div>
               )}
             </div>
@@ -352,9 +379,9 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
 
       <AlertDialog open={confirmConvert} onOpenChange={setConfirmConvert}>
         <AlertDialogContent>
-          <AlertDialogHeader>
+          <AlertDialogHeader className="w-full">
             <AlertDialogTitle>Convert to an invoice?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="w-full">
               {proforma.proformaNumber} will be issued as an invoice and the
               receivable posted to the ledger. This can&apos;t be undone.
             </AlertDialogDescription>
