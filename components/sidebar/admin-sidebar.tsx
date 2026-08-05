@@ -254,8 +254,8 @@ const NAV_GROUPS: NavGroup[] = [
         permissions: [PERM.ACCOUNTS_MANAGE],
       },
       {
-        title: "Master Key",
-        href: "/master-key",
+        title: "Log in as Staff",
+        href: "/staff-login",
         icon: KeyRound,
         permissions: [PERM.USERS_IMPERSONATE_STAFF],
       },

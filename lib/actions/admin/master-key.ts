@@ -4,9 +4,13 @@ import { requireOperatorPermission } from "@/lib/admin/operator-auth";
 import { PERM } from "@/lib/admin/permissions";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import type { MasterKeyResponse } from "@/types/admin/master-key";
+import type {
+  MasterKeyResponse,
+  StaffImpersonationTarget,
+} from "@/types/admin/master-key";
 
-const BASE_PATH = "/auth/internal-admin/impersonation/master-key";
+const IMPERSONATION_PATH = "/auth/internal-admin/impersonation";
+const BASE_PATH = `${IMPERSONATION_PATH}/master-key`;
 
 function staffClient() {
   return new ApiClient("auth", "staff");
@@ -61,6 +65,33 @@ export async function rotateMasterKey(): Promise<
       };
     }
     return { ok: true, data: parseStringify(data) };
+  } catch (error: any) {
+    return { ok: false, message: readableError(error) };
+  }
+}
+
+/**
+ * Resolve a staff email to the identities it matches.
+ *
+ * Not audited — it is a lookup, not an impersonation, and recording every
+ * search would bury the events that matter. An empty list is returned for both
+ * "no such address" and "exists but not eligible", so the form can't be used to
+ * probe which addresses are on the platform; the caller must render them alike.
+ */
+export async function findStaffTargets(
+  email: string,
+): Promise<
+  { ok: true; targets: StaffImpersonationTarget[] } | { ok: false; message: string }
+> {
+  const trimmed = email.trim();
+  if (!trimmed) return { ok: true, targets: [] };
+
+  try {
+    await requireOperatorPermission(PERM.USERS_IMPERSONATE_STAFF);
+    const targets = await staffClient().get<StaffImpersonationTarget[]>(
+      `${IMPERSONATION_PATH}/staff-targets?email=${encodeURIComponent(trimmed)}`,
+    );
+    return { ok: true, targets: parseStringify(targets ?? []) };
   } catch (error: any) {
     return { ok: false, message: readableError(error) };
   }
