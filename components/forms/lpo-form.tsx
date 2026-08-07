@@ -51,6 +51,7 @@ import {
   AlertDescription,
 } from "@/components/ui/alert";
 import SupplierSelector from "../widgets/supplier-selector";
+import CreateSupplierSheet from "../widgets/create-supplier-sheet";
 import StockVariantSelector from "../widgets/stock-variant-selector";
 import type { VariantMeta } from "../widgets/stock-variant-selector";
 import CurrencySelector from "../widgets/currency-selector";
@@ -58,6 +59,7 @@ import { useLocationCurrency } from "@/hooks/use-location-currency";
 import { createLpo } from "@/lib/actions/lpo-actions";
 import { CreateLpoSchema } from "@/types/lpo/schema";
 import type { FormResponse } from "@/types/types";
+import type { Supplier } from "@/types/supplier/type";
 
 import styles from "./styles/form-shell.module.css";
 
@@ -243,16 +245,40 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
                 render={({ field }) => (
                   <FormItem className="space-y-[7px]">
                     <FieldLabel required>Supplier</FieldLabel>
-                    <FormControl>
-                      <SupplierSelector
-                        label="Supplier"
-                        placeholder="Select supplier"
-                        value={field.value}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        isDisabled={isPending}
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <FormControl>
+                          <SupplierSelector
+                            label="Supplier"
+                            placeholder="Select supplier"
+                            value={field.value}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            isDisabled={isPending}
+                          />
+                        </FormControl>
+                      </div>
+                      <CreateSupplierSheet
+                        disabled={isPending}
+                        onCreated={(supplier: Supplier) => {
+                          field.onChange(supplier.id);
+                        }}
+                        trigger={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            disabled={isPending}
+                            // Match the SupplierSelector trigger's box:
+                            // 44px tall, same 10px radius.
+                            className="h-11 w-11 shrink-0 rounded-[10px]"
+                            title="Create a new supplier"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        }
                       />
-                    </FormControl>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
