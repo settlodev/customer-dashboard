@@ -8,7 +8,7 @@ import { PlanChangeDialog } from "./plan-change-dialog";
 import { AddonsDialog } from "./addons-dialog";
 import { CancelSubscriptionDialog } from "./cancel-subscription-dialog";
 import { CancelItemDialog } from "./cancel-item-dialog";
-import { DueCard, SettledCard, type DueGroup } from "./billing-hero";
+import { DueCard, ExemptCard, SettledCard, type DueGroup } from "./billing-hero";
 import { ENTITY_TYPE_LABEL, formatBillingDate, isInTrial } from "./shared";
 import type {
   Addon,
@@ -23,6 +23,8 @@ interface OverviewTabProps {
   packages: Package[];
   addons: Addon[];
   entityLabels?: Record<string, string>;
+  /** Internal account: never invoiced, never expires. */
+  isBillingExempt?: boolean;
   /** The open invoice driving the hero banner, if any. */
   pendingInvoice: BillingInvoice | null;
   onPay: () => void;
@@ -35,6 +37,7 @@ export function OverviewTab({
   packages,
   addons,
   entityLabels,
+  isBillingExempt = false,
   pendingInvoice,
   onPay,
   onViewInvoice,
@@ -66,6 +69,12 @@ export function OverviewTab({
           onPay={onPay}
           onView={onViewInvoice}
         />
+      ) : isBillingExempt ? (
+        /* Exempt replaces SettledCard, never DueCard: an invoice raised BEFORE the account
+           was made internal is not voided retroactively, so if one is still open it stays
+           visible and payable above. What an exempt account must not be offered is a NEW
+           invoice — the Billing Service rejects that with a 422. */
+        <ExemptCard />
       ) : (
         <SettledCard onGenerate={onGenerate} />
       )}
@@ -128,8 +137,12 @@ export function OverviewTab({
             Danger zone
           </p>
           <p className="mt-1.5 text-[13.5px] text-ink-3">
-            Cancelling stops future billing. You keep access until{" "}
-            {formatBillingDate(subscription.paidThrough)}.
+            {isBillingExempt
+              ? "This account isn't billed, so there's nothing to stop — cancelling only " +
+                "closes the subscription itself."
+              : `Cancelling stops future billing. You keep access until ${formatBillingDate(
+                  subscription.paidThrough,
+                )}.`}
           </p>
         </div>
         <Button

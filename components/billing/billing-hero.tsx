@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { CheckCircle2, Eye, Plus, Zap } from "lucide-react";
+import { CheckCircle2, Eye, Plus, ShieldCheck, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatAmount } from "./shared";
 
@@ -12,6 +12,8 @@ import { formatAmount } from "./shared";
  *                   states the amount, what it covers, and how to settle.
  *   <SettledCard> — nothing outstanding. Quiet card that offers to
  *                   prepay/extend instead.
+ *   <ExemptCard>  — internal account. Never invoiced, so it offers no
+ *                   payment action at all.
  *
  * `bg-ink` + `text-card` is intentionally self-inverting: in light mode
  * that reads as white-on-near-black, in dark mode as dark-on-near-white,
@@ -146,6 +148,33 @@ export function SettledCard({ onGenerate, disabled }: SettledCardProps) {
           <Plus className="h-3.5 w-3.5" />
           Generate invoice &amp; pay
         </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Internal (billing-exempt) account. Deliberately offers no payment action: the
+ * Billing Service refuses to generate an invoice for an exempt account (422), and
+ * nothing here ever falls due. Kept visually quiet — this is a statement of fact,
+ * not a problem to resolve.
+ */
+export function ExemptCard() {
+  return (
+    <div className="flex flex-col overflow-hidden rounded-xl border border-line bg-card lg:flex-row lg:items-stretch">
+      <div className="flex min-w-0 flex-1 items-center gap-4 px-6 py-6">
+        <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-canvas text-ink-2">
+          <ShieldCheck className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[19px] font-bold tracking-[-0.02em] text-ink">
+            Billing is bypassed
+          </p>
+          <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-ink-3">
+            This is an internal account. It&apos;s never invoiced and never expires, so
+            there&apos;s nothing to pay here. Plans and limits below still apply as normal.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -27,6 +27,7 @@ import {
   getSubscriptionInvoices,
 } from "@/lib/actions/billing-actions";
 import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
+import { getEntitlements } from "@/lib/actions/entitlement-actions";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { getWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { getAuthToken } from "@/lib/auth-utils";
@@ -91,6 +92,7 @@ export default async function BillingPage({
     creditTransactionsPage,
     locations,
     warehouses,
+    entitlements,
   ] = await Promise.all([
     getPackages().catch(() => []),
     getAddons().catch(() => []),
@@ -100,7 +102,15 @@ export default async function BillingPage({
     getCreditTransactions(businessId, 0, 10).catch(() => null),
     fetchAllLocations().catch(() => null),
     getWarehouses(businessId).catch(() => []),
+    // The exemption lives on the entitlements response, not the subscription. This is a
+    // free ride: getEntitlements is React-cache()d per request and the (protected) layout
+    // has already called it, so this resolves from that cache rather than a second call.
+    getEntitlements().catch(() => null),
   ]);
+
+  // Internal account: never invoiced, never expires. Its paidThrough deliberately keeps the
+  // true (often past) value, so the money surfaces below must not be read as a live runway.
+  const isBillingExempt = entitlements?.billingExempt === true;
 
   const invoices = invoicesPage?.content ?? [];
   const totalInvoiceCount = invoicesPage?.totalElements ?? invoices.length;
@@ -141,9 +151,13 @@ export default async function BillingPage({
         title="Billing"
         subtitle="Manage your subscription, invoices, and credits."
         titleAccessory={
-          <StatusPill tone={toPillTone(statusMeta.variant)}>
-            {statusMeta.label}
-          </StatusPill>
+          isBillingExempt ? (
+            <StatusPill tone="neutral">Internal — billing bypassed</StatusPill>
+          ) : (
+            <StatusPill tone={toPillTone(statusMeta.variant)}>
+              {statusMeta.label}
+            </StatusPill>
+          )
         }
       />
 
@@ -174,16 +188,24 @@ export default async function BillingPage({
           />
           <KpiCard
             icon={<CalendarClock className="h-3 w-3" />}
-            label="Paid through"
-            value={formatBillingDate(subscription.paidThrough)}
-            delta={
-              !subscription.autoRenew
-                ? "Auto-renew off"
-                : subscription.nextBillingDate
-                  ? `Auto-renews ${formatBillingDate(subscription.nextBillingDate)}`
-                  : "Auto-renews on this date"
+            label={isBillingExempt ? "Billing" : "Paid through"}
+            value={
+              isBillingExempt ? (
+                <span className="text-muted-2">Not billed</span>
+              ) : (
+                formatBillingDate(subscription.paidThrough)
+              )
             }
-            deltaTone={subscription.autoRenew ? "pos" : "neutral"}
+            delta={
+              isBillingExempt
+                ? "Internal account — never charged"
+                : !subscription.autoRenew
+                  ? "Auto-renew off"
+                  : subscription.nextBillingDate
+                    ? `Auto-renews ${formatBillingDate(subscription.nextBillingDate)}`
+                    : "Auto-renews on this date"
+            }
+            deltaTone={!isBillingExempt && subscription.autoRenew ? "pos" : "neutral"}
           />
           <KpiCard
             icon={<Receipt className="h-3 w-3" />}
@@ -224,6 +246,7 @@ export default async function BillingPage({
           creditTransactions={creditTransactions}
           entityLabels={entityLabels}
           contactDefaults={contactDefaults}
+          isBillingExempt={isBillingExempt}
         />
       </PageBody>
     </PageShell>
