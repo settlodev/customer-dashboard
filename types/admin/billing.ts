@@ -125,6 +125,10 @@ export interface SubscriptionResponse {
   autoRenew: boolean;
   hasActiveDiscount: boolean;
   isFreeSubscription: boolean;
+  /** Internal (test / demo / employee) account: never invoiced, never expires. `paidThrough`
+   *  above deliberately keeps its true — usually PAST — value, so read billing state from
+   *  this flag or the account reads as lapsed. Optional: absent on pre-V32 billing builds. */
+  billingExempt?: boolean;
   createdAt: string;
   updatedAt: string;
   cancelledAt: string | null;

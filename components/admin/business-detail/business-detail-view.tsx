@@ -623,7 +623,13 @@ export function BusinessDetailView({
                   }
                 />
                 <DefRow label="Trial window" value={subscription?.trialStartDate ? `${formatDate(subscription.trialStartDate)} → ${formatDate(subscription.trialEndDate)}` : "—"} tone={subscription?.trialStartDate ? "default" : "dim"} />
-                <DefRow label="Paid through" value={subscription?.paidThrough ? formatDate(subscription.paidThrough) : "—"} tone={subscription?.paidThrough ? "default" : "dim"} />
+                {/* Exempt (internal) accounts are never invoiced, and their paidThrough is
+                    deliberately left at the true, usually past, value — annotate it so it
+                    isn't read as a live expiry. */}
+                {subscription?.billingExempt && (
+                  <DefRow label="Billing" value="Exempt — internal account, never invoiced" />
+                )}
+                <DefRow label="Paid through" value={subscription?.paidThrough ? `${formatDate(subscription.paidThrough)}${subscription.billingExempt ? " — not enforced" : ""}` : "—"} tone={subscription?.paidThrough ? "default" : "dim"} />
                 <DefRow label="Next billing" value={subscription?.nextBillingDate ? formatDate(subscription.nextBillingDate) : "—"} tone={subscription?.nextBillingDate ? "default" : "dim"} />
                 <DefRow label="Recent invoices" value={invoices && invoices.totalElements > 0 ? `${invoices.totalElements} on file` : "None on file"} tone={invoices && invoices.totalElements > 0 ? "default" : "dim"} />
               </DefList>

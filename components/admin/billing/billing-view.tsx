@@ -264,14 +264,24 @@ export function BillingView({
       <div className="rounded-lg border border-line bg-card p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-ink">Subscription</h3>
-          {subscription && (
-            <Badge
-              variant="outline"
-              className={SUBSCRIPTION_STATUS_BADGE[subscription.status].className}
-            >
-              {SUBSCRIPTION_STATUS_BADGE[subscription.status].label}
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Surfaced next to the status because the two are read together: an exempt
+                account is active by exemption, so its status and paid-through dates say
+                nothing about whether it was actually paid for. */}
+            {subscription?.billingExempt && (
+              <Badge variant="outline" className="border-line bg-canvas text-ink-2">
+                Billing exempt
+              </Badge>
+            )}
+            {subscription && (
+              <Badge
+                variant="outline"
+                className={SUBSCRIPTION_STATUS_BADGE[subscription.status].className}
+              >
+                {SUBSCRIPTION_STATUS_BADGE[subscription.status].label}
+              </Badge>
+            )}
+          </div>
         </div>
         {!subscription ? (
           <p className="text-sm text-muted-foreground">
@@ -289,6 +299,16 @@ export function BillingView({
               value={subscription.isFreeSubscription ? "Yes" : "No"}
             />
             <Info
+              label="Billing exempt"
+              value={
+                subscription.billingExempt ? (
+                  <span className="text-ink">Yes — internal account</span>
+                ) : (
+                  "No"
+                )
+              }
+            />
+            <Info
               label="Active discount"
               value={subscription.hasActiveDiscount ? "Yes" : "No"}
             />
@@ -300,9 +320,19 @@ export function BillingView({
                   : "—"
               }
             />
+            {/* The real date is kept even when exempt — staff need the true record of what
+                was last paid for, since un-marking the account resumes degradation from it.
+                The suffix stops it being misread as a live expiry. */}
             <Info
               label="Paid through"
-              value={formatDate(subscription.paidThrough)}
+              value={
+                <>
+                  {formatDate(subscription.paidThrough)}
+                  {subscription.billingExempt && (
+                    <span className="text-muted-foreground"> — not enforced</span>
+                  )}
+                </>
+              }
             />
             <Info
               label="Next billing"
