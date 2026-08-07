@@ -41,6 +41,17 @@ function containerFields(
   };
 }
 
+// Trims blanks the form's line-per-serial textarea can leave behind (an
+// empty trailing line, stray whitespace) and drops the field entirely when
+// there's nothing to send — mirrors the grn-actions/stock-usage-actions
+// convention for this same field.
+function normalisedSerials(v: { serialNumbers?: string[] }) {
+  const cleaned = (v.serialNumbers ?? [])
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  return cleaned.length > 0 ? cleaned : undefined;
+}
+
 // ── Stock CRUD ──────────────────────────────────────────────────────
 
 // Tab-aligned view filter mirroring the backend's StockListView enum.
@@ -204,6 +215,7 @@ export async function createStock(
         sku: v.sku || undefined,
         barcode: v.barcode || undefined,
         serialTracked: v.serialTracked,
+        serialNumbers: normalisedSerials(v),
         startingQuantity: v.initialQuantity && v.initialQuantity > 0 ? v.initialQuantity : undefined,
         startingUnitCost: v.initialQuantity && v.initialQuantity > 0 ? (v.initialUnitCost ?? 0) : undefined,
         // Optional reorder / alert config — only forwarded when the user set
@@ -634,6 +646,7 @@ export async function createStockWithProduct(
         sku: v.sku || undefined,
         barcode: v.barcode || undefined,
         serialTracked: v.serialTracked,
+        serialNumbers: normalisedSerials(v),
         startingQuantity:
           v.initialQuantity && v.initialQuantity > 0
             ? v.initialQuantity
@@ -710,6 +723,7 @@ function mapStockVariantPartial(v: DraftStockVariant) {
     sku: v.sku || undefined,
     barcode: v.barcode || undefined,
     serialTracked: v.serialTracked,
+    serialNumbers: normalisedSerials(v),
     startingQuantity:
       v.initialQuantity != null && v.initialQuantity > 0 ? v.initialQuantity : undefined,
     startingUnitCost:
