@@ -60,7 +60,16 @@
       "Bash(awk '{print $NF}')",
       "Bash(mkdir -p /Users/Peter/Settlo/Customer-Dashboard/types/stock-usage /Users/Peter/Settlo/Customer-Dashboard/app/\\\\\\(protected\\\\\\)/stock-usages /Users/Peter/Settlo/Customer-Dashboard/app/\\\\\\(protected\\\\\\)/stock-usages/\\\\[id\\\\] /Users/Peter/Settlo/Customer-Dashboard/components/tables/stock-usage)",
       "Bash(yarn tsc *)",
-      "Bash(yarn lint *)"
+      "Bash(yarn lint *)",
+      "Bash(git check-ignore *)",
+      "Bash(npx eslint *)",
+      "Bash(timeout 300 npx next build --no-lint)",
+      "Bash(echo \"EXIT:$?\")",
+      "Read(//tmp/**)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git reset *)",
+      "Bash(git restore *)"
     ]
   },
   "disableAllHooks": true
