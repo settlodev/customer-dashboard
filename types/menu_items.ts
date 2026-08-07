@@ -3,9 +3,7 @@ import { MenuItemArgType } from "@/types/menu-item-type";
 import { LOCATION_WIDE_REPORT_LINKS } from "@/lib/reports-access";
 import { LOANS_ENABLED } from "@/lib/loans/config";
 
-export const menuItems = (
-  args?: MenuItemArgType,
-) => {
+export const menuItems = (args?: MenuItemArgType) => {
   // Default to normal menu if not specified
   const menuType = args?.menuType || "normal";
 
@@ -20,9 +18,7 @@ export const menuItems = (
   return getNormalMenuItems(args);
 };
 
-const getNormalMenuItems = (
-  args?: MenuItemArgType,
-) => {
+const getNormalMenuItems = (args?: MenuItemArgType) => {
   // Default to true so warehouse / loading states keep the link visible
   // until entitlements are known. The page-level UpgradeGate is the
   // backstop when a user clicks through with an underprivileged plan.
@@ -137,7 +133,9 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
-      ].filter((it) => reportsReadAll || !LOCATION_WIDE_REPORT_LINKS.includes(it.link)),
+      ].filter(
+        (it) => reportsReadAll || !LOCATION_WIDE_REPORT_LINKS.includes(it.link),
+      ),
     },
 
     // Inventory Management
@@ -263,15 +261,17 @@ const getNormalMenuItems = (
           icon: "cart",
           permission: "inventory:read",
         },
-        ...(args?.hasMultipleDestinations ? [
-          {
-            title: "Stock transfer",
-            link: "/stock-transfers",
-            current: args?.isCurrentItem,
-            icon: "cart",
-            permission: "transfers:read",
-          },
-        ] : []),
+        ...(args?.hasMultipleDestinations
+          ? [
+              {
+                title: "Stock transfer",
+                link: "/stock-transfers",
+                current: args?.isCurrentItem,
+                icon: "cart",
+                permission: "transfers:read",
+              },
+            ]
+          : []),
         {
           title: "Consumption Rules",
           link: "/bom-rules",
@@ -286,15 +286,17 @@ const getNormalMenuItems = (
           icon: "cart",
           permission: "bom:read",
         },
-        ...(args?.hasMultipleDestinations ? [
-          {
-            title: "Stock request",
-            link: "/stock-requests",
-            current: args?.isCurrentItem,
-            icon: "truck-return",
-            permission: "transfer_requests:read",
-          },
-        ] : []),
+        ...(args?.hasMultipleDestinations
+          ? [
+              {
+                title: "Stock request",
+                link: "/stock-requests",
+                current: args?.isCurrentItem,
+                icon: "truck-return",
+                permission: "transfer_requests:read",
+              },
+            ]
+          : []),
         {
           title: "Units of measure",
           link: "/units",
@@ -759,7 +761,9 @@ const getStoreMenuItems = (args?: MenuItemArgType) => {
               },
             ]
           : []),
-      ].filter((it) => reportsReadAll || !LOCATION_WIDE_REPORT_LINKS.includes(it.link)),
+      ].filter(
+        (it) => reportsReadAll || !LOCATION_WIDE_REPORT_LINKS.includes(it.link),
+      ),
     },
 
     // Stock management — the core store workspace. Consumption Rules /
@@ -944,15 +948,15 @@ const getStoreMenuItems = (args?: MenuItemArgType) => {
     // Store profile — links to the active store's detail page.
     ...(storeId
       ? [
-          {
-            label: "Store",
-            link: `/stores/${storeId}`,
-            showSeparator: false,
-            collapsible: false,
-            current: args?.isCurrentItem,
-            icon: "general",
-            items: [],
-          },
+          // {
+          //   label: "Store",
+          //   link: `/stores/${storeId}`,
+          //   showSeparator: false,
+          //   collapsible: false,
+          //   current: args?.isCurrentItem,
+          //   icon: "general",
+          //   items: [],
+          // },
         ]
       : []),
   ];

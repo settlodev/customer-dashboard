@@ -58,6 +58,7 @@ import StockVariantSelector, {
   type VariantMeta,
 } from "@/components/widgets/stock-variant-selector";
 import CompatibleUnitSelector from "@/components/widgets/compatible-unit-selector";
+import CreateUnitDialog from "@/components/widgets/create-unit-dialog";
 import ConsumptionRuleSelector from "@/components/widgets/consumption-rule-selector";
 import { MultiSelect } from "@/components/ui/multi-select";
 
@@ -73,6 +74,7 @@ import type { FormResponse } from "@/types/types";
 import { fetchAllProducts } from "@/lib/actions/product-actions";
 import type { Product } from "@/types/product/type";
 import type { BomRule, BomRuleAttachment } from "@/types/bom/type";
+import type { UnitOfMeasure } from "@/types/unit/type";
 
 type FormValues = z.infer<typeof CreateRecipeSchema>;
 type ItemAnchor = { variantUnitId?: string; serialTracked?: boolean };
@@ -708,15 +710,42 @@ export default function RecipeForm({
                               <span className="text-red-500">*</span>
                             )}
                           </FormLabel>
-                          <FormControl>
-                            <CompatibleUnitSelector
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <FormControl>
+                                <CompatibleUnitSelector
+                                  anchorUnitId={anchor.variantUnitId}
+                                  value={f.value as string | undefined}
+                                  onChange={(v) => f.onChange(v || undefined)}
+                                  isDisabled={isPending || !isStock}
+                                  placeholder={isStock ? "Pick a unit" : "—"}
+                                />
+                              </FormControl>
+                            </div>
+                            <CreateUnitDialog
+                              disabled={isPending || !isStock || !anchor.variantUnitId}
                               anchorUnitId={anchor.variantUnitId}
-                              value={f.value as string | undefined}
-                              onChange={(v) => f.onChange(v || undefined)}
-                              isDisabled={isPending || !isStock}
-                              placeholder={isStock ? "Pick a unit" : "—"}
+                              onCreated={(unit: UnitOfMeasure) => {
+                                f.onChange(unit.id);
+                              }}
+                              trigger={
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  disabled={
+                                    isPending || !isStock || !anchor.variantUnitId
+                                  }
+                                  // Match the CompatibleUnitSelector trigger's
+                                  // box: 44px tall, same 10px radius.
+                                  className="h-11 w-11 shrink-0 rounded-[10px]"
+                                  title="Create a new unit"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              }
                             />
-                          </FormControl>
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}

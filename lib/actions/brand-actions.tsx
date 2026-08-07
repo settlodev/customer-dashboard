@@ -46,7 +46,7 @@ export async function searchBrand(
 
 export async function createBrand(
   brand: z.infer<typeof BrandSchema>,
-): Promise<FormResponse | void> {
+): Promise<FormResponse<Brand>> {
   const validated = BrandSchema.safeParse(brand);
 
   if (!validated.success) {
@@ -59,7 +59,7 @@ export async function createBrand(
 
   try {
     const apiClient = new ApiClient();
-    await apiClient.post(inventoryUrl("/api/v1/brands"), {
+    const response = await apiClient.post(inventoryUrl("/api/v1/brands"), {
       locationType: (await getCurrentDestination())?.type ?? "LOCATION",
       name: validated.data.name,
       description: validated.data.description,
@@ -70,6 +70,7 @@ export async function createBrand(
     return parseStringify({
       responseType: "success",
       message: "Brand created successfully",
+      data: parseStringify(response),
     });
   } catch (error: any) {
     return parseStringify({

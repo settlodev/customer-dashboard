@@ -25,6 +25,7 @@ import {
   DatabaseZap,
   Package,
   PackagePlus,
+  Radio,
   RotateCcw,
   ScrollText,
   ShieldCheck,
@@ -216,6 +217,12 @@ const NAV_GROUPS: NavGroup[] = [
         title: "Stuck Writes",
         href: "/stuck-writes",
         icon: WifiOff,
+        permissions: [PERM.ACTIVITY_LOG_READ],
+      },
+      {
+        title: "Gateway Requests",
+        href: "/gateway-requests",
+        icon: Radio,
         permissions: [PERM.ACTIVITY_LOG_READ],
       },
       {

@@ -73,6 +73,7 @@ import StockVariantSelector, {
 } from "@/components/widgets/stock-variant-selector";
 import UnitSelector from "@/components/widgets/unit-selector";
 import CompatibleUnitSelector from "@/components/widgets/compatible-unit-selector";
+import CreateUnitDialog from "@/components/widgets/create-unit-dialog";
 
 import styles from "./styles/form-shell.module.css";
 
@@ -89,6 +90,7 @@ import {
   BomRule,
   LocationType,
 } from "@/types/bom/type";
+import type { UnitOfMeasure } from "@/types/unit/type";
 import { FormResponse } from "@/types/types";
 
 type FormValues = z.infer<typeof CreateBomRuleSchema>;
@@ -318,14 +320,38 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                 render={({ field }) => (
                   <FormItem className="space-y-[7px]">
                     <FieldLabel required>Base unit</FieldLabel>
-                    <FormControl>
-                      <UnitSelector
-                        {...field}
-                        value={field.value ?? ""}
-                        placeholder="Select unit"
-                        isDisabled={isPending}
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <FormControl>
+                          <UnitSelector
+                            {...field}
+                            value={field.value ?? ""}
+                            placeholder="Select unit"
+                            isDisabled={isPending}
+                          />
+                        </FormControl>
+                      </div>
+                      <CreateUnitDialog
+                        disabled={isPending}
+                        onCreated={(unit: UnitOfMeasure) => {
+                          field.onChange(unit.id);
+                        }}
+                        trigger={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            disabled={isPending}
+                            // Match the UnitSelector trigger's box: 44px
+                            // tall, same 10px radius.
+                            className="h-11 w-11 shrink-0 rounded-[10px]"
+                            title="Create a new unit"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        }
                       />
-                    </FormControl>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

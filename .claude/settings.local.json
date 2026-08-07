@@ -60,7 +60,23 @@
       "Bash(awk '{print $NF}')",
       "Bash(mkdir -p /Users/Peter/Settlo/Customer-Dashboard/types/stock-usage /Users/Peter/Settlo/Customer-Dashboard/app/\\\\\\(protected\\\\\\)/stock-usages /Users/Peter/Settlo/Customer-Dashboard/app/\\\\\\(protected\\\\\\)/stock-usages/\\\\[id\\\\] /Users/Peter/Settlo/Customer-Dashboard/components/tables/stock-usage)",
       "Bash(yarn tsc *)",
-      "Bash(yarn lint *)"
+      "Bash(yarn lint *)",
+      "Bash(git check-ignore *)",
+      "Bash(npx eslint *)",
+      "Bash(timeout 300 npx next build --no-lint)",
+      "Bash(echo \"EXIT:$?\")",
+      "Read(//tmp/**)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git reset *)",
+      "Bash(git restore *)",
+      "Bash(lsof -nP -iTCP -sTCP:LISTEN)",
+      "Bash(ps -p 64893 -o pid,command)",
+      "Bash(curl -sS -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(curl -sS -D - -o /dev/null http://localhost:3000/)",
+      "Bash(curl -sS -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/_next/webpack-hmr)",
+      "Bash(curl -sS -D - -o /tmp/bom_rules_new.html http://localhost:3000/bom-rules/new)",
+      "Bash(echo \"---exit:$?---\")"
     ]
   },
   "disableAllHooks": true
