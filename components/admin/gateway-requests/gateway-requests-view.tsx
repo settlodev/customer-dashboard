@@ -23,20 +23,31 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { formatDateTime, timeSince } from "@/components/admin/shared/format";
 import { DataTable } from "@/components/tables/data-table";
-import { gatewayRequestColumns } from "@/components/tables/admin-gateway-requests/column";
+import {
+  gatewayRequestColumns,
+  statusTone,
+} from "@/components/tables/admin-gateway-requests/column";
 import { listGatewayRequests } from "@/lib/actions/admin/gateway-requests";
 import type { GatewayRequestRow } from "@/types/admin/gateway-requests";
 
-const METHOD_TONE: Record<string, "open" | "primary" | "warn" | "neg" | "muted"> = {
-  GET: "open",
-  POST: "primary",
-  PUT: "warn",
-  PATCH: "warn",
-  DELETE: "neg",
-};
-
+// gatewayRequestId is the real identifier — fall back to a composite only
+// for rows from before that field existed.
 function keyOf(row: GatewayRequestRow) {
-  return `${row.vercelId ?? "novercel"}-${row.createdAt}-${row.httpMethod}-${row.incomingUrl}-${row.incomingIpAddress}`;
+  return (
+    row.gatewayRequestId ??
+    `${row.vercelId ?? "novercel"}-${row.createdAt}-${row.httpMethod}-${row.incomingUrl}-${row.incomingIpAddress}`
+  );
+}
+
+function formatCountry(row: GatewayRequestRow): string | null {
+  if (row.countryName && row.countryIsoCode)
+    return `${row.countryName} (${row.countryIsoCode})`;
+  return row.countryName ?? row.countryIsoCode;
+}
+
+function formatCoordinates(row: GatewayRequestRow): string | null {
+  if (row.latitude == null || row.longitude == null) return null;
+  return `${row.latitude.toFixed(4)}, ${row.longitude.toFixed(4)}`;
 }
 
 interface GatewayRequestsViewProps {
@@ -248,15 +259,20 @@ function RequestDetailSheet({
           <>
             <SheetHeader>
               <div className="flex items-center gap-2">
-                <Badge tone={METHOD_TONE[row.httpMethod] ?? "muted"}>
-                  {row.httpMethod}
+                <Badge tone={statusTone(row.upstreamStatusCode)}>
+                  {row.upstreamStatusCode ?? "—"}
                 </Badge>
+                <span className="font-mono text-[11px] text-muted-foreground">
+                  {row.httpMethod}
+                </span>
                 <SheetTitle className="truncate font-mono text-[14px]">
                   {row.incomingUrl}
                 </SheetTitle>
               </div>
               <p className="font-mono text-[12px] text-muted-foreground">
                 {formatDateTime(row.createdAt)} · {timeSince(row.createdAt)}
+                {row.upstreamResponseTimeMs != null &&
+                  ` · ${row.upstreamResponseTimeMs}ms`}
               </p>
             </SheetHeader>
 
@@ -268,9 +284,37 @@ function RequestDetailSheet({
                 <DetailField label="Upstream server" value={row.upstreamServerName} />
               </DetailSection>
 
+              <DetailSection title="Response">
+                <DetailField label="Status code" value={row.upstreamStatusCode} />
+                <DetailField
+                  label="Response time"
+                  value={
+                    row.upstreamResponseTimeMs != null
+                      ? `${row.upstreamResponseTimeMs} ms`
+                      : null
+                  }
+                />
+              </DetailSection>
+
               <DetailSection title="Origin">
                 <DetailField label="IP address" value={row.incomingIpAddress} />
                 <DetailField label="User agent" value={row.userAgent} />
+              </DetailSection>
+
+              <DetailSection title="Location">
+                <DetailField label="Country" value={formatCountry(row)} />
+                <DetailField label="Region" value={row.subdivision} />
+                <DetailField label="City" value={row.city} />
+                <DetailField label="Timezone" value={row.timezone} />
+                <DetailField label="Coordinates" value={formatCoordinates(row)} />
+                <DetailField
+                  label="Accuracy radius"
+                  value={
+                    row.accuracyRadiusKm != null
+                      ? `${row.accuracyRadiusKm} km`
+                      : null
+                  }
+                />
               </DetailSection>
 
               <DetailSection title="Identity">
@@ -283,7 +327,11 @@ function RequestDetailSheet({
               </DetailSection>
 
               <DetailSection title="Trace">
-                <DetailField label="Request ID" value={row.vercelId} />
+                <DetailField
+                  label="Gateway request ID"
+                  value={row.gatewayRequestId}
+                />
+                <DetailField label="Vercel trace ID" value={row.vercelId} />
               </DetailSection>
             </div>
           </>
@@ -317,14 +365,14 @@ function DetailField({
   value,
 }: {
   label: string;
-  value: string | null;
+  value: string | number | null;
 }) {
   const [copied, setCopied] = useState(false);
 
   const onCopy = async () => {
-    if (!value) return;
+    if (value == null) return;
     try {
-      await navigator.clipboard.writeText(value);
+      await navigator.clipboard.writeText(String(value));
       setCopied(true);
       setTimeout(() => setCopied(false), 1_500);
     } catch {
@@ -339,12 +387,12 @@ function DetailField({
         <span
           className={cn(
             "min-w-0 break-all text-right font-mono text-[12px] text-ink",
-            !value && "text-muted-foreground",
+            value == null && "text-muted-foreground",
           )}
         >
           {value ?? "—"}
         </span>
-        {value && (
+        {value != null && (
           <button
             type="button"
             onClick={onCopy}
