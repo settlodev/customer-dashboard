@@ -41,6 +41,27 @@ function containerFields(
   };
 }
 
+<<<<<<< HEAD
+// Serial numbers for a variant's opening stock. The backend books that
+// opening stock as part of the create and rejects a serial-tracked line
+// that arrives without one serial per unit, so these have to travel with
+// the starting quantity or the whole create 400s. The textarea splits on
+// newlines, so blank lines are filtered here the same way stock intake
+// filters them before submitting.
+function serialFields(
+  v: {
+    serialTracked?: boolean;
+    initialQuantity?: number | null;
+    serialNumbers?: string[];
+  },
+) {
+  const hasStartingQuantity = !!v.initialQuantity && v.initialQuantity > 0;
+  if (!v.serialTracked || !hasStartingQuantity) return { serialNumbers: undefined };
+  const serials = (v.serialNumbers ?? [])
+    .map((s) => s.trim())
+    .filter((s) => s !== "");
+  return { serialNumbers: serials.length > 0 ? serials : undefined };
+=======
 // Trims blanks the form's line-per-serial textarea can leave behind (an
 // empty trailing line, stray whitespace) and drops the field entirely when
 // there's nothing to send — mirrors the grn-actions/stock-usage-actions
@@ -50,6 +71,7 @@ function normalisedSerials(v: { serialNumbers?: string[] }) {
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
   return cleaned.length > 0 ? cleaned : undefined;
+>>>>>>> c1de255b14ce989182d462e7cb1a34a36880ca24
 }
 
 // ── Stock CRUD ──────────────────────────────────────────────────────
@@ -218,6 +240,7 @@ export async function createStock(
         serialNumbers: normalisedSerials(v),
         startingQuantity: v.initialQuantity && v.initialQuantity > 0 ? v.initialQuantity : undefined,
         startingUnitCost: v.initialQuantity && v.initialQuantity > 0 ? (v.initialUnitCost ?? 0) : undefined,
+        ...serialFields(v),
         // Optional reorder / alert config — only forwarded when the user set
         // them. The backend skips the InventoryBalance upsert when all five
         // are null.
@@ -655,6 +678,7 @@ export async function createStockWithProduct(
           v.initialQuantity && v.initialQuantity > 0
             ? v.initialUnitCost ?? 0
             : undefined,
+        ...serialFields(v),
         reorderPoint: v.reorderPoint,
         reorderQuantity: v.reorderQuantity,
         preferredSupplierId:
