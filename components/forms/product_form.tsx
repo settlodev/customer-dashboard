@@ -93,9 +93,11 @@ import {
   type ProductVariantOption,
 } from "@/components/forms/addon_group_form";
 import CreateCategoryDialog from "@/components/widgets/create-category-dialog";
+import CreateBrandDialog from "@/components/widgets/create-brand-dialog";
 import { resolveRuleForProduct } from "@/lib/actions/bom-rule-actions";
 import type { BomRule } from "@/types/bom/type";
 import type { Category } from "@/types/category/type";
+import type { Brand } from "@/types/brand/type";
 
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -981,28 +983,57 @@ export default function ProductForm({ item }: ProductFormProps) {
                     render={({ field }) => (
                       <FormItem className="space-y-[7px]">
                         <FieldLabel>Brand</FieldLabel>
-                        <FormControl>
-                          <Combobox
-                            options={[
-                              { value: "__none__", label: "No brand" },
-                              ...brands.map((b) => ({
-                                value: b.id,
-                                label: b.name,
-                              })),
-                            ]}
-                            value={field.value ?? "__none__"}
-                            onChange={(v) =>
-                              field.onChange(
-                                v && v !== "__none__" ? v : undefined,
-                              )
-                            }
-                            placeholder="No brand"
-                            searchPlaceholder="Search brands…"
-                            emptyText="No brands found."
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <FormControl>
+                              <Combobox
+                                options={[
+                                  { value: "__none__", label: "No brand" },
+                                  ...brands.map((b) => ({
+                                    value: b.id,
+                                    label: b.name,
+                                  })),
+                                ]}
+                                value={field.value ?? "__none__"}
+                                onChange={(v) =>
+                                  field.onChange(
+                                    v && v !== "__none__" ? v : undefined,
+                                  )
+                                }
+                                placeholder="No brand"
+                                searchPlaceholder="Search brands…"
+                                emptyText="No brands found."
+                                disabled={isPending}
+                                ariaLabel="Brand"
+                              />
+                            </FormControl>
+                          </div>
+                          <CreateBrandDialog
                             disabled={isPending}
-                            ariaLabel="Brand"
+                            onCreated={(brand: Brand) => {
+                              setBrands((prev) =>
+                                prev.some((b) => b.id === brand.id)
+                                  ? prev
+                                  : [...prev, { id: brand.id, name: brand.name }],
+                              );
+                              field.onChange(brand.id);
+                            }}
+                            trigger={
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                disabled={isPending}
+                                // Match the Combobox trigger's box: 44px
+                                // tall, same 10px radius.
+                                className="h-11 w-11 shrink-0 rounded-[10px]"
+                                title="Create a new brand"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            }
                           />
-                        </FormControl>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
