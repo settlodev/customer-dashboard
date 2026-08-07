@@ -41,6 +41,27 @@ function containerFields(
   };
 }
 
+// Serial numbers for a variant's opening stock. The backend books that
+// opening stock as part of the create and rejects a serial-tracked line
+// that arrives without one serial per unit, so these have to travel with
+// the starting quantity or the whole create 400s. The textarea splits on
+// newlines, so blank lines are filtered here the same way stock intake
+// filters them before submitting.
+function serialFields(
+  v: {
+    serialTracked?: boolean;
+    initialQuantity?: number | null;
+    serialNumbers?: string[];
+  },
+) {
+  const hasStartingQuantity = !!v.initialQuantity && v.initialQuantity > 0;
+  if (!v.serialTracked || !hasStartingQuantity) return { serialNumbers: undefined };
+  const serials = (v.serialNumbers ?? [])
+    .map((s) => s.trim())
+    .filter((s) => s !== "");
+  return { serialNumbers: serials.length > 0 ? serials : undefined };
+}
+
 // ── Stock CRUD ──────────────────────────────────────────────────────
 
 // Tab-aligned view filter mirroring the backend's StockListView enum.
@@ -206,6 +227,7 @@ export async function createStock(
         serialTracked: v.serialTracked,
         startingQuantity: v.initialQuantity && v.initialQuantity > 0 ? v.initialQuantity : undefined,
         startingUnitCost: v.initialQuantity && v.initialQuantity > 0 ? (v.initialUnitCost ?? 0) : undefined,
+        ...serialFields(v),
         // Optional reorder / alert config — only forwarded when the user set
         // them. The backend skips the InventoryBalance upsert when all five
         // are null.
@@ -642,6 +664,7 @@ export async function createStockWithProduct(
           v.initialQuantity && v.initialQuantity > 0
             ? v.initialUnitCost ?? 0
             : undefined,
+        ...serialFields(v),
         reorderPoint: v.reorderPoint,
         reorderQuantity: v.reorderQuantity,
         preferredSupplierId:
