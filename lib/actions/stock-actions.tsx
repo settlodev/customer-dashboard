@@ -41,6 +41,7 @@ function containerFields(
   };
 }
 
+<<<<<<< HEAD
 // Serial numbers for a variant's opening stock. The backend books that
 // opening stock as part of the create and rejects a serial-tracked line
 // that arrives without one serial per unit, so these have to travel with
@@ -60,6 +61,17 @@ function serialFields(
     .map((s) => s.trim())
     .filter((s) => s !== "");
   return { serialNumbers: serials.length > 0 ? serials : undefined };
+=======
+// Trims blanks the form's line-per-serial textarea can leave behind (an
+// empty trailing line, stray whitespace) and drops the field entirely when
+// there's nothing to send — mirrors the grn-actions/stock-usage-actions
+// convention for this same field.
+function normalisedSerials(v: { serialNumbers?: string[] }) {
+  const cleaned = (v.serialNumbers ?? [])
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  return cleaned.length > 0 ? cleaned : undefined;
+>>>>>>> c1de255b14ce989182d462e7cb1a34a36880ca24
 }
 
 // ── Stock CRUD ──────────────────────────────────────────────────────
@@ -225,6 +237,7 @@ export async function createStock(
         sku: v.sku || undefined,
         barcode: v.barcode || undefined,
         serialTracked: v.serialTracked,
+        serialNumbers: normalisedSerials(v),
         startingQuantity: v.initialQuantity && v.initialQuantity > 0 ? v.initialQuantity : undefined,
         startingUnitCost: v.initialQuantity && v.initialQuantity > 0 ? (v.initialUnitCost ?? 0) : undefined,
         ...serialFields(v),
@@ -656,6 +669,7 @@ export async function createStockWithProduct(
         sku: v.sku || undefined,
         barcode: v.barcode || undefined,
         serialTracked: v.serialTracked,
+        serialNumbers: normalisedSerials(v),
         startingQuantity:
           v.initialQuantity && v.initialQuantity > 0
             ? v.initialQuantity
@@ -733,6 +747,7 @@ function mapStockVariantPartial(v: DraftStockVariant) {
     sku: v.sku || undefined,
     barcode: v.barcode || undefined,
     serialTracked: v.serialTracked,
+    serialNumbers: normalisedSerials(v),
     startingQuantity:
       v.initialQuantity != null && v.initialQuantity > 0 ? v.initialQuantity : undefined,
     startingUnitCost:

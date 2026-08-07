@@ -65,7 +65,25 @@ type FormValues = z.infer<typeof SupplierSchema>;
 
 const UNLINKED = "__unlinked__";
 
-function SupplierForm({ item }: { item: Supplier | null | undefined }) {
+interface SupplierFormProps {
+  item: Supplier | null | undefined;
+  /**
+   * When set (create mode only), called with the freshly-created supplier
+   * instead of navigating to its detail page — lets an embedding caller
+   * (e.g. a quick-create sheet opened from another form) grab the id
+   * without leaving its own page. Standalone /suppliers/new is unaffected
+   * since it never passes this.
+   */
+  onCreated?: (supplier: Supplier) => void | Promise<void>;
+  /**
+   * When set, the "Discard" confirmation calls this instead of
+   * `router.back()` — an embedding caller closes its own sheet/dialog
+   * rather than navigating.
+   */
+  onCancel?: () => void;
+}
+
+function SupplierForm({ item, onCreated, onCancel }: SupplierFormProps) {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const [catalog, setCatalog] = useState<SettloSupplierCatalogEntry[]>([]);
@@ -152,8 +170,12 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
         if (item) {
           router.refresh();
         } else {
-          const created = (res.data as Supplier | undefined)?.id;
-          router.push(created ? `/suppliers/${created}` : "/suppliers");
+          const created = res.data as Supplier | undefined;
+          if (onCreated && created) {
+            await onCreated(created);
+          } else {
+            router.push(created ? `/suppliers/${created.id}` : "/suppliers");
+          }
         }
       } else {
         toast({
@@ -503,7 +525,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Keep editing</AlertDialogCancel>
-                <AlertDialogAction onClick={() => router.back()}>
+                <AlertDialogAction onClick={() => (onCancel ? onCancel() : router.back())}>
                   Discard
                 </AlertDialogAction>
               </AlertDialogFooter>
