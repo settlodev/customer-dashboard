@@ -101,6 +101,7 @@ export default async function StoreDetailPage({
             entityType="STORE"
             businessId={businessId}
             subscriptionId={subscription?.id ?? null}
+            billingExempt={subscription?.billingExempt === true}
             item={item}
             ordersRow={null}
             rangeLabel=""

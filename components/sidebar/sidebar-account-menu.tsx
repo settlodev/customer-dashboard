@@ -128,6 +128,9 @@ interface SubscriptionSummaryCardProps {
   isExpired: boolean;
   isSuspended: boolean;
   isPastDue: boolean;
+  /** Internal account: never billed, never expires. Suppresses the runway/expiry surface,
+   *  whose numbers come from a paidThrough that stays at its true (often past) value. */
+  isBillingExempt: boolean;
   paidThrough: string | null;
   /** Whether to surface the "Manage subscription" action (billing:manage / subscription:renew). */
   canManage: boolean;
@@ -143,6 +146,7 @@ function SubscriptionSummaryCard({
   isExpired,
   isSuspended,
   isPastDue,
+  isBillingExempt,
   paidThrough,
   canManage,
   onNavigate,
@@ -172,7 +176,14 @@ function SubscriptionSummaryCard({
     pillClass: string;
     barClass: string;
     cardBorderClass: string;
-  } = isExpired
+  } = isBillingExempt
+    ? {
+        label: "Internal",
+        pillClass: "border-line bg-canvas text-ink-2",
+        barClass: "bg-muted-2",
+        cardBorderClass: "border-line from-canvas",
+      }
+    : isExpired
     ? {
         label: "Expired",
         pillClass: "border-neg/40 bg-neg-tint text-neg",
@@ -250,7 +261,13 @@ function SubscriptionSummaryCard({
         </span>
       </div>
 
-      {paidThrough && !isExpired && !isSuspended && (
+      {isBillingExempt && (
+        <p className="text-[11.5px] leading-snug text-ink-3">
+          Billing is bypassed on this account — it&apos;s never invoiced and doesn&apos;t expire.
+        </p>
+      )}
+
+      {!isBillingExempt && paidThrough && !isExpired && !isSuspended && (
         <>
           <div className="relative h-1 overflow-hidden rounded-full bg-canvas">
             <div
@@ -325,6 +342,7 @@ export function SidebarAccountMenu({
     isExpired,
     isSuspended,
     isPastDue,
+    isBillingExempt,
     paidThrough,
   } = useEntitlements();
 
@@ -571,6 +589,7 @@ export function SidebarAccountMenu({
           isExpired={isExpired}
           isSuspended={isSuspended}
           isPastDue={isPastDue}
+          isBillingExempt={isBillingExempt}
           paidThrough={paidThrough}
           canManage={canManageSubscription}
           onNavigate={() => setOpen(false)}

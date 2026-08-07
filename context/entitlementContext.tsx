@@ -32,6 +32,12 @@ interface EntitlementContextType {
   isExpired: boolean;
   isSuspended: boolean;
   isPastDue: boolean;
+  /**
+   * This account bypasses billing (internal / test / demo): never invoiced, never expires.
+   * Its `paidThrough` is left at the true, often past, value — so anything rendering a
+   * runway, a renewal date, or an expiry warning must check this first.
+   */
+  isBillingExempt: boolean;
   /** Date the subscription is paid through (ISO string or null) */
   paidThrough: string | null;
   /** Date the business trial ends (ISO string or null). Non-null + future = actively trialing. */
@@ -52,6 +58,7 @@ const EntitlementContext = createContext<EntitlementContextType>({
   isExpired: false,
   isSuspended: false,
   isPastDue: false,
+  isBillingExempt: false,
   paidThrough: null,
   trialEndDate: null,
 });
@@ -115,11 +122,17 @@ export function EntitlementProvider({
   // backends that haven't yet surfaced trialEndDate on the entitlement endpoint).
   const status = entitlements?.subscriptionStatus ?? null;
   const trialEndDate = entitlements?.trialEndDate ?? null;
-  const isTrial = isInTrial(trialEndDate) || status === "TRIAL";
-  const isActive = status === "ACTIVE" || status === "PAST_DUE" || isTrial || status === null;
-  const isExpired = status === "EXPIRED";
-  const isSuspended = status === "SUSPENDED";
-  const isPastDue = status === "PAST_DUE";
+  // An exempt (internal) account is always active and never in a negative billing state,
+  // whatever the stored status says. This mirrors the Billing Service, which ORs the
+  // exemption into `active` for exactly the same reason: a row that lapsed before the
+  // exemption was applied still carries EXPIRED until something rewrites it.
+  const isBillingExempt = entitlements?.billingExempt === true;
+  const isTrial = !isBillingExempt && (isInTrial(trialEndDate) || status === "TRIAL");
+  const isActive =
+    isBillingExempt || status === "ACTIVE" || status === "PAST_DUE" || isTrial || status === null;
+  const isExpired = !isBillingExempt && status === "EXPIRED";
+  const isSuspended = !isBillingExempt && status === "SUSPENDED";
+  const isPastDue = !isBillingExempt && status === "PAST_DUE";
   const paidThrough = entitlements?.paidThrough ?? null;
 
   return (
@@ -138,6 +151,7 @@ export function EntitlementProvider({
         isExpired,
         isSuspended,
         isPastDue,
+        isBillingExempt,
         paidThrough,
         trialEndDate,
       }}

@@ -33,6 +33,12 @@ export interface EntitlementResponse {
    *  primary signal for trial state (future date = actively trialing). */
   trialEndDate?: string | null;
   active: boolean;
+  /** This account bypasses billing (internal / test / demo). It is active because of the
+   *  exemption, not because anything was paid — `paidThrough` above keeps its true, often
+   *  PAST, value. Render billing state from this flag rather than the date, or an internal
+   *  account reads as "active, paid through <date last year>". Optional: absent on billing
+   *  builds that predate the exemption feature, which is equivalent to false. */
+  billingExempt?: boolean;
   /** Aggregated across all items — dashboard should ignore these and use per-entity items instead */
   limits: Record<string, number>;
   /** Aggregated across all items */
