@@ -20,6 +20,17 @@ export interface GatewayRequestRow {
   staffId: string | null;
   accountId: string | null;
   daySessionId: string | null;
+  countryIsoCode: string | null;
+  countryName: string | null;
+  city: string | null;
+  subdivision: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  timezone: string | null;
+  accuracyRadiusKm: number | null;
+  gatewayRequestId: string | null;
+  upstreamStatusCode: number | null;
+  upstreamResponseTimeMs: number | null;
   createdAt: string;
 }
 
