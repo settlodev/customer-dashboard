@@ -34,7 +34,7 @@ import {
   clearPendingVerification,
   updateAuthToken,
 } from "@/lib/auth-utils";
-import { isStaffToken, extractReferralAgent } from "@/lib/jwt-utils";
+import { isStaffToken, extractReferralAgent, extractInternalRole } from "@/lib/jwt-utils";
 import { establishCustomerSession } from "@/lib/customer-session";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseApiError, getUIErrorMessage } from "@/lib/settlo-api-error-handler";
@@ -258,6 +258,28 @@ async function establishSessionFromLogin(
     }
   } catch (e) {
     console.error("[LOGIN] /me/accounts fetch failed:", e);
+  }
+
+  // Never interpolate a missing accountId into the profile URL. Auth omits it
+  // for identities that have no tenant account (a Settlo internal operator who
+  // isn't also dashboard-staff anywhere), and `${undefined}` produced a literal
+  // GET /api/v1/accounts/undefined — Accounts answered 400 "Invalid UUID format
+  // for parameter 'id'", which surfaced to the user verbatim as their login
+  // error. Fail here with something true instead.
+  if (!loginData.accountId) {
+    await deleteAuthCookie();
+    const internalRole = extractInternalRole(loginData.accessToken);
+    console.error(
+      "[LOGIN] No accountId on the login response; internalRole:",
+      internalRole ?? "none",
+    );
+    return parseStringify({
+      responseType: "error",
+      message: internalRole
+        ? "This login is a Settlo internal account with no business attached. Use the staff portal, or ask an administrator to add you as staff on a business."
+        : "We couldn't load your account. Please try again.",
+      error: new Error(internalRole ? "INTERNAL_NO_TENANT" : "MISSING_ACCOUNT_ID"),
+    });
   }
 
   let profileData: any = {};

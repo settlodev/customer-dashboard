@@ -101,6 +101,7 @@ export default async function WarehouseDetailPage({
             entityType="WAREHOUSE"
             businessId={businessId}
             subscriptionId={subscription?.id ?? null}
+            billingExempt={subscription?.billingExempt === true}
             item={item}
             ordersRow={null}
             rangeLabel=""

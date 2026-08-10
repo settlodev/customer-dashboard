@@ -44,6 +44,9 @@ interface BillingClientProps {
   creditTransactions: CreditTransaction[];
   entityLabels?: Record<string, string>;
   contactDefaults?: { email: string; phone: string };
+  /** Internal account: never invoiced. Suppresses the invoice-generation surface, which
+   *  the Billing Service rejects with a 422 for an exempt account. */
+  isBillingExempt?: boolean;
 }
 
 export function BillingClient({
@@ -58,6 +61,7 @@ export function BillingClient({
   creditTransactions,
   entityLabels,
   contactDefaults,
+  isBillingExempt = false,
 }: BillingClientProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -261,6 +265,7 @@ export function BillingClient({
             packages={packages}
             addons={addons}
             entityLabels={entityLabels}
+            isBillingExempt={isBillingExempt}
             pendingInvoice={pendingInvoice}
             onPay={() => setPayMode("pay")}
             onViewInvoice={() =>

@@ -131,6 +131,7 @@ export default async function LocationDetailPage({
             entityType="LOCATION"
             businessId={businessId}
             subscriptionId={subscription?.id ?? null}
+            billingExempt={subscription?.billingExempt === true}
             item={item}
             ordersRow={ordersRow}
             rangeLabel={rangeLabel}

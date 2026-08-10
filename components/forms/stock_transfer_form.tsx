@@ -9,9 +9,11 @@ import {
   ArrowRightLeft,
   Boxes,
   CheckCircle2,
+  Loader2,
   Plus,
   Trash2,
   AlertTriangle,
+  ToggleRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,6 +52,8 @@ import {
   AlertDescription,
 } from "@/components/ui/alert";
 import { createStockTransfer } from "@/lib/actions/stock-transfer-actions";
+import { updateBusinessSettings } from "@/lib/actions/business-settings-actions";
+import { getCurrentBusinessId } from "@/lib/actions/business/get-current-business";
 import { StockTransferSchema } from "@/types/stock-transfer/schema";
 import { FormResponse } from "@/types/types";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
@@ -95,7 +99,7 @@ export default function StockTransferForm({
     [toast],
   );
 
-  const submitData = (values: z.infer<typeof StockTransferSchema>) => {
+  const runCreate = (values: z.infer<typeof StockTransferSchema>) => {
     setResponse(undefined);
     startTransition(() => {
       createStockTransfer(values).then((data) => {
@@ -104,6 +108,46 @@ export default function StockTransferForm({
           toast({ variant: "success", title: "Success", description: data.message });
         }
       });
+    });
+  };
+
+  // The backend rejects the transfer with this exact business-rule message
+  // when the setting is off — there's no dedicated error code to key off,
+  // so match the message. Offer a one-click "flip the setting and retry"
+  // instead of sending the user to Business Settings and back.
+  const isTransferDisabledError =
+    response?.responseType === "error" &&
+    !!response.message &&
+    response.message.toLowerCase().includes("location-to-location transfer");
+
+  const enableAndRetry = () => {
+    startTransition(async () => {
+      const businessId = await getCurrentBusinessId();
+      if (!businessId) {
+        toast({
+          variant: "destructive",
+          title: "Couldn't enable transfers",
+          description: "No active business selected.",
+        });
+        return;
+      }
+      const result = await updateBusinessSettings(businessId, {
+        locationToLocationTransferEnabled: true,
+      });
+      if (result.responseType !== "success") {
+        toast({
+          variant: "destructive",
+          title: "Couldn't enable transfers",
+          description: result.message,
+        });
+        return;
+      }
+      toast({
+        variant: "success",
+        title: "Location-to-location transfers enabled",
+        description: "Retrying your transfer…",
+      });
+      runCreate(form.getValues());
     });
   };
 
@@ -117,20 +161,39 @@ export default function StockTransferForm({
           <AlertBody>
             <AlertTitle>We couldn&apos;t save this stock transfer</AlertTitle>
             <AlertDescription>{response.message}</AlertDescription>
+            {isTransferDisabledError && (
+              <div className="mt-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={enableAndRetry}
+                  disabled={isPending}
+                  className="w-full sm:w-auto"
+                >
+                  {isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin shrink-0" />
+                  ) : (
+                    <ToggleRight className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                  )}
+                  Enable &amp; retry
+                </Button>
+              </div>
+            )}
           </AlertBody>
         </Alert>
       ) : null}
       <form
-        onSubmit={form.handleSubmit(submitData, onInvalid)}
+        onSubmit={form.handleSubmit(runCreate, onInvalid)}
         className={styles.formRoot}
       >
         <div className={styles.formStack}>
           <section className={styles.formCard}>
-            <header className={styles.formCardHead}>
+            <header className={cn(styles.formCardHead, "flex-wrap gap-y-2")}>
               <div className={styles.icoBox}>
                 <ArrowRightLeft className="h-3.5 w-3.5" />
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-[140px]">
                 <h3>Transfer details</h3>
                 <p className={styles.formCardHeadDesc}>
                   Where the stock is going. Source is the current location.
@@ -214,11 +277,11 @@ export default function StockTransferForm({
           </section>
 
           <section className={styles.formCard}>
-            <header className={styles.formCardHead}>
+            <header className={cn(styles.formCardHead, "flex-wrap gap-y-2")}>
               <div className={styles.icoBox}>
                 <Boxes className="h-3.5 w-3.5" />
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-[140px]">
                 <h3>Transfer items</h3>
                 <p className={styles.formCardHeadDesc}>
                   What is moving. One line per stock variant.

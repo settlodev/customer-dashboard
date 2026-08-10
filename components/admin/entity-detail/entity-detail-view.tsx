@@ -28,6 +28,9 @@ export interface EntityDetailViewProps {
   entityType: "LOCATION" | "WAREHOUSE" | "STORE";
   businessId: string;
   subscriptionId: string | null;
+  /** The owning account bypasses billing (internal). Its per-item paidThrough is left at the
+   *  true, usually past, value, so it must not be presented as a live expiry. */
+  billingExempt?: boolean;
   item: SubscriptionItemResponse | null;
   ordersRow: BusinessLocationBreakdownRow | null;
   rangeLabel: string;
@@ -50,6 +53,7 @@ export function EntityDetailView({
   entityType,
   businessId,
   subscriptionId,
+  billingExempt = false,
   item,
   ordersRow,
   rangeLabel,
@@ -166,9 +170,14 @@ export function EntityDetailView({
                   label="Trial end"
                   value={formatDate(item.trialEndDate)}
                 />
+                {/* Kept as the real date even when exempt — it is the true record of what
+                    was last paid for, and un-marking the account resumes degradation from
+                    it. The suffix stops it reading as a live expiry. */}
                 <DefRow
                   label="Paid through"
-                  value={formatDate(item.paidThrough)}
+                  value={`${formatDate(item.paidThrough)}${
+                    billingExempt ? " — not enforced (internal)" : ""
+                  }`}
                 />
                 <DefRow
                   label="Added"
