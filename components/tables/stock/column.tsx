@@ -17,9 +17,7 @@ export const columns: ColumnDef<StockWithBalance>[] = [
         <Checkbox
           aria-label="Select all"
           checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) =>
-            table.toggleAllPageRowsSelected(!!value)
-          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         />
       </div>
     ),
@@ -72,9 +70,8 @@ export const columns: ColumnDef<StockWithBalance>[] = [
     enableHiding: true,
     cell: ({ row }) => {
       const label =
-        MATERIAL_TYPE_OPTIONS.find(
-          (o) => o.value === row.original.materialType,
-        )?.label || row.original.materialType;
+        MATERIAL_TYPE_OPTIONS.find((o) => o.value === row.original.materialType)
+          ?.label || row.original.materialType;
       return (
         <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400">
           {label}
@@ -126,14 +123,15 @@ export const columns: ColumnDef<StockWithBalance>[] = [
               baseUnitName: row.original.baseUnitName,
               divisibleUnitRatio: row.original.divisibleUnitRatio,
               divisibleUnitName: row.original.divisibleUnitName,
+              // The list is the one place a quantity stands on its own with no
+              // unit column beside it, so it has to name its own unit.
+              alwaysShowUnit: true,
             })}
           </span>
           {(isLow || isOut) && (
             <AlertTriangle
               className={`h-3.5 w-3.5 ${
-                isOut
-                  ? "text-red-500"
-                  : "text-amber-500"
+                isOut ? "text-red-500" : "text-amber-500"
               }`}
             />
           )}

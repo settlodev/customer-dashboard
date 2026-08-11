@@ -188,3 +188,33 @@ export const REFERENCE_TYPE_LABELS: Record<ReferenceType, string> = {
   PRODUCTION_ORDER: "Production order",
   BATCH_RECALL: "Batch recall",
 };
+
+/** Which check a ledger discrepancy failed. */
+export type DiscrepancyKind = "CHAIN_BREAK" | "ROW_MATH";
+
+/**
+ * One point where a variant's ledger stops adding up, found by scanning the
+ * whole history server-side rather than only the page on screen.
+ */
+export interface LedgerDiscrepancy {
+  kind: DiscrepancyKind;
+  movementId: string;
+  variantId: string;
+  variantName: string;
+  occurredAt: string;
+  movementType: MovementType;
+  referenceType: ReferenceType | null;
+  referenceNumber: string | null;
+  /** Closing balance of the entry immediately before this one. */
+  previousClosingBalance: number;
+  previousBalance: number;
+  newBalance: number;
+  quantity: number;
+  /** Signed size of the disagreement. */
+  delta: number;
+}
+
+export const DISCREPANCY_KIND_LABELS: Record<DiscrepancyKind, string> = {
+  CHAIN_BREAK: "Unexplained change",
+  ROW_MATH: "Entry doesn't add up",
+};

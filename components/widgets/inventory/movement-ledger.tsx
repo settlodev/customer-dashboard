@@ -29,6 +29,7 @@ import {
   DollarSign,
   Loader2,
   ScanLine,
+  ShieldCheck,
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,6 +56,7 @@ import { cn } from "@/lib/utils";
 import {
   getVariantMovementsPage,
   getMovementSummaryByVariant,
+  getLedgerDiscrepancies,
 } from "@/lib/actions/stock-movement-actions";
 import {
   dayLabel,
@@ -71,7 +73,9 @@ import {
 } from "@/lib/stock-movement-display";
 import {
   ALL_TIME_START,
+  DISCREPANCY_KIND_LABELS,
   MOVEMENT_TYPE_LABELS,
+  type LedgerDiscrepancy,
   type MovementType,
   type PageResponse,
   type StockMovement,
@@ -184,6 +188,8 @@ export function MovementLedger({
   const [page, setPage] = useState(0);
   const [size, setSize] = useState<number>(initialPage.size || 50);
   const [anomaliesOnly, setAnomaliesOnly] = useState(false);
+  const [discrepancies, setDiscrepancies] = useState<LedgerDiscrepancy[]>([]);
+  const [scanning, setScanning] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 
   const toggleExpanded = useCallback((id: string) => {
@@ -261,6 +267,25 @@ export function MovementLedger({
       })
       .finally(() => {
         if (!cancelled) setSummaryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summarySig]);
+
+  // Whole-range integrity scan. Runs server-side over every entry, not just the
+  // page on screen — a break hundreds of entries back is the whole point.
+  // Deliberately keyed on the range, not the page: paging must not re-scan.
+  useEffect(() => {
+    let cancelled = false;
+    setScanning(true);
+    getLedgerDiscrepancies({ locationId, variantId, startDate, endDate })
+      .then((res) => {
+        if (!cancelled) setDiscrepancies(res);
+      })
+      .finally(() => {
+        if (!cancelled) setScanning(false);
       });
     return () => {
       cancelled = true;
@@ -404,36 +429,28 @@ export function MovementLedger({
                 type="button"
                 onClick={() => setAnomaliesOnly((v) => !v)}
                 disabled={anomalyCount === 0}
+                title="Show only the flagged entries on this page"
                 className={cn(
                   "inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-[12.5px] font-medium transition-colors",
                   anomaliesOnly
                     ? "border-red-300 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400"
                     : "border-line text-muted-foreground hover:text-foreground",
-                  anomalyCount === 0 && "opacity-50 cursor-not-allowed",
+                  anomalyCount === 0 && "cursor-not-allowed opacity-50",
                 )}
               >
                 <ScanLine className="h-3.5 w-3.5" />
-                Flagged
+                On this page
                 <span className="font-mono text-[10.5px]">{anomalyCount}</span>
               </button>
             </div>
           </div>
 
-          {/* ── Integrity banner ───────────────────────────────────── */}
-          {anomalyCount > 0 && (
-            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>
-                {anomalyCount} {anomalyCount === 1 ? "entry" : "entries"} on
-                this page {anomalyCount === 1 ? "does" : "do"} not reconcile —
-                the running balance jumps without a matching movement, or the
-                entry&apos;s own before/after figures disagree. Start here when
-                tracing a wrong quantity. Note that entries written at the same
-                instant can be ordered arbitrarily, which shows up as a
-                same-second gap that cancels itself out on the next row.
-              </span>
-            </div>
-          )}
+          {/* ── Whole-history integrity scan ───────────────────────── */}
+          <IntegrityReport
+            discrepancies={discrepancies}
+            scanning={scanning}
+            rangeIsAllTime={rangeIsAllTime}
+          />
           {!chainCheck && (
             <p className="text-[11px] text-muted-foreground">
               Continuity checks are off while a movement type filter is applied
@@ -765,6 +782,110 @@ export function MovementLedger({
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// ── Integrity report ────────────────────────────────────────────────
+
+/**
+ * The whole-history integrity scan.
+ *
+ * The per-page checks can only see what's loaded, so a break hundreds of
+ * entries back stayed invisible unless you happened to page onto it. This runs
+ * server-side across every entry in the range and lists each point where the
+ * ledger stops adding up, newest first — the shortlist to work through when a
+ * quantity is wrong.
+ */
+function IntegrityReport({
+  discrepancies,
+  scanning,
+  rangeIsAllTime,
+}: {
+  discrepancies: LedgerDiscrepancy[];
+  scanning: boolean;
+  rangeIsAllTime: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (scanning && discrepancies.length === 0) {
+    return (
+      <p className="flex items-center gap-2 text-[11px] text-muted-foreground">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Checking the whole {rangeIsAllTime ? "history" : "period"} for gaps…
+      </p>
+    );
+  }
+
+  if (discrepancies.length === 0) {
+    return (
+      <div className="flex items-start gap-2 rounded-md border border-line bg-surface px-3 py-2 text-xs text-muted-foreground">
+        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />
+        <span>
+          This variant&apos;s ledger reconciles end to end
+          {rangeIsAllTime ? "" : " over the selected period"} — every entry
+          opens where the one before it closed. A wrong quantity here
+          didn&apos;t come from a missing movement.
+        </span>
+      </div>
+    );
+  }
+
+  const shown = expanded ? discrepancies : discrepancies.slice(0, 3);
+
+  return (
+    <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+      <div className="flex items-start gap-2 text-xs">
+        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <span>
+          <strong className="font-semibold">
+            {discrepancies.length}{" "}
+            {discrepancies.length === 1 ? "point" : "points"}
+          </strong>{" "}
+          in this variant&apos;s{" "}
+          {rangeIsAllTime ? "whole history" : "selected period"} where the
+          ledger stops adding up. Entries written at the same instant can order
+          arbitrarily, which shows up as a gap that cancels itself out on the
+          next row — those are noise.
+        </span>
+      </div>
+
+      <ul className="space-y-1">
+        {shown.map((d) => (
+          <li
+            key={`${d.movementId}-${d.kind}`}
+            className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-t border-amber-200/70 pt-1 text-[11px] first:border-t-0 first:pt-0 dark:border-amber-900/60"
+          >
+            <span className="font-mono text-[10.5px] opacity-80">
+              {dayLabel(d.occurredAt)} {timeLabel(d.occurredAt)}
+            </span>
+            <span className="font-semibold">
+              {DISCREPANCY_KIND_LABELS[d.kind] ?? d.kind}
+            </span>
+            <span className="font-semibold">{signedQty(d.delta)}</span>
+            <span className="opacity-80">
+              {d.kind === "CHAIN_BREAK"
+                ? `previous entry closed at ${qty(d.previousClosingBalance)}, this one opened at ${qty(d.previousBalance)}`
+                : `${qty(d.previousBalance)} ${signedQty(d.quantity)} should close at ${qty(d.previousBalance + d.quantity)}, but recorded ${qty(d.newBalance)}`}
+            </span>
+            {d.referenceNumber && (
+              <span className="font-mono text-[10.5px] opacity-70">
+                {d.referenceNumber}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {discrepancies.length > 3 && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="text-[11px] font-medium underline underline-offset-2"
+        >
+          {expanded ? "Show fewer" : `Show all ${discrepancies.length}`}
+        </button>
+      )}
     </div>
   );
 }
