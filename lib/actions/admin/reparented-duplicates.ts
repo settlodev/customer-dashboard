@@ -22,6 +22,27 @@ export interface DedupReport {
   valueReclaimed: number;
   /** false = dry run (nothing changed); true = the rows were deleted. */
   applied: boolean;
+  /**
+   * Stale rows whose keeper sits on a DIFFERENT order — a genuine
+   * merge/split/transfer re-parent. Any of these dated after the
+   * `reparentedItemIds` fix shipped means the forward fix is still leaking.
+   */
+  crossOrderRows: number;
+  /**
+   * Stale rows whose keeper is the SAME order on another business date.
+   * Nothing was re-parented — the order's events were filed under two dates.
+   * A different bug with the same symptom; the re-parent fix never covered it.
+   */
+  sameOrderRows: number;
+  /** Oldest business date carrying a stale row (yyyy-MM-dd), null when none. */
+  earliestStaleDate: string | null;
+  /** Newest business date carrying a stale row (yyyy-MM-dd), null when none. */
+  latestStaleDate: string | null;
+  /**
+   * Newest business date carrying a CROSS-ORDER stale row — compare against the
+   * deploy date to tell an uncleared backlog from an active leak.
+   */
+  latestCrossOrderDate: string | null;
 }
 
 export interface DedupScope {
@@ -43,6 +64,11 @@ function normalize(r: Partial<DedupReport>): DedupReport {
     itemsAffected: Number(r.itemsAffected ?? 0),
     valueReclaimed: Number(r.valueReclaimed ?? 0),
     applied: Boolean(r.applied),
+    crossOrderRows: Number(r.crossOrderRows ?? 0),
+    sameOrderRows: Number(r.sameOrderRows ?? 0),
+    earliestStaleDate: r.earliestStaleDate ?? null,
+    latestStaleDate: r.latestStaleDate ?? null,
+    latestCrossOrderDate: r.latestCrossOrderDate ?? null,
   };
 }
 

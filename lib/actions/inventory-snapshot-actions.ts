@@ -13,17 +13,26 @@ import type {
 /**
  * Day-level history for a single stock variant. Drives the per-item time-series
  * charts (qty on hand, value, movement mix).
+ *
+ * Stored snapshots only exist for days whose session was closed, so the raw
+ * series is full of holes (and empty for locations that never close a day).
+ * `includeDerived` has the backend fill every missing day up to today from the
+ * live balance and the ledger; those rows come back flagged `derived: true`.
+ *
+ * @param includeDerived defaults to true — pass false for a strict read of
+ *   what was actually stored.
  */
 export async function getVariantSnapshotHistory(
   variantId: string,
   from: string,
   to: string,
+  includeDerived = true,
 ): Promise<InventorySnapshot[]> {
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(
       inventoryUrl(
-        `/api/v1/inventory-snapshots/variant/${variantId}?from=${from}&to=${to}`,
+        `/api/v1/inventory-snapshots/variant/${variantId}?from=${from}&to=${to}&includeDerived=${includeDerived}`,
       ),
     );
     const parsed = parseStringify(data);

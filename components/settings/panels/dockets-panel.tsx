@@ -33,7 +33,7 @@ const DENSITY_OPTIONS = [
     value: "ULTRA" as const,
     label: "Ultra compact",
     description:
-      "Smallest legible type. Drops the header logo, the receipt QR caption and the order duration on receipts, and the SETTLO wordmark on dockets. Receipts run about 50% shorter; dockets save less — roughly 30–38%, since kitchen type has less room to shrink.",
+      "Smallest legible type. Drops the header logo, the receipt QR caption and the order duration. Bills and receipts run about 50% shorter.",
   },
 ];
 
@@ -125,8 +125,8 @@ export function DocketsPanel({
       </SettingsSection>
 
       <SettingsSection
-        title="Print density"
-        description="How tightly the modern layout packs bills, receipts and dockets. Kitchen dockets shrink less than receipts so they stay readable from a rail. The classic text layout ignores this."
+        title="Bill & receipt print density"
+        description="How tightly the modern layout packs bills and receipts on 80mm rolls. Kitchen dockets are never affected — they always print at full size so they stay readable across a busy pass. 58mm rolls are already as tight as they can be and ignore this too, as does the classic text layout."
         onSave={p.save}
         isPending={p.isPending}
         isDirty={p.isDirty}

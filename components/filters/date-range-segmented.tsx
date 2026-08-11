@@ -41,6 +41,15 @@ interface Props {
   allowClear?: boolean;
   /** Optional mono label rendered before the control (e.g. "Period"). */
   label?: string;
+  /** Text for the clear segment. Defaults to "All". */
+  allLabel?: string;
+  /**
+   * Controlled mode. When supplied the control stops writing `from`/`to` to the
+   * URL and reports the new range here instead — for filters that live inside a
+   * client widget (e.g. the stock movement ledger) rather than driving an RSC
+   * refetch. Clearing reports `{ from: "", to: "" }`.
+   */
+  onChange?: (range: { from: string; to: string }) => void;
   className?: string;
 }
 
@@ -55,6 +64,8 @@ export function DateRangeSegmented({
   to,
   allowClear = false,
   label,
+  allLabel = "All",
+  onChange,
   className,
 }: Props) {
   const router = useRouter();
@@ -84,6 +95,10 @@ export function DateRangeSegmented({
   );
 
   const apply = (next: { from: string; to: string }) => {
+    if (onChange) {
+      onChange(next);
+      return;
+    }
     const qs = new URLSearchParams(searchParams?.toString() ?? "");
     qs.set("from", next.from);
     qs.set("to", next.to);
@@ -93,6 +108,10 @@ export function DateRangeSegmented({
   };
 
   const clear = () => {
+    if (onChange) {
+      onChange({ from: "", to: "" });
+      return;
+    }
     const qs = new URLSearchParams(searchParams?.toString() ?? "");
     qs.delete("from");
     qs.delete("to");
@@ -122,7 +141,7 @@ export function DateRangeSegmented({
             onClick={clear}
             className={cn(segButton, isAll ? segActive : segIdle)}
           >
-            All
+            {allLabel}
           </button>
         )}
         {RANGE_PRESETS.map(({ key, label: presetLabel }) => (

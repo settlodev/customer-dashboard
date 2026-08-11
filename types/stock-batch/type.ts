@@ -61,3 +61,25 @@ export const BATCH_STATUS_CONFIG: Record<
     bgColor: "bg-muted/50",
   },
 };
+
+/**
+ * One page of batches. The Inventory Service returns a raw Spring `Page`, whose
+ * 0-based index field is `number` (not `page`, as the Reports Service uses) —
+ * see {@link import("@/types/audit-log/type").AuditLogPage} for the same shape.
+ */
+export interface BatchPage {
+  content: StockBatch[];
+  number: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+}
+
+/** Batch statuses in the order the panel's filter offers them. */
+export const BATCH_STATUS_ORDER: BatchStatus[] = [
+  "ACTIVE",
+  "DEPLETED",
+  "EXPIRED",
+  "RECALLED",
+];

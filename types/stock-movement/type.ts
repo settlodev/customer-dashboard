@@ -70,6 +70,16 @@ export interface StockMovement {
   previousAverageCost?: number | null;
   newAverageCost?: number | null;
   priorBatchId?: string | null;
+  /**
+   * The specific refund this movement reverses (V073). A partially-refunded
+   * line writes several RETURN movements against the same order, so the order
+   * id alone can't identify which one. Null on non-refund movements.
+   */
+  refundId?: string | null;
+  /** Categorised reversal reason, as the upstream enum's name. Phase 3 (V073). */
+  reasonCode?: string | null;
+  /** Free text the operator gave for the reversal. Phase 3 (V073). */
+  reasonNote?: string | null;
   occurredAt: string;
   eventTime: string;
 }
@@ -118,6 +128,28 @@ export interface PageResponse<T> {
   totalPages: number;
   last: boolean;
 }
+
+/** Query shape for one page of a single variant's movement ledger. */
+export interface VariantMovementQuery {
+  locationId: string;
+  variantId: string;
+  /** yyyy-MM-dd. Required by the backend — use {@link ALL_TIME_START} for "all time". */
+  startDate: string;
+  /** yyyy-MM-dd. Defaults to today when omitted. */
+  endDate?: string;
+  movementType?: string;
+  referenceType?: string;
+  /** 0-based. */
+  page?: number;
+  size?: number;
+}
+
+/**
+ * Floor date for the ledger's "All time" range. `startDate` is a required
+ * request param on the Reports Service endpoint, so "all time" is expressed as
+ * a date that predates any Settlo location rather than by omitting the bound.
+ */
+export const ALL_TIME_START = "2015-01-01";
 
 export const MOVEMENT_TYPE_LABELS: Record<MovementType, string> = {
   PURCHASE: "Purchase",
