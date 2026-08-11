@@ -34,6 +34,7 @@ export interface GatewayRequestRow {
   createdAt: string;
 }
 
+/** Gateway. */
 export interface GatewayRequestPage {
   content: GatewayRequestRow[];
   totalElements: number;
@@ -42,5 +43,6 @@ export interface GatewayRequestPage {
 export interface ListGatewayRequestsParams {
   /** Zero-based page index. */
   page?: number;
+
   size?: number;
 }
