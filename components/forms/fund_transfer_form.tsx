@@ -79,6 +79,13 @@ export default function FundTransferForm({
     },
   });
 
+  // Fee/tax are still submitted as absolute amounts (that's all the backend
+  // schema accepts) — these just control which unit the operator is
+  // currently typing in. The underlying form value stays the resolved
+  // amount either way; switching modes only changes how it's displayed.
+  const [feeMode, setFeeMode] = React.useState<"amount" | "percent">("amount");
+  const [taxMode, setTaxMode] = React.useState<"amount" | "percent">("amount");
+
   // Live "net to destination" preview — mirrors the backend, which debits the
   // destination amount − fee − tax and posts fee/tax as an expense.
   const watchedAmount = form.watch("amount");
@@ -344,11 +351,13 @@ export default function FundTransferForm({
                     <FormItem className="space-y-[7px]">
                       <FieldLabel optional>Fee</FieldLabel>
                       <FormControl>
-                        <NumericInput
+                        <ChargeInput
                           value={field.value}
                           onChange={field.onChange}
-                          placeholder="0.00"
-                          allowNegative={false}
+                          mode={feeMode}
+                          onModeChange={setFeeMode}
+                          baseAmount={Number(watchedAmount) || 0}
+                          unitLabel={watchedCurrency}
                           disabled={isPending}
                         />
                       </FormControl>
@@ -363,11 +372,13 @@ export default function FundTransferForm({
                     <FormItem className="space-y-[7px]">
                       <FieldLabel optional>Tax</FieldLabel>
                       <FormControl>
-                        <NumericInput
+                        <ChargeInput
                           value={field.value}
                           onChange={field.onChange}
-                          placeholder="0.00"
-                          allowNegative={false}
+                          mode={taxMode}
+                          onModeChange={setTaxMode}
+                          baseAmount={Number(watchedAmount) || 0}
+                          unitLabel={watchedCurrency}
                           disabled={isPending}
                         />
                       </FormControl>
@@ -412,5 +423,94 @@ export default function FundTransferForm({
         </div>
       </form>
     </Form>
+  );
+}
+
+/**
+ * Numeric input with an amount/percent unit toggle. The value handed to
+ * `onChange` is always the resolved absolute amount — percent mode is a
+ * display/entry convenience derived from `baseAmount`, not a separate value
+ * the backend ever sees (its schema only has feeAmount/taxAmount).
+ */
+function ChargeInput({
+  value,
+  onChange,
+  mode,
+  onModeChange,
+  baseAmount,
+  unitLabel,
+  disabled,
+}: {
+  value: number | undefined;
+  onChange: (value: number | undefined) => void;
+  mode: "amount" | "percent";
+  onModeChange: (mode: "amount" | "percent") => void;
+  baseAmount: number;
+  unitLabel: string;
+  disabled?: boolean;
+}) {
+  const canUsePercent = baseAmount > 0;
+
+  const displayValue =
+    mode === "percent"
+      ? value != null && canUsePercent
+        ? Math.round((value / baseAmount) * 10000) / 100
+        : undefined
+      : value;
+
+  const handleChange = (v: number | undefined) => {
+    if (mode === "amount") {
+      onChange(v);
+    } else {
+      onChange(v != null && canUsePercent ? (baseAmount * v) / 100 : undefined);
+    }
+  };
+
+  return (
+    <div className="flex items-stretch gap-2">
+      <div className="min-w-0 flex-1">
+        <NumericInput
+          value={displayValue}
+          onChange={handleChange}
+          placeholder="0.00"
+          allowNegative={false}
+          disabled={disabled}
+          decimalScale={mode === "percent" ? 2 : undefined}
+          suffix={mode === "percent" ? "%" : undefined}
+        />
+      </div>
+      <div className="flex shrink-0 overflow-hidden rounded-[10px] border border-line-2 bg-card">
+        <button
+          type="button"
+          onClick={() => onModeChange("amount")}
+          disabled={disabled}
+          aria-pressed={mode === "amount"}
+          className={cn(
+            "flex items-center justify-center px-2.5 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-60",
+            mode === "amount"
+              ? "bg-primary/[0.08] text-primary"
+              : "text-muted-2 hover:text-ink-2",
+          )}
+        >
+          {unitLabel}
+        </button>
+        <span className="w-px bg-line-2" />
+        <button
+          type="button"
+          onClick={() => onModeChange("percent")}
+          disabled={disabled || !canUsePercent}
+          title={!canUsePercent ? "Enter the transfer amount first" : undefined}
+          aria-pressed={mode === "percent"}
+          className={cn(
+            "flex items-center justify-center px-2.5 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-60",
+            mode === "percent"
+              ? "bg-primary/[0.08] text-primary"
+              : "text-muted-2 hover:text-ink-2",
+          )}
+        >
+          %
+        </button>
+      </div>
+    </div>
   );
 }

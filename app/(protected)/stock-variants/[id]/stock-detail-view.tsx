@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDivisibleQuantity } from "@/lib/format-divisible-quantity";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
@@ -20,28 +19,20 @@ import {
   AlertTriangle,
   Package,
   BarChart3,
-  ArrowDownRight,
-  ArrowUpRight,
   Activity,
   Layers,
   ShieldCheck,
   Truck,
-  Clock,
   RefreshCw,
   History,
   LineChart as LineChartIcon,
-  User,
 } from "lucide-react";
 import type { Stock } from "@/types/stock/type";
 import type { InventoryBalance } from "@/types/inventory-balance/type";
 import type {
+  PageResponse,
   StockMovement,
   StockMovementSummary,
-  ReferenceType,
-} from "@/types/stock-movement/type";
-import {
-  MOVEMENT_TYPE_LABELS,
-  REFERENCE_TYPE_LABELS,
 } from "@/types/stock-movement/type";
 import type {
   StockoutForecastItem,
@@ -49,9 +40,11 @@ import type {
   AbcAnalysisItem,
   ReorderSuggestion,
 } from "@/types/inventory-analytics/type";
-import { RISK_LEVEL_CONFIG, ABC_CONFIG } from "@/types/inventory-analytics/type";
-import type { StockBatch } from "@/types/stock-batch/type";
-import { BATCH_STATUS_CONFIG } from "@/types/stock-batch/type";
+import {
+  RISK_LEVEL_CONFIG,
+  ABC_CONFIG,
+} from "@/types/inventory-analytics/type";
+import type { BatchPage, StockBatch } from "@/types/stock-batch/type";
 import { Money } from "@/components/widgets/money";
 import {
   ReorderConfigDialog,
@@ -60,7 +53,6 @@ import {
 import { BarcodeManager } from "@/components/widgets/barcode-manager";
 import type { InventorySnapshot } from "@/types/inventory-snapshot/type";
 import type { AuditLogEntry } from "@/types/audit-log/type";
-import { AUDIT_ACTION_LABELS } from "@/types/audit-log/type";
 import type { RsMovementSummary } from "@/types/reports-analytics/type";
 import {
   MovementMixChart,
@@ -68,16 +60,33 @@ import {
   QtyOnHandChart,
   StockValueChart,
 } from "@/components/widgets/inventory/stock-item-charts";
+import {
+  MovementLedger,
+  type LedgerRange,
+} from "@/components/widgets/inventory/movement-ledger";
+import { BatchPanel } from "@/components/widgets/inventory/batch-panel";
+import { VariantTabs } from "@/components/widgets/inventory/variant-tabs";
+import { StockActivityTimeline } from "@/components/widgets/inventory/stock-activity-timeline";
 
 interface Props {
   stock: Stock;
   balanceMap: Record<string, InventoryBalance>;
   batchMap: Record<string, StockBatch[]>;
+  /** Server-rendered first page of batches for the first active variant. */
+  initialBatchPage: BatchPage | null;
+  /** ACTIVE batches for that variant, in consumption order. */
+  initialConsumptionOrder: StockBatch[];
   variantSummaryMap: Record<string, StockMovementSummary>;
-  /** Movements per variant — visualised in their own tables on the Movements tab. */
-  variantMovementsMap: Record<string, StockMovement[]>;
-  /** Merged movement list — used by the per-stock summary cards and breakdown chart. */
-  movements: StockMovement[];
+  /**
+   * Server-rendered first page of the movement ledger, for the first active
+   * variant over {@link initialLedgerRange}. The ledger pages and filters
+   * itself from there.
+   */
+  initialLedgerPage: PageResponse<StockMovement> | null;
+  /** Range the server-rendered ledger page was fetched for. */
+  initialLedgerRange: LedgerRange;
+  /** Actor id → display name, keyed by both staff id and auth id. */
+  staffNames: Record<string, string>;
   forecasts: StockoutForecastItem[];
   turnover: StockTurnoverItem[];
   abc: AbcAnalysisItem[];
@@ -102,58 +111,37 @@ interface Props {
   stockSnapshots: InventorySnapshot[];
   /** Audit trail for this stock (entity-scoped). */
   auditEntries: AuditLogEntry[];
+  /**
+   * Newest movements merged across every variant — the raw material for the
+   * Activity rail. The Movements tab owns the full paged ledger.
+   */
+  activityMovements: StockMovement[];
+  /** True when {@link activityMovements} is only a slice of a longer ledger. */
+  activityMovementsTruncated: boolean;
   /** Aggregated Reports Service movement summary across all variants. */
   rsSummary: RsMovementSummary | null;
 }
 
 const TABS = [
   { key: "overview", label: "Overview", icon: Package },
-  { key: "charts", label: "Charts", icon: LineChartIcon },
   { key: "batches", label: "Batches", icon: Layers },
   { key: "movements", label: "Movements", icon: Activity },
   { key: "analytics", label: "Analytics", icon: BarChart3 },
-  { key: "audit", label: "Audit", icon: History },
+  { key: "activity", label: "Activity", icon: History },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
-
-// Maps a movement reference to its detail page. Returns `null` for
-// reference types that have no dedicated detail route (rules, opening
-// stock, batch recalls).
-function referenceHref(
-  refType: ReferenceType,
-  refId: string,
-): string | null {
-  switch (refType) {
-    case "GRN":
-      return `/goods-received/${refId}`;
-    case "STOCK_INTAKE":
-      return `/stock-intakes/${refId}`;
-    case "SUPPLIER_RETURN":
-      return `/supplier-returns/${refId}`;
-    case "TRANSFER":
-      return `/stock-transfers/${refId}`;
-    case "STOCK_MODIFICATION":
-      return `/stock-modifications/${refId}`;
-    case "ADJUSTMENT":
-      return `/stock-takes/${refId}`;
-    case "SALE_ORDER":
-    case "ORDER_VOID":
-      return `/orders/${refId}`;
-    case "RETURN":
-      return `/refunds/${refId}`;
-    default:
-      return null;
-  }
-}
 
 export function StockDetailView({
   stock,
   balanceMap,
   batchMap,
+  initialBatchPage,
+  initialConsumptionOrder,
   variantSummaryMap,
-  variantMovementsMap,
-  movements,
+  initialLedgerPage,
+  initialLedgerRange,
+  staffNames,
   forecasts,
   turnover,
   abc,
@@ -172,6 +160,8 @@ export function StockDetailView({
   variantSnapshotMap,
   stockSnapshots,
   auditEntries,
+  activityMovements,
+  activityMovementsTruncated,
   rsSummary,
 }: Props) {
   const [tab, setTab] = useState<TabKey>("overview");
@@ -180,20 +170,16 @@ export function StockDetailView({
     ? RISK_LEVEL_CONFIG[worstRisk.riskLevel]
     : RISK_LEVEL_CONFIG.NO_CONSUMPTION;
 
-  const totalBatches = Object.values(batchMap).reduce((s, b) => s + b.length, 0);
-
-  // Count batches expiring within 7 days
-  const now = new Date();
-  const sevenDaysOut = new Date(now);
-  sevenDaysOut.setDate(sevenDaysOut.getDate() + 7);
-  const expiringBatchCount = Object.values(batchMap)
-    .flat()
-    .filter(
-      (b) =>
-        b.expiryDate &&
-        new Date(b.expiryDate) <= sevenDaysOut &&
-        new Date(b.expiryDate) > now,
-    ).length;
+  // Per-variant batch counts label the batch tab and its variant pills; the
+  // panel itself pages its rows straight from the server.
+  const batchCountByVariant: Record<string, number> = {};
+  for (const [variantId, batches] of Object.entries(batchMap)) {
+    batchCountByVariant[variantId] = batches.length;
+  }
+  const totalBatches = Object.values(batchCountByVariant).reduce(
+    (s, n) => s + n,
+    0,
+  );
 
   return (
     <div className="space-y-6">
@@ -304,7 +290,7 @@ export function StockDetailView({
             let badge: string | null = null;
             if (t.key === "batches" && totalBatches > 0)
               badge = String(totalBatches);
-            if (t.key === "movements" && movements.length > 0)
+            if (t.key === "movements" && movementSummary.totalMovements > 0)
               badge = String(movementSummary.totalMovements);
             return (
               <button
@@ -351,42 +337,53 @@ export function StockDetailView({
           autoReorderEnabled={autoReorderEnabled}
         />
       )}
-      {tab === "charts" && (
-        <ChartsTab
+      {tab === "batches" && (
+        <BatchesTab
           stock={stock}
+          currency={currency}
+          batchCountByVariant={batchCountByVariant}
+          initialBatchPage={initialBatchPage}
+          initialConsumptionOrder={initialConsumptionOrder}
+        />
+      )}
+      {tab === "movements" && (
+        <MovementsTab
+          stock={stock}
+          variantSummaryMap={variantSummaryMap}
+          currency={currency}
+          locationId={locationId}
+          initialLedgerPage={initialLedgerPage}
+          initialLedgerRange={initialLedgerRange}
+          staffNames={staffNames}
+        />
+      )}
+      {tab === "analytics" && (
+        <AnalyticsTab
+          stock={stock}
+          balanceMap={balanceMap}
+          forecasts={forecasts}
+          turnover={turnover}
+          abc={abc}
+          reorder={reorder}
           stockSnapshots={stockSnapshots}
           variantSnapshotMap={variantSnapshotMap}
           rsSummary={rsSummary}
           currency={currency}
         />
       )}
-      {tab === "batches" && (
-        <BatchesTab
+      {tab === "activity" && (
+        <StockActivityTimeline
           stock={stock}
-          batchMap={batchMap}
-          expiringCount={expiringBatchCount}
+          movements={activityMovements}
+          movementsTruncated={activityMovementsTruncated}
+          batches={Object.values(batchMap).flat()}
+          auditEntries={auditEntries}
+          snapshots={stockSnapshots}
+          staffNames={staffNames}
           currency={currency}
+          onOpenLedger={() => setTab("movements")}
         />
       )}
-      {tab === "movements" && (
-        <MovementsTab
-          stock={stock}
-          variantMovementsMap={variantMovementsMap}
-          variantSummaryMap={variantSummaryMap}
-          movementSummary={movementSummary}
-          currency={currency}
-          rsSummary={rsSummary}
-        />
-      )}
-      {tab === "analytics" && (
-        <AnalyticsTab
-          forecasts={forecasts}
-          turnover={turnover}
-          abc={abc}
-          reorder={reorder}
-        />
-      )}
-      {tab === "audit" && <AuditTab entries={auditEntries} />}
     </div>
   );
 }
@@ -443,9 +440,7 @@ function OverviewTab({
                   >
                     <TableCell>
                       <div>
-                        <span className="font-medium">
-                          {v.displayName}
-                        </span>
+                        <span className="font-medium">{v.displayName}</span>
                         {v.isDefault && (
                           <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 font-medium">
                             Default
@@ -512,7 +507,11 @@ function OverviewTab({
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {value > 0 ? <Money amount={value} currency={currency} /> : "\u2014"}
+                      {value > 0 ? (
+                        <Money amount={value} currency={currency} />
+                      ) : (
+                        "\u2014"
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -559,241 +558,58 @@ function OverviewTab({
 
 function BatchesTab({
   stock,
-  batchMap,
-  expiringCount,
   currency,
+  batchCountByVariant,
+  initialBatchPage,
+  initialConsumptionOrder,
 }: {
   stock: Stock;
-  batchMap: Record<string, StockBatch[]>;
-  expiringCount: number;
   currency: string;
+  batchCountByVariant: Record<string, number>;
+  initialBatchPage: BatchPage | null;
+  initialConsumptionOrder: StockBatch[];
 }) {
-  const allBatches = Object.values(batchMap).flat();
+  const activeVariants = stock.variants.filter((v) => !v.archived);
+  const [activeVariantId, setActiveVariantId] = useState<string>(
+    activeVariants[0]?.id ?? "",
+  );
+  const activeVariant =
+    activeVariants.find((v) => v.id === activeVariantId) ?? activeVariants[0];
 
-  if (allBatches.length === 0) {
+  if (!activeVariant || !initialBatchPage) {
     return (
       <Card>
         <CardContent className="py-12 text-center">
-          <Layers className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+          <Layers className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            No active batches. Batches are created when stock is received via
-            GRN.
+            No batches for this stock item. Batches are created when stock is
+            received via GRN.
           </p>
         </CardContent>
       </Card>
     );
   }
 
-  const now = new Date();
-  const sevenDaysOut = new Date(now);
-  sevenDaysOut.setDate(sevenDaysOut.getDate() + 7);
-
-  // Sort: expiring first, then by received date
-  const sorted = [...allBatches].sort((a, b) => {
-    if (a.expiryDate && b.expiryDate)
-      return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
-    if (a.expiryDate) return -1;
-    if (b.expiryDate) return 1;
-    return new Date(b.receivedDate).getTime() - new Date(a.receivedDate).getTime();
-  });
-
-  const totalBatchQty = allBatches.reduce((s, b) => s + b.quantityOnHand, 0);
-  const totalBatchValue = allBatches.reduce(
-    (s, b) => s + b.quantityOnHand * (b.unitCost ?? 0),
-    0,
-  );
-
   return (
-    <div className="space-y-6">
-      {/* Batch summary cards */}
-      <KpiStrip cols={4}>
-        <KpiCard
-          icon={<Layers className="h-3 w-3" />}
-          label="Active batches"
-          value={allBatches.length.toLocaleString()}
-        />
-        <KpiCard
-          icon={<Boxes className="h-3 w-3" />}
-          label="Batch qty"
-          value={totalBatchQty.toLocaleString()}
-        />
-        <KpiCard
-          icon={<DollarSign className="h-3 w-3" />}
-          label="Batch value"
-          value={totalBatchValue.toLocaleString(undefined, {
-            maximumFractionDigits: 0,
-          })}
-          unit={currency}
-        />
-        <KpiCard
-          icon={<Clock className="h-3 w-3" />}
-          label="Expiring soon"
-          value={expiringCount.toLocaleString()}
-          delta={expiringCount > 0 ? "Within 7 days" : undefined}
-          deltaTone={expiringCount > 0 ? "neg" : "neutral"}
-        />
-      </KpiStrip>
-
-      {/* Batch table */}
-      <Card>
-        <CardContent className="pt-6">
-          <h3 className="text-sm font-semibold mb-3">Batch Details</h3>
-          <div className="rounded-md border overflow-auto max-h-[500px]">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Batch #</TableHead>
-                  <TableHead>Variant</TableHead>
-                  <TableHead>Supplier Ref</TableHead>
-                  <TableHead>Expiry</TableHead>
-                  <TableHead className="text-right">Qty On Hand</TableHead>
-                  <TableHead className="text-right">Initial Qty</TableHead>
-                  <TableHead className="text-right">Unit Cost</TableHead>
-                  <TableHead className="text-right">Value</TableHead>
-                  <TableHead>Received</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sorted.map((b) => {
-                  const isExpiringSoon =
-                    b.expiryDate &&
-                    new Date(b.expiryDate) <= sevenDaysOut &&
-                    new Date(b.expiryDate) > now;
-                  const isExpired =
-                    b.expiryDate && new Date(b.expiryDate) <= now;
-                  const batchValue =
-                    b.quantityOnHand * (b.unitCost ?? 0);
-                  const consumed =
-                    b.initialQuantity > 0
-                      ? ((b.initialQuantity - b.quantityOnHand) /
-                          b.initialQuantity) *
-                        100
-                      : 0;
-                  const statusCfg = BATCH_STATUS_CONFIG[b.status];
-
-                  return (
-                    <TableRow
-                      key={b.id}
-                      className={
-                        isExpired
-                          ? "bg-red-50/50 dark:bg-red-950/10"
-                          : isExpiringSoon
-                            ? "bg-amber-50/50 dark:bg-amber-950/10"
-                            : ""
-                      }
-                    >
-                      <TableCell className="font-medium">
-                        <Link
-                          href={`/stock-batches/${b.id}`}
-                          className="hover:underline"
-                        >
-                          {b.batchNumber}
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        {b.variantName}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {b.supplierBatchReference || "\u2014"}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {b.expiryDate ? (
-                          <span
-                            className={
-                              isExpired
-                                ? "text-red-600 dark:text-red-400 font-medium"
-                                : isExpiringSoon
-                                  ? "text-amber-600 dark:text-amber-400 font-medium"
-                                  : ""
-                            }
-                          >
-                            {new Date(b.expiryDate).toLocaleDateString(
-                              undefined,
-                              { month: "short", day: "numeric", year: "numeric" },
-                            )}
-                            {isExpired && (
-                              <span className="block text-[10px]">Expired</span>
-                            )}
-                            {isExpiringSoon && (
-                              <span className="block text-[10px]">
-                                {Math.ceil(
-                                  (new Date(b.expiryDate).getTime() -
-                                    now.getTime()) /
-                                    86400000,
-                                )}
-                                d left
-                              </span>
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">
-                            No expiry
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatDivisibleQuantity(b.quantityOnHand, {
-                          baseUnitName: stock.baseUnitName,
-                          divisibleUnitRatio: b.divisibleUnitRatio,
-                          divisibleUnitName: b.divisibleUnitName,
-                        })}
-                        <span className="block text-[10px] text-muted-foreground">
-                          {consumed.toFixed(0)}% used
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {b.initialQuantity.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {b.unitCost != null
-                          ? (
-                            <div className="flex flex-col items-end">
-                              <Money amount={b.unitCost} currency={b.currency || currency} />
-                              {b.originalCurrency &&
-                                b.originalCurrency !== (b.currency || currency) &&
-                                b.originalUnitCost != null && (
-                                  <span className="text-[10px] text-muted-foreground">
-                                    orig{" "}
-                                    <Money
-                                      amount={b.originalUnitCost}
-                                      currency={b.originalCurrency}
-                                    />
-                                    {b.rateUsed != null && b.rateUsed !== 1
-                                      ? ` @ ${b.rateUsed.toLocaleString(undefined, { maximumFractionDigits: 6 })}`
-                                      : ""}
-                                  </span>
-                                )}
-                            </div>
-                          )
-                          : "\u2014"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {batchValue > 0
-                          ? <Money amount={batchValue} currency={b.currency || currency} />
-                          : "\u2014"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground whitespace-nowrap">
-                        {new Date(b.receivedDate).toLocaleDateString(
-                          undefined,
-                          { month: "short", day: "numeric", year: "numeric" },
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusCfg.bgColor} ${statusCfg.color}`}
-                        >
-                          {statusCfg.label}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      <VariantTabs
+        ariaLabel="Variant batches"
+        activeId={activeVariant.id}
+        onChange={setActiveVariantId}
+        options={activeVariants.map((v) => ({
+          id: v.id,
+          label: v.displayName ?? v.name,
+          count: batchCountByVariant[v.id],
+        }))}
+      />
+      <BatchPanel
+        variantId={activeVariant.id}
+        variantLabel={activeVariant.displayName ?? activeVariant.name}
+        initialPage={initialBatchPage}
+        initialConsumptionOrder={initialConsumptionOrder}
+        stock={stock}
+        currency={currency}
+      />
     </div>
   );
 }
@@ -802,18 +618,20 @@ function BatchesTab({
 
 function MovementsTab({
   stock,
-  variantMovementsMap,
   variantSummaryMap,
-  movementSummary,
   currency,
-  rsSummary,
+  locationId,
+  initialLedgerPage,
+  initialLedgerRange,
+  staffNames,
 }: {
   stock: Stock;
-  variantMovementsMap: Record<string, StockMovement[]>;
   variantSummaryMap: Record<string, StockMovementSummary>;
-  movementSummary: StockMovementSummary;
   currency: string;
-  rsSummary: RsMovementSummary | null;
+  locationId: string | null;
+  initialLedgerPage: PageResponse<StockMovement> | null;
+  initialLedgerRange: LedgerRange;
+  staffNames: Record<string, string>;
 }) {
   const activeVariants = stock.variants.filter((v) => !v.archived);
   const [activeVariantId, setActiveVariantId] = useState<string>(
@@ -821,356 +639,358 @@ function MovementsTab({
   );
   const activeVariant =
     activeVariants.find((v) => v.id === activeVariantId) ?? activeVariants[0];
-  const activeMovements = activeVariant
-    ? variantMovementsMap[activeVariant.id] ?? []
-    : [];
-  const activeVariantSummary = activeVariant
-    ? variantSummaryMap[activeVariant.id]
-    : undefined;
-
-  // Prefer Reports Service totals when available — materialised views are the
-  // canonical source for aggregations. Falls back to the inventory sum otherwise.
-  const summary = rsSummary
-    ? {
-        ...movementSummary,
-        totalMovements: rsSummary.totalMovements,
-        totalQuantityIn: rsSummary.totalQuantityIn,
-        totalQuantityOut: rsSummary.totalQuantityOut,
-        netQuantityChange: rsSummary.netQuantityChange,
-        totalCostIn: rsSummary.totalCostIn,
-        totalCostOut: rsSummary.totalCostOut,
-        byType: rsSummary.byType.map((t) => ({
-          movementType: t.movementType,
-          count: t.count,
-          totalQuantity: t.totalQuantity,
-          totalCost: t.totalCost,
-          direction: t.direction,
-          totalQuantityAbs: t.totalQuantityAbs,
-        })),
-      }
-    : movementSummary;
-  // Per-variant KPI numbers — driven by the variant selector below. The
-  // stock-level `summary` (computed above) still feeds the breakdown chart
-  // further down the tab; the headline tiles narrow to whichever variant is
-  // selected so the user reads the numbers for the row they're inspecting.
-  const tileQtyIn = activeVariantSummary?.totalQuantityIn ?? 0;
-  const tileQtyOut = activeVariantSummary?.totalQuantityOut ?? 0;
-  const tileNet = activeVariantSummary?.netQuantityChange ?? 0;
-  const tileCostIn = activeVariantSummary?.totalCostIn ?? 0;
-  const tileCostOut = activeVariantSummary?.totalCostOut ?? 0;
   const variantLabel =
     activeVariant?.displayName ?? activeVariant?.name ?? "variant";
 
-  return (
-    <div className="space-y-6">
-      {/* Movement summary cards — per-variant. */}
-      <KpiStrip cols={5}>
-        <KpiCard
-          icon={<ArrowDownRight className="h-3 w-3" />}
-          label="Qty in (30d)"
-          value={`+${Math.abs(tileQtyIn).toLocaleString()}`}
-          delta={`${variantLabel} · incoming`}
-          deltaTone="pos"
-        />
-        <KpiCard
-          icon={<ArrowUpRight className="h-3 w-3" />}
-          label="Qty out (30d)"
-          value={`−${Math.abs(tileQtyOut).toLocaleString()}`}
-          delta={`${variantLabel} · outgoing`}
-          deltaTone="neg"
-        />
-        <KpiCard
-          icon={<Activity className="h-3 w-3" />}
-          label="Net change"
-          value={`${tileNet > 0 ? "+" : ""}${tileNet.toLocaleString()}`}
-          deltaTone={
-            tileNet > 0 ? "pos" : tileNet < 0 ? "neg" : "neutral"
-          }
-        />
-        <KpiCard
-          icon={<DollarSign className="h-3 w-3" />}
-          label="Cost in"
-          value={tileCostIn.toLocaleString(undefined, {
-            maximumFractionDigits: 0,
-          })}
-          unit={currency}
-          deltaTone="pos"
-        />
-        <KpiCard
-          icon={<DollarSign className="h-3 w-3" />}
-          label="Cost out"
-          value={tileCostOut.toLocaleString(undefined, {
-            maximumFractionDigits: 0,
-          })}
-          unit={currency}
-          deltaTone="neg"
-        />
-      </KpiStrip>
-
-      {/* Movement history — variant-scoped tabs so Coca-Cola 300ml and
-          Coca-Cola 500ml movements stay visually separate. */}
-      {activeVariant && (() => {
-          const variant = activeVariant;
-          const variantMovements = activeMovements;
-          const variantSummary = activeVariantSummary;
-          return (
-      <Card key={variant.id}>
-        <CardContent className="pt-6">
-          {activeVariants.length > 1 && (
-            <div className="overflow-x-auto -mx-1 px-1 mb-4">
-              <div
-                role="tablist"
-                aria-label="Variant movements"
-                className="inline-flex items-center gap-1 bg-muted p-1 rounded-lg"
-              >
-                {activeVariants.map((v) => {
-                  const isActive = variant.id === v.id;
-                  const count =
-                    variantSummaryMap[v.id]?.totalMovements ??
-                    variantMovementsMap[v.id]?.length ??
-                    0;
-                  return (
-                    <button
-                      key={v.id}
-                      role="tab"
-                      aria-selected={isActive}
-                      onClick={() => setActiveVariantId(v.id)}
-                      className={`whitespace-nowrap px-3 py-1.5 text-xs rounded-md transition-colors ${
-                        isActive
-                          ? "bg-background shadow-sm font-medium text-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {v.displayName ?? v.name}
-                      {count > 0 && (
-                        <span className="ml-1.5 text-[10px] opacity-70">
-                          ({count})
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-            <h3 className="text-sm font-semibold">
-              {variant.displayName ?? variant.name}
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
-                ({variantMovements.length > 100
-                  ? `latest 100 of ${variantSummary?.totalMovements ?? variantMovements.length}`
-                  : variantMovements.length}{" "}
-                movement{variantMovements.length === 1 ? "" : "s"})
-              </span>
-            </h3>
-            {variantSummary && (
-              <span className="text-xs text-muted-foreground">
-                {"+"}{Math.abs(variantSummary.totalQuantityIn).toLocaleString()}
-                {" / −"}{Math.abs(variantSummary.totalQuantityOut).toLocaleString()}
-                {" net "}
-                <span className={variantSummary.netQuantityChange >= 0
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-red-600 dark:text-red-400"}>
-                  {variantSummary.netQuantityChange >= 0 ? "+" : ""}
-                  {variantSummary.netQuantityChange.toLocaleString()}
-                </span>
-              </span>
-            )}
-          </div>
-          {variantMovements.length > 0 ? (
-            <div className="rounded-md border overflow-auto max-h-[500px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date &amp; Time</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Before</TableHead>
-                    <TableHead className="text-right">Qty</TableHead>
-                    <TableHead className="text-right">After</TableHead>
-                    <TableHead className="text-right">Unit Cost</TableHead>
-                    <TableHead className="text-right">Total Cost</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {variantMovements.slice(0, 100).map((m) => {
-                    // Direction is computed server-side (`direction` + `quantityAbs`
-                    // + `totalCostAbs` on the row). UI does no math — just renders.
-                    const isIn = m.direction
-                      ? m.direction === "IN"
-                      : m.quantity > 0;
-                    const qtyDisplay = m.quantityAbs ?? Math.abs(m.quantity);
-                    const totalCostDisplay = m.totalCostAbs
-                      ?? (m.totalCost != null ? Math.abs(m.totalCost) : null);
-                    const sourceLabel = m.referenceType
-                      ? REFERENCE_TYPE_LABELS[m.referenceType] ?? m.referenceType
-                      : MOVEMENT_TYPE_LABELS[
-                          m.movementType as keyof typeof MOVEMENT_TYPE_LABELS
-                        ] ?? m.movementType;
-                    const sourceHref =
-                      m.referenceType && m.referenceId
-                        ? referenceHref(m.referenceType, m.referenceId)
-                        : null;
-                    const sourceContent = (
-                      <>
-                        {sourceLabel}
-                        {m.referenceNumber ? (
-                          <span className="font-normal text-muted-foreground">
-                            {" — "}
-                            {m.referenceNumber}
-                          </span>
-                        ) : null}
-                      </>
-                    );
-                    return (
-                      <TableRow key={m.movementId}>
-                        <TableCell className="text-muted-foreground whitespace-nowrap">
-                          {new Date(m.occurredAt).toLocaleString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {sourceHref ? (
-                            <Link
-                              href={sourceHref}
-                              className="hover:underline"
-                            >
-                              {sourceContent}
-                            </Link>
-                          ) : (
-                            sourceContent
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                              isIn
-                                ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
-                                : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"
-                            }`}
-                          >
-                            {MOVEMENT_TYPE_LABELS[
-                              m.movementType as keyof typeof MOVEMENT_TYPE_LABELS
-                            ] ?? m.movementType}
-                          </span>
-                        </TableCell>
-                        {/* Balance before → Qty → balance after. Both balances are
-                            backend values (previousBalance / newBalance, captured at
-                            write-time); never recomputed here — this view only holds
-                            the latest 100 movements in a 30-day window, so a tally
-                            from zero would be wrong. The newest row's "after" is the
-                            current on-hand. Red = negative (oversold anomaly). */}
-                        <TableCell
-                          className={`text-right whitespace-nowrap ${
-                            m.previousBalance != null && m.previousBalance < 0
-                              ? "text-red-600 dark:text-red-400"
-                              : "text-muted-foreground"
-                          }`}
-                        >
-                          {m.previousBalance != null
-                            ? m.previousBalance.toLocaleString()
-                            : "—"}
-                        </TableCell>
-                        <TableCell
-                          className={`text-right font-medium ${
-                            isIn
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-600 dark:text-red-400"
-                          }`}
-                        >
-                          {isIn ? "+" : "-"}
-                          {qtyDisplay.toLocaleString()}
-                        </TableCell>
-                        <TableCell
-                          className={`text-right font-medium whitespace-nowrap ${
-                            m.newBalance != null && m.newBalance < 0
-                              ? "text-red-600 dark:text-red-400"
-                              : ""
-                          }`}
-                        >
-                          {m.newBalance != null
-                            ? m.newBalance.toLocaleString()
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {m.unitCost != null
-                            ? <Money amount={m.unitCost} currency={m.currency || currency} />
-                            : "\u2014"}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {totalCostDisplay != null && totalCostDisplay !== 0
-                            ? <Money amount={totalCostDisplay} currency={m.currency || currency} />
-                            : "\u2014"}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground py-6 text-center">
-              No movements recorded for this variant yet.
-            </p>
-          )}
+  if (!activeVariant || !locationId || !initialLedgerPage) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <Activity className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground">
+            No movement ledger available for this stock item.
+          </p>
         </CardContent>
       </Card>
-          );
-        })()}
+    );
+  }
+
+  // The ledger owns its own filters, paging and totals. Only the variant
+  // selector lives out here — one variant's ledger at a time, so Coca-Cola
+  // 300ml entries never interleave with Coca-Cola 500ml.
+  return (
+    <div className="space-y-4">
+      <VariantTabs
+        ariaLabel="Variant movements"
+        activeId={activeVariant.id}
+        onChange={setActiveVariantId}
+        options={activeVariants.map((v) => ({
+          id: v.id,
+          label: v.displayName ?? v.name,
+          count: variantSummaryMap[v.id]?.totalMovements,
+        }))}
+      />
+
+      <MovementLedger
+        locationId={locationId}
+        variantId={activeVariant.id}
+        variantLabel={variantLabel}
+        initialPage={initialLedgerPage}
+        initialSummary={variantSummaryMap[activeVariant.id] ?? null}
+        initialRange={initialLedgerRange}
+        currency={currency}
+        staffNames={staffNames}
+      />
     </div>
   );
 }
 
 // ── Analytics tab ───────────────────────────────────────────────────
+//
+// Charts and analytics used to be two tabs, which split one question ("how is
+// this item behaving?") across two places: the shape of the movement was in
+// one, the verdict drawn from it in the other. They're now a single section
+// under one variant scope — pick a variant and the headline, the charts and
+// the tables all narrow together.
 
 function AnalyticsTab({
+  stock,
+  balanceMap,
   forecasts,
   turnover,
   abc,
   reorder,
+  stockSnapshots,
+  variantSnapshotMap,
+  rsSummary,
+  currency,
 }: {
+  stock: Stock;
+  balanceMap: Record<string, InventoryBalance>;
   forecasts: StockoutForecastItem[];
   turnover: StockTurnoverItem[];
   abc: AbcAnalysisItem[];
   reorder: ReorderSuggestion[];
+  stockSnapshots: InventorySnapshot[];
+  variantSnapshotMap: Record<string, InventorySnapshot[]>;
+  rsSummary: RsMovementSummary | null;
+  currency: string;
 }) {
+  const activeVariants = stock.variants.filter((v) => !v.archived);
+  const [scope, setScope] = useState<string>("__all__");
+  const scopedIds =
+    scope === "__all__"
+      ? new Set(stock.variants.map((v) => v.id))
+      : new Set([scope]);
+
+  const scopedForecasts = forecasts.filter((f) =>
+    scopedIds.has(f.stockVariantId),
+  );
+  const scopedTurnover = turnover.filter((t) =>
+    scopedIds.has(t.stockVariantId),
+  );
+  const scopedAbc = abc.filter((a) => scopedIds.has(a.stockVariantId));
+  const scopedReorder = reorder.filter((r) => scopedIds.has(r.stockVariantId));
+  const snapshots =
+    scope === "__all__" ? stockSnapshots : (variantSnapshotMap[scope] ?? []);
+
   const hasData =
-    forecasts.length > 0 ||
-    turnover.length > 0 ||
-    abc.length > 0 ||
-    reorder.length > 0;
+    scopedForecasts.length > 0 ||
+    scopedTurnover.length > 0 ||
+    scopedAbc.length > 0 ||
+    scopedReorder.length > 0;
+
+  // Days on the chart that were never closed and had to be computed from the
+  // live balance. Quantities hold; their valuation uses today's average cost.
+  const derivedDays = snapshots.filter((s) => s.derived).length;
+
+  const scopedQty = [...scopedIds].reduce(
+    (sum, id) => sum + (balanceMap[id]?.quantityOnHand ?? 0),
+    0,
+  );
+
+  // Headline verdicts. Each collapses the scoped rows to the single number a
+  // stock controller would act on.
+  const worstForecast = scopedForecasts.reduce<StockoutForecastItem | null>(
+    (worst, f) => {
+      if (!worst) return f;
+      const order = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NO_CONSUMPTION"];
+      return order.indexOf(f.riskLevel) < order.indexOf(worst.riskLevel)
+        ? f
+        : worst;
+    },
+    null,
+  );
+  const riskCfg = worstForecast
+    ? RISK_LEVEL_CONFIG[worstForecast.riskLevel]
+    : null;
+  const avgTurnoverRatio =
+    scopedTurnover.length > 0
+      ? scopedTurnover.reduce((s, t) => s + t.turnoverRatio, 0) /
+        scopedTurnover.length
+      : 0;
+  const topAbc = scopedAbc.reduce<AbcAnalysisItem | null>(
+    (best, a) =>
+      !best || a.annualConsumptionValue > best.annualConsumptionValue
+        ? a
+        : best,
+    null,
+  );
+  const dailyUse = scopedForecasts.reduce(
+    (s, f) => s + (f.avgDailyConsumption ?? 0),
+    0,
+  );
+  const toOrder = scopedReorder.filter(
+    (r) => r.currentAvailableQuantity <= r.reorderPoint,
+  );
+  const orderQty = toOrder.reduce((s, r) => s + r.suggestedOrderQuantity, 0);
 
   return (
     <div className="space-y-6">
-      {/* Reorder suggestions */}
-      {reorder.length > 0 && (
+      {/* ── Scope — one picker for the whole section ─────────────── */}
+      {activeVariants.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Scope
+          </span>
+          <div className="inline-flex items-center gap-1 rounded-lg bg-muted p-1">
+            <button
+              onClick={() => setScope("__all__")}
+              className={`rounded-md px-3 py-1.5 text-xs transition-colors ${
+                scope === "__all__"
+                  ? "bg-background font-medium text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              All variants
+            </button>
+            {activeVariants.map((v) => (
+              <button
+                key={v.id}
+                onClick={() => setScope(v.id)}
+                className={`rounded-md px-3 py-1.5 text-xs transition-colors ${
+                  scope === v.id
+                    ? "bg-background font-medium text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {v.displayName}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Verdicts — what the series below adds up to ──────────── */}
+      <KpiStrip cols={4}>
+        <KpiCard
+          icon={<TrendingUp className="h-3 w-3" />}
+          label="Turnover (30d)"
+          value={avgTurnoverRatio > 0 ? avgTurnoverRatio.toFixed(1) : "—"}
+          unit={avgTurnoverRatio > 0 ? "×" : undefined}
+          delta={
+            avgTurnoverRatio >= 3
+              ? "Fast moving"
+              : avgTurnoverRatio >= 1
+                ? "Normal"
+                : avgTurnoverRatio > 0
+                  ? "Slow moving"
+                  : "No movement in window"
+          }
+          deltaTone={
+            avgTurnoverRatio >= 3
+              ? "pos"
+              : avgTurnoverRatio >= 1
+                ? "neutral"
+                : "neg"
+          }
+        />
+        <KpiCard
+          icon={<AlertTriangle className="h-3 w-3" />}
+          label="Days of cover"
+          value={
+            worstForecast && worstForecast.daysUntilStockout >= 0
+              ? worstForecast.daysUntilStockout
+              : "—"
+          }
+          unit={
+            worstForecast && worstForecast.daysUntilStockout >= 0
+              ? "days"
+              : undefined
+          }
+          delta={riskCfg ? riskCfg.label : "No consumption recorded"}
+          deltaTone={
+            worstForecast
+              ? worstForecast.riskLevel === "CRITICAL" ||
+                worstForecast.riskLevel === "HIGH"
+                ? "neg"
+                : worstForecast.riskLevel === "MEDIUM"
+                  ? "neutral"
+                  : "pos"
+              : "neutral"
+          }
+        />
+        <KpiCard
+          icon={<Boxes className="h-3 w-3" />}
+          label="Daily usage"
+          value={
+            dailyUse > 0
+              ? dailyUse.toLocaleString(undefined, {
+                  maximumFractionDigits: 1,
+                })
+              : "—"
+          }
+          unit={dailyUse > 0 ? stock.baseUnitAbbreviation : undefined}
+          delta={
+            dailyUse > 0
+              ? `${scopedQty.toLocaleString()} on hand`
+              : "Not consumed in the last 30 days"
+          }
+          deltaTone="neutral"
+        />
+        <KpiCard
+          icon={<RefreshCw className="h-3 w-3" />}
+          label="Reorder"
+          value={
+            toOrder.length > 0
+              ? orderQty.toLocaleString(undefined, {
+                  maximumFractionDigits: 0,
+                })
+              : "Healthy"
+          }
+          unit={toOrder.length > 0 ? stock.baseUnitAbbreviation : undefined}
+          delta={
+            toOrder.length > 0
+              ? `${toOrder.length} variant${toOrder.length === 1 ? "" : "s"} below reorder point`
+              : topAbc
+                ? `Class ${topAbc.classification} · ${topAbc.percentageOfTotal.toFixed(1)}% of consumption value`
+                : "Above reorder point"
+          }
+          deltaTone={toOrder.length > 0 ? "neg" : "pos"}
+        />
+      </KpiStrip>
+
+      {/* ── Charts ───────────────────────────────────────────────── */}
+      {snapshots.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <LineChartIcon className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              No daily history for the last 90 days — this variant has no
+              balance at this location yet, so there is nothing to plot.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {derivedDays > 0 && (
+            <p className="text-[11px] text-muted-foreground">
+              {derivedDays} of {snapshots.length} days on these charts were
+              never closed and are computed from the live balance and the
+              ledger. Quantities are exact; their value uses today&apos;s
+              average cost.
+            </p>
+          )}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <QtyOnHandChart snapshots={snapshots} />
+            <StockValueChart snapshots={snapshots} currency={currency} />
+            <div className="lg:col-span-2">
+              <MovementMixChart snapshots={snapshots} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Movement volume by type — Reports Service */}
+      {rsSummary && rsSummary.byType.length > 0 && (
+        <MovementTypeBreakdownChart breakdown={rsSummary.byType} />
+      )}
+
+      {/* Reorder position — every scoped variant, not only the ones that need
+          ordering, so "nothing to do here" is a visible answer. */}
+      {scopedReorder.length > 0 && (
         <Card>
           <CardContent className="pt-6">
             <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
               <RefreshCw className="h-4 w-4 text-blue-500" />
-              Reorder Suggestions
+              Reorder Position
             </h3>
             <div className="rounded-md border overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Variant</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Current Qty</TableHead>
                     <TableHead className="text-right">Daily Usage</TableHead>
                     <TableHead className="text-right">Reorder Point</TableHead>
-                    <TableHead className="text-right">Suggested Order</TableHead>
+                    <TableHead className="text-right">
+                      Suggested Order
+                    </TableHead>
                     <TableHead className="text-right">Days Left</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reorder.map((r) => (
+                  {scopedReorder.map((r) => (
                     <TableRow key={r.stockVariantId}>
                       <TableCell className="font-medium">
                         {r.variantName}
+                      </TableCell>
+                      <TableCell>
+                        {r.currentAvailableQuantity <= r.reorderPoint &&
+                        r.avgDailyConsumption > 0 ? (
+                          <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/30 dark:text-red-400">
+                            Order now
+                          </span>
+                        ) : r.avgDailyConsumption > 0 ? (
+                          <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950/30 dark:text-green-400">
+                            Covered
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                            No usage
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell
                         className={`text-right font-medium ${
@@ -1220,7 +1040,7 @@ function AnalyticsTab({
       )}
 
       {/* Stockout forecast */}
-      {forecasts.length > 0 && (
+      {scopedForecasts.length > 0 && (
         <Card>
           <CardContent className="pt-6">
             <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
@@ -1240,7 +1060,7 @@ function AnalyticsTab({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {forecasts.map((f) => {
+                  {scopedForecasts.map((f) => {
                     const cfg = RISK_LEVEL_CONFIG[f.riskLevel];
                     return (
                       <TableRow key={f.stockVariantId}>
@@ -1293,7 +1113,7 @@ function AnalyticsTab({
       {/* Turnover + ABC side by side */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Turnover */}
-        {turnover.length > 0 && (
+        {scopedTurnover.length > 0 && (
           <Card>
             <CardContent className="pt-6">
               <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
@@ -1301,7 +1121,7 @@ function AnalyticsTab({
                 Stock Turnover (30d)
               </h3>
               <div className="space-y-3">
-                {turnover.map((t) => (
+                {scopedTurnover.map((t) => (
                   <div
                     key={t.stockVariantId}
                     className="flex items-center justify-between rounded-lg border p-3"
@@ -1332,7 +1152,7 @@ function AnalyticsTab({
         )}
 
         {/* ABC */}
-        {abc.length > 0 && (
+        {scopedAbc.length > 0 && (
           <Card>
             <CardContent className="pt-6">
               <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
@@ -1340,7 +1160,7 @@ function AnalyticsTab({
                 ABC Classification
               </h3>
               <div className="space-y-3">
-                {abc.map((a) => {
+                {scopedAbc.map((a) => {
                   const cfg = ABC_CONFIG[a.classification];
                   return (
                     <div
@@ -1392,172 +1212,5 @@ function AnalyticsTab({
         </Card>
       )}
     </div>
-  );
-}
-
-// ── Charts tab ──────────────────────────────────────────────────────
-
-function ChartsTab({
-  stock,
-  stockSnapshots,
-  variantSnapshotMap,
-  rsSummary,
-  currency,
-}: {
-  stock: Stock;
-  stockSnapshots: InventorySnapshot[];
-  variantSnapshotMap: Record<string, InventorySnapshot[]>;
-  rsSummary: RsMovementSummary | null;
-  currency: string;
-}) {
-  const activeVariants = stock.variants.filter((v) => !v.archived);
-  const [variantId, setVariantId] = useState<string>("__all__");
-  const snapshots =
-    variantId === "__all__"
-      ? stockSnapshots
-      : variantSnapshotMap[variantId] ?? [];
-
-  return (
-    <div className="space-y-6">
-      {/* Variant scope picker */}
-      {activeVariants.length > 1 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Scope
-          </span>
-          <div className="inline-flex items-center gap-1 bg-muted p-1 rounded-lg">
-            <button
-              onClick={() => setVariantId("__all__")}
-              className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
-                variantId === "__all__"
-                  ? "bg-background shadow-sm font-medium text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              All variants
-            </button>
-            {activeVariants.map((v) => (
-              <button
-                key={v.id}
-                onClick={() => setVariantId(v.id)}
-                className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
-                  variantId === v.id
-                    ? "bg-background shadow-sm font-medium text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {v.displayName}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {snapshots.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <LineChartIcon className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground">
-              No daily snapshots yet for the last 90 days. Charts populate once
-              end-of-day snapshots have been captured.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <QtyOnHandChart snapshots={snapshots} />
-          <StockValueChart snapshots={snapshots} currency={currency} />
-          <div className="lg:col-span-2">
-            <MovementMixChart snapshots={snapshots} />
-          </div>
-        </div>
-      )}
-
-      {/* Movement volume by type — Reports Service */}
-      {rsSummary && rsSummary.byType.length > 0 && (
-        <MovementTypeBreakdownChart breakdown={rsSummary.byType} />
-      )}
-    </div>
-  );
-}
-
-// ── Audit tab ───────────────────────────────────────────────────────
-
-function AuditTab({ entries }: { entries: AuditLogEntry[] }) {
-  if (entries.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <History className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">
-            No audit trail yet. Changes to this stock — edits, archives,
-            deletes, and linked workflows — show up here.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardContent className="pt-6">
-        <h3 className="text-sm font-semibold mb-3">Recent changes</h3>
-        <div className="rounded-md border overflow-auto max-h-[600px]">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>When</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Entity</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Details</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {entries.map((entry) => (
-                <TableRow key={entry.id}>
-                  <TableCell className="text-muted-foreground whitespace-nowrap">
-                    {new Date(entry.createdAt).toLocaleString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </TableCell>
-                  <TableCell>
-                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                      {AUDIT_ACTION_LABELS[entry.action] ?? entry.action}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-xs font-mono text-muted-foreground">
-                    {entry.entityType}
-                  </TableCell>
-                  <TableCell>
-                    {entry.staffName ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <User className="h-3 w-3 text-muted-foreground" />
-                        {entry.staffName}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground max-w-[360px]">
-                    {entry.details ? (
-                      <span className="line-clamp-2 whitespace-pre-wrap">
-                        {entry.details}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
   );
 }

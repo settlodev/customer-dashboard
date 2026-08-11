@@ -40,6 +40,13 @@ export interface InventorySnapshot {
   currentBatchCost: number | null;
   /** Location base currency. Reports Service omits — defaults to null. */
   currency?: string | null;
+  /**
+   * True when the row was computed on read from the live balance and the
+   * ledger because the day was never closed. Quantities are as good as a
+   * stored row's; valuation uses today's average cost. Charts mark these as
+   * provisional.
+   */
+  derived?: boolean;
   /** Row creation timestamp. Reports Service omits — UI doesn't read it. */
   createdAt?: string;
 }

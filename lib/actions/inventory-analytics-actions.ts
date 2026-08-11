@@ -27,14 +27,23 @@ function mapVariantFields<T extends Record<string, unknown>>(
   };
 }
 
+/**
+ * @param stockId scope the forecast to one stock item's variants. The
+ *   unscoped call answers for the whole location and drops variants with
+ *   nothing on hand; a scoped call keeps them, so an item that has run dry
+ *   still reports its risk.
+ */
 export async function getStockoutForecast(
   lookbackDays = 30,
+  stockId?: string,
 ): Promise<StockoutForecastItem[]> {
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(
       inventoryUrl(
-        `/api/v1/forecasts/stockout?lookbackDays=${lookbackDays}`,
+        `/api/v1/forecasts/stockout?lookbackDays=${lookbackDays}${
+          stockId ? `&stockId=${stockId}` : ""
+        }`,
       ),
     );
     const parsed = parseStringify(data);
@@ -45,10 +54,17 @@ export async function getStockoutForecast(
   }
 }
 
+/**
+ * @param stockId scope to one stock item's variants. Unscoped, the backend
+ *   returns only variants that are actually below their reorder point;
+ *   scoped, it returns every variant of the item so the page can show
+ *   "healthy" as an answer rather than as an empty table.
+ */
 export async function getReorderSuggestions(
   lookbackDays = 30,
   leadTimeDays = 7,
   reorderCoverDays = 14,
+  stockId?: string,
 ): Promise<ReorderSuggestion[]> {
   try {
     const apiClient = new ApiClient();
@@ -56,6 +72,7 @@ export async function getReorderSuggestions(
       lookbackDays: String(lookbackDays),
       leadTimeDays: String(leadTimeDays),
       reorderCoverDays: String(reorderCoverDays),
+      ...(stockId ? { stockId } : {}),
     });
     const data = await apiClient.get(
       inventoryUrl(`/api/v1/forecasts/reorder-suggestions?${params}`),
@@ -105,11 +122,20 @@ export async function getMovementSummary(
   }
 }
 
-export async function getStockTurnover(): Promise<StockTurnoverItem[]> {
+/**
+ * @param stockId scope to one stock item's variants. Unscoped, variants with
+ *   nothing on hand are excluded (no meaningful ratio in a location-wide
+ *   ranking); scoped, they're kept.
+ */
+export async function getStockTurnover(
+  stockId?: string,
+): Promise<StockTurnoverItem[]> {
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(
-      inventoryUrl("/api/v1/reports/stock-turnover"),
+      inventoryUrl(
+        `/api/v1/reports/stock-turnover${stockId ? `?stockId=${stockId}` : ""}`,
+      ),
     );
     const parsed = parseStringify(data);
     const items = parsed?.variants ?? (Array.isArray(parsed) ? parsed : []);
@@ -119,14 +145,22 @@ export async function getStockTurnover(): Promise<StockTurnoverItem[]> {
   }
 }
 
+/**
+ * @param stockId return only this stock item's variants. The A/B/C ranking is
+ *   still computed against every variant at the location — classifying an item
+ *   against itself would make everything an "A".
+ */
 export async function getAbcAnalysis(
   lookbackDays = 365,
+  stockId?: string,
 ): Promise<AbcAnalysisItem[]> {
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(
       inventoryUrl(
-        `/api/v1/reports/abc-analysis?lookbackDays=${lookbackDays}`,
+        `/api/v1/reports/abc-analysis?lookbackDays=${lookbackDays}${
+          stockId ? `&stockId=${stockId}` : ""
+        }`,
       ),
     );
     const parsed = parseStringify(data);

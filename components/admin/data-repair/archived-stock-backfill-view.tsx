@@ -109,9 +109,9 @@ export function ArchivedStockBackfillView({ canExecute }: Props) {
             active, so inventory dashboards keep counting the retired stock&apos;s
             value and units. Scan to see the size of the gap, then apply to
             archive the orphaned SKUs and flag their live-value rows. The
-            backfill is platform-wide and idempotent; a genuine new balance
-            event for a variant automatically un-archives its row. Start with a
-            scan; it changes nothing.
+            backfill is platform-wide and idempotent, and the rows stay
+            archived: only un-archiving the stock in the catalogue brings one
+            back. Start with a scan; it changes nothing.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -206,8 +206,8 @@ export function ArchivedStockBackfillView({ canExecute }: Props) {
             <AlertDialogDescription>
               This archives the orphaned variant SKUs and flags their{" "}
               <code>fact_inventory_current</code> rows platform-wide, removing
-              historically deleted stock from inventory totals. Rows only
-              return if the stock sees genuine new balance activity.
+              historically deleted stock from inventory totals. A row only
+              returns if the stock is un-archived in the catalogue.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogRequireText />

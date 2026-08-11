@@ -9,7 +9,7 @@ import { getStock, getStockByVariantId } from "@/lib/actions/stock-actions";
 import { getCurrentDestination } from "@/lib/actions/context";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import {
-  getMovementsByVariant,
+  getVariantMovementsPage,
   getMovementSummaryByVariant,
 } from "@/lib/actions/stock-movement-actions";
 import {
@@ -18,25 +18,32 @@ import {
   getAbcAnalysis,
   getReorderSuggestions,
 } from "@/lib/actions/inventory-analytics-actions";
-import { getBatchesByVariant } from "@/lib/actions/stock-batch-actions";
+import {
+  getBatchesByVariant,
+  getVariantBatchesPage,
+  getBatchConsumptionOrder,
+} from "@/lib/actions/stock-batch-actions";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import { getLocationConfig } from "@/lib/actions/location-config-actions";
 import { getVariantSnapshotHistory } from "@/lib/actions/inventory-snapshot-actions";
 import { getAuditLogByEntity } from "@/lib/actions/audit-log-actions";
 import { getMovementSummaryForVariant } from "@/lib/actions/reports-analytics-actions";
+import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import type { InventoryBalance } from "@/types/inventory-balance/type";
 import type {
   StockMovement,
   StockMovementSummary,
   MovementTypeBreakdown,
+  PageResponse,
 } from "@/types/stock-movement/type";
+import { ALL_TIME_START } from "@/types/stock-movement/type";
 import type {
   StockoutForecastItem,
   StockTurnoverItem,
   AbcAnalysisItem,
   ReorderSuggestion,
 } from "@/types/inventory-analytics/type";
-import type { StockBatch } from "@/types/stock-batch/type";
+import type { BatchPage, StockBatch } from "@/types/stock-batch/type";
 import type { InventorySnapshot } from "@/types/inventory-snapshot/type";
 import type { AuditLogEntry } from "@/types/audit-log/type";
 import type { RsMovementSummary } from "@/types/reports-analytics/type";
@@ -46,11 +53,13 @@ import { StockDetailView } from "./stock-detail-view";
 
 type Params = Promise<{ id: string }>;
 
-export default async function StockDetailPage({
-  params,
-}: {
-  params: Params;
-}) {
+/** Rows in the server-rendered first page of the movement ledger. */
+const LEDGER_PAGE_SIZE = 50;
+
+/** Rows in the server-rendered first page of the batch history. */
+const BATCH_PAGE_SIZE = 25;
+
+export default async function StockDetailPage({ params }: { params: Params }) {
   const { id } = await params;
   const [stock, location, currency, locationConfig] = await Promise.all([
     getStock(id),
@@ -77,15 +86,22 @@ export default async function StockDetailPage({
 
   const variantIds = new Set(stock.variants.map((v) => v.id));
 
-  // 90-day window for chart time-series; keeps the ledger view anchored on 30d.
+  // 90-day window for chart time-series.
   const ninetyDaysAgo = new Date(now);
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
   const chartFromDate = ninetyDaysAgo.toISOString().split("T")[0];
 
+  // The movement ledger opens on the *whole* history — tracing a bad number
+  // means walking back to whenever it went wrong, which is rarely inside the
+  // last 30 days. Only the first page of the first variant is fetched here;
+  // the ledger pages and filters itself from the client after that.
+  const ledgerVariant =
+    stock.variants.find((v) => !v.archived) ?? stock.variants[0];
+
   // Parallel: all data fetching
   const [
     allBalances,
-    movementPages,
+    variantMovementPages,
     movementSummaries,
     allForecasts,
     allTurnover,
@@ -95,26 +111,49 @@ export default async function StockDetailPage({
     snapshotArrays,
     auditPage,
     rsMovementSummaries,
+    staff,
+    initialBatchPage,
+    initialConsumptionOrder,
   ] = await Promise.all([
     locationId ? getBalancesByLocation(locationId) : Promise.resolve([]),
-    Promise.all(
-      stock.variants.map((v) =>
-        locationId
-          ? getMovementsByVariant(locationId, v.id, fromDate, toDate, 0, 100)
-          : Promise.resolve({ content: [] as StockMovement[], page: 0, size: 100, totalElements: 0, totalPages: 0, last: true }),
-      ),
-    ),
+    // One page per variant: the ledger opens on the active variant's page, the
+    // Activity rail interleaves all of them into a single stock-wide feed.
     locationId
       ? Promise.all(
           stock.variants.map((v) =>
-            getMovementSummaryByVariant(locationId, v.id, fromDate, toDate),
+            getVariantMovementsPage({
+              locationId,
+              variantId: v.id,
+              startDate: ALL_TIME_START,
+              endDate: toDate,
+              page: 0,
+              size: LEDGER_PAGE_SIZE,
+            }),
+          ),
+        )
+      : Promise.resolve([] as PageResponse<StockMovement>[]),
+    // All-time per-variant totals — these label the ledger's tiles and the
+    // variant selector's counts, so they must span the same range the ledger
+    // opens on.
+    locationId
+      ? Promise.all(
+          stock.variants.map((v) =>
+            getMovementSummaryByVariant(
+              locationId,
+              v.id,
+              ALL_TIME_START,
+              toDate,
+            ),
           ),
         )
       : Promise.resolve([] as (StockMovementSummary | null)[]),
-    getStockoutForecast(),
-    getStockTurnover(),
-    getAbcAnalysis(),
-    getReorderSuggestions(),
+    // Scoped to this stock item: the backend narrows to its variants (and
+    // keeps rows an unscoped, location-wide list would drop — a variant that
+    // has run dry, or one that is comfortably above its reorder point).
+    getStockoutForecast(30, id),
+    getStockTurnover(id),
+    getAbcAnalysis(365, id),
+    getReorderSuggestions(30, 7, 14, id),
     Promise.all(stock.variants.map((v) => getBatchesByVariant(v.id))),
     Promise.all(
       stock.variants.map((v) =>
@@ -129,7 +168,48 @@ export default async function StockDetailPage({
           ),
         )
       : Promise.resolve([] as (RsMovementSummary | null)[]),
+    fetchAllStaff().catch(() => []),
+    // The batch panel opens on the first active variant and pages itself from
+    // there; the consumption-order call backs its headline figures, which must
+    // span every open batch rather than just the visible page.
+    ledgerVariant
+      ? getVariantBatchesPage({
+          variantId: ledgerVariant.id,
+          page: 0,
+          size: BATCH_PAGE_SIZE,
+        })
+      : Promise.resolve(null as BatchPage | null),
+    ledgerVariant
+      ? getBatchConsumptionOrder(ledgerVariant.id)
+      : Promise.resolve([] as StockBatch[]),
   ]);
+
+  // Movement rows attribute an actor by id, but which id depends on the
+  // originating service — some paths stamp the staff PK, others the auth
+  // subject. Key the lookup by both so the ledger resolves either.
+  const staffNames: Record<string, string> = {};
+  for (const s of staff) {
+    if (s.id) staffNames[s.id] = s.fullName;
+    if (s.authId) staffNames[s.authId] = s.fullName;
+  }
+
+  // The ledger renders one variant at a time; hand it that variant's page.
+  const ledgerIndex = ledgerVariant
+    ? stock.variants.findIndex((v) => v.id === ledgerVariant.id)
+    : -1;
+  const initialLedgerPage: PageResponse<StockMovement> | null =
+    ledgerIndex >= 0 ? (variantMovementPages[ledgerIndex] ?? null) : null;
+
+  // Activity rail: every variant's newest entries on one rail, newest first.
+  // Each page is already capped at LEDGER_PAGE_SIZE, so this is a slice of the
+  // ledger whenever any variant has more entries than one page holds.
+  const activityMovements = variantMovementPages
+    .flatMap((p) => p.content)
+    .sort(
+      (a, b) =>
+        new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+    );
+  const activityMovementsTruncated = variantMovementPages.some((p) => !p.last);
 
   // Balance map keyed by variant ID
   const balanceMap: Record<string, InventoryBalance> = {};
@@ -137,7 +217,9 @@ export default async function StockDetailPage({
     if (variantIds.has(b.stockVariantId)) balanceMap[b.stockVariantId] = b;
   }
 
-  // Batches map keyed by variant ID
+  // Batches map keyed by variant ID. Feeds the activity timeline's flat list
+  // and, via per-variant counts, the batch tab's pills — the batch panel itself
+  // pages its own rows from the server.
   const batchMap: Record<string, StockBatch[]> = {};
   stock.variants.forEach((v, i) => {
     const batches = batchArrays[i];
@@ -151,54 +233,53 @@ export default async function StockDetailPage({
     if (ms) variantSummaryMap[v.id] = ms;
   });
 
-  // Per-variant movement lists. Each variant's events are visualised in
-  // their own table on the Movements tab — Coca-Cola 300ml movements stay
-  // separate from Coca-Cola 500ml movements.
-  const variantMovementsMap: Record<string, StockMovement[]> = {};
-  stock.variants.forEach((v, i) => {
-    variantMovementsMap[v.id] = (movementPages[i]?.content ?? []).slice().sort(
-      (a, b) =>
-        new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
-    );
-  });
-
-  // Merged movements sorted by date — used by the per-stock summary cards
-  // and breakdown chart that intentionally aggregate across variants.
-  const movements = movementPages
-    .flatMap((p) => p.content)
-    .sort(
-      (a, b) =>
-        new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
-    );
-
   // Merge per-variant summaries into a single combined summary
   const movementSummary: StockMovementSummary = {
     locationId: locationId ?? "",
-    startDate: fromDate,
+    startDate: ALL_TIME_START,
     endDate: toDate,
-    totalMovements: movementSummaries.reduce((s, ms) => s + (ms?.totalMovements ?? 0), 0),
-    totalQuantityIn: movementSummaries.reduce((s, ms) => s + (ms?.totalQuantityIn ?? 0), 0),
-    totalQuantityOut: movementSummaries.reduce((s, ms) => s + (ms?.totalQuantityOut ?? 0), 0),
-    netQuantityChange: movementSummaries.reduce((s, ms) => s + (ms?.netQuantityChange ?? 0), 0),
-    totalCostIn: movementSummaries.reduce((s, ms) => s + (ms?.totalCostIn ?? 0), 0),
-    totalCostOut: movementSummaries.reduce((s, ms) => s + (ms?.totalCostOut ?? 0), 0),
-    byType: mergeBreakdowns(movementSummaries.filter((s): s is StockMovementSummary => s !== null)),
+    totalMovements: movementSummaries.reduce(
+      (s, ms) => s + (ms?.totalMovements ?? 0),
+      0,
+    ),
+    totalQuantityIn: movementSummaries.reduce(
+      (s, ms) => s + (ms?.totalQuantityIn ?? 0),
+      0,
+    ),
+    totalQuantityOut: movementSummaries.reduce(
+      (s, ms) => s + (ms?.totalQuantityOut ?? 0),
+      0,
+    ),
+    netQuantityChange: movementSummaries.reduce(
+      (s, ms) => s + (ms?.netQuantityChange ?? 0),
+      0,
+    ),
+    totalCostIn: movementSummaries.reduce(
+      (s, ms) => s + (ms?.totalCostIn ?? 0),
+      0,
+    ),
+    totalCostOut: movementSummaries.reduce(
+      (s, ms) => s + (ms?.totalCostOut ?? 0),
+      0,
+    ),
+    byType: mergeBreakdowns(
+      movementSummaries.filter((s): s is StockMovementSummary => s !== null),
+    ),
   };
 
-  // Filter analytics to this stock's variants
-  const forecasts = allForecasts.filter((f) => variantIds.has(f.stockVariantId));
-  const turnover = allTurnover.filter((t) => variantIds.has(t.stockVariantId));
-  const abc = allAbc.filter((a) => variantIds.has(a.stockVariantId));
-  const reorder = reorderSuggestions.filter((r) => variantIds.has(r.stockVariantId));
+  // Already narrowed to this stock item by the `stockId` param on each call —
+  // no client-side filtering needed.
+  const forecasts = allForecasts;
+  const turnover = allTurnover;
+  const abc = allAbc;
+  const reorder = reorderSuggestions;
 
   // Per-variant snapshot map, plus a summed-by-date series for stock-level charts.
   const variantSnapshotMap: Record<string, InventorySnapshot[]> = {};
   stock.variants.forEach((v, i) => {
     variantSnapshotMap[v.id] = snapshotArrays[i] ?? [];
   });
-  const stockSnapshots = collapseSnapshots(
-    snapshotArrays.flat(),
-  );
+  const stockSnapshots = collapseSnapshots(snapshotArrays.flat());
 
   // Audit log — entity-scoped to this stock. Variant-level mutations are often
   // captured here too via the StockService entry point.
@@ -282,9 +363,12 @@ export default async function StockDetailPage({
           stock={stock}
           balanceMap={balanceMap}
           batchMap={batchMap}
+          initialBatchPage={initialBatchPage}
+          initialConsumptionOrder={initialConsumptionOrder}
           variantSummaryMap={variantSummaryMap}
-          variantMovementsMap={variantMovementsMap}
-          movements={movements}
+          initialLedgerPage={initialLedgerPage}
+          initialLedgerRange={{ from: "", to: "" }}
+          staffNames={staffNames}
           forecasts={forecasts}
           turnover={turnover}
           abc={abc}
@@ -303,6 +387,8 @@ export default async function StockDetailPage({
           variantSnapshotMap={variantSnapshotMap}
           stockSnapshots={stockSnapshots}
           auditEntries={auditEntries}
+          activityMovements={activityMovements}
+          activityMovementsTruncated={activityMovementsTruncated}
           rsSummary={rsSummary}
         />
       </PageBody>
@@ -338,13 +424,17 @@ function collapseSnapshots(rows: InventorySnapshot[]): InventorySnapshot[] {
     existing.openingBalanceQuantity += Number(r.openingBalanceQuantity ?? 0);
     existing.reservedQuantity += Number(r.reservedQuantity ?? 0);
     existing.inTransitQuantity += Number(r.inTransitQuantity ?? 0);
+    // One provisional variant makes the whole day's rollup provisional.
+    existing.derived = existing.derived || r.derived;
   }
   return Array.from(byDate.values()).sort((a, b) =>
     a.snapshotDate.localeCompare(b.snapshotDate),
   );
 }
 
-function mergeRsSummaries(summaries: RsMovementSummary[]): RsMovementSummary | null {
+function mergeRsSummaries(
+  summaries: RsMovementSummary[],
+): RsMovementSummary | null {
   if (summaries.length === 0) return null;
   const base: RsMovementSummary = {
     locationId: summaries[0].locationId,
@@ -381,7 +471,9 @@ function mergeRsSummaries(summaries: RsMovementSummary[]): RsMovementSummary | n
   return base;
 }
 
-function mergeBreakdowns(summaries: StockMovementSummary[]): MovementTypeBreakdown[] {
+function mergeBreakdowns(
+  summaries: StockMovementSummary[],
+): MovementTypeBreakdown[] {
   const map = new Map<string, MovementTypeBreakdown>();
   for (const s of summaries) {
     for (const b of s.byType) {

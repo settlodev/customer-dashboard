@@ -209,6 +209,8 @@ export function ReparentedDuplicatesView({ locations, canExecute }: Props) {
               <Stat label="Locations scanned" value={fmt(scan.locationsScanned)} />
             </div>
 
+            {scan.staleRows > 0 && <Breakdown scan={scan} />}
+
             {scan.staleRows > 0 && (
               <div className="flex flex-wrap items-center gap-3">
                 <Button
@@ -288,13 +290,89 @@ export function ReparentedDuplicatesView({ locations, canExecute }: Props) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+/**
+ * Why the rows are duplicated — the two classes need different fixes.
+ *
+ * Cross-order rows are genuine merge/split/transfer re-parents, which the
+ * `reparentedItemIds` fix in OMS/Reports prevents going forward; their newest
+ * business date says whether that fix is holding or still leaking. Same-order
+ * rows are one order filed under two business dates — nothing moved, and the
+ * re-parent fix does not cover them. A purge collapses both, but only the first
+ * class is supposed to stop coming back.
+ */
+function Breakdown({ scan }: { scan: DedupReport }) {
+  const span =
+    scan.earliestStaleDate && scan.latestStaleDate
+      ? scan.earliestStaleDate === scan.latestStaleDate
+        ? scan.earliestStaleDate
+        : `${scan.earliestStaleDate} → ${scan.latestStaleDate}`
+      : null;
+
+  return (
+    <div className="space-y-3 rounded-lg border border-line p-3">
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+        Why these rows are duplicated
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Stat
+          label="Re-parented (moved order)"
+          value={fmt(scan.crossOrderRows)}
+          hint={
+            scan.latestCrossOrderDate
+              ? `Newest: ${scan.latestCrossOrderDate}`
+              : "None found"
+          }
+        />
+        <Stat
+          label="Same order, another date"
+          value={fmt(scan.sameOrderRows)}
+          hint="Not a re-parent — filed under two business dates"
+        />
+      </div>
+
+      {span && (
+        <p className="text-sm text-muted-foreground">
+          Stale rows span <span className="tabular-nums">{span}</span>.
+        </p>
+      )}
+
+      {scan.crossOrderRows > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Compare <span className="tabular-nums">{scan.latestCrossOrderDate}</span>{" "}
+          against the date the re-parent fix was deployed. Newer means the
+          forward fix is still leaking and purging alone will not hold.
+        </p>
+      )}
+
+      {scan.crossOrderRows === 0 && scan.sameOrderRows > 0 && (
+        <p className="text-sm text-muted-foreground">
+          No genuine re-parents here — every row is one order filed under two
+          business dates, which the re-parent fix does not address.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
   return (
     <div className="rounded-lg border border-line bg-muted/30 px-3 py-2">
       <div className="text-xs uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
       <div className="mt-1 text-lg font-semibold tabular-nums">{value}</div>
+      {hint && (
+        <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>
+      )}
     </div>
   );
 }

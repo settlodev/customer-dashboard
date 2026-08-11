@@ -50,21 +50,58 @@ export function splitDivisibleQuantity(
   return { whole, sub };
 }
 
+/**
+ * Formats a quantity for display: thousands separators always, and at least
+ * two decimals whenever the value actually has a fractional part, so a weight
+ * reads "1,000.50" rather than "1000.5". Whole counts stay clean ("9", not
+ * "9.00"), and genuinely fine-grained values keep a third digit rather than
+ * being rounded away.
+ */
+export function formatQuantityNumber(quantity: number): string {
+  const hasFraction = Math.abs(quantity % 1) > 1e-9;
+  return quantity.toLocaleString(undefined, {
+    minimumFractionDigits: hasFraction ? 2 : 0,
+    maximumFractionDigits: 3,
+  });
+}
+
+/**
+ * Naive English pluralisation of a unit name. Units are stored singular
+ * ("Bottle", "Soda Crate", "Kilogram"), so appending "s" covers almost
+ * everything; the sibilant rule keeps "Box" from becoming "Boxs".
+ */
+function plural(label: string): string {
+  return /(s|x|z|ch|sh)$/i.test(label) ? `${label}es` : `${label}s`;
+}
+
 function pluralize(label: string, count: number): string {
-  return `${count.toLocaleString()} ${label}${count === 1 ? "" : "s"}`;
+  const name = count === 1 ? label : plural(label);
+  return `${formatQuantityNumber(count)} ${name}`;
 }
 
 export interface DivisibleUnitInfo {
   baseUnitName: string;
   divisibleUnitRatio?: number | null;
   divisibleUnitName?: string | null;
+  /**
+   * Name the unit even when the stock has no divisible unit, so an
+   * indivisible quantity reads "1,000.50 Kilograms" instead of a bare number.
+   *
+   * Off by default: several callers render the unit themselves alongside the
+   * figure (the stock detail KPI tiles pass it to `KpiCard`'s own `unit`
+   * slot), and turning this on for them would print the unit twice.
+   */
+  alwaysShowUnit?: boolean;
 }
 
 /**
  * Formats a base-unit quantity as "2 Bottles, 29 Tots" when the stock has a
- * divisible unit configured, falling back to the plain existing
- * `qty.toLocaleString()` behavior otherwise — completely unchanged display
- * for any stock that hasn't opted in.
+ * divisible unit configured.
+ *
+ * Without one the quantity can't be split into whole things, so it renders as
+ * a single figure — bare by default, or named ("1,000.50 Kilograms") when
+ * {@link DivisibleUnitInfo.alwaysShowUnit} is set. Either way it goes through
+ * {@link formatQuantityNumber}, so thousands separators are never missing.
  *
  * Negative values (e.g. a stock-take variance) are formatted from the
  * absolute magnitude with a single leading "-" on the whole string, not a
@@ -73,14 +110,27 @@ export interface DivisibleUnitInfo {
  */
 export function formatDivisibleQuantity(
   quantity: number,
-  { baseUnitName, divisibleUnitRatio, divisibleUnitName }: DivisibleUnitInfo,
+  {
+    baseUnitName,
+    divisibleUnitRatio,
+    divisibleUnitName,
+    alwaysShowUnit = false,
+  }: DivisibleUnitInfo,
 ): string {
   if (!divisibleUnitRatio || !divisibleUnitName) {
-    return quantity.toLocaleString();
+    // Indivisible stock. The quantity keeps its fractional tail here rather
+    // than being split into whole + sub units, so it is formatted directly
+    // instead of going through `pluralize`, which counts whole things.
+    if (!alwaysShowUnit || !baseUnitName) return formatQuantityNumber(quantity);
+    const name = Math.abs(quantity) === 1 ? baseUnitName : plural(baseUnitName);
+    return `${formatQuantityNumber(quantity)} ${name}`;
   }
 
   const isNegative = quantity < 0;
-  const { whole, sub } = splitDivisibleQuantity(Math.abs(quantity), divisibleUnitRatio);
+  const { whole, sub } = splitDivisibleQuantity(
+    Math.abs(quantity),
+    divisibleUnitRatio,
+  );
 
   const parts: string[] = [];
   if (whole > 0 || sub === 0) parts.push(pluralize(baseUnitName, whole));
