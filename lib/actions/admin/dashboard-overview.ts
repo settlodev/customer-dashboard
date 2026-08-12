@@ -201,6 +201,10 @@ function mapOverview(res: DashboardOverviewResponse): DashboardOverview {
       currency: "TZS",
       ...compactParts(rev.gmv),
       delta: pctDelta(rev.gmv, rev.gmvPrev),
+      // GMV is a flow, so the card is a windowed total (the delta compares it
+      // against the preceding 30 days) — unlike MRR/ARR beside it, which are
+      // run-rates read as the latest snapshot.
+      footNote: "last 30 days",
       spark: gmvSpark.length > 1 ? gmvSpark : undefined,
     },
     {

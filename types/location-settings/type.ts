@@ -170,6 +170,7 @@ export interface LocationSettings {
   showDiscountOnReceipt: boolean;
   showStaffOnReceipt: boolean;
   showCustomerOnReceipt: boolean;
+  showCustomerPhoneOnReceipt: boolean;
   showQrCodeOnReceipt: boolean;
   autoPrintReceipt: boolean;
   autoEmailReceipt: boolean;
@@ -284,12 +285,18 @@ export const LOGIN_MODE_OPTIONS: { value: LoginMode; label: string }[] = [
   { value: "PIN_ONLY", label: "PIN only" },
 ];
 
-export const LOYALTY_AWARD_TYPE_OPTIONS: { value: LoyaltyAwardType; label: string }[] = [
+export const LOYALTY_AWARD_TYPE_OPTIONS: {
+  value: LoyaltyAwardType;
+  label: string;
+}[] = [
   { value: "PER_ORDER", label: "Fixed per order" },
   { value: "PER_ORDER_VALUE", label: "Scaled by order value" },
 ];
 
-export const STAFF_POINTS_RECIPIENT_OPTIONS: { value: StaffPointsRecipient; label: string }[] = [
+export const STAFF_POINTS_RECIPIENT_OPTIONS: {
+  value: StaffPointsRecipient;
+  label: string;
+}[] = [
   { value: "FINISHED_BY", label: "Staff who closed the order" },
   { value: "ASSIGNED_TO", label: "Staff the order was assigned to" },
   { value: "SPLIT", label: "Split between assigned and closing" },
