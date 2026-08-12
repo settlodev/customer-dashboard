@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/layouts/admin-shell";
 import { PageBody, PageHeader, PageShell } from "@/components/layouts/page-shell";
 import { ArchivedStockBackfillView } from "@/components/admin/data-repair/archived-stock-backfill-view";
+import { DeductionReconciliationView } from "@/components/admin/data-repair/deduction-reconciliation-view";
 import { ReparentedDuplicatesView } from "@/components/admin/data-repair/reparented-duplicates-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
@@ -54,6 +55,10 @@ export default async function DataRepairPage() {
           <div className="space-y-8">
             <ReparentedDuplicatesView locations={locations} canExecute={canExecute} />
             <ArchivedStockBackfillView canExecute={canExecute} />
+            {/* Read-only: no canExecute, because there is no apply. Correcting a
+                shortfall posts stock against a closed business day, which is a
+                deliberate decision per location — not a button next to a number. */}
+            <DeductionReconciliationView locations={locations} />
           </div>
         </PageBody>
       </PageShell>
