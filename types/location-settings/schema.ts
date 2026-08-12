@@ -21,8 +21,18 @@ const currencyCode = z
   .transform((v) => v.toUpperCase());
 
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Must be HH:mm");
-const optionalUrl = z.string().url("Must be a valid URL").max(500).optional().or(z.literal(""));
-const optionalEmail = z.string().email("Invalid email").max(255).optional().or(z.literal(""));
+const optionalUrl = z
+  .string()
+  .url("Must be a valid URL")
+  .max(500)
+  .optional()
+  .or(z.literal(""));
+const optionalEmail = z
+  .string()
+  .email("Invalid email")
+  .max(255)
+  .optional()
+  .or(z.literal(""));
 
 // Empty, or a comma-separated list of valid emails (for CC fields).
 const optionalEmailList = z
@@ -90,7 +100,9 @@ export const LocationSettingsSchema = z.object({
 
   // Orders & POS
   orderingMode: z.enum(["STANDARD", "TABLE_MANAGEMENT"]).optional(),
-  loginMode: z.enum(["PIN_AND_FINGERPRINT", "FINGERPRINT_ONLY", "PIN_ONLY"]).optional(),
+  loginMode: z
+    .enum(["PIN_AND_FINGERPRINT", "FINGERPRINT_ONLY", "PIN_ONLY"])
+    .optional(),
   enableKitchenDisplay: z.boolean().optional(),
   allowTipping: z.boolean().optional(),
   allowOrderRequests: z.boolean().optional(),
@@ -102,22 +114,43 @@ export const LocationSettingsSchema = z.object({
   ecommerceEnabled: z.boolean().optional(),
   autoOpenCashDrawer: z.boolean().optional(),
   autoCloseOrderWhenFullyPaid: z.boolean().optional(),
-  autoCloseOrderMinutes: z.preprocess(toInt, z.number().int().min(1).optional()),
+  autoCloseOrderMinutes: z.preprocess(
+    toInt,
+    z.number().int().min(1).optional(),
+  ),
   minimumOrderAmount: z.preprocess(toNumber, z.number().min(0).optional()),
-  maxDiscountPercentage: z.preprocess(toNumber, z.number().min(0).max(100).optional()),
-  discountApprovalThreshold: z.preprocess(toNumber, z.number().min(0).max(100).optional()),
-  receiptCopies: z.preprocess(toInt, z.number().int().min(1).max(10).optional()),
+  maxDiscountPercentage: z.preprocess(
+    toNumber,
+    z.number().min(0).max(100).optional(),
+  ),
+  discountApprovalThreshold: z.preprocess(
+    toNumber,
+    z.number().min(0).max(100).optional(),
+  ),
+  receiptCopies: z.preprocess(
+    toInt,
+    z.number().int().min(1).max(10).optional(),
+  ),
 
   // Order channels
   enableOnlineOrdering: z.boolean().optional(),
   enableDelivery: z.boolean().optional(),
   defaultDeliveryFee: z.preprocess(toNumber, z.number().min(0).optional()),
-  minimumDeliveryOrderAmount: z.preprocess(toNumber, z.number().min(0).optional()),
+  minimumDeliveryOrderAmount: z.preprocess(
+    toNumber,
+    z.number().min(0).optional(),
+  ),
   enablePickup: z.boolean().optional(),
   enableDineIn: z.boolean().optional(),
-  defaultPrepTimeMinutes: z.preprocess(toInt, z.number().int().min(0).optional()),
+  defaultPrepTimeMinutes: z.preprocess(
+    toInt,
+    z.number().int().min(0).optional(),
+  ),
   acceptScheduledOrders: z.boolean().optional(),
-  maxScheduleDaysAhead: z.preprocess(toInt, z.number().int().min(0).max(365).optional()),
+  maxScheduleDaysAhead: z.preprocess(
+    toInt,
+    z.number().int().min(0).max(365).optional(),
+  ),
 
   // Payment ops
   defaultPaymentInstructions: z.string().optional(),
@@ -133,7 +166,10 @@ export const LocationSettingsSchema = z.object({
   orderNamePrefix: z.string().max(50).optional(),
   includeDateInOrderName: z.boolean().optional(),
   orderNumberStart: z.preprocess(toInt, z.number().int().min(1).optional()),
-  orderNumberPadding: z.preprocess(toInt, z.number().int().min(1).max(10).optional()),
+  orderNumberPadding: z.preprocess(
+    toInt,
+    z.number().int().min(1).max(10).optional(),
+  ),
   showOrderNumberPrefix: z.boolean().optional(),
 
   // Dockets (renamed from ticket → docket)
@@ -162,6 +198,7 @@ export const LocationSettingsSchema = z.object({
   showDiscountOnReceipt: z.boolean().optional(),
   showStaffOnReceipt: z.boolean().optional(),
   showCustomerOnReceipt: z.boolean().optional(),
+  showCustomerPhoneOnReceipt: z.boolean().optional(),
   showQrCodeOnReceipt: z.boolean().optional(),
   showImageOnReceipt: z.boolean().optional(),
   showAdditionalDetailsOnPhysicalReceipt: z.boolean().optional(),
@@ -174,7 +211,10 @@ export const LocationSettingsSchema = z.object({
   invoiceNumberPrefix: z.string().max(50).optional(),
   includeDateInInvoiceNumber: z.boolean().optional(),
   defaultPaymentTerms: z.string().max(100).optional(),
-  defaultInvoiceDueDays: z.preprocess(toInt, z.number().int().min(0).optional()),
+  defaultInvoiceDueDays: z.preprocess(
+    toInt,
+    z.number().int().min(0).optional(),
+  ),
 
   // Tax
   pricesIncludeTax: z.boolean().optional(),
@@ -200,23 +240,55 @@ export const LocationSettingsSchema = z.object({
   // Loyalty
   enableLoyaltyProgram: z.boolean().optional(),
   customerLoyaltyAwardType: z.enum(["PER_ORDER", "PER_ORDER_VALUE"]).optional(),
-  customerLoyaltyPointsPerOrder: z.preprocess(toInt, z.number().int().min(1).max(10000).optional()),
-  customerLoyaltyPointsPerValue: z.preprocess(toInt, z.number().int().min(1).max(10000).optional()),
-  customerLoyaltyValueThreshold: z.preprocess(toNumber, z.number().min(1).optional()),
-  customerLoyaltyMinimumRedeemablePoints: z.preprocess(toInt, z.number().int().min(0).optional()),
+  customerLoyaltyPointsPerOrder: z.preprocess(
+    toInt,
+    z.number().int().min(1).max(10000).optional(),
+  ),
+  customerLoyaltyPointsPerValue: z.preprocess(
+    toInt,
+    z.number().int().min(1).max(10000).optional(),
+  ),
+  customerLoyaltyValueThreshold: z.preprocess(
+    toNumber,
+    z.number().min(1).optional(),
+  ),
+  customerLoyaltyMinimumRedeemablePoints: z.preprocess(
+    toInt,
+    z.number().int().min(0).optional(),
+  ),
   enableStaffPoints: z.boolean().optional(),
   staffPointsAwardType: z.enum(["PER_ORDER", "PER_ORDER_VALUE"]).optional(),
-  staffPointsPerOrder: z.preprocess(toInt, z.number().int().min(1).max(10000).optional()),
-  staffPointsPerValue: z.preprocess(toInt, z.number().int().min(1).max(10000).optional()),
-  staffPointsValueThreshold: z.preprocess(toNumber, z.number().min(1).optional()),
-  staffMinimumRedeemablePoints: z.preprocess(toInt, z.number().int().min(0).optional()),
-  staffPointsRecipient: z.enum(["FINISHED_BY", "ASSIGNED_TO", "SPLIT"]).optional(),
+  staffPointsPerOrder: z.preprocess(
+    toInt,
+    z.number().int().min(1).max(10000).optional(),
+  ),
+  staffPointsPerValue: z.preprocess(
+    toInt,
+    z.number().int().min(1).max(10000).optional(),
+  ),
+  staffPointsValueThreshold: z.preprocess(
+    toNumber,
+    z.number().min(1).optional(),
+  ),
+  staffMinimumRedeemablePoints: z.preprocess(
+    toInt,
+    z.number().int().min(0).optional(),
+  ),
+  staffPointsRecipient: z
+    .enum(["FINISHED_BY", "ASSIGNED_TO", "SPLIT"])
+    .optional(),
   enablePointExpiration: z.boolean().optional(),
-  pointExpirationDays: z.preprocess(toInt, z.number().int().min(1).max(3650).optional()),
+  pointExpirationDays: z.preprocess(
+    toInt,
+    z.number().int().min(1).max(3650).optional(),
+  ),
 
   // Stock / inventory policy
   enableLowStockAlerts: z.boolean().optional(),
-  defaultLowStockThreshold: z.preprocess(toNumber, z.number().min(0).optional()),
+  defaultLowStockThreshold: z.preprocess(
+    toNumber,
+    z.number().min(0).optional(),
+  ),
   allowNegativeStock: z.boolean().optional(),
   trackExpiryDates: z.boolean().optional(),
   allowStockRequestsOverAvailable: z.boolean().optional(),
@@ -228,8 +300,14 @@ export const LocationSettingsSchema = z.object({
   autoReorderEnabled: z.boolean().optional(),
   autoClosingEnabled: z.boolean().optional(),
   cycleCountingEnabled: z.boolean().optional(),
-  expiryAlertDays: z.preprocess(toInt, z.number().int().min(1).max(365).optional()),
-  reservationExpiryMinutes: z.preprocess(toInt, z.number().int().min(1).max(1440).optional()),
+  expiryAlertDays: z.preprocess(
+    toInt,
+    z.number().int().min(1).max(365).optional(),
+  ),
+  reservationExpiryMinutes: z.preprocess(
+    toInt,
+    z.number().int().min(1).max(1440).optional(),
+  ),
   rfqEnabled: z.boolean().optional(),
 
   // Staff / HR
@@ -251,7 +329,10 @@ export const LocationSettingsSchema = z.object({
   // Day sessions + hours
   autoOpenDay: z.boolean().optional(),
   autoCloseDay: z.boolean().optional(),
-  closeGraceMinutes: z.preprocess(toInt, z.number().int().min(0).max(720).optional()),
+  closeGraceMinutes: z.preprocess(
+    toInt,
+    z.number().int().min(0).max(720).optional(),
+  ),
   continuousOperation: z.boolean().optional(),
   dailyCutoffTime: hhmm.optional().nullable(),
   minimumSettlementAmount: z.preprocess(toNumber, z.number().min(0).optional()),
