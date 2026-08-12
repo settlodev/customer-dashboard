@@ -98,6 +98,12 @@ import {
   saveStockDraft,
   publishStock,
 } from "@/lib/actions/stock-actions";
+import { updateLocationSettings } from "@/lib/actions/location-settings-actions";
+import type { LocationSettingsUpdate } from "@/types/location-settings/schema";
+import {
+  useLocationInventoryFlags,
+  markLocationInventoryFlags,
+} from "@/hooks/use-location-inventory-flags";
 import { uploadService } from "@/lib/uploads/upload-service";
 import { assignBarcode } from "@/lib/actions/barcode-actions";
 import {
@@ -185,6 +191,12 @@ export default function StockForm({ item, balances }: StockFormProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const locationCurrency = useLocationCurrency();
+  const inventoryFlags = useLocationInventoryFlags();
+  // Default on — most merchants who bother filling in reorder/alert config
+  // want it to actually fire. They can flip it off to configure the stock
+  // now and turn on the location-wide switch later themselves.
+  const [syncInventoryAlertSettings, setSyncInventoryAlertSettings] =
+    useState(true);
 
   const isEditing = !!item;
   const lastSyncedNameRef = useRef("");
@@ -279,6 +291,34 @@ export default function StockForm({ item, balances }: StockFormProps) {
     control: form.control,
     name: "variants",
   });
+
+  // Reorder/alert config only takes effect if the matching location-wide
+  // switch is on (Settings → Stock & inventory). Filling these fields
+  // without that switch on is a silent no-op, so flag it and offer to flip
+  // the switch alongside the save. Create-only — the fields are hidden when
+  // editing, so this can't apply there.
+  const needsAutoReorder = useMemo(
+    () =>
+      (watchedVariants ?? []).some(
+        (v) =>
+          v?.reorderPoint != null ||
+          v?.reorderQuantity != null ||
+          !!v?.preferredSupplierId,
+      ),
+    [watchedVariants],
+  );
+  const needsLowStockAlert = useMemo(
+    () => (watchedVariants ?? []).some((v) => v?.lowStockThreshold != null),
+    [watchedVariants],
+  );
+  const showAutoReorderPrompt =
+    !isEditing &&
+    needsAutoReorder &&
+    inventoryFlags?.autoReorderEnabled === false;
+  const showLowStockAlertPrompt =
+    !isEditing &&
+    needsLowStockAlert &&
+    inventoryFlags?.enableLowStockAlerts === false;
 
   // Auto-sync stock name → first variant name (single-variant create flow)
   useEffect(() => {
@@ -382,16 +422,30 @@ export default function StockForm({ item, balances }: StockFormProps) {
             if (d.responseType === "success") invalidateStocksCache();
           }
         });
-      } else if (autoCreateProduct) {
-        createStockWithProduct(effectiveValues, { categoryIds }).then((d) => {
-          if (businessDayGuard.catch(d, () => runSubmit(values))) return;
-          if (d) {
-            setResponse(d);
-            if (d.responseType === "success") invalidateStocksCache();
-          }
-        });
       } else {
-        createStock(effectiveValues).then((d) => {
+        if (
+          syncInventoryAlertSettings &&
+          (showAutoReorderPrompt || showLowStockAlertPrompt)
+        ) {
+          const patch: LocationSettingsUpdate = {};
+          if (showAutoReorderPrompt) patch.autoReorderEnabled = true;
+          if (showLowStockAlertPrompt) patch.enableLowStockAlerts = true;
+          updateLocationSettings(patch).then((res) => {
+            if (res.responseType === "success") {
+              markLocationInventoryFlags(patch);
+            } else {
+              toast({
+                variant: "destructive",
+                title: "Couldn't turn on the location alert settings",
+                description: res.message,
+              });
+            }
+          });
+        }
+        const create = autoCreateProduct
+          ? createStockWithProduct(effectiveValues, { categoryIds })
+          : createStock(effectiveValues);
+        create.then((d) => {
           if (businessDayGuard.catch(d, () => runSubmit(values))) return;
           if (d) {
             setResponse(d);
@@ -872,6 +926,42 @@ export default function StockForm({ item, balances }: StockFormProps) {
                       />
                     ))}
                   </div>
+
+                  {(showAutoReorderPrompt || showLowStockAlertPrompt) && (
+                    <div className="mt-4 rounded-xl border border-amber-200/70 bg-amber-50/50 p-4 dark:border-amber-500/20 dark:bg-amber-950/10">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                            Turn on{" "}
+                            {[
+                              showAutoReorderPrompt && "auto-reorder",
+                              showLowStockAlertPrompt && "low-stock alerts",
+                            ]
+                              .filter(Boolean)
+                              .join(" and ")}{" "}
+                            for this location?
+                          </div>
+                          <p className="max-w-[78ch] text-xs leading-relaxed text-ink-3">
+                            {showAutoReorderPrompt &&
+                              "A variant has a reorder point or quantity set, but auto-reorder is currently off — it won't draft an LPO until it's on. "}
+                            {showLowStockAlertPrompt &&
+                              "A variant has a low-stock threshold set, but low-stock alerts are currently off — you won't be notified until it's on. "}
+                            We&apos;ll switch{" "}
+                            {showAutoReorderPrompt && showLowStockAlertPrompt
+                              ? "them"
+                              : "it"}{" "}
+                            on for this location when you save.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={syncInventoryAlertSettings}
+                          onCheckedChange={setSyncInventoryAlertSettings}
+                          disabled={isPending}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </section>
             </div>
