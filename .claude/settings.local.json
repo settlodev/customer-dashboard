@@ -77,7 +77,10 @@
       "Bash(curl -sS -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/_next/webpack-hmr)",
       "Bash(curl -sS -D - -o /tmp/bom_rules_new.html http://localhost:3000/bom-rules/new)",
       "Bash(echo \"---exit:$?---\")",
-      "Bash(grep *)"
+      "Bash(grep *)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(curl -s -o /dev/null -w \"login HTTP %{http_code}\\\\n\" http://localhost:3911/login)",
+      "Bash(pkill -f \"next dev -p 3911\")"
     ]
   },
   "disableAllHooks": true
