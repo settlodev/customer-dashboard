@@ -55,10 +55,12 @@ export default async function DataRepairPage() {
           <div className="space-y-8">
             <ReparentedDuplicatesView locations={locations} canExecute={canExecute} />
             <ArchivedStockBackfillView canExecute={canExecute} />
-            {/* Read-only: no canExecute, because there is no apply. Correcting a
-                shortfall posts stock against a closed business day, which is a
-                deliberate decision per location — not a button next to a number. */}
-            <DeductionReconciliationView locations={locations} />
+            {/* canExecute gates the per-line corrections; the comparison itself
+                is read-only and available to anyone who can view this page. */}
+            <DeductionReconciliationView
+              locations={locations}
+              canExecute={canExecute}
+            />
           </div>
         </PageBody>
       </PageShell>
