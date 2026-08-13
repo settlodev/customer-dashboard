@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 import { inventoryUrl } from "./inventory-client";
 import type {
   StockTake,
+  StockTakeItem,
   StockTakeStatus,
   CycleCountType,
   CreateStockTakePayload,
@@ -43,7 +44,9 @@ export async function getStockTakes(
   if (cycleCountType) params.set("cycleCountType", cycleCountType);
 
   const apiClient = new ApiClient();
-  const data = await apiClient.get(inventoryUrl(`${BASE}?${params.toString()}`));
+  const data = await apiClient.get(
+    inventoryUrl(`${BASE}?${params.toString()}`),
+  );
   return parseStringify(data);
 }
 
@@ -54,6 +57,39 @@ export async function getStockTake(id: string): Promise<StockTake | null> {
     return parseStringify(data);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Backend-searched, paginated items for one stock take — powers the search
+ * box on the count table so a counter can jump straight to an item instead
+ * of paging through the full list. Distinct from `getStockTake`, which
+ * still embeds the full unfiltered item list for the default (no search)
+ * view.
+ */
+export async function searchForItemOnStockTake(
+  stockTakeId: string,
+  q: string,
+  page: number,
+  pageLimit: number,
+): Promise<ApiResponse<StockTakeItem>> {
+  try {
+    const params = new URLSearchParams();
+    if (q) params.set("search", q);
+    params.set("page", String(page));
+    params.set("size", String(pageLimit || 50));
+
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(
+      inventoryUrl(`${BASE}/${stockTakeId}/items?${params.toString()}`),
+    );
+    return parseStringify(data);
+  } catch {
+    return {
+      content: [],
+      totalElements: 0,
+      totalPages: 0,
+    } as unknown as ApiResponse<StockTakeItem>;
   }
 }
 
@@ -102,7 +138,10 @@ export async function createStockTake(
   let createdId: string | null = null;
   try {
     const apiClient = new ApiClient();
-    const created = (await apiClient.post(inventoryUrl(BASE), payload)) as StockTake;
+    const created = (await apiClient.post(
+      inventoryUrl(BASE),
+      payload,
+    )) as StockTake;
     createdId = created?.id ?? null;
     revalidatePath("/stock-takes");
   } catch (error: any) {
@@ -127,7 +166,9 @@ function buildFilterCriteria(args: {
 }): string | undefined {
   switch (args.cycleCountType) {
     case "ABC_CLASS":
-      return args.abcClass ? JSON.stringify({ classification: args.abcClass }) : undefined;
+      return args.abcClass
+        ? JSON.stringify({ classification: args.abcClass })
+        : undefined;
     case "DEPARTMENT":
       return args.departmentId
         ? JSON.stringify({ departmentId: args.departmentId })
@@ -171,7 +212,10 @@ async function runTransition(
     await apiClient.post(inventoryUrl(`${BASE}/${id}/${verb}`), {});
     revalidatePath(`/stock-takes/${id}`);
     revalidatePath("/stock-takes");
-    return { responseType: "success", message: `Stock take ${label.toLowerCase()}` };
+    return {
+      responseType: "success",
+      message: `Stock take ${label.toLowerCase()}`,
+    };
   } catch (error: any) {
     return {
       responseType: "error",
@@ -210,15 +254,16 @@ export async function updateStockTakeDraft(
     cycleCountType,
     blindCount,
     notes: notes?.trim() ? notes.trim() : null,
-    filterCriteria: buildFilterCriteria({
-      cycleCountType,
-      abcClass,
-      departmentId,
-      zoneId,
-      sampleMode,
-      sampleSize,
-      samplePercentage,
-    }) ?? null,
+    filterCriteria:
+      buildFilterCriteria({
+        cycleCountType,
+        abcClass,
+        departmentId,
+        zoneId,
+        sampleMode,
+        sampleSize,
+        samplePercentage,
+      }) ?? null,
   };
 
   try {

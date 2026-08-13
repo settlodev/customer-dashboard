@@ -1,13 +1,17 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { StockTakeCountRow, type CountDraft } from "@/components/widgets/stock-take/count-row";
-import { recordStockTakeCounts } from "@/lib/actions/stock-take-actions";
+import {
+  recordStockTakeCounts,
+  searchForItemOnStockTake,
+} from "@/lib/actions/stock-take-actions";
 import type { StockTakeItem } from "@/types/stock-take/type";
 import { splitDivisibleQuantity } from "@/lib/format-divisible-quantity";
 
@@ -32,12 +36,16 @@ function initialDraft(item: StockTakeItem): CountDraft {
 }
 
 /**
- * Client-side paged renderer for stock take items. Large zone counts
- * (hundreds of variant-bin rows) otherwise murder first-paint.
+ * Paged renderer for stock take items. Large zone counts (hundreds of
+ * variant-bin rows) otherwise murder first-paint, so the unfiltered view
+ * pages the `items` prop client-side. The search box instead hits the
+ * backend (`searchForItemOnStockTake` → `/stock-takes/{id}/items`),
+ * debounced 300ms, since the counter is looking for one specific row and
+ * the backend search is the source of truth for matching.
  *
  * Owns every row's draft count/notes — not just the visible page — so
- * values survive paging between now and one bulk "Submit all counts",
- * alongside each row's own immediate Save.
+ * values survive paging/searching between now and one bulk "Submit all
+ * counts", alongside each row's own immediate Save.
  */
 export default function StockTakeItemsTable({
   takeId,
@@ -56,14 +64,82 @@ export default function StockTakeItemsTable({
   const { toast } = useToast();
   const router = useRouter();
 
-  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  // Search hits the backend (`/stock-takes/{id}/items`) rather than filtering
+  // the `items` prop locally — the same items array is still the source of
+  // truth for `values`/`dirtyIds` lookups below, since search results are
+  // always a subset of it (same take), so submitting a count for a
+  // search-found row works the same as any other.
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const isSearching = debouncedSearch.length > 0;
+  const [searchResult, setSearchResult] = useState<{
+    items: StockTakeItem[];
+    totalElements: number;
+    totalPages: number;
+  } | null>(null);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+
+  // A new search term should always start at page 0. Rather than resetting
+  // `page` in a separate effect (which fired the fetch below once more with
+  // the stale page before the reset landed — an extra request plus a
+  // flicker of the old page number), track the previous term in a ref and,
+  // when it just changed, reset the page and skip straight to the re-run
+  // that fetch triggers instead of fetching with the stale page.
+  const prevDebouncedSearchRef = useRef(debouncedSearch);
+  useEffect(() => {
+    const searchChanged = prevDebouncedSearchRef.current !== debouncedSearch;
+    prevDebouncedSearchRef.current = debouncedSearch;
+
+    if (!debouncedSearch) {
+      setSearchResult(null);
+      return;
+    }
+    if (searchChanged && page !== 0) {
+      setPage(0);
+      return;
+    }
+
+    let cancelled = false;
+    setIsSearchLoading(true);
+    searchForItemOnStockTake(takeId, debouncedSearch, page, pageSize)
+      .then((res) => {
+        if (cancelled) return;
+        setSearchResult({
+          items: res?.content ?? [],
+          totalElements: res?.totalElements ?? 0,
+          totalPages: res?.totalPages ?? 1,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setSearchResult({ items: [], totalElements: 0, totalPages: 1 });
+      })
+      .finally(() => {
+        if (!cancelled) setIsSearchLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [takeId, debouncedSearch, page, pageSize]);
+
+  const localTotalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const totalPages = isSearching
+    ? Math.max(1, searchResult?.totalPages ?? 1)
+    : localTotalPages;
   const safePage = Math.min(page, totalPages - 1);
-  const visible = useMemo(
+  const localVisible = useMemo(
     () => items.slice(safePage * pageSize, safePage * pageSize + pageSize),
     [items, safePage, pageSize],
   );
+  const visible = isSearching ? (searchResult?.items ?? []) : localVisible;
 
-  const showControls = items.length > pageSize;
+  const totalCount = isSearching ? (searchResult?.totalElements ?? 0) : items.length;
+  const showControls = isSearching ? totalCount > pageSize : items.length > pageSize;
+  const noSearchResults = isSearching && !isSearchLoading && (searchResult?.items.length ?? 0) === 0;
 
   // Dirty rows still missing a quantity aren't submittable yet — they just
   // sit pending until the counter fills one in (mirrors the per-row Save
@@ -128,45 +204,75 @@ export default function StockTakeItemsTable({
 
   return (
     <>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-gray-50/60">
-              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Item</th>
-              {hasBins && (
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Bin</th>
-              )}
-              <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Expected</th>
-              <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Counted</th>
-              <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Variance</th>
-              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Notes</th>
-              {!readOnly && <th />}
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {visible.map((item) => (
-              <StockTakeCountRow
-                key={item.id}
-                takeId={takeId}
-                item={item}
-                value={values[item.id] ?? initialDraft(item)}
-                dirty={dirtyIds.has(item.id)}
-                blindCount={blindCount}
-                readOnly={readOnly}
-                showBin={hasBins}
-                onChange={(patch) => handleChange(item.id, patch)}
-                onSaved={() => markSaved([item.id])}
-              />
-            ))}
-          </tbody>
-        </table>
+      <div className="relative mb-3 max-w-xs">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search items…"
+          className="pl-8 pr-8"
+        />
+        {isSearchLoading ? (
+          <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
+        ) : (
+          search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )
+        )}
       </div>
+
+      {noSearchResults ? (
+        <div className="rounded-md border py-10 text-center text-sm text-muted-foreground">
+          No items match &quot;{debouncedSearch}&quot;.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-gray-50/60">
+                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Item</th>
+                {hasBins && (
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Bin</th>
+                )}
+                <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Expected</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Counted</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Variance</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Notes</th>
+                {!readOnly && <th />}
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {visible.map((item) => (
+                <StockTakeCountRow
+                  key={item.id}
+                  takeId={takeId}
+                  item={item}
+                  value={values[item.id] ?? initialDraft(item)}
+                  dirty={dirtyIds.has(item.id)}
+                  blindCount={blindCount}
+                  readOnly={readOnly}
+                  showBin={hasBins}
+                  onChange={(patch) => handleChange(item.id, patch)}
+                  onSaved={() => markSaved([item.id])}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {showControls && (
         <div className="flex items-center justify-between gap-2 px-3 pt-3 text-xs text-muted-foreground">
           <span>
             Showing {safePage * pageSize + 1}–
-            {Math.min((safePage + 1) * pageSize, items.length)} of {items.length}
+            {Math.min((safePage + 1) * pageSize, totalCount)} of {totalCount}
           </span>
           <div className="flex items-center gap-1">
             <Button
