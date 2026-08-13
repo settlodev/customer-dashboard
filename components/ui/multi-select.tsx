@@ -216,7 +216,7 @@ export const MultiSelect = React.forwardRef<
                   )}
                 </div>
               ) : (
-                <span className="flex-1 text-left text-muted-2">
+                <span className="flex-1 truncate text-left text-muted-2">
                   {placeholder}
                 </span>
               )}
