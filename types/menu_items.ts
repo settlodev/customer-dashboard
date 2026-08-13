@@ -81,12 +81,12 @@ const getNormalMenuItems = (args?: MenuItemArgType) => {
           current: args?.isCurrentItem,
           icon: "cart",
         },
-        {
-          title: "Credit report",
-          link: "/report/credit",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
+        // {
+        //   title: "Credit report",
+        //   link: "/report/credit",
+        //   current: args?.isCurrentItem,
+        //   icon: "cart",
+        // },
         {
           title: "Refund report",
           link: "/report/refunds",
