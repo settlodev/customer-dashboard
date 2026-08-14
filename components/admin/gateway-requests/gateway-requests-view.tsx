@@ -95,7 +95,12 @@ const FILTER_SECTIONS: { title: string; fields: FilterFieldConfig[] }[] = [
   {
     title: "Request",
     fields: [
-      { key: "httpMethod", label: "Method", type: "select", options: HTTP_METHOD_OPTIONS },
+      {
+        key: "httpMethod",
+        label: "Method",
+        type: "select",
+        options: HTTP_METHOD_OPTIONS,
+      },
       {
         key: "upstreamServerName",
         label: "Upstream server",
@@ -219,7 +224,9 @@ export function GatewayRequestsView({
 
   const applyFilters = () => {
     const changes: Record<string, string | null> = { page: null };
-    for (const key of Object.keys(pendingFilters) as GatewayRequestFilterKey[]) {
+    for (const key of Object.keys(
+      pendingFilters,
+    ) as GatewayRequestFilterKey[]) {
       changes[key] = pendingFilters[key].trim() || null;
     }
     updateParams(changes);
@@ -334,7 +341,10 @@ export function GatewayRequestsView({
               : `${live ? "Live" : "Paused"} · ${rows.length} events`}
           </Badge>
 
-          <Popover open={filtersPopoverOpen} onOpenChange={setFiltersPopoverOpen}>
+          <Popover
+            open={filtersPopoverOpen}
+            onOpenChange={setFiltersPopoverOpen}
+          >
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
@@ -376,7 +386,7 @@ export function GatewayRequestsView({
                             <Select
                               value={pendingFilters[field.key] || FILTER_ANY}
                               onValueChange={(v) =>
-                                setPendingFilters((prev) => ({
+                                setPendingFilters((prev: any) => ({
                                   ...prev,
                                   [field.key]: v === FILTER_ANY ? "" : v,
                                 }))
@@ -402,7 +412,7 @@ export function GatewayRequestsView({
                               id={`filter-${field.key}`}
                               value={pendingFilters[field.key]}
                               onChange={(e) =>
-                                setPendingFilters((prev) => ({
+                                setPendingFilters((prev: any) => ({
                                   ...prev,
                                   [field.key]: e.target.value,
                                 }))
@@ -672,11 +682,7 @@ function RequestDetailSheet({
                   value={row.subdivision}
                   copyable={false}
                 />
-                <DetailField
-                  label="City"
-                  value={row.city}
-                  copyable={false}
-                />
+                <DetailField label="City" value={row.city} copyable={false} />
                 <DetailField
                   label="Timezone"
                   value={row.timezone}
@@ -703,18 +709,24 @@ function RequestDetailSheet({
                 <DetailField
                   label="Account ID"
                   value={row.accountId}
-                  href={row.accountId ? `/accounts/${row.accountId}` : undefined}
+                  href={
+                    row.accountId ? `/accounts/${row.accountId}` : undefined
+                  }
                 />
                 <DetailField
                   label="Business ID"
                   value={row.businessId}
-                  href={row.businessId ? `/businesses/${row.businessId}` : undefined}
+                  href={
+                    row.businessId ? `/businesses/${row.businessId}` : undefined
+                  }
                 />
                 <DetailField label="Staff ID" value={row.staffId} />
                 <DetailField
                   label="Location ID"
                   value={row.locationId}
-                  href={row.locationId ? `/locations/${row.locationId}` : undefined}
+                  href={
+                    row.locationId ? `/locations/${row.locationId}` : undefined
+                  }
                 />
                 <DetailField label="Day session ID" value={row.daySessionId} />
               </DetailSection>
@@ -829,9 +841,7 @@ function DetailField({
 /** Parses `value` as a JSON object, returning null for anything else (plain
  * strings, arrays, primitives, invalid JSON) so callers can fall back to
  * rendering the raw text. */
-function parseJsonObject(
-  value: string | null,
-): Record<string, unknown> | null {
+function parseJsonObject(value: string | null): Record<string, unknown> | null {
   if (!value) return null;
   try {
     const parsed = JSON.parse(value);
@@ -863,14 +873,10 @@ function ErrorMessageField({ value }: { value: string | null }) {
 
   return (
     <div className="border-b border-line/60 px-3 py-2 last:border-b-0">
-      <span className="text-[12px] text-muted-foreground">
-        Error message
-      </span>
+      <span className="text-[12px] text-muted-foreground">Error message</span>
 
       {value == null ? (
-        <span className="font-mono text-[12px] text-muted-foreground">
-          —
-        </span>
+        <span className="font-mono text-[12px] text-muted-foreground">—</span>
       ) : parsed ? (
         <ul className="mt-1.5 space-y-1">
           {Object.entries(parsed).map(([key, val]) => (

@@ -80,7 +80,15 @@
       "Bash(grep *)",
       "Bash(echo \"exit:$?\")",
       "Bash(curl -s -o /dev/null -w \"login HTTP %{http_code}\\\\n\" http://localhost:3911/login)",
-      "Bash(pkill -f \"next dev -p 3911\")"
+      "Bash(pkill -f \"next dev -p 3911\")",
+      "Bash(git commit *)",
+      "Bash(xargs -I{} echo {})",
+      "Bash(ps -p 43748 -o command=)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost:3000/admin/gateway-requests\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost:3000/admin/gateway-requests?businessId=abc123&httpMethod=GET\")",
+      "Bash(curl -s -D - -o /dev/null \"http://localhost:3000/admin/gateway-requests?businessId=abc123&httpMethod=GET\")",
+      "mcp__ide__getDiagnostics",
+      "Bash(md5 /Users/apple/GitHub/SettloDev/customer-dashboard/types/admin/gateway-requests.ts)"
     ]
   },
   "disableAllHooks": true
