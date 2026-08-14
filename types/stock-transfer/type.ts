@@ -161,18 +161,18 @@ export const TRANSFER_STATUS_LABELS: Record<TransferStatus, string> = {
  * until it gets a colour (and, above, a label).
  */
 export const TRANSFER_STATUS_COLORS: Record<TransferStatus, string> = {
-  REQUESTED: "bg-blue-50 text-blue-700",
-  CONFIRMED: "bg-cyan-50 text-cyan-700",
-  DISPATCHED: "bg-indigo-50 text-indigo-700",
-  PARTIALLY_RECEIVED: "bg-amber-50 text-amber-700",
-  RECEIVED: "bg-emerald-50 text-emerald-700",
-  PENDING_MAPPING: "bg-violet-50 text-violet-700",
-  ACCEPTED: "bg-green-50 text-green-700",
-  REJECTED: "bg-rose-50 text-rose-700",
-  DECLINED: "bg-red-50 text-red-700",
-  RETURN_IN_TRANSIT: "bg-orange-50 text-orange-700",
-  RETURNED: "bg-gray-50 text-gray-700",
-  CANCELLED: "bg-gray-100 text-gray-500",
+  REQUESTED: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  CONFIRMED: "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-400",
+  DISPATCHED: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400",
+  PARTIALLY_RECEIVED: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  RECEIVED: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+  PENDING_MAPPING: "bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400",
+  ACCEPTED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  REJECTED: "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400",
+  DECLINED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  RETURN_IN_TRANSIT: "bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400",
+  RETURNED: "bg-muted text-ink-2",
+  CANCELLED: "bg-muted text-ink-3",
 };
 
 function resolveTransferSide(

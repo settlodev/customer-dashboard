@@ -54,7 +54,7 @@ export const columns: ColumnDef<StockUsage>[] = [
       </Button>
     ),
     cell: ({ row }) => (
-      <span className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
+      <span className="font-mono text-xs font-semibold text-ink-2 bg-muted px-2 py-0.5 rounded">
         {row.original.usageNumber}
       </span>
     ),
@@ -67,7 +67,7 @@ export const columns: ColumnDef<StockUsage>[] = [
         USAGE_CATEGORY_OPTIONS.find((o) => o.value === row.original.category)
           ?.label || row.original.category;
       return (
-        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700">
+        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400">
           {label}
         </span>
       );
@@ -77,7 +77,7 @@ export const columns: ColumnDef<StockUsage>[] = [
     accessorKey: "purpose",
     header: "Purpose",
     cell: ({ row }) => (
-      <span className="text-gray-600 truncate max-w-[220px] block">
+      <span className="text-ink-2 truncate max-w-[220px] block">
         {row.original.purpose}
       </span>
     ),
@@ -86,7 +86,7 @@ export const columns: ColumnDef<StockUsage>[] = [
     accessorKey: "recipientName",
     header: "Recipient",
     cell: ({ row }) => (
-      <span className="text-gray-900 font-medium truncate max-w-[160px] block">
+      <span className="text-ink font-medium truncate max-w-[160px] block">
         {row.original.recipientName || "—"}
       </span>
     ),
@@ -95,7 +95,7 @@ export const columns: ColumnDef<StockUsage>[] = [
     accessorKey: "departmentName",
     header: "Department",
     cell: ({ row }) => (
-      <span className="text-gray-600 truncate max-w-[160px] block">
+      <span className="text-ink-2 truncate max-w-[160px] block">
         {row.original.departmentName || "—"}
       </span>
     ),
@@ -107,7 +107,7 @@ export const columns: ColumnDef<StockUsage>[] = [
       const count = row.original.items?.length ?? 0;
       const qty = sumLineQuantity(row.original);
       return (
-        <span className="text-gray-600">
+        <span className="text-ink-2">
           {count} {count === 1 ? "item" : "items"} · −{qty.toLocaleString()}
         </span>
       );
@@ -122,7 +122,7 @@ export const columns: ColumnDef<StockUsage>[] = [
       return total > 0 ? (
         <Money amount={total} currency={currency} />
       ) : (
-        <span className="text-gray-400">—</span>
+        <span className="text-ink-3">—</span>
       );
     },
   },
@@ -135,8 +135,8 @@ export const columns: ColumnDef<StockUsage>[] = [
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
             isReversed
-              ? "bg-rose-50 text-rose-700"
-              : "bg-emerald-50 text-emerald-700"
+              ? "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400"
+              : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
           }`}
         >
           {isReversed ? "Reversed" : "Active"}
@@ -148,7 +148,7 @@ export const columns: ColumnDef<StockUsage>[] = [
     accessorKey: "usageDate",
     header: "Date",
     cell: ({ row }) => (
-      <span className="text-gray-600">
+      <span className="text-ink-2">
         {new Date(row.original.usageDate).toLocaleDateString("en-GB", {
           day: "2-digit",
           month: "short",

@@ -20,15 +20,15 @@ const TERMS_LABEL: Record<IntakePaymentTerms, string> = {
 };
 
 const TERMS_TONES: Record<IntakePaymentTerms, string> = {
-  CREDIT: "bg-blue-50 text-blue-700",
-  CASH: "bg-emerald-50 text-emerald-700",
-  BANK: "bg-violet-50 text-violet-700",
+  CREDIT: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  CASH: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+  BANK: "bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400",
 };
 
 const STATUS_TONES: Record<StockIntakeRecordStatus, string> = {
-  DRAFT: "bg-amber-50 text-amber-700",
-  CONFIRMED: "bg-green-50 text-green-700",
-  CANCELLED: "bg-red-50 text-red-700",
+  DRAFT: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  CONFIRMED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
 };
 
 const formatDate = (iso: string | null | undefined) => {
@@ -59,7 +59,7 @@ export const columns: ColumnDef<StockIntakeRecord>[] = [
     cell: ({ row }) => (
       <Link
         href={`/stock-intakes/${row.original.id}`}
-        className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded hover:underline"
+        className="font-mono text-xs font-semibold text-ink-2 bg-muted px-2 py-0.5 rounded hover:underline"
       >
         {row.original.referenceNumber}
       </Link>
@@ -70,11 +70,11 @@ export const columns: ColumnDef<StockIntakeRecord>[] = [
     header: "Supplier",
     cell: ({ row }) => (
       <div className="min-w-[160px]">
-        <div className="text-gray-700">
-          {row.original.supplierName || <span className="text-gray-400">—</span>}
+        <div className="text-ink-2">
+          {row.original.supplierName || <span className="text-ink-3">—</span>}
         </div>
         {row.original.supplierReference && (
-          <div className="text-[11px] text-gray-400 font-mono">
+          <div className="text-[11px] text-ink-3 font-mono">
             {row.original.supplierReference}
           </div>
         )}
@@ -86,7 +86,7 @@ export const columns: ColumnDef<StockIntakeRecord>[] = [
     header: "Terms",
     cell: ({ row }) => {
       const terms = row.original.paymentTerms;
-      if (!terms) return <span className="text-gray-400">—</span>;
+      if (!terms) return <span className="text-ink-3">—</span>;
       return (
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${TERMS_TONES[terms]}`}
@@ -100,7 +100,7 @@ export const columns: ColumnDef<StockIntakeRecord>[] = [
     id: "totalQuantity",
     header: () => <div className="text-right">Total qty</div>,
     cell: ({ row }) => (
-      <div className="text-right text-gray-600">
+      <div className="text-right text-ink-2">
         {Number(row.original.totalQuantity ?? 0).toLocaleString()}
       </div>
     ),
@@ -109,7 +109,7 @@ export const columns: ColumnDef<StockIntakeRecord>[] = [
     id: "totalValue",
     header: () => <div className="text-right">Value</div>,
     cell: ({ row }) => (
-      <div className="text-right font-medium text-gray-900">
+      <div className="text-right font-medium text-ink">
         <Money
           amount={Number(row.original.totalValue ?? 0)}
           currency={row.original.currency || DEFAULT_CURRENCY}
@@ -121,7 +121,7 @@ export const columns: ColumnDef<StockIntakeRecord>[] = [
     accessorKey: "confirmedByName",
     header: "Confirmed by",
     cell: ({ row }) => (
-      <span className="text-gray-600">
+      <span className="text-ink-2">
         {row.original.confirmedByName || "—"}
       </span>
     ),
@@ -141,7 +141,7 @@ export const columns: ColumnDef<StockIntakeRecord>[] = [
     accessorKey: "receivedDate",
     header: "Received",
     cell: ({ row }) => (
-      <span className="text-gray-600 whitespace-nowrap">
+      <span className="text-ink-2 whitespace-nowrap">
         {formatDate(row.original.receivedDate ?? row.original.createdAt)}
       </span>
     ),
