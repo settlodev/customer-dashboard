@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { format } from "date-fns";
 import { CalendarIcon, Check, Copy, Radio, Trash2, X } from "lucide-react";
 import { DateRange } from "react-day-picker";
@@ -364,10 +365,22 @@ function RequestDetailSheet({
 
               <DetailSection title="Identity">
                 <DetailField label="User ID" value={row.userId} />
-                <DetailField label="Account ID" value={row.accountId} />
-                <DetailField label="Business ID" value={row.businessId} />
+                <DetailField
+                  label="Account ID"
+                  value={row.accountId}
+                  href={row.accountId ? `/accounts/${row.accountId}` : undefined}
+                />
+                <DetailField
+                  label="Business ID"
+                  value={row.businessId}
+                  href={row.businessId ? `/businesses/${row.businessId}` : undefined}
+                />
                 <DetailField label="Staff ID" value={row.staffId} />
-                <DetailField label="Location ID" value={row.locationId} />
+                <DetailField
+                  label="Location ID"
+                  value={row.locationId}
+                  href={row.locationId ? `/locations/${row.locationId}` : undefined}
+                />
                 <DetailField label="Day session ID" value={row.daySessionId} />
               </DetailSection>
 
@@ -414,10 +427,12 @@ function DetailField({
   label,
   value,
   copyable = true,
+  href,
 }: {
   label: string;
   value: string | number | null;
   copyable?: boolean;
+  href?: string;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -438,14 +453,25 @@ function DetailField({
         {label}
       </span>
       <div className="flex min-w-0 items-start gap-1.5">
-        <span
-          className={cn(
-            "min-w-0 break-all text-right font-mono text-[12px] text-ink",
-            value == null && "text-muted-foreground",
-          )}
-        >
-          {value ?? "—"}
-        </span>
+        {href && value != null ? (
+          <Link
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="min-w-0 break-all text-right font-mono text-[12px] text-primary hover:underline"
+          >
+            {value}
+          </Link>
+        ) : (
+          <span
+            className={cn(
+              "min-w-0 break-all text-right font-mono text-[12px] text-ink",
+              value == null && "text-muted-foreground",
+            )}
+          >
+            {value ?? "—"}
+          </span>
+        )}
         {copyable && value != null && (
           <button
             type="button"
