@@ -66,7 +66,9 @@ export function GatewayRequestsView({
   const [lastError, setLastError] = useState<string | null>(null);
   const [selected, setSelected] = useState<GatewayRequestRow | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-  const [pendingDate, setPendingDate] = useState<DateRange | undefined>(undefined);
+  const [pendingDate, setPendingDate] = useState<DateRange | undefined>(
+    undefined,
+  );
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const liveRef = useRef(live);
   liveRef.current = live;
@@ -278,14 +280,35 @@ function RequestDetailSheet({
 
             <div className="mt-6 space-y-6">
               <DetailSection title="Request">
-                <DetailField label="Incoming URL" value={row.incomingUrl} />
-                <DetailField label="Outgoing URL" value={row.outgoingUrl} />
-                <DetailField label="Method" value={row.httpMethod} />
-                <DetailField label="Upstream server" value={row.upstreamServerName} />
+                <DetailField
+                  label="Incoming URL"
+                  value={row.incomingUrl}
+                  copyable={false}
+                />
+                <DetailField
+                  label="Outgoing URL"
+                  value={row.outgoingUrl}
+                  copyable={false}
+                />
+                <DetailField
+                  label="Method"
+                  value={row.httpMethod}
+                  copyable={false}
+                />
+                <DetailField
+                  label="Upstream server"
+                  value={row.upstreamServerName}
+                  copyable={false}
+                />
               </DetailSection>
 
               <DetailSection title="Response">
-                <DetailField label="Status code" value={row.upstreamStatusCode} />
+                <DetailField
+                  label="Status code"
+                  value={row.upstreamStatusCode}
+                  copyable={false}
+                />
+                <ErrorMessageField value={row.upstreamErrorMessage} />
                 <DetailField
                   label="Response time"
                   value={
@@ -293,6 +316,7 @@ function RequestDetailSheet({
                       ? `${row.upstreamResponseTimeMs} ms`
                       : null
                   }
+                  copyable={false}
                 />
               </DetailSection>
 
@@ -302,11 +326,31 @@ function RequestDetailSheet({
               </DetailSection>
 
               <DetailSection title="Location">
-                <DetailField label="Country" value={formatCountry(row)} />
-                <DetailField label="Region" value={row.subdivision} />
-                <DetailField label="City" value={row.city} />
-                <DetailField label="Timezone" value={row.timezone} />
-                <DetailField label="Coordinates" value={formatCoordinates(row)} />
+                <DetailField
+                  label="Country"
+                  value={formatCountry(row)}
+                  copyable={false}
+                />
+                <DetailField
+                  label="Region"
+                  value={row.subdivision}
+                  copyable={false}
+                />
+                <DetailField
+                  label="City"
+                  value={row.city}
+                  copyable={false}
+                />
+                <DetailField
+                  label="Timezone"
+                  value={row.timezone}
+                  copyable={false}
+                />
+                <DetailField
+                  label="Coordinates"
+                  value={formatCoordinates(row)}
+                  copyable={false}
+                />
                 <DetailField
                   label="Accuracy radius"
                   value={
@@ -314,6 +358,7 @@ function RequestDetailSheet({
                       ? `${row.accuracyRadiusKm} km`
                       : null
                   }
+                  copyable={false}
                 />
               </DetailSection>
 
@@ -330,8 +375,13 @@ function RequestDetailSheet({
                 <DetailField
                   label="Gateway request ID"
                   value={row.gatewayRequestId}
+                  copyable={false}
                 />
-                <DetailField label="Vercel trace ID" value={row.vercelId} />
+                <DetailField
+                  label="Vercel trace ID"
+                  value={row.vercelId}
+                  copyable={false}
+                />
               </DetailSection>
             </div>
           </>
@@ -363,9 +413,11 @@ function DetailSection({
 function DetailField({
   label,
   value,
+  copyable = true,
 }: {
   label: string;
   value: string | number | null;
+  copyable?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -382,7 +434,9 @@ function DetailField({
 
   return (
     <div className="flex items-start justify-between gap-3 border-b border-line/60 px-3 py-2 last:border-b-0">
-      <span className="shrink-0 pt-0.5 text-[12px] text-muted-foreground">{label}</span>
+      <span className="shrink-0 pt-0.5 text-[12px] text-muted-foreground">
+        {label}
+      </span>
       <div className="flex min-w-0 items-start gap-1.5">
         <span
           className={cn(
@@ -392,7 +446,7 @@ function DetailField({
         >
           {value ?? "—"}
         </span>
-        {value != null && (
+        {copyable && value != null && (
           <button
             type="button"
             onClick={onCopy}
@@ -407,6 +461,72 @@ function DetailField({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Parses `value` as a JSON object, returning null for anything else (plain
+ * strings, arrays, primitives, invalid JSON) so callers can fall back to
+ * rendering the raw text. */
+function parseJsonObject(
+  value: string | null,
+): Record<string, unknown> | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatJsonValue(key: string, value: unknown): string {
+  if (typeof value === "string") {
+    if (key.toLowerCase().includes("timestamp")) {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) return formatDateTime(value);
+    }
+    return value;
+  }
+  return JSON.stringify(value);
+}
+
+/** Renders `upstreamErrorMessage`. Upstream errors are often a JSON blob
+ * (e.g. `{"error":"ACCESS_DENIED","message":"..."}`); when that's the case
+ * this breaks it out into readable key/value rows instead of one long
+ * unreadable string. Falls back to plain text otherwise. */
+function ErrorMessageField({ value }: { value: string | null }) {
+  const parsed = useMemo(() => parseJsonObject(value), [value]);
+
+  return (
+    <div className="border-b border-line/60 px-3 py-2 last:border-b-0">
+      <span className="text-[12px] text-muted-foreground">
+        Error message
+      </span>
+
+      {value == null ? (
+        <span className="font-mono text-[12px] text-muted-foreground">
+          —
+        </span>
+      ) : parsed ? (
+        <ul className="mt-1.5 space-y-1">
+          {Object.entries(parsed).map(([key, val]) => (
+            <li key={key} className="flex gap-1.5 font-mono text-[12px]">
+              <span className="mt-[3px] h-1 w-1 shrink-0 rounded-full bg-destructive" />
+              <span className="shrink-0 text-muted-foreground">{key}:</span>
+              <span className="min-w-0 break-all text-ink">
+                {formatJsonValue(key, val)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-1.5 break-all font-mono text-[12px] text-ink">
+          {value}
+        </p>
+      )}
     </div>
   );
 }
