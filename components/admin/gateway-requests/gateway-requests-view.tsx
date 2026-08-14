@@ -2,18 +2,35 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
-import { CalendarIcon, Check, Copy, Radio, Trash2, X } from "lucide-react";
+import {
+  CalendarIcon,
+  Check,
+  Copy,
+  ListFilter,
+  Radio,
+  Trash2,
+  X,
+} from "lucide-react";
 import { DateRange } from "react-day-picker";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -29,7 +46,95 @@ import {
   statusTone,
 } from "@/components/tables/admin-gateway-requests/column";
 import { listGatewayRequests } from "@/lib/actions/admin/gateway-requests";
-import type { GatewayRequestRow } from "@/types/admin/gateway-requests";
+import {
+  EMPTY_GATEWAY_REQUEST_FILTERS,
+  type GatewayRequestFilterKey,
+  type GatewayRequestFilterValues,
+  type GatewayRequestRow,
+} from "@/types/admin/gateway-requests";
+
+/** Sentinel for an unselected `<Select>` filter — Radix disallows an empty
+ * string as an item value, so "no filter" needs its own value to map back
+ * to "". */
+const FILTER_ANY = "__any__";
+
+type FilterFieldConfig =
+  | {
+      key: GatewayRequestFilterKey;
+      label: string;
+      type: "text" | "number";
+      placeholder?: string;
+    }
+  | {
+      key: GatewayRequestFilterKey;
+      label: string;
+      type: "select";
+      options: { value: string; label: string }[];
+    };
+
+const HTTP_METHOD_OPTIONS = [
+  "GET",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+  "HEAD",
+  "OPTIONS",
+].map((m) => ({ value: m, label: m }));
+
+const UPSTREAM_SERVER_OPTIONS = [
+  "activity",
+  "accounts",
+  "analytics",
+  "billing",
+  "inventory",
+  "orders",
+].map((s) => ({ value: s, label: s }));
+
+const FILTER_SECTIONS: { title: string; fields: FilterFieldConfig[] }[] = [
+  {
+    title: "Request",
+    fields: [
+      { key: "httpMethod", label: "Method", type: "select", options: HTTP_METHOD_OPTIONS },
+      {
+        key: "upstreamServerName",
+        label: "Upstream server",
+        type: "select",
+        options: UPSTREAM_SERVER_OPTIONS,
+      },
+    ],
+  },
+  {
+    title: "Response",
+    fields: [
+      {
+        key: "upstreamStatusCode",
+        label: "Status code",
+        type: "number",
+        placeholder: "e.g. 404",
+      },
+      {
+        key: "hasUpstreamError",
+        label: "Has error",
+        type: "select",
+        options: [
+          { value: "true", label: "Yes" },
+          { value: "false", label: "No" },
+        ],
+      },
+    ],
+  },
+];
+
+const FILTER_FIELD_LABELS: Record<GatewayRequestFilterKey, string> =
+  Object.fromEntries(
+    FILTER_SECTIONS.flatMap((s) => s.fields).map((f) => [f.key, f.label]),
+  ) as Record<GatewayRequestFilterKey, string>;
+
+/** Trim a long opaque id for a compact chip. */
+function shortenId(value: string): string {
+  return value.length > 16 ? `${value.slice(0, 14)}…` : value;
+}
 
 // gatewayRequestId is the real identifier — fall back to a composite only
 // for rows from before that field existed.
@@ -55,13 +160,27 @@ interface GatewayRequestsViewProps {
   initialPage: { content: GatewayRequestRow[]; totalElements: number };
   pageSize: number;
   intervalMs?: number;
+  /** True the moment any filter param is present in the URL — switches the
+   * view from the live-polling tail to a paginated server-side search. */
+  filtersActive: boolean;
+  /** Current filter values, sourced from the URL (raw strings). */
+  initialFilters: GatewayRequestFilterValues;
+  /** Zero-based backend page index for the current filtered query. */
+  page: number;
 }
 
 export function GatewayRequestsView({
   initialPage,
   pageSize,
   intervalMs = 3000,
+  filtersActive,
+  initialFilters,
+  page,
 }: GatewayRequestsViewProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [rows, setRows] = useState<GatewayRequestRow[]>(initialPage.content);
   const [live, setLive] = useState(true);
   const [lastError, setLastError] = useState<string | null>(null);
@@ -74,6 +193,58 @@ export function GatewayRequestsView({
   const liveRef = useRef(live);
   liveRef.current = live;
   const seen = useRef<Set<string>>(new Set(initialPage.content.map(keyOf)));
+
+  const [filtersPopoverOpen, setFiltersPopoverOpen] = useState(false);
+  const [pendingFilters, setPendingFilters] =
+    useState<GatewayRequestFilterValues>(initialFilters);
+  useEffect(() => setPendingFilters(initialFilters), [initialFilters]);
+
+  const updateParams = useCallback(
+    (changes: Record<string, string | null>) => {
+      const next = new URLSearchParams(searchParams.toString());
+      for (const [key, value] of Object.entries(changes)) {
+        if (value === null || value === "") {
+          next.delete(key);
+        } else {
+          next.set(key, value);
+        }
+      }
+      const queryString = next.toString();
+      router.push(queryString ? `${pathname}?${queryString}` : pathname, {
+        scroll: false,
+      });
+    },
+    [pathname, router, searchParams],
+  );
+
+  const applyFilters = () => {
+    const changes: Record<string, string | null> = { page: null };
+    for (const key of Object.keys(pendingFilters) as GatewayRequestFilterKey[]) {
+      changes[key] = pendingFilters[key].trim() || null;
+    }
+    updateParams(changes);
+    setFiltersPopoverOpen(false);
+  };
+
+  const clearFilters = () => {
+    setPendingFilters(EMPTY_GATEWAY_REQUEST_FILTERS);
+    const changes: Record<string, string | null> = { page: null };
+    for (const key of Object.keys(EMPTY_GATEWAY_REQUEST_FILTERS)) {
+      changes[key] = null;
+    }
+    updateParams(changes);
+    setFiltersPopoverOpen(false);
+  };
+
+  const clearOneFilter = (key: GatewayRequestFilterKey) => {
+    updateParams({ [key]: null, page: null });
+  };
+
+  const activeFilterEntries = (
+    Object.keys(initialFilters) as GatewayRequestFilterKey[]
+  )
+    .filter((key) => initialFilters[key])
+    .map((key) => ({ key, value: initialFilters[key] }));
 
   const poll = useCallback(async () => {
     try {
@@ -96,6 +267,9 @@ export function GatewayRequestsView({
   }, [pageSize]);
 
   useEffect(() => {
+    // A filter is active — this is a paginated historical search, not a
+    // live tail. Don't poll.
+    if (filtersActive) return;
     let timer: ReturnType<typeof setTimeout>;
     const tick = async () => {
       if (liveRef.current) await poll();
@@ -103,7 +277,7 @@ export function GatewayRequestsView({
     };
     tick();
     return () => clearTimeout(timer);
-  }, [poll, intervalMs]);
+  }, [poll, intervalMs, filtersActive]);
 
   const clear = () => {
     setRows([]);
@@ -154,77 +328,220 @@ export function GatewayRequestsView({
           </h3>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Badge tone={live ? "ok" : "muted"} dot>
-            {live ? "Live" : "Paused"} · {rows.length} events
+          <Badge tone={filtersActive ? "open" : live ? "ok" : "muted"} dot>
+            {filtersActive
+              ? `Filtered · ${initialPage.totalElements.toLocaleString()} results`
+              : `${live ? "Live" : "Paused"} · ${rows.length} events`}
           </Badge>
 
-          <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+          <Popover open={filtersPopoverOpen} onOpenChange={setFiltersPopoverOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "h-9 justify-start text-left text-[12.5px] font-normal",
-                  !hasDateFilter && "text-muted-foreground",
+                  "h-9 border-dashed text-[12.5px] font-normal",
+                  activeFilterEntries.length === 0 && "text-muted-foreground",
                 )}
               >
-                <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                {dateLabel}
+                <ListFilter className="mr-1.5 h-3.5 w-3.5" />
+                Filters
+                {activeFilterEntries.length > 0 && (
+                  <Badge tone="open" className="ml-1.5 px-1.5">
+                    {activeFilterEntries.length}
+                  </Badge>
+                )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="range"
-                defaultMonth={pendingDate?.from ?? today}
-                selected={pendingDate}
-                onSelect={setPendingDate}
-                numberOfMonths={2}
-                disabled={{ after: today }}
-                toDate={today}
-                initialFocus
-              />
-              <div className="flex items-center justify-end gap-2 p-3 pt-0">
+            <PopoverContent
+              className="max-h-[70vh] w-[560px] overflow-y-auto p-4"
+              align="end"
+            >
+              <div className="space-y-4">
+                {FILTER_SECTIONS.map((section) => (
+                  <div key={section.title}>
+                    <h5 className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {section.title}
+                    </h5>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {section.fields.map((field) => (
+                        <div key={field.key} className="space-y-1">
+                          <label
+                            className="block text-[11px] text-muted-foreground"
+                            htmlFor={`filter-${field.key}`}
+                          >
+                            {field.label}
+                          </label>
+                          {field.type === "select" ? (
+                            <Select
+                              value={pendingFilters[field.key] || FILTER_ANY}
+                              onValueChange={(v) =>
+                                setPendingFilters((prev) => ({
+                                  ...prev,
+                                  [field.key]: v === FILTER_ANY ? "" : v,
+                                }))
+                              }
+                            >
+                              <SelectTrigger
+                                id={`filter-${field.key}`}
+                                className="h-8 text-[12.5px]"
+                              >
+                                <SelectValue placeholder="Any" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={FILTER_ANY}>Any</SelectItem>
+                                {field.options.map((opt) => (
+                                  <SelectItem key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input
+                              id={`filter-${field.key}`}
+                              value={pendingFilters[field.key]}
+                              onChange={(e) =>
+                                setPendingFilters((prev) => ({
+                                  ...prev,
+                                  [field.key]: e.target.value,
+                                }))
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") applyFilters();
+                              }}
+                              type={field.type === "number" ? "number" : "text"}
+                              placeholder={field.placeholder}
+                              className="h-8 text-[12.5px]"
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 flex items-center justify-end gap-2 border-t border-line pt-3">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setPendingDate(undefined)}
-                  disabled={!pendingDate?.from}
+                  onClick={clearFilters}
+                  disabled={activeFilterEntries.length === 0}
                 >
-                  Clear
+                  Clear all
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={applyDateRange}
-                  disabled={!pendingDate?.from}
-                >
+                <Button size="sm" onClick={applyFilters}>
                   Apply
                 </Button>
               </div>
             </PopoverContent>
           </Popover>
 
-          {hasDateFilter && (
-            <button
-              type="button"
-              onClick={clearDateRange}
-              aria-label="Clear date filter"
-              className="rounded p-1 text-muted-foreground transition-colors hover:bg-canvas hover:text-ink"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
+          {!filtersActive && (
+            <>
+              <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "h-9 justify-start text-left text-[12.5px] font-normal",
+                      !hasDateFilter && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    {dateLabel}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="range"
+                    defaultMonth={pendingDate?.from ?? today}
+                    selected={pendingDate}
+                    onSelect={setPendingDate}
+                    numberOfMonths={2}
+                    disabled={{ after: today }}
+                    toDate={today}
+                    initialFocus
+                  />
+                  <div className="flex items-center justify-end gap-2 p-3 pt-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setPendingDate(undefined)}
+                      disabled={!pendingDate?.from}
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={applyDateRange}
+                      disabled={!pendingDate?.from}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
 
-          <Switch
-            checked={live}
-            onCheckedChange={setLive}
-            aria-label="Toggle live tail"
-          />
-          <Button variant="outline" size="sm" onClick={clear}>
-            <Trash2 className="h-3.5 w-3.5" />
-            Clear
-          </Button>
+              {hasDateFilter && (
+                <button
+                  type="button"
+                  onClick={clearDateRange}
+                  aria-label="Clear date filter"
+                  className="rounded p-1 text-muted-foreground transition-colors hover:bg-canvas hover:text-ink"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+
+              <Switch
+                checked={live}
+                onCheckedChange={setLive}
+                aria-label="Toggle live tail"
+              />
+              <Button variant="outline" size="sm" onClick={clear}>
+                <Trash2 className="h-3.5 w-3.5" />
+                Clear
+              </Button>
+            </>
+          )}
         </div>
       </div>
+
+      {activeFilterEntries.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-line bg-card px-3 py-2.5">
+          <span className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+            Active
+          </span>
+          {activeFilterEntries.map(({ key, value }) => (
+            <span
+              key={key}
+              className="inline-flex max-w-[280px] items-center gap-1 rounded-md border border-line bg-canvas py-0.5 pl-2 pr-1 text-[12px] text-ink-2"
+            >
+              <span className="truncate">
+                {FILTER_FIELD_LABELS[key]}: {shortenId(value)}
+              </span>
+              <button
+                type="button"
+                onClick={() => clearOneFilter(key)}
+                aria-label={`Clear ${FILTER_FIELD_LABELS[key]} filter`}
+                className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-line hover:text-ink"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto h-7 px-2 text-[12px] text-muted-foreground hover:text-ink"
+            onClick={clearFilters}
+          >
+            Clear all
+          </Button>
+        </div>
+      )}
 
       {lastError && (
         <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-[12.5px] text-destructive">
@@ -232,16 +549,34 @@ export function GatewayRequestsView({
         </p>
       )}
 
-      <DataTable
-        columns={gatewayRequestColumns}
-        data={filteredRows}
-        searchKey="incomingUrl"
-        searchPlaceholder="Search by URL…"
-        defaultPageSize={pageSize}
-        clientMode
-        disableArchive
-        onRowClick={(row) => setSelected(row)}
-      />
+      {filtersActive ? (
+        <DataTable
+          columns={gatewayRequestColumns}
+          data={initialPage.content}
+          searchKey="incomingUrl"
+          hideSearch
+          pageNo={page}
+          total={initialPage.totalElements}
+          pageCount={Math.max(
+            1,
+            Math.ceil(initialPage.totalElements / pageSize),
+          )}
+          defaultPageSize={pageSize}
+          disableArchive
+          onRowClick={(row) => setSelected(row)}
+        />
+      ) : (
+        <DataTable
+          columns={gatewayRequestColumns}
+          data={filteredRows}
+          searchKey="incomingUrl"
+          hideSearch
+          defaultPageSize={pageSize}
+          clientMode
+          disableArchive
+          onRowClick={(row) => setSelected(row)}
+        />
+      )}
 
       <RequestDetailSheet row={selected} onClose={() => setSelected(null)} />
     </div>
