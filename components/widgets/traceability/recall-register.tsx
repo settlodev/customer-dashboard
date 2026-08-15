@@ -180,23 +180,23 @@ export function RecallRegister() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50/60">
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                <tr className="border-b bg-muted/60">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Recalled at
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Batch
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Variant
                   </th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
                     Quantity
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Status
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Reason
                   </th>
                 </tr>
@@ -236,7 +236,7 @@ export function RecallRegister() {
                         {BATCH_STATUS_LABELS[b.status]}
                       </span>
                       {b.recallRevertedAt && (
-                        <div className="mt-0.5 text-xs text-amber-700">
+                        <div className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
                           reverted{" "}
                           {new Date(b.recallRevertedAt).toLocaleDateString(
                             "en-GB",
