@@ -390,7 +390,7 @@ function getCardBgColor(status: ReservationStatus): string {
     case ReservationStatus.NO_SHOW:
       return "bg-orange-100 text-orange-900 dark:bg-orange-900/30 dark:text-orange-200";
     default:
-      return "bg-gray-100 text-gray-700";
+      return "bg-gray-100 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300";
   }
 }
 
