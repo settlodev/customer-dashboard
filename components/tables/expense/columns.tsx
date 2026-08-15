@@ -55,7 +55,7 @@ export const columns: ColumnDef<Expense>[] = [
     cell: ({ row }) => (
       <Link
         href={`/expenses/${row.original.id}`}
-        className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded hover:underline"
+        className="font-mono text-xs font-semibold text-ink-2 bg-muted px-2 py-0.5 rounded hover:underline"
       >
         {row.original.expenseNumber}
       </Link>
