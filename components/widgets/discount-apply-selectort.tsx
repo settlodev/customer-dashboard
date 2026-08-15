@@ -47,7 +47,7 @@ const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange,
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700">Apply discount on (optional)</label>
+        <label className="block text-sm font-medium text-ink-2">Apply discount on (optional)</label>
         <Select onValueChange={handleTrackingTypeChange} value={applyOption || undefined}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select discount apply option" />

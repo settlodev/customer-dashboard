@@ -20,7 +20,7 @@ function ProductSummary({ data }: ProductSummaryProps) {
             Total Products
           </CardTitle>
           <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-            <Package className="h-4 w-4 text-gray-500" />
+            <Package className="h-4 w-4 text-gray-500 dark:text-gray-400" />
           </div>
         </CardHeader>
         <CardContent className="p-4 pt-1">
@@ -36,7 +36,7 @@ function ProductSummary({ data }: ProductSummaryProps) {
             Total Variants
           </CardTitle>
           <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-            <Layers className="h-4 w-4 text-gray-500" />
+            <Layers className="h-4 w-4 text-gray-500 dark:text-gray-400" />
           </div>
         </CardHeader>
         <CardContent className="p-4 pt-1">

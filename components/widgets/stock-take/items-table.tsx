@@ -236,15 +236,15 @@ export default function StockTakeItemsTable({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-gray-50/60">
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Item</th>
+              <tr className="border-b bg-muted/60">
+                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Item</th>
                 {hasBins && (
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Bin</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Bin</th>
                 )}
-                <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Expected</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Counted</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Variance</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Notes</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Expected</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Counted</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Variance</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Notes</th>
                 {!readOnly && <th />}
               </tr>
             </thead>
