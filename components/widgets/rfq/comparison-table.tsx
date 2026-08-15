@@ -91,9 +91,9 @@ export function QuoteComparisonTable({ rfq, comparison, supplierMap }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm border">
             <thead>
-              <tr className="border-b bg-gray-50/60">
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Item</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Requested</th>
+              <tr className="border-b bg-muted/60">
+                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Item</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Requested</th>
                 {uniqueQuoteIds.map((quoteId) => {
                   const quote = quotesById.get(quoteId);
                   const supplierName = quote
@@ -102,7 +102,7 @@ export function QuoteComparisonTable({ rfq, comparison, supplierMap }: Props) {
                   return (
                     <th
                       key={quoteId}
-                      className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase min-w-[140px]"
+                      className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase min-w-[140px]"
                     >
                       {supplierName}
                       <div className="text-[10px] font-normal text-muted-foreground normal-case">
@@ -139,7 +139,7 @@ export function QuoteComparisonTable({ rfq, comparison, supplierMap }: Props) {
                     return (
                       <td
                         key={quoteId}
-                        className={`px-3 py-2 text-right ${offer.isCheapest ? "bg-green-50/60" : ""}`}
+                        className={`px-3 py-2 text-right ${offer.isCheapest ? "bg-green-50/60 dark:bg-green-950/20" : ""}`}
                       >
                         <div className="flex flex-col items-end">
                           <Money amount={offer.quotedUnitPrice} currency={currency} />
@@ -149,12 +149,12 @@ export function QuoteComparisonTable({ rfq, comparison, supplierMap }: Props) {
                           </span>
                           <div className="flex gap-1 mt-0.5">
                             {offer.isCheapest && (
-                              <span className="text-[9px] bg-green-100 text-green-700 rounded px-1">
+                              <span className="text-[9px] bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400 rounded px-1">
                                 cheapest
                               </span>
                             )}
                             {offer.isFastest && (
-                              <span className="text-[9px] bg-blue-100 text-blue-700 rounded px-1">
+                              <span className="text-[9px] bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 rounded px-1">
                                 fastest
                               </span>
                             )}
@@ -167,7 +167,7 @@ export function QuoteComparisonTable({ rfq, comparison, supplierMap }: Props) {
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-gray-50/60 font-semibold">
+              <tr className="bg-muted/60 font-semibold">
                 <td colSpan={2} className="px-3 py-2 text-right">Quote total</td>
                 {uniqueQuoteIds.map((quoteId) => {
                   const totals = quoteTotals.get(quoteId)!;
@@ -176,7 +176,7 @@ export function QuoteComparisonTable({ rfq, comparison, supplierMap }: Props) {
                   return (
                     <td
                       key={quoteId}
-                      className={`px-3 py-2 text-right ${isCheapest ? "bg-green-50" : ""}`}
+                      className={`px-3 py-2 text-right ${isCheapest ? "bg-green-50 dark:bg-green-950/20" : ""}`}
                     >
                       <div className="flex flex-col items-end">
                         <Money amount={totals.total} currency={currency} />
@@ -200,7 +200,7 @@ export function QuoteComparisonTable({ rfq, comparison, supplierMap }: Props) {
                 })}
               </tr>
               {awardable && (
-                <tr className="bg-white">
+                <tr className="bg-background">
                   <td colSpan={2} />
                   {uniqueQuoteIds.map((quoteId) => (
                     <td key={quoteId} className="px-3 py-2 text-right">

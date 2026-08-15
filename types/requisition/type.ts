@@ -115,12 +115,12 @@ export const REQUISITION_STATUS_LABELS: Record<RequisitionStatus, string> = {
 };
 
 export const REQUISITION_STATUS_TONES: Record<RequisitionStatus, string> = {
-  DRAFT: "bg-gray-50 text-gray-700",
-  SUBMITTED: "bg-blue-50 text-blue-700",
-  APPROVED: "bg-indigo-50 text-indigo-700",
-  REJECTED: "bg-red-50 text-red-700",
-  CONVERTED_TO_LPO: "bg-green-50 text-green-700",
-  CANCELLED: "bg-red-50 text-red-700",
+  DRAFT: "bg-muted text-ink-2",
+  SUBMITTED: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  APPROVED: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400",
+  REJECTED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  CONVERTED_TO_LPO: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
 };
 
 export const PRIORITY_LABELS: Record<RequisitionPriority, string> = {
@@ -131,10 +131,10 @@ export const PRIORITY_LABELS: Record<RequisitionPriority, string> = {
 };
 
 export const PRIORITY_TONES: Record<RequisitionPriority, string> = {
-  LOW: "bg-gray-50 text-gray-600",
-  NORMAL: "bg-blue-50 text-blue-700",
-  HIGH: "bg-amber-50 text-amber-700",
-  URGENT: "bg-red-50 text-red-700",
+  LOW: "bg-muted text-ink-2",
+  NORMAL: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  HIGH: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  URGENT: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
 };
 
 export const PRIORITY_OPTIONS: { value: RequisitionPriority; label: string }[] = [
