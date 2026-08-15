@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
-import { StockTakeCountRow, type CountDraft } from "@/components/widgets/stock-take/count-row";
+import {
+  StockTakeCountRow,
+  type CountDraft,
+} from "@/components/widgets/stock-take/count-row";
 import {
   recordStockTakeCounts,
   searchForItemOnStockTake,
@@ -24,10 +27,22 @@ interface Props {
   pageSize?: number;
 }
 
+// Below this length, treat it as "not searching yet" instead of firing a
+// backend request per keystroke — a single character matches too broadly
+// to be useful and just wastes round-trips on a fast typist.
+const MIN_SEARCH_LENGTH = 3;
+
 function initialDraft(item: StockTakeItem): CountDraft {
   if (item.divisibleUnitRatio != null && item.countedQuantity != null) {
-    const { whole, sub } = splitDivisibleQuantity(item.countedQuantity, item.divisibleUnitRatio);
-    return { countedWholeUnits: whole, countedSubUnits: sub, notes: item.notes ?? "" };
+    const { whole, sub } = splitDivisibleQuantity(
+      item.countedQuantity,
+      item.divisibleUnitRatio,
+    );
+    return {
+      countedWholeUnits: whole,
+      countedSubUnits: sub,
+      notes: item.notes ?? "",
+    };
   }
   return {
     countedQuantity: item.countedQuantity ?? undefined,
@@ -76,7 +91,7 @@ export default function StockTakeItemsTable({
     return () => clearTimeout(t);
   }, [search]);
 
-  const isSearching = debouncedSearch.length > 0;
+  const isSearching = debouncedSearch.length >= MIN_SEARCH_LENGTH;
   const [searchResult, setSearchResult] = useState<{
     items: StockTakeItem[];
     totalElements: number;
@@ -95,7 +110,7 @@ export default function StockTakeItemsTable({
     const searchChanged = prevDebouncedSearchRef.current !== debouncedSearch;
     prevDebouncedSearchRef.current = debouncedSearch;
 
-    if (!debouncedSearch) {
+    if (!isSearching) {
       setSearchResult(null);
       return;
     }
@@ -116,7 +131,8 @@ export default function StockTakeItemsTable({
         });
       })
       .catch(() => {
-        if (!cancelled) setSearchResult({ items: [], totalElements: 0, totalPages: 1 });
+        if (!cancelled)
+          setSearchResult({ items: [], totalElements: 0, totalPages: 1 });
       })
       .finally(() => {
         if (!cancelled) setIsSearchLoading(false);
@@ -137,9 +153,14 @@ export default function StockTakeItemsTable({
   );
   const visible = isSearching ? (searchResult?.items ?? []) : localVisible;
 
-  const totalCount = isSearching ? (searchResult?.totalElements ?? 0) : items.length;
-  const showControls = isSearching ? totalCount > pageSize : items.length > pageSize;
-  const noSearchResults = isSearching && !isSearchLoading && (searchResult?.items.length ?? 0) === 0;
+  const totalCount = isSearching
+    ? (searchResult?.totalElements ?? 0)
+    : items.length;
+  const showControls = isSearching
+    ? totalCount > pageSize
+    : items.length > pageSize;
+  const noSearchResults =
+    isSearching && !isSearchLoading && (searchResult?.items.length ?? 0) === 0;
 
   // Dirty rows still missing a quantity aren't submittable yet — they just
   // sit pending until the counter fills one in (mirrors the per-row Save
@@ -182,7 +203,10 @@ export default function StockTakeItemsTable({
           return {
             itemId: id,
             ...(item.divisibleUnitRatio != null
-              ? { countedWholeUnits: draft.countedWholeUnits ?? 0, countedSubUnits: draft.countedSubUnits ?? 0 }
+              ? {
+                  countedWholeUnits: draft.countedWholeUnits ?? 0,
+                  countedSubUnits: draft.countedSubUnits ?? 0,
+                }
               : { countedQuantity: draft.countedQuantity! }),
             notes: draft.notes.trim() || undefined,
           };
@@ -237,14 +261,26 @@ export default function StockTakeItemsTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/60">
-                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Item</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
+                  Item
+                </th>
                 {hasBins && (
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Bin</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
+                    Bin
+                  </th>
                 )}
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Expected</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Counted</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Variance</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Notes</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
+                  Expected
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
+                  Counted
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
+                  Variance
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
+                  Notes
+                </th>
                 {!readOnly && <th />}
               </tr>
             </thead>
@@ -314,7 +350,10 @@ export default function StockTakeItemsTable({
                 Submitting…
               </Button>
             ) : (
-              <Button onClick={handleSubmitAll} disabled={submittableIds.length === 0}>
+              <Button
+                onClick={handleSubmitAll}
+                disabled={submittableIds.length === 0}
+              >
                 Submit all counts
               </Button>
             )}
