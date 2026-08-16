@@ -128,11 +128,11 @@ export const SUPPLIER_RETURN_STATUS_LABELS: Record<SupplierReturnStatus, string>
 };
 
 export const SUPPLIER_RETURN_STATUS_TONES: Record<SupplierReturnStatus, string> = {
-  DRAFT: "bg-gray-50 text-gray-700",
-  CONFIRMED: "bg-blue-50 text-blue-700",
-  DISPATCHED: "bg-amber-50 text-amber-700",
-  COMPLETED: "bg-green-50 text-green-700",
-  CANCELLED: "bg-red-50 text-red-700",
+  DRAFT: "bg-muted text-ink-2",
+  CONFIRMED: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  DISPATCHED: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  COMPLETED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
 };
 
 export function canConfirmReturn(status: SupplierReturnStatus): boolean {

@@ -213,14 +213,14 @@ export const RFQ_STATUS_LABELS: Record<RfqStatus, string> = {
 };
 
 export const RFQ_STATUS_TONES: Record<RfqStatus, string> = {
-  DRAFT: "bg-gray-50 text-gray-700",
-  SENT: "bg-blue-50 text-blue-700",
-  QUOTES_RECEIVED: "bg-indigo-50 text-indigo-700",
-  EVALUATED: "bg-amber-50 text-amber-700",
-  AWARDED: "bg-emerald-50 text-emerald-700",
-  CONVERTED_TO_LPO: "bg-green-50 text-green-700",
-  CANCELLED: "bg-red-50 text-red-700",
-  EXPIRED: "bg-red-50 text-red-700",
+  DRAFT: "bg-muted text-ink-2",
+  SENT: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  QUOTES_RECEIVED: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400",
+  EVALUATED: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  AWARDED: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+  CONVERTED_TO_LPO: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  EXPIRED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
 };
 
 export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
@@ -232,11 +232,11 @@ export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
 };
 
 export const QUOTE_STATUS_TONES: Record<QuoteStatus, string> = {
-  PENDING: "bg-gray-50 text-gray-600",
-  SUBMITTED: "bg-blue-50 text-blue-700",
-  ACCEPTED: "bg-green-50 text-green-700",
-  REJECTED: "bg-red-50 text-red-700",
-  EXPIRED: "bg-amber-50 text-amber-700",
+  PENDING: "bg-muted text-ink-2",
+  SUBMITTED: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  ACCEPTED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  REJECTED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  EXPIRED: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
 };
 
 // ── State-machine helpers (mirrors backend RfqService.validate*) ──

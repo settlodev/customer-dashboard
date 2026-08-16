@@ -6,16 +6,16 @@ import { Money } from "@/components/widgets/money";
 import { formatDivisibleQuantity } from "@/lib/format-divisible-quantity";
 
 const TYPE_COLORS: Record<string, string> = {
-  PURCHASE: "bg-green-50 text-green-700",
-  SALE: "bg-blue-50 text-blue-700",
-  TRANSFER_IN: "bg-cyan-50 text-cyan-700",
-  TRANSFER_OUT: "bg-indigo-50 text-indigo-700",
-  RETURN: "bg-amber-50 text-amber-700",
-  ADJUSTMENT: "bg-yellow-50 text-yellow-700",
-  DAMAGE: "bg-red-50 text-red-700",
-  RECIPE_USAGE: "bg-purple-50 text-purple-700",
-  OPENING_BALANCE: "bg-emerald-50 text-emerald-700",
-  WASTE: "bg-orange-50 text-orange-700",
+  PURCHASE: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  SALE: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  TRANSFER_IN: "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-400",
+  TRANSFER_OUT: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400",
+  RETURN: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  ADJUSTMENT: "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400",
+  DAMAGE: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  RECIPE_USAGE: "bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400",
+  OPENING_BALANCE: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+  WASTE: "bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400",
 };
 
 export const columns: ColumnDef<StockMovement>[] = [
@@ -24,7 +24,7 @@ export const columns: ColumnDef<StockMovement>[] = [
     header: "Type",
     cell: ({ row }) => {
       const type = row.original.movementType;
-      const colors = TYPE_COLORS[type] || "bg-gray-50 text-gray-700";
+      const colors = TYPE_COLORS[type] || "bg-muted text-ink-2";
       return (
         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colors}`}>
           {MOVEMENT_TYPE_LABELS[type] || type}
@@ -51,7 +51,7 @@ export const columns: ColumnDef<StockMovement>[] = [
       const qty = row.original.quantity;
       const isPositive = qty > 0;
       return (
-        <span className={`font-medium ${isPositive ? "text-green-600" : "text-red-600"}`}>
+        <span className={`font-medium ${isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
           {isPositive ? "+" : ""}
           {formatDivisibleQuantity(qty, {
             baseUnitName: row.original.unitName ?? "",
@@ -69,7 +69,7 @@ export const columns: ColumnDef<StockMovement>[] = [
       <Money
         amount={row.original.unitCost}
         currency={row.original.currency}
-        className="text-gray-600"
+        className="text-ink-2"
       />
     ),
   },
@@ -80,7 +80,7 @@ export const columns: ColumnDef<StockMovement>[] = [
       <Money
         amount={row.original.totalCost}
         currency={row.original.currency}
-        className="font-medium text-gray-700"
+        className="font-medium text-ink-2"
       />
     ),
   },
@@ -88,7 +88,7 @@ export const columns: ColumnDef<StockMovement>[] = [
     accessorKey: "occurredAt",
     header: "Date",
     cell: ({ row }) => (
-      <span className="text-gray-600">
+      <span className="text-ink-2">
         {new Date(row.original.occurredAt).toLocaleDateString("en-GB", {
           day: "2-digit",
           month: "short",

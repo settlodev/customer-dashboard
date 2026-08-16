@@ -99,8 +99,8 @@ export function StockTakeCountRow({
   };
 
   return (
-    <tr className="hover:bg-gray-50/40 align-top">
-      <td className="px-3 py-3 font-medium text-gray-900">{item.displayName || "—"}</td>
+    <tr className="hover:bg-muted/40 align-top">
+      <td className="px-3 py-3 font-medium text-ink">{item.displayName || "—"}</td>
       {showBin && (
         <td className="px-3 py-3 text-xs text-muted-foreground font-mono">
           {item.binCode || "—"}
@@ -189,7 +189,7 @@ export function StockTakeCountRow({
         {liveVariance == null ? (
           <span className="text-muted-foreground">—</span>
         ) : liveVariance > 0 ? (
-          <span className="text-green-700 font-medium">
+          <span className="text-green-700 dark:text-green-400 font-medium">
             +{formatDivisibleQuantity(liveVariance, {
               baseUnitName: item.unitName ?? "",
               divisibleUnitRatio: item.divisibleUnitRatio,
@@ -197,7 +197,7 @@ export function StockTakeCountRow({
             })}
           </span>
         ) : liveVariance < 0 ? (
-          <span className="text-red-600 font-medium">
+          <span className="text-red-600 dark:text-red-400 font-medium">
             {formatDivisibleQuantity(liveVariance, {
               baseUnitName: item.unitName ?? "",
               divisibleUnitRatio: item.divisibleUnitRatio,

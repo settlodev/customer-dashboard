@@ -128,6 +128,7 @@ import CompatibleUnitSelector from "@/components/widgets/compatible-unit-selecto
 import SupplierSelector from "@/components/widgets/supplier-selector";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 import CurrencySelector from "@/components/widgets/currency-selector";
+import CreateCategoryDialog from "@/components/widgets/create-category-dialog";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { MATERIAL_TYPE_OPTIONS } from "@/types/catalogue/enums";
 import { BusinessDayClosedDialog } from "@/components/widgets/business-day-closed-dialog";
@@ -887,16 +888,44 @@ export default function StockForm({ item, balances }: StockFormProps) {
                               {categoryIds.length} selected
                             </span>
                           </label>
-                          <MultiSelect
-                            options={categories.map((c) => ({
-                              label: c.name,
-                              value: c.id,
-                            }))}
-                            onValueChange={setCategoryIds}
-                            defaultValue={categoryIds}
-                            placeholder="Pick at least one category"
-                            maxCount={5}
-                          />
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <MultiSelect
+                                key={categoryIds.join(",")}
+                                options={categories.map((c) => ({
+                                  label: c.name,
+                                  value: c.id,
+                                }))}
+                                onValueChange={setCategoryIds}
+                                defaultValue={categoryIds}
+                                placeholder="Pick at least one category"
+                                maxCount={5}
+                              />
+                            </div>
+                            <CreateCategoryDialog
+                              onCreated={(category: Category) => {
+                                setCategories((prev) =>
+                                  prev.some((c) => c.id === category.id)
+                                    ? prev
+                                    : [...prev, category],
+                                );
+                                setCategoryIds((prev) => [...prev, category.id]);
+                              }}
+                              trigger={
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  // Match the MultiSelect trigger's box: 44px
+                                  // tall, same 10px radius.
+                                  className="h-11 w-11 shrink-0 rounded-[10px]"
+                                  title="Create a new category"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              }
+                            />
+                          </div>
                           <FieldHint>
                             Drives the online menu, reports, and tax rules for
                             the created product.

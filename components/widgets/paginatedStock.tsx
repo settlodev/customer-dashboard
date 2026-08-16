@@ -29,16 +29,16 @@ interface PaginatedStockTableProps {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  PURCHASE: "bg-green-50 text-green-700",
-  SALE: "bg-blue-50 text-blue-700",
-  TRANSFER_IN: "bg-cyan-50 text-cyan-700",
-  TRANSFER_OUT: "bg-indigo-50 text-indigo-700",
-  RETURN: "bg-amber-50 text-amber-700",
-  ADJUSTMENT: "bg-yellow-50 text-yellow-700",
-  DAMAGE: "bg-red-50 text-red-700",
-  RECIPE_USAGE: "bg-purple-50 text-purple-700",
-  OPENING_BALANCE: "bg-emerald-50 text-emerald-700",
-  WASTE: "bg-orange-50 text-orange-700",
+  PURCHASE: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  SALE: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  TRANSFER_IN: "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-400",
+  TRANSFER_OUT: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400",
+  RETURN: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  ADJUSTMENT: "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400",
+  DAMAGE: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  RECIPE_USAGE: "bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400",
+  OPENING_BALANCE: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+  WASTE: "bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400",
 };
 
 const ITEMS_PER_PAGE = 10;
@@ -105,7 +105,7 @@ export default function PaginatedStockTable({
                 <TableBody>
                   {paginatedData.map((movement) => {
                     const isPositive = movement.quantity > 0;
-                    const colors = TYPE_COLORS[movement.movementType] || "bg-gray-50 text-gray-700";
+                    const colors = TYPE_COLORS[movement.movementType] || "bg-muted text-ink-2";
 
                     return (
                       <TableRow key={movement.movementId}>
@@ -123,15 +123,15 @@ export default function PaginatedStockTable({
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <span className={`inline-flex items-center gap-1 text-sm font-medium ${isPositive ? "text-green-600" : "text-red-600"}`}>
+                          <span className={`inline-flex items-center gap-1 text-sm font-medium ${isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                             {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                             {isPositive ? "+" : ""}{movement.quantity.toLocaleString()}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right text-gray-600">
+                        <TableCell className="text-right text-ink-2">
                           {movement.unitCost != null ? movement.unitCost.toLocaleString() : "\u2014"}
                         </TableCell>
-                        <TableCell className="text-xs text-gray-500">
+                        <TableCell className="text-xs text-ink-3">
                           {formatDate(movement.occurredAt)}
                         </TableCell>
                       </TableRow>

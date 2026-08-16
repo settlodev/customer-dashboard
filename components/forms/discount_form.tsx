@@ -1,809 +1,323 @@
-// "use client";
-//
-// import { Input } from "@/components/ui/input";
-// import { FieldErrors, useForm } from "react-hook-form";
-// import {
-//   Form,
-//   FormControl,
-//   FormDescription,
-//   FormField,
-//   FormItem,
-//   FormLabel,
-//   FormMessage,
-// } from "@/components/ui/form";
-// import { zodResolver } from "@hookform/resolvers/zod";
-// import { z } from "zod";
-// import React, { useCallback, useState, useTransition } from "react";
-// import { useToast } from "@/hooks/use-toast";
-// import { FormResponse } from "@/types/types";
-// import CancelButton from "../widgets/cancel-button";
-// import { SubmitButton } from "../widgets/submit-button";
-// import { Separator } from "@/components/ui/separator";
-// import { FormError } from "../widgets/form-error";
-// import { FormSuccess } from "../widgets/form-success";
-// import { Discount } from "@/types/discount/type";
-// import { DiscountSchema } from "@/types/discount/schema";
-// import { createDiscount, updateDiscount } from "@/lib/actions/discount-actions";
-// import DiscountTypeSelector from "../widgets/discount-type-selector";
-// import { formatNumber } from "@/lib/utils";
-// import { Switch } from "../ui/switch";
-// import { NumericFormat } from "react-number-format";
-// import { useRouter } from "next/navigation";
-// import DiscountUsageSelector from "../widgets/discount-usage-selector";
-// import DiscountApplyOptionsWidget from "../widgets/discount-apply-selectort";
-// import DateTimePickerTwo from "@/components/widgets/date-time-picker";
-//
-// function DiscountForm({ item }: { item: Discount | null | undefined }) {
-//   const [isPending, startTransition] = useTransition();
-//   const [, setResponse] = useState<FormResponse | undefined>();
-//   const [error] = useState<string | undefined>("");
-//   const [success] = useState<string | undefined>("");
-//
-//   const { toast } = useToast();
-//   const router = useRouter();
-//   const today = new Date();
-//   today.setHours(0, 0, 0, 0);
-//
-//   const form = useForm<z.infer<typeof DiscountSchema>>({
-//     resolver: zodResolver(DiscountSchema),
-//     defaultValues: {
-//       ...item,
-//       discountValue: item?.discountValue,
-//       status: true,
-//       validFrom: item?.validFrom ? new Date(item.validFrom) : undefined,
-//       validTo: item?.validTo ? new Date(item.validTo) : undefined,
-//       department: item?.department || null,
-//       customer: item?.customer || null,
-//       category: item?.category || null,
-//       product: item?.product || null,
-//     },
-//   });
-//
-//   const onInvalid = useCallback(
-//     (errors: FieldErrors) => {
-//       const errorEntries = Object.entries(errors);
-//
-//       const firstError = errorEntries[0]?.[1]?.message;
-//       const errorMessage =
-//         typeof firstError === "string"
-//           ? firstError
-//           : "Please check all fields and try again";
-//
-//       toast({
-//         variant: "destructive",
-//         title: "Validation Error",
-//         description: errorMessage,
-//       });
-//     },
-//     [toast],
-//   );
-//
-//   const submitData = (values: z.infer<typeof DiscountSchema>) => {
-//     startTransition(() => {
-//       if (item) {
-//         updateDiscount(item.id, values).then((data: FormResponse | void) => {
-//           if (data) setResponse(data);
-//           if (data && data.responseType === "success") {
-//             toast({
-//               title: "Success",
-//               description: data.message,
-//             });
-//             router.push("/discounts");
-//           }
-//         });
-//       } else {
-//         createDiscount(values)
-//           .then((data: FormResponse | void) => {
-//             if (data && data.responseType === "success") {
-//               setResponse(data);
-//               toast({
-//                 title: "Success",
-//                 description: data.message,
-//               });
-//               router.push("/discounts");
-//             }
-//           })
-//           .catch((err) => {
-//             console.log(err);
-//           });
-//       }
-//     });
-//   };
-//
-//   const handleSelectionChange = (selection: {
-//     itemType: string;
-//     itemId: string | null;
-//   }) => {
-//     const { itemType, itemId } = selection;
-//
-//     console.log("Selected item type:", itemType);
-//     console.log("Selected item ID:", itemId);
-//
-//     if (itemType && itemId) {
-//       form.setValue(itemType as keyof z.infer<typeof DiscountSchema>, itemId, {
-//         shouldValidate: true,
-//       });
-//     }
-//   };
-//
-//   return (
-//     <Form {...form}>
-//       <form
-//         onSubmit={form.handleSubmit(submitData, onInvalid)}
-//         className={`gap-1`}
-//       >
-//         <div>
-//           <>
-//             <>
-//               <FormError message={error} />
-//               <FormSuccess message={success} />
-//               <div className="grid grid-cols-1 lg:grid-cols-4 md:grid-cols-2 gap-4">
-//                 <FormField
-//                   control={form.control}
-//                   name="name"
-//                   render={({ field }) => (
-//                     <FormItem>
-//                       <FormLabel>Discount Name</FormLabel>
-//                       <FormControl>
-//                         <Input
-//                           placeholder="Enter discount name"
-//                           {...field}
-//                           disabled={isPending}
-//                         />
-//                       </FormControl>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
-//                 <FormField
-//                   control={form.control}
-//                   name="discountType"
-//                   render={({ field }) => (
-//                     <FormItem>
-//                       <FormLabel>Discount Type</FormLabel>
-//                       <FormControl>
-//                         <DiscountTypeSelector
-//                           value={field.value}
-//                           onChange={field.onChange}
-//                           onBlur={field.onBlur}
-//                           isRequired
-//                           isDisabled={isPending}
-//                           label="Discount Type"
-//                           placeholder="Select discount type"
-//                         />
-//                       </FormControl>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
-//                 <FormField
-//                   control={form.control}
-//                   name="discountValue"
-//                   render={({ field }) => (
-//                     <FormItem>
-//                       <FormLabel>Discount Value</FormLabel>
-//                       <FormControl>
-//                         <NumericFormat
-//                           className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
-//                           value={field.value}
-//                           disabled={isPending}
-//                           placeholder="Enter discount value"
-//                           thousandSeparator={true}
-//                           allowNegative={false}
-//                           onValueChange={(values) => {
-//                             console.log(values);
-//                             const rawValue = Number(
-//                               values.value
-//                                 .replace(/,/g, "")
-//                                 .replace(/\.00$/, ""),
-//                             );
-//                             field.onChange(rawValue);
-//                           }}
-//                         />
-//                       </FormControl>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
-//                 <FormField
-//                   control={form.control}
-//                   name="minimumSpend"
-//                   render={({ field }) => (
-//                     <FormItem className="flex flex-col lg:mt-4">
-//                       <FormLabel>Minimum Spend</FormLabel>
-//                       <FormControl>
-//                         <Input
-//                           placeholder="Enter minimum spend for discount,if customer has spend X or more amount"
-//                           {...field}
-//                           disabled={isPending}
-//                           value={field.value ? formatNumber(field.value) : ""}
-//                           onChange={(e) => {
-//                             const value = e.target.value.replace(/,/g, "");
-//                             field.onChange(
-//                               value ? parseFloat(value) : undefined,
-//                             );
-//                           }}
-//                         />
-//                       </FormControl>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
-//
-//                 <FormField
-//                   control={form.control}
-//                   name="usageLimit"
-//                   render={({ field }) => (
-//                     <FormItem>
-//                       <FormLabel>Discount Usage</FormLabel>
-//                       <FormControl>
-//                         <DiscountUsageSelector
-//                           value={field.value}
-//                           onChange={field.onChange}
-//                           onBlur={field.onBlur}
-//                           isRequired
-//                           isDisabled={isPending}
-//                           label="usage limit"
-//                           placeholder="Select discount usage"
-//                         />
-//                       </FormControl>
-//                       <FormDescription>
-//                         Discount Usage can either be once or repeated
-//                       </FormDescription>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
-//
-//                 <FormField
-//                   control={form.control}
-//                   name="validFrom"
-//                   render={({ field }) => (
-//                     <FormItem className="flex flex-col">
-//                       <FormLabel>Valid From </FormLabel>
-//                       <DateTimePickerTwo
-//                         field={field}
-//                         date={field.value}
-//                         setDate={field.onChange}
-//                         handleTimeChange={(type, value) => {
-//                           const newDate = field.value
-//                             ? new Date(field.value)
-//                             : new Date();
-//                           if (type === "hour") {
-//                             newDate.setHours(Number(value));
-//                           } else if (type === "minutes") {
-//                             newDate.setMinutes(Number(value));
-//                           }
-//                           field.onChange(newDate);
-//                         }}
-//                         onDateSelect={field.onChange}
-//                         minDate={today}
-//                       />
-//                       <FormDescription>
-//                         Please select your preferred start date and time.
-//                       </FormDescription>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
-//
-//                 <FormField
-//                   control={form.control}
-//                   name="validTo"
-//                   render={({ field }) => (
-//                     <FormItem className="flex flex-col">
-//                       <FormLabel>Valid To </FormLabel>
-//                       <DateTimePickerTwo
-//                         field={field}
-//                         date={field.value}
-//                         setDate={field.onChange}
-//                         handleTimeChange={(type, value) => {
-//                           const newDate = field.value
-//                             ? new Date(field.value)
-//                             : new Date();
-//                           if (type === "hour") {
-//                             newDate.setHours(Number(value));
-//                           } else if (type === "minutes") {
-//                             newDate.setMinutes(Number(value));
-//                           }
-//                           field.onChange(newDate);
-//                         }}
-//                         onDateSelect={field.onChange}
-//                         minDate={new Date()}
-//                       />
-//                       <FormDescription>
-//                         Please select your preferred end date and time.
-//                       </FormDescription>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
-//
-//                 <DiscountApplyOptionsWidget
-//                   onSelectionChange={handleSelectionChange}
-//                   initialItemType={
-//                     // item?.stockVariant ? "variant" :
-//                     item?.customer
-//                       ? "customer"
-//                       : item?.category
-//                         ? "category"
-//                         : item?.department
-//                           ? "department"
-//                           : null
-//                   }
-//                   initialItemId={
-//                     item?.customer || item?.category || item?.department || null
-//                   }
-//                 />
-//
-//                 {item && (
-//                   <div className="grid gap-2">
-//                     <FormField
-//                       control={form.control}
-//                       name="status"
-//                       render={({ field }) => (
-//                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-//                           <FormLabel>
-//                             Discount Status {""}
-//                             <span
-//                               className={
-//                                 item.status ? "text-green-500" : "text-red-500"
-//                               }
-//                             >
-//                               ({item.status ? "Active" : "Inactive"})
-//                             </span>
-//                           </FormLabel>
-//                           <FormControl>
-//                             <Switch
-//                               checked={field.value}
-//                               onCheckedChange={field.onChange}
-//                               disabled={isPending}
-//                             />
-//                           </FormControl>
-//                           <FormMessage />
-//                         </FormItem>
-//                       )}
-//                     />
-//                   </div>
-//                 )}
-//               </div>
-//             </>
-//           </>
-//           <div className="flex h-5 items-center space-x-4 mt-4">
-//             <CancelButton />
-//             <Separator orientation="vertical" />
-//             <SubmitButton
-//               isPending={isPending}
-//               label={item ? "Update discount details" : "Add discount"}
-//             />
-//           </div>
-//         </div>
-//       </form>
-//     </Form>
-//   );
-// }
-//
-// export default DiscountForm;
-
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { FieldErrors, useForm } from "react-hook-form";
+import React, { useCallback, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { FieldErrors, useFieldArray, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { NumericFormat } from "react-number-format";
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Layers,
+  ListChecks,
+  Percent,
+  Plus,
+  Tag,
+  Target,
+  Trash2,
+} from "lucide-react";
+
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import {
+  ControlBox,
+  ControlInput,
+  ControlTextarea,
+  FieldLabel,
+  controlInputClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import React, { useCallback, useState, useTransition } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogIcon,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { FormError } from "../widgets/form-error";
 import { useToast } from "@/hooks/use-toast";
 import { FormResponse } from "@/types/types";
-import CancelButton from "../widgets/cancel-button";
-import { SubmitButton } from "../widgets/submit-button";
-import { Separator } from "@/components/ui/separator";
 import { Discount } from "@/types/discount/type";
 import { DiscountSchema } from "@/types/discount/schema";
-import { createDiscount, updateDiscount } from "@/lib/actions/discount-actions";
-import DiscountTypeSelector from "../widgets/discount-type-selector";
-import { formatNumber } from "@/lib/utils";
-import { Switch } from "../ui/switch";
-import { NumericFormat } from "react-number-format";
-import { useRouter } from "next/navigation";
-import DiscountUsageSelector from "../widgets/discount-usage-selector";
-import DiscountApplyOptionsWidget from "../widgets/discount-apply-selectort";
-import DateTimePickerTwo from "@/components/widgets/date-time-picker";
 import {
-  Tag,
-  Percent,
-  DollarSign,
-  Calendar,
-  Repeat,
-  Settings2,
-  ToggleRight,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+  DISCOUNT_APPLY_MODE_OPTIONS,
+  DISCOUNT_CONDITION_TYPE_OPTIONS,
+  DISCOUNT_RULE_TYPE_OPTIONS,
+  DISCOUNT_TARGET_ENTITY_TYPE_OPTIONS,
+  DISCOUNT_TARGET_TYPE_OPTIONS,
+  DISCOUNT_TIER_TYPE_OPTIONS,
+} from "@/types/discount/enums";
+import { createDiscount, updateDiscount } from "@/lib/actions/discount-actions";
+import DiscountEntityPicker from "../widgets/discount-entity-picker";
+import DiscountScopePicker, { type DiscountScope } from "../widgets/discount-scope-picker";
 
-// ── Section wrapper ───────────────────────────────────────────────────────────
-function Section({
-  icon: Icon,
-  title,
-  description,
-  children,
-  className,
-}: {
-  icon: React.ElementType;
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn("space-y-4", className)}>
-      <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary shrink-0">
-          <Icon className="w-4 h-4" />
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-          {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
-          )}
-        </div>
-      </div>
-      <div className="pl-11">{children}</div>
-    </div>
-  );
-}
+import styles from "./styles/form-shell.module.css";
 
-// ── Main form ─────────────────────────────────────────────────────────────────
+type DiscountFormValues = z.infer<typeof DiscountSchema>;
+
 function DiscountForm({ item }: { item: Discount | null | undefined }) {
   const [isPending, startTransition] = useTransition();
-  const [, setResponse] = useState<FormResponse | undefined>();
-
+  const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
   const router = useRouter();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const isEditing = !!item;
 
-  const form = useForm<z.infer<typeof DiscountSchema>>({
+  const form = useForm<DiscountFormValues>({
     resolver: zodResolver(DiscountSchema),
-    defaultValues: {
-      ...item,
-      discountValue: item?.discountValue,
-      status: true,
-      validFrom: item?.validFrom ? new Date(item.validFrom) : undefined,
-      validTo: item?.validTo ? new Date(item.validTo) : undefined,
-      department: item?.department || null,
-      customer: item?.customer || null,
-      category: item?.category || null,
-      product: item?.product || null,
-    },
+    defaultValues: item
+      ? {
+          name: item.name,
+          description: item.description ?? "",
+          ruleType: item.ruleType,
+          targetType: item.targetType,
+          applyMode: item.applyMode,
+          value: item.value,
+          maxDiscountAmount: item.maxDiscountAmount ?? undefined,
+          couponCode: item.couponCode ?? "",
+          stackable: item.stackable,
+          active: item.active,
+          priority: item.priority,
+          buyQuantity: item.buyQuantity ?? undefined,
+          getQuantity: item.getQuantity ?? undefined,
+          getDiscountPercentage: item.getDiscountPercentage ?? undefined,
+          maxTotalUses: item.maxTotalUses ?? undefined,
+          maxUsesPerCustomer: item.maxUsesPerCustomer ?? undefined,
+          maxUsesPerDay: item.maxUsesPerDay ?? undefined,
+          requiresApproval: item.requiresApproval,
+          promotionId: item.promotionId ?? undefined,
+          conditions: item.conditions.map((c) => ({
+            conditionType: c.conditionType,
+            operator: c.operator ?? "",
+            valueText: c.valueText ?? "",
+            valueNumeric: c.valueNumeric ?? undefined,
+            valueTimeFrom: c.valueTimeFrom ?? "",
+            valueTimeTo: c.valueTimeTo ?? "",
+            valueIds: c.valueIds ?? [],
+          })),
+          targets: item.targets.map((t) => ({
+            targetEntityType: t.targetEntityType,
+            targetEntityId: t.targetEntityId,
+          })),
+          tiers: item.tiers.map((t) => ({
+            minThreshold: t.minThreshold,
+            discountType: t.discountType,
+            discountValue: t.discountValue,
+            sortOrder: t.sortOrder,
+          })),
+          expectedVersion: item.version,
+        }
+      : {
+          name: "",
+          description: "",
+          ruleType: "PERCENTAGE",
+          targetType: "ORDER",
+          applyMode: "AUTO",
+          value: 0,
+          maxDiscountAmount: undefined,
+          couponCode: "",
+          stackable: true,
+          active: true,
+          priority: 0,
+          buyQuantity: undefined,
+          getQuantity: undefined,
+          getDiscountPercentage: undefined,
+          maxTotalUses: undefined,
+          maxUsesPerCustomer: undefined,
+          maxUsesPerDay: undefined,
+          requiresApproval: false,
+          promotionId: undefined,
+          conditions: [],
+          targets: [],
+          tiers: [],
+        },
   });
+
+  const targetsArray = useFieldArray({
+    control: form.control,
+    name: "targets",
+    keyName: "_key",
+  });
+  const tiersArray = useFieldArray({
+    control: form.control,
+    name: "tiers",
+    keyName: "_key",
+  });
+  const conditionsArray = useFieldArray({
+    control: form.control,
+    name: "conditions",
+    keyName: "_key",
+  });
+
+  const ruleType = form.watch("ruleType");
+  const targetType = form.watch("targetType");
+  const applyMode = form.watch("applyMode");
+
+  const needsTargets =
+    targetType === "SPECIFIC_PRODUCTS" || targetType === "SPECIFIC_CATEGORIES";
+  const needsTiers = ruleType === "TIERED";
+  const needsBuyGetY = ruleType === "BUY_X_GET_Y";
+  const needsCoupon = applyMode === "COUPON";
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
-      const firstError = Object.entries(errors)[0]?.[1]?.message;
       toast({
         variant: "destructive",
-        title: "Validation Error",
+        title: "Form validation failed",
         description:
-          typeof firstError === "string"
-            ? firstError
-            : "Please check all fields and try again",
+          typeof errors.message === "string" && errors.message
+            ? errors.message
+            : "Please check your inputs and try again.",
       });
     },
     [toast],
   );
 
-  const submitData = (values: z.infer<typeof DiscountSchema>) => {
-    startTransition(() => {
-      if (item) {
-        updateDiscount(item.id, values).then((data: FormResponse | void) => {
-          if (data) setResponse(data);
-          if (data?.responseType === "success") {
-            toast({ variant: "success", title: "Success", description: data.message });
-            router.push("/discounts");
-          }
+  const submitData = (values: DiscountFormValues) => {
+    setResponse(undefined);
+    startTransition(async () => {
+      try {
+        const result = item
+          ? await updateDiscount(item.id, values)
+          : await createDiscount(values);
+        if (result.responseType === "success") {
+          toast({
+            variant: "success",
+            title: "Success",
+            description: result.message,
+          });
+          router.push("/discounts");
+        } else {
+          setResponse(result);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: result.message,
+          });
+        }
+      } catch {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "An unexpected error occurred.",
         });
-      } else {
-        createDiscount(values)
-          .then((data: FormResponse | void) => {
-            if (data?.responseType === "success") {
-              setResponse(data);
-              toast({ variant: "success", title: "Success", description: data.message });
-              router.push("/discounts");
-            }
-          })
-          .catch(console.error);
       }
     });
   };
 
-  const handleSelectionChange = (selection: {
-    itemType: string;
-    itemId: string | null;
-  }) => {
-    const { itemType, itemId } = selection;
-    if (itemType && itemId) {
-      form.setValue(itemType as keyof z.infer<typeof DiscountSchema>, itemId, {
-        shouldValidate: true,
-      });
-    }
-  };
-
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
-        <div className="space-y-8">
-          {/* ── Basic Info ── */}
-          <Section
-            icon={Tag}
-            title="Basic Information"
-            description="Name and type of this discount"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Discount Name</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="e.g., Summer Sale, VIP Member"
-                        {...field}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+      <FormError message={response?.message} />
+      <form
+        onSubmit={form.handleSubmit(submitData, onInvalid)}
+        className={styles.formRoot}
+      >
+        <div className={styles.formStack}>
+          {/* ── Discount details ──────────────────────────────────── */}
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <Tag className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Discount details</h3>
+                <p className={styles.formCardHeadDesc}>
+                  Name and internal description for this discount rule.
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 01</span>
+              </div>
+            </header>
 
-              <FormField
-                control={form.control}
-                name="discountType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Discount Type</FormLabel>
-                    <FormControl>
-                      <DiscountTypeSelector
-                        value={field.value}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        isRequired
-                        isDisabled={isPending}
-                        label="Discount Type"
-                        placeholder="Select discount type"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </Section>
-
-          <Separator />
-
-          {/* ── Value & Spend ── */}
-          <Section
-            icon={Percent}
-            title="Value & Spend"
-            description="Set the discount amount and minimum spend requirement"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="discountValue"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Discount Value</FormLabel>
-                    <FormControl>
-                      <NumericFormat
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                        value={field.value}
-                        disabled={isPending}
-                        placeholder="e.g., 10 for 10% or 5000 fixed"
-                        thousandSeparator={true}
-                        allowNegative={false}
-                        onValueChange={(values) => {
-                          const rawValue = Number(
-                            values.value.replace(/,/g, "").replace(/\.00$/, ""),
-                          );
-                          field.onChange(rawValue);
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="minimumSpend"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Minimum Spend</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="e.g., 50,000"
-                        {...field}
-                        disabled={isPending}
-                        value={field.value ? formatNumber(field.value) : ""}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/,/g, "");
-                          field.onChange(value ? parseFloat(value) : undefined);
-                        }}
-                      />
-                    </FormControl>
-                    <FormDescription className="text-xs">
-                      Customer must spend at least this amount to qualify
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </Section>
-
-          <Separator />
-
-          {/* ── Usage & Validity ── */}
-          <Section
-            icon={Calendar}
-            title="Usage & Validity"
-            description="Control when and how many times this discount can be used"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="usageLimit"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Usage Limit</FormLabel>
-                    <FormControl>
-                      <DiscountUsageSelector
-                        value={field.value}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        isRequired
-                        isDisabled={isPending}
-                        label="usage limit"
-                        placeholder="Select usage type"
-                      />
-                    </FormControl>
-                    <FormDescription className="text-xs">
-                      Once-off or repeatable per customer
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="validFrom"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Valid From</FormLabel>
-                    <DateTimePickerTwo
-                      field={field}
-                      date={field.value}
-                      setDate={field.onChange}
-                      handleTimeChange={(type, value) => {
-                        const newDate = field.value
-                          ? new Date(field.value)
-                          : new Date();
-                        if (type === "hour") newDate.setHours(Number(value));
-                        else if (type === "minutes")
-                          newDate.setMinutes(Number(value));
-                        field.onChange(newDate);
-                      }}
-                      onDateSelect={field.onChange}
-                      minDate={today}
-                    />
-                    <FormDescription className="text-xs">
-                      Start date &amp; time
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="validTo"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Valid To</FormLabel>
-                    <DateTimePickerTwo
-                      field={field}
-                      date={field.value}
-                      setDate={field.onChange}
-                      handleTimeChange={(type, value) => {
-                        const newDate = field.value
-                          ? new Date(field.value)
-                          : new Date();
-                        if (type === "hour") newDate.setHours(Number(value));
-                        else if (type === "minutes")
-                          newDate.setMinutes(Number(value));
-                        field.onChange(newDate);
-                      }}
-                      onDateSelect={field.onChange}
-                      minDate={new Date()}
-                    />
-                    <FormDescription className="text-xs">
-                      Expiry date &amp; time
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </Section>
-
-          <Separator />
-
-          {/* ── Apply To ── */}
-          <Section
-            icon={Settings2}
-            title="Apply To"
-            description="Scope this discount to a specific customer, category, or department"
-          >
-            <DiscountApplyOptionsWidget
-              onSelectionChange={handleSelectionChange}
-              initialItemType={
-                item?.customer
-                  ? "customer"
-                  : item?.category
-                    ? "category"
-                    : item?.department
-                      ? "department"
-                      : null
-              }
-              initialItemId={
-                item?.customer || item?.category || item?.department || null
-              }
-            />
-          </Section>
-
-          {/* ── Status (edit mode only) ── */}
-          {item && (
-            <>
-              <Separator />
-              <Section
-                icon={ToggleRight}
-                title="Status"
-                description="Enable or disable this discount"
-              >
+            <div className={styles.formBody}>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <FormField
                   control={form.control}
-                  name="status"
+                  name="name"
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between rounded-lg border p-4 max-w-sm">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-sm font-medium cursor-pointer">
-                          Discount Active
-                        </FormLabel>
-                        <p className="text-xs text-muted-foreground">
-                          Currently{" "}
-                          <span
-                            className={cn(
-                              "font-semibold",
-                              field.value ? "text-green-600" : "text-red-500",
-                            )}
-                          >
-                            {field.value ? "active" : "inactive"}
-                          </span>
-                        </p>
-                      </div>
+                    <FormItem className="sm:col-span-2 space-y-[7px]">
+                      <FieldLabel required>Discount name</FieldLabel>
+                      <FormControl>
+                        <ControlInput
+                          placeholder="e.g. Weekend 10% off"
+                          {...field}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Priority</FieldLabel>
+                      <FormControl>
+                        <ControlInput
+                          type="number"
+                          min={0}
+                          {...field}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem className="mt-4 space-y-[7px]">
+                    <FieldLabel optional>Description</FieldLabel>
+                    <FormControl>
+                      <ControlTextarea
+                        placeholder="Internal note describing this discount"
+                        {...field}
+                        value={field.value ?? ""}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="mt-4 flex flex-wrap gap-3">
+                <FormField
+                  control={form.control}
+                  name="stackable"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-1 min-w-[220px] items-center gap-3 rounded-lg border border-line bg-card p-3">
                       <FormControl>
                         <Switch
                           checked={field.value}
@@ -811,26 +325,1046 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                           disabled={isPending}
                         />
                       </FormControl>
+                      <div className="min-w-0 space-y-0.5">
+                        <FormLabel className="text-sm font-medium text-foreground">
+                          Stackable
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Can combine with other discounts.
+                        </p>
+                      </div>
                     </FormItem>
                   )}
                 />
-              </Section>
-            </>
+
+                <FormField
+                  control={form.control}
+                  name="requiresApproval"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-1 min-w-[220px] items-center gap-3 rounded-lg border border-line bg-card p-3">
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <div className="min-w-0 space-y-0.5">
+                        <FormLabel className="text-sm font-medium text-foreground">
+                          Requires approval
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Staff must approve before this applies.
+                        </p>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                {isEditing && (
+                  <FormField
+                    control={form.control}
+                    name="active"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-1 min-w-[220px] items-center gap-3 rounded-lg border border-line bg-card p-3">
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                        <div className="min-w-0 space-y-0.5">
+                          <FormLabel className="text-sm font-medium text-foreground">
+                            Active
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            Inactive discounts never apply.
+                          </p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* ── Rule & value ──────────────────────────────────────── */}
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <Percent className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Rule & value</h3>
+                <p className={styles.formCardHeadDesc}>
+                  How the discount is calculated and how it&apos;s applied at checkout.
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 02</span>
+              </div>
+            </header>
+
+            <div className={styles.formBody}>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <FormField
+                  control={form.control}
+                  name="ruleType"
+                  render={({ field }) => (
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Rule type</FieldLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={isPending}
+                      >
+                        <FormControl>
+                          <SelectTrigger className={controlSelectTriggerClass}>
+                            <SelectValue placeholder="Select rule type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {DISCOUNT_RULE_TYPE_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="targetType"
+                  render={({ field }) => (
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Applies to</FieldLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={isPending}
+                      >
+                        <FormControl>
+                          <SelectTrigger className={controlSelectTriggerClass}>
+                            <SelectValue placeholder="Select target" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {DISCOUNT_TARGET_TYPE_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="applyMode"
+                  render={({ field }) => (
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>Apply mode</FieldLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={isPending}
+                      >
+                        <FormControl>
+                          <SelectTrigger className={controlSelectTriggerClass}>
+                            <SelectValue placeholder="Select apply mode" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {DISCOUNT_APPLY_MODE_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <FormField
+                  control={form.control}
+                  name="value"
+                  render={({ field }) => (
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel required>
+                        {ruleType === "PERCENTAGE" ? "Percentage" : "Value"}
+                      </FieldLabel>
+                      <FormControl>
+                        <ControlBox suffix={ruleType === "PERCENTAGE" ? "%" : undefined}>
+                          <NumericFormat
+                            className={cn(controlInputClass, "tabular-nums")}
+                            value={field.value ?? ""}
+                            onValueChange={(v) => field.onChange(v.floatValue ?? 0)}
+                            decimalScale={2}
+                            thousandSeparator=","
+                            allowNegative={false}
+                            disabled={isPending}
+                          />
+                        </ControlBox>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="maxDiscountAmount"
+                  render={({ field }) => (
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Max discount amount</FieldLabel>
+                      <FormControl>
+                        <ControlBox>
+                          <NumericFormat
+                            className={cn(controlInputClass, "tabular-nums")}
+                            value={field.value ?? ""}
+                            onValueChange={(v) => field.onChange(v.floatValue)}
+                            decimalScale={2}
+                            thousandSeparator=","
+                            allowNegative={false}
+                            placeholder="No cap"
+                            disabled={isPending}
+                          />
+                        </ControlBox>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {needsCoupon && (
+                  <FormField
+                    control={form.control}
+                    name="couponCode"
+                    render={({ field }) => (
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel required>Coupon code</FieldLabel>
+                        <FormControl>
+                          <ControlInput
+                            placeholder="e.g. SAVE10"
+                            {...field}
+                            value={field.value ?? ""}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+
+              {needsBuyGetY && (
+                <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-line bg-card/50 p-3 sm:grid-cols-3">
+                  <FormField
+                    control={form.control}
+                    name="buyQuantity"
+                    render={({ field }) => (
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel required>Buy quantity</FieldLabel>
+                        <FormControl>
+                          <ControlInput
+                            type="number"
+                            min={1}
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) =>
+                              field.onChange(
+                                e.target.value === "" ? undefined : Number(e.target.value),
+                              )
+                            }
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="getQuantity"
+                    render={({ field }) => (
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel required>Get quantity</FieldLabel>
+                        <FormControl>
+                          <ControlInput
+                            type="number"
+                            min={1}
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) =>
+                              field.onChange(
+                                e.target.value === "" ? undefined : Number(e.target.value),
+                              )
+                            }
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="getDiscountPercentage"
+                    render={({ field }) => (
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel optional>Get item discount %</FieldLabel>
+                        <FormControl>
+                          <ControlBox suffix="%">
+                            <NumericFormat
+                              className={cn(controlInputClass, "tabular-nums")}
+                              value={field.value ?? ""}
+                              onValueChange={(v) => field.onChange(v.floatValue)}
+                              decimalScale={2}
+                              allowNegative={false}
+                              placeholder="100 = free"
+                              disabled={isPending}
+                            />
+                          </ControlBox>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* ── Tiers ─────────────────────────────────────────────── */}
+          {needsTiers && (
+            <section className={styles.formCard}>
+              <header className={styles.formCardHead}>
+                <div className={styles.icoBox}>
+                  <Layers className="h-3.5 w-3.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3>Tiers</h3>
+                  <p className={styles.formCardHeadDesc}>
+                    Discount steps up as the qualifying amount increases.
+                  </p>
+                </div>
+                <div className={styles.formCardActions}>
+                  <span className={styles.stepBadge}>STEP 03</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      tiersArray.append({
+                        minThreshold: 0,
+                        discountType: "FIXED",
+                        discountValue: 0,
+                        sortOrder: tiersArray.fields.length,
+                      })
+                    }
+                    disabled={isPending}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Add tier
+                  </Button>
+                </div>
+              </header>
+
+              <div className={styles.formBody}>
+                {tiersArray.fields.length === 0 ? (
+                  <div className="flex items-center gap-2 rounded-md border border-dashed border-line bg-card/50 px-3 py-2.5">
+                    <Layers className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <p className="text-xs font-medium">
+                      Add at least one tier for a tiered discount.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {tiersArray.fields.map((field, index) => (
+                      <div
+                        key={field._key}
+                        className="space-y-3 rounded-md border border-line bg-card p-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            Tier {index + 1}
+                          </span>
+                          <div className="flex items-center gap-0.5">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => index > 0 && tiersArray.move(index, index - 1)}
+                              disabled={isPending || index === 0}
+                              className="h-7 w-7 p-0"
+                              title="Move up"
+                            >
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                index < tiersArray.fields.length - 1 &&
+                                tiersArray.move(index, index + 1)
+                              }
+                              disabled={isPending || index === tiersArray.fields.length - 1}
+                              className="h-7 w-7 p-0"
+                              title="Move down"
+                            >
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => tiersArray.remove(index)}
+                              disabled={isPending}
+                              className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+                              title="Remove"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                          <FormField
+                            control={form.control}
+                            name={`tiers.${index}.minThreshold`}
+                            render={({ field }) => (
+                              <FormItem className="space-y-[7px]">
+                                <FieldLabel required>Min threshold</FieldLabel>
+                                <FormControl>
+                                  <ControlInput
+                                    type="number"
+                                    min={0}
+                                    {...field}
+                                    onChange={(e) => field.onChange(Number(e.target.value))}
+                                    disabled={isPending}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`tiers.${index}.discountType`}
+                            render={({ field }) => (
+                              <FormItem className="space-y-[7px]">
+                                <FieldLabel required>Discount type</FieldLabel>
+                                <Select
+                                  value={field.value}
+                                  onValueChange={field.onChange}
+                                  disabled={isPending}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className={controlSelectTriggerClass}>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {DISCOUNT_TIER_TYPE_OPTIONS.map((o) => (
+                                      <SelectItem key={o.value} value={o.value}>
+                                        {o.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`tiers.${index}.discountValue`}
+                            render={({ field }) => (
+                              <FormItem className="space-y-[7px]">
+                                <FieldLabel required>Discount value</FieldLabel>
+                                <FormControl>
+                                  <ControlInput
+                                    type="number"
+                                    min={0}
+                                    {...field}
+                                    onChange={(e) => field.onChange(Number(e.target.value))}
+                                    disabled={isPending}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
           )}
 
-          {/* ── Actions ── */}
-          <Separator />
-          <div className="flex items-center gap-4 pt-2">
-            <CancelButton />
-            <Separator orientation="vertical" className="h-5" />
-            <SubmitButton
-              isPending={isPending}
-              label={item ? "Update Discount" : "Add Discount"}
-            />
-          </div>
+          {/* ── Targets ───────────────────────────────────────────── */}
+          {needsTargets && (
+            <section className={styles.formCard}>
+              <header className={styles.formCardHead}>
+                <div className={styles.icoBox}>
+                  <Target className="h-3.5 w-3.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3>Targets</h3>
+                  <p className={styles.formCardHeadDesc}>
+                    Specific products or categories this discount applies to.
+                  </p>
+                </div>
+                <div className={styles.formCardActions}>
+                  <span className={styles.stepBadge}>STEP 04</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      targetsArray.append({
+                        targetEntityType: "PRODUCT",
+                        targetEntityId: "",
+                      })
+                    }
+                    disabled={isPending}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Add target
+                  </Button>
+                </div>
+              </header>
+
+              <div className={styles.formBody}>
+                {targetsArray.fields.length === 0 ? (
+                  <div className="flex items-center gap-2 rounded-md border border-dashed border-line bg-card/50 px-3 py-2.5">
+                    <Target className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <p className="text-xs font-medium">
+                      Add at least one target for this target type.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {targetsArray.fields.map((field, index) => (
+                      <div
+                        key={field._key}
+                        className="grid grid-cols-1 items-start gap-3 rounded-md border border-line bg-card p-3 sm:grid-cols-[1fr_2fr_auto]"
+                      >
+                        <FormField
+                          control={form.control}
+                          name={`targets.${index}.targetEntityType`}
+                          render={({ field }) => (
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel required>Entity type</FieldLabel>
+                              <Select
+                                value={field.value}
+                                onValueChange={(next) => {
+                                  field.onChange(next);
+                                  // A previously picked id belongs to the old
+                                  // entity type — clear it so the picker
+                                  // below doesn't show a stale mismatched id.
+                                  form.setValue(`targets.${index}.targetEntityId`, "", {
+                                    shouldValidate: false,
+                                  });
+                                }}
+                                disabled={isPending}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className={controlSelectTriggerClass}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {DISCOUNT_TARGET_ENTITY_TYPE_OPTIONS.map((o) => (
+                                    <SelectItem key={o.value} value={o.value}>
+                                      {o.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name={`targets.${index}.targetEntityId`}
+                          render={({ field }) => (
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel required>Entity</FieldLabel>
+                              <FormControl>
+                                <DiscountEntityPicker
+                                  entityType={form.watch(`targets.${index}.targetEntityType`)}
+                                  placeholder="Search and select…"
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  onBlur={field.onBlur}
+                                  isDisabled={isPending}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => targetsArray.remove(index)}
+                          disabled={isPending}
+                          className="h-9 w-9 self-end p-0 text-red-600 hover:text-red-700"
+                          title="Remove"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* ── Usage limits ──────────────────────────────────────── */}
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <ListChecks className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Usage limits</h3>
+                <p className={styles.formCardHeadDesc}>
+                  Optional caps on how often this discount can be used.
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 05</span>
+              </div>
+            </header>
+
+            <div className={styles.formBody}>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <FormField
+                  control={form.control}
+                  name="maxTotalUses"
+                  render={({ field }) => (
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Max total uses</FieldLabel>
+                      <FormControl>
+                        <ControlInput
+                          type="number"
+                          min={0}
+                          {...field}
+                          value={field.value ?? ""}
+                          placeholder="Unlimited"
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === "" ? undefined : Number(e.target.value),
+                            )
+                          }
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="maxUsesPerCustomer"
+                  render={({ field }) => (
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Max uses per customer</FieldLabel>
+                      <FormControl>
+                        <ControlInput
+                          type="number"
+                          min={0}
+                          {...field}
+                          value={field.value ?? ""}
+                          placeholder="Unlimited"
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === "" ? undefined : Number(e.target.value),
+                            )
+                          }
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="maxUsesPerDay"
+                  render={({ field }) => (
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel optional>Max uses per day</FieldLabel>
+                      <FormControl>
+                        <ControlInput
+                          type="number"
+                          min={0}
+                          {...field}
+                          value={field.value ?? ""}
+                          placeholder="Unlimited"
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === "" ? undefined : Number(e.target.value),
+                            )
+                          }
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="promotionId"
+                render={({ field }) => (
+                  <FormItem className="mt-4 space-y-[7px]">
+                    <FieldLabel optional>Promotion ID</FieldLabel>
+                    <FormControl>
+                      <ControlInput
+                        placeholder="Attach to an existing promotion (optional)"
+                        {...field}
+                        value={field.value ?? ""}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </section>
+
+          {/* ── Conditions ────────────────────────────────────────── */}
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <ListChecks className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Conditions</h3>
+                <p className={styles.formCardHeadDesc}>
+                  Extra rules that must hold for this discount to apply (optional).
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 06</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    conditionsArray.append({
+                      conditionType: "MIN_SPEND",
+                      operator: "",
+                      valueText: "",
+                      valueNumeric: undefined,
+                      valueTimeFrom: "",
+                      valueTimeTo: "",
+                      valueIds: [],
+                    })
+                  }
+                  disabled={isPending}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" /> Add condition
+                </Button>
+              </div>
+            </header>
+
+            <div className={styles.formBody}>
+              {conditionsArray.fields.length === 0 ? (
+                <div className="flex items-center gap-2 rounded-md border border-dashed border-line bg-card/50 px-3 py-2.5">
+                  <ListChecks className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <p className="text-xs font-medium">No extra conditions.</p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {conditionsArray.fields.map((field, index) => (
+                    <ConditionRow
+                      key={field._key}
+                      index={index}
+                      form={form}
+                      disabled={isPending}
+                      onRemove={() => conditionsArray.remove(index)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+
+        <div className={styles.formFoot}>
+          <div className={styles.formFootSpacer} />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isPending}
+                title="Discard changes and go back"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Discard
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent tone="danger">
+              <AlertDialogIcon>
+                <Trash2 className="h-5 w-5" />
+              </AlertDialogIcon>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Unsaved changes will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction onClick={() => router.back()}>
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button type="submit" disabled={isPending}>
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+            {isEditing ? "Update discount" : "Create discount"}
+          </Button>
         </div>
       </form>
     </Form>
+  );
+}
+
+function ConditionRow({
+  index,
+  form,
+  disabled,
+  onRemove,
+}: {
+  index: number;
+  form: ReturnType<typeof useForm<DiscountFormValues>>;
+  disabled: boolean;
+  onRemove: () => void;
+}) {
+  const conditionType = form.watch(`conditions.${index}.conditionType`);
+  const isTimeWindow = conditionType === "TIME_WINDOW";
+  const isNumeric = conditionType === "MIN_SPEND" || conditionType === "MIN_QUANTITY";
+  const isScope =
+    conditionType === "PRODUCT_SCOPE" ||
+    conditionType === "CATEGORY_SCOPE" ||
+    conditionType === "CUSTOMER_SCOPE" ||
+    conditionType === "CUSTOMER_GROUP_SCOPE";
+
+  return (
+    <div className="space-y-3 rounded-md border border-line bg-card p-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Condition {index + 1}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onRemove}
+          disabled={disabled}
+          className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+          title="Remove"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <FormField
+          control={form.control}
+          name={`conditions.${index}.conditionType`}
+          render={({ field }) => (
+            <FormItem className="space-y-[7px]">
+              <FieldLabel required>Condition type</FieldLabel>
+              <Select value={field.value} onValueChange={field.onChange} disabled={disabled}>
+                <FormControl>
+                  <SelectTrigger className={controlSelectTriggerClass}>
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {DISCOUNT_CONDITION_TYPE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name={`conditions.${index}.operator`}
+          render={({ field }) => (
+            <FormItem className="space-y-[7px]">
+              <FieldLabel optional>Operator</FieldLabel>
+              <FormControl>
+                <ControlInput
+                  placeholder="e.g. GTE, EQUALS"
+                  {...field}
+                  value={field.value ?? ""}
+                  disabled={disabled}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      {isNumeric && (
+        <FormField
+          control={form.control}
+          name={`conditions.${index}.valueNumeric`}
+          render={({ field }) => (
+            <FormItem className="space-y-[7px]">
+              <FieldLabel>Numeric value</FieldLabel>
+              <FormControl>
+                <ControlBox>
+                  <NumericFormat
+                    className={cn(controlInputClass, "tabular-nums")}
+                    value={field.value ?? ""}
+                    onValueChange={(v) => field.onChange(v.floatValue)}
+                    decimalScale={2}
+                    thousandSeparator=","
+                    allowNegative={false}
+                    disabled={disabled}
+                  />
+                </ControlBox>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+
+      {isTimeWindow && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name={`conditions.${index}.valueTimeFrom`}
+            render={({ field }) => (
+              <FormItem className="space-y-[7px]">
+                <FieldLabel>From</FieldLabel>
+                <FormControl>
+                  <ControlInput
+                    type="time"
+                    {...field}
+                    value={field.value ?? ""}
+                    disabled={disabled}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name={`conditions.${index}.valueTimeTo`}
+            render={({ field }) => (
+              <FormItem className="space-y-[7px]">
+                <FieldLabel>To</FieldLabel>
+                <FormControl>
+                  <ControlInput
+                    type="time"
+                    {...field}
+                    value={field.value ?? ""}
+                    disabled={disabled}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      )}
+
+      {!isNumeric && !isTimeWindow && (
+        <FormField
+          control={form.control}
+          name={`conditions.${index}.valueText`}
+          render={({ field }) => (
+            <FormItem className="space-y-[7px]">
+              <FieldLabel optional>{isScope ? "Notes" : "Text value"}</FieldLabel>
+              <FormControl>
+                <ControlInput
+                  placeholder="e.g. MONDAY, DINE_IN"
+                  {...field}
+                  value={field.value ?? ""}
+                  disabled={disabled}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+
+      {isScope && (
+        <FormField
+          control={form.control}
+          name={`conditions.${index}.valueIds`}
+          render={({ field }) => (
+            <FormItem className="space-y-[7px]">
+              <FieldLabel optional>
+                {conditionType === "PRODUCT_SCOPE" && "Products"}
+                {conditionType === "CATEGORY_SCOPE" && "Categories"}
+                {conditionType === "CUSTOMER_SCOPE" && "Customers"}
+                {conditionType === "CUSTOMER_GROUP_SCOPE" && "Customer groups"}
+              </FieldLabel>
+              <FormControl>
+                <DiscountScopePicker
+                  scope={conditionType as DiscountScope}
+                  placeholder="Search and select…"
+                  value={field.value ?? []}
+                  onChange={field.onChange}
+                  isDisabled={disabled}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+    </div>
   );
 }
 

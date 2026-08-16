@@ -42,7 +42,7 @@ export const columns: ColumnDef<PurchaseRequisition>[] = [
     cell: ({ row }) => (
       <Link
         href={`/purchase-requisitions/${row.original.id}`}
-        className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded hover:underline"
+        className="font-mono text-xs font-semibold text-ink-2 bg-muted px-2 py-0.5 rounded hover:underline"
       >
         {row.original.requisitionNumber}
       </Link>
@@ -63,7 +63,7 @@ export const columns: ColumnDef<PurchaseRequisition>[] = [
     id: "items",
     header: "Items",
     cell: ({ row }) => (
-      <span className="text-gray-600">{row.original.items?.length ?? 0}</span>
+      <span className="text-ink-2">{row.original.items?.length ?? 0}</span>
     ),
   },
   {
@@ -75,7 +75,7 @@ export const columns: ColumnDef<PurchaseRequisition>[] = [
         0,
       );
       return (
-        <div className="text-right font-medium text-gray-900">
+        <div className="text-right font-medium text-ink">
           <Money amount={total} currency={row.original.currency || DEFAULT_CURRENCY} />
         </div>
       );
@@ -85,14 +85,14 @@ export const columns: ColumnDef<PurchaseRequisition>[] = [
     accessorKey: "requestedByName",
     header: "Requested by",
     cell: ({ row }) => (
-      <span className="text-gray-600">{row.original.requestedByName || "—"}</span>
+      <span className="text-ink-2">{row.original.requestedByName || "—"}</span>
     ),
   },
   {
     accessorKey: "requiredByDate",
     header: "Needed by",
     cell: ({ row }) => (
-      <span className="text-gray-600 whitespace-nowrap">
+      <span className="text-ink-2 whitespace-nowrap">
         {formatDate(row.original.requiredByDate)}
       </span>
     ),

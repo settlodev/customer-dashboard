@@ -297,8 +297,17 @@ function RegisterForm({ step }: { step: string }) {
       name: "",
       businessTypeId: "",
       countryId: defaultCountry ?? "",
-      email: session?.data?.user.email ?? "",
-      phoneNumber: session?.data?.user.phoneNumber ?? "",
+      // Only trust the ambient session here when this instance was mounted
+      // directly on step 3 (/business-registration, gated by middleware on
+      // a currently-valid authToken). When the flow starts at step 1
+      // (/register), the session hasn't been established by THIS signup
+      // yet and may still be a stale leftover from a previous account on
+      // this browser — see the step-1-value backfill in
+      // submitVerificationCode below, which is the trustworthy source for
+      // that path.
+      email: step === "step3" ? (session?.data?.user.email ?? "") : "",
+      phoneNumber:
+        step === "step3" ? (session?.data?.user.phoneNumber ?? "") : "",
       description: "",
       region: "",
       address: "",
@@ -307,9 +316,10 @@ function RegisterForm({ step }: { step: string }) {
   });
 
   // Session resolves asynchronously — when it lands, backfill email/phone on
-  // the business form if the user hasn't already typed over them. Uses the
-  // account they just signed up with as the sensible business default.
+  // the business form if the user hasn't already typed over them. Only
+  // applies to the direct step-3 entry point; see note above.
   useEffect(() => {
+    if (step !== "step3") return;
     const user = session?.data?.user;
     if (!user) return;
     if (!businessForm.getValues("email") && user.email) {
@@ -318,7 +328,7 @@ function RegisterForm({ step }: { step: string }) {
     if (!businessForm.getValues("phoneNumber") && user.phoneNumber) {
       businessForm.setValue("phoneNumber", user.phoneNumber);
     }
-  }, [session?.data?.user, businessForm]);
+  }, [step, session?.data?.user, businessForm]);
 
   // ── Helpers ─────────────────────────────────────────────────────
 
@@ -388,13 +398,20 @@ function RegisterForm({ step }: { step: string }) {
         if (data.responseType === "success") {
           setSuccess(data.message);
           if (data.data && (data.data as any).requiresLogin) { router.push("/login"); return; }
+          // Prefill the business contact fields from what THIS user just
+          // typed in step 1, not from the ambient NextAuth session — the
+          // session cookie can still belong to a previous account on this
+          // browser at this point. See businessForm's defaultValues above.
+          const step1Values = form.getValues();
+          if (step1Values.email) businessForm.setValue("email", step1Values.email);
+          if (step1Values.phoneNumber) businessForm.setValue("phoneNumber", step1Values.phoneNumber);
           advanceStep();
         }
       } catch (err: any) {
         setError(err?.message || "Verification failed.");
       }
     });
-  }, [verificationCode, advanceStep, router]);
+  }, [verificationCode, advanceStep, router, form, businessForm]);
 
   const handleResendCode = useCallback(async () => {
     if (resendCooldown > 0) return;

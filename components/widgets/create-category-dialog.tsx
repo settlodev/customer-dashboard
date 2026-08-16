@@ -16,6 +16,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
 import { createCategory } from "@/lib/actions/category-actions";
@@ -39,9 +46,10 @@ interface Props {
  * but exposes it as a standalone widget so we can drop it next to any
  * MultiSelect / picker that should otherwise have to navigate away.
  *
- * Locations with multiple departments fall back to the full /categories
- * page — categories require a departmentId server-side and we don't want
- * to make the merchant guess from a tiny dialog.
+ * Categories require a departmentId server-side. When the location has more
+ * than one department we ask the merchant to pick one right here instead of
+ * bouncing them to the full /categories page; only a genuinely unresolvable
+ * location (no departments at all) still blocks creation from this dialog.
  */
 export default function CreateCategoryDialog({
   trigger,
@@ -51,7 +59,8 @@ export default function CreateCategoryDialog({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [defaultDepartmentId, setDefaultDepartmentId] = useState<string | null>(
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(
     null,
   );
   const [departmentsLoaded, setDepartmentsLoaded] = useState(false);
@@ -68,18 +77,29 @@ export default function CreateCategoryDialog({
         const preferred =
           depts.find((d) => d.isDefault) ??
           (depts.length === 1 ? depts[0] : null);
-        setDefaultDepartmentId(preferred?.id ?? null);
+        setDepartments(depts);
+        setSelectedDepartmentId(preferred?.id ?? null);
         setDepartmentsLoaded(true);
       })
       .catch(() => {
         if (cancelled) return;
-        setDefaultDepartmentId(null);
+        setDepartments([]);
+        setSelectedDepartmentId(null);
         setDepartmentsLoaded(true);
       });
     return () => {
       cancelled = true;
     };
   }, [open, departmentsLoaded]);
+
+  // Only a genuinely empty department list still blocks creation from this
+  // dialog — a multi-department location now gets a picker below instead.
+  // Shown up front, before the user even tries to submit, rather than
+  // relying on a submit-time error the disabled button would never let fire.
+  const blockedReason =
+    departmentsLoaded && departments.length === 0
+      ? "Couldn't determine your current location. Reload the page and try again, or create the category from the full Categories page."
+      : null;
 
   const reset = () => {
     setName("");
@@ -92,10 +112,8 @@ export default function CreateCategoryDialog({
     if (!trimmed) return;
     setError(null);
 
-    if (!defaultDepartmentId) {
-      setError(
-        "This location has multiple departments. Open the full Categories page to pick one.",
-      );
+    if (!selectedDepartmentId) {
+      setError("Pick a department for this category first.");
       return;
     }
 
@@ -106,7 +124,7 @@ export default function CreateCategoryDialog({
           active: true,
           imageUrl: "",
           parentId: undefined,
-          departmentId: defaultDepartmentId,
+          departmentId: selectedDepartmentId,
         },
         pathname ?? "",
       );
@@ -145,8 +163,8 @@ export default function CreateCategoryDialog({
             New category
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Give it a name to attach it here. You can refine the image,
-            parent, and department later from the Categories page.
+            Give it a name to attach it here. You can refine the image and
+            parent category later from the Categories page.
           </DialogDescription>
         </DialogHeader>
 
@@ -168,8 +186,40 @@ export default function CreateCategoryDialog({
                 autoFocus
               />
             </div>
+            {departments.length > 1 && (
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="new-category-department"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  DEPARTMENT
+                </Label>
+                <Select
+                  value={selectedDepartmentId ?? undefined}
+                  onValueChange={setSelectedDepartmentId}
+                  disabled={isPending}
+                >
+                  <SelectTrigger id="new-category-department">
+                    <SelectValue placeholder="Select a department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                        {d.isDefault ? " (Default)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {error && (
               <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+            )}
+            {!error && blockedReason && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                {blockedReason}
+              </p>
             )}
             {!departmentsLoaded && open && (
               <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -196,7 +246,7 @@ export default function CreateCategoryDialog({
                 isPending ||
                 !name.trim() ||
                 !departmentsLoaded ||
-                !defaultDepartmentId
+                !selectedDepartmentId
               }
             >
               {isPending ? (

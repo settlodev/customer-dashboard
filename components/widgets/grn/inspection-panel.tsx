@@ -87,12 +87,12 @@ export function InspectionPanel({ grnId, items }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-gray-50/60">
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Item</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Received</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Inspected</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Rejected</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Status</th>
+              <tr className="border-b bg-muted/60">
+                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Item</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Received</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Inspected</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Rejected</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Status</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>

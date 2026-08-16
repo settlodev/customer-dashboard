@@ -136,7 +136,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Current Value */}
               <div className="flex flex-col space-y-2">
-                <FormLabel className="text-gray-700 font-medium">
+                <FormLabel className="text-ink-2 font-medium">
                   Current Value
                 </FormLabel>
                 <Input
@@ -152,7 +152,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                 name="value"
                 render={({ field }) => (
                   <FormItem className="flex flex-col space-y-2">
-                    <FormLabel className="text-gray-700 font-medium">
+                    <FormLabel className="text-ink-2 font-medium">
                       New Value
                     </FormLabel>
                     <FormControl>

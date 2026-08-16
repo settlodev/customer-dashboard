@@ -115,7 +115,7 @@ function DeclineButton({ id }: { id: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" className="text-red-600 hover:bg-red-50">
+        <Button variant="ghost" className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
           <ThumbsDown className="h-4 w-4 mr-1.5" /> Decline
         </Button>
       </DialogTrigger>
@@ -303,17 +303,17 @@ function ApproveButton({ request }: { request: TransferRequest }) {
           <div className="overflow-x-auto border rounded-lg">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50/60">
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                <tr className="border-b bg-muted/60">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Item
                   </th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
                     Requested
                   </th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
                     Available
                   </th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase w-36">
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase w-36">
                     Approving
                   </th>
                 </tr>
@@ -352,7 +352,7 @@ function ApproveButton({ request }: { request: TransferRequest }) {
                 })}
               </tbody>
               <tfoot>
-                <tr className="bg-gray-50/60 font-semibold">
+                <tr className="bg-muted/60 font-semibold">
                   <td colSpan={3} className="px-3 py-2 text-right">
                     Total approving
                   </td>

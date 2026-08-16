@@ -17,11 +17,15 @@ import {
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
 import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
+import { SoldItemsFilters } from "@/components/reports/sold-items/sold-items-filters";
 import { SoldItemsStatusToggle } from "@/components/reports/sold-items/sold-items-status-toggle";
 import { SoldItemsTable } from "@/components/reports/sold-items/sold-items-table";
+import { fetchAllCategories } from "@/lib/actions/category-actions";
+import { fetchDepartmentsForCurrentLocation } from "@/lib/actions/department-actions";
 import { getLocationSettings } from "@/lib/actions/location-settings-actions";
 import { listSoldItems } from "@/lib/actions/product-actions";
 import { fetchAllTables } from "@/lib/actions/space-actions";
+import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import { rethrowIfBoundary } from "@/lib/list-fallback";
 import {
   type SoldItemLine,
@@ -44,6 +48,9 @@ type Params = {
     status?: string;
     from?: string;
     to?: string;
+    departmentId?: string;
+    categoryId?: string;
+    staffId?: string;
   }>;
 };
 
@@ -86,30 +93,57 @@ export default async function Page({ searchParams }: Params) {
     ? (statusParam as SoldItemStatus)
     : "";
 
+  const departmentId = resolved.departmentId ?? "";
+  const categoryId = resolved.categoryId ?? "";
+  const staffId = resolved.staffId ?? "";
+
   // Default to current month — matches the rest of the report screens.
   const now = new Date();
   const from = resolved.from ?? format(startOfMonth(now), "yyyy-MM-dd");
   const to = resolved.to ?? format(endOfMonth(now), "yyyy-MM-dd");
 
-  const [report, tables, locationSettings] = await Promise.all([
-    listSoldItems({
-      fromDate: from,
-      toDate: to,
-      status: status || undefined,
-      limit: DEFAULT_LIMIT,
-    }).catch((e) => {
-      rethrowIfBoundary(e);
-      return null;
-    }),
-    // Each line carries only a table_id (the Reports Service stores no
-    // table names); resolve the display names from the OMS tables list,
-    // same as the orders list and the Sales → By table report.
-    fetchAllTables().catch(() => []),
-    getLocationSettings().catch(() => null),
-  ]);
+  const [report, tables, locationSettings, departments, categories, staff] =
+    await Promise.all([
+      listSoldItems({
+        fromDate: from,
+        toDate: to,
+        status: status || undefined,
+        departmentId: departmentId || undefined,
+        categoryId: categoryId || undefined,
+        staffId: staffId || undefined,
+        limit: DEFAULT_LIMIT,
+      }).catch((e) => {
+        rethrowIfBoundary(e);
+        return null;
+      }),
+      // Each line carries only a table_id (the Reports Service stores no
+      // table names); resolve the display names from the OMS tables list,
+      // same as the orders list and the Sales → By table report.
+      fetchAllTables().catch(() => []),
+      getLocationSettings().catch(() => null),
+      // Filter option sources — all scoped to the current location, either
+      // directly (departments, staff) or by cross-referencing the
+      // location's department ids (categories aren't location-scoped
+      // themselves, but their parent department is).
+      fetchDepartmentsForCurrentLocation(true).catch(() => []),
+      fetchAllCategories().catch(() => null),
+      fetchAllStaff().catch(() => []),
+    ]);
 
   const tableNames: Record<string, string> = {};
   for (const t of tables) tableNames[t.id] = t.name;
+
+  const departmentIds = new Set(departments.map((d) => d.id));
+  const departmentOptions = departments
+    .map((d) => ({ value: d.id, label: d.name }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const categoryOptions = (categories ?? [])
+    .filter((c) => departmentIds.has(c.departmentId))
+    .map((c) => ({ value: c.id, label: c.name }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const staffOptions = staff
+    .map((s) => ({ value: s.id, label: s.fullName }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   // Table-based ordering leads the Order column with the table name; the
   // standard mode keeps the order number in front (same as /orders).
@@ -124,7 +158,13 @@ export default async function Page({ searchParams }: Params) {
 
   const hasAny = items.length > 0;
   const isDefaultRange = !resolved.from && !resolved.to;
-  const hasFilters = q !== "" || statusParam !== "" || !isDefaultRange;
+  const hasFilters =
+    q !== "" ||
+    statusParam !== "" ||
+    !isDefaultRange ||
+    departmentId !== "" ||
+    categoryId !== "" ||
+    staffId !== "";
 
   const subtitle =
     from === to
@@ -138,7 +178,17 @@ export default async function Page({ searchParams }: Params) {
 
       <PageBody>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <SoldItemsStatusToggle active={status} />
+          <div className="flex flex-wrap items-center gap-2">
+            <SoldItemsStatusToggle active={status} />
+            <SoldItemsFilters
+              departmentId={departmentId}
+              categoryId={categoryId}
+              staffId={staffId}
+              departmentOptions={departmentOptions}
+              categoryOptions={categoryOptions}
+              staffOptions={staffOptions}
+            />
+          </div>
           <OrdersDateFilter from={from} to={to} />
         </div>
 

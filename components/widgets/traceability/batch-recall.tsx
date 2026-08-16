@@ -246,26 +246,26 @@ export function BatchRecall() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-gray-50/60">
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                  <tr className="border-b bg-muted/60">
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                       Batch
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                       Variant
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                       Location
                     </th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
                       On hand
                     </th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
                       Unit cost
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                       Expiry
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                       Status
                     </th>
                   </tr>
@@ -417,8 +417,8 @@ export function BatchRecall() {
                       onClick={() => setImpactWindowDays(d)}
                       className={`px-2 py-0.5 rounded border ${
                         impactWindowDays === d
-                          ? "bg-gray-900 text-white border-gray-900"
-                          : "bg-white hover:bg-gray-50"
+                          ? "bg-ink text-canvas border-ink"
+                          : "bg-background hover:bg-muted"
                       }`}
                     >
                       {d === null ? "All" : `${d}d`}

@@ -185,7 +185,7 @@ export default function BomAnalyticsDashboard({
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-gray-400" /> Daily total cost (all rules)
+            <TrendingUp className="h-4 w-4 text-muted-foreground" /> Daily total cost (all rules)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -214,7 +214,7 @@ export default function BomAnalyticsDashboard({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <Waves className="h-4 w-4 text-gray-400" /> Substitute fires by strategy
+              <Waves className="h-4 w-4 text-muted-foreground" /> Substitute fires by strategy
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -238,7 +238,7 @@ export default function BomAnalyticsDashboard({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <PackageX className="h-4 w-4 text-gray-400" /> Products sold without a rule
+              <PackageX className="h-4 w-4 text-muted-foreground" /> Products sold without a rule
             </CardTitle>
           </CardHeader>
           <CardContent className="max-h-[260px] overflow-auto">
@@ -276,7 +276,7 @@ export default function BomAnalyticsDashboard({
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <Factory className="h-4 w-4 text-gray-400" /> Production yield variance
+            <Factory className="h-4 w-4 text-muted-foreground" /> Production yield variance
           </CardTitle>
         </CardHeader>
         <CardContent className="max-h-[320px] overflow-auto">
@@ -324,7 +324,7 @@ export default function BomAnalyticsDashboard({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <AlertOctagon className="h-4 w-4 text-gray-400" /> Deduction failures
+              <AlertOctagon className="h-4 w-4 text-muted-foreground" /> Deduction failures
             </CardTitle>
           </CardHeader>
           <CardContent className="max-h-[260px] overflow-auto">
@@ -365,7 +365,7 @@ export default function BomAnalyticsDashboard({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <Waves className="h-4 w-4 text-gray-400" /> Cost cascade ({cascadeRules} rule-invalidations)
+              <Waves className="h-4 w-4 text-muted-foreground" /> Cost cascade ({cascadeRules} rule-invalidations)
             </CardTitle>
           </CardHeader>
           <CardContent className="max-h-[260px] overflow-auto">

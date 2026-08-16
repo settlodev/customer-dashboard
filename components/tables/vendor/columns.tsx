@@ -90,8 +90,8 @@ export const columns: ColumnDef<Vendor>[] = [
       <span
         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
           row.original.active
-            ? "bg-green-50 text-green-700"
-            : "bg-gray-100 text-gray-500"
+            ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
+            : "bg-muted text-ink-3"
         }`}
       >
         {row.original.active ? "Active" : "Inactive"}

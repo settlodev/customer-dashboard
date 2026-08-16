@@ -63,10 +63,10 @@ export const TRANSFER_REQUEST_STATUS_LABELS: Record<TransferRequestStatus, strin
 };
 
 export const TRANSFER_REQUEST_STATUS_COLORS: Record<TransferRequestStatus, string> = {
-  PENDING: "bg-amber-50 text-amber-700",
-  APPROVED: "bg-emerald-50 text-emerald-700",
-  DECLINED: "bg-red-50 text-red-700",
-  CANCELLED: "bg-gray-100 text-gray-500",
+  PENDING: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  APPROVED: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+  DECLINED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  CANCELLED: "bg-muted text-ink-3",
 };
 
 /**

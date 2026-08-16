@@ -80,7 +80,7 @@ export function BarcodeManager({
 
   return (
     <div className="flex items-center gap-1.5">
-      <span className="font-mono text-xs text-gray-700 whitespace-nowrap">
+      <span className="font-mono text-xs text-ink-2 whitespace-nowrap">
         {barcode}
       </span>
       <BarcodeManageDialog

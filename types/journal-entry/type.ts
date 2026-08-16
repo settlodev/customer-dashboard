@@ -47,7 +47,7 @@ export const JOURNAL_ENTRY_STATUS_LABELS: Record<JournalEntryStatus, string> = {
 };
 
 export const JOURNAL_ENTRY_STATUS_TONES: Record<JournalEntryStatus, string> = {
-  DRAFT: "bg-amber-50 text-amber-700",
-  POSTED: "bg-green-50 text-green-700",
-  VOIDED: "bg-gray-100 text-gray-500",
+  DRAFT: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  POSTED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  VOIDED: "bg-muted text-ink-3",
 };

@@ -40,7 +40,7 @@ export const columns: ColumnDef<StockModification>[] = [
       </Button>
     ),
     cell: ({ row }) => (
-      <span className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
+      <span className="font-mono text-xs font-semibold text-ink-2 bg-muted px-2 py-0.5 rounded">
         {row.original.modificationNumber}
       </span>
     ),
@@ -51,7 +51,7 @@ export const columns: ColumnDef<StockModification>[] = [
     cell: ({ row }) => {
       const label = MODIFICATION_CATEGORY_OPTIONS.find((o) => o.value === row.original.category)?.label || row.original.category;
       return (
-        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-700">
+        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
           {label}
         </span>
       );
@@ -61,7 +61,7 @@ export const columns: ColumnDef<StockModification>[] = [
     accessorKey: "reason",
     header: "Reason",
     cell: ({ row }) => (
-      <span className="text-gray-600 truncate max-w-[200px] block">
+      <span className="text-ink-2 truncate max-w-[200px] block">
         {row.original.reason}
       </span>
     ),
@@ -70,7 +70,7 @@ export const columns: ColumnDef<StockModification>[] = [
     id: "items",
     header: "Items",
     cell: ({ row }) => (
-      <span className="text-gray-600">
+      <span className="text-ink-2">
         {row.original.items?.length ?? 0}
       </span>
     ),
@@ -79,7 +79,7 @@ export const columns: ColumnDef<StockModification>[] = [
     accessorKey: "performedByName",
     header: "Performed By",
     cell: ({ row }) => (
-      <span className="text-gray-600">
+      <span className="text-ink-2">
         {row.original.performedByName || "\u2014"}
       </span>
     ),
@@ -88,7 +88,7 @@ export const columns: ColumnDef<StockModification>[] = [
     accessorKey: "createdAt",
     header: "Date",
     cell: ({ row }) => (
-      <span className="text-gray-600">
+      <span className="text-ink-2">
         {new Date(row.original.createdAt).toLocaleDateString("en-GB", {
           day: "2-digit",
           month: "short",

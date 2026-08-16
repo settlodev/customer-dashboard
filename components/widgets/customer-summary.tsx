@@ -54,7 +54,7 @@ function CustomerSummary({ customer }: { customer: Customer }) {
                 {stat.label}
               </CardTitle>
               <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                <Icon className="h-4 w-4 text-gray-500" />
+                <Icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               </div>
             </CardHeader>
             <CardContent className="p-4 pt-1">

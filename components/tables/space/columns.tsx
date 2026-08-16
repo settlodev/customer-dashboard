@@ -110,7 +110,7 @@ const capacityColumn: ColumnDef<Space> = {
     const max = row.original.capacity;
     return (
       <div className="flex items-center gap-1.5">
-        <Users className="h-3.5 w-3.5 text-gray-400" />
+        <Users className="h-3.5 w-3.5 text-gray-400 dark:text-gray-600" />
         <span className="text-gray-900 dark:text-gray-100">
           {min ? `${min}–${max}` : max}
         </span>

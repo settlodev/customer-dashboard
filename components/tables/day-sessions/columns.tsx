@@ -60,7 +60,7 @@ export const columns: ColumnDef<DaySessionListItem>[] = [
     cell: ({ row }) => (
       <Link
         href={`/day-sessions/${row.original.sessionId}`}
-        className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded hover:underline"
+        className="font-mono text-xs font-semibold text-ink-2 bg-muted px-2 py-0.5 rounded hover:underline"
       >
         {formatDate(row.original.businessDate)}
       </Link>
@@ -88,7 +88,7 @@ export const columns: ColumnDef<DaySessionListItem>[] = [
     accessorKey: "triggerType",
     header: "Trigger",
     cell: ({ row }) => (
-      <span className="text-xs text-gray-600">{row.original.triggerType}</span>
+      <span className="text-xs text-ink-2">{row.original.triggerType}</span>
     ),
   },
   {
@@ -98,7 +98,7 @@ export const columns: ColumnDef<DaySessionListItem>[] = [
       <div className="flex flex-col">
         <span className="text-xs">{formatDateTime(row.original.openedAt)}</span>
         {row.original.openedByLabel ? (
-          <span className="text-[10px] text-gray-500">
+          <span className="text-[10px] text-ink-3">
             {row.original.openedByLabel}
           </span>
         ) : null}
@@ -112,7 +112,7 @@ export const columns: ColumnDef<DaySessionListItem>[] = [
       <div className="flex flex-col">
         <span className="text-xs">{formatDateTime(row.original.closedAt)}</span>
         {row.original.closedByLabel ? (
-          <span className="text-[10px] text-gray-500">
+          <span className="text-[10px] text-ink-3">
             {row.original.closedByLabel}
           </span>
         ) : null}
@@ -165,11 +165,11 @@ export const columns: ColumnDef<DaySessionListItem>[] = [
     header: "Refunds",
     cell: ({ row }) => {
       const count = row.original.refundCount;
-      if (!count) return <span className="text-xs text-gray-400">—</span>;
+      if (!count) return <span className="text-xs text-ink-3">—</span>;
       return (
         <div className="flex flex-col">
           <span className="text-xs">{formatMoney(row.original.refundAmount)}</span>
-          <span className="text-[10px] text-gray-500">
+          <span className="text-[10px] text-ink-3">
             {count} refund{count === 1 ? "" : "s"}
           </span>
         </div>

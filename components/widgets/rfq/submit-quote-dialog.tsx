@@ -392,6 +392,11 @@ export function SubmitQuoteDialog({ rfq }: Props) {
             <div className="border rounded-lg overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
+                  <tr className="border-b bg-muted/60">
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Item</th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Qty quoted</th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Unit price</th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Line total</th>
                   <tr className="border-b bg-gray-50/60">
                     <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Item</th>
                     <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Qty quoted</th>
@@ -534,6 +539,17 @@ export function SubmitQuoteDialog({ rfq }: Props) {
                     );
                   })}
                 </tbody>
+                <tfoot>
+                  <tr className="bg-muted/60 font-semibold">
+                    <td colSpan={3} className="px-3 py-2 text-right">Total</td>
+                    <td className="px-3 py-2 text-right">
+                      {totalAmount.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
 

@@ -193,10 +193,10 @@ export const GRN_STATUS_LABELS: Record<GrnStatus, string> = {
 };
 
 export const GRN_STATUS_TONES: Record<GrnStatus, string> = {
-  DRAFT: "bg-amber-50 text-amber-700",
-  INSPECTION_HOLD: "bg-indigo-50 text-indigo-700",
-  RECEIVED: "bg-green-50 text-green-700",
-  CANCELLED: "bg-red-50 text-red-700",
+  DRAFT: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  INSPECTION_HOLD: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400",
+  RECEIVED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
 };
 
 export const INSPECTION_STATUS_LABELS: Record<InspectionStatus, string> = {
@@ -207,10 +207,10 @@ export const INSPECTION_STATUS_LABELS: Record<InspectionStatus, string> = {
 };
 
 export const INSPECTION_STATUS_TONES: Record<InspectionStatus, string> = {
-  PENDING: "bg-gray-50 text-gray-700",
-  PASSED: "bg-green-50 text-green-700",
-  FAILED: "bg-red-50 text-red-700",
-  PARTIAL: "bg-amber-50 text-amber-700",
+  PENDING: "bg-muted text-ink-2",
+  PASSED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  FAILED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  PARTIAL: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
 };
 
 export const LANDED_COST_TYPE_OPTIONS: { value: LandedCostType; label: string }[] = [

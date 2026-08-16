@@ -222,12 +222,12 @@ export const LPO_STATUS_LABELS: Record<LpoStatus, string> = {
 };
 
 export const LPO_STATUS_TONES: Record<LpoStatus, string> = {
-  DRAFT: "bg-gray-50 text-gray-700",
-  SUBMITTED: "bg-blue-50 text-blue-700",
-  APPROVED: "bg-indigo-50 text-indigo-700",
-  PARTIALLY_RECEIVED: "bg-amber-50 text-amber-700",
-  RECEIVED: "bg-green-50 text-green-700",
-  CANCELLED: "bg-red-50 text-red-700",
+  DRAFT: "bg-muted text-ink-2",
+  SUBMITTED: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  APPROVED: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400",
+  PARTIALLY_RECEIVED: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  RECEIVED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
 };
 
 export const SUPPLIER_ACK_LABELS: Record<SupplierAcknowledgement, string> = {
@@ -237,9 +237,9 @@ export const SUPPLIER_ACK_LABELS: Record<SupplierAcknowledgement, string> = {
 };
 
 export const SUPPLIER_ACK_TONES: Record<SupplierAcknowledgement, string> = {
-  PENDING: "bg-amber-50 text-amber-700 border-amber-200",
-  ACCEPTED: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  REJECTED: "bg-red-50 text-red-700 border-red-200",
+  PENDING: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900",
+  ACCEPTED: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900",
+  REJECTED: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900",
 };
 
 /** LPOs whose goods can still be received — used by GRN LPO picker. */
@@ -286,13 +286,13 @@ export function effectiveLpoStatus(
   if (status === "APPROVED" && ack === "PENDING") {
     return {
       label: "Awaiting supplier",
-      tone: "bg-amber-50 text-amber-700",
+      tone: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
     };
   }
   if (status === "CANCELLED" && ack === "REJECTED") {
     return {
       label: "Rejected by supplier",
-      tone: "bg-red-50 text-red-700",
+      tone: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
     };
   }
   return {

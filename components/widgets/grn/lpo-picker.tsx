@@ -139,19 +139,19 @@ export function LpoPickerDialog({ onPick, triggerLabel = "Pick from LPO" }: Prop
                   key={lpo.id}
                   type="button"
                   onClick={() => handlePick(lpo)}
-                  className="w-full text-left rounded-lg border border-gray-200 px-4 py-3 hover:border-orange-200 hover:bg-orange-50/30 transition-colors"
+                  className="w-full text-left rounded-lg border border-line px-4 py-3 hover:border-orange-200 dark:hover:border-orange-900 hover:bg-orange-50/30 dark:hover:bg-orange-950/20 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
+                        <span className="font-mono text-xs font-semibold text-ink-2 bg-muted px-2 py-0.5 rounded">
                           {lpo.lpoNumber}
                         </span>
                         <Badge variant="secondary" className="text-xs">
                           {LPO_STATUS_LABELS[lpo.status]}
                         </Badge>
                       </div>
-                      <p className="mt-1 text-sm font-medium text-gray-800 truncate">
+                      <p className="mt-1 text-sm font-medium text-ink truncate">
                         {lpo.supplierName || "—"}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -160,7 +160,7 @@ export function LpoPickerDialog({ onPick, triggerLabel = "Pick from LPO" }: Prop
                         {outstandingUnits.toLocaleString()} outstanding
                       </p>
                     </div>
-                    <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+                    <span className="text-sm font-semibold text-ink-2 whitespace-nowrap">
                       <Money amount={lineTotal} currency={lpo.currency || DEFAULT_CURRENCY} />
                     </span>
                   </div>

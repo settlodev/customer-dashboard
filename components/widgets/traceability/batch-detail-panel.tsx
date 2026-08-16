@@ -188,13 +188,13 @@ export function BatchDetailPanel({ batch, batchId, initialMovements }: Props) {
           </div>
 
           {batch.status === "RECALLED" && batch.recallReason && (
-            <div className="mt-6 rounded-md border border-red-100 bg-red-50 p-3 text-sm">
-              <p className="font-medium text-red-900">Recalled</p>
-              <p className="mt-1 text-red-800 italic">
+            <div className="mt-6 rounded-md border border-red-100 dark:border-red-900 bg-red-50 dark:bg-red-950/20 p-3 text-sm">
+              <p className="font-medium text-red-900 dark:text-red-300">Recalled</p>
+              <p className="mt-1 text-red-800 dark:text-red-400 italic">
                 &ldquo;{batch.recallReason}&rdquo;
               </p>
               {batch.recalledAt && (
-                <p className="mt-1 text-xs text-red-700">
+                <p className="mt-1 text-xs text-red-700 dark:text-red-400">
                   {new Date(batch.recalledAt).toLocaleString("en-GB", {
                     day: "2-digit",
                     month: "short",
@@ -208,8 +208,8 @@ export function BatchDetailPanel({ batch, batchId, initialMovements }: Props) {
           )}
 
           {batch.recallRevertedAt && (
-            <div className="mt-3 rounded-md border border-amber-100 bg-amber-50 p-3 text-sm">
-              <p className="font-medium text-amber-900">
+            <div className="mt-3 rounded-md border border-amber-100 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm">
+              <p className="font-medium text-amber-900 dark:text-amber-300">
                 Recall reverted on{" "}
                 {new Date(batch.recallRevertedAt).toLocaleDateString("en-GB", {
                   day: "2-digit",
@@ -218,7 +218,7 @@ export function BatchDetailPanel({ batch, batchId, initialMovements }: Props) {
                 })}
               </p>
               {batch.recallRevertReason && (
-                <p className="mt-1 text-amber-800 italic">
+                <p className="mt-1 text-amber-800 dark:text-amber-400 italic">
                   &ldquo;{batch.recallRevertReason}&rdquo;
                 </p>
               )}
@@ -256,20 +256,20 @@ export function BatchDetailPanel({ batch, batchId, initialMovements }: Props) {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b bg-gray-50/60">
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                    <tr className="border-b bg-muted/60">
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                         When
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                         Type
                       </th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
                         Quantity
                       </th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
                         Unit cost
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                         Reference
                       </th>
                     </tr>
@@ -445,8 +445,8 @@ function AffectedOrdersSection({ batchId }: { batchId: string }) {
                 onClick={() => setWindowDays(d)}
                 className={`px-2 py-1 rounded border ${
                   windowDays === d
-                    ? "bg-gray-900 text-white border-gray-900"
-                    : "hover:bg-gray-50"
+                    ? "bg-ink text-canvas border-ink"
+                    : "hover:bg-muted"
                 }`}
               >
                 {d === null ? "All time" : `Last ${d}d`}
@@ -468,14 +468,14 @@ function AffectedOrdersSection({ batchId }: { batchId: string }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50/60">
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                <tr className="border-b bg-muted/60">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Order
                   </th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
                     Units
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     First hit
                   </th>
                 </tr>
@@ -579,23 +579,23 @@ function CorrectionsSection({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50/60">
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                <tr className="border-b bg-muted/60">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     When
                   </th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
                     Cost change
                   </th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
                     On hand
                   </th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
                     Already used
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Reason
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     By
                   </th>
                 </tr>
@@ -647,7 +647,7 @@ function CorrectionsSection({
                         currency={correction.currency || DEFAULT_CURRENCY}
                       />
                     </td>
-                    <td className="px-3 py-2 text-gray-700">{correction.reason}</td>
+                    <td className="px-3 py-2 text-ink-2">{correction.reason}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
                       {correction.performedByName || "—"}
                     </td>
@@ -835,7 +835,7 @@ function AttachmentRow({
           variant="ghost"
           size="sm"
           onClick={() => onRemove(attachment)}
-          className="text-red-600 hover:text-red-700"
+          className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -850,18 +850,18 @@ function movementTone(m: BatchMovement): string {
     case "TRANSFER_IN":
     case "OPENING_BALANCE":
     case "PRODUCTION_OUTPUT":
-      return "bg-green-50 text-green-700";
+      return "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400";
     case "SALE":
     case "TRANSFER_OUT":
     case "RECIPE_USAGE":
     case "PRODUCTION_ISSUE":
-      return "bg-blue-50 text-blue-700";
+      return "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400";
     case "DAMAGE":
     case "WASTE":
-      return "bg-amber-50 text-amber-700";
+      return "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400";
     case "RECALL":
-      return "bg-red-50 text-red-700";
+      return "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400";
     default:
-      return "bg-gray-100 text-gray-700";
+      return "bg-muted text-ink-2";
   }
 }

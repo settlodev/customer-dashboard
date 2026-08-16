@@ -23,25 +23,25 @@ const DiscountCodeInput: React.FC<DiscountCodeInputProps> = ({
       name="discountCode"
       render={({ field }) => (
         <FormItem>
-          <FormLabel className="text-gray-700 font-medium">
+          <FormLabel className="text-ink-2 font-medium">
             Discount Code (Optional)
           </FormLabel>
           <div className="relative">
-            <div className="absolute left-3 top-3 text-gray-400">
+            <div className="absolute left-3 top-3 text-ink-3">
               <Tag size={18} />
             </div>
             <FormControl>
               <div className="relative">
                 <Input
                   {...field}
-                  className={`pl-10 pr-10 ${isValidating ? 'bg-gray-50' : ''}`}
+                  className={`pl-10 pr-10 ${isValidating ? 'bg-muted' : ''}`}
                   placeholder="Enter discount code"
                   disabled={isValidating}
                 />
                 {field.value && (
                   <div className="absolute right-3 top-2">
                     {isValidating ? (
-                      <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+                      <Loader2 className="h-5 w-5 animate-spin text-ink-3" />
                     ) : isValid === true ? (
                       <Check className="h-5 w-5 text-green-500" />
                     ) : isValid === false ? (

@@ -93,7 +93,7 @@ export const columns: ColumnDef<Reservation>[] = [
       const label =
         RESERVATION_STATUS_LABELS[status] || status;
       const colorClass =
-        RESERVATION_STATUS_COLORS[status] || "bg-gray-100 text-gray-800";
+        RESERVATION_STATUS_COLORS[status] || "bg-muted text-ink-2";
       return (
         <Badge variant="outline" className={colorClass}>
           {label}

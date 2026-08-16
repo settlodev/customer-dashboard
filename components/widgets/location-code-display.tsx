@@ -98,8 +98,8 @@ export function LocationCodeDisplay() {
       {/* Header with Generate Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gray-100 rounded-lg border">
-            <Key className="w-5 h-5 text-gray-700" />
+          <div className="p-2 bg-muted rounded-lg border">
+            <Key className="w-5 h-5 text-ink-2" />
           </div>
           <div>
             <h3 className="font-semibold text-lg">Authentication Code</h3>
@@ -130,13 +130,13 @@ export function LocationCodeDisplay() {
               {/* Code Display */}
               <div className="flex-1 text-center lg:text-left">
                 <div className="flex items-center justify-center lg:justify-start gap-2 mb-2">
-                  <Shield className="w-4 h-4 text-gray-600" />
+                  <Shield className="w-4 h-4 text-ink-3" />
                   <span className="text-sm font-medium text-muted-foreground">
                     YOUR LOCATION CODE
                   </span>
                 </div>
                 <div className="flex items-center justify-center lg:justify-start gap-3">
-                  <div className="text-4xl lg:text-5xl font-bold tracking-wider bg-gray-50 border-2 px-4 py-3 rounded-lg">
+                  <div className="text-4xl lg:text-5xl font-bold tracking-wider bg-muted border-2 px-4 py-3 rounded-lg">
                     {codeData.code.match(/.{1,2}/g)?.join(" ") || codeData.code}
                   </div>
                   <Button
@@ -155,7 +155,7 @@ export function LocationCodeDisplay() {
                 {/* Countdown Timer */}
                 <div className="text-center lg:text-right">
                   <div className="flex items-center gap-2 mb-1">
-                    <Clock className="w-4 h-4 text-gray-600" />
+                    <Clock className="w-4 h-4 text-ink-3" />
                     <span className="text-sm font-medium text-muted-foreground">
                       EXPIRES IN
                     </span>
@@ -163,8 +163,8 @@ export function LocationCodeDisplay() {
                   <div
                     className={`text-2xl font-mono font-bold ${
                       timeLeft < 60
-                        ? "text-gray-900 animate-pulse"
-                        : "text-gray-700"
+                        ? "text-ink animate-pulse"
+                        : "text-ink-2"
                     }`}
                   >
                     {formatTime(timeLeft)}
@@ -174,7 +174,7 @@ export function LocationCodeDisplay() {
                 {/* Validity Badge */}
                 <Badge
                   variant="outline"
-                  className="px-3 py-1 text-xs bg-gray-50"
+                  className="px-3 py-1 text-xs bg-muted"
                 >
                   Valid for {codeData.validityMinutes} minutes
                 </Badge>
@@ -188,7 +188,7 @@ export function LocationCodeDisplay() {
       {!codeData && (
         <Card className="border-2 border-dashed">
           <CardContent className="p-8 text-center">
-            <Key className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <Key className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h4 className="font-semibold text-lg mb-2">No Active Code</h4>
             <p className="text-muted-foreground mb-4 max-w-sm mx-auto">
               Generate a temporary authentication code to provide secure access
@@ -203,7 +203,7 @@ export function LocationCodeDisplay() {
         <Card className="border-2 border-dashed">
           <CardContent className="p-6 text-center">
             <div className="flex items-center justify-center gap-3 mb-3">
-              <Clock className="w-5 h-5 text-gray-600" />
+              <Clock className="w-5 h-5 text-ink-3" />
               <span className="font-semibold">Code Expired</span>
             </div>
             <p className="text-muted-foreground text-sm mb-4">
