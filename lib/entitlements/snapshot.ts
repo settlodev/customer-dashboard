@@ -1,3 +1,4 @@
+import "server-only";
 import { cache } from "react";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
