@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -94,6 +94,7 @@ import {
   computePurchaseTaxPreview,
   findBusinessDefaultTaxTypeId,
   resolveEffectiveTaxTypeId,
+  resolveHeaderPricesIncludeTaxDefault,
 } from "@/lib/purchase-tax";
 
 import styles from "./styles/form-shell.module.css";
@@ -161,6 +162,12 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
   // rows after a delete. GRN/LPO/supplier-return already key their
   // equivalent map by field.id for the same reason.
   const [stockTaxTypeIdMap, setStockTaxTypeIdMap] = useState<Record<string, string | null | undefined>>({});
+  // The stock item's own `purchaseTaxInclusive` default per row, keyed the
+  // same way (field.id) and for the same drift reason — feeds the header
+  // toggle's auto-default (Fix 1, 2026-08 fix wave), not just the preview.
+  const [stockPurchaseTaxInclusiveMap, setStockPurchaseTaxInclusiveMap] = useState<
+    Record<string, boolean | undefined>
+  >({});
 
   const form = useForm<z.infer<typeof StockIntakeRecordSchema>>({
     resolver: zodResolver(StockIntakeRecordSchema),
@@ -249,17 +256,63 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
             cost: Number(row?.unitCost || 0),
             taxTypeOverride: row?.taxTypeId,
             stockDefaultTaxTypeId: fieldId ? stockTaxTypeIdMap[fieldId] : undefined,
+            stockPurchaseTaxInclusive: fieldId ? stockPurchaseTaxInclusiveMap[fieldId] : undefined,
           };
         }),
         { pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes },
       ),
-    [watchedItems, fields, stockTaxTypeIdMap, pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes],
+    [
+      watchedItems,
+      fields,
+      stockTaxTypeIdMap,
+      stockPurchaseTaxInclusiveMap,
+      pricesIncludeTax,
+      vatRegistered,
+      businessDefaultTaxTypeId,
+      taxTypes,
+    ],
   );
+
+  // Whether the operator has manually flipped the header toggle — once they
+  // have, the auto-default effect below backs off and leaves their choice
+  // alone. Only relevant in create mode: in edit mode the toggle is already
+  // locked to the intake's stored value (see the isEditing branch below).
+  const pricesIncludeTaxTouchedRef = useRef(false);
+
+  // What the header toggle should default to, given the stock items
+  // currently on the intake — see resolveHeaderPricesIncludeTaxDefault
+  // (Fix 1, 2026-08 fix wave). Only lines with a resolved stock item count;
+  // a blank row or one still awaiting its catalogue fetch is ignored.
+  const headerPricesIncludeTaxDefault = useMemo(
+    () =>
+      resolveHeaderPricesIncludeTaxDefault(
+        (watchedItems ?? []).map((row, index) => {
+          if (!row?.stockVariantId) return undefined;
+          const fieldId = fields[index]?.id;
+          return fieldId ? stockPurchaseTaxInclusiveMap[fieldId] : undefined;
+        }),
+      ),
+    [watchedItems, fields, stockPurchaseTaxInclusiveMap],
+  );
+
+  // Keep the header toggle in sync with the item defaults as lines are
+  // added, removed, or their stock variant changes — so an untouched
+  // toggle reflects what the server will actually derive (Fix 1). Skipped
+  // entirely in edit mode: UpdateStockIntakeRecord has no pricesIncludeTax,
+  // the server re-uses the stored value, and the switch is disabled below.
+  useEffect(() => {
+    if (isEditing) return;
+    if (pricesIncludeTaxTouchedRef.current) return;
+    form.setValue("pricesIncludeTax", headerPricesIncludeTaxDefault.pricesIncludeTax, {
+      shouldDirty: false,
+    });
+  }, [headerPricesIncludeTaxDefault.pricesIncludeTax, isEditing, form]);
 
   const handleVariantMeta = useCallback((index: number, fieldId: string, meta: VariantMeta | null) => {
     setSerialTrackedMap((prev) => ({ ...prev, [index]: meta?.serialTracked ?? false }));
     setVariantUnitMap((prev) => ({ ...prev, [index]: meta?.unitId }));
     setStockTaxTypeIdMap((prev) => ({ ...prev, [fieldId]: meta?.stockTaxTypeId ?? null }));
+    setStockPurchaseTaxInclusiveMap((prev) => ({ ...prev, [fieldId]: meta?.stockPurchaseTaxInclusive }));
     if (!meta?.serialTracked) {
       setSerialInputs((prev) => {
         const next = { ...prev };
@@ -543,13 +596,22 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                         <FormDescription>
                           {isEditing
                             ? "Set when this intake was created — the server keeps the original value on update, so this can't be changed here."
-                            : "Turn this on when the unit costs you are entering are the tax-inclusive amounts from the supplier's invoice or delivery note."}
+                            : "Turn this on when the unit costs you are entering are the tax-inclusive amounts from the supplier's invoice or delivery note. Defaults from the items below — override if this delivery differs."}
                         </FormDescription>
+                        {!isEditing && headerPricesIncludeTaxDefault.mixed && (
+                          <p className="text-[11px] text-amber-600">
+                            The items below don&apos;t agree on whether prices normally include tax —
+                            defaulted to off. Check each line before saving.
+                          </p>
+                        )}
                       </div>
                       <FormControl>
                         <Switch
                           checked={field.value}
-                          onCheckedChange={field.onChange}
+                          onCheckedChange={(v) => {
+                            pricesIncludeTaxTouchedRef.current = true;
+                            field.onChange(v);
+                          }}
                           disabled={isPending || isEditing}
                         />
                       </FormControl>
@@ -641,6 +703,11 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                                 return next;
                               });
                               setStockTaxTypeIdMap((prev) => {
+                                const next = { ...prev };
+                                delete next[field.id];
+                                return next;
+                              });
+                              setStockPurchaseTaxInclusiveMap((prev) => {
                                 const next = { ...prev };
                                 delete next[field.id];
                                 return next;

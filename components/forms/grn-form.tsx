@@ -85,6 +85,7 @@ import {
   computePurchaseTaxPreview,
   findBusinessDefaultTaxTypeId,
   resolveEffectiveTaxTypeId,
+  resolveHeaderPricesIncludeTaxDefault,
 } from "@/lib/purchase-tax";
 
 type FormValues = z.infer<typeof CreateGrnSchema>;
@@ -102,6 +103,8 @@ interface ItemMeta {
   unitId?: string;
   /** The stock item's own default purchase tax type, if any — see `VariantMeta.stockTaxTypeId`. */
   stockTaxTypeId?: string | null;
+  /** The stock item's own `purchaseTaxInclusive` default — see `VariantMeta.stockPurchaseTaxInclusive`. */
+  stockPurchaseTaxInclusive?: boolean;
 }
 
 interface GrnFormProps {
@@ -209,12 +212,47 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
             cost: Number(item?.unitCost || 0),
             taxTypeOverride: item?.taxTypeId,
             stockDefaultTaxTypeId: meta?.stockTaxTypeId,
+            stockPurchaseTaxInclusive: meta?.stockPurchaseTaxInclusive,
           };
         }),
         { pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes },
       ),
     [watchedItems, fields, itemMeta, pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes],
   );
+
+  // Whether the operator has manually flipped the header toggle — once they
+  // have, the auto-default effect below backs off and leaves their choice
+  // alone. Not state: flipping it shouldn't re-render anything by itself.
+  const pricesIncludeTaxTouchedRef = useRef(false);
+
+  // What the header toggle should default to, given the stock items
+  // currently on the document — see resolveHeaderPricesIncludeTaxDefault
+  // (Fix 1, 2026-08 fix wave). Only lines with a resolved stock item count;
+  // a blank row or one still awaiting its catalogue fetch is ignored.
+  const headerPricesIncludeTaxDefault = useMemo(
+    () =>
+      resolveHeaderPricesIncludeTaxDefault(
+        (watchedItems ?? []).map((item, i) => {
+          if (!item?.stockVariantId) return undefined;
+          const fieldId = fields[i]?.id;
+          return fieldId ? itemMeta[fieldId]?.stockPurchaseTaxInclusive : undefined;
+        }),
+      ),
+    [watchedItems, fields, itemMeta],
+  );
+
+  // Keep the header toggle in sync with the item defaults as lines are
+  // added, removed, or their stock variant changes — so an untouched
+  // toggle reflects what the server will actually derive (Fix 1). Backs off
+  // once the operator has touched the switch themselves, and while an LPO
+  // is linked (that case has its own, stronger forcing effect below).
+  useEffect(() => {
+    if (linkedLpo) return;
+    if (pricesIncludeTaxTouchedRef.current) return;
+    form.setValue("pricesIncludeTax", headerPricesIncludeTaxDefault.pricesIncludeTax, {
+      shouldDirty: false,
+    });
+  }, [headerPricesIncludeTaxDefault.pricesIncludeTax, linkedLpo, form]);
 
   const handleVariantChange = useCallback(
     (fieldId: string, index: number, variantId: string) => {
@@ -248,6 +286,7 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
             serialTracked: meta.serialTracked,
             unitId: meta.unitId,
             stockTaxTypeId: meta.stockTaxTypeId ?? null,
+            stockPurchaseTaxInclusive: meta.stockPurchaseTaxInclusive,
           },
         };
       });
@@ -305,18 +344,18 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
   const unlinkLpo = useCallback(() => {
     setLinkedLpo(null);
     form.setValue("lpoId", "", { shouldDirty: true });
-    // Revert to the schema default (false) rather than restoring whatever
-    // the operator had set before linking — this form has no state that
-    // captures that prior value (applyLpo overwrites the field directly,
-    // nothing snapshots it first), and adding tracking just to restore one
-    // toggle isn't worth the extra state machinery. Once unlinked, the unit
-    // costs are whatever the operator now types by hand, and false ("not
-    // inclusive") is the same safe, explicit starting point a fresh GRN
-    // gets. Set directly here rather than relying on the forcing effect
-    // below — that effect's guard (`if (!linkedLpo) return`) means it never
-    // runs on unlink, so without this the field would keep whatever value
-    // was last forced while linked.
+    // Set an immediate safe interim value directly — the LPO-forcing effect
+    // below never runs on unlink (its guard is `if (!linkedLpo) return`), so
+    // without this the field would keep whatever value was last forced
+    // while linked. The header-default effect above then takes over on the
+    // next render (its `linkedLpo` dependency just flipped to null) and
+    // corrects this to whatever the now-unlinked lines' own stock items
+    // imply — the LPO's items already carry their own tax metadata by this
+    // point, so this is a brief interim, not the final value.
     form.setValue("pricesIncludeTax", false, { shouldDirty: false });
+    // Also let the operator's next line change re-derive the default rather
+    // than being stuck on a stale manual override from before the link.
+    pricesIncludeTaxTouchedRef.current = false;
   }, [form]);
 
   // GrnService derives `pricesIncludeTax` from the linked LPO's own
@@ -540,13 +579,22 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                     <FormDescription>
                       {linkedLpo
                         ? "Set by the linked LPO — its unit costs are already tax-normalised, so this can't be changed here. Unlink the LPO to set it yourself."
-                        : "Turn this on when the unit costs you are entering are the tax-inclusive amounts from the supplier's invoice."}
+                        : "Turn this on when the unit costs you are entering are the tax-inclusive amounts from the supplier's invoice. Defaults from the items below — override if this delivery differs."}
                     </FormDescription>
+                    {!linkedLpo && headerPricesIncludeTaxDefault.mixed && (
+                      <p className="text-[11px] text-amber-600">
+                        The items below don&apos;t agree on whether prices normally include tax —
+                        defaulted to off. Check each line before saving.
+                      </p>
+                    )}
                   </div>
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onCheckedChange={(v) => {
+                        pricesIncludeTaxTouchedRef.current = true;
+                        field.onChange(v);
+                      }}
                       disabled={isPending || !!linkedLpo}
                     />
                   </FormControl>

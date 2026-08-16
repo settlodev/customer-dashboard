@@ -8,6 +8,18 @@ let cachedStatus: boolean | null = null;
 let inFlight: Promise<boolean> | null = null;
 
 /**
+ * Clear the module-level cache so the next `useVatRegistrationStatus()` call
+ * (in any mounted form, or a fresh mount) re-fetches instead of reusing a
+ * stale answer. There is no other invalidation path — call this after any
+ * write that could change `vatRegistrationMode` or `vatRegistrationNumber`
+ * (business settings save), or every open purchase form keeps previewing
+ * tax under the old registration status until a full page reload.
+ */
+export function invalidateVatRegistrationStatusCache(): void {
+  cachedStatus = null;
+}
+
+/**
  * Client hook resolving whether the active business is VAT-registered, for
  * deciding how a purchase document previews tax **before it is saved**:
  * added on top of cost (registered, reclaimable) vs already inside cost

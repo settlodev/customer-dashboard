@@ -56,7 +56,7 @@ export const formatMoney = (
 ): string => {
   if (amount == null || Number.isNaN(amount)) return '—';
   const code = (currency || 'TZS').toUpperCase();
-  const base = `${amount.toLocaleString()} ${code}`;
+  const base = `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${code}`;
 
   const originalCurrency = original?.currency ? original.currency.toUpperCase() : null;
   const hasOriginal =

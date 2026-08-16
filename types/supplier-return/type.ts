@@ -61,6 +61,20 @@ export interface PublicSupplierReturnItem {
   unitCost: number | null;
   currency: string | null;
   reason: string | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /**
+   * Line tax credited, base currency. Recoverable (added on top) or
+   * memo-only (already inside `unitCost`) per `taxRecoverable`. Present on
+   * the wire — `PublicSupplierReturnResponse` (Settlo Inventory Service)
+   * reuses the same `SupplierReturnItemResponse` class as the authenticated
+   * endpoint — just not previously declared on this type.
+   */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` at document-write time — false means it is already folded into `unitCost`. */
+  taxRecoverable?: boolean;
 }
 
 export interface SupplierReturnItem {

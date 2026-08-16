@@ -34,6 +34,14 @@ export interface VariantMeta {
    * an explicit per-line override.
    */
   stockTaxTypeId?: string | null;
+  /**
+   * The parent stock item's `purchaseTaxInclusive` default — true when this
+   * supplier normally quotes the item tax-inclusive. Defaults to `false`
+   * server-side, so this is always a concrete boolean (never `null`).
+   * Purchase forms use this to default the document-level "prices include
+   * tax" toggle to what the line items imply (Fix 1, 2026-08 fix wave).
+   */
+  stockPurchaseTaxInclusive: boolean;
 }
 
 interface Props {
@@ -119,6 +127,7 @@ const StockVariantSelector: React.FC<Props> = ({
               serialTracked: variant.serialTracked ?? false,
               unitId: variant.unitId,
               stockTaxTypeId: stock.taxTypeId ?? null,
+              stockPurchaseTaxInclusive: stock.purchaseTaxInclusive ?? false,
               disabled: disabledValues.includes(variant.id),
               searchString: `${stock.name} ${variant.name} ${variant.sku || ""}`.toLowerCase(),
             })),
@@ -147,6 +156,7 @@ const StockVariantSelector: React.FC<Props> = ({
       serialTracked: boolean;
       unitId: string;
       stockTaxTypeId: string | null;
+      stockPurchaseTaxInclusive: boolean;
     }) => {
       const deselecting = option.id === value;
       onChange(deselecting ? "" : option.id);
@@ -159,6 +169,7 @@ const StockVariantSelector: React.FC<Props> = ({
               serialTracked: option.serialTracked,
               unitId: option.unitId,
               stockTaxTypeId: option.stockTaxTypeId,
+              stockPurchaseTaxInclusive: option.stockPurchaseTaxInclusive,
             },
       );
       setOpen(false);
@@ -186,6 +197,7 @@ const StockVariantSelector: React.FC<Props> = ({
       serialTracked: opt.serialTracked,
       unitId: opt.unitId,
       stockTaxTypeId: opt.stockTaxTypeId,
+      stockPurchaseTaxInclusive: opt.stockPurchaseTaxInclusive,
     });
   }, [value, allVariantOptions, onVariantMeta]);
 

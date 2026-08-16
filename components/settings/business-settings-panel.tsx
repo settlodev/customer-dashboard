@@ -30,6 +30,7 @@ import type {
   VatRegistrationMode,
 } from "@/types/business/type";
 import CurrencySelector from "@/components/widgets/currency-selector";
+import { invalidateVatRegistrationStatusCache } from "@/hooks/use-vat-registration-status";
 
 // AUTO derives registration from `vatRegistrationNumber` presence; the other
 // two are an explicit merchant override in either direction. Mirrors the
@@ -269,6 +270,10 @@ const BusinessSettingsPanel = ({
         toast({ title: "Settings updated", description: result.message });
         onSaved(result.data);
         setDirty({});
+        // This save may have changed vatRegistrationMode or
+        // vatRegistrationNumber — invalidate so the next purchase form to
+        // mount re-fetches instead of reusing a stale registration status.
+        invalidateVatRegistrationStatusCache();
       } else {
         toast({
           variant: "destructive",
@@ -391,14 +396,19 @@ const BusinessSettingsPanel = ({
           <TextField
             label="VAT registration number (VRN)"
             value={s.vatRegistrationNumber ?? ""}
-            onChange={(v) => setField("vatRegistrationNumber", v || null)}
+            // Send the raw string, not `v || null` — the server skips
+            // `null` fields on this PATCH-style update, so a coerced null
+            // would silently fail to clear an already-set VRN. An empty
+            // string is what actually clears it.
+            onChange={(v) => setField("vatRegistrationNumber", v)}
             placeholder="VRN"
             disabled={d}
           />
           <TextField
             label="Unique identification number (UIN)"
             value={s.uniqueIdentificationNumber ?? ""}
-            onChange={(v) => setField("uniqueIdentificationNumber", v || null)}
+            // Same reasoning as vatRegistrationNumber above.
+            onChange={(v) => setField("uniqueIdentificationNumber", v)}
             placeholder="UIN"
             disabled={d}
           />

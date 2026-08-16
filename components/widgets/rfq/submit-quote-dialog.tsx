@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Quote } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -43,6 +43,7 @@ import {
   computePurchaseTaxPreview,
   findBusinessDefaultTaxTypeId,
   resolveEffectiveTaxTypeId,
+  resolveHeaderPricesIncludeTaxDefault,
 } from "@/lib/purchase-tax";
 
 type FormValues = z.infer<typeof SubmitQuoteSchema>;
@@ -73,6 +74,12 @@ export function SubmitQuoteDialog({ rfq }: Props) {
   const [stockTaxTypeByVariant, setStockTaxTypeByVariant] = useState<
     Record<string, string | null>
   >({});
+  // The stock item's own `purchaseTaxInclusive` default per rfqItem, keyed
+  // the same way and for the same reason — feeds the header toggle's
+  // auto-default (Fix 1, 2026-08 fix wave), not just the preview.
+  const [stockPurchaseTaxInclusiveByVariant, setStockPurchaseTaxInclusiveByVariant] = useState<
+    Record<string, boolean>
+  >({});
 
   useEffect(() => {
     getCachedTaxTypes()
@@ -93,14 +100,20 @@ export function SubmitQuoteDialog({ rfq }: Props) {
     getCachedStocks()
       .then((stocks) => {
         const map: Record<string, string | null> = {};
+        const inclusiveMap: Record<string, boolean> = {};
         (stocks ?? []).forEach((stock) => {
           (stock.variants ?? []).forEach((variant) => {
             map[variant.id] = stock.taxTypeId ?? null;
+            inclusiveMap[variant.id] = stock.purchaseTaxInclusive ?? false;
           });
         });
         setStockTaxTypeByVariant(map);
+        setStockPurchaseTaxInclusiveByVariant(inclusiveMap);
       })
-      .catch(() => setStockTaxTypeByVariant({}));
+      .catch(() => {
+        setStockTaxTypeByVariant({});
+        setStockPurchaseTaxInclusiveByVariant({});
+      });
   }, []);
 
   const taxTypeMap = useMemo(
@@ -157,6 +170,8 @@ export function SubmitQuoteDialog({ rfq }: Props) {
           taxTypeOverride: item?.taxTypeId,
           stockDefaultTaxTypeId:
             stockTaxTypeByVariant[rfq.items[i]?.stockVariantId ?? ""],
+          stockPurchaseTaxInclusive:
+            stockPurchaseTaxInclusiveByVariant[rfq.items[i]?.stockVariantId ?? ""],
         })),
         { pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes },
       ),
@@ -164,12 +179,39 @@ export function SubmitQuoteDialog({ rfq }: Props) {
       watchedItems,
       rfq.items,
       stockTaxTypeByVariant,
+      stockPurchaseTaxInclusiveByVariant,
       pricesIncludeTax,
       vatRegistered,
       businessDefaultTaxTypeId,
       taxTypes,
     ],
   );
+
+  // Whether the operator has manually flipped the header toggle — once they
+  // have, the auto-default effect below backs off and leaves their choice
+  // alone. Reset whenever the dialog resets after a successful submit, so
+  // reopening it for another supplier starts fresh.
+  const pricesIncludeTaxTouchedRef = useRef(false);
+
+  // What the header toggle should default to, given the RFQ's own items —
+  // unlike the other four purchase forms this dialog's line set is fixed
+  // (one row per rfq.items, no add/remove/variant-change), so this settles
+  // once the catalogue fetch above resolves. See
+  // resolveHeaderPricesIncludeTaxDefault (Fix 1, 2026-08 fix wave).
+  const headerPricesIncludeTaxDefault = useMemo(
+    () =>
+      resolveHeaderPricesIncludeTaxDefault(
+        rfq.items.map((item) => stockPurchaseTaxInclusiveByVariant[item.stockVariantId]),
+      ),
+    [rfq.items, stockPurchaseTaxInclusiveByVariant],
+  );
+
+  useEffect(() => {
+    if (pricesIncludeTaxTouchedRef.current) return;
+    form.setValue("pricesIncludeTax", headerPricesIncludeTaxDefault.pricesIncludeTax, {
+      shouldDirty: false,
+    });
+  }, [headerPricesIncludeTaxDefault.pricesIncludeTax, form]);
 
   const onSubmit = (values: FormValues) => {
     startTransition(() => {
@@ -184,6 +226,7 @@ export function SubmitQuoteDialog({ rfq }: Props) {
         }
         toast({ title: "Quote submitted", description: res.message });
         form.reset({ ...form.formState.defaultValues, items: defaultItems } as FormValues);
+        pricesIncludeTaxTouchedRef.current = false;
         setOpen(false);
         router.refresh();
       });
@@ -322,13 +365,23 @@ export function SubmitQuoteDialog({ rfq }: Props) {
                     <FormDescription>
                       Turn this on when the unit prices you&apos;re entering
                       are the tax-inclusive amounts from the supplier&apos;s
-                      quote.
+                      quote. Defaults from the items below — override if
+                      this quote differs.
                     </FormDescription>
+                    {headerPricesIncludeTaxDefault.mixed && (
+                      <p className="text-[11px] text-amber-600">
+                        The items below don&apos;t agree on whether prices normally include tax —
+                        defaulted to off. Check each line before saving.
+                      </p>
+                    )}
                   </div>
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onCheckedChange={(v) => {
+                        pricesIncludeTaxTouchedRef.current = true;
+                        field.onChange(v);
+                      }}
                       disabled={isPending}
                     />
                   </FormControl>

@@ -76,6 +76,27 @@ export default async function SupplierReturnDetailPage({
       item.originalCurrency && item.originalCurrency !== (item.currency || currency),
   );
 
+  // Server-authoritative tax breakdown, same approach as the GRN detail
+  // page. `supplierReturn.netAmount`/`totalAmount` are trusted as-is;
+  // `totalRefund` above is kept only as a defensive fallback for a payload
+  // that predates these fields. Deliberately NOT reading
+  // `supplierReturn.taxAmount` for display: it sums recoverable lines only,
+  // so it is always 0 for a non-VAT-registered business — the per-line sum
+  // below is the full tax regardless of recoverability, which is what the
+  // memo figure needs.
+  const netAmount = supplierReturn.netAmount ?? totalRefund;
+  const totalAmount = supplierReturn.totalAmount ?? netAmount;
+  const lineTaxTotal = supplierReturn.items.reduce(
+    (sum, item) => sum + Number(item.taxAmount || 0),
+    0,
+  );
+  // Recoverable is uniform across a document (it's the business's VAT
+  // status at write time, not a per-line choice) — any line answers for all.
+  const taxRecoverable = supplierReturn.items.some(
+    (item) => item.taxRecoverable === true,
+  );
+  const subtotal = taxRecoverable ? netAmount : totalAmount;
+
   return (
     <PageShell>
       <PageBreadcrumbs
@@ -229,6 +250,23 @@ export default async function SupplierReturnDetailPage({
                   })}
                 </tbody>
               </table>
+            </div>
+
+            <div className="mt-4 pt-4 border-t flex flex-col items-end gap-1 text-sm">
+              <div className="flex justify-between w-64">
+                <span className="text-muted-foreground">Subtotal</span>
+                <Money amount={subtotal} currency={currency} />
+              </div>
+              <div className="flex justify-between w-64">
+                <span className="text-muted-foreground">
+                  {taxRecoverable ? "Tax credited" : "Tax credited (included in cost)"}
+                </span>
+                <Money amount={lineTaxTotal} currency={currency} />
+              </div>
+              <div className="flex justify-between w-64 font-semibold border-t pt-1">
+                <span>Total</span>
+                <Money amount={totalAmount} currency={currency} />
+              </div>
             </div>
           </CardContent>
         </Card>

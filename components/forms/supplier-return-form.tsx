@@ -71,6 +71,7 @@ import {
   computePurchaseTaxPreview,
   findBusinessDefaultTaxTypeId,
   resolveEffectiveTaxTypeId,
+  resolveHeaderPricesIncludeTaxDefault,
 } from "@/lib/purchase-tax";
 
 import styles from "./styles/form-shell.module.css";
@@ -81,6 +82,8 @@ interface ItemMeta {
   displayName?: string;
   /** The stock item's own default purchase tax type, if any. */
   stockTaxTypeId?: string | null;
+  /** The stock item's own `purchaseTaxInclusive` default. */
+  stockPurchaseTaxInclusive?: boolean;
 }
 
 export default function SupplierReturnForm() {
@@ -170,12 +173,45 @@ export default function SupplierReturnForm() {
             cost: Number(item?.unitCost || 0),
             taxTypeOverride: item?.taxTypeId,
             stockDefaultTaxTypeId: meta?.stockTaxTypeId,
+            stockPurchaseTaxInclusive: meta?.stockPurchaseTaxInclusive,
           };
         }),
         { pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes },
       ),
     [watchedItems, fields, itemMeta, pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes],
   );
+
+  // Whether the operator has manually flipped the header toggle — once they
+  // have, the auto-default effect below backs off and leaves their choice
+  // alone.
+  const pricesIncludeTaxTouchedRef = useRef(false);
+
+  // What the header toggle should default to, given the stock items
+  // currently on the return — see resolveHeaderPricesIncludeTaxDefault
+  // (Fix 1, 2026-08 fix wave). Only lines with a resolved stock item count;
+  // a blank row or one still awaiting its catalogue fetch is ignored.
+  const headerPricesIncludeTaxDefault = useMemo(
+    () =>
+      resolveHeaderPricesIncludeTaxDefault(
+        watchedItems.map((item, i) => {
+          if (!item?.stockVariantId) return undefined;
+          const fieldId = fields[i]?.id;
+          return fieldId ? itemMeta[fieldId]?.stockPurchaseTaxInclusive : undefined;
+        }),
+      ),
+    [watchedItems, fields, itemMeta],
+  );
+
+  // Keep the header toggle in sync with the item defaults as lines are
+  // added, removed, or their stock variant changes (including when a GRN
+  // link pre-fills them) — so an untouched toggle reflects what the server
+  // will actually derive (Fix 1).
+  useEffect(() => {
+    if (pricesIncludeTaxTouchedRef.current) return;
+    form.setValue("pricesIncludeTax", headerPricesIncludeTaxDefault.pricesIncludeTax, {
+      shouldDirty: false,
+    });
+  }, [headerPricesIncludeTaxDefault.pricesIncludeTax, form]);
 
   const handleVariantMeta = useCallback(
     (fieldId: string, meta: VariantMeta | null) => {
@@ -190,6 +226,7 @@ export default function SupplierReturnForm() {
           [fieldId]: {
             displayName: meta.displayName,
             stockTaxTypeId: meta.stockTaxTypeId ?? null,
+            stockPurchaseTaxInclusive: meta.stockPurchaseTaxInclusive,
           },
         };
       });
@@ -390,6 +427,7 @@ export default function SupplierReturnForm() {
                               setItemMeta({});
                               setAllowedStockVariantIds(undefined);
                               setMaxQuantityByVariant({});
+                              pricesIncludeTaxTouchedRef.current = false;
                             }
                           }}
                           onBlur={field.onBlur}
@@ -421,13 +459,23 @@ export default function SupplierReturnForm() {
                       <FormDescription>
                         Turn this on when the unit costs you are entering are
                         tax-inclusive amounts, matching how the original
-                        purchase was priced.
+                        purchase was priced. Defaults from the items below —
+                        override if this credit differs.
                       </FormDescription>
+                      {headerPricesIncludeTaxDefault.mixed && (
+                        <p className="text-[11px] text-amber-600">
+                          The items below don&apos;t agree on whether prices normally include tax —
+                          defaulted to off. Check each line before saving.
+                        </p>
+                      )}
                     </div>
                     <FormControl>
                       <Switch
                         checked={field.value}
-                        onCheckedChange={field.onChange}
+                        onCheckedChange={(v) => {
+                          pricesIncludeTaxTouchedRef.current = true;
+                          field.onChange(v);
+                        }}
                         disabled={isPending}
                       />
                     </FormControl>
