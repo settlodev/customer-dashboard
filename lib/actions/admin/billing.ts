@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 
 import ApiClient from "@/lib/settlo-api-client";
@@ -588,6 +588,14 @@ export async function attachProspectInvoice(
 
 function revalidateCatalog(kind: "packages" | "addons") {
   revalidatePath(`/${kind}`);
+  // Only "packages" is backed by the Next Data Cache (getPackages in
+  // billing-actions.ts, tag "billing-catalog"). Addons aren't cached there
+  // (getAddons still goes through ApiClient, which reads cookies() and so
+  // can't be wrapped in unstable_cache — see task-9-report.md), so tagging
+  // that branch would invalidate a cache entry that doesn't exist.
+  if (kind === "packages") {
+    revalidateTag("billing-catalog");
+  }
 }
 
 export async function listPackages(
