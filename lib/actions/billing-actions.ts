@@ -49,6 +49,10 @@ const _getPackagesCached = unstable_cache(
     const params = entityType ? `?entityType=${entityType}` : "";
     const res = await fetch(billingUrl(`/api/v1/packages${params}`), {
       headers: { Accept: "application/json" },
+      // Plain fetch bypasses ApiClient's 30s API_TIMEOUT_MS, so a hung billing
+      // service could otherwise stall a landing-page/signup render indefinitely.
+      // getPackages() below still degrades to [] on any failure, including this.
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
       throw new Error(`Failed to fetch packages: ${res.status}`);

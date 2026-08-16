@@ -35,10 +35,14 @@ export const dynamic = "force-dynamic";
  * destination's own subscription is locked and it redirected here. Tells the owner why they
  * landed on this page rather than the one they asked for — without it the redirect reads as
  * the app losing their click. `lockReason` further distinguishes "this entity's subscription
- * actually lapsed" from "billing was unreachable and we couldn't get a trustworthy answer"
- * (see (protected)/layout.tsx) — telling a paid-up customer their subscription lapsed during
- * a billing outage is the wrong message. Reused in both the normal render and the
- * billing-unreachable empty state below, since a redirect can land on either.
+ * actually lapsed" from every other case (see (protected)/layout.tsx) — telling a paid-up
+ * customer their subscription lapsed when we merely couldn't confirm it (billing outage, or
+ * some future third `reason` this branch has never seen) is the wrong message. The branching
+ * below is deliberately positive on "lapsed" — only that exact value gets the accusatory
+ * copy — rather than positive on today's other known value ("no-entitlement-data"), so an
+ * unrecognized future reason falls into the neutral copy instead of silently reading as
+ * "you didn't pay". Reused across all three `getBillingOverview()` outcomes (see the three
+ * branches below), since a redirect can land on any of them.
  */
 function LockBanner({
   lockedEntity,
@@ -50,20 +54,7 @@ function LockBanner({
   return (
     <div className="flex items-start gap-3 rounded-xl border border-warn/30 bg-warn-tint px-4 py-3.5">
       <Lock className="mt-0.5 h-4 w-4 flex-none text-warn" />
-      {lockReason === "no-entitlement-data" ? (
-        <div>
-          <p className="text-[13.5px] font-semibold text-ink">
-            We couldn&apos;t reach the billing service
-          </p>
-          <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">
-            Access to this {lockedEntity} is restricted until we can confirm
-            your subscription — this isn&apos;t a lapsed payment, just a
-            temporary connection issue. Please try again shortly, or switch
-            to another destination and come back to this whenever
-            you&apos;re ready.
-          </p>
-        </div>
-      ) : (
+      {lockReason === "lapsed" ? (
         <div>
           <p className="text-[13.5px] font-semibold text-ink">
             This {lockedEntity}&apos;s subscription has lapsed
@@ -72,6 +63,17 @@ function LockBanner({
             It stays locked until it&apos;s paid for. Settle it below to restore
             access — or switch to another destination and come back to this
             whenever you&apos;re ready.
+          </p>
+        </div>
+      ) : (
+        <div>
+          <p className="text-[13.5px] font-semibold text-ink">
+            Access to this {lockedEntity} is restricted
+          </p>
+          <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">
+            Please try again shortly, or contact support if this continues —
+            or switch to another destination and come back to this whenever
+            you&apos;re ready.
           </p>
         </div>
       )}
@@ -95,6 +97,9 @@ export default async function BillingPage({
         <PageBreadcrumbs items={[{ title: "Billing" }]} />
         <PageHeader title="Billing" subtitle="Manage your subscription, invoices, and credits." />
         <PageBody>
+          {lockedEntity && (
+            <LockBanner lockedEntity={lockedEntity} lockReason={lockReason} />
+          )}
           <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-line bg-card py-16 text-center">
             <div className="grid h-12 w-12 place-items-center rounded-full bg-canvas">
               <AlertCircle className="h-5 w-5 text-muted-foreground" />

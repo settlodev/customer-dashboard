@@ -3,6 +3,7 @@
 import ApiClient from "@/lib/settlo-api-client";
 import { SettloApiError } from "@/lib/settlo-api-error-handler";
 import { parseStringify } from "@/lib/utils";
+import { getCurrentSubscription } from "@/lib/actions/billing-actions";
 import type { EntitlementResponse } from "@/lib/actions/entitlement-actions";
 import type {
   Addon,
@@ -68,6 +69,27 @@ export async function getBillingOverview(): Promise<BillingOverviewResult> {
     // "could not confirm" rather than guessed at — that's the safe direction, since it never
     // accuses a paying customer of not having paid.
     if (error instanceof SettloApiError && error.status === 404) {
+      // A 404 here is ambiguous: it's what the overview endpoint returns for "this
+      // business genuinely has no subscription", but it's ALSO what Spring returns for
+      // any unmapped path — and GET /api/v1/billing/overview exists only on billing's
+      // `alpha` branch, not on `beta`/`main`. A dashboard deployed ahead of billing would
+      // otherwise misread "endpoint doesn't exist yet" as "no subscription" for every
+      // paying customer. This follow-up call fires ONLY on that 404 path (never on the
+      // happy path, so it costs nothing normally) and exists purely to make deploy order
+      // advisory rather than load-bearing: it hits /api/v1/subscriptions/current, which
+      // has existed on every billing version, to disambiguate.
+      //
+      // getCurrentSubscription() returns null on ANY failure (including a genuine 404 for
+      // "no subscription" AND a billing outage) — so null alone cannot distinguish those
+      // two cases from each other. That's fine here: both are safe to route to
+      // "unreachable", which never accuses a paying customer of not having paid. Only a
+      // NON-NULL result is proof — it means the subscription endpoint answered
+      // successfully, which means billing is up and reachable, which means the overview
+      // 404 must have been "path not found" rather than "no subscription".
+      const fallbackSubscription = await getCurrentSubscription();
+      if (fallbackSubscription) {
+        return { status: "unreachable" };
+      }
       return { status: "no-subscription" };
     }
     return { status: "unreachable" };
