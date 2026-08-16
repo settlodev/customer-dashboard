@@ -380,6 +380,50 @@ const BusinessSettingsPanel = ({
           />
         </div>
 
+        {/* Tax registration identifiers — always visible. VAT registration
+            governs purchase-tax reclaim, which has nothing to do with the
+            Virtual EFD fiscal-device toggle below; gating it behind that
+            toggle made purchase tax permanently unreachable for any
+            merchant who never turns EFD on. Grouped here with
+            taxIdentificationNumber (in the grid above) so the tax
+            identifiers — TIN, VRN, UIN — read as one set. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <TextField
+            label="VAT registration number (VRN)"
+            value={s.vatRegistrationNumber ?? ""}
+            onChange={(v) => setField("vatRegistrationNumber", v || null)}
+            placeholder="VRN"
+            disabled={d}
+          />
+          <TextField
+            label="Unique identification number (UIN)"
+            value={s.uniqueIdentificationNumber ?? ""}
+            onChange={(v) => setField("uniqueIdentificationNumber", v || null)}
+            placeholder="UIN"
+            disabled={d}
+          />
+        </div>
+
+        {/* VAT registration status — decides whether tax on purchases is
+            reclaimable (recorded separately) or costed (folded into stock
+            cost). AUTO derives from the VRN above; the other two options
+            let a merchant override that inference explicitly. */}
+        <div className="max-w-sm space-y-1.5">
+          <SelectField
+            label="VAT registration status"
+            value={s.vatRegistrationMode ?? "AUTO"}
+            onChange={(v) => setField("vatRegistrationMode", v)}
+            options={VAT_REGISTRATION_MODE_OPTIONS}
+            disabled={d}
+            placeholder="Automatic"
+          />
+          <p className="text-sm text-muted-foreground">
+            {s.effectivelyVatRegistered
+              ? "Tax on purchases is recorded separately and can be reclaimed."
+              : "Tax on purchases is included in the cost of your stock."}
+          </p>
+        </div>
+
         <div className="space-y-0.5 pt-2">
           <SwitchRow
             label="Enable Virtual EFD"
@@ -392,7 +436,7 @@ const BusinessSettingsPanel = ({
 
         {enableVirtualEfd && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="max-w-sm">
               <TextField
                 label="EFD serial number"
                 value={s.efdSerialNumber ?? ""}
@@ -400,40 +444,6 @@ const BusinessSettingsPanel = ({
                 placeholder="EFD serial"
                 disabled={d}
               />
-              <TextField
-                label="VAT registration number (VRN)"
-                value={s.vatRegistrationNumber ?? ""}
-                onChange={(v) => setField("vatRegistrationNumber", v || null)}
-                placeholder="VRN"
-                disabled={d}
-              />
-              <TextField
-                label="Unique identification number (UIN)"
-                value={s.uniqueIdentificationNumber ?? ""}
-                onChange={(v) => setField("uniqueIdentificationNumber", v || null)}
-                placeholder="UIN"
-                disabled={d}
-              />
-            </div>
-
-            {/* VAT registration status — decides whether tax on purchases is
-                reclaimable (recorded separately) or costed (folded into
-                stock cost). AUTO derives from the VRN above; the other two
-                options let a merchant override that inference explicitly. */}
-            <div className="max-w-sm space-y-1.5">
-              <SelectField
-                label="VAT registration status"
-                value={s.vatRegistrationMode ?? "AUTO"}
-                onChange={(v) => setField("vatRegistrationMode", v)}
-                options={VAT_REGISTRATION_MODE_OPTIONS}
-                disabled={d}
-                placeholder="Automatic"
-              />
-              <p className="text-sm text-muted-foreground">
-                {s.effectivelyVatRegistered
-                  ? "Tax on purchases is recorded separately and can be reclaimed."
-                  : "Tax on purchases is included in the cost of your stock."}
-              </p>
             </div>
 
             <div className="flex items-center gap-2">
