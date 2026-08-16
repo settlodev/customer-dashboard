@@ -62,6 +62,14 @@ export interface PublicGrn {
   deliveryPersonName: string | null;
   deliveryPersonPhone: string | null;
   deliveryPersonEmail: string | null;
+  /** Header override: the supplier's unit costs on this GRN are tax-inclusive. */
+  pricesIncludeTax?: boolean;
+  /** Sum of line net amounts, base currency. */
+  netAmount?: number;
+  /** Sum of recoverable line tax amounts, base currency — zero for a non-VAT-registered business. */
+  taxAmount?: number;
+  /** Gross — `netAmount + taxAmount`. Equals `netAmount` when there is no recoverable tax. */
+  totalAmount?: number;
   items: PublicGrnItem[];
   letterhead: import("@/types/letterhead/type").LocationLetterhead | null;
 }
@@ -76,6 +84,14 @@ export interface PublicGrnItem {
   batchNumber: string | null;
   expiryDate: string | null;
   inspectionStatus: InspectionStatus | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /** Line tax, base currency. Recoverable (added on top) or memo-only (already inside `unitCost`) per `taxRecoverable`. */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` at document-write time — false means it is already folded into `unitCost`. */
+  taxRecoverable?: boolean;
 }
 
 export interface GrnItem {

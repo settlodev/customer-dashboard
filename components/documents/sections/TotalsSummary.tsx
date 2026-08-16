@@ -22,7 +22,7 @@ export function TotalsSummary({ totals, currency }: TotalsSummaryProps) {
         {totals.taxes?.map((tax, idx) => (
           <Row
             key={idx}
-            label={`${tax.label} ${tax.rate}%:`}
+            label={tax.rate != null ? `${tax.label} ${tax.rate}%:` : `${tax.label}:`}
             value={formatCurrency(tax.amount, currency)}
           />
         ))}

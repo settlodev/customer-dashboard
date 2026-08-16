@@ -104,6 +104,14 @@ export interface PublicLpoItem {
   unitCost: number;
   currency: string | null;
   lineTotal: number | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /** Line tax, base currency. Recoverable (added on top) or memo-only (already inside `unitCost`) per `taxRecoverable`. */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` at document-write time — false means it is already folded into `unitCost`. */
+  taxRecoverable?: boolean;
 }
 
 export interface PublicLpo {
@@ -122,6 +130,13 @@ export interface PublicLpo {
   deliveryLocationName: string | null;
   notes: string | null;
   currency: string | null;
+  /** Header override: the supplier's unit costs on this LPO are tax-inclusive. */
+  pricesIncludeTax?: boolean;
+  /** Sum of line net amounts (`lineTotal`), base currency. */
+  netAmount?: number;
+  /** Sum of recoverable line tax amounts, base currency — zero for a non-VAT-registered business. */
+  taxAmount?: number;
+  /** Gross — `netAmount + taxAmount`. What the supplier is actually owed; equals `netAmount` when there is no recoverable tax. */
   totalAmount: number | null;
   /** How this LPO is settled — tells the supplier whether to expect direct payment or a Settlo-financed payout. */
   paymentMethod?: LpoPaymentMethod;

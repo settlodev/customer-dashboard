@@ -67,6 +67,12 @@ export interface GrnDocumentSource {
   deliveryPersonName: string | null;
   deliveryPersonPhone: string | null;
   deliveryPersonEmail: string | null;
+  /** Sum of line net amounts, base currency — server-authoritative net. */
+  netAmount?: number;
+  /** Sum of *recoverable* line tax, base currency — zero for a non-VAT-registered business. Not used for display; see `lineTaxTotal` below. */
+  taxAmount?: number;
+  /** Gross — `netAmount + taxAmount`. Equals `netAmount` when there is no recoverable tax. */
+  totalAmount?: number;
   items: Array<{
     variantName: string;
     receivedQuantity: number;
@@ -74,6 +80,11 @@ export interface GrnDocumentSource {
     batchNumber: string | null;
     expiryDate: string | null;
     inspectionStatus: InspectionStatus | null;
+    /** Full line tax regardless of recoverability — what the printed tax column/footer memo needs. */
+    taxAmount?: number;
+    taxRatePercent?: number;
+    /** Whether this business could reclaim this line's tax at document-write time. Uniform across a document. */
+    taxRecoverable?: boolean;
   }>;
 }
 
@@ -130,12 +141,31 @@ export function buildGrnDocument(
         .join("\n") || undefined,
     quantity: Number(item.receivedQuantity || 0),
     unitPrice: Number(item.unitCost || 0),
+    taxAmount: Number(item.taxAmount ?? 0),
+    taxRatePercent: item.taxRatePercent ?? undefined,
   }));
 
-  const subtotal = items.reduce(
+  const netAmountFallback = items.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
     0,
   );
+  // Server-authoritative net/gross, trusted as-is; the client sum above is
+  // kept only as a defensive fallback for a legacy payload predating these
+  // fields. Deliberately NOT reading `grn.taxAmount` for the footer memo —
+  // that field is filtered to recoverable lines only (see GrnDocumentSource
+  // above), so it is always 0 for a non-VAT-registered business. The
+  // per-line sum below is the full tax regardless of recoverability, which
+  // is what the "included in cost" memo figure actually needs.
+  const netAmount = grn.netAmount ?? netAmountFallback;
+  const totalAmount = grn.totalAmount ?? netAmount;
+  const lineTaxTotal = grn.items.reduce(
+    (sum, item) => sum + Number(item.taxAmount || 0),
+    0,
+  );
+  // Recoverable is uniform across a document (it's the business's VAT
+  // status at write time, not a per-line choice) — any line answers for all.
+  const taxRecoverable = grn.items.some((item) => item.taxRecoverable === true);
+  const subtotal = taxRecoverable ? netAmount : totalAmount;
 
   const data: BusinessDocumentData = {
     meta: {
@@ -150,8 +180,14 @@ export function buildGrnDocument(
     items,
     totals: {
       subtotal,
-      total: subtotal,
-      amountDue: subtotal,
+      taxes: [
+        {
+          label: taxRecoverable ? "Tax" : "Tax (included in cost)",
+          amount: lineTaxTotal,
+        },
+      ],
+      total: totalAmount,
+      amountDue: totalAmount,
     },
     currency,
     notes: grn.notes ?? undefined,

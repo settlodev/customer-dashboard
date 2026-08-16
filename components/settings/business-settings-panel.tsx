@@ -8,6 +8,13 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Loading from "@/components/ui/loading";
 import { Loader2Icon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -17,8 +24,21 @@ import {
   type UpdateBusinessSettingsRequest,
 } from "@/lib/actions/business-settings-actions";
 import type { Business } from "@/types/business/type";
-import type { BusinessSettings, EfdStatus } from "@/types/business/type";
+import type {
+  BusinessSettings,
+  EfdStatus,
+  VatRegistrationMode,
+} from "@/types/business/type";
 import CurrencySelector from "@/components/widgets/currency-selector";
+
+// AUTO derives registration from `vatRegistrationNumber` presence; the other
+// two are an explicit merchant override in either direction. Mirrors the
+// Accounts Service's `VatRegistrationMode` enum (see types/business/type.ts).
+const VAT_REGISTRATION_MODE_OPTIONS: { value: VatRegistrationMode; label: string }[] = [
+  { value: "AUTO", label: "Automatic (based on VAT number)" },
+  { value: "REGISTERED", label: "VAT registered" },
+  { value: "NOT_REGISTERED", label: "Not VAT registered" },
+];
 
 // ──────────────────────────────────────────────────────────────────────
 // Layout primitives — match SettingsSection / SettingsSwitchRow density
@@ -108,6 +128,41 @@ const TextField = ({
       min={min}
       max={max}
     />
+    {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+  </div>
+);
+
+const SelectField = <T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+  disabled,
+  placeholder,
+  hint,
+}: {
+  label: string;
+  value: T;
+  onChange: (val: T) => void;
+  options: { value: T; label: string }[];
+  disabled: boolean;
+  placeholder?: string;
+  hint?: string;
+}) => (
+  <div className="space-y-1">
+    <label className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</label>
+    <Select value={value} onValueChange={(v) => onChange(v as T)} disabled={disabled}>
+      <SelectTrigger>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((opt) => (
+          <SelectItem key={opt.value} value={opt.value}>
+            {opt.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
     {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
   </div>
 );
@@ -360,6 +415,27 @@ const BusinessSettingsPanel = ({
                 disabled={d}
               />
             </div>
+
+            {/* VAT registration status — decides whether tax on purchases is
+                reclaimable (recorded separately) or costed (folded into
+                stock cost). AUTO derives from the VRN above; the other two
+                options let a merchant override that inference explicitly. */}
+            <div className="max-w-sm space-y-1.5">
+              <SelectField
+                label="VAT registration status"
+                value={s.vatRegistrationMode ?? "AUTO"}
+                onChange={(v) => setField("vatRegistrationMode", v)}
+                options={VAT_REGISTRATION_MODE_OPTIONS}
+                disabled={d}
+                placeholder="Automatic"
+              />
+              <p className="text-sm text-muted-foreground">
+                {s.effectivelyVatRegistered
+                  ? "Tax on purchases is recorded separately and can be reclaimed."
+                  : "Tax on purchases is included in the cost of your stock."}
+              </p>
+            </div>
+
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium">EFD status:</span>
               <EfdStatusPill status={s.efdStatus} />

@@ -57,11 +57,24 @@ export interface LineItem {
    */
   amount?: number;
   unitOfMeasure?: string;
+  /**
+   * Per-line tax amount (e.g. purchase-tax GRN/LPO lines). When any item in
+   * the table sets this, {@link LineItemsTable} renders a Tax column for
+   * every row (0 rendered explicitly, not left blank, for lines with none).
+   */
+  taxAmount?: number;
+  /** Effective tax rate (%) for this line, shown as a small hint under the amount. */
+  taxRatePercent?: number;
 }
 
 export interface TaxLine {
   label: string;
-  rate: number;
+  /**
+   * Rate (%) shown as a "label rate%:" suffix. Omit for a lump-sum tax
+   * figure with no single meaningful rate (e.g. mixed-rate lines) — the
+   * label then renders on its own rather than a misleading "0%".
+   */
+  rate?: number;
   amount: number;
 }
 
