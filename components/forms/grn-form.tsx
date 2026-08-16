@@ -347,6 +347,18 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
   const unlinkLpo = useCallback(() => {
     setLinkedLpo(null);
     form.setValue("lpoId", "", { shouldDirty: true });
+    // Revert to the schema default (false) rather than restoring whatever
+    // the operator had set before linking — this form has no state that
+    // captures that prior value (applyLpo overwrites the field directly,
+    // nothing snapshots it first), and adding tracking just to restore one
+    // toggle isn't worth the extra state machinery. Once unlinked, the unit
+    // costs are whatever the operator now types by hand, and false ("not
+    // inclusive") is the same safe, explicit starting point a fresh GRN
+    // gets. Set directly here rather than relying on the forcing effect
+    // below — that effect's guard (`if (!linkedLpo) return`) means it never
+    // runs on unlink, so without this the field would keep whatever value
+    // was last forced while linked.
+    form.setValue("pricesIncludeTax", false, { shouldDirty: false });
   }, [form]);
 
   // GrnService derives `pricesIncludeTax` from the linked LPO's own
@@ -362,6 +374,11 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
   // reading the resolved LPO). Force the field — and lock the control — so
   // neither the preview nor the operator can diverge from what the server
   // will actually apply.
+  //
+  // Guarded on `linkedLpo` being set, so this can never re-apply the old
+  // forced value right after unlinkLpo's reset above: once `linkedLpo`
+  // becomes null, this effect still re-runs (it's a dependency), but the
+  // guard exits before touching the field.
   useEffect(() => {
     if (!linkedLpo) return;
     form.setValue("pricesIncludeTax", !vatRegistered, { shouldDirty: false });
