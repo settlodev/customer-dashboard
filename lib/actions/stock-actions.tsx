@@ -289,13 +289,15 @@ export async function updateStock(
       // On update, undefined means "leave alone" server-side, so clearing
       // the picker needs an explicit remove flag or the old category sticks.
       removeCategory: !validated.data.categoryId,
-      // KNOWN GAP: UpdateStockRequest.taxTypeId also treats null/omitted as
-      // "leave alone" (same convention as every field here), but — unlike
-      // categoryId — it has no removeTaxType companion flag. So this can
-      // SET a tax type but cannot yet CLEAR one the merchant already picked;
-      // the old value will stick after save+reload. Needs a backend
-      // removeTaxType flag (mirroring removeCategory) to fully close this.
+      // Same "undefined means leave alone" convention as every field here,
+      // and the same clear-needs-an-explicit-flag trap as categoryId above
+      // — taxTypeId now has a removeTaxType companion (mirroring
+      // removeCategory, backend Inventory 2ac3418) so an explicit clear
+      // reaches the backend instead of silently no-opping. removeTaxType
+      // takes precedence over taxTypeId when both are present, same as
+      // removeCategory/categoryId.
       taxTypeId: validated.data.taxTypeId || undefined,
+      removeTaxType: !validated.data.taxTypeId,
       purchaseTaxInclusive: validated.data.purchaseTaxInclusive,
       // Empty list clears the gallery on the backend; omit the field
       // entirely (undefined) to leave it untouched.
