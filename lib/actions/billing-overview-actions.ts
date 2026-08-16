@@ -3,7 +3,6 @@
 import ApiClient from "@/lib/settlo-api-client";
 import { SettloApiError } from "@/lib/settlo-api-error-handler";
 import { parseStringify } from "@/lib/utils";
-import { getCurrentSubscription } from "@/lib/actions/billing-actions";
 import type { EntitlementResponse } from "@/lib/actions/entitlement-actions";
 import type {
   Addon,
@@ -79,18 +78,34 @@ export async function getBillingOverview(): Promise<BillingOverviewResult> {
       // advisory rather than load-bearing: it hits /api/v1/subscriptions/current, which
       // has existed on every billing version, to disambiguate.
       //
-      // getCurrentSubscription() returns null on ANY failure (including a genuine 404 for
-      // "no subscription" AND a billing outage) — so null alone cannot distinguish those
-      // two cases from each other. That's fine here: both are safe to route to
-      // "unreachable", which never accuses a paying customer of not having paid. Only a
-      // NON-NULL result is proof — it means the subscription endpoint answered
-      // successfully, which means billing is up and reachable, which means the overview
-      // 404 must have been "path not found" rather than "no subscription".
-      const fallbackSubscription = await getCurrentSubscription();
-      if (fallbackSubscription) {
+      // Deliberately NOT routed through getCurrentSubscription() (lib/actions/billing-actions.ts):
+      // that helper swallows every failure — a genuine 404, a 5xx, a timeout, a network blip —
+      // into the same `null`, which would make "no subscription" and "billing had a blip during
+      // this exact rolling-deploy window" indistinguishable again, just one level down. Calling
+      // ApiClient directly here (same construction, same URL helper, same endpoint it uses) lets
+      // us see the actual failure mode instead of a laundered null.
+      try {
+        const apiClient = new ApiClient();
+        await apiClient.get<Subscription>(
+          `${BILLING_SERVICE_URL}/api/v1/subscriptions/current`,
+        );
+        // The call succeeded — billing answered without error — so the overview's own 404
+        // must have been "path not found", not "no subscription". Even a success with an
+        // empty/null body counts as proof of reachability only, not of "no subscription";
+        // only the explicit 404 below is allowed to assert that.
+        return { status: "unreachable" };
+      } catch (fallbackError) {
+        if (fallbackError instanceof SettloApiError && fallbackError.status === 404) {
+          // The disambiguation call ALSO 404s — this business genuinely has no subscription.
+          // Billing's getSubscriptionByBusinessId throws ResourceNotFoundException, which its
+          // GlobalExceptionHandler maps to 404, so this is a trustworthy signal.
+          return { status: "no-subscription" };
+        }
+        // Any other status, any non-SettloApiError throw — we still don't have a trustworthy
+        // answer. `unreachable` is the deliberate default: we must never assert non-payment
+        // (no subscription) that we cannot confirm.
         return { status: "unreachable" };
       }
-      return { status: "no-subscription" };
     }
     return { status: "unreachable" };
   }
