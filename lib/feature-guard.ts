@@ -116,29 +116,10 @@ async function resolveEntityItem(
   return ent.items.find((i) => i.entityId === id) ?? null;
 }
 
-// ── Per-request entitlement cache ───────────────────────────────────
-// Server actions run in a single request context. We cache the entitlement
-// response so multiple guards in the same action don't each call the
-// billing service.
-
-let cachedEntitlements: EntitlementResponse | null | undefined;
-let cacheRequestId: string | undefined;
-
-async function getEntitlementsOnce(): Promise<EntitlementResponse | null> {
-  // Simple request-scoped cache using a random ID per "batch"
-  // In Next.js server actions, the module state persists for the request
-  // but we need to invalidate between requests. We use a timestamp-based
-  // approach: cache is valid for 5 seconds (well within a single request).
-  const now = String(Math.floor(Date.now() / 5000));
-  if (cacheRequestId === now && cachedEntitlements !== undefined) {
-    return cachedEntitlements;
-  }
-  cacheRequestId = now;
-  cachedEntitlements = await getEntitlements();
-  return cachedEntitlements;
-}
-
 // ── Guard functions ─────────────────────────────────────────────────
+// getEntitlements() (lib/actions/entitlement-actions.tsx) is backed by React
+// cache() for per-request dedup plus a last-known-good snapshot store, so no
+// additional caching is needed here.
 
 /**
  * Assert that the current business subscription is active.
@@ -162,7 +143,7 @@ export async function assertActiveSubscription(): Promise<EntitlementResponse> {
     };
   }
 
-  const entitlements = await getEntitlementsOnce();
+  const entitlements = await getEntitlements();
   if (!entitlements || !entitlements.active) {
     throw new SubscriptionInactiveError(entitlements?.subscriptionStatus ?? null);
   }
@@ -232,7 +213,7 @@ export async function checkFeature(
   entityId?: string,
 ): Promise<boolean> {
   if (!BILLING_SERVICE_URL) return true;
-  const entitlements = await getEntitlementsOnce();
+  const entitlements = await getEntitlements();
   if (!entitlements || !entitlements.active) return false;
   const item = await resolveEntityItem(entitlements, entityId);
   return item !== null
@@ -252,7 +233,7 @@ export async function checkLimit(
   entityId?: string,
 ): Promise<boolean> {
   if (!BILLING_SERVICE_URL) return true;
-  const entitlements = await getEntitlementsOnce();
+  const entitlements = await getEntitlements();
   if (!entitlements || !entitlements.active) return false;
   const item = await resolveEntityItem(entitlements, entityId);
   const limit =
