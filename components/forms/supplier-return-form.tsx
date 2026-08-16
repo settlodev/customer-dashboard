@@ -739,7 +739,7 @@ export default function SupplierReturnForm() {
                     <span>{formatMoney(totals.totalAmount, locationCurrency)}</span>
                   </div>
                   <p className="w-64 text-[11px] text-muted-foreground text-right">
-                    Estimated from the tax rates below — the server confirms
+                    Estimated from the tax rates above — the server confirms
                     the exact figures on save.
                   </p>
                 </div>
