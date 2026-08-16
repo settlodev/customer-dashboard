@@ -27,6 +27,13 @@ export interface VariantMeta {
   serialTracked: boolean;
   /** The variant's tracking unit — anchor for compatible-unit lookups. */
   unitId: string;
+  /**
+   * The parent stock item's default purchase tax type (`Stock.taxTypeId`).
+   * `null` when the item has none configured. Purchase forms use this to
+   * resolve/preview a line's effective tax type before the operator picks
+   * an explicit per-line override.
+   */
+  stockTaxTypeId?: string | null;
 }
 
 interface Props {
@@ -111,6 +118,7 @@ const StockVariantSelector: React.FC<Props> = ({
               displayName: variant.displayName || `${stock.name} - ${variant.name}`,
               serialTracked: variant.serialTracked ?? false,
               unitId: variant.unitId,
+              stockTaxTypeId: stock.taxTypeId ?? null,
               disabled: disabledValues.includes(variant.id),
               searchString: `${stock.name} ${variant.name} ${variant.sku || ""}`.toLowerCase(),
             })),
@@ -133,7 +141,13 @@ const StockVariantSelector: React.FC<Props> = ({
   }, [allVariantOptions, value]);
 
   const handleSelect = useCallback(
-    (option: { id: string; displayName: string; serialTracked: boolean; unitId: string }) => {
+    (option: {
+      id: string;
+      displayName: string;
+      serialTracked: boolean;
+      unitId: string;
+      stockTaxTypeId: string | null;
+    }) => {
       const deselecting = option.id === value;
       onChange(deselecting ? "" : option.id);
       onVariantMeta?.(
@@ -144,6 +158,7 @@ const StockVariantSelector: React.FC<Props> = ({
               displayName: option.displayName,
               serialTracked: option.serialTracked,
               unitId: option.unitId,
+              stockTaxTypeId: option.stockTaxTypeId,
             },
       );
       setOpen(false);
@@ -170,6 +185,7 @@ const StockVariantSelector: React.FC<Props> = ({
       displayName: opt.displayName,
       serialTracked: opt.serialTracked,
       unitId: opt.unitId,
+      stockTaxTypeId: opt.stockTaxTypeId,
     });
   }, [value, allVariantOptions, onVariantMeta]);
 

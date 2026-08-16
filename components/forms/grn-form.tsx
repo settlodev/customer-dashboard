@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -27,8 +27,12 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
+  FormDescription,
   FormMessage,
 } from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
+import { Combobox } from "@/components/ui/combobox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,9 +74,13 @@ import CompatibleUnitSelector from "../widgets/compatible-unit-selector";
 import { LpoPickerDialog } from "../widgets/grn/lpo-picker";
 import type { LpoWithSupplierName } from "../widgets/grn/lpo-picker";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
+import { useVatRegistrationStatus } from "@/hooks/use-vat-registration-status";
 import { createGrn } from "@/lib/actions/grn-actions";
 import { CreateGrnSchema } from "@/types/grn/schema";
 import type { FormResponse } from "@/types/types";
+import { getCachedTaxTypes } from "@/lib/cache/reference-data";
+import type { TaxType } from "@/types/tax-type/type";
+import { formatMoney } from "@/lib/helpers";
 
 type FormValues = z.infer<typeof CreateGrnSchema>;
 
@@ -87,6 +95,8 @@ interface ItemMeta {
   serialTracked: boolean;
   /** Variant's tracking unit — anchors the purchase-pack picker. */
   unitId?: string;
+  /** The stock item's own default purchase tax type, if any — see `VariantMeta.stockTaxTypeId`. */
+  stockTaxTypeId?: string | null;
 }
 
 interface GrnFormProps {
@@ -99,13 +109,32 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
   const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
   const locationCurrency = useLocationCurrency();
+  const vatRegistered = useVatRegistrationStatus();
 
   const [itemMeta, setItemMeta] = useState<Record<string, ItemMeta>>({});
+  const [taxTypes, setTaxTypes] = useState<TaxType[]>([]);
   const [linkedLpo, setLinkedLpo] = useState<LpoWithSupplierName | null>(null);
   const [loadingItemRows, setLoadingItemRows] = useState<Set<string>>(
     () => new Set(),
   );
   const itemsLoading = loadingItemRows.size > 0;
+
+  // Purchase tax types — same source, filter and sort as the stock item
+  // form's picker (Task 1), so the per-line override behaves identically.
+  useEffect(() => {
+    getCachedTaxTypes()
+      .then((tx) => {
+        const activeTaxTypes = ((tx ?? []) as TaxType[])
+          .filter((t) => t.active)
+          .sort(
+            (a, b) =>
+              (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+              a.code.localeCompare(b.code),
+          );
+        setTaxTypes(activeTaxTypes);
+      })
+      .catch(() => setTaxTypes([]));
+  }, []);
 
   const handleItemLoadingChange = useCallback(
     (fieldId: string, loading: boolean) => {
@@ -125,6 +154,7 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
     resolver: zodResolver(CreateGrnSchema),
     defaultValues: {
       supplierId: "",
+      pricesIncludeTax: false,
       receivedBy: "",
       receivedDate: new Date().toISOString(),
       notes: "",
@@ -142,6 +172,58 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
   });
 
   const watchedItems = form.watch("items");
+  const pricesIncludeTax = form.watch("pricesIncludeTax");
+
+  const taxTypeMap = useMemo(
+    () => new Map(taxTypes.map((t) => [t.id, t])),
+    [taxTypes],
+  );
+
+  // Live preview of net/tax/gross while the GRN is being composed — this
+  // form is create-only and redirects straight to the detail page on
+  // success (see createGrn), so there is never a saved GrnResponse to read
+  // net/tax/gross off of before submit. Mirrors the exact server arithmetic
+  // (docs/superpowers/specs/2026-08-03-purchase-tax-design.md, "Arithmetic")
+  // so it lines up with what the API will persist; the server's own figures
+  // remain authoritative once the GRN is actually created.
+  const totals = useMemo(() => {
+    let netAmount = 0;
+    let taxAmount = 0;
+    (watchedItems ?? []).forEach((item, i) => {
+      const qty = Number(item?.receivedQuantity || 0);
+      const cost = Number(item?.unitCost || 0);
+      if (qty <= 0 || cost <= 0) return;
+
+      const fieldId = fields[i]?.id;
+      const meta = fieldId ? itemMeta[fieldId] : undefined;
+      // Line override → stock item's default → no tax — same chain the
+      // server resolves at write time.
+      const effectiveTaxTypeId = item?.taxTypeId ?? meta?.stockTaxTypeId ?? null;
+      const rate = effectiveTaxTypeId
+        ? (taxTypeMap.get(effectiveTaxTypeId)?.ratePercent ?? 0)
+        : 0;
+      const r = rate / 100;
+
+      let netPerUnit: number;
+      let taxPerUnit: number;
+      if (pricesIncludeTax) {
+        netPerUnit = r > 0 ? cost / (1 + r) : cost;
+        taxPerUnit = cost - netPerUnit;
+      } else {
+        netPerUnit = cost;
+        taxPerUnit = cost * r;
+      }
+
+      netAmount += netPerUnit * qty;
+      taxAmount += taxPerUnit * qty;
+    });
+
+    const totalAmount = netAmount + taxAmount;
+    // Non-recoverable tax is already folded into unit_cost by the server,
+    // so its "subtotal" is the gross — never a separate addition on screen.
+    const subtotal = vatRegistered ? netAmount : totalAmount;
+    return { netAmount, taxAmount, totalAmount, subtotal };
+  }, [watchedItems, fields, itemMeta, taxTypeMap, pricesIncludeTax, vatRegistered]);
 
   const handleVariantChange = useCallback(
     (fieldId: string, index: number, variantId: string) => {
@@ -174,6 +256,7 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
             displayName: meta.displayName,
             serialTracked: meta.serialTracked,
             unitId: meta.unitId,
+            stockTaxTypeId: meta.stockTaxTypeId ?? null,
           },
         };
       });
@@ -423,6 +506,30 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
 
             <FormField
               control={form.control}
+              name="pricesIncludeTax"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel>Supplier prices include tax</FormLabel>
+                    <FormDescription>
+                      Turn this on when the unit costs you are entering are
+                      the tax-inclusive amounts from the supplier&apos;s
+                      invoice.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isPending}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="notes"
               render={({ field }) => (
                 <FormItem className="space-y-[7px]">
@@ -656,6 +763,51 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.taxTypeId`}
+                      render={({ field: f }) => {
+                        const defaultTaxTypeId = meta?.stockTaxTypeId ?? null;
+                        const effectiveTaxTypeId = f.value ?? defaultTaxTypeId;
+                        const effectiveTaxType = effectiveTaxTypeId
+                          ? taxTypeMap.get(effectiveTaxTypeId)
+                          : undefined;
+                        const isOverride = !!f.value;
+                        return (
+                          <FormItem className="w-full md:flex-[3] min-w-0 space-y-[7px]">
+                            <FieldLabel optional>Tax</FieldLabel>
+                            <FormControl>
+                              <Combobox
+                                options={taxTypes.map((t) => ({
+                                  value: t.id,
+                                  label: `${t.code} — ${t.name} (${t.ratePercent}%)`,
+                                }))}
+                                value={f.value ?? null}
+                                onChange={(v) => f.onChange(v ?? null)}
+                                placeholder={
+                                  defaultTaxTypeId
+                                    ? "Use item default"
+                                    : taxTypes.length === 0
+                                      ? "Loading tax types…"
+                                      : "No tax"
+                                }
+                                searchPlaceholder="Search tax types…"
+                                emptyText="No tax types found."
+                                disabled={isPending}
+                                ariaLabel="Tax"
+                              />
+                            </FormControl>
+                            <FieldHint>
+                              {effectiveTaxType
+                                ? `${effectiveTaxType.name} ${effectiveTaxType.ratePercent}%${
+                                    isOverride ? "" : " (item default)"
+                                  }`
+                                : "No tax configured"}
+                            </FieldHint>
+                          </FormItem>
+                        );
+                      }}
+                    />
                   </div>
 
                   <FormField
@@ -820,6 +972,27 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                 </div>
               );
             })}
+
+            <div className="flex flex-col gap-1 items-end text-sm mt-2 pt-3 border-t">
+              <div className="flex justify-between w-64">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span>{formatMoney(totals.subtotal, locationCurrency)}</span>
+              </div>
+              <div className="flex justify-between w-64">
+                <span className="text-muted-foreground">
+                  {vatRegistered ? "Tax" : "Tax (included in cost)"}
+                </span>
+                <span>{formatMoney(totals.taxAmount, locationCurrency)}</span>
+              </div>
+              <div className="flex justify-between w-64 font-medium border-t pt-1">
+                <span>Total</span>
+                <span>{formatMoney(totals.totalAmount, locationCurrency)}</span>
+              </div>
+              <p className="w-64 text-[11px] text-muted-foreground text-right">
+                Estimated from the tax rates below — the server confirms the
+                exact figures on save.
+              </p>
+            </div>
           </div>
         </section>
         </div>

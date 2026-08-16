@@ -26,6 +26,14 @@ export interface Grn {
   status: GrnStatus;
   /** Location base currency — the currency all `unitCost` values are stored in. */
   currency: string | null;
+  /** Header override: the supplier's unit costs on this GRN are tax-inclusive. */
+  pricesIncludeTax?: boolean;
+  /** Sum of line net amounts, base currency. */
+  netAmount?: number;
+  /** Sum of line tax amounts, base currency — recoverable or memo depending on `GrnItem.taxRecoverable`. */
+  taxAmount?: number;
+  /** Gross — `netAmount + taxAmount`. Equals `netAmount` when there is no tax. */
+  totalAmount?: number;
   notes: string | null;
   deliveryPersonName: string | null;
   deliveryPersonPhone: string | null;
@@ -85,6 +93,14 @@ export interface GrnItem {
   originalUnitCost: number | null;
   /** Exchange rate captured at receive time. */
   rateUsed: number | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /** Line tax, base currency. Recoverable (added on top) or memo-only (already inside `unitCost`) per `taxRecoverable`. */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` at document-write time — false means it is already folded into `unitCost`. */
+  taxRecoverable?: boolean;
   /** Pack the operator transacted in (null when entered directly in stock units). */
   purchaseUnitId: string | null;
   /** Quantity as the operator typed it in `purchaseUnitId` (null when not used). */
@@ -120,6 +136,8 @@ export interface CreateGrnItemPayload {
   supplierBatchReference?: string;
   expiryDate?: string;
   serialNumbers?: string[];
+  /** Per-line override. `null`/omitted falls through to the stock item's default. */
+  taxTypeId?: string | null;
 }
 
 export interface CreateGrnPayload {
@@ -132,6 +150,8 @@ export interface CreateGrnPayload {
   deliveryPersonName?: string;
   deliveryPersonPhone?: string;
   deliveryPersonEmail?: string;
+  /** This supplier's unit costs on this GRN are tax-inclusive. */
+  pricesIncludeTax?: boolean;
   items: CreateGrnItemPayload[];
 }
 
