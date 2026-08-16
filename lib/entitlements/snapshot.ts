@@ -95,7 +95,10 @@ function degraded(businessId: string | undefined): EntitlementSnapshot {
  */
 export async function getEntitlementSnapshot(): Promise<EntitlementSnapshot> {
   if (!BILLING_SERVICE_URL) {
-    console.warn("[ENTITLEMENTS] BILLING_SERVICE_URL not configured");
+    console.error(
+      "[ENTITLEMENTS] BILLING_SERVICE_URL is not configured — entitlement gating is DISABLED. " +
+        "This must never be true in a deployed environment.",
+    );
     return { status: "unavailable" };
   }
 
@@ -112,4 +115,17 @@ export async function getEntitlementSnapshot(): Promise<EntitlementSnapshot> {
     );
     return degraded(await currentBusinessId());
   }
+}
+
+/**
+ * Whether entitlement gating can actually operate. `getEntitlementSnapshot` returns
+ * `{status: "unavailable"}` both when billing is unreachable AND when `BILLING_SERVICE_URL`
+ * is simply unset — those are not the same failure. An outage is real and must lock a lapsed
+ * destination; a missing env var is a local-dev or deploy-config gap, and locking every user
+ * out of the app over it would turn a configuration slip into a total outage. Callers that
+ * gate access must check this first and skip locking when it is false, while still relying on
+ * the loud `console.error` above to surface the misconfiguration.
+ */
+export function isEntitlementGatingConfigured(): boolean {
+  return Boolean(BILLING_SERVICE_URL);
 }

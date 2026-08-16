@@ -23,7 +23,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { EntitlementProvider } from "@/context/entitlementContext";
 import { PermissionsProvider } from "@/context/permissionsContext";
-import { getEntitlementSnapshot } from "@/lib/entitlements/snapshot";
+import { getEntitlementSnapshot, isEntitlementGatingConfigured } from "@/lib/entitlements/snapshot";
 import { decideDestinationAccess } from "@/lib/entitlements/gate";
 import { ExpiredTopBar } from "@/components/subscription/ExpiredTopBar";
 import { fetchAllStores, getCurrentStore } from "@/lib/actions/store-actions";
@@ -138,7 +138,12 @@ export default async function RootLayout({
   // somewhere they can actually pay from, and they may well want to pay LATER — the sidebar and
   // destination switcher stay available there (the business itself is fine), so they can carry on
   // in another location and come back to settle this one whenever they choose.
-  if (gate.outcome === "lock" && !isEscapeHatch) {
+  // `isEntitlementGatingConfigured()` guards against locking every user out when
+  // BILLING_SERVICE_URL is simply unset (local dev, or a deploy that dropped the config key) —
+  // that is a misconfiguration signal, not a billing outage, and getEntitlementSnapshot already
+  // logs it loudly via console.error. A real outage still locks: this only short-circuits the
+  // "not configured at all" case.
+  if (gate.outcome === "lock" && !isEscapeHatch && isEntitlementGatingConfigured()) {
     const lockedType = currentStore?.id
       ? "store"
       : currentWarehouse?.id
