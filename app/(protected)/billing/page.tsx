@@ -30,23 +30,66 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/**
+ * The `?expired=<type>&reason=<reason>` banner set by the protected layout when the active
+ * destination's own subscription is locked and it redirected here. Tells the owner why they
+ * landed on this page rather than the one they asked for — without it the redirect reads as
+ * the app losing their click. `lockReason` further distinguishes "this entity's subscription
+ * actually lapsed" from "billing was unreachable and we couldn't get a trustworthy answer"
+ * (see (protected)/layout.tsx) — telling a paid-up customer their subscription lapsed during
+ * a billing outage is the wrong message. Reused in both the normal render and the
+ * billing-unreachable empty state below, since a redirect can land on either.
+ */
+function LockBanner({
+  lockedEntity,
+  lockReason,
+}: {
+  lockedEntity: string;
+  lockReason?: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-warn/30 bg-warn-tint px-4 py-3.5">
+      <Lock className="mt-0.5 h-4 w-4 flex-none text-warn" />
+      {lockReason === "no-entitlement-data" ? (
+        <div>
+          <p className="text-[13.5px] font-semibold text-ink">
+            We couldn&apos;t reach the billing service
+          </p>
+          <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">
+            Access to this {lockedEntity} is restricted until we can confirm
+            your subscription — this isn&apos;t a lapsed payment, just a
+            temporary connection issue. Please try again shortly, or switch
+            to another destination and come back to this whenever
+            you&apos;re ready.
+          </p>
+        </div>
+      ) : (
+        <div>
+          <p className="text-[13.5px] font-semibold text-ink">
+            This {lockedEntity}&apos;s subscription has lapsed
+          </p>
+          <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">
+            It stays locked until it&apos;s paid for. Settle it below to restore
+            access — or switch to another destination and come back to this
+            whenever you&apos;re ready.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default async function BillingPage({
   searchParams,
 }: {
   searchParams?: Promise<{ expired?: string; reason?: string }>;
 }) {
-  // Set by the protected layout when the active destination's own subscription has lapsed and
-  // it redirected here. Tells the owner why they landed on this page rather than the one they
-  // asked for — without it the redirect reads as the app losing their click.
   const params = await searchParams;
   const lockedEntity = params?.expired;
-  // Distinguishes "this entity's subscription actually lapsed" from "billing was unreachable
-  // and we couldn't get a trustworthy answer" (see (protected)/layout.tsx). Telling a paid-up
-  // customer their subscription lapsed during a billing outage is the wrong message.
   const lockReason = params?.reason;
-  const overview = await getBillingOverview();
+  const result = await getBillingOverview();
 
-  if (!overview?.subscription) {
+  if (result.status === "no-subscription") {
     return (
       <PageShell>
         <PageBreadcrumbs items={[{ title: "Billing" }]} />
@@ -81,6 +124,40 @@ export default async function BillingPage({
     );
   }
 
+  if (result.status === "unreachable") {
+    // Distinct from "no-subscription" above on purpose: this business may be fully paid up —
+    // we simply couldn't get a trustworthy answer from billing. Must never say "no
+    // subscription" or offer the plan-picker CTA, or a paying customer during an outage reads
+    // it as an accusation of non-payment (see C1 in the Task 7 review).
+    return (
+      <PageShell>
+        <PageBreadcrumbs items={[{ title: "Billing" }]} />
+        <PageHeader title="Billing" subtitle="Manage your subscription, invoices, and credits." />
+        <PageBody>
+          {lockedEntity && (
+            <LockBanner lockedEntity={lockedEntity} lockReason={lockReason} />
+          )}
+          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-line bg-card py-16 text-center">
+            <div className="grid h-12 w-12 place-items-center rounded-full bg-canvas">
+              <AlertCircle className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-ink">
+                We couldn&apos;t reach the billing service
+              </p>
+              <p className="mt-1 max-w-md text-xs text-muted-foreground">
+                This isn&apos;t about whether you&apos;ve paid — we just couldn&apos;t
+                confirm your subscription right now. Please try again shortly, or use
+                the sidebar to switch to another destination in the meantime.
+              </p>
+            </div>
+          </div>
+        </PageBody>
+      </PageShell>
+    );
+  }
+
+  const overview = result.data;
   const subscription = overview.subscription;
 
   const [business, authToken] = await Promise.all([getCurrentBusiness(), getAuthToken()]);
@@ -111,13 +188,16 @@ export default async function BillingPage({
   // Rebuild the {content, totalElements} shape the rest of this page reads — the billing
   // components downstream (BillingClient, InvoicesTab, CreditsTab) only ever touch
   // `content` and `totalElements`; none of them read totalPages/number/size.
+  // `?? []`/`?? 0` guard against a payload that's missing a field despite the type saying
+  // it's required — without it a bare `undefined` here would throw downstream on the first
+  // `.filter(...)`/`.reduce(...)` call and 500 the page instead of degrading.
   const invoicesPage = {
-    content: overview.invoices,
-    totalElements: overview.invoicesTotal,
+    content: overview.invoices ?? [],
+    totalElements: overview.invoicesTotal ?? 0,
   };
   const creditTransactionsPage = {
-    content: overview.creditTransactions,
-    totalElements: overview.creditTransactionsTotal,
+    content: overview.creditTransactions ?? [],
+    totalElements: overview.creditTransactionsTotal ?? 0,
   };
 
   const invoices = invoicesPage.content;
@@ -171,34 +251,7 @@ export default async function BillingPage({
 
       <PageBody>
         {lockedEntity && (
-          <div className="flex items-start gap-3 rounded-xl border border-warn/30 bg-warn-tint px-4 py-3.5">
-            <Lock className="mt-0.5 h-4 w-4 flex-none text-warn" />
-            {lockReason === "no-entitlement-data" ? (
-              <div>
-                <p className="text-[13.5px] font-semibold text-ink">
-                  We couldn&apos;t reach the billing service
-                </p>
-                <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">
-                  Access to this {lockedEntity} is restricted until we can confirm
-                  your subscription — this isn&apos;t a lapsed payment, just a
-                  temporary connection issue. Please try again shortly, or switch
-                  to another destination and come back to this whenever
-                  you&apos;re ready.
-                </p>
-              </div>
-            ) : (
-              <div>
-                <p className="text-[13.5px] font-semibold text-ink">
-                  This {lockedEntity}&apos;s subscription has lapsed
-                </p>
-                <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">
-                  It stays locked until it&apos;s paid for. Settle it below to restore
-                  access — or switch to another destination and come back to this
-                  whenever you&apos;re ready.
-                </p>
-              </div>
-            )}
-          </div>
+          <LockBanner lockedEntity={lockedEntity} lockReason={lockReason} />
         )}
         <KpiStrip cols={4}>
           <KpiCard
