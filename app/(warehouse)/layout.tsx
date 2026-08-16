@@ -13,6 +13,10 @@ import { fetchAllStores, getCurrentStore } from "@/lib/actions/store-actions";
 import { SettloRealtimeListener } from "@/components/realtime/settlo-realtime-listener";
 import { AppNotificationProviders } from "@/components/providers/app-notification-providers";
 import type { BusinessPropsType } from "@/types/business/business-props-type";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { getEntitlementSnapshot, isEntitlementGatingConfigured } from "@/lib/entitlements/snapshot";
+import { decideDestinationAccess } from "@/lib/entitlements/gate";
 
 export default async function RootLayout({children}: {
     children: React.ReactNode;
@@ -28,6 +32,7 @@ export default async function RootLayout({children}: {
         fetchAllStores(),
         searchWarehouses(),
         getCurrentStore(),
+        getEntitlementSnapshot(),
     ]);
 
     const currentBusiness = results[0].status === "fulfilled" ? results[0].value ?? undefined : undefined;
@@ -38,6 +43,37 @@ export default async function RootLayout({children}: {
     const storeList = results[5].status === "fulfilled" ? results[5].value : [];
     const warehouseList = results[6].status === "fulfilled" ? results[6].value : [];
     const currentStore = results[7].status === "fulfilled" ? results[7].value : undefined;
+    const entitlementSnapshot =
+        results[8].status === "fulfilled"
+            ? results[8].value
+            : ({ status: "unavailable" } as const);
+
+    // ── Per-destination entitlement gate ──────────────────────────────
+    //
+    // Mirrors app/(protected)/layout.tsx — see there for the full rationale on
+    // decideDestinationAccess and the fail-CLOSED behaviour when billing has no
+    // trustworthy answer. This group is warehouse-only, so the warehouse itself is
+    // the destination being judged (not store/location as in the protected layout).
+    const activeWarehouseId = currentWarehouse?.id;
+    const gate = decideDestinationAccess(entitlementSnapshot, activeWarehouseId);
+
+    // Billing has to stay reachable, or a locked warehouse is a dead end. Only the final
+    // NextResponse.next() forwards x-pathname. If it is absent for any reason we cannot tell
+    // whether redirecting would loop, so — same as app/(protected)/layout.tsx — absent header
+    // means "don't lock". Unlike that layout, this group has no escape-hatch routes of its own:
+    // /billing, /select-location, /select-business, and /subscription all live in the
+    // (protected) group, entirely outside this layout, so the redirect below always exits it —
+    // there is nothing here to loop back into.
+    const pathname = (await headers()).get("x-pathname");
+
+    // Land them on the billing screen rather than blocking in place — same reasoning as the
+    // protected layout: it's somewhere they can actually pay from, and the sidebar/destination
+    // switcher stay available there. `isEntitlementGatingConfigured()` guards against locking
+    // everyone out when BILLING_SERVICE_URL is simply unset (local dev / misconfigured deploy)
+    // rather than a real outage.
+    if (gate.outcome === "lock" && pathname && isEntitlementGatingConfigured()) {
+        redirect(`/billing?expired=warehouse&reason=${gate.reason}`);
+    }
 
     const hasMultipleDestinations =
         (locationList?.length ?? 0) +
