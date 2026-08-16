@@ -97,6 +97,12 @@ export interface SupplierQuote {
   submittedAt: string | null;
   isAwarded: boolean | null;
   notes: string | null;
+  /** Header override: this supplier's quote is priced gross (tax-inclusive). */
+  pricesIncludeTax?: boolean;
+  /** Sum of line net amounts. */
+  netAmount?: number;
+  /** Sum of recoverable line tax amounts — zero for a non-VAT-registered business. */
+  taxAmount?: number;
   items: SupplierQuoteItem[];
   createdAt: string;
   updatedAt: string;
@@ -111,6 +117,14 @@ export interface SupplierQuoteItem {
   currency: string | null;
   leadTimeDays: number | null;
   notes: string | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /** Line tax. Estimated/informational only — a quote never posts to the ledger. */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` if this quote were accepted — false means it would already be folded into `quotedUnitPrice`. */
+  taxRecoverable?: boolean;
 }
 
 export interface QuoteComparison {
@@ -166,6 +180,8 @@ export interface QuoteItemPayload {
   currency?: string;
   leadTimeDays?: number;
   notes?: string;
+  /** Per-line override of the tax type that applies to this item. */
+  taxTypeId?: string | null;
 }
 
 export interface SubmitQuotePayload {
@@ -174,6 +190,8 @@ export interface SubmitQuotePayload {
   paymentTerms?: string;
   validityDate?: string;
   notes?: string;
+  /** Per-document override: this supplier's quote is priced gross. */
+  pricesIncludeTax?: boolean;
   items: QuoteItemPayload[];
 }
 

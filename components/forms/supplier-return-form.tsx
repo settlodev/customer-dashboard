@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,10 +26,14 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
+import { Combobox } from "@/components/ui/combobox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,15 +57,31 @@ import {
 } from "@/components/ui/alert";
 import SupplierSelector from "../widgets/supplier-selector";
 import StockVariantSelector from "../widgets/stock-variant-selector";
+import type { VariantMeta } from "../widgets/stock-variant-selector";
 import GrnSelector from "../widgets/grn/grn-selector";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
+import { useVatRegistrationStatus } from "@/hooks/use-vat-registration-status";
 import { createSupplierReturn } from "@/lib/actions/supplier-return-actions";
 import { CreateSupplierReturnSchema } from "@/types/supplier-return/schema";
 import type { FormResponse } from "@/types/types";
+import { getCachedTaxTypes } from "@/lib/cache/reference-data";
+import type { TaxType } from "@/types/tax-type/type";
+import { formatMoney } from "@/lib/helpers";
+import {
+  computePurchaseTaxPreview,
+  findBusinessDefaultTaxTypeId,
+  resolveEffectiveTaxTypeId,
+} from "@/lib/purchase-tax";
 
 import styles from "./styles/form-shell.module.css";
 
 type FormValues = z.infer<typeof CreateSupplierReturnSchema>;
+
+interface ItemMeta {
+  displayName?: string;
+  /** The stock item's own default purchase tax type, if any. */
+  stockTaxTypeId?: string | null;
+}
 
 export default function SupplierReturnForm() {
   const router = useRouter();
@@ -69,6 +89,27 @@ export default function SupplierReturnForm() {
   const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
   const locationCurrency = useLocationCurrency();
+  const vatRegistered = useVatRegistrationStatus();
+
+  const [itemMeta, setItemMeta] = useState<Record<string, ItemMeta>>({});
+  const [taxTypes, setTaxTypes] = useState<TaxType[]>([]);
+
+  // Purchase tax types — same source, filter and sort as the GRN form's
+  // picker, so the per-line override behaves identically everywhere.
+  useEffect(() => {
+    getCachedTaxTypes()
+      .then((tx) => {
+        const activeTaxTypes = ((tx ?? []) as TaxType[])
+          .filter((t) => t.active)
+          .sort(
+            (a, b) =>
+              (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+              a.code.localeCompare(b.code),
+          );
+        setTaxTypes(activeTaxTypes);
+      })
+      .catch(() => setTaxTypes([]));
+  }, []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(CreateSupplierReturnSchema),
@@ -77,6 +118,7 @@ export default function SupplierReturnForm() {
       grnId: "",
       reason: "",
       notes: "",
+      pricesIncludeTax: false,
       items: [
         {
           stockVariantId: "",
@@ -97,6 +139,7 @@ export default function SupplierReturnForm() {
   const watchedItems = form.watch("items");
   const watchedSupplierId = form.watch("supplierId");
   const watchedGrnId = form.watch("grnId");
+  const pricesIncludeTax = form.watch("pricesIncludeTax");
   const previousSupplierRef = useRef<string | undefined>(watchedSupplierId);
   const skipGrnClearRef = useRef(false);
   const [allowedStockVariantIds, setAllowedStockVariantIds] = useState<
@@ -105,6 +148,66 @@ export default function SupplierReturnForm() {
   const [maxQuantityByVariant, setMaxQuantityByVariant] = useState<
     Record<string, number>
   >({});
+
+  const taxTypeMap = useMemo(
+    () => new Map(taxTypes.map((t) => [t.id, t])),
+    [taxTypes],
+  );
+
+  const businessDefaultTaxTypeId = useMemo(
+    () => findBusinessDefaultTaxTypeId(taxTypes),
+    [taxTypes],
+  );
+
+  const totals = useMemo(
+    () =>
+      computePurchaseTaxPreview(
+        watchedItems.map((item, i) => {
+          const fieldId = fields[i]?.id;
+          const meta = fieldId ? itemMeta[fieldId] : undefined;
+          return {
+            quantity: Number(item?.quantity || 0),
+            cost: Number(item?.unitCost || 0),
+            taxTypeOverride: item?.taxTypeId,
+            stockDefaultTaxTypeId: meta?.stockTaxTypeId,
+          };
+        }),
+        { pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes },
+      ),
+    [watchedItems, fields, itemMeta, pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes],
+  );
+
+  const handleVariantMeta = useCallback(
+    (fieldId: string, meta: VariantMeta | null) => {
+      setItemMeta((prev) => {
+        if (!meta) {
+          const next = { ...prev };
+          delete next[fieldId];
+          return next;
+        }
+        return {
+          ...prev,
+          [fieldId]: {
+            displayName: meta.displayName,
+            stockTaxTypeId: meta.stockTaxTypeId ?? null,
+          },
+        };
+      });
+    },
+    [],
+  );
+
+  const removeItem = useCallback(
+    (index: number, fieldId: string) => {
+      remove(index);
+      setItemMeta((prev) => {
+        const next = { ...prev };
+        delete next[fieldId];
+        return next;
+      });
+    },
+    [remove],
+  );
 
   useEffect(() => {
     const prev = previousSupplierRef.current;
@@ -244,6 +347,11 @@ export default function SupplierReturnForm() {
                                   ""
                                 ).toUpperCase(),
                                 reason: "",
+                                // Credit the same tax type the original GRN
+                                // line was charged under, so the credit note
+                                // doesn't drift from today's (possibly
+                                // changed) item/business default.
+                                taxTypeId: item.taxTypeId ?? null,
                               }));
                               replace(
                                 mapped.length > 0
@@ -258,6 +366,7 @@ export default function SupplierReturnForm() {
                                       },
                                     ],
                               );
+                              setItemMeta({});
                               setAllowedStockVariantIds(
                                 Array.from(
                                   new Set(
@@ -278,6 +387,7 @@ export default function SupplierReturnForm() {
                               skipGrnClearRef.current = false;
                               form.reset();
                               setResponse(undefined);
+                              setItemMeta({});
                               setAllowedStockVariantIds(undefined);
                               setMaxQuantityByVariant({});
                             }
@@ -300,6 +410,30 @@ export default function SupplierReturnForm() {
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="pricesIncludeTax"
+                render={({ field }) => (
+                  <FormItem className="mt-[15px] flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel>Supplier prices include tax</FormLabel>
+                      <FormDescription>
+                        Turn this on when the unit costs you are entering are
+                        tax-inclusive amounts, matching how the original
+                        purchase was priced.
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
@@ -400,7 +534,7 @@ export default function SupplierReturnForm() {
                         {fields.length > 1 && (
                           <button
                             type="button"
-                            onClick={() => remove(index)}
+                            onClick={() => removeItem(index, field.id)}
                             className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"
                             aria-label={`Remove item ${index + 1}`}
                           >
@@ -420,6 +554,7 @@ export default function SupplierReturnForm() {
                                 <StockVariantSelector
                                   value={f.value}
                                   onChange={f.onChange}
+                                  onVariantMeta={(m) => handleVariantMeta(field.id, m)}
                                   isDisabled={isPending}
                                   disabledValues={disabledVariantIds}
                                   allowedValues={allowedStockVariantIds}
@@ -500,6 +635,71 @@ export default function SupplierReturnForm() {
                             </FormItem>
                           )}
                         />
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.taxTypeId`}
+                          render={({ field: f }) => {
+                            // Same 3-tier chain as the footer preview and the
+                            // server's PurchaseTaxResolver: line override →
+                            // stock item's default → business default (only
+                            // when VAT-registered) → none.
+                            const itemDefaultTaxTypeId =
+                              itemMeta[field.id]?.stockTaxTypeId ?? null;
+                            const effectiveTaxTypeId = resolveEffectiveTaxTypeId(
+                              f.value,
+                              itemDefaultTaxTypeId,
+                              vatRegistered,
+                              businessDefaultTaxTypeId,
+                            );
+                            const effectiveTaxType = effectiveTaxTypeId
+                              ? taxTypeMap.get(effectiveTaxTypeId)
+                              : undefined;
+                            const isOverride = !!f.value;
+                            const isItemDefault =
+                              !isOverride && !!itemDefaultTaxTypeId;
+                            const isBusinessDefault =
+                              !isOverride && !itemDefaultTaxTypeId && !!effectiveTaxTypeId;
+                            return (
+                              <FormItem className="w-full md:flex-[3] min-w-0 space-y-[7px]">
+                                <FieldLabel optional>Tax</FieldLabel>
+                                <FormControl>
+                                  <Combobox
+                                    options={taxTypes.map((t) => ({
+                                      value: t.id,
+                                      label: `${t.code} — ${t.name} (${t.ratePercent}%)`,
+                                    }))}
+                                    value={f.value ?? null}
+                                    onChange={(v) => f.onChange(v ?? null)}
+                                    placeholder={
+                                      effectiveTaxTypeId
+                                        ? "Use default"
+                                        : taxTypes.length === 0
+                                          ? "Loading tax types…"
+                                          : "No tax"
+                                    }
+                                    searchPlaceholder="Search tax types…"
+                                    emptyText="No tax types found."
+                                    disabled={isPending}
+                                    ariaLabel="Tax"
+                                  />
+                                </FormControl>
+                                <FieldHint>
+                                  {effectiveTaxType
+                                    ? `${effectiveTaxType.name} ${effectiveTaxType.ratePercent}%${
+                                        isOverride
+                                          ? ""
+                                          : isItemDefault
+                                            ? " (item default)"
+                                            : isBusinessDefault
+                                              ? " (business default)"
+                                              : ""
+                                      }`
+                                    : "No tax configured"}
+                                </FieldHint>
+                              </FormItem>
+                            );
+                          }}
+                        />
                       </div>
 
                       <FormField
@@ -522,6 +722,27 @@ export default function SupplierReturnForm() {
                     </div>
                   );
                 })}
+
+                <div className="flex flex-col gap-1 items-end text-sm mt-2 pt-3 border-t">
+                  <div className="flex justify-between w-64">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>{formatMoney(totals.subtotal, locationCurrency)}</span>
+                  </div>
+                  <div className="flex justify-between w-64">
+                    <span className="text-muted-foreground">
+                      {vatRegistered ? "Tax credited" : "Tax credited (included in cost)"}
+                    </span>
+                    <span>{formatMoney(totals.taxAmount, locationCurrency)}</span>
+                  </div>
+                  <div className="flex justify-between w-64 font-medium border-t pt-1">
+                    <span>Total</span>
+                    <span>{formatMoney(totals.totalAmount, locationCurrency)}</span>
+                  </div>
+                  <p className="w-64 text-[11px] text-muted-foreground text-right">
+                    Estimated from the tax rates below — the server confirms
+                    the exact figures on save.
+                  </p>
+                </div>
               </div>
             </div>
           </section>

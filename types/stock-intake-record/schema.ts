@@ -1,4 +1,4 @@
-import { array, enum as zEnum, number, object, preprocess, string } from "zod";
+import { array, boolean, enum as zEnum, number, object, preprocess, string } from "zod";
 
 export const INTAKE_PAYMENT_TERMS = ["CREDIT", "CASH", "BANK"] as const;
 export type IntakePaymentTerms = (typeof INTAKE_PAYMENT_TERMS)[number];
@@ -35,10 +35,22 @@ export const StockIntakeRecordItemSchema = object({
   supplierBatchReference: string().optional().nullish(),
   notes: string().optional(),
   serialNumbers: array(string()).optional(),
+  /**
+   * Per-line tax override. Unset (`null`/undefined) means "use the stock
+   * item's default" — see the resolution chain in
+   * docs/superpowers/specs/2026-08-03-purchase-tax-design.md.
+   */
+  taxTypeId: string().uuid().optional().nullable(),
 });
 
 export const StockIntakeRecordSchema = object({
   notes: string().optional(),
+  /**
+   * Document-level override: this supplier's unit costs on this intake are
+   * already tax-inclusive. A property of how the supplier invoices, not of
+   * the goods.
+   */
+  pricesIncludeTax: boolean().optional().default(false),
   orderedDate: string({ required_error: "Date ordered is required" }).min(1, "Date ordered is required"),
   receivedDate: string({ required_error: "Date received is required" }).min(1, "Date received is required"),
   supplierId: preprocess(

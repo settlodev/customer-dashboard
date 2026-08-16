@@ -81,6 +81,11 @@ import type { FormResponse } from "@/types/types";
 import { getCachedTaxTypes } from "@/lib/cache/reference-data";
 import type { TaxType } from "@/types/tax-type/type";
 import { formatMoney } from "@/lib/helpers";
+import {
+  computePurchaseTaxPreview,
+  findBusinessDefaultTaxTypeId,
+  resolveEffectiveTaxTypeId,
+} from "@/lib/purchase-tax";
 
 type FormValues = z.infer<typeof CreateGrnSchema>;
 
@@ -182,81 +187,34 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
   // The business's default tax type (isDefault, active) — the third tier of
   // the server's resolution chain, gated on VAT registration. See
   // PurchaseTaxResolver (Settlo Inventory Service): line override → stock
-  // item → business default (registered only) → none. The previous version
-  // of this preview stopped at "stock item", so a registered business whose
-  // item had no tax type but whose business had an isDefault one previewed
-  // 0 tax where the server applies the full rate.
+  // item → business default (registered only) → none.
   const businessDefaultTaxTypeId = useMemo(
-    () => taxTypes.find((t) => t.isDefault)?.id ?? null,
+    () => findBusinessDefaultTaxTypeId(taxTypes),
     [taxTypes],
-  );
-
-  // Line override → stock item's default → business default (registered
-  // only) → none. Mirrors PurchaseTaxResolver exactly, including the
-  // VAT-registration gate on the last fallback.
-  const resolveEffectiveTaxTypeId = useCallback(
-    (lineOverride: string | null | undefined, stockDefault: string | null | undefined) =>
-      lineOverride ??
-      stockDefault ??
-      (vatRegistered ? businessDefaultTaxTypeId : null) ??
-      null,
-    [vatRegistered, businessDefaultTaxTypeId],
   );
 
   // Live preview of net/tax/gross while the GRN is being composed — this
   // form is create-only and redirects straight to the detail page on
   // success (see createGrn), so there is never a saved GrnResponse to read
-  // net/tax/gross off of before submit. Mirrors the exact server arithmetic
-  // (docs/superpowers/specs/2026-08-03-purchase-tax-design.md, "Arithmetic")
-  // so it lines up with what the API will persist; the server's own figures
-  // remain authoritative once the GRN is actually created.
-  const totals = useMemo(() => {
-    let netAmount = 0;
-    let taxAmount = 0;
-    (watchedItems ?? []).forEach((item, i) => {
-      const qty = Number(item?.receivedQuantity || 0);
-      const cost = Number(item?.unitCost || 0);
-      if (qty <= 0 || cost <= 0) return;
-
-      const fieldId = fields[i]?.id;
-      const meta = fieldId ? itemMeta[fieldId] : undefined;
-      const effectiveTaxTypeId = resolveEffectiveTaxTypeId(
-        item?.taxTypeId,
-        meta?.stockTaxTypeId,
-      );
-      const rate = effectiveTaxTypeId
-        ? (taxTypeMap.get(effectiveTaxTypeId)?.ratePercent ?? 0)
-        : 0;
-      const r = rate / 100;
-
-      let netPerUnit: number;
-      let taxPerUnit: number;
-      if (pricesIncludeTax) {
-        netPerUnit = r > 0 ? cost / (1 + r) : cost;
-        taxPerUnit = cost - netPerUnit;
-      } else {
-        netPerUnit = cost;
-        taxPerUnit = cost * r;
-      }
-
-      netAmount += netPerUnit * qty;
-      taxAmount += taxPerUnit * qty;
-    });
-
-    const totalAmount = netAmount + taxAmount;
-    // Non-recoverable tax is already folded into unit_cost by the server,
-    // so its "subtotal" is the gross — never a separate addition on screen.
-    const subtotal = vatRegistered ? netAmount : totalAmount;
-    return { netAmount, taxAmount, totalAmount, subtotal };
-  }, [
-    watchedItems,
-    fields,
-    itemMeta,
-    taxTypeMap,
-    pricesIncludeTax,
-    vatRegistered,
-    resolveEffectiveTaxTypeId,
-  ]);
+  // net/tax/gross off of before submit. See lib/purchase-tax.ts for why the
+  // arithmetic mirrors the server exactly.
+  const totals = useMemo(
+    () =>
+      computePurchaseTaxPreview(
+        (watchedItems ?? []).map((item, i) => {
+          const fieldId = fields[i]?.id;
+          const meta = fieldId ? itemMeta[fieldId] : undefined;
+          return {
+            quantity: Number(item?.receivedQuantity || 0),
+            cost: Number(item?.unitCost || 0),
+            taxTypeOverride: item?.taxTypeId,
+            stockDefaultTaxTypeId: meta?.stockTaxTypeId,
+          };
+        }),
+        { pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes },
+      ),
+    [watchedItems, fields, itemMeta, pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes],
+  );
 
   const handleVariantChange = useCallback(
     (fieldId: string, index: number, variantId: string) => {
@@ -843,6 +801,8 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                         const effectiveTaxTypeId = resolveEffectiveTaxTypeId(
                           f.value,
                           itemDefaultTaxTypeId,
+                          vatRegistered,
+                          businessDefaultTaxTypeId,
                         );
                         const effectiveTaxType = effectiveTaxTypeId
                           ? taxTypeMap.get(effectiveTaxTypeId)

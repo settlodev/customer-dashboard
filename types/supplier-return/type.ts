@@ -16,6 +16,14 @@ export interface SupplierReturn {
   grnId: string | null;
   status: SupplierReturnStatus;
   currency: string | null;
+  /** Header override: this return's unit costs are tax-inclusive. */
+  pricesIncludeTax?: boolean;
+  /** Sum of line net amounts, base currency. */
+  netAmount?: number;
+  /** Sum of line tax amounts credited, base currency — recoverable or memo depending on `SupplierReturnItem.taxRecoverable`. */
+  taxAmount?: number;
+  /** Gross — `netAmount + taxAmount`. Equals `netAmount` when there is no recoverable tax. */
+  totalAmount?: number;
   reason: string | null;
   returnedBy: string | null;
   returnedByName: string | null;
@@ -66,6 +74,14 @@ export interface SupplierReturnItem {
   originalUnitCost: number | null;
   rateUsed: number | null;
   reason: string | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /** Line tax credited, base currency. Recoverable (added on top) or memo-only (already inside `unitCost`) per `taxRecoverable`. */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` at document-write time — false means it is already folded into `unitCost`. */
+  taxRecoverable?: boolean;
 }
 
 export interface CreateSupplierReturnItemPayload {
@@ -74,6 +90,8 @@ export interface CreateSupplierReturnItemPayload {
   unitCost?: number;
   currency?: string;
   reason?: string;
+  /** Per-line override. `null`/omitted falls through to the stock item's default. */
+  taxTypeId?: string | null;
 }
 
 export interface CreateSupplierReturnPayload {
@@ -82,6 +100,8 @@ export interface CreateSupplierReturnPayload {
   grnId?: string;
   reason?: string;
   notes?: string;
+  /** This return's unit costs are tax-inclusive. */
+  pricesIncludeTax?: boolean;
   items: CreateSupplierReturnItemPayload[];
 }
 
