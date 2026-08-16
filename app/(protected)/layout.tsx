@@ -18,6 +18,7 @@ import { hasPackagingStock } from "@/lib/actions/stock-actions";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { getAuthToken } from "@/lib/auth-utils";
 import { getMyPermissionsCached, hasReportsReadAll } from "@/lib/permissions/me";
+import { getMyDisplayIdentity } from "@/lib/identity/me-profile";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { EntitlementProvider } from "@/context/entitlementContext";
@@ -186,15 +187,21 @@ export default async function RootLayout({
   // Build the user object once at the layout level so the sidebar
   // (and anything else that needs it) doesn't have to do the auth-token
   // → user reshape on every render. Mirrors what the old Header did.
+  //
+  // Identity (name/avatar/phone) comes from `/me/profile`, NOT the cookie: an
+  // invited member or dashboard-staff user resolves to the owner's account, so
+  // the cookie's profile fields are the account HOLDER's. Falls back to the
+  // cookie when that call is unavailable.
+  const identity = authToken ? await getMyDisplayIdentity() : null;
   const user: ExtendedUser | null = authToken
     ? ({
         id: authToken.userId,
-        name: `${authToken.firstName} ${authToken.lastName}`.trim(),
+        name: `${identity?.firstName ?? ""} ${identity?.lastName ?? ""}`.trim(),
         email: authToken.email,
-        firstName: authToken.firstName,
-        lastName: authToken.lastName,
-        avatar: authToken.pictureUrl,
-        phoneNumber: authToken.phoneNumber,
+        firstName: identity?.firstName ?? "",
+        lastName: identity?.lastName ?? "",
+        avatar: identity?.pictureUrl ?? null,
+        phoneNumber: identity?.phoneNumber ?? "",
         emailVerified: authToken.emailVerified ? new Date() : null,
         isBusinessRegistrationComplete:
           authToken.isBusinessRegistrationComplete,

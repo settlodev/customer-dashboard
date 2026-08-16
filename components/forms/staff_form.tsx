@@ -6,6 +6,7 @@ import React, {
   useState,
   useTransition,
 } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -95,6 +96,7 @@ import { createStaff, updateStaff } from "@/lib/actions/staff-actions";
 import { invalidateStaffCache } from "@/lib/cache/reference-data";
 
 import { initialsFor, thumbColor } from "@/components/tables/shared/table-avatar";
+import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import styles from "./styles/form-shell.module.css";
 
 interface StaffFormProps {
@@ -143,6 +145,7 @@ export default function StaffForm({
     defaultValues: {
       firstName: item?.firstName ?? "",
       lastName: item?.lastName ?? "",
+      pictureUrl: item?.pictureUrl ?? "",
       phoneNumber: item?.phoneNumber ?? "",
       email: item?.email ?? "",
       gender: item?.gender,
@@ -179,6 +182,7 @@ export default function StaffForm({
   const posAccess = form.watch("posAccess");
   const email = form.watch("email");
   const color = form.watch("color");
+  const pictureUrl = form.watch("pictureUrl");
   const roleIds = form.watch("roleIds") ?? [];
 
   const fullName = useMemo(
@@ -434,6 +438,30 @@ export default function StaffForm({
                               {field.value || "default"}
                             </span>
                           </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Photo — optional. Staff with dashboard access can also
+                      change it themselves from /profile. */}
+                  <FormField
+                    control={form.control}
+                    name="pictureUrl"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel>Photo</FieldLabel>
+                        <FormControl>
+                          <UploadImageWidget
+                            imagePath="profiles"
+                            displayStyle="default"
+                            displayImage
+                            showLabel={false}
+                            label="Photo"
+                            image={field.value || null}
+                            setImage={field.onChange}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1017,6 +1045,7 @@ export default function StaffForm({
             <LivePreviewCard
               fullName={fullName || "New staff"}
               jobTitle={jobTitle || "—"}
+              pictureUrl={pictureUrl || undefined}
               color={color || undefined}
               gender={gender}
               dashboardAccess={!!dashboardAccess}
@@ -1101,6 +1130,8 @@ export default function StaffForm({
 interface LivePreviewProps {
   fullName: string;
   jobTitle: string;
+  /** Uploaded photo, if any — otherwise the initials tile stands in. */
+  pictureUrl?: string;
   color: string | undefined;
   gender: string | undefined;
   dashboardAccess: boolean;
@@ -1113,6 +1144,7 @@ interface LivePreviewProps {
 function LivePreviewCard({
   fullName,
   jobTitle,
+  pictureUrl,
   color,
   gender,
   dashboardAccess,
@@ -1132,12 +1164,26 @@ function LivePreviewCard({
       </div>
       <div className={styles.previewBody}>
         <div
-          className={styles.previewThumb}
-          style={{
-            background: `linear-gradient(135deg, ${swatch}, ${swatch}cc)`,
-          }}
+          className={cn(styles.previewThumb, "relative overflow-hidden")}
+          style={
+            pictureUrl
+              ? undefined
+              : {
+                  background: `linear-gradient(135deg, ${swatch}, ${swatch}cc)`,
+                }
+          }
         >
-          {initials}
+          {pictureUrl ? (
+            <Image
+              src={pictureUrl}
+              alt={fullName || "Staff photo"}
+              fill
+              sizes="72px"
+              className="object-cover"
+            />
+          ) : (
+            initials
+          )}
         </div>
         <div className={styles.previewName}>{fullName}</div>
         <div className={styles.previewMeta}>

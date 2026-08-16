@@ -40,6 +40,8 @@ export interface Staff {
   fullName: string;
   firstName: string;
   lastName: string;
+  /** Avatar the staff member uploaded on their own profile; null until they do. */
+  pictureUrl?: string | null;
   active: boolean;
   dashboardAccess: boolean;
   posAccess: boolean;
@@ -220,6 +222,9 @@ export const StaffSchema = object({
     1,
     "Enter a valid last name",
   ),
+  /** Avatar (R2 URL from the upload widget). Optional — staff can also set
+   *  their own later from /profile. */
+  pictureUrl: string().optional(),
   // Required on the dashboard for reachability — backend keeps it
   // optional, so the dashboard tightens the contract without breaking
   // any service-to-service caller. Validated against libphonenumber so

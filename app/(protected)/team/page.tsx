@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
+import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 
 // Basic RFC-5322-ish email check — good enough to catch typos client-side
 // before the request round-trips; the backend remains the source of truth.
@@ -47,7 +48,7 @@ export default function TeamPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showInvite, setShowInvite] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
-  const [inviteData, setInviteData] = useState({ email: "", firstName: "", lastName: "", roleIds: [] as string[] });
+  const [inviteData, setInviteData] = useState({ email: "", firstName: "", lastName: "", pictureUrl: "", roleIds: [] as string[] });
   const [isInviting, setIsInviting] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   // Target location for the (LOCATION-scoped) invite. Populated from the
@@ -122,6 +123,7 @@ export default function TeamPage() {
         email: inviteData.email.trim(),
         firstName: inviteData.firstName,
         lastName: inviteData.lastName || undefined,
+        pictureUrl: inviteData.pictureUrl || undefined,
         roleIds: inviteData.roleIds,
         // Pass the scope explicitly so the invite never silently relies on
         // (or falls back past) the currentLocation cookie into ACCOUNT scope.
@@ -133,7 +135,7 @@ export default function TeamPage() {
       });
       if (result.responseType === "success") {
         setShowInvite(false);
-        setInviteData({ email: "", firstName: "", lastName: "", roleIds: [] });
+        setInviteData({ email: "", firstName: "", lastName: "", pictureUrl: "", roleIds: [] });
         loadMembers();
       }
     } finally {
@@ -209,6 +211,20 @@ export default function TeamPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {/* Photo — optional. The member can change it themselves from
+                /profile once they accept. */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Photo</label>
+              <UploadImageWidget
+                imagePath="profiles"
+                displayStyle="default"
+                displayImage
+                showLabel={false}
+                label="Photo"
+                image={inviteData.pictureUrl || null}
+                setImage={(url) => setInviteData((p) => ({ ...p, pictureUrl: url }))}
+              />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium">First Name <span className="text-red-500">*</span></label>

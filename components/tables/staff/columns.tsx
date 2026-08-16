@@ -51,6 +51,7 @@ export const columns: ColumnDef<StaffListEnriched>[] = [
         <div className="flex min-w-[240px] items-center gap-3">
           <TableAvatar
             name={fullName}
+            imageUrl={staff.pictureUrl}
             seed={staff.id}
           />
           <div className="min-w-0">

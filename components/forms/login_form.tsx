@@ -41,7 +41,7 @@ import { motion } from "framer-motion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { deleteAuthCookie } from "@/lib/auth-utils";
 import { ACCOUNT_CTX_CACHE_KEY } from "@/components/sidebar/account-switcher";
-import { executeRecaptcha } from "@/lib/recaptcha";
+import { executeRecaptcha, preloadRecaptcha } from "@/lib/recaptcha";
 import SocialAuthButtons from "@/components/widgets/social-auth-buttons";
 import {
   InputOTP,
@@ -77,6 +77,9 @@ function LoginForm() {
   useEffect(() => {
     deleteAuthCookie();
     setMounted(true);
+    // Start the reCAPTCHA download now — doing it inside submit puts a
+    // multi-hundred-KB fetch on the critical path of the sign-in click.
+    preloadRecaptcha();
     // A fresh login must not inherit the previous user's cached account list
     // (the switcher cache uses a fixed sessionStorage key, so it would otherwise
     // leak across logins in the same browser). Clear it at the session boundary.

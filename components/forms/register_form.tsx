@@ -80,7 +80,7 @@ import {
 import SocialAuthButtons from "@/components/widgets/social-auth-buttons";
 import Link from "next/link";
 import { safeRandomUUID } from "@/lib/utils";
-import { executeRecaptcha } from "@/lib/recaptcha";
+import { executeRecaptcha, preloadRecaptcha } from "@/lib/recaptcha";
 
 // Fallback country ISO code when no DEFAULT_COUNTRY env UUID is configured.
 // CountrySelector resolves this ISO to the matching country's UUID once the
@@ -258,6 +258,12 @@ function RegisterForm({ step }: { step: string }) {
   const subscription = searchParams.get("package");
   const referredByCode = searchParams.get("referredByCode");
   const { toast } = useToast();
+
+  // Start the reCAPTCHA download on mount — doing it inside submit puts a
+  // multi-hundred-KB fetch on the critical path of the sign-up click.
+  useEffect(() => {
+    preloadRecaptcha();
+  }, []);
 
   useEffect(() => {
     if (subscription) {

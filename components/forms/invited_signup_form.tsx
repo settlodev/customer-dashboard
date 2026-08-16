@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,7 +29,7 @@ import {
 import { PhoneInput } from "@/components/ui/phone-input";
 import CountrySelector from "@/components/widgets/country-selector";
 import { FormError } from "@/components/widgets/form-error";
-import { executeRecaptcha } from "@/lib/recaptcha";
+import { executeRecaptcha, preloadRecaptcha } from "@/lib/recaptcha";
 import { EyeIcon, EyeOffIcon, Loader2Icon, ArrowRight } from "lucide-react";
 import {
   Card,
@@ -53,6 +53,12 @@ export default function InvitedSignupForm({
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
+
+  // Start the reCAPTCHA download on mount — the auto-login below needs a token,
+  // and fetching it inside submit puts the whole download on the critical path.
+  useEffect(() => {
+    preloadRecaptcha();
+  }, []);
 
   const form = useForm<z.infer<typeof RegisterSchema>>({
     resolver: zodResolver(RegisterSchema),

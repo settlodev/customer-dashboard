@@ -323,8 +323,14 @@ export function SalesBreakdown({
   currency: string;
 }) {
   const s = report.sales;
+  // Comps are inside s.net (a comped bill closes as paid), so both the
+  // "collected" cell and the margin work off the comp-free figure — which is
+  // what grossProfit is struck on. Older share snapshots only carry net.
+  const netCollected = s.netCollected ?? s.net;
   const margin =
-    s.net > 0 ? Math.round(((report.grossProfit ?? 0) / s.net) * 100) : null;
+    netCollected > 0
+      ? Math.round(((report.grossProfit ?? 0) / netCollected) * 100)
+      : null;
 
   return (
     <CodCard title="Sales breakdown" icon={<Coins />} sub={currency}>
@@ -347,12 +353,17 @@ export function SalesBreakdown({
             valueTone="warn"
             sub={
               report.complimentaryCount
-                ? `${fmt(report.complimentaryCount)} item${report.complimentaryCount === 1 ? "" : "s"}`
+                ? `${fmt(report.complimentaryCount)} order${report.complimentaryCount === 1 ? "" : "s"}`
                 : undefined
             }
           />
         ) : null}
-        <MCell label="Net sales" value={fmt(s.net)} sub="collected" accent />
+        <MCell
+          label="Net sales"
+          value={fmt(netCollected)}
+          sub="collected"
+          accent
+        />
         <MCell
           label="Tips"
           value={fmt(s.tips)}

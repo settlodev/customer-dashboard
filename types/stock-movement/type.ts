@@ -67,6 +67,15 @@ export interface StockMovement {
   /** Pre/post deltas. Phase 2 (V021). */
   previousBalance?: number | null;
   newBalance?: number | null;
+  /**
+   * `newBalance` of the entry written immediately before this one — what
+   * `previousBalance` must equal for the ledger to add up. Chained server-side
+   * in commit order, so it is NOT the row rendered below this one: an entry
+   * whose business time back-dates its write (a modification's date, a GRN's
+   * received date, a bill opened long before it closed) sits elsewhere in the
+   * list. Null on the range's first entry and on the location-wide list.
+   */
+  previousClosingBalance?: number | null;
   previousAverageCost?: number | null;
   newAverageCost?: number | null;
   priorBatchId?: string | null;

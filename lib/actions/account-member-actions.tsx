@@ -15,6 +15,8 @@ export interface AccountMember {
   firstName: string;
   lastName: string;
   email: string;
+  /** Avatar the member uploaded on their own profile; null until they do. */
+  pictureUrl?: string | null;
   active: boolean;
   invitedAt: string;
   acceptedAt?: string;
@@ -57,6 +59,8 @@ export const inviteMember = async (data: {
   email: string;
   firstName: string;
   lastName?: string;
+  /** Avatar (R2 URL). Optional — the member can also set their own later. */
+  pictureUrl?: string;
   roleIds: string[];
   scopes?: Array<{ scopeType: string; scopeId: string }>;
 }): Promise<FormResponse<AccountMember>> => {
@@ -89,6 +93,29 @@ export const inviteMember = async (data: {
     return {
       responseType: "error",
       message,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+/**
+ * Owner-side edit of a member's display details (name, avatar). Distinct from
+ * the member's own /profile save — this is the account manager updating someone
+ * they invited. Omitted fields are left untouched server-side.
+ */
+export const updateMemberProfile = async (
+  memberId: string,
+  data: { firstName?: string; lastName?: string; pictureUrl?: string },
+): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.patch(`/api/v1/account-members/${memberId}/profile`, data);
+    revalidatePath("/team");
+    return { responseType: "success", message: "Member profile updated" };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to update member profile",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }

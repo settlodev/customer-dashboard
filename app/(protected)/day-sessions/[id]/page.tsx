@@ -144,7 +144,9 @@ export default async function DaySessionDetailPage({
     : null;
 
   // ── KPI figures ───────────────────────────────────────────────────
-  const net = report?.sales.net ?? 0;
+  // Comps close their bill as paid, so they ride inside sales.net; the KPI and
+  // the margin want the comp-free figure grossProfit is struck on.
+  const net = report?.sales.netCollected ?? report?.sales.net ?? 0;
   const gross = report?.sales.gross ?? 0;
   const grossProfit = report?.grossProfit ?? 0;
   const margin = marginPct(grossProfit, net);

@@ -114,8 +114,8 @@ interface LedgerRow {
   mathDelta: number | null;
   /**
    * Difference between this row's opening balance and the closing balance of
-   * the entry immediately before it. Non-null only when the chain is broken —
-   * i.e. stock changed without a movement being recorded.
+   * the entry written immediately before it. Non-null only when the chain is
+   * broken — i.e. stock changed without a movement being recorded.
    */
   chainGap: number | null;
   /** Backend never captured before/after balances for this row (pre-V021). */
@@ -124,18 +124,26 @@ interface LedgerRow {
 }
 
 /**
- * Walks the page (newest-first) and grades each entry against its neighbours.
+ * Grades each entry on the page.
  *
  * Two independent checks:
  *  - *row math* — does `before + qty` actually equal `after`?
- *  - *chain continuity* — does this entry open where the previous one closed?
+ *  - *chain continuity* — does this entry open where its predecessor closed?
  *
  * The chain check is what surfaces stock that moved without a movement being
- * written. It only holds for a contiguous, unfiltered slice of the ledger, so
- * callers must pass `chainCheck: false` whenever a type filter is active.
+ * written. It reads `previousClosingBalance`, which the backend chains in
+ * commit order, rather than looking at the neighbouring row. Those are not the
+ * same entry whenever a row's business time back-dates its write — a stock
+ * modification carrying an operator's date, a GRN's received date, a bill
+ * opened long before it was closed. Comparing against the neighbour reported
+ * every such row as an unexplained change, in equal-and-opposite pairs that
+ * netted to zero over each day because nothing was actually missing.
+ *
+ * Since the backend computes it before applying any type filter, the check
+ * survives filtering too — a hidden row still holds its place in the chain.
  */
-function analyse(movements: StockMovement[], chainCheck: boolean): LedgerRow[] {
-  return movements.map((m, i) => {
+function analyse(movements: StockMovement[]): LedgerRow[] {
+  return movements.map((m) => {
     const signed = signedQuantity(m);
     const prev = m.previousBalance;
     const next = m.newBalance;
@@ -147,14 +155,11 @@ function analyse(movements: StockMovement[], chainCheck: boolean): LedgerRow[] {
       if (Math.abs(delta) > EPS) mathDelta = delta;
     }
 
-    // Rows arrive newest-first, so the *older* neighbour is at i + 1.
+    // Null on the range's first entry — nothing precedes it to check against.
     let chainGap: number | null = null;
-    if (chainCheck && prev != null) {
-      const older = movements[i + 1];
-      if (older?.newBalance != null) {
-        const gap = prev - older.newBalance;
-        if (Math.abs(gap) > EPS) chainGap = gap;
-      }
+    if (prev != null && m.previousClosingBalance != null) {
+      const gap = prev - m.previousClosingBalance;
+      if (Math.abs(gap) > EPS) chainGap = gap;
     }
 
     return {
@@ -307,13 +312,7 @@ export function MovementLedger({
     setPage(0);
   }, []);
 
-  // A type filter removes intermediate entries, so consecutive rows are no
-  // longer adjacent in the ledger and every "gap" would be a false positive.
-  const chainCheck = typeParam == null;
-  const rows = useMemo(
-    () => analyse(data.content, chainCheck),
-    [data.content, chainCheck],
-  );
+  const rows = useMemo(() => analyse(data.content), [data.content]);
 
   const anomalyCount = useMemo(
     () =>
@@ -451,13 +450,6 @@ export function MovementLedger({
             scanning={scanning}
             rangeIsAllTime={rangeIsAllTime}
           />
-          {!chainCheck && (
-            <p className="text-[11px] text-muted-foreground">
-              Continuity checks are off while a movement type filter is applied
-              — filtered-out entries would look like gaps. Clear the type filter
-              to re-enable them.
-            </p>
-          )}
 
           {/* ── Ledger ─────────────────────────────────────────────── */}
           <div className="relative rounded-md border overflow-auto max-h-[640px]">
@@ -702,8 +694,10 @@ export function MovementLedger({
                       )}
 
                       {/* Chain break: this entry opened somewhere other than
-                          where the previous one closed. Rendered *below* the
-                          row because the ledger reads newest-first. */}
+                          where the entry written before it closed. That entry
+                          is not necessarily the one rendered below — the ledger
+                          reads in business time, the chain runs in write order,
+                          and a back-dated entry sits in a different place. */}
                       {row.chainGap != null && (
                         <TableRow className="hover:bg-transparent">
                           <TableCell colSpan={9} className="p-0">
@@ -714,9 +708,9 @@ export function MovementLedger({
                                 <strong className="font-semibold">
                                   {signedQty(row.chainGap)}
                                 </strong>{" "}
-                                here — the previous entry closed at{" "}
-                                {qty((m.previousBalance ?? 0) - row.chainGap)},
-                                but this one opened at{" "}
+                                here — the entry written before this one closed
+                                at {qty(m.previousClosingBalance ?? 0)}, but
+                                this one opened at{" "}
                                 {qty(m.previousBalance ?? 0)}.
                               </span>
                             </div>
@@ -865,7 +859,7 @@ function IntegrityReport({
             <span className="font-semibold">{signedQty(d.delta)}</span>
             <span className="opacity-80">
               {d.kind === "CHAIN_BREAK"
-                ? `previous entry closed at ${qty(d.previousClosingBalance)}, this one opened at ${qty(d.previousBalance)}`
+                ? `entry written before this one closed at ${qty(d.previousClosingBalance)}, this one opened at ${qty(d.previousBalance)}`
                 : `${qty(d.previousBalance)} ${signedQty(d.quantity)} should close at ${qty(d.previousBalance + d.quantity)}, but recorded ${qty(d.newBalance)}`}
             </span>
             {d.referenceNumber && (

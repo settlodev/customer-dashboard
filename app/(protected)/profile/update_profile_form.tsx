@@ -12,7 +12,6 @@ import {
   Camera,
 } from "lucide-react";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
-import { useSession } from "next-auth/react";
 import { FieldErrors, useForm } from "react-hook-form";
 import { z } from "zod";
 import { UpdateUserSchema } from "@/types/data-schemas";
@@ -28,22 +27,52 @@ const PRIMARY = "#EB7F44";
 const PRIMARY_LIGHT = "#fde8d8";
 const SECONDARY = "#EAEAE5";
 
-export default function UpdateProfileForm() {
-  const session = useSession();
+type Props = {
+  /** OWNER | MEMBER | STAFF | ACCOUNT — from /me/profile. */
+  relationship: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  pictureUrl: string | null;
+  bio: string;
+};
+
+/**
+ * Self-service profile edit. Every value here is the SIGNED-IN person's own —
+ * resolved server-side from `/me/profile` — not the account holder's, which is
+ * what the NextAuth session carries for invited members and dashboard-staff.
+ *
+ * Everyone gets a photo — members and staff have their own `picture_url`. Bio
+ * is the one field that only exists on the account holder's row, so it is
+ * omitted for the others rather than shown and silently dropped.
+ */
+export default function UpdateProfileForm({
+  relationship,
+  firstName,
+  lastName,
+  email,
+  phoneNumber,
+  pictureUrl,
+  bio,
+}: Props) {
   const [imageUrl, setImageUrl] = useState<string>("");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>("");
   const { toast } = useToast();
 
+  // Only the account holder (and a support session acting as them) has a bio
+  // column to write to. Avatars exist on all three rows.
+  const canEditBio = relationship === "OWNER" || relationship === "ACCOUNT";
+
   const form = useForm<z.infer<typeof UpdateUserSchema>>({
     resolver: zodResolver(UpdateUserSchema),
     defaultValues: {
-      firstName: session.data?.user?.firstName,
-      lastName: session.data?.user?.lastName,
-      email: session.data?.user?.email,
-      phoneNumber: session.data?.user?.phoneNumber,
-      country: session.data?.user?.countryId,
-      bio: session.data?.user?.bio,
+      firstName,
+      lastName,
+      email,
+      phoneNumber,
+      bio,
     },
   });
 
@@ -86,16 +115,9 @@ export default function UpdateProfileForm() {
     });
   };
 
-  const currentAvatar = imageUrl
-    ? imageUrl
-    : session.data?.user?.image
-      ? session.data?.user?.image
-      : null;
+  const currentAvatar = imageUrl || pictureUrl || null;
 
-  const initials = [
-    session.data?.user?.firstName?.[0],
-    session.data?.user?.lastName?.[0],
-  ]
+  const initials = [firstName?.[0], lastName?.[0]]
     .filter(Boolean)
     .join("")
     .toUpperCase();
@@ -170,12 +192,9 @@ export default function UpdateProfileForm() {
                         </div>
                       </div>
                       <p className="mt-3 font-semibold text-gray-900 text-sm">
-                        {session.data?.user?.firstName}{" "}
-                        {session.data?.user?.lastName}
+                        {firstName} {lastName}
                       </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {session.data?.user?.email}
-                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">{email}</p>
                     </div>
 
                     {/* Upload zone */}
@@ -208,8 +227,11 @@ export default function UpdateProfileForm() {
                           </span>{" "}
                           or drag and drop
                         </p>
+                        {/* Matches UploadPurpose.PROFILE_PICTURE's server-side
+                            cap — the old "5MB" copy promised more than the
+                            presign would sign for. */}
                         <p className="text-xs text-gray-400">
-                          PNG, JPG up to 5MB
+                          PNG, JPG up to 2MB
                         </p>
                       </div>
                     </label>
@@ -390,7 +412,9 @@ export default function UpdateProfileForm() {
                       />
                     </div>
 
-                    {/* Bio */}
+                    {/* Bio — account holders only (members and staff have no
+                        bio column to save it into). */}
+                    {canEditBio && (
                     <FormField
                       control={form.control}
                       name="bio"
@@ -428,6 +452,7 @@ export default function UpdateProfileForm() {
                         </FormItem>
                       )}
                     />
+                    )}
 
                     {/* Actions */}
                     <div
