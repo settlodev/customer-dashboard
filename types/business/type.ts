@@ -59,6 +59,11 @@ export declare interface BusinessWithLocationType {
 
 export type EfdStatus = "REQUESTED" | "AWAITING_CONFIRMATION" | "ACTIVE";
 
+// AUTO derives registration from `vatRegistrationNumber` presence; the other
+// two are an explicit override in either direction. Mirrors the Accounts
+// Service's `VatRegistrationMode` enum.
+export type VatRegistrationMode = "AUTO" | "REGISTERED" | "NOT_REGISTERED";
+
 export interface BusinessSettings {
   id: string;
   accountId: string;
@@ -74,6 +79,10 @@ export interface BusinessSettings {
   // EFD
   efdSerialNumber: string | null;
   vatRegistrationNumber: string | null;
+  /** Explicit override (REGISTERED/NOT_REGISTERED) or AUTO to derive from `vatRegistrationNumber`. */
+  vatRegistrationMode: VatRegistrationMode;
+  /** Resolved answer: `vatRegistrationMode`'s override if set, else whether `vatRegistrationNumber` is non-blank. Authoritative — read this rather than re-deriving from the VRN. */
+  effectivelyVatRegistered: boolean;
   uniqueIdentificationNumber: string | null;
   enableVirtualEfd: boolean;
   efdStatus: EfdStatus | null;

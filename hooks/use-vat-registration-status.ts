@@ -15,16 +15,15 @@ let inFlight: Promise<boolean> | null = null;
  * docs/superpowers/specs/2026-08-03-purchase-tax-design.md (Settlo
  * Inventory Service repo).
  *
- * This implements only the DEFAULT half of the backend's resolution rule —
- * `effectiveStatus = vatRegistered_override ?? isNotBlank(vatRegistrationNumber)`
- * — by reading the business's VRN via the same `getBusinessSettings` action
- * the letterhead already calls. The explicit per-business override
- * (`vatRegistrationMode` / `effectivelyVatRegistered` on
- * `BusinessSettingsResponse`) is not yet exposed on the dashboard's
- * `BusinessSettings` type — that lands with Plan 4 Task 4 (the
- * VAT-registration control on the business settings page). Once it does,
- * this hook should read that field directly instead of re-deriving from
- * the VRN.
+ * Reads `BusinessSettings.effectivelyVatRegistered` — the authoritative
+ * answer already computed server-side (Accounts Service,
+ * `BusinessSettingsEntity#isEffectivelyVatRegistered`): the explicit
+ * `vatRegistrationMode` override if one is set, else derived from whether
+ * `vatRegistrationNumber` is non-blank. Falls back to re-deriving from the
+ * VRN only if that field is somehow absent from the response (e.g. a stale
+ * cached payload) — never as the primary path, since a business with an
+ * explicit override would otherwise get the invariant inverted (tax on top
+ * where the server folds it into cost, or vice versa).
  *
  * IMPORTANT: this only drives the client-side PREVIEW shown while composing
  * a document. The persisted `taxRecoverable` on a saved line is always
@@ -49,8 +48,10 @@ export function useVatRegistrationStatus(): boolean {
       inFlight = getCurrentBusinessId()
         .then((businessId) => {
           if (!businessId) return true;
-          return getBusinessSettings(businessId).then(
-            (settings) => !!settings?.vatRegistrationNumber?.trim(),
+          return getBusinessSettings(businessId).then((settings) =>
+            typeof settings?.effectivelyVatRegistered === "boolean"
+              ? settings.effectivelyVatRegistered
+              : !!settings?.vatRegistrationNumber?.trim(),
           );
         })
         .catch(() => true)
@@ -72,9 +73,4 @@ export function useVatRegistrationStatus(): boolean {
   }, []);
 
   return registered;
-}
-
-export function resetVatRegistrationStatusCache() {
-  cachedStatus = null;
-  inFlight = null;
 }

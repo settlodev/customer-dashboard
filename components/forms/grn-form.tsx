@@ -179,6 +179,30 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
     [taxTypes],
   );
 
+  // The business's default tax type (isDefault, active) — the third tier of
+  // the server's resolution chain, gated on VAT registration. See
+  // PurchaseTaxResolver (Settlo Inventory Service): line override → stock
+  // item → business default (registered only) → none. The previous version
+  // of this preview stopped at "stock item", so a registered business whose
+  // item had no tax type but whose business had an isDefault one previewed
+  // 0 tax where the server applies the full rate.
+  const businessDefaultTaxTypeId = useMemo(
+    () => taxTypes.find((t) => t.isDefault)?.id ?? null,
+    [taxTypes],
+  );
+
+  // Line override → stock item's default → business default (registered
+  // only) → none. Mirrors PurchaseTaxResolver exactly, including the
+  // VAT-registration gate on the last fallback.
+  const resolveEffectiveTaxTypeId = useCallback(
+    (lineOverride: string | null | undefined, stockDefault: string | null | undefined) =>
+      lineOverride ??
+      stockDefault ??
+      (vatRegistered ? businessDefaultTaxTypeId : null) ??
+      null,
+    [vatRegistered, businessDefaultTaxTypeId],
+  );
+
   // Live preview of net/tax/gross while the GRN is being composed — this
   // form is create-only and redirects straight to the detail page on
   // success (see createGrn), so there is never a saved GrnResponse to read
@@ -196,9 +220,10 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
 
       const fieldId = fields[i]?.id;
       const meta = fieldId ? itemMeta[fieldId] : undefined;
-      // Line override → stock item's default → no tax — same chain the
-      // server resolves at write time.
-      const effectiveTaxTypeId = item?.taxTypeId ?? meta?.stockTaxTypeId ?? null;
+      const effectiveTaxTypeId = resolveEffectiveTaxTypeId(
+        item?.taxTypeId,
+        meta?.stockTaxTypeId,
+      );
       const rate = effectiveTaxTypeId
         ? (taxTypeMap.get(effectiveTaxTypeId)?.ratePercent ?? 0)
         : 0;
@@ -223,7 +248,15 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
     // so its "subtotal" is the gross — never a separate addition on screen.
     const subtotal = vatRegistered ? netAmount : totalAmount;
     return { netAmount, taxAmount, totalAmount, subtotal };
-  }, [watchedItems, fields, itemMeta, taxTypeMap, pricesIncludeTax, vatRegistered]);
+  }, [
+    watchedItems,
+    fields,
+    itemMeta,
+    taxTypeMap,
+    pricesIncludeTax,
+    vatRegistered,
+    resolveEffectiveTaxTypeId,
+  ]);
 
   const handleVariantChange = useCallback(
     (fieldId: string, index: number, variantId: string) => {
@@ -315,6 +348,24 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
     setLinkedLpo(null);
     form.setValue("lpoId", "", { shouldDirty: true });
   }, [form]);
+
+  // GrnService derives `pricesIncludeTax` from the linked LPO's own
+  // recoverability (`!lpoRecoverable`, sampled off the LPO's stored line
+  // tax) and overwrites whatever the client sends whenever the GRN carries
+  // an lpoId — see the LPO-linked branch of GrnService (Settlo Inventory
+  // Service). Unit costs prefilled from an LPO are already tax-normalised
+  // one way or the other (net when recoverable, gross when not), so the
+  // operator's own toggle would either tax an already-gross cost again or
+  // strip tax from an already-net cost again. `vatRegistered` is the best
+  // client-side stand-in for the LPO's own recoverability (both are the
+  // same business-level VAT status; see the hook's own caveat about not yet
+  // reading the resolved LPO). Force the field — and lock the control — so
+  // neither the preview nor the operator can diverge from what the server
+  // will actually apply.
+  useEffect(() => {
+    if (!linkedLpo) return;
+    form.setValue("pricesIncludeTax", !vatRegistered, { shouldDirty: false });
+  }, [linkedLpo, vatRegistered, form]);
 
   const initialLpoApplied = useRef(false);
   useEffect(() => {
@@ -512,16 +563,16 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                   <div className="space-y-0.5">
                     <FormLabel>Supplier prices include tax</FormLabel>
                     <FormDescription>
-                      Turn this on when the unit costs you are entering are
-                      the tax-inclusive amounts from the supplier&apos;s
-                      invoice.
+                      {linkedLpo
+                        ? "Set by the linked LPO — its unit costs are already tax-normalised, so this can't be changed here. Unlink the LPO to set it yourself."
+                        : "Turn this on when the unit costs you are entering are the tax-inclusive amounts from the supplier's invoice."}
                     </FormDescription>
                   </div>
                   <FormControl>
                     <Switch
                       checked={field.value}
                       onCheckedChange={field.onChange}
-                      disabled={isPending}
+                      disabled={isPending || !!linkedLpo}
                     />
                   </FormControl>
                 </FormItem>
@@ -767,12 +818,23 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                       control={form.control}
                       name={`items.${index}.taxTypeId`}
                       render={({ field: f }) => {
-                        const defaultTaxTypeId = meta?.stockTaxTypeId ?? null;
-                        const effectiveTaxTypeId = f.value ?? defaultTaxTypeId;
+                        // Same 3-tier chain as the footer preview and the
+                        // server's PurchaseTaxResolver: line override →
+                        // stock item's default → business default (only
+                        // when VAT-registered) → none.
+                        const itemDefaultTaxTypeId = meta?.stockTaxTypeId ?? null;
+                        const effectiveTaxTypeId = resolveEffectiveTaxTypeId(
+                          f.value,
+                          itemDefaultTaxTypeId,
+                        );
                         const effectiveTaxType = effectiveTaxTypeId
                           ? taxTypeMap.get(effectiveTaxTypeId)
                           : undefined;
                         const isOverride = !!f.value;
+                        const isItemDefault =
+                          !isOverride && !!itemDefaultTaxTypeId;
+                        const isBusinessDefault =
+                          !isOverride && !itemDefaultTaxTypeId && !!effectiveTaxTypeId;
                         return (
                           <FormItem className="w-full md:flex-[3] min-w-0 space-y-[7px]">
                             <FieldLabel optional>Tax</FieldLabel>
@@ -785,8 +847,8 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                                 value={f.value ?? null}
                                 onChange={(v) => f.onChange(v ?? null)}
                                 placeholder={
-                                  defaultTaxTypeId
-                                    ? "Use item default"
+                                  effectiveTaxTypeId
+                                    ? "Use default"
                                     : taxTypes.length === 0
                                       ? "Loading tax types…"
                                       : "No tax"
@@ -800,7 +862,13 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                             <FieldHint>
                               {effectiveTaxType
                                 ? `${effectiveTaxType.name} ${effectiveTaxType.ratePercent}%${
-                                    isOverride ? "" : " (item default)"
+                                    isOverride
+                                      ? ""
+                                      : isItemDefault
+                                        ? " (item default)"
+                                        : isBusinessDefault
+                                          ? " (business default)"
+                                          : ""
                                   }`
                                 : "No tax configured"}
                             </FieldHint>
