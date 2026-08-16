@@ -38,6 +38,7 @@ import {
   FileText,
   Boxes,
   AlertTriangle,
+  Percent,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +47,7 @@ import {
   FormField,
   FormItem,
   FormLabel,
+  FormDescription,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -55,6 +57,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -109,12 +112,14 @@ import { assignBarcode } from "@/lib/actions/barcode-actions";
 import {
   getCachedCategories,
   getCachedStocks,
+  getCachedTaxTypes,
   invalidateStocksCache,
   useCachedUnits,
 } from "@/lib/cache/reference-data";
 import type { Stock } from "@/types/stock/type";
 import type { UnitOfMeasure } from "@/types/unit/type";
 import type { Category } from "@/types/category/type";
+import type { TaxType } from "@/types/tax-type/type";
 import { StockSchema } from "@/types/stock/schema";
 import type { FormResponse } from "@/types/types";
 import UnitSelector from "@/components/widgets/unit-selector";
@@ -190,6 +195,10 @@ export default function StockForm({ item, balances }: StockFormProps) {
   // travel as productOptions to createStockWithProduct.
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  // Purchase tax type picker — same source and shape as the product form's
+  // tax-type selector (types/tax-type/type, getCachedTaxTypes) so the two
+  // forms behave identically.
+  const [taxTypes, setTaxTypes] = useState<TaxType[]>([]);
   const locationCurrency = useLocationCurrency();
   const inventoryFlags = useLocationInventoryFlags();
   // Default on — most merchants who bother filling in reorder/alert config
@@ -210,6 +219,25 @@ export default function StockForm({ item, balances }: StockFormProps) {
       .catch(() => setCategories([]));
   }, [autoCreateProduct, categories.length]);
 
+  // Purchase tax types — fetched unconditionally (unlike categories above)
+  // since the tax-type picker is always visible on this form, not gated
+  // behind a toggle. Same active-only filter + sortOrder/code ordering as
+  // the product form's tax-type selector.
+  useEffect(() => {
+    getCachedTaxTypes()
+      .then((tx) => {
+        const activeTaxTypes = ((tx ?? []) as TaxType[])
+          .filter((t) => t.active)
+          .sort(
+            (a, b) =>
+              (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+              a.code.localeCompare(b.code),
+          );
+        setTaxTypes(activeTaxTypes);
+      })
+      .catch(() => setTaxTypes([]));
+  }, []);
+
   const unitMap = useMemo(
     () => new Map(units.map((u) => [u.id, u])),
     [units],
@@ -224,6 +252,12 @@ export default function StockForm({ item, balances }: StockFormProps) {
       divisibleUnitId: item?.divisibleUnitId ?? "",
       materialType: item?.materialType ?? "FINISHED_GOOD",
       categoryId: item?.categoryId ?? "",
+      // Left unset (undefined) rather than "" — taxTypeId is optional +
+      // nullable, not the optional-uuid-with-empty-string-default pattern
+      // used by divisibleUnitId/categoryId above, so it must never default
+      // to a picked value.
+      taxTypeId: item?.taxTypeId ?? undefined,
+      purchaseTaxInclusive: item?.purchaseTaxInclusive ?? false,
       imageUrls: item?.imageUrls?.length
         ? item.imageUrls
         : item?.imageUrl
@@ -962,6 +996,88 @@ export default function StockForm({ item, balances }: StockFormProps) {
                       </div>
                     </div>
                   )}
+                </div>
+              </section>
+
+              <section className={styles.formCard}>
+                <header className={styles.formCardHead}>
+                  <div className={styles.icoBox}>
+                    <Percent className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3>Purchase tax</h3>
+                    <p className={styles.formCardHeadDesc}>
+                      Set once here — every purchase document for this item
+                      (LPOs, GRNs, intake) inherits it as a default.
+                    </p>
+                  </div>
+                  <div className={styles.formCardActions}>
+                    <span className={styles.stepBadge}>STEP 03</span>
+                  </div>
+                </header>
+
+                <div className={styles.formBody}>
+                  <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="taxTypeId"
+                      render={({ field }) => (
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel optional>Tax type</FieldLabel>
+                          <FormControl>
+                            <Combobox
+                              options={taxTypes.map((t) => ({
+                                value: t.id,
+                                label: `${t.code} — ${t.name} (${t.ratePercent}%)`,
+                              }))}
+                              value={field.value ?? null}
+                              onChange={(v) => field.onChange(v ?? null)}
+                              placeholder={
+                                taxTypes.length === 0
+                                  ? "Loading tax types…"
+                                  : "Pick a tax type"
+                              }
+                              searchPlaceholder="Search tax types…"
+                              emptyText="No tax types found."
+                              disabled={isPending || taxTypes.length === 0}
+                              ariaLabel="Tax type"
+                            />
+                          </FormControl>
+                          <FieldHint>
+                            Optional — falls back to the business default,
+                            and only applies for VAT-registered businesses.
+                            Leave unset otherwise.
+                          </FieldHint>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="purchaseTaxInclusive"
+                    render={({ field }) => (
+                      <FormItem className="mt-[15px] flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel>Supplier prices include tax</FormLabel>
+                          <FormDescription>
+                            Turn this on if suppliers normally quote this
+                            item at a price that already includes tax. You
+                            can still change it on any individual purchase
+                            order or delivery.
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </section>
             </div>

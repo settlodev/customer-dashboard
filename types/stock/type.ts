@@ -21,6 +21,19 @@ export interface Stock {
   categoryId?: string | null;
   categoryName?: string | null;
   /**
+   * Tax type applied to this item's purchase documents (LPOs, GRNs,
+   * stock intake). Null falls back to the business default, and only
+   * for VAT-registered businesses. Optional on read so response
+   * payloads that pre-date the feature still type-check.
+   */
+  taxTypeId?: string | null;
+  /**
+   * True when suppliers normally quote this item at a price that
+   * already includes tax. Defaults to false server-side. Optional on
+   * read for the same pre-existing-payload reason as {@link taxTypeId}.
+   */
+  purchaseTaxInclusive?: boolean;
+  /**
    * Legacy single-image field. New rows return {@link imageUrls};
    * keep this around for any callers still reading the cover via
    * the old shape.

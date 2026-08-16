@@ -97,6 +97,12 @@ export const StockSchema = object({
     .optional()
     .or(string().length(0))
     .nullish(),
+  // Purchase tax defaults for this item. Unset (undefined/null) is a valid,
+  // expected state — it falls back to the business default and only applies
+  // for VAT-registered businesses, so this must never be required or defaulted
+  // to a picked value.
+  taxTypeId: string().uuid().optional().nullable(),
+  purchaseTaxInclusive: boolean().optional().default(false),
   /**
    * Up to 5 image URLs for the stock gallery. Element 0 is the
    * cover/thumbnail. Matches the backend's {@code List<String>
