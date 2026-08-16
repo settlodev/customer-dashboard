@@ -66,20 +66,13 @@ export function SubmitQuoteDialog({ rfq }: Props) {
   const rfqCurrency = rfq.targetCurrency || rfq.currency || "TZS";
 
   const [taxTypes, setTaxTypes] = useState<TaxType[]>([]);
-  // The stock item's own default purchase tax type per rfqItem, keyed by
-  // stockVariantId. This dialog has no StockVariantSelector of its own (the
-  // line is fixed to the RFQ's own item — see `rfq.items[index]`), so the
-  // default is looked up directly from the cached catalogue instead of via
-  // a selector's `onVariantMeta` callback like the other purchase forms.
   const [stockTaxTypeByVariant, setStockTaxTypeByVariant] = useState<
     Record<string, string | null>
   >({});
-  // The stock item's own `purchaseTaxInclusive` default per rfqItem, keyed
-  // the same way and for the same reason — feeds the header toggle's
-  // auto-default (Fix 1, 2026-08 fix wave), not just the preview.
-  const [stockPurchaseTaxInclusiveByVariant, setStockPurchaseTaxInclusiveByVariant] = useState<
-    Record<string, boolean>
-  >({});
+  const [
+    stockPurchaseTaxInclusiveByVariant,
+    setStockPurchaseTaxInclusiveByVariant,
+  ] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     getCachedTaxTypes()
@@ -171,7 +164,9 @@ export function SubmitQuoteDialog({ rfq }: Props) {
           stockDefaultTaxTypeId:
             stockTaxTypeByVariant[rfq.items[i]?.stockVariantId ?? ""],
           stockPurchaseTaxInclusive:
-            stockPurchaseTaxInclusiveByVariant[rfq.items[i]?.stockVariantId ?? ""],
+            stockPurchaseTaxInclusiveByVariant[
+              rfq.items[i]?.stockVariantId ?? ""
+            ],
         })),
         { pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes },
       ),
@@ -185,6 +180,22 @@ export function SubmitQuoteDialog({ rfq }: Props) {
       businessDefaultTaxTypeId,
       taxTypes,
     ],
+  );
+
+  // Sum of the "Line total" column exactly as entered (qty × unit price), so
+  // the table footer agrees with the rows above it. This is not
+  // `totals.totalAmount` — that one is always gross, whereas the column is
+  // net when the header toggle says prices exclude tax.
+  const enteredLinesTotal = useMemo(
+    () =>
+      watchedItems.reduce(
+        (sum, item) =>
+          sum +
+          Number(item?.quotedUnitPrice || 0) *
+            Number(item?.quotedQuantity || 0),
+        0,
+      ),
+    [watchedItems],
   );
 
   // Whether the operator has manually flipped the header toggle — once they
@@ -201,16 +212,22 @@ export function SubmitQuoteDialog({ rfq }: Props) {
   const headerPricesIncludeTaxDefault = useMemo(
     () =>
       resolveHeaderPricesIncludeTaxDefault(
-        rfq.items.map((item) => stockPurchaseTaxInclusiveByVariant[item.stockVariantId]),
+        rfq.items.map(
+          (item) => stockPurchaseTaxInclusiveByVariant[item.stockVariantId],
+        ),
       ),
     [rfq.items, stockPurchaseTaxInclusiveByVariant],
   );
 
   useEffect(() => {
     if (pricesIncludeTaxTouchedRef.current) return;
-    form.setValue("pricesIncludeTax", headerPricesIncludeTaxDefault.pricesIncludeTax, {
-      shouldDirty: false,
-    });
+    form.setValue(
+      "pricesIncludeTax",
+      headerPricesIncludeTaxDefault.pricesIncludeTax,
+      {
+        shouldDirty: false,
+      },
+    );
   }, [headerPricesIncludeTaxDefault.pricesIncludeTax, form]);
 
   const onSubmit = (values: FormValues) => {
@@ -225,7 +242,10 @@ export function SubmitQuoteDialog({ rfq }: Props) {
           return;
         }
         toast({ title: "Quote submitted", description: res.message });
-        form.reset({ ...form.formState.defaultValues, items: defaultItems } as FormValues);
+        form.reset({
+          ...form.formState.defaultValues,
+          items: defaultItems,
+        } as FormValues);
         pricesIncludeTaxTouchedRef.current = false;
         setOpen(false);
         router.refresh();
@@ -286,7 +306,9 @@ export function SubmitQuoteDialog({ rfq }: Props) {
                         maxLength={3}
                         {...field}
                         value={field.value ?? ""}
-                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                        onChange={(e) =>
+                          field.onChange(e.target.value.toUpperCase())
+                        }
                         disabled={isPending}
                       />
                     </FormControl>
@@ -309,7 +331,11 @@ export function SubmitQuoteDialog({ rfq }: Props) {
                         {...field}
                         value={field.value ?? ""}
                         onChange={(e) =>
-                          field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
+                          field.onChange(
+                            e.target.value === ""
+                              ? undefined
+                              : Number(e.target.value),
+                          )
                         }
                         disabled={isPending}
                       />
@@ -363,15 +389,16 @@ export function SubmitQuoteDialog({ rfq }: Props) {
                   <div className="space-y-0.5">
                     <FormLabel>Quoted prices include tax</FormLabel>
                     <FormDescription>
-                      Turn this on when the unit prices you&apos;re entering
-                      are the tax-inclusive amounts from the supplier&apos;s
-                      quote. Defaults from the items below — override if
-                      this quote differs.
+                      Turn this on when the unit prices you&apos;re entering are
+                      the tax-inclusive amounts from the supplier&apos;s quote.
+                      Defaults from the items below — override if this quote
+                      differs.
                     </FormDescription>
                     {headerPricesIncludeTaxDefault.mixed && (
                       <p className="text-[11px] text-amber-600">
-                        The items below don&apos;t agree on whether prices normally include tax —
-                        defaulted to off. Check each line before saving.
+                        The items below don&apos;t agree on whether prices
+                        normally include tax — defaulted to off. Check each line
+                        before saving.
                       </p>
                     )}
                   </div>
@@ -392,17 +419,22 @@ export function SubmitQuoteDialog({ rfq }: Props) {
             <div className="border rounded-lg overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-muted/60">
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Item</th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Qty quoted</th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Unit price</th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Line total</th>
                   <tr className="border-b bg-gray-50/60">
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Item</th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Qty quoted</th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Unit price</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Tax</th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Line total</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                      Item
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                      Qty quoted
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                      Unit price
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                      Tax
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                      Line total
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -418,7 +450,10 @@ export function SubmitQuoteDialog({ rfq }: Props) {
                         <td className="px-3 py-2 font-medium">
                           {item?.stockVariantDisplayName || "—"}
                           <div className="text-[10px] text-muted-foreground">
-                            Requested: {Number(item?.requestedQuantity ?? 0).toLocaleString()}
+                            Requested:{" "}
+                            {Number(
+                              item?.requestedQuantity ?? 0,
+                            ).toLocaleString()}
                           </div>
                         </td>
                         <td className="px-3 py-2 text-right">
@@ -476,12 +511,13 @@ export function SubmitQuoteDialog({ rfq }: Props) {
                               // the server's PurchaseTaxResolver: line
                               // override → stock item's default → business
                               // default (only when VAT-registered) → none.
-                              const effectiveTaxTypeId = resolveEffectiveTaxTypeId(
-                                f.value,
-                                itemDefaultTaxTypeId,
-                                vatRegistered,
-                                businessDefaultTaxTypeId,
-                              );
+                              const effectiveTaxTypeId =
+                                resolveEffectiveTaxTypeId(
+                                  f.value,
+                                  itemDefaultTaxTypeId,
+                                  vatRegistered,
+                                  businessDefaultTaxTypeId,
+                                );
                               const effectiveTaxType = effectiveTaxTypeId
                                 ? taxTypeMap.get(effectiveTaxTypeId)
                                 : undefined;
@@ -489,7 +525,9 @@ export function SubmitQuoteDialog({ rfq }: Props) {
                               const isItemDefault =
                                 !isOverride && !!itemDefaultTaxTypeId;
                               const isBusinessDefault =
-                                !isOverride && !itemDefaultTaxTypeId && !!effectiveTaxTypeId;
+                                !isOverride &&
+                                !itemDefaultTaxTypeId &&
+                                !!effectiveTaxTypeId;
                               return (
                                 <FormItem className="min-w-[170px]">
                                   <Combobox
@@ -541,9 +579,11 @@ export function SubmitQuoteDialog({ rfq }: Props) {
                 </tbody>
                 <tfoot>
                   <tr className="bg-muted/60 font-semibold">
-                    <td colSpan={3} className="px-3 py-2 text-right">Total</td>
+                    <td colSpan={4} className="px-3 py-2 text-right">
+                      Total
+                    </td>
                     <td className="px-3 py-2 text-right">
-                      {totalAmount.toLocaleString(undefined, {
+                      {enteredLinesTotal.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}
@@ -560,7 +600,9 @@ export function SubmitQuoteDialog({ rfq }: Props) {
               </div>
               <div className="flex justify-between w-64">
                 <span className="text-muted-foreground">
-                  {vatRegistered ? "Estimated tax" : "Estimated tax (included in cost)"}
+                  {vatRegistered
+                    ? "Estimated tax"
+                    : "Estimated tax (included in cost)"}
                 </span>
                 <span>{formatMoney(totals.taxAmount, rfqCurrency)}</span>
               </div>
@@ -593,7 +635,11 @@ export function SubmitQuoteDialog({ rfq }: Props) {
             />
 
             <DialogFooter>
-              <Button variant="secondary" onClick={() => setOpen(false)} disabled={isPending}>
+              <Button
+                variant="secondary"
+                onClick={() => setOpen(false)}
+                disabled={isPending}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>

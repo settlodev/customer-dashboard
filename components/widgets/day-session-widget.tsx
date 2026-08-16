@@ -484,7 +484,10 @@ function OpenPillContent({
             </span>
             <span className="flex items-center gap-1">
               <TrendingUp className="w-3 h-3 text-muted-foreground" />
-              {formatCompactMoney(report.sales.net, currency)}
+              {formatCompactMoney(
+                report.sales.netCollected ?? report.sales.net,
+                currency,
+              )}
             </span>
           </span>
         )}
@@ -589,7 +592,21 @@ function OpenCardContent({
           {report.sales.discounts > 0 && (
             <Row label="Discounts" value={`-${formatMoney(report.sales.discounts, currency)}`} tone="muted" />
           )}
-          <Row label="Net sales" value={formatMoney(report.sales.net, currency)} strong />
+          {/* Comps close their bill as paid, so they sit inside sales.net and
+              come back out of netCollected — show the deduction, or "Net sales"
+              silently reads lower than gross less discounts. */}
+          {(report.complimentaryAmount ?? 0) > 0 && (
+            <Row
+              label="In-house / comps"
+              value={`-${formatMoney(report.complimentaryAmount ?? 0, currency)}`}
+              tone="muted"
+            />
+          )}
+          <Row
+            label="Net sales"
+            value={formatMoney(report.sales.netCollected ?? report.sales.net, currency)}
+            strong
+          />
           {report.sales.tips > 0 && (
             <Row label="Tips" value={formatMoney(report.sales.tips, currency)} />
           )}

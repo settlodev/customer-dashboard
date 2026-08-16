@@ -44,8 +44,24 @@ export interface CurrentSessionSummary {
   isReopen?: number | null;
   openOrdersAtClose?: number | null;
 
-  sales: { gross: number; discounts: number; net: number; tips: number };
+  sales: {
+    gross: number;
+    discounts: number;
+    /** Selling value on the bills — comps included, since a comped order is a
+     *  real bill closed as paid. */
+    net: number;
+    /** net minus complimentaryAmount — what the session has actually taken.
+     *  Read as `netCollected ?? net`: absent on responses from a Reports
+     *  build predating the split. */
+    netCollected?: number;
+    tips: number;
+  };
   refunds: { count: number; amount: number };
+
+  /** Value given away on the house so far; complimentaryCount is comp'd
+   *  ORDERS, not tenders. */
+  complimentaryAmount?: number;
+  complimentaryCount?: number;
 
   cashNet: number;
   paymentsByMethod: Array<{
