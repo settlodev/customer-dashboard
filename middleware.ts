@@ -87,22 +87,16 @@ function extractSubscriptionStatusFromJwt(accessToken: string): string | null {
   return valid.includes(status) ? status : null;
 }
 
-const INTERNAL_ROLES_EDGE: InternalRole[] = [
-  "SYSTEM_ADMIN",
-  "SUPER_ADMIN",
-  "SUPPORT_AGENT",
-  "BOARD_MEMBER",
-  "SALES_TEAM",
-];
-
+// Mirrors extractInternalRole in lib/jwt-utils.ts: return the claim's raw
+// value whenever present, not restricted to the known InternalRole literals.
+// A custom (DB-backed) role code, e.g. "CALL_CENTER", has no enum mapping
+// and would never match a fixed list — presence of the claim is already a
+// reliable "is staff" signal on its own.
 function extractInternalRoleFromJwt(accessToken: string): InternalRole | null {
   const payload = decodeJwtPayload(accessToken);
   if (!payload) return null;
   const role = payload.internal_role as string | undefined;
-  if (!role) return null;
-  return INTERNAL_ROLES_EDGE.includes(role as InternalRole)
-    ? (role as InternalRole)
-    : null;
+  return role ? (role as InternalRole) : null;
 }
 
 function extractInternalPermissionsFromJwt(accessToken: string): string[] {
