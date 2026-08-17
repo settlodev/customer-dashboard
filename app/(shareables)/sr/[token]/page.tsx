@@ -140,12 +140,34 @@ export default async function SharedSupplierReturnPage({
     description: item.reason?.trim() || undefined,
     quantity: Number(item.quantity || 0),
     unitPrice: Number(item.unitCost ?? 0),
+    taxAmount: Number(item.taxAmount ?? 0),
+    taxRatePercent: item.taxRatePercent ?? undefined,
   }));
 
-  const subtotal = items.reduce(
+  // `SupplierReturnService.java:148` overwrites `unitCost` with the
+  // tax-normalised value (net when recoverable, gross when not — same
+  // convention as GRN/LPO), so `netAmount` below is genuinely net only when
+  // `taxRecoverable`; otherwise `unitCost` is already gross and equals what
+  // was charged. Unlike the printed GRN/LPO, `PublicSupplierReturnResponse`
+  // (Settlo Inventory Service) carries no header net/tax/total aggregates
+  // at all — only per-line `taxAmount`/`taxRecoverable` — so these are
+  // computed here from the lines rather than preferring a server header
+  // figure. Recoverability is uniform across a document (the business's
+  // VAT status at write time, not a per-line choice), so summing every
+  // line's `taxAmount` equals the recoverable-only total exactly when
+  // `taxRecoverable` is true, and is irrelevant (already folded into
+  // `unitCost`) when it's false — mirrors lib/grn-document.ts's arithmetic.
+  const netAmount = items.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
     0,
   );
+  const lineTaxTotal = sr.items.reduce(
+    (sum, item) => sum + Number(item.taxAmount || 0),
+    0,
+  );
+  const taxRecoverable = sr.items.some((item) => item.taxRecoverable === true);
+  const totalAmount = taxRecoverable ? netAmount + lineTaxTotal : netAmount;
+  const subtotal = taxRecoverable ? netAmount : totalAmount;
 
   const noteParts: string[] = [];
   if (sr.reason?.trim()) noteParts.push(`Reason: ${sr.reason.trim()}`);
@@ -163,8 +185,14 @@ export default async function SharedSupplierReturnPage({
     items,
     totals: {
       subtotal,
-      total: subtotal,
-      amountDue: subtotal,
+      taxes: [
+        {
+          label: taxRecoverable ? "Tax" : "Tax (included in cost)",
+          amount: lineTaxTotal,
+        },
+      ],
+      total: totalAmount,
+      amountDue: totalAmount,
     },
     currency,
     notes: noteParts.join("\n\n"),

@@ -93,11 +93,11 @@ export const STOCK_TAKE_STATUS_LABELS: Record<StockTakeStatus, string> = {
 };
 
 export const STOCK_TAKE_STATUS_TONES: Record<StockTakeStatus, string> = {
-  DRAFT: "bg-gray-50 text-gray-700",
-  IN_PROGRESS: "bg-blue-50 text-blue-700",
-  COMPLETED: "bg-amber-50 text-amber-700",
-  APPROVED: "bg-green-50 text-green-700",
-  CANCELLED: "bg-red-50 text-red-700",
+  DRAFT: "bg-muted text-ink-2",
+  IN_PROGRESS: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  COMPLETED: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  APPROVED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
 };
 
 export const CYCLE_COUNT_TYPE_LABELS: Record<CycleCountType, string> = {

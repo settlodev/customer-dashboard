@@ -51,7 +51,7 @@ export const getColumns = ({
       </Button>
     ),
     cell: ({ row }) => (
-      <span className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
+      <span className="font-mono text-xs font-semibold text-ink-2 bg-muted px-2 py-0.5 rounded">
         {row.original.requestNumber}
       </span>
     ),
@@ -60,7 +60,7 @@ export const getColumns = ({
     id: "source",
     header: "Source",
     cell: ({ row }) => (
-      <span className="text-gray-900">
+      <span className="text-ink">
         {row.original.sourceLocationName || "Source"}
       </span>
     ),
@@ -69,7 +69,7 @@ export const getColumns = ({
     id: "requestedBy",
     header: "Requested by",
     cell: ({ row }) => (
-      <span className="text-gray-600">
+      <span className="text-ink-2">
         {row.original.requestedByName || "—"}
       </span>
     ),
@@ -78,7 +78,7 @@ export const getColumns = ({
     id: "items",
     header: "Items",
     cell: ({ row }) => (
-      <span className="text-gray-600">{row.original.items?.length ?? 0}</span>
+      <span className="text-ink-2">{row.original.items?.length ?? 0}</span>
     ),
   },
   {
@@ -87,7 +87,7 @@ export const getColumns = ({
     cell: ({ row }) => {
       const status = row.original.status;
       const colors =
-        TRANSFER_REQUEST_STATUS_COLORS[status] || "bg-gray-100 text-gray-600";
+        TRANSFER_REQUEST_STATUS_COLORS[status] || "bg-muted text-ink-2";
       return (
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colors}`}
@@ -101,7 +101,7 @@ export const getColumns = ({
     accessorKey: "createdAt",
     header: "Date",
     cell: ({ row }) => (
-      <span className="text-gray-600">
+      <span className="text-ink-2">
         {new Date(row.original.createdAt).toLocaleDateString("en-GB", {
           day: "2-digit",
           month: "short",

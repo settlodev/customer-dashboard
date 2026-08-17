@@ -9,7 +9,7 @@ import { ArrowRight, EyeIcon, EyeOffIcon, Loader2, ShieldCheck } from "lucide-re
 import { LoginSchema } from "@/types/data-schemas";
 import { ADMIN_DEFAULT_REDIRECT_URL } from "@/routes";
 import { deleteStaffAuthCookie } from "@/lib/auth-utils";
-import { executeRecaptcha } from "@/lib/recaptcha";
+import { executeRecaptcha, preloadRecaptcha } from "@/lib/recaptcha";
 import { FormResponse } from "@/types/types";
 
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ export default function StaffLoginForm() {
   useEffect(() => {
     deleteStaffAuthCookie();
     setMounted(true);
+    preloadRecaptcha();
   }, []);
 
   const form = useForm<z.infer<typeof LoginSchema>>({

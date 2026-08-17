@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -22,10 +22,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
+import { Combobox } from "@/components/ui/combobox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,8 +84,18 @@ import SupplierSelector from "@/components/widgets/supplier-selector";
 import CurrencySelector from "@/components/widgets/currency-selector";
 import CompatibleUnitSelector from "@/components/widgets/compatible-unit-selector";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
+import { useVatRegistrationStatus } from "@/hooks/use-vat-registration-status";
 import { BusinessDayClosedDialog } from "@/components/widgets/business-day-closed-dialog";
 import { useBusinessDayGuard } from "@/hooks/use-business-day-guard";
+import { getCachedTaxTypes } from "@/lib/cache/reference-data";
+import type { TaxType } from "@/types/tax-type/type";
+import { formatMoney } from "@/lib/helpers";
+import {
+  computePurchaseTaxPreview,
+  findBusinessDefaultTaxTypeId,
+  resolveEffectiveTaxTypeId,
+  resolveHeaderPricesIncludeTaxDefault,
+} from "@/lib/purchase-tax";
 
 import styles from "./styles/form-shell.module.css";
 
@@ -94,7 +108,27 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
   const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
   const locationCurrency = useLocationCurrency();
+  const vatRegistered = useVatRegistrationStatus();
   const businessDayGuard = useBusinessDayGuard();
+
+  const [taxTypes, setTaxTypes] = useState<TaxType[]>([]);
+
+  // Purchase tax types — same source, filter and sort as the GRN form's
+  // picker, so the per-line override behaves identically everywhere.
+  useEffect(() => {
+    getCachedTaxTypes()
+      .then((tx) => {
+        const activeTaxTypes = ((tx ?? []) as TaxType[])
+          .filter((t) => t.active)
+          .sort(
+            (a, b) =>
+              (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+              a.code.localeCompare(b.code),
+          );
+        setTaxTypes(activeTaxTypes);
+      })
+      .catch(() => setTaxTypes([]));
+  }, []);
 
   // Seeded from `item` in edit mode so a line that already has recorded
   // serials shows them immediately. `StockVariantSelector` independently
@@ -118,12 +152,29 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
   // Variant tracking unit per row — anchors the purchase-pack picker so it
   // only surfaces units convertible to the variant's stock unit.
   const [variantUnitMap, setVariantUnitMap] = useState<Record<number, string | undefined>>({});
+  // The stock item's own default purchase tax type per row, resolved from
+  // `StockVariantSelector`'s catalogue metadata (`VariantMeta.stockTaxTypeId`).
+  // Keyed by the field array's own stable `field.id` — unlike
+  // `serialTrackedMap`/`variantUnitMap` above (index-keyed, and drift on
+  // row deletion since `remove()` shifts indices without re-keying those
+  // maps), this one feeds the footer's money arithmetic directly, so an
+  // index-keyed version would show the wrong tax default for surviving
+  // rows after a delete. GRN/LPO/supplier-return already key their
+  // equivalent map by field.id for the same reason.
+  const [stockTaxTypeIdMap, setStockTaxTypeIdMap] = useState<Record<string, string | null | undefined>>({});
+  // The stock item's own `purchaseTaxInclusive` default per row, keyed the
+  // same way (field.id) and for the same drift reason — feeds the header
+  // toggle's auto-default (Fix 1, 2026-08 fix wave), not just the preview.
+  const [stockPurchaseTaxInclusiveMap, setStockPurchaseTaxInclusiveMap] = useState<
+    Record<string, boolean | undefined>
+  >({});
 
   const form = useForm<z.infer<typeof StockIntakeRecordSchema>>({
     resolver: zodResolver(StockIntakeRecordSchema),
     defaultValues: item
       ? {
           notes: item.notes ?? "",
+          pricesIncludeTax: item.pricesIncludeTax ?? false,
           orderedDate: item.orderedDate ?? "",
           receivedDate: item.receivedDate ?? "",
           supplierId: item.supplierId ?? "",
@@ -141,11 +192,13 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                 supplierBatchReference: line.supplierBatchReference ?? "",
                 notes: line.notes ?? "",
                 serialNumbers: line.serialNumbers ?? undefined,
+                taxTypeId: line.taxTypeId ?? null,
               }))
             : [{ stockVariantId: "", quantity: 0, unitCost: 0, currency: locationCurrency }],
         }
       : {
           notes: "",
+          pricesIncludeTax: false,
           orderedDate: "",
           receivedDate: "",
           supplierId: "",
@@ -180,9 +233,86 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
     [orderedDateValue],
   );
 
-  const handleVariantMeta = useCallback((index: number, meta: VariantMeta | null) => {
+  const watchedItems = form.watch("items");
+  const pricesIncludeTax = form.watch("pricesIncludeTax");
+
+  const taxTypeMap = useMemo(
+    () => new Map(taxTypes.map((t) => [t.id, t])),
+    [taxTypes],
+  );
+
+  const businessDefaultTaxTypeId = useMemo(
+    () => findBusinessDefaultTaxTypeId(taxTypes),
+    [taxTypes],
+  );
+
+  const totals = useMemo(
+    () =>
+      computePurchaseTaxPreview(
+        (watchedItems ?? []).map((row, index) => {
+          const fieldId = fields[index]?.id;
+          return {
+            quantity: Number(row?.quantity || 0),
+            cost: Number(row?.unitCost || 0),
+            taxTypeOverride: row?.taxTypeId,
+            stockDefaultTaxTypeId: fieldId ? stockTaxTypeIdMap[fieldId] : undefined,
+            stockPurchaseTaxInclusive: fieldId ? stockPurchaseTaxInclusiveMap[fieldId] : undefined,
+          };
+        }),
+        { pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes },
+      ),
+    [
+      watchedItems,
+      fields,
+      stockTaxTypeIdMap,
+      stockPurchaseTaxInclusiveMap,
+      pricesIncludeTax,
+      vatRegistered,
+      businessDefaultTaxTypeId,
+      taxTypes,
+    ],
+  );
+
+  // Whether the operator has manually flipped the header toggle — once they
+  // have, the auto-default effect below backs off and leaves their choice
+  // alone. Only relevant in create mode: in edit mode the toggle is already
+  // locked to the intake's stored value (see the isEditing branch below).
+  const pricesIncludeTaxTouchedRef = useRef(false);
+
+  // What the header toggle should default to, given the stock items
+  // currently on the intake — see resolveHeaderPricesIncludeTaxDefault
+  // (Fix 1, 2026-08 fix wave). Only lines with a resolved stock item count;
+  // a blank row or one still awaiting its catalogue fetch is ignored.
+  const headerPricesIncludeTaxDefault = useMemo(
+    () =>
+      resolveHeaderPricesIncludeTaxDefault(
+        (watchedItems ?? []).map((row, index) => {
+          if (!row?.stockVariantId) return undefined;
+          const fieldId = fields[index]?.id;
+          return fieldId ? stockPurchaseTaxInclusiveMap[fieldId] : undefined;
+        }),
+      ),
+    [watchedItems, fields, stockPurchaseTaxInclusiveMap],
+  );
+
+  // Keep the header toggle in sync with the item defaults as lines are
+  // added, removed, or their stock variant changes — so an untouched
+  // toggle reflects what the server will actually derive (Fix 1). Skipped
+  // entirely in edit mode: UpdateStockIntakeRecord has no pricesIncludeTax,
+  // the server re-uses the stored value, and the switch is disabled below.
+  useEffect(() => {
+    if (isEditing) return;
+    if (pricesIncludeTaxTouchedRef.current) return;
+    form.setValue("pricesIncludeTax", headerPricesIncludeTaxDefault.pricesIncludeTax, {
+      shouldDirty: false,
+    });
+  }, [headerPricesIncludeTaxDefault.pricesIncludeTax, isEditing, form]);
+
+  const handleVariantMeta = useCallback((index: number, fieldId: string, meta: VariantMeta | null) => {
     setSerialTrackedMap((prev) => ({ ...prev, [index]: meta?.serialTracked ?? false }));
     setVariantUnitMap((prev) => ({ ...prev, [index]: meta?.unitId }));
+    setStockTaxTypeIdMap((prev) => ({ ...prev, [fieldId]: meta?.stockTaxTypeId ?? null }));
+    setStockPurchaseTaxInclusiveMap((prev) => ({ ...prev, [fieldId]: meta?.stockPurchaseTaxInclusive }));
     if (!meta?.serialTracked) {
       setSerialInputs((prev) => {
         const next = { ...prev };
@@ -458,6 +588,39 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
 
                 <FormField
                   control={form.control}
+                  name="pricesIncludeTax"
+                  render={({ field }) => (
+                    <FormItem className="mt-[15px] flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel>Supplier prices include tax</FormLabel>
+                        <FormDescription>
+                          {isEditing
+                            ? "Set when this intake was created — the server keeps the original value on update, so this can't be changed here."
+                            : "Turn this on when the unit costs you are entering are the tax-inclusive amounts from the supplier's invoice or delivery note. Defaults from the items below — override if this delivery differs."}
+                        </FormDescription>
+                        {!isEditing && headerPricesIncludeTaxDefault.mixed && (
+                          <p className="text-[11px] text-amber-600">
+                            The items below don&apos;t agree on whether prices normally include tax —
+                            defaulted to off. Check each line before saving.
+                          </p>
+                        )}
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={(v) => {
+                            pricesIncludeTaxTouchedRef.current = true;
+                            field.onChange(v);
+                          }}
+                          disabled={isPending || isEditing}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="notes"
                   render={({ field }) => (
                     <FormItem className="mt-[15px] space-y-[7px]">
@@ -539,6 +702,16 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                                 delete next[index];
                                 return next;
                               });
+                              setStockTaxTypeIdMap((prev) => {
+                                const next = { ...prev };
+                                delete next[field.id];
+                                return next;
+                              });
+                              setStockPurchaseTaxInclusiveMap((prev) => {
+                                const next = { ...prev };
+                                delete next[field.id];
+                                return next;
+                              });
                             }}
                             className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"
                           >
@@ -547,7 +720,7 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2 lg:grid-cols-5">
+                      <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2 lg:grid-cols-6">
                         <FormField
                           control={form.control}
                           name={`items.${index}.stockVariantId`}
@@ -558,7 +731,7 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                                 <StockVariantSelector
                                   value={f.value}
                                   onChange={f.onChange}
-                                  onVariantMeta={(meta) => handleVariantMeta(index, meta)}
+                                  onVariantMeta={(meta) => handleVariantMeta(index, field.id, meta)}
                                   isDisabled={isPending}
                                 />
                               </FormControl>
@@ -638,6 +811,70 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                                   <FieldHint>Location base currency.</FieldHint>
                                 )}
                                 <FormMessage />
+                              </FormItem>
+                            );
+                          }}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.taxTypeId`}
+                          render={({ field: f }) => {
+                            // Same 3-tier chain as the footer preview and the
+                            // server's PurchaseTaxResolver: line override →
+                            // stock item's default → business default (only
+                            // when VAT-registered) → none.
+                            const itemDefaultTaxTypeId = stockTaxTypeIdMap[field.id] ?? null;
+                            const effectiveTaxTypeId = resolveEffectiveTaxTypeId(
+                              f.value,
+                              itemDefaultTaxTypeId,
+                              vatRegistered,
+                              businessDefaultTaxTypeId,
+                            );
+                            const effectiveTaxType = effectiveTaxTypeId
+                              ? taxTypeMap.get(effectiveTaxTypeId)
+                              : undefined;
+                            const isOverride = !!f.value;
+                            const isItemDefault =
+                              !isOverride && !!itemDefaultTaxTypeId;
+                            const isBusinessDefault =
+                              !isOverride && !itemDefaultTaxTypeId && !!effectiveTaxTypeId;
+                            return (
+                              <FormItem className="space-y-[7px]">
+                                <FieldLabel optional>Tax</FieldLabel>
+                                <FormControl>
+                                  <Combobox
+                                    options={taxTypes.map((t) => ({
+                                      value: t.id,
+                                      label: `${t.code} — ${t.name} (${t.ratePercent}%)`,
+                                    }))}
+                                    value={f.value ?? null}
+                                    onChange={(v) => f.onChange(v ?? null)}
+                                    placeholder={
+                                      effectiveTaxTypeId
+                                        ? "Use default"
+                                        : taxTypes.length === 0
+                                          ? "Loading tax types…"
+                                          : "No tax"
+                                    }
+                                    searchPlaceholder="Search tax types…"
+                                    emptyText="No tax types found."
+                                    disabled={isPending}
+                                    ariaLabel="Tax"
+                                  />
+                                </FormControl>
+                                <FieldHint>
+                                  {effectiveTaxType
+                                    ? `${effectiveTaxType.name} ${effectiveTaxType.ratePercent}%${
+                                        isOverride
+                                          ? ""
+                                          : isItemDefault
+                                            ? " (item default)"
+                                            : isBusinessDefault
+                                              ? " (business default)"
+                                              : ""
+                                      }`
+                                    : "No tax configured"}
+                                </FieldHint>
                               </FormItem>
                             );
                           }}
@@ -815,6 +1052,27 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                         })()}
                     </div>
                   ))}
+                </div>
+
+                <div className="flex flex-col gap-1 items-end text-sm mt-2 pt-3 border-t">
+                  <div className="flex justify-between w-64">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>{formatMoney(totals.subtotal, locationCurrency)}</span>
+                  </div>
+                  <div className="flex justify-between w-64">
+                    <span className="text-muted-foreground">
+                      {vatRegistered ? "Tax" : "Tax (included in cost)"}
+                    </span>
+                    <span>{formatMoney(totals.taxAmount, locationCurrency)}</span>
+                  </div>
+                  <div className="flex justify-between w-64 font-medium border-t pt-1">
+                    <span>Total</span>
+                    <span>{formatMoney(totals.totalAmount, locationCurrency)}</span>
+                  </div>
+                  <p className="w-64 text-[11px] text-muted-foreground text-right">
+                    Estimated from the tax rates above — the server confirms
+                    the exact figures on save.
+                  </p>
                 </div>
               </div>
             </section>

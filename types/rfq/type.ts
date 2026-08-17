@@ -97,6 +97,12 @@ export interface SupplierQuote {
   submittedAt: string | null;
   isAwarded: boolean | null;
   notes: string | null;
+  /** Header override: this supplier's quote is priced gross (tax-inclusive). */
+  pricesIncludeTax?: boolean;
+  /** Sum of line net amounts. */
+  netAmount?: number;
+  /** Sum of recoverable line tax amounts — zero for a non-VAT-registered business. */
+  taxAmount?: number;
   items: SupplierQuoteItem[];
   createdAt: string;
   updatedAt: string;
@@ -111,6 +117,14 @@ export interface SupplierQuoteItem {
   currency: string | null;
   leadTimeDays: number | null;
   notes: string | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /** Line tax. Estimated/informational only — a quote never posts to the ledger. */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` if this quote were accepted — false means it would already be folded into `quotedUnitPrice`. */
+  taxRecoverable?: boolean;
 }
 
 export interface QuoteComparison {
@@ -166,6 +180,8 @@ export interface QuoteItemPayload {
   currency?: string;
   leadTimeDays?: number;
   notes?: string;
+  /** Per-line override of the tax type that applies to this item. */
+  taxTypeId?: string | null;
 }
 
 export interface SubmitQuotePayload {
@@ -174,6 +190,8 @@ export interface SubmitQuotePayload {
   paymentTerms?: string;
   validityDate?: string;
   notes?: string;
+  /** Per-document override: this supplier's quote is priced gross. */
+  pricesIncludeTax?: boolean;
   items: QuoteItemPayload[];
 }
 
@@ -195,14 +213,14 @@ export const RFQ_STATUS_LABELS: Record<RfqStatus, string> = {
 };
 
 export const RFQ_STATUS_TONES: Record<RfqStatus, string> = {
-  DRAFT: "bg-gray-50 text-gray-700",
-  SENT: "bg-blue-50 text-blue-700",
-  QUOTES_RECEIVED: "bg-indigo-50 text-indigo-700",
-  EVALUATED: "bg-amber-50 text-amber-700",
-  AWARDED: "bg-emerald-50 text-emerald-700",
-  CONVERTED_TO_LPO: "bg-green-50 text-green-700",
-  CANCELLED: "bg-red-50 text-red-700",
-  EXPIRED: "bg-red-50 text-red-700",
+  DRAFT: "bg-muted text-ink-2",
+  SENT: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  QUOTES_RECEIVED: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400",
+  EVALUATED: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  AWARDED: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+  CONVERTED_TO_LPO: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  EXPIRED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
 };
 
 export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
@@ -214,11 +232,11 @@ export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
 };
 
 export const QUOTE_STATUS_TONES: Record<QuoteStatus, string> = {
-  PENDING: "bg-gray-50 text-gray-600",
-  SUBMITTED: "bg-blue-50 text-blue-700",
-  ACCEPTED: "bg-green-50 text-green-700",
-  REJECTED: "bg-red-50 text-red-700",
-  EXPIRED: "bg-amber-50 text-amber-700",
+  PENDING: "bg-muted text-ink-2",
+  SUBMITTED: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  ACCEPTED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  REJECTED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  EXPIRED: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
 };
 
 // ── State-machine helpers (mirrors backend RfqService.validate*) ──

@@ -47,15 +47,15 @@ export const SERIAL_STATUS_LABELS: Record<SerialNumberStatus, string> = {
 };
 
 export const SERIAL_STATUS_TONES: Record<SerialNumberStatus, string> = {
-  AVAILABLE: "bg-green-50 text-green-700",
-  RESERVED: "bg-amber-50 text-amber-700",
-  SOLD: "bg-gray-50 text-gray-600",
-  RETURNED: "bg-blue-50 text-blue-700",
-  DAMAGED: "bg-red-50 text-red-700",
-  LOST: "bg-red-50 text-red-700",
-  EXPIRED: "bg-amber-50 text-amber-700",
-  WRITTEN_OFF: "bg-gray-200 text-gray-700",
-  RECALLED: "bg-red-100 text-red-800",
+  AVAILABLE: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  RESERVED: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  SOLD: "bg-muted text-ink-2",
+  RETURNED: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  DAMAGED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  LOST: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  EXPIRED: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  WRITTEN_OFF: "bg-muted text-ink-2",
+  RECALLED: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400",
 };
 
 export interface SerialEvent {
@@ -107,10 +107,10 @@ export const BATCH_STATUS_LABELS: Record<BatchStatus, string> = {
 };
 
 export const BATCH_STATUS_TONES: Record<BatchStatus, string> = {
-  ACTIVE: "bg-green-50 text-green-700",
-  EXPIRED: "bg-amber-50 text-amber-700",
-  RECALLED: "bg-red-50 text-red-700",
-  DEPLETED: "bg-gray-50 text-gray-600",
+  ACTIVE: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  EXPIRED: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  RECALLED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  DEPLETED: "bg-muted text-ink-2",
 };
 
 // ── Pre-recall impact preview ──────────────────────────────────────

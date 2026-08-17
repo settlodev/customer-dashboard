@@ -10,7 +10,7 @@ import { resolveCurrentBusinessDate } from "@/lib/actions/dashboard-action";
 import { listNotifications } from "@/lib/actions/notification-actions";
 import { toActivityItems } from "@/lib/dashboard/recent-activity";
 import { getReorderSuggestions } from "@/lib/actions/inventory-analytics-actions";
-import { getAuthToken } from "@/lib/auth-utils";
+import { getMyDisplayIdentity } from "@/lib/identity/me-profile";
 import { LOANS_ENABLED } from "@/lib/loans/config";
 import { getLoan, getLoanEligibility } from "@/lib/actions/loans-actions";
 import { getLoanAccess } from "@/lib/loans/access";
@@ -52,10 +52,10 @@ export default async function DashboardPage({
     searchParams: Promise<{ from?: string; to?: string }>;
 }) {
     const params = await searchParams;
-    const authToken = await getAuthToken();
-    const [location, business] = await Promise.all([
+    const [location, business, identity] = await Promise.all([
         getCurrentLocation(),
         getCurrentBusiness(),
+        getMyDisplayIdentity(),
     ]);
     const [summary, prepaid, businessDate, notifPage, reorderSuggestions] =
         await Promise.all([
@@ -95,7 +95,11 @@ export default async function DashboardPage({
     const from = params.from ?? fallbackDate;
     const to = params.to ?? fallbackDate;
 
-    const firstName = authToken?.firstName?.trim() || "there";
+    // Greet the signed-in person, not the account holder: for an invited member
+    // or a dashboard-staff user the authToken cookie carries the OWNER's name
+    // (it's written from GET /accounts/{accountId}), so the name comes from
+    // /me/profile — memoized per request, shared with the layout.
+    const firstName = identity.firstName.trim() || "there";
     const greeting = getTimeOfDayGreeting(location?.timezone);
 
     // Identity subline shown under the greeting (venue · branch · city) — the

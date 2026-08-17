@@ -11,10 +11,7 @@ import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentLocation } from "./business/get-current-business";
-import {
-  Product,
-  PriceOverrideResponse,
-} from "@/types/product/type";
+import { Product, PriceOverrideResponse } from "@/types/product/type";
 import type {
   ListTopSellingParams,
   TopSellingReport,
@@ -98,9 +95,13 @@ function mapVariant(
     // stored value unchanged on update (PATCH semantics).
     costPrice: v.costPrice ?? undefined,
     markupPercentage:
-      v.pricingStrategy === "PERCENTAGE_MARKUP" ? v.markupPercentage ?? undefined : undefined,
+      v.pricingStrategy === "PERCENTAGE_MARKUP"
+        ? (v.markupPercentage ?? undefined)
+        : undefined,
     markupAmount:
-      v.pricingStrategy === "FIXED_MARKUP" ? v.markupAmount ?? undefined : undefined,
+      v.pricingStrategy === "FIXED_MARKUP"
+        ? (v.markupAmount ?? undefined)
+        : undefined,
     unlimited: false,
     autoRetireOnSellout: v.autoRetireOnSellout ?? false,
     giveaway: v.giveaway ?? false,
@@ -131,7 +132,10 @@ function mapVariant(
         // pair — sending a raw directQuantity too would be a second, wrong
         // number in a different unit.
         ...(v.saleUnitId
-          ? { saleUnitId: v.saleUnitId, saleUnitQuantity: v.directQuantity ?? undefined }
+          ? {
+              saleUnitId: v.saleUnitId,
+              saleUnitQuantity: v.directQuantity ?? undefined,
+            }
           : { directQuantity: v.directQuantity ?? undefined }),
       };
     case "RECIPE":
@@ -284,9 +288,7 @@ export interface ProductListCounts {
 export async function getProductCounts(): Promise<ProductListCounts> {
   try {
     const apiClient = new ApiClient();
-    const data = await apiClient.get(
-      inventoryUrl("/api/v1/products/counts"),
-    );
+    const data = await apiClient.get(inventoryUrl("/api/v1/products/counts"));
     return parseStringify(data) as ProductListCounts;
   } catch {
     return { active: 0, archived: 0, draft: 0, all: 0 };
@@ -572,7 +574,9 @@ function variantErrorMessage(error: unknown, fallback: string): string {
   if (Array.isArray(details)) {
     const msgs = details
       .map((d) =>
-        d && typeof d === "object" && typeof (d as { message?: unknown }).message === "string"
+        d &&
+        typeof d === "object" &&
+        typeof (d as { message?: unknown }).message === "string"
           ? (d as { message: string }).message
           : null,
       )
@@ -680,7 +684,9 @@ export async function unarchiveVariant(
 ): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post(
-    inventoryUrl(`/api/v1/products/${productId}/variants/${variantId}/unarchive`),
+    inventoryUrl(
+      `/api/v1/products/${productId}/variants/${variantId}/unarchive`,
+    ),
     {},
   );
   revalidatePath("/products");
@@ -696,7 +702,9 @@ export async function listPriceOverrides(
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(
-      inventoryUrl(`/api/v1/products/${productId}/variants/${variantId}/price-overrides`),
+      inventoryUrl(
+        `/api/v1/products/${productId}/variants/${variantId}/price-overrides`,
+      ),
     );
     return parseStringify(data);
   } catch {
@@ -755,7 +763,9 @@ export async function bulkPriceUpdate(
   updates: { productVariantId: string; price: number }[],
 ): Promise<unknown> {
   const apiClient = new ApiClient();
-  return apiClient.put(inventoryUrl("/api/v1/products/bulk-price"), { updates });
+  return apiClient.put(inventoryUrl("/api/v1/products/bulk-price"), {
+    updates,
+  });
 }
 
 // Modifier and addon helpers moved to dedicated server-action modules:
@@ -841,12 +851,14 @@ export const listSoldItems = async (
           fromDate: params?.fromDate,
           toDate: params?.toDate,
           status: params?.status,
+          departmentId: params?.departmentId,
           categoryId: params?.categoryId,
           staffId: params?.staffId,
           limit: params?.limit,
         },
       },
     );
+
     return parseStringify(data);
   } catch (error) {
     rethrowIfBoundary(error);
@@ -983,24 +995,37 @@ function mapVariantPartial(
     // is omitted.
     costPrice: v.costPrice ?? undefined,
     markupPercentage:
-      v.pricingStrategy === "PERCENTAGE_MARKUP" ? v.markupPercentage ?? undefined : undefined,
+      v.pricingStrategy === "PERCENTAGE_MARKUP"
+        ? (v.markupPercentage ?? undefined)
+        : undefined,
     markupAmount:
-      v.pricingStrategy === "FIXED_MARKUP" ? v.markupAmount ?? undefined : undefined,
+      v.pricingStrategy === "FIXED_MARKUP"
+        ? (v.markupAmount ?? undefined)
+        : undefined,
     unlimited: sellMode === "UNLIMITED",
     availableQuantity:
-      sellMode === "QUANTITY" ? v.availableQuantity ?? 0 : undefined,
+      sellMode === "QUANTITY" ? (v.availableQuantity ?? 0) : undefined,
     stockLinkType: sellMode === "DIRECT" ? "DIRECT" : undefined,
-    stockVariantId: sellMode === "DIRECT" ? v.stockVariantId ?? undefined : undefined,
+    stockVariantId:
+      sellMode === "DIRECT" ? (v.stockVariantId ?? undefined) : undefined,
     // When a unit is chosen the backend derives directQuantity from the
     // pair — sending a raw directQuantity too would be a second, wrong
     // number in a different unit.
     ...(sellMode === "DIRECT" && v.saleUnitId
-      ? { saleUnitId: v.saleUnitId, saleUnitQuantity: v.directQuantity ?? undefined }
-      : { directQuantity: sellMode === "DIRECT" ? v.directQuantity ?? undefined : undefined }),
+      ? {
+          saleUnitId: v.saleUnitId,
+          saleUnitQuantity: v.directQuantity ?? undefined,
+        }
+      : {
+          directQuantity:
+            sellMode === "DIRECT" ? (v.directQuantity ?? undefined) : undefined,
+        }),
     // Forward the toggle for tracked variants only — UNLIMITED ignores
     // it on the backend, no point sending it.
     autoRetireOnSellout:
-      sellMode !== "UNLIMITED" ? v.autoRetireOnSellout ?? undefined : undefined,
+      sellMode !== "UNLIMITED"
+        ? (v.autoRetireOnSellout ?? undefined)
+        : undefined,
     giveaway: v.giveaway ?? false,
     saleLocked: v.saleLocked ?? false,
     taxTypeId: taxTypeId ?? undefined,
@@ -1021,13 +1046,18 @@ export async function saveProductDraft(
       .filter((v) => v && (v.name?.trim() || v.sku || v.price != null))
       .map((v) => mapVariantPartial(v, values.taxTypeId));
 
-    const imageUrls = values.imageUrls && values.imageUrls.length
-      ? values.imageUrls
-      : undefined;
-    const categoryIds = Array.isArray(values.categoryIds) && values.categoryIds.length
-      ? values.categoryIds
-      : undefined;
-    const tags = Array.isArray(values.tags) && values.tags.length ? values.tags : undefined;
+    const imageUrls =
+      values.imageUrls && values.imageUrls.length
+        ? values.imageUrls
+        : undefined;
+    const categoryIds =
+      Array.isArray(values.categoryIds) && values.categoryIds.length
+        ? values.categoryIds
+        : undefined;
+    const tags =
+      Array.isArray(values.tags) && values.tags.length
+        ? values.tags
+        : undefined;
 
     if (!productId) {
       // Fresh draft — backend assigns an id and stamps draft=true.
@@ -1048,7 +1078,9 @@ export async function saveProductDraft(
         modifierGroupIds: values.modifierGroupIds?.length
           ? values.modifierGroupIds
           : undefined,
-        addonGroupIds: values.addonGroupIds?.length ? values.addonGroupIds : undefined,
+        addonGroupIds: values.addonGroupIds?.length
+          ? values.addonGroupIds
+          : undefined,
         draft: true,
       };
 

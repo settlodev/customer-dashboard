@@ -258,7 +258,7 @@ export function DaySessionWidget({ locationId }: DaySessionWidgetProps) {
               className="flex items-center justify-center h-10 w-10 rounded-full shadow-lg border border-border bg-card"
               aria-label="Checking day session status"
             >
-              <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" />
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground shrink-0" />
             </motion.div>
           ) : (
             <motion.div
@@ -404,7 +404,7 @@ function LiveDot({ size = "sm" }: { size?: "sm" | "md" }) {
 function LoadingPillContent({ onMinimize }: { onMinimize: () => void }) {
   return (
     <>
-      <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400 shrink-0" />
+      <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground shrink-0" />
       <span className="text-sm text-muted-foreground shrink-0">Checking day status…</span>
       <MinimizeButton onClick={onMinimize} />
     </>
@@ -484,7 +484,10 @@ function OpenPillContent({
             </span>
             <span className="flex items-center gap-1">
               <TrendingUp className="w-3 h-3 text-muted-foreground" />
-              {formatCompactMoney(report.sales.net, currency)}
+              {formatCompactMoney(
+                report.sales.netCollected ?? report.sales.net,
+                currency,
+              )}
             </span>
           </span>
         )}
@@ -493,7 +496,7 @@ function OpenPillContent({
           animate={{ y: [0, -2, 0] }}
           transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
         >
-          <ChevronUp className="w-3 h-3 text-muted-foreground group-hover:text-gray-600" />
+          <ChevronUp className="w-3 h-3 text-muted-foreground group-hover:text-ink-2" />
         </motion.span>
       </button>
       <MinimizeButton onClick={onMinimize} />
@@ -564,7 +567,7 @@ function OpenCardContent({
             whileHover={loading ? undefined : { rotate: 45 }}
             whileTap={loading ? undefined : { rotate: 180, scale: 0.9 }}
             transition={{ type: "spring", stiffness: 400, damping: 15 }}
-            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 disabled:opacity-60"
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-ink-3 disabled:opacity-60"
           >
             <RotateCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
           </motion.button>
@@ -574,7 +577,7 @@ function OpenCardContent({
             whileHover={{ y: 2 }}
             whileTap={{ scale: 0.85, y: 3 }}
             transition={{ type: "spring", stiffness: 400, damping: 15 }}
-            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-ink-3"
           >
             <ChevronDown className="w-3.5 h-3.5" />
           </motion.button>
@@ -589,7 +592,21 @@ function OpenCardContent({
           {report.sales.discounts > 0 && (
             <Row label="Discounts" value={`-${formatMoney(report.sales.discounts, currency)}`} tone="muted" />
           )}
-          <Row label="Net sales" value={formatMoney(report.sales.net, currency)} strong />
+          {/* Comps close their bill as paid, so they sit inside sales.net and
+              come back out of netCollected — show the deduction, or "Net sales"
+              silently reads lower than gross less discounts. */}
+          {(report.complimentaryAmount ?? 0) > 0 && (
+            <Row
+              label="In-house / comps"
+              value={`-${formatMoney(report.complimentaryAmount ?? 0, currency)}`}
+              tone="muted"
+            />
+          )}
+          <Row
+            label="Net sales"
+            value={formatMoney(report.sales.netCollected ?? report.sales.net, currency)}
+            strong
+          />
           {report.sales.tips > 0 && (
             <Row label="Tips" value={formatMoney(report.sales.tips, currency)} />
           )}
@@ -701,7 +718,7 @@ function MinimizeButton({
       whileTap={{ scale: 0.85 }}
       transition={{ type: "spring", stiffness: 420, damping: 14 }}
       className={cn(
-        "rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 shrink-0",
+        "rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-ink-3 hover:text-ink-2 shrink-0",
         isMd ? "p-1.5" : "ml-1 p-1",
       )}
     >

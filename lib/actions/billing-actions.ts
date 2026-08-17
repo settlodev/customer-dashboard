@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidateTag, unstable_cache } from "next/cache";
 import ApiClient from "@/lib/settlo-api-client";
 import { LAYOUT_TAGS } from "@/lib/cache-tags";
 import type {
@@ -34,17 +34,42 @@ function billingUrl(path: string): string {
 
 // ── Packages ────────────────────────────────────────────────────────
 // Package catalog reads are public (used on the landing page Pricing
-// section by anonymous visitors). isPlain skips auth headers so a stale
-// session cookie can't trigger a 401 on what should be a public call.
+// section by anonymous visitors) — the billing service's SecurityConfig
+// permitAlls GET /api/v1/packages and /api/v1/packages/** explicitly, and
+// PackageController#getAllActivePackages reads nothing but the entityType
+// query param, so the response never varies by caller identity. That means
+// this call can skip ApiClient (and therefore cookies()) entirely via a
+// plain fetch, which makes it safe to wrap in unstable_cache — unlike
+// getAddons/getCreditPacks below, which are auth-required and go through
+// ApiClient's cookie-reading interceptor. entityType is passed as an
+// argument (not closed over) so it becomes part of the cache key and each
+// entity type gets its own cache entry.
+const _getPackagesCached = unstable_cache(
+  async (entityType?: string): Promise<Package[]> => {
+    const params = entityType ? `?entityType=${entityType}` : "";
+    const res = await fetch(billingUrl(`/api/v1/packages${params}`), {
+      headers: { Accept: "application/json" },
+      // Plain fetch bypasses ApiClient's 30s API_TIMEOUT_MS, so a hung billing
+      // service could otherwise stall a landing-page/signup render indefinitely.
+      // getPackages() below still degrades to [] on any failure, including this.
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch packages: ${res.status}`);
+    }
+    return (await res.json()) as Package[];
+  },
+  ["billing-packages"],
+  { revalidate: 600, tags: ["billing-catalog"] },
+);
 
 export async function getPackages(entityType?: string): Promise<Package[]> {
   if (!BILLING_SERVICE_URL) return [];
-  const apiClient = new ApiClient();
-  apiClient.isPlain = true;
-  const params = entityType ? `?entityType=${entityType}` : "";
-  return await apiClient.get<Package[]>(
-    billingUrl(`/api/v1/packages${params}`),
-  );
+  try {
+    return await _getPackagesCached(entityType);
+  } catch {
+    return [];
+  }
 }
 
 export async function getPackageBreakdown(

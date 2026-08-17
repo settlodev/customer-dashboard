@@ -48,7 +48,7 @@ export const columns: ColumnDef<JournalEntry>[] = [
     cell: ({ row }) => (
       <Link
         href={`/accounting/journal-entries/${row.original.id}`}
-        className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded hover:underline"
+        className="font-mono text-xs font-semibold text-ink-2 bg-muted px-2 py-0.5 rounded hover:underline"
       >
         {row.original.entryNumber}
       </Link>
@@ -115,9 +115,9 @@ export const columns: ColumnDef<JournalEntry>[] = [
     header: "Balance",
     cell: ({ row }) =>
       row.original.balanced ? (
-        <ShieldCheck className="h-4 w-4 text-green-600" />
+        <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
       ) : (
-        <ShieldAlert className="h-4 w-4 text-red-500" />
+        <ShieldAlert className="h-4 w-4 text-red-500 dark:text-red-400" />
       ),
   },
   {

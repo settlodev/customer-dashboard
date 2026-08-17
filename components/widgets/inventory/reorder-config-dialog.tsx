@@ -257,7 +257,7 @@ export function ReorderConfigDialog({
         </DialogHeader>
 
         {!autoReorderEnabled && (
-          <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <div className="flex items-start gap-2 rounded-md border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-400">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
             <span>
               Auto-reorder is off for this location, so values below drive
@@ -354,7 +354,7 @@ export function ReorderConfigDialog({
             />
 
             <div className="border-t pt-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
                 Alert thresholds
               </p>
               <div className="grid grid-cols-2 gap-3">
@@ -465,7 +465,7 @@ export function ReorderConfigSummary({
     return <span className="text-xs text-muted-foreground italic">not set</span>;
   }
   return (
-    <span className="text-xs text-gray-700 whitespace-nowrap">
+    <span className="text-xs text-ink-2 whitespace-nowrap">
       {pieces.join(" · ")}
     </span>
   );

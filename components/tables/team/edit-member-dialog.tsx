@@ -5,9 +5,11 @@ import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   AccountMember,
+  updateMemberProfile,
   updateMemberRoles,
   updateMemberScopes,
 } from "@/lib/actions/account-member-actions";
+import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import { Location } from "@/types/location/type";
 import { RoleScope } from "@/types/roles/type";
 import RoleSelector from "@/components/widgets/role-selector";
@@ -57,8 +59,11 @@ export const EditMemberDialog: React.FC<Props> = ({
     member.scopes?.find((s) => s.scopeType === "LOCATION")?.scopeId ?? "";
   const currentRoleIds = (member.roles ?? []).map((r) => r.id);
 
+  const currentPictureUrl = member.pictureUrl ?? "";
+
   const [locationId, setLocationId] = useState(currentLocationId);
   const [roleIds, setRoleIds] = useState<string[]>(currentRoleIds);
+  const [pictureUrl, setPictureUrl] = useState(currentPictureUrl);
   const [isSaving, setIsSaving] = useState(false);
 
   // Reset the form to the member's current values whenever the dialog opens, so
@@ -67,6 +72,7 @@ export const EditMemberDialog: React.FC<Props> = ({
     if (open) {
       setLocationId(currentLocationId);
       setRoleIds(currentRoleIds);
+      setPictureUrl(currentPictureUrl);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -85,10 +91,22 @@ export const EditMemberDialog: React.FC<Props> = ({
     roleIds.length !== currentRoleIds.length ||
     !roleIds.every((id) => currentRoleIds.includes(id));
 
+  const pictureChanged = pictureUrl !== currentPictureUrl;
+
   const handleSave = async () => {
     if (!locationId || roleIds.length === 0) return;
     setIsSaving(true);
     try {
+      // Photo first — it's independent of the authz updates below, so a
+      // rejected role change doesn't leave the picture half-applied.
+      if (pictureChanged) {
+        const picRes = await updateMemberProfile(member.id, { pictureUrl });
+        if (picRes.responseType !== "success") {
+          toast({ variant: "destructive", title: picRes.message });
+          return;
+        }
+      }
+
       // Update the scope first when reassigning, so the new roles validate
       // against the member's new location. Preserve any non-LOCATION scopes.
       if (locationChanged) {
@@ -105,15 +123,19 @@ export const EditMemberDialog: React.FC<Props> = ({
         }
       }
 
-      const res = await updateMemberRoles(member.id, roleIds);
-      toast({
-        variant: res.responseType === "success" ? "success" : "destructive",
-        title: res.message,
-      });
-      if (res.responseType === "success") {
-        onUpdated();
-        onOpenChange(false);
+      // Roles are re-sent after a location change too — they were validated
+      // against the old location. A photo-only edit skips this entirely.
+      if (locationChanged || rolesChanged) {
+        const res = await updateMemberRoles(member.id, roleIds);
+        if (res.responseType !== "success") {
+          toast({ variant: "destructive", title: res.message });
+          return;
+        }
       }
+
+      toast({ variant: "success", title: "Member updated" });
+      onUpdated();
+      onOpenChange(false);
     } finally {
       setIsSaving(false);
     }
@@ -130,12 +152,26 @@ export const EditMemberDialog: React.FC<Props> = ({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Member identity (read-only) */}
+          {/* Member identity (name/email are fixed here — the invite owns them) */}
           <div className="rounded-md border border-line bg-surface px-3 py-2">
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
               {member.firstName} {member.lastName}
             </p>
             <p className="text-xs text-muted-foreground">{member.email}</p>
+          </div>
+
+          {/* Photo — the member can also change it themselves from /profile. */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium">Photo</label>
+            <UploadImageWidget
+              imagePath="profiles"
+              displayStyle="default"
+              displayImage
+              showLabel={false}
+              label="Photo"
+              image={pictureUrl || null}
+              setImage={setPictureUrl}
+            />
           </div>
 
           {/* Location */}
@@ -204,7 +240,7 @@ export const EditMemberDialog: React.FC<Props> = ({
               isSaving ||
               !locationId ||
               roleIds.length === 0 ||
-              (!locationChanged && !rolesChanged)
+              (!locationChanged && !rolesChanged && !pictureChanged)
             }
             onClick={handleSave}
           >

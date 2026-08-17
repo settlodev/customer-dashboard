@@ -6,6 +6,7 @@ import React, {
   useState,
   useTransition,
 } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,19 +15,14 @@ import {
   AlertTriangle,
   Calendar as CalendarIcon,
   CheckCircle2,
-  KeyRound,
+  Image as ImageIcon,
   Mail,
   Palette,
-  Phone as PhoneIcon,
   Shield,
-  Sparkles,
   Trash2,
   User,
   Users,
   Briefcase,
-  IdCard,
-  ShieldCheck,
-  Smartphone,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -95,6 +91,7 @@ import { createStaff, updateStaff } from "@/lib/actions/staff-actions";
 import { invalidateStaffCache } from "@/lib/cache/reference-data";
 
 import { initialsFor, thumbColor } from "@/components/tables/shared/table-avatar";
+import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import styles from "./styles/form-shell.module.css";
 
 interface StaffFormProps {
@@ -117,6 +114,12 @@ interface StaffFormProps {
 
 type StaffFormValues = z.infer<typeof StaffSchema>;
 
+/**
+ * Radix `SelectItem` rejects an empty string value, so "no department" rides
+ * a sentinel that maps back to `""` in form state.
+ */
+const NO_DEPARTMENT = "__none__";
+
 export default function StaffForm({
   item,
   departments,
@@ -127,7 +130,8 @@ export default function StaffForm({
   // Single-department merchants (Main only — typical for accounts whose
   // package doesn't unlock the multi-department feature) skip the
   // picker entirely. The form just commits the auto-resolved id to the
-  // departmentId field at submit time.
+  // departmentId field at submit time. Accounts with no departments at
+  // all submit an empty id — the backend stores staff without one.
   const showDepartmentPicker = departments.length > 1;
   const today = useMemo(() => new Date(), []);
   const [isPending, startTransition] = useTransition();
@@ -137,17 +141,25 @@ export default function StaffForm({
   >("work");
 
   const isEditMode = !!item;
+  // The owner-staff record is editable like any other profile, but its roles
+  // are locked: the backend rejects a role change there, since dropping the
+  // Owner role would strip the account owner of their own dashboard.
+  const isOwnerRecord = !!item?.owner;
 
   const form = useForm<StaffFormValues>({
     resolver: zodResolver(StaffSchema),
     defaultValues: {
       firstName: item?.firstName ?? "",
       lastName: item?.lastName ?? "",
+      pictureUrl: item?.pictureUrl ?? "",
       phoneNumber: item?.phoneNumber ?? "",
       email: item?.email ?? "",
       gender: item?.gender,
       jobTitle: item?.jobTitle ?? "",
-      departmentId: item?.departmentId ?? defaultDepartmentId ?? "",
+      // Only new staff fall back to the location's default department —
+      // an existing member with none has been deliberately left without
+      // one, and pre-filling would silently re-attach them on save.
+      departmentId: item ? (item.departmentId ?? "") : (defaultDepartmentId ?? ""),
       departmentIds: item?.departments?.map((d) => d.id) ?? [],
       roleIds: item?.roles?.map((r) => r.id) ?? [],
       color: item?.color ?? "",
@@ -173,12 +185,12 @@ export default function StaffForm({
   const firstName = form.watch("firstName");
   const lastName = form.watch("lastName");
   const jobTitle = form.watch("jobTitle");
-  const departmentId = form.watch("departmentId");
   const gender = form.watch("gender");
   const dashboardAccess = form.watch("dashboardAccess");
   const posAccess = form.watch("posAccess");
   const email = form.watch("email");
   const color = form.watch("color");
+  const pictureUrl = form.watch("pictureUrl");
   const roleIds = form.watch("roleIds") ?? [];
 
   const fullName = useMemo(
@@ -195,7 +207,6 @@ export default function StaffForm({
       !!firstName?.trim(),
       !!lastName?.trim(),
       !!jobTitle?.trim(),
-      !!departmentId,
       !!gender,
       roleIds.length > 0,
     ];
@@ -207,7 +218,6 @@ export default function StaffForm({
     firstName,
     lastName,
     jobTitle,
-    departmentId,
     gender,
     roleIds,
     isEditMode,
@@ -439,6 +449,9 @@ export default function StaffForm({
                       </FormItem>
                     )}
                   />
+
+                  {/* Photo lives in the right rail — see the Photo card
+                      beside the live preview. */}
                 </div>
               </div>
             </section>
@@ -727,10 +740,12 @@ export default function StaffForm({
                         name="departmentId"
                         render={({ field }) => (
                           <FormItem className="mt-[15px] space-y-[7px]">
-                            <FieldLabel required>Primary department</FieldLabel>
+                            <FieldLabel>Primary department</FieldLabel>
                             <Select
-                              onValueChange={field.onChange}
-                              value={field.value ?? ""}
+                              onValueChange={(v) =>
+                                field.onChange(v === NO_DEPARTMENT ? "" : v)
+                              }
+                              value={field.value || NO_DEPARTMENT}
                               disabled={isPending}
                             >
                               <FormControl>
@@ -739,6 +754,9 @@ export default function StaffForm({
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
+                                <SelectItem value={NO_DEPARTMENT}>
+                                  No department
+                                </SelectItem>
                                 {departments.map((d) => (
                                   <SelectItem key={d.id} value={d.id}>
                                     {d.name}
@@ -746,6 +764,10 @@ export default function StaffForm({
                                 ))}
                               </SelectContent>
                             </Select>
+                            <FieldHint>
+                              Optional — leave as &ldquo;No department&rdquo; if
+                              this person isn&rsquo;t tied to one.
+                            </FieldHint>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -777,15 +799,15 @@ export default function StaffForm({
                             <RoleSelector
                               value={field.value ?? []}
                               onChange={field.onChange}
-                              isDisabled={isPending}
+                              isDisabled={isPending || isOwnerRecord}
                               placeholder="Pick at least one role"
                               multiple
                             />
                           </FormControl>
                           <FieldHint>
-                            At least one role is required — roles control
-                            what this person can do in the dashboard and on
-                            the POS.
+                            {isOwnerRecord
+                              ? "The account owner keeps the Owner role — everything else on this page is editable, but roles and permissions are locked here."
+                              : "At least one role is required — roles control what this person can do in the dashboard and on the POS."}
                           </FieldHint>
                           <FormMessage />
                         </FormItem>
@@ -1017,6 +1039,7 @@ export default function StaffForm({
             <LivePreviewCard
               fullName={fullName || "New staff"}
               jobTitle={jobTitle || "—"}
+              pictureUrl={pictureUrl || undefined}
               color={color || undefined}
               gender={gender}
               dashboardAccess={!!dashboardAccess}
@@ -1026,19 +1049,62 @@ export default function StaffForm({
                 { label: "First name", done: requiredFlags[0] },
                 { label: "Last name", done: requiredFlags[1] },
                 { label: "Job title", done: requiredFlags[2] },
-                ...(showDepartmentPicker
-                  ? [{ label: "Department", done: requiredFlags[3] }]
-                  : []),
-                { label: "Gender", done: requiredFlags[4] },
-                { label: "At least one role", done: requiredFlags[5] },
+                { label: "Gender", done: requiredFlags[3] },
+                { label: "At least one role", done: requiredFlags[4] },
                 ...(!isEditMode && dashboardAccess
-                  ? [{ label: "Login email", done: requiredFlags[6] }]
+                  ? [{ label: "Login email", done: requiredFlags[5] }]
                   : []),
               ]}
               completion={completion}
             />
 
-            <TipsCard isEdit={isEditMode} />
+            {/* Photo — optional, and in the right rail rather than the
+                Identity grid for the same reason the product form puts media
+                there: a square picker wedged into a row of text inputs
+                stretches the whole row. Staff with dashboard access can also
+                change it themselves from /profile. */}
+            <section className={`${styles.formCard} ${styles.formCardOptional}`}>
+              <header className={styles.formCardHead}>
+                <div className={styles.icoBox}>
+                  <ImageIcon className="h-3.5 w-3.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3>
+                    Photo <span className={styles.optionalTag}>OPTIONAL</span>
+                  </h3>
+                  <p className={styles.formCardHeadDesc}>
+                    Click the circle to upload. Shown on the staff profile and
+                    at POS.
+                  </p>
+                </div>
+              </header>
+              <div className={styles.formBody}>
+                <FormField
+                  control={form.control}
+                  name="pictureUrl"
+                  render={({ field }) => (
+                    <FormItem className="space-y-[7px]">
+                      <FormControl>
+                        {/* The widget paints a square tile; the wrapper clips
+                            it to the circle the photo is actually shown in. */}
+                        <div className="mx-auto w-[168px] overflow-hidden rounded-full border border-line">
+                          <UploadImageWidget
+                            imagePath="profiles"
+                            displayStyle="default"
+                            displayImage
+                            showLabel={false}
+                            label="Photo"
+                            image={field.value || null}
+                            setImage={field.onChange}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </section>
           </aside>
         </div>
 
@@ -1101,6 +1167,8 @@ export default function StaffForm({
 interface LivePreviewProps {
   fullName: string;
   jobTitle: string;
+  /** Uploaded photo, if any — otherwise the initials tile stands in. */
+  pictureUrl?: string;
   color: string | undefined;
   gender: string | undefined;
   dashboardAccess: boolean;
@@ -1113,6 +1181,7 @@ interface LivePreviewProps {
 function LivePreviewCard({
   fullName,
   jobTitle,
+  pictureUrl,
   color,
   gender,
   dashboardAccess,
@@ -1132,12 +1201,26 @@ function LivePreviewCard({
       </div>
       <div className={styles.previewBody}>
         <div
-          className={styles.previewThumb}
-          style={{
-            background: `linear-gradient(135deg, ${swatch}, ${swatch}cc)`,
-          }}
+          className={cn(styles.previewThumb, "relative overflow-hidden")}
+          style={
+            pictureUrl
+              ? undefined
+              : {
+                  background: `linear-gradient(135deg, ${swatch}, ${swatch}cc)`,
+                }
+          }
         >
-          {initials}
+          {pictureUrl ? (
+            <Image
+              src={pictureUrl}
+              alt={fullName || "Staff photo"}
+              fill
+              sizes="72px"
+              className="object-cover"
+            />
+          ) : (
+            initials
+          )}
         </div>
         <div className={styles.previewName}>{fullName}</div>
         <div className={styles.previewMeta}>
@@ -1209,56 +1292,3 @@ function LivePreviewCard({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Right-rail: contextual tips card
-// ─────────────────────────────────────────────────────────────────────
-
-function TipsCard({ isEdit }: { isEdit: boolean }) {
-  const tips = isEdit
-    ? [
-        {
-          icon: ShieldCheck,
-          text: "Granular access (POS / dashboard / PIN) lives on the detail page menu — out of this form's way.",
-        },
-        {
-          icon: IdCard,
-          text: "Employee numbers must be unique within your account.",
-        },
-        {
-          icon: Smartphone,
-          text: "Paired POS devices pick up profile changes on their next sync.",
-        },
-      ]
-    : [
-        {
-          icon: Sparkles,
-          text: "You need first name, last name, gender, job title, a department, and at least one role to create someone.",
-        },
-        {
-          icon: Shield,
-          text: "Turn on Dashboard access if this person needs to log in at admin.settlo.co.tz.",
-        },
-        {
-          icon: KeyRound,
-          text: "Turn on POS access for cashiers; the PIN can be set now or later from the detail page.",
-        },
-        {
-          icon: PhoneIcon,
-          text: "Phone, address, and emergency contact are optional but help during incidents.",
-        },
-      ];
-
-  return (
-    <div className={styles.previewCard}>
-      <div className={styles.previewHead}>Tips</div>
-      <div className="space-y-2.5 px-4 py-4">
-        {tips.map(({ icon: Icon, text }, i) => (
-          <div key={i} className="flex items-start gap-2 text-[12px] text-ink-3">
-            <Icon className="h-3.5 w-3.5 flex-shrink-0 text-primary mt-0.5" />
-            <span>{text}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}

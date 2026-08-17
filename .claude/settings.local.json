@@ -80,7 +80,22 @@
       "Bash(grep *)",
       "Bash(echo \"exit:$?\")",
       "Bash(curl -s -o /dev/null -w \"login HTTP %{http_code}\\\\n\" http://localhost:3911/login)",
-      "Bash(pkill -f \"next dev -p 3911\")"
+      "Bash(pkill -f \"next dev -p 3911\")",
+      "Bash(git commit *)",
+      "Bash(xargs -I{} echo {})",
+      "Bash(ps -p 43748 -o command=)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost:3000/admin/gateway-requests\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost:3000/admin/gateway-requests?businessId=abc123&httpMethod=GET\")",
+      "Bash(curl -s -D - -o /dev/null \"http://localhost:3000/admin/gateway-requests?businessId=abc123&httpMethod=GET\")",
+      "mcp__ide__getDiagnostics",
+      "Bash(md5 /Users/apple/GitHub/SettloDev/customer-dashboard/types/admin/gateway-requests.ts)",
+      "Bash(sed -i '' 's/text-gray-400 shrink-0/text-muted-foreground shrink-0/g' components/widgets/day-session-widget.tsx)",
+      "Bash(sed -i '' 's/group-hover:text-gray-600/group-hover:text-ink-2/g' components/widgets/day-session-widget.tsx)",
+      "Bash(git -C /Users/apple/GitHub/SettloDev/customer-dashboard branch -a)",
+      "Bash(git -C /Users/apple/GitHub/SettloDev/customer-dashboard log --oneline -5 origin/stock-intake-scanning)",
+      "Bash(git -C /Users/apple/GitHub/SettloDev/customer-dashboard branch --show-current)",
+      "Bash(git -C /Users/apple/GitHub/SettloDev/customer-dashboard log --oneline origin/stock-intake-scanning -20)",
+      "Bash(git -C /Users/apple/GitHub/SettloDev/customer-dashboard diff alpha origin/stock-intake-scanning --stat)"
     ]
   },
   "disableAllHooks": true

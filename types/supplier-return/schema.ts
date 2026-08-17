@@ -28,6 +28,12 @@ export const CreateSupplierReturnItemSchema = z.object({
   ),
   currency: currencyCode.optional().or(z.literal("").transform(() => undefined)),
   reason: z.string().optional(),
+  /**
+   * Per-line tax override. Unset (`null`/undefined) means "use the stock
+   * item's default" — see the resolution chain in
+   * docs/superpowers/specs/2026-08-03-purchase-tax-design.md.
+   */
+  taxTypeId: z.string().uuid().optional().nullable(),
 });
 
 export const CreateSupplierReturnSchema = z.object({
@@ -45,5 +51,10 @@ export const CreateSupplierReturnSchema = z.object({
     .trim()
     .min(1, "Reason is required"),
   notes: z.string().optional(),
+  /**
+   * Document-level override: this return's unit costs are already
+   * tax-inclusive — mirrors how the original purchase was priced.
+   */
+  pricesIncludeTax: z.boolean().optional().default(false),
   items: z.array(CreateSupplierReturnItemSchema).min(1, "Add at least one item"),
 });

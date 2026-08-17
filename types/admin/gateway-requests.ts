@@ -30,6 +30,7 @@ export interface GatewayRequestRow {
   accuracyRadiusKm: number | null;
   gatewayRequestId: string | null;
   upstreamStatusCode: number | null;
+  upstreamErrorMessage: string | null;
   upstreamResponseTimeMs: number | null;
   createdAt: string;
 }
@@ -40,9 +41,33 @@ export interface GatewayRequestPage {
   totalElements: number;
 }
 
+/** Keys of {@link ListGatewayRequestsParams} that come from the filter UI,
+ * always carried as raw strings (URL search params / form inputs) — the
+ * server action is responsible for parsing `upstreamStatusCode` to a number
+ * and `hasUpstreamError` to a boolean. An empty string means "not set". */
+export const GATEWAY_REQUEST_FILTER_KEYS = [
+  "upstreamServerName",
+  "httpMethod",
+  "upstreamStatusCode",
+  "hasUpstreamError",
+] as const;
+
+export type GatewayRequestFilterKey = (typeof GATEWAY_REQUEST_FILTER_KEYS)[number];
+
+export type GatewayRequestFilterValues = Record<GatewayRequestFilterKey, string>;
+
+export const EMPTY_GATEWAY_REQUEST_FILTERS: GatewayRequestFilterValues =
+  Object.fromEntries(
+    GATEWAY_REQUEST_FILTER_KEYS.map((key) => [key, ""]),
+  ) as GatewayRequestFilterValues;
+
 export interface ListGatewayRequestsParams {
   /** Zero-based page index. */
   page?: number;
 
   size?: number;
+  upstreamServerName?: string;
+  httpMethod?: string;
+  upstreamStatusCode?: number;
+  hasUpstreamError?: boolean;
 }

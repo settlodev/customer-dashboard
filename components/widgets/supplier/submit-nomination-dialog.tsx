@@ -169,7 +169,7 @@ function PreviewField({
   const isBlank = !value || value.trim() === "";
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[11px] uppercase tracking-wide text-gray-400">
+      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
       {isBlank ? (

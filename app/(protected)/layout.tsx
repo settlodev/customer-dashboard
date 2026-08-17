@@ -18,11 +18,13 @@ import { hasPackagingStock } from "@/lib/actions/stock-actions";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { getAuthToken } from "@/lib/auth-utils";
 import { getMyPermissionsCached, hasReportsReadAll } from "@/lib/permissions/me";
+import { getMyDisplayIdentity } from "@/lib/identity/me-profile";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { EntitlementProvider } from "@/context/entitlementContext";
 import { PermissionsProvider } from "@/context/permissionsContext";
-import { getEntitlements } from "@/lib/actions/entitlement-actions";
+import { getEntitlementSnapshot, isEntitlementGatingConfigured } from "@/lib/entitlements/snapshot";
+import { decideDestinationAccess } from "@/lib/entitlements/gate";
 import { ExpiredTopBar } from "@/components/subscription/ExpiredTopBar";
 import { fetchAllStores, getCurrentStore } from "@/lib/actions/store-actions";
 import WhatsAppButton from "@/components/whatsapp-button";
@@ -73,7 +75,7 @@ export default async function RootLayout({
     getBusinessDropDown(),
     fetchAllLocations(),
     getCurrentWarehouse(),
-    getEntitlements(),
+    getEntitlementSnapshot(),
     fetchAllStores(),
     searchWarehouses(),
     getCurrentStore(),
@@ -85,7 +87,10 @@ export default async function RootLayout({
   const businessList = results[2].status === "fulfilled" ? results[2].value ?? undefined : undefined;
   const locationList = results[3].status === "fulfilled" ? results[3].value : undefined;
   const currentWarehouse = results[4].status === "fulfilled" ? results[4].value : undefined;
-  const entitlements = results[5].status === "fulfilled" ? results[5].value : null;
+  const entitlementSnapshot =
+    results[5].status === "fulfilled"
+      ? results[5].value
+      : ({ status: "unavailable" } as const);
   const storeList = results[6].status === "fulfilled" ? results[6].value : [];
   const warehouseList = results[7].status === "fulfilled" ? results[7].value : [];
   const currentStore = results[8].status === "fulfilled" ? results[8].value : undefined;
@@ -107,16 +112,14 @@ export default async function RootLayout({
   // with active:false — except a bundled entity under a lapsed parent, which IS present with
   // active:false. `some(entitled && active)` covers both.
   //
-  // Fails OPEN when entitlements are unavailable (billing unreachable / not configured), which
-  // matches SubscriptionGuard's documented stance — a billing outage must not lock everyone out.
+  // Fails CLOSED when there is no trustworthy answer (billing unreachable and either no
+  // snapshot or one stale beyond GRACE_MS) — see decideDestinationAccess (lib/entitlements/gate.ts)
+  // for the full decision table and why a billing outage must no longer unlock everyone.
   const activeDestinationId =
     currentStore?.id ?? currentWarehouse?.id ?? currentLocation?.id;
-  const destinationLocked =
-    !!entitlements?.items &&
-    !!activeDestinationId &&
-    !entitlements.items.some(
-      (entity) => entity.entityId === activeDestinationId && entity.active,
-    );
+  const gate = decideDestinationAccess(entitlementSnapshot, activeDestinationId);
+  const entitlements =
+    entitlementSnapshot.status === "unavailable" ? null : entitlementSnapshot.data;
 
   // Billing has to stay reachable, or a locked destination is a dead end. Destination pickers
   // too — the owner's other locations may be perfectly fine and they need a way back to them.
@@ -135,13 +138,21 @@ export default async function RootLayout({
   // somewhere they can actually pay from, and they may well want to pay LATER — the sidebar and
   // destination switcher stay available there (the business itself is fine), so they can carry on
   // in another location and come back to settle this one whenever they choose.
-  if (destinationLocked && !isEscapeHatch) {
+  // `isEntitlementGatingConfigured()` guards against locking every user out when
+  // BILLING_SERVICE_URL is simply unset (local dev, or a deploy that dropped the config key) —
+  // that is a misconfiguration signal, not a billing outage, and getEntitlementSnapshot already
+  // logs it loudly via console.error. A real outage still locks: this only short-circuits the
+  // "not configured at all" case.
+  if (gate.outcome === "lock" && !isEscapeHatch && isEntitlementGatingConfigured()) {
     const lockedType = currentStore?.id
       ? "store"
       : currentWarehouse?.id
         ? "warehouse"
         : "location";
-    redirect(`/billing?expired=${lockedType}`);
+    // `reason` distinguishes "this entity's subscription lapsed" from "we could not reach
+    // billing and have no trustworthy answer", so the billing page can explain which it is
+    // rather than telling a paying customer their subscription expired.
+    redirect(`/billing?expired=${lockedType}&reason=${gate.reason}`);
   }
 
   const locationCount = locationList?.length ?? 0;
@@ -186,15 +197,21 @@ export default async function RootLayout({
   // Build the user object once at the layout level so the sidebar
   // (and anything else that needs it) doesn't have to do the auth-token
   // → user reshape on every render. Mirrors what the old Header did.
+  //
+  // Identity (name/avatar/phone) comes from `/me/profile`, NOT the cookie: an
+  // invited member or dashboard-staff user resolves to the owner's account, so
+  // the cookie's profile fields are the account HOLDER's. Falls back to the
+  // cookie when that call is unavailable.
+  const identity = authToken ? await getMyDisplayIdentity() : null;
   const user: ExtendedUser | null = authToken
     ? ({
         id: authToken.userId,
-        name: `${authToken.firstName} ${authToken.lastName}`.trim(),
+        name: `${identity?.firstName ?? ""} ${identity?.lastName ?? ""}`.trim(),
         email: authToken.email,
-        firstName: authToken.firstName,
-        lastName: authToken.lastName,
-        avatar: authToken.pictureUrl,
-        phoneNumber: authToken.phoneNumber,
+        firstName: identity?.firstName ?? "",
+        lastName: identity?.lastName ?? "",
+        avatar: identity?.pictureUrl ?? null,
+        phoneNumber: identity?.phoneNumber ?? "",
         emailVerified: authToken.emailVerified ? new Date() : null,
         isBusinessRegistrationComplete:
           authToken.isBusinessRegistrationComplete,

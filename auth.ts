@@ -5,6 +5,7 @@ import NextAuth from "next-auth";
 import authConfig from "@/auth.config";
 import { ExtendedUser } from "@/types/types";
 import { createAuthToken, getAuthToken } from "@/lib/auth-utils";
+import { AUTH_COOKIE_MAX_AGE_SECONDS } from "@/lib/auth-constants";
 
 declare module "next-auth" {
   interface Session {
@@ -16,7 +17,11 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   // Required for NextAuth callbacks to work across apex + admin.* subdomain
   // on the same deployment.
   trustHost: true,
-  session: { strategy: "jwt" },
+  // Match the authToken cookie's lifetime (lib/auth-constants.ts) so this
+  // session can't outlive it — otherwise middleware.ts (which only checks
+  // authToken) can treat the browser as logged out while a stale session
+  // for a previous account is still readable by server components.
+  session: { strategy: "jwt", maxAge: AUTH_COOKIE_MAX_AGE_SECONDS },
   pages: {
     signIn: "/login",
     error: "/auth-error",

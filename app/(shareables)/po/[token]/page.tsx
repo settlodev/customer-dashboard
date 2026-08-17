@@ -147,11 +147,31 @@ export default async function SharedLpoPage({
     quantity: Number(item.orderedQuantity || 0),
     unitPrice: Number(item.unitCost || 0),
     amount: item.lineTotal != null ? Number(item.lineTotal) : undefined,
+    taxAmount: Number(item.taxAmount ?? 0),
+    taxRatePercent: item.taxRatePercent ?? undefined,
   }));
 
-  const subtotal =
-    lpo.totalAmount ??
-    items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  // Server-authoritative net/gross, trusted as-is; the client sum below is
+  // kept only as a defensive fallback for a legacy payload predating these
+  // fields. Deliberately NOT reading `lpo.taxAmount` for the footer memo —
+  // that field is filtered to recoverable lines only, so it is always 0 for
+  // a non-VAT-registered business. The per-line sum below is the full tax
+  // regardless of recoverability, which is what the "included in cost"
+  // memo figure actually needs. Mirrors lib/grn-document.ts exactly.
+  const netAmountFallback = items.reduce(
+    (sum, i) => sum + i.quantity * i.unitPrice,
+    0,
+  );
+  const netAmount = lpo.netAmount ?? netAmountFallback;
+  const totalAmount = lpo.totalAmount ?? netAmount;
+  const lineTaxTotal = lpo.items.reduce(
+    (sum, item) => sum + Number(item.taxAmount || 0),
+    0,
+  );
+  // Recoverable is uniform across a document (the business's VAT status at
+  // write time, not a per-line choice) — any line answers for all.
+  const taxRecoverable = lpo.items.some((item) => item.taxRecoverable === true);
+  const subtotal = taxRecoverable ? netAmount : totalAmount;
 
   const noteParts: string[] = [];
   if (lpo.deliveryLocationName) {
@@ -174,8 +194,14 @@ export default async function SharedLpoPage({
     items,
     totals: {
       subtotal,
-      total: subtotal,
-      amountDue: subtotal,
+      taxes: [
+        {
+          label: taxRecoverable ? "Tax" : "Tax (included in cost)",
+          amount: lineTaxTotal,
+        },
+      ],
+      total: totalAmount,
+      amountDue: totalAmount,
     },
     currency,
     notes: noteParts.join("\n\n"),
@@ -206,7 +232,11 @@ export default async function SharedLpoPage({
           paymentMethod={lpo.paymentMethod}
           financedAmount={lpo.financedAmount}
           merchantPayableAmount={lpo.merchantPayableAmount}
-          totalAmount={subtotal}
+          // Gross (net + tax) — what the supplier is actually owed, matching
+          // the backend's own `merchantPayableAmount` computation. `subtotal`
+          // above is a *display* value that can be net-only for a
+          // VAT-registered business, which would understate what's owed.
+          totalAmount={totalAmount}
         />
       )}
     </>

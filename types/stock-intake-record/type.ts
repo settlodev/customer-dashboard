@@ -46,6 +46,14 @@ export interface StockIntakeRecord {
   paymentTerms: IntakePaymentTerms;
   /** Location's base currency (settlement currency for this intake). */
   currency: string | null;
+  /** Header override: this supplier's unit costs on this intake are tax-inclusive. */
+  pricesIncludeTax?: boolean;
+  /** Sum of line net amounts, base currency. */
+  netAmount?: number;
+  /** Sum of line tax amounts, base currency — recoverable or memo depending on `StockIntakeRecordItem.taxRecoverable`. */
+  taxAmount?: number;
+  /** Gross — `netAmount + taxAmount`. Equals `netAmount` when there is no recoverable tax. */
+  totalAmount?: number;
   items: StockIntakeRecordItem[];
   createdAt: string;
   updatedAt: string;
@@ -79,6 +87,14 @@ export interface StockIntakeRecordItem {
   serialNumbers: string[] | null;
   /** Batch minted for this line at confirm. Null on DRAFT and pre-V80 rows. */
   batchId?: string | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /** Line tax, base currency. Recoverable (added on top) or memo-only (already inside `unitCost`) per `taxRecoverable`. */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` at document-write time — false means it is already folded into `unitCost`. */
+  taxRecoverable?: boolean;
 }
 
 export const STOCK_INTAKE_RECORD_STATUS_LABELS: Record<StockIntakeRecordStatus, string> = {

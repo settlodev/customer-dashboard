@@ -30,6 +30,11 @@ export function LineItemsTable({
   // Drop the default Tailwind bg when an inline style is provided so the
   // tenant colour wins; keep text-white for legibility on saturated brands.
   const headerCls = headerStyle ? "" : headerClassName;
+  // A Tax column only makes sense once amounts are shown, and only for
+  // document types that actually populate per-line tax (GRN/LPO today).
+  // Other document types simply never set `taxAmount`, so the column stays
+  // hidden for them without any extra wiring.
+  const showTax = !hideAmounts && items.some((item) => item.taxAmount != null);
   return (
     <section className="px-10">
       <table className="w-full border-collapse text-xs">
@@ -41,6 +46,9 @@ export function LineItemsTable({
               <>
                 <th className="w-28 px-4 py-3 text-right font-medium">Price</th>
                 <th className="w-28 px-4 py-3 text-right font-medium">Amount</th>
+                {showTax && (
+                  <th className="w-24 px-4 py-3 text-right font-medium">Tax</th>
+                )}
               </>
             )}
           </tr>
@@ -71,6 +79,16 @@ export function LineItemsTable({
                     <td className="px-4 py-3.5 text-right text-slate-900">
                       {formatCurrency(amount, currency)}
                     </td>
+                    {showTax && (
+                      <td className="px-4 py-3.5 text-right text-slate-700">
+                        {formatCurrency(item.taxAmount ?? 0, currency)}
+                        {item.taxRatePercent != null && (
+                          <div className="mt-0.5 text-[10px] text-slate-400">
+                            {item.taxRatePercent}%
+                          </div>
+                        )}
+                      </td>
+                    )}
                   </>
                 )}
               </tr>

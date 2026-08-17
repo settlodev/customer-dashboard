@@ -263,7 +263,7 @@ function RejectButton({ id }: { id: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" className="text-red-600 hover:bg-red-50">
+        <Button variant="ghost" className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
           <ThumbsDown className="h-4 w-4 mr-1.5" /> Reject
         </Button>
       </DialogTrigger>
@@ -326,7 +326,7 @@ function DeclineButton({ id }: { id: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" className="text-red-600 hover:bg-red-50">
+        <Button variant="ghost" className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
           <ThumbsDown className="h-4 w-4 mr-1.5" /> Decline
         </Button>
       </DialogTrigger>
@@ -583,11 +583,11 @@ function ReceiveButton({ transfer }: { transfer: StockTransfer }) {
           <div className="overflow-x-auto border rounded-lg">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50/60">
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Item</th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Sent</th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Already received</th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase w-36">Receiving now</th>
+                <tr className="border-b bg-muted/60">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Item</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Sent</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Already received</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase w-36">Receiving now</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -619,7 +619,7 @@ function ReceiveButton({ transfer }: { transfer: StockTransfer }) {
                           className={overshoot ? "border-amber-400" : undefined}
                         />
                         {overshoot && (
-                          <p className="text-[10px] text-amber-700 mt-0.5">
+                          <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-0.5">
                             More than outstanding ({outstanding.toLocaleString()})
                           </p>
                         )}
@@ -629,7 +629,7 @@ function ReceiveButton({ transfer }: { transfer: StockTransfer }) {
                 })}
               </tbody>
               <tfoot>
-                <tr className="bg-gray-50/60 font-semibold">
+                <tr className="bg-muted/60 font-semibold">
                   <td colSpan={3} className="px-3 py-2 text-right">Total receiving</td>
                   <td className="px-3 py-2 text-right">
                     {totalReceiving.toLocaleString()}
@@ -917,8 +917,8 @@ function MapItemsButton({ transfer }: { transfer: StockTransfer }) {
                     />
                   )}
                   {isMerge && selected && (
-                    <div className="rounded-md border border-amber-200 bg-amber-50/60 p-2.5 space-y-2">
-                      <p className="text-xs text-amber-900">
+                    <div className="rounded-md border border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/20 p-2.5 space-y-2">
+                      <p className="text-xs text-amber-900 dark:text-amber-400">
                         <span className="font-semibold">
                           Different unit — linking will merge the two items.
                         </span>{" "}

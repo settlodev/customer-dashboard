@@ -39,7 +39,7 @@ export const columns: ColumnDef<StockTake>[] = [
     cell: ({ row }) => (
       <Link
         href={`/stock-takes/${row.original.id}`}
-        className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded hover:underline"
+        className="font-mono text-xs font-semibold text-ink-2 bg-muted px-2 py-0.5 rounded hover:underline"
       >
         {row.original.takeNumber}
       </Link>
@@ -49,12 +49,12 @@ export const columns: ColumnDef<StockTake>[] = [
     accessorKey: "cycleCountType",
     header: "Type",
     cell: ({ row }) => (
-      <span className="text-gray-600">
+      <span className="text-ink-2">
         {row.original.cycleCountType
           ? CYCLE_COUNT_TYPE_LABELS[row.original.cycleCountType]
           : "—"}
         {row.original.blindCount && (
-          <span className="ml-1 text-[10px] bg-amber-50 text-amber-700 rounded px-1 py-0.5">
+          <span className="ml-1 text-[10px] bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 rounded px-1 py-0.5">
             BLIND
           </span>
         )}
@@ -69,12 +69,12 @@ export const columns: ColumnDef<StockTake>[] = [
       const total = row.original.totalItems ?? 0;
       const pct = total > 0 ? Math.round((counted / total) * 100) : 0;
       return (
-        <div className="text-xs text-gray-600 space-y-1 min-w-[100px]">
+        <div className="text-xs text-ink-2 space-y-1 min-w-[100px]">
           <div className="flex items-center justify-between">
             <span>{counted}</span>
-            <span className="text-gray-400">/ {total}</span>
+            <span className="text-ink-3">/ {total}</span>
           </div>
-          <div className="h-1 bg-gray-100 rounded overflow-hidden">
+          <div className="h-1 bg-muted rounded overflow-hidden">
             <div
               className="h-1 bg-blue-500"
               style={{ width: `${Math.min(100, pct)}%` }}
@@ -90,7 +90,7 @@ export const columns: ColumnDef<StockTake>[] = [
     cell: ({ row }) => (
       <div className="text-right">
         {row.original.itemsWithVariance > 0 ? (
-          <span className="text-amber-700 font-medium">
+          <span className="text-amber-700 dark:text-amber-400 font-medium">
             {row.original.itemsWithVariance}
           </span>
         ) : (
@@ -103,7 +103,7 @@ export const columns: ColumnDef<StockTake>[] = [
     accessorKey: "startedByName",
     header: "Started by",
     cell: ({ row }) => (
-      <span className="text-gray-600">
+      <span className="text-ink-2">
         {row.original.startedByName || "—"}
       </span>
     ),
@@ -123,7 +123,7 @@ export const columns: ColumnDef<StockTake>[] = [
     accessorKey: "createdAt",
     header: "Created",
     cell: ({ row }) => (
-      <span className="text-gray-600 whitespace-nowrap">
+      <span className="text-ink-2 whitespace-nowrap">
         {formatDate(row.original.createdAt)}
       </span>
     ),

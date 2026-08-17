@@ -40,33 +40,33 @@ export function BatchPickerList({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-gray-50/60">
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+              <tr className="border-b bg-muted/60">
+                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                   Batch
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                   Variant
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                   Location
                 </th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
                   On hand
                 </th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">
+                <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">
                   Unit cost
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                   Expiry
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                   Status
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {batches.map((b) => (
-                <tr key={b.id} className="hover:bg-gray-50/60">
+                <tr key={b.id} className="hover:bg-muted/60">
                   <td className="px-3 py-2 font-mono text-xs">
                     <Link
                       href={`/stock-batches/${b.id}`}

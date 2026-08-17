@@ -167,27 +167,27 @@ export function SerialSearch() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50/60">
+                <tr className="border-b bg-muted/60">
                   <th className="w-8" />
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Serial
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Variant
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Status
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Supplier
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Received
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Batch / GRN
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     Sale ref
                   </th>
                 </tr>
@@ -200,7 +200,7 @@ export function SerialSearch() {
                       <tr
                         key={s.id}
                         onClick={() => toggleExpand(s)}
-                        className="cursor-pointer hover:bg-gray-50/50"
+                        className="cursor-pointer hover:bg-muted/50"
                       >
                         <td className="px-2 py-2 text-muted-foreground">
                           {isOpen ? (
@@ -274,7 +274,7 @@ export function SerialSearch() {
                         </td>
                       </tr>
                       {isOpen && (
-                        <tr key={`${s.id}-events`} className="bg-gray-50/30">
+                        <tr key={`${s.id}-events`} className="bg-muted/30">
                           <td colSpan={8} className="px-6 py-3">
                             <SerialTimeline
                               loading={eventsLoading[s.id] ?? false}

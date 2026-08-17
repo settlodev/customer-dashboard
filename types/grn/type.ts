@@ -26,6 +26,14 @@ export interface Grn {
   status: GrnStatus;
   /** Location base currency — the currency all `unitCost` values are stored in. */
   currency: string | null;
+  /** Header override: the supplier's unit costs on this GRN are tax-inclusive. */
+  pricesIncludeTax?: boolean;
+  /** Sum of line net amounts, base currency. */
+  netAmount?: number;
+  /** Sum of line tax amounts, base currency — recoverable or memo depending on `GrnItem.taxRecoverable`. */
+  taxAmount?: number;
+  /** Gross — `netAmount + taxAmount`. Equals `netAmount` when there is no tax. */
+  totalAmount?: number;
   notes: string | null;
   deliveryPersonName: string | null;
   deliveryPersonPhone: string | null;
@@ -54,6 +62,14 @@ export interface PublicGrn {
   deliveryPersonName: string | null;
   deliveryPersonPhone: string | null;
   deliveryPersonEmail: string | null;
+  /** Header override: the supplier's unit costs on this GRN are tax-inclusive. */
+  pricesIncludeTax?: boolean;
+  /** Sum of line net amounts, base currency. */
+  netAmount?: number;
+  /** Sum of recoverable line tax amounts, base currency — zero for a non-VAT-registered business. */
+  taxAmount?: number;
+  /** Gross — `netAmount + taxAmount`. Equals `netAmount` when there is no recoverable tax. */
+  totalAmount?: number;
   items: PublicGrnItem[];
   letterhead: import("@/types/letterhead/type").LocationLetterhead | null;
 }
@@ -68,6 +84,14 @@ export interface PublicGrnItem {
   batchNumber: string | null;
   expiryDate: string | null;
   inspectionStatus: InspectionStatus | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /** Line tax, base currency. Recoverable (added on top) or memo-only (already inside `unitCost`) per `taxRecoverable`. */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` at document-write time — false means it is already folded into `unitCost`. */
+  taxRecoverable?: boolean;
 }
 
 export interface GrnItem {
@@ -85,6 +109,14 @@ export interface GrnItem {
   originalUnitCost: number | null;
   /** Exchange rate captured at receive time. */
   rateUsed: number | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /** Line tax, base currency. Recoverable (added on top) or memo-only (already inside `unitCost`) per `taxRecoverable`. */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` at document-write time — false means it is already folded into `unitCost`. */
+  taxRecoverable?: boolean;
   /** Pack the operator transacted in (null when entered directly in stock units). */
   purchaseUnitId: string | null;
   /** Quantity as the operator typed it in `purchaseUnitId` (null when not used). */
@@ -120,6 +152,8 @@ export interface CreateGrnItemPayload {
   supplierBatchReference?: string;
   expiryDate?: string;
   serialNumbers?: string[];
+  /** Per-line override. `null`/omitted falls through to the stock item's default. */
+  taxTypeId?: string | null;
 }
 
 export interface CreateGrnPayload {
@@ -132,6 +166,8 @@ export interface CreateGrnPayload {
   deliveryPersonName?: string;
   deliveryPersonPhone?: string;
   deliveryPersonEmail?: string;
+  /** This supplier's unit costs on this GRN are tax-inclusive. */
+  pricesIncludeTax?: boolean;
   items: CreateGrnItemPayload[];
 }
 
@@ -157,10 +193,10 @@ export const GRN_STATUS_LABELS: Record<GrnStatus, string> = {
 };
 
 export const GRN_STATUS_TONES: Record<GrnStatus, string> = {
-  DRAFT: "bg-amber-50 text-amber-700",
-  INSPECTION_HOLD: "bg-indigo-50 text-indigo-700",
-  RECEIVED: "bg-green-50 text-green-700",
-  CANCELLED: "bg-red-50 text-red-700",
+  DRAFT: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  INSPECTION_HOLD: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400",
+  RECEIVED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
 };
 
 export const INSPECTION_STATUS_LABELS: Record<InspectionStatus, string> = {
@@ -171,10 +207,10 @@ export const INSPECTION_STATUS_LABELS: Record<InspectionStatus, string> = {
 };
 
 export const INSPECTION_STATUS_TONES: Record<InspectionStatus, string> = {
-  PENDING: "bg-gray-50 text-gray-700",
-  PASSED: "bg-green-50 text-green-700",
-  FAILED: "bg-red-50 text-red-700",
-  PARTIAL: "bg-amber-50 text-amber-700",
+  PENDING: "bg-muted text-ink-2",
+  PASSED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  FAILED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  PARTIAL: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
 };
 
 export const LANDED_COST_TYPE_OPTIONS: { value: LandedCostType; label: string }[] = [

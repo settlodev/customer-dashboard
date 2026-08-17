@@ -230,12 +230,12 @@ export const RESERVATION_STATUS_LABELS: Record<ReservationStatus, string> = {
 };
 
 export const RESERVATION_STATUS_COLORS: Record<ReservationStatus, string> = {
-  [ReservationStatus.PENDING]: "bg-yellow-100 text-yellow-800",
-  [ReservationStatus.CONFIRMED]: "bg-blue-100 text-blue-800",
-  [ReservationStatus.SEATED]: "bg-emerald-100 text-emerald-800",
-  [ReservationStatus.COMPLETED]: "bg-gray-100 text-gray-800",
-  [ReservationStatus.CANCELLED]: "bg-red-100 text-red-800",
-  [ReservationStatus.NO_SHOW]: "bg-orange-100 text-orange-800",
+  [ReservationStatus.PENDING]: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400",
+  [ReservationStatus.CONFIRMED]: "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400",
+  [ReservationStatus.SEATED]: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400",
+  [ReservationStatus.COMPLETED]: "bg-muted text-ink-2",
+  [ReservationStatus.CANCELLED]: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400",
+  [ReservationStatus.NO_SHOW]: "bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400",
 };
 
 export const DEPOSIT_STATUS_LABELS: Record<DepositPaymentStatus, string> = {

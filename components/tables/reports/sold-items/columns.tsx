@@ -237,78 +237,94 @@ export function buildSoldItemsColumns({
         );
       },
     },
+    // {
+    //   id: "modifications",
+    //   header: "Modifications",
+    //   cell: ({ row }) => {
+    //     const item = row.original;
+    //     const mods = item.modifierNames ?? [];
+    //     const addons = item.addonNames ?? [];
+    //     const notes = item.specialInstructions?.trim() ?? "";
+    //     const total = mods.length + addons.length + (notes ? 1 : 0);
+    //
+    //     if (total === 0) {
+    //       return <span className="text-muted-foreground">—</span>;
+    //     }
+    //
+    //     return (
+    //       <Tooltip>
+    //         <TooltipTrigger asChild>
+    //           <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+    //             {mods.length > 0 && (
+    //               <Badge variant="outline" className="font-normal">
+    //                 <Sparkles className="mr-1 h-3 w-3" />
+    //                 {mods.length} mod{mods.length === 1 ? "" : "s"}
+    //               </Badge>
+    //             )}
+    //             {addons.length > 0 && (
+    //               <Badge variant="outline" className="font-normal">
+    //                 +{addons.length} add-on{addons.length === 1 ? "" : "s"}
+    //               </Badge>
+    //             )}
+    //             {notes && (
+    //               <Badge variant="outline" className="font-normal">
+    //                 <MessageSquare className="mr-1 h-3 w-3" />
+    //                 Notes
+    //               </Badge>
+    //             )}
+    //           </div>
+    //         </TooltipTrigger>
+    //         <TooltipContent className="max-w-xs space-y-2">
+    //           {mods.length > 0 && (
+    //             <div>
+    //               <div className="mb-0.5 text-[10.5px] font-mono uppercase tracking-[0.06em] text-muted-foreground">
+    //                 Modifiers
+    //               </div>
+    //               <div>{mods.join(", ")}</div>
+    //             </div>
+    //           )}
+    //           {addons.length > 0 && (
+    //             <div>
+    //               <div className="mb-0.5 text-[10.5px] font-mono uppercase tracking-[0.06em] text-muted-foreground">
+    //                 Add-ons
+    //               </div>
+    //               <div>{addons.join(", ")}</div>
+    //             </div>
+    //           )}
+    //           {notes && (
+    //             <div>
+    //               <div className="mb-0.5 text-[10.5px] font-mono uppercase tracking-[0.06em] text-muted-foreground">
+    //                 Notes
+    //               </div>
+    //               <div className="italic">{notes}</div>
+    //             </div>
+    //           )}
+    //         </TooltipContent>
+    //       </Tooltip>
+    //     );
+    //   },
+    // },
     {
-      id: "modifications",
-      header: "Modifications",
+      accessorKey: "departmentName",
+      header: "Department",
       cell: ({ row }) => {
-        const item = row.original;
-        const mods = item.modifierNames ?? [];
-        const addons = item.addonNames ?? [];
-        const notes = item.specialInstructions?.trim() ?? "";
-        const total = mods.length + addons.length + (notes ? 1 : 0);
-
-        if (total === 0) {
-          return <span className="text-muted-foreground">—</span>;
-        }
-
+        const name = row.original.departmentName;
+        if (!name) return <span className="text-muted-foreground">—</span>;
         return (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-                {mods.length > 0 && (
-                  <Badge variant="outline" className="font-normal">
-                    <Sparkles className="mr-1 h-3 w-3" />
-                    {mods.length} mod{mods.length === 1 ? "" : "s"}
-                  </Badge>
-                )}
-                {addons.length > 0 && (
-                  <Badge variant="outline" className="font-normal">
-                    +{addons.length} add-on{addons.length === 1 ? "" : "s"}
-                  </Badge>
-                )}
-                {notes && (
-                  <Badge variant="outline" className="font-normal">
-                    <MessageSquare className="mr-1 h-3 w-3" />
-                    Notes
-                  </Badge>
-                )}
-              </div>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs space-y-2">
-              {mods.length > 0 && (
-                <div>
-                  <div className="mb-0.5 text-[10.5px] font-mono uppercase tracking-[0.06em] text-muted-foreground">
-                    Modifiers
-                  </div>
-                  <div>{mods.join(", ")}</div>
-                </div>
-              )}
-              {addons.length > 0 && (
-                <div>
-                  <div className="mb-0.5 text-[10.5px] font-mono uppercase tracking-[0.06em] text-muted-foreground">
-                    Add-ons
-                  </div>
-                  <div>{addons.join(", ")}</div>
-                </div>
-              )}
-              {notes && (
-                <div>
-                  <div className="mb-0.5 text-[10.5px] font-mono uppercase tracking-[0.06em] text-muted-foreground">
-                    Notes
-                  </div>
-                  <div className="italic">{notes}</div>
-                </div>
-              )}
-            </TooltipContent>
-          </Tooltip>
+          <Badge
+            variant="outline"
+            className="bg-amber-50 font-normal text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+          >
+            {name}
+          </Badge>
         );
       },
     },
     {
-      accessorKey: "discountName",
-      header: "Discount",
+      accessorKey: "categoryName",
+      header: "Category",
       cell: ({ row }) => {
-        const name = row.original.discountName;
+        const name = row.original.categoryName;
         if (!name) return <span className="text-muted-foreground">—</span>;
         return (
           <Badge

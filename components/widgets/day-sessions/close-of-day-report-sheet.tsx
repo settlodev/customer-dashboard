@@ -181,6 +181,10 @@ export function CloseOfDayReportSheet({
   const compTotal =
     report?.complimentaryAmount ??
     compOrders.reduce((s, c) => s + (c.amount ?? 0), 0);
+  // Comps sit inside sales.net (a comped bill closes as paid), so the
+  // "collected" figure is the comp-free one. Older share snapshots predate
+  // the split and only carry net.
+  const netCollected = sales?.netCollected ?? sales?.net;
   const refundItems = extras.refunds?.refunds ?? [];
   const prepayItems = extras.prepayments?.items ?? [];
   const expenseItems = extras.expenses?.items ?? [];
@@ -309,13 +313,13 @@ export function CloseOfDayReportSheet({
             }`}
           />
           <SumCard
-            label={report?.complimentaryAmount ? "Discounts + comps" : "Discounts"}
-            value={`−${fmt2((sales?.discounts ?? 0) + (report?.complimentaryAmount ?? 0))}`}
+            label={compTotal ? "Discounts + comps" : "Discounts"}
+            value={`−${fmt2((sales?.discounts ?? 0) + compTotal)}`}
             unit={currency}
             valueClass={WARN}
             sub={
-              report?.complimentaryAmount
-                ? `Discounts ${fmt2(sales?.discounts)} · Comps ${fmt2(report.complimentaryAmount)}`
+              compTotal
+                ? `Discounts ${fmt2(sales?.discounts)} · Comps ${fmt2(compTotal)}`
                 : sales?.discountCount
                   ? `${sales.discountCount} discount${sales.discountCount === 1 ? "" : "s"} applied`
                   : "Applied at point of sale"
@@ -323,10 +327,14 @@ export function CloseOfDayReportSheet({
           />
           <SumCard
             label="Net sales collected"
-            value={fmt2(sales?.net)}
+            value={fmt2(netCollected)}
             unit={currency}
             valueClass={POS}
-            sub="Reconciled against cash-up below"
+            sub={
+              compTotal
+                ? `Bills ${fmt2(sales?.net)} less ${fmt2(compTotal)} on the house`
+                : "Reconciled against cash-up below"
+            }
           />
         </div>
       </Section>

@@ -289,13 +289,23 @@ export interface DaySessionReport {
   sales: {
     gross: number;
     discounts: number;
+    /** Selling value on the bills — comps included, since a comped order is
+     *  a real bill closed as paid. Sales-by-department ties to this. */
     net: number;
+    /** net minus complimentaryAmount — what the session should actually have
+     *  taken, and the basis of grossProfit. Show this wherever the label says
+     *  "collected". Absent on share snapshots minted before it existed, so
+     *  always read it as `netCollected ?? net`. */
+    netCollected?: number;
     tips: number;
     itemCount?: number;
     /** Number of orders that had a discount applied (Reports). */
     discountCount?: number;
   };
-  /** In-house / complimentary (gifted) transactions this session (Reports). */
+  /**
+   * In-house / complimentary value given away this session (Reports).
+   * complimentaryCount counts comp'd ORDERS, not tenders.
+   */
   complimentaryAmount?: number;
   complimentaryCount?: number;
   /**

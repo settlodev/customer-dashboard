@@ -51,6 +51,14 @@ export interface Lpo {
   /** LPO-level primary currency — inferred from the first item. Line-level
    *  `items[].currency` is authoritative when items span multiple currencies. */
   currency: string | null;
+  /** Header override: this supplier's unit costs on this LPO are tax-inclusive. */
+  pricesIncludeTax?: boolean;
+  /** Sum of line net amounts, unconverted (per-line currency, summed raw — no FX at LPO stage). */
+  netAmount?: number;
+  /** Sum of recoverable line tax amounts — zero for a non-VAT-registered business. */
+  taxAmount?: number;
+  /** Gross — `netAmount + taxAmount`. Equals `netAmount` when there is no recoverable tax. */
+  totalAmount?: number;
   notes: string | null;
   /** Opaque token issued when the LPO first enters APPROVED. Used by the
    *  supplier-facing public share URL — null until then. */
@@ -104,6 +112,14 @@ export interface PublicLpoItem {
   unitCost: number;
   currency: string | null;
   lineTotal: number | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /** Line tax, base currency. Recoverable (added on top) or memo-only (already inside `unitCost`) per `taxRecoverable`. */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` at document-write time — false means it is already folded into `unitCost`. */
+  taxRecoverable?: boolean;
 }
 
 export interface PublicLpo {
@@ -122,6 +138,13 @@ export interface PublicLpo {
   deliveryLocationName: string | null;
   notes: string | null;
   currency: string | null;
+  /** Header override: the supplier's unit costs on this LPO are tax-inclusive. */
+  pricesIncludeTax?: boolean;
+  /** Sum of line net amounts (`lineTotal`), base currency. */
+  netAmount?: number;
+  /** Sum of recoverable line tax amounts, base currency — zero for a non-VAT-registered business. */
+  taxAmount?: number;
+  /** Gross — `netAmount + taxAmount`. What the supplier is actually owed; equals `netAmount` when there is no recoverable tax. */
   totalAmount: number | null;
   /** How this LPO is settled — tells the supplier whether to expect direct payment or a Settlo-financed payout. */
   paymentMethod?: LpoPaymentMethod;
@@ -144,6 +167,14 @@ export interface LpoItem {
   /** Supplier-quoted currency for this line. Preserved for GRN receive-time
    *  conversion to the location's base currency. */
   currency: string | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /** Line tax. Recoverable (added on top) or memo-only (already inside `unitCost`) per `taxRecoverable`. */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` at document-write time — false means it is already folded into `unitCost`. */
+  taxRecoverable?: boolean;
 }
 
 // ── Request payloads ───────────────────────────────────────────────
@@ -153,12 +184,16 @@ export interface CreateLpoItemPayload {
   orderedQuantity: number;
   unitCost: number;
   currency?: string;
+  /** Per-line override. `null`/omitted falls through to the stock item's default. */
+  taxTypeId?: string | null;
 }
 
 export interface CreateLpoPayload {
   supplierId: string;
   locationType: DestinationType;
   notes?: string;
+  /** This supplier's unit costs on this LPO are tax-inclusive. */
+  pricesIncludeTax?: boolean;
   items: CreateLpoItemPayload[];
   // paymentMethod / financedAmount are deliberately absent: create-time
   // financing is retired (D1) — omitting the method makes the backend
@@ -187,12 +222,12 @@ export const LPO_STATUS_LABELS: Record<LpoStatus, string> = {
 };
 
 export const LPO_STATUS_TONES: Record<LpoStatus, string> = {
-  DRAFT: "bg-gray-50 text-gray-700",
-  SUBMITTED: "bg-blue-50 text-blue-700",
-  APPROVED: "bg-indigo-50 text-indigo-700",
-  PARTIALLY_RECEIVED: "bg-amber-50 text-amber-700",
-  RECEIVED: "bg-green-50 text-green-700",
-  CANCELLED: "bg-red-50 text-red-700",
+  DRAFT: "bg-muted text-ink-2",
+  SUBMITTED: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  APPROVED: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400",
+  PARTIALLY_RECEIVED: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  RECEIVED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
 };
 
 export const SUPPLIER_ACK_LABELS: Record<SupplierAcknowledgement, string> = {
@@ -202,9 +237,9 @@ export const SUPPLIER_ACK_LABELS: Record<SupplierAcknowledgement, string> = {
 };
 
 export const SUPPLIER_ACK_TONES: Record<SupplierAcknowledgement, string> = {
-  PENDING: "bg-amber-50 text-amber-700 border-amber-200",
-  ACCEPTED: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  REJECTED: "bg-red-50 text-red-700 border-red-200",
+  PENDING: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900",
+  ACCEPTED: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900",
+  REJECTED: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900",
 };
 
 /** LPOs whose goods can still be received — used by GRN LPO picker. */
@@ -251,13 +286,13 @@ export function effectiveLpoStatus(
   if (status === "APPROVED" && ack === "PENDING") {
     return {
       label: "Awaiting supplier",
-      tone: "bg-amber-50 text-amber-700",
+      tone: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
     };
   }
   if (status === "CANCELLED" && ack === "REJECTED") {
     return {
       label: "Rejected by supplier",
-      tone: "bg-red-50 text-red-700",
+      tone: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
     };
   }
   return {

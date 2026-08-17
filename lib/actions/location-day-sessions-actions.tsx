@@ -1,5 +1,6 @@
 "use server";
 
+import { v5 as uuidv5 } from "uuid";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { FormResponse } from "@/types/types";
@@ -8,6 +9,38 @@ import {
   getDaySessionCookie,
   setDaySessionCookie,
 } from "@/lib/actions/day-session-cookie-actions";
+
+/**
+ * Shared Settlo day-session UUIDv5 namespace — byte-for-byte identical to
+ * the POS ({@code Settlo-Pro-V3 src/lib/day-session/ids.ts}) and the
+ * Accounts scheduler ({@code DeterministicUuid.DAY_SESSION_NAMESPACE}).
+ */
+const DAY_SESSION_NAMESPACE = "a3b6e6f4-3c1c-4b30-9e8c-2d4f9e0c1aa5";
+
+/**
+ * All current merchants trade in this timezone; the POS and the Accounts
+ * scheduler fall back to the same value when a location carries none.
+ */
+const DEFAULT_TIMEZONE = "Africa/Dar_es_Salaam";
+
+/**
+ * Deterministic cold-open session id for (location, businessDate) — the
+ * same UUID the POS's offline open and the scheduler's AUTO_OPEN compute,
+ * so a dashboard manual open lands on (or reopens) the canonical date row
+ * instead of minting a random-id sibling every other actor then has to
+ * merge with. A wrong-timezone edge (dashboard's date differing from the
+ * server's near midnight) degrades safely: the unknown id goes through the
+ * server's reconcile ladder and still converges on the covering session.
+ */
+const computeDaySessionId = (locationId: string, timezone?: string | null): string => {
+  const businessDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone || DEFAULT_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  return uuidv5(`${locationId}:${businessDate}`, DAY_SESSION_NAMESPACE);
+};
 
 export interface DaySession {
   id: string;
@@ -57,13 +90,20 @@ export interface DaySession {
 export const openDaySession = async (
   locationId: string,
   notes?: string,
+  timezone?: string | null,
 ): Promise<FormResponse<DaySession>> => {
   try {
     const apiClient = new ApiClient();
     // Always send a non-empty body — the backend rejects `{}` with
     // INVALID_REQUEST_BODY, even though the controller declares the
-    // request optional.
-    const body: Record<string, unknown> = { notes: notes ?? null };
+    // request optional. `id` is the deterministic (location, businessDate)
+    // UUIDv5 (see computeDaySessionId) — the server treats it as an
+    // idempotent upsert: an open day returns as-is, a closed one reopens
+    // in place, and the POS / scheduler converge on the same row.
+    const body: Record<string, unknown> = {
+      id: computeDaySessionId(locationId, timezone),
+      notes: notes ?? null,
+    };
     const data = await apiClient.post(`/api/v1/locations/${locationId}/day-sessions/open`, body);
     const session = parseStringify(data) as DaySession | null;
     // Mirror the persisted session into the cookie so the next session-

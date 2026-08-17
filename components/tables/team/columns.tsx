@@ -5,6 +5,7 @@ import { ArrowUpDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { CellAction } from "@/components/tables/team/cell-action";
+import { TableAvatar } from "@/components/tables/shared/table-avatar";
 import { AccountMember } from "@/lib/actions/account-member-actions";
 import { Location } from "@/types/location/type";
 
@@ -80,13 +81,19 @@ export const getColumns = ({
         </Button>
       ),
       cell: ({ row }) => {
-        const { firstName, lastName, email } = row.original;
+        const { id, firstName, lastName, email, pictureUrl } = row.original;
+        const fullName = `${firstName} ${lastName}`.trim();
         return (
-          <div className="min-w-0">
-            <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">
-              {firstName} {lastName}
-            </span>
-            <span className="text-xs text-muted-foreground block truncate">{email}</span>
+          <div className="flex min-w-0 items-center gap-3">
+            {/* Falls back to deterministic-coloured initials until the member
+                (or an admin) uploads a photo. */}
+            <TableAvatar name={fullName} imageUrl={pictureUrl} seed={id} />
+            <div className="min-w-0">
+              <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">
+                {fullName}
+              </span>
+              <span className="text-xs text-muted-foreground block truncate">{email}</span>
+            </div>
           </div>
         );
       },

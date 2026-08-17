@@ -65,6 +65,12 @@ export const QuoteItemSchema = z.object({
     z.number().int().nonnegative("Lead time cannot be negative").optional(),
   ),
   notes: z.string().optional(),
+  /**
+   * Per-line tax override. Unset (`null`/undefined) means "use the stock
+   * item's default" — see the resolution chain in
+   * docs/superpowers/specs/2026-08-03-purchase-tax-design.md.
+   */
+  taxTypeId: z.string().uuid().optional().nullable(),
 });
 
 export const SubmitQuoteSchema = z.object({
@@ -77,6 +83,13 @@ export const SubmitQuoteSchema = z.object({
   paymentTerms: z.string().optional(),
   validityDate: z.string().optional(),
   notes: z.string().optional(),
+  /**
+   * Per-document override: this supplier's quote is priced gross
+   * (tax-inclusive). Informational only — nothing posts to a ledger from a
+   * quote; it exists so a gross-quoting supplier can be compared with a
+   * net-quoting one on the same basis.
+   */
+  pricesIncludeTax: z.boolean().optional().default(false),
   items: z.array(QuoteItemSchema).min(1, "Add at least one line"),
 });
 

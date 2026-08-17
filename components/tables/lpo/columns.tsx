@@ -46,7 +46,7 @@ export const columns: ColumnDef<LpoRow>[] = [
     cell: ({ row }) => (
       <Link
         href={`/purchase-orders/${row.original.id}`}
-        className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded hover:underline"
+        className="font-mono text-xs font-semibold text-ink-2 bg-muted px-2 py-0.5 rounded hover:underline"
       >
         {row.original.lpoNumber}
       </Link>
@@ -56,7 +56,7 @@ export const columns: ColumnDef<LpoRow>[] = [
     accessorKey: "supplierName",
     header: "Supplier",
     cell: ({ row }) => (
-      <span className="text-gray-600">{row.original.supplierName || "—"}</span>
+      <span className="text-ink-2">{row.original.supplierName || "—"}</span>
     ),
   },
   {
@@ -73,12 +73,12 @@ export const columns: ColumnDef<LpoRow>[] = [
       );
       const pct = ordered > 0 ? Math.round((received / ordered) * 100) : 0;
       return (
-        <div className="text-xs text-gray-600 space-y-1 min-w-[100px]">
+        <div className="text-xs text-ink-2 space-y-1 min-w-[100px]">
           <div className="flex items-center justify-between">
             <span>{received.toLocaleString()}</span>
-            <span className="text-gray-400">/ {ordered.toLocaleString()}</span>
+            <span className="text-ink-3">/ {ordered.toLocaleString()}</span>
           </div>
-          <div className="h-1 bg-gray-100 rounded overflow-hidden">
+          <div className="h-1 bg-muted rounded overflow-hidden">
             <div
               className="h-1 bg-green-500"
               style={{ width: `${Math.min(100, pct)}%` }}
@@ -99,7 +99,7 @@ export const columns: ColumnDef<LpoRow>[] = [
       const currency =
         row.original.currency || row.original.items[0]?.currency || DEFAULT_CURRENCY;
       return (
-        <div className="text-right font-medium text-gray-900">
+        <div className="text-right font-medium text-ink">
           <Money amount={total} currency={currency} />
         </div>
       );
@@ -109,7 +109,7 @@ export const columns: ColumnDef<LpoRow>[] = [
     accessorKey: "createdByName",
     header: "Created by",
     cell: ({ row }) => (
-      <span className="text-gray-600">
+      <span className="text-ink-2">
         {row.original.createdByName || "—"}
       </span>
     ),
@@ -154,7 +154,7 @@ export const columns: ColumnDef<LpoRow>[] = [
     accessorKey: "createdAt",
     header: "Created",
     cell: ({ row }) => (
-      <span className="text-gray-600 whitespace-nowrap">
+      <span className="text-ink-2 whitespace-nowrap">
         {formatDate(row.original.createdAt)}
       </span>
     ),

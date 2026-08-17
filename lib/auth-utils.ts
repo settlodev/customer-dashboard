@@ -12,6 +12,7 @@ import {
   LoginResponse,
 } from "@/types/types";
 import { logout } from "@/lib/actions/auth-actions";
+import { AUTH_COOKIE_MAX_AGE_SECONDS } from "@/lib/auth-constants";
 
 // ── Chunked cookie helpers ──────────────────────────────────────────
 // Browser cookie size limit is ~4096 bytes per cookie. JWTs with many
@@ -39,7 +40,7 @@ const STAFF_AUTH_TOKEN_COOKIE = "staffAuthToken";
 // Bounds the cookie so it can't outlive a reasonable session if the browser
 // is left open indefinitely (previously the authToken chunks had no maxAge
 // and lived for the whole browser session).
-const DEFAULT_AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+const DEFAULT_AUTH_COOKIE_MAX_AGE = AUTH_COOKIE_MAX_AGE_SECONDS;
 
 /**
  * Whether auth cookies should carry the `Secure` attribute.

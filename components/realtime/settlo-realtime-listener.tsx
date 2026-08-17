@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useRealtimeChannel } from "@/hooks/use-realtime-channel";
 import { useRealtimeReconnect } from "@/hooks/use-realtime-reconnect";
 import type { WsMessage } from "@/lib/realtime/types";
@@ -41,11 +41,17 @@ export function SettloRealtimeListener({
   eventTypes?: ReadonlySet<string>;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const lastRefreshAtRef = useRef<number>(0);
   const pendingRefreshRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handler = useCallback(
     (msg: WsMessage) => {
+      // Billing data is not affected by inventory or customer events. Refreshing here re-ran the
+      // layout AND the billing page — eight billing requests per refresh, every 5s, which is what
+      // exhausted the account's rate-limit budget. Billing mutations already call router.refresh()
+      // from their own dialogs, and payment confirmation is handled by usePaymentPolling.
+      if (pathname?.startsWith("/billing")) return;
       if (eventTypes && !eventTypes.has(msg.type)) return;
       if (pendingRefreshRef.current) return;
       const elapsed = Date.now() - lastRefreshAtRef.current;
@@ -56,7 +62,7 @@ export function SettloRealtimeListener({
         router.refresh();
       }, delay);
     },
-    [router, eventTypes],
+    [router, eventTypes, pathname],
   );
 
   useEffect(() => {
@@ -73,6 +79,7 @@ export function SettloRealtimeListener({
   // tree stays stale until a later live event happens to touch it. Stamp
   // lastRefreshAt so a burst of events right after reconnect doesn't double-fire.
   useRealtimeReconnect(() => {
+    if (pathname?.startsWith("/billing")) return;
     lastRefreshAtRef.current = Date.now();
     router.refresh();
   });

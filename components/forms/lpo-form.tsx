@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -25,10 +25,14 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
+import { Combobox } from "@/components/ui/combobox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,10 +60,20 @@ import StockVariantSelector from "../widgets/stock-variant-selector";
 import type { VariantMeta } from "../widgets/stock-variant-selector";
 import CurrencySelector from "../widgets/currency-selector";
 import { useLocationCurrency } from "@/hooks/use-location-currency";
+import { useVatRegistrationStatus } from "@/hooks/use-vat-registration-status";
 import { createLpo } from "@/lib/actions/lpo-actions";
 import { CreateLpoSchema } from "@/types/lpo/schema";
 import type { FormResponse } from "@/types/types";
 import type { Supplier } from "@/types/supplier/type";
+import { getCachedTaxTypes } from "@/lib/cache/reference-data";
+import type { TaxType } from "@/types/tax-type/type";
+import { formatMoney } from "@/lib/helpers";
+import {
+  computePurchaseTaxPreview,
+  findBusinessDefaultTaxTypeId,
+  resolveEffectiveTaxTypeId,
+  resolveHeaderPricesIncludeTaxDefault,
+} from "@/lib/purchase-tax";
 
 import styles from "./styles/form-shell.module.css";
 
@@ -67,6 +81,10 @@ type FormValues = z.infer<typeof CreateLpoSchema>;
 
 interface ItemMeta {
   displayName?: string;
+  /** The stock item's own default purchase tax type, if any. */
+  stockTaxTypeId?: string | null;
+  /** The stock item's own `purchaseTaxInclusive` default. */
+  stockPurchaseTaxInclusive?: boolean;
 }
 
 export interface LpoFormInitialValues {
@@ -90,13 +108,33 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
   const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
   const locationCurrency = useLocationCurrency();
+  const vatRegistered = useVatRegistrationStatus();
 
-  const [, setItemMeta] = useState<Record<string, ItemMeta>>({});
+  const [itemMeta, setItemMeta] = useState<Record<string, ItemMeta>>({});
+  const [taxTypes, setTaxTypes] = useState<TaxType[]>([]);
+
+  // Purchase tax types — same source, filter and sort as the GRN form's
+  // picker, so the per-line override behaves identically everywhere.
+  useEffect(() => {
+    getCachedTaxTypes()
+      .then((tx) => {
+        const activeTaxTypes = ((tx ?? []) as TaxType[])
+          .filter((t) => t.active)
+          .sort(
+            (a, b) =>
+              (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+              a.code.localeCompare(b.code),
+          );
+        setTaxTypes(activeTaxTypes);
+      })
+      .catch(() => setTaxTypes([]));
+  }, []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(CreateLpoSchema),
     defaultValues: {
       supplierId: initialValues?.supplierId ?? "",
+      pricesIncludeTax: false,
       notes: initialValues?.notes ?? "",
       items:
         initialValues?.items && initialValues.items.length > 0
@@ -123,6 +161,67 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
   });
 
   const watchedItems = form.watch("items");
+  const pricesIncludeTax = form.watch("pricesIncludeTax");
+
+  const taxTypeMap = useMemo(
+    () => new Map(taxTypes.map((t) => [t.id, t])),
+    [taxTypes],
+  );
+
+  const businessDefaultTaxTypeId = useMemo(
+    () => findBusinessDefaultTaxTypeId(taxTypes),
+    [taxTypes],
+  );
+
+  const totals = useMemo(
+    () =>
+      computePurchaseTaxPreview(
+        watchedItems.map((item, i) => {
+          const fieldId = fields[i]?.id;
+          const meta = fieldId ? itemMeta[fieldId] : undefined;
+          return {
+            quantity: Number(item?.orderedQuantity || 0),
+            cost: Number(item?.unitCost || 0),
+            taxTypeOverride: item?.taxTypeId,
+            stockDefaultTaxTypeId: meta?.stockTaxTypeId,
+            stockPurchaseTaxInclusive: meta?.stockPurchaseTaxInclusive,
+          };
+        }),
+        { pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes },
+      ),
+    [watchedItems, fields, itemMeta, pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes],
+  );
+
+  // Whether the operator has manually flipped the header toggle — once they
+  // have, the auto-default effect below backs off and leaves their choice
+  // alone.
+  const pricesIncludeTaxTouchedRef = useRef(false);
+
+  // What the header toggle should default to, given the stock items
+  // currently on the order — see resolveHeaderPricesIncludeTaxDefault
+  // (Fix 1, 2026-08 fix wave). Only lines with a resolved stock item count;
+  // a blank row or one still awaiting its catalogue fetch is ignored.
+  const headerPricesIncludeTaxDefault = useMemo(
+    () =>
+      resolveHeaderPricesIncludeTaxDefault(
+        watchedItems.map((item, i) => {
+          if (!item?.stockVariantId) return undefined;
+          const fieldId = fields[i]?.id;
+          return fieldId ? itemMeta[fieldId]?.stockPurchaseTaxInclusive : undefined;
+        }),
+      ),
+    [watchedItems, fields, itemMeta],
+  );
+
+  // Keep the header toggle in sync with the item defaults as lines are
+  // added, removed, or their stock variant changes — so an untouched
+  // toggle reflects what the server will actually derive (Fix 1).
+  useEffect(() => {
+    if (pricesIncludeTaxTouchedRef.current) return;
+    form.setValue("pricesIncludeTax", headerPricesIncludeTaxDefault.pricesIncludeTax, {
+      shouldDirty: false,
+    });
+  }, [headerPricesIncludeTaxDefault.pricesIncludeTax, form]);
 
   const onInvalid = useCallback(() => {
     toast({
@@ -159,7 +258,11 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
         }
         return {
           ...prev,
-          [fieldId]: { displayName: meta.displayName },
+          [fieldId]: {
+            displayName: meta.displayName,
+            stockTaxTypeId: meta.stockTaxTypeId ?? null,
+            stockPurchaseTaxInclusive: meta.stockPurchaseTaxInclusive,
+          },
         };
       });
     },
@@ -280,6 +383,40 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
                       />
                     </div>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="pricesIncludeTax"
+                render={({ field }) => (
+                  <FormItem className="mt-[15px] flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel>Supplier prices include tax</FormLabel>
+                      <FormDescription>
+                        Turn this on when the unit costs on this order are
+                        tax-inclusive amounts, matching how this supplier
+                        normally quotes. Defaults from the items below —
+                        override if this order differs.
+                      </FormDescription>
+                      {headerPricesIncludeTaxDefault.mixed && (
+                        <p className="text-[11px] text-amber-600">
+                          The items below don&apos;t agree on whether prices normally include tax —
+                          defaulted to off. Check each line before saving.
+                        </p>
+                      )}
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={(v) => {
+                          pricesIncludeTaxTouchedRef.current = true;
+                          field.onChange(v);
+                        }}
+                        disabled={isPending}
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />
@@ -467,6 +604,71 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
                             </FormItem>
                           )}
                         />
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.taxTypeId`}
+                          render={({ field: f }) => {
+                            // Same 3-tier chain as the footer preview and the
+                            // server's PurchaseTaxResolver: line override →
+                            // stock item's default → business default (only
+                            // when VAT-registered) → none.
+                            const itemDefaultTaxTypeId =
+                              itemMeta[field.id]?.stockTaxTypeId ?? null;
+                            const effectiveTaxTypeId = resolveEffectiveTaxTypeId(
+                              f.value,
+                              itemDefaultTaxTypeId,
+                              vatRegistered,
+                              businessDefaultTaxTypeId,
+                            );
+                            const effectiveTaxType = effectiveTaxTypeId
+                              ? taxTypeMap.get(effectiveTaxTypeId)
+                              : undefined;
+                            const isOverride = !!f.value;
+                            const isItemDefault =
+                              !isOverride && !!itemDefaultTaxTypeId;
+                            const isBusinessDefault =
+                              !isOverride && !itemDefaultTaxTypeId && !!effectiveTaxTypeId;
+                            return (
+                              <FormItem className="w-full md:flex-[3] min-w-0 space-y-[7px]">
+                                <FieldLabel optional>Tax</FieldLabel>
+                                <FormControl>
+                                  <Combobox
+                                    options={taxTypes.map((t) => ({
+                                      value: t.id,
+                                      label: `${t.code} — ${t.name} (${t.ratePercent}%)`,
+                                    }))}
+                                    value={f.value ?? null}
+                                    onChange={(v) => f.onChange(v ?? null)}
+                                    placeholder={
+                                      effectiveTaxTypeId
+                                        ? "Use default"
+                                        : taxTypes.length === 0
+                                          ? "Loading tax types…"
+                                          : "No tax"
+                                    }
+                                    searchPlaceholder="Search tax types…"
+                                    emptyText="No tax types found."
+                                    disabled={isPending}
+                                    ariaLabel="Tax"
+                                  />
+                                </FormControl>
+                                <FieldHint>
+                                  {effectiveTaxType
+                                    ? `${effectiveTaxType.name} ${effectiveTaxType.ratePercent}%${
+                                        isOverride
+                                          ? ""
+                                          : isItemDefault
+                                            ? " (item default)"
+                                            : isBusinessDefault
+                                              ? " (business default)"
+                                              : ""
+                                      }`
+                                    : "No tax configured"}
+                                </FieldHint>
+                              </FormItem>
+                            );
+                          }}
+                        />
                       </div>
                       <div className="flex items-center justify-end text-xs text-muted-foreground">
                         Line total:{" "}
@@ -481,6 +683,27 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
                     </div>
                   );
                 })}
+
+                <div className="flex flex-col gap-1 items-end text-sm mt-2 pt-3 border-t">
+                  <div className="flex justify-between w-64">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>{formatMoney(totals.subtotal, locationCurrency)}</span>
+                  </div>
+                  <div className="flex justify-between w-64">
+                    <span className="text-muted-foreground">
+                      {vatRegistered ? "Tax" : "Tax (included in cost)"}
+                    </span>
+                    <span>{formatMoney(totals.taxAmount, locationCurrency)}</span>
+                  </div>
+                  <div className="flex justify-between w-64 font-medium border-t pt-1">
+                    <span>Total</span>
+                    <span>{formatMoney(totals.totalAmount, locationCurrency)}</span>
+                  </div>
+                  <p className="w-64 text-[11px] text-muted-foreground text-right">
+                    Estimated from the tax rates above — the server confirms
+                    the exact figures on save.
+                  </p>
+                </div>
               </div>
             </div>
           </section>

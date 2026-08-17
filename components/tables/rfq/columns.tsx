@@ -38,7 +38,7 @@ export const columns: ColumnDef<Rfq>[] = [
     cell: ({ row }) => (
       <Link
         href={`/rfqs/${row.original.id}`}
-        className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded hover:underline"
+        className="font-mono text-xs font-semibold text-ink-2 bg-muted px-2 py-0.5 rounded hover:underline"
       >
         {row.original.rfqNumber}
       </Link>
@@ -48,7 +48,7 @@ export const columns: ColumnDef<Rfq>[] = [
     accessorKey: "title",
     header: "Title",
     cell: ({ row }) => (
-      <span className="font-medium text-gray-900 truncate max-w-[260px] block">
+      <span className="font-medium text-ink truncate max-w-[260px] block">
         {row.original.title}
       </span>
     ),
@@ -57,7 +57,7 @@ export const columns: ColumnDef<Rfq>[] = [
     id: "items",
     header: "Items",
     cell: ({ row }) => (
-      <span className="text-gray-600">{row.original.items?.length ?? 0}</span>
+      <span className="text-ink-2">{row.original.items?.length ?? 0}</span>
     ),
   },
   {
@@ -67,7 +67,7 @@ export const columns: ColumnDef<Rfq>[] = [
       const submitted = row.original.quotes?.filter((q) => q.status !== "PENDING").length ?? 0;
       const total = row.original.quotes?.length ?? 0;
       return (
-        <span className="text-gray-600">
+        <span className="text-ink-2">
           {submitted} / {total}
         </span>
       );
@@ -77,7 +77,7 @@ export const columns: ColumnDef<Rfq>[] = [
     accessorKey: "submissionDeadline",
     header: "Deadline",
     cell: ({ row }) => (
-      <span className="text-gray-600 whitespace-nowrap">
+      <span className="text-ink-2 whitespace-nowrap">
         {formatDate(row.original.submissionDeadline)}
       </span>
     ),
@@ -86,7 +86,7 @@ export const columns: ColumnDef<Rfq>[] = [
     accessorKey: "targetCurrency",
     header: "Currency",
     cell: ({ row }) => (
-      <span className="font-mono text-xs text-gray-600 bg-gray-50 px-2 py-0.5 rounded">
+      <span className="font-mono text-xs text-ink-2 bg-muted px-2 py-0.5 rounded">
         {row.original.targetCurrency || row.original.currency || "—"}
       </span>
     ),
@@ -106,7 +106,7 @@ export const columns: ColumnDef<Rfq>[] = [
     accessorKey: "createdByName",
     header: "Created by",
     cell: ({ row }) => (
-      <span className="text-gray-600">{row.original.createdByName || "—"}</span>
+      <span className="text-ink-2">{row.original.createdByName || "—"}</span>
     ),
   },
 ];

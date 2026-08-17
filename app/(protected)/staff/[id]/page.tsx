@@ -1,19 +1,27 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
-import { endOfMonth, format, startOfMonth } from "date-fns";
+import {
+  differenceInMonths,
+  endOfMonth,
+  format,
+  parseISO,
+  startOfMonth,
+} from "date-fns";
 import {
   PageShell,
   PageHeader,
   PageBreadcrumbs,
   PageBody,
 } from "@/components/layouts/page-shell";
+import { StatusPill } from "@/components/layouts/order-detail";
 import { Button } from "@/components/ui/button";
 import {
   getStaff,
   getStaffDetail,
   fetchAllStaff,
   getStaffAudit,
+  staffReport,
 } from "@/lib/actions/staff-actions";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import { getLocationSettings } from "@/lib/actions/location-settings-actions";
@@ -25,9 +33,8 @@ import { OrderStatus } from "@/types/orders/type";
 import { Staff, StaffDetail, StaffAuditEvent } from "@/types/staff";
 import { ApiResponse } from "@/types/types";
 import { OrdersPanel, type SalesView } from "@/components/orders/orders-panel";
-import { StaffDetailView } from "./staff-detail-view";
+import { StaffDetailView, type StaffSalesMetrics } from "./staff-detail-view";
 import { StaffDetailActions } from "./staff-detail-actions";
-import { StaffAssignmentsSection } from "@/components/staff/staff-assignments-section";
 import { StaffAuditTab } from "./staff-audit-tab";
 
 type Params = Promise<{ id: string }>;
@@ -111,23 +118,20 @@ export default async function StaffPage({
   const effectiveStatus: OrderStatus | undefined =
     view === "abandoned" ? OrderStatus.ABANDONED : statusParam || undefined;
 
-  // Server-paginated and scoped to this staff member (orders they're assigned
-  // to OR finished). KPIs come from the OMS summary with the same scope, so
-  // they match the list. The Abandoned sub-tab fixes status to ABANDONED and
-  // uses the paged total for its single count.
-  const [ordersPage, kpis, locationSettings, staffList, tablesList, currency] =
-    await Promise.all([
-      searchOrders({
-        fromDate: from,
-        toDate: to,
-        status: effectiveStatus,
-        excludeAbandoned: view === "orders",
-        staffId: id,
-        search: q || undefined,
-        page: pageNo,
-        limit,
-      }),
-      view === "orders"
+  // The rail's trade figures are deliberately status-agnostic — they answer
+  // "what did this person sell in this range", not "what does the current
+  // filter show". When the Sales tab carries no status filter the two are the
+  // same request, so reuse the promise instead of asking OMS twice.
+  const railKpisPromise = ordersSummary({
+    fromDate: from,
+    toDate: to,
+    excludeAbandoned: true,
+    staffId: id,
+  });
+  const salesKpisPromise =
+    view !== "orders"
+      ? Promise.resolve(null)
+      : statusParam
         ? ordersSummary({
             fromDate: from,
             toDate: to,
@@ -135,12 +139,44 @@ export default async function StaffPage({
             excludeAbandoned: true,
             staffId: id,
           })
-        : Promise.resolve(null),
-      getLocationSettings().catch(() => null),
-      fetchAllStaff().catch(() => []),
-      fetchAllTables().catch(() => []),
-      getLocationCurrency().catch(() => "TZS"),
-    ]);
+        : railKpisPromise;
+
+  // Server-paginated and scoped to this staff member (orders they're assigned
+  // to OR finished). KPIs come from the OMS summary with the same scope, so
+  // they match the list. The Abandoned sub-tab fixes status to ABANDONED and
+  // uses the paged total for its single count.
+  const [
+    ordersPage,
+    railKpis,
+    kpis,
+    locationSettings,
+    staffList,
+    tablesList,
+    currency,
+    rollup,
+  ] = await Promise.all([
+    searchOrders({
+      fromDate: from,
+      toDate: to,
+      status: effectiveStatus,
+      excludeAbandoned: view === "orders",
+      staffId: id,
+      search: q || undefined,
+      page: pageNo,
+      limit,
+    }),
+    railKpisPromise,
+    salesKpisPromise,
+    getLocationSettings().catch(() => null),
+    fetchAllStaff().catch(() => []),
+    fetchAllTables().catch(() => []),
+    getLocationCurrency().catch(() => "TZS"),
+    // Reports rollup — net / profit / items sold plus the location comparison
+    // that turns this staff member's number into a ranking. Null when the
+    // analytics service is unreachable or the viewer lacks reports access;
+    // the rail falls back to the OMS gross figure in that case.
+    staffReport(from, to).catch(() => null),
+  ]);
 
   // Table-based ordering swaps the lead column to the table name.
   const tableMode = locationSettings?.orderingMode === "TABLE_MANAGEMENT";
@@ -153,6 +189,37 @@ export default async function StaffPage({
     staffList,
     tablesList,
   );
+
+  // ── Rail metrics ────────────────────────────────────────────────────
+  const rollupRows = rollup?.staffReports ?? null;
+  const mine = rollupRows?.find((r) => r.id === staff.id) ?? null;
+  const locationNet =
+    rollupRows?.reduce((sum, r) => sum + (r.totalNetAmount ?? 0), 0) ?? 0;
+  // Rank among staff who actually sold — a leaderboard of one entry per
+  // idle colleague would be meaningless.
+  const sellers = (rollupRows ?? [])
+    .filter((r) => (r.totalNetAmount ?? 0) > 0)
+    .sort((a, b) => b.totalNetAmount - a.totalNetAmount);
+  const rankIdx = sellers.findIndex((r) => r.id === staff.id);
+
+  const metrics: StaffSalesMetrics = {
+    rangeLabel: formatRange(from, to),
+    orders: railKpis?.totalOrders ?? 0,
+    openOrders: railKpis?.openOrders ?? 0,
+    closedOrders: railKpis?.closedOrders ?? 0,
+    unpaidOrders: railKpis?.unpaidOrders ?? 0,
+    grossSales: railKpis?.grossSales ?? 0,
+    netSales: rollupRows ? (mine?.totalNetAmount ?? 0) : null,
+    grossProfit: rollupRows ? (mine?.totalGrossProfit ?? 0) : null,
+    itemsSold: rollupRows ? (mine?.totalItemsSold ?? 0) : null,
+    ordersCompleted: rollupRows ? (mine?.totalOrdersCompleted ?? 0) : null,
+    rank: rankIdx >= 0 ? rankIdx + 1 : null,
+    peers: sellers.length,
+    sharePct:
+      mine && locationNet > 0
+        ? (mine.totalNetAmount / locationNet) * 100
+        : null,
+  };
 
   const salesContent = (
     // Keyed because this element is created here but rendered among
@@ -210,12 +277,6 @@ export default async function StaffPage({
 
   const fullName = `${staff.firstName} ${staff.lastName}`;
 
-  // Status pill — Active / Inactive / Owner badge appears separately.
-  const statusLabel = staff.active ? "Active" : "Inactive";
-  const statusClass = staff.active
-    ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
-    : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
-
   // Subtitle reads "Job · Department · Roles" — collapses dividers when
   // any segment is missing so we don't end up with stray bullets.
   const subtitleParts: string[] = [];
@@ -233,24 +294,23 @@ export default async function StaffPage({
   return (
     <PageShell>
       <PageBreadcrumbs
-        items={[
-          { title: "Staff", href: "/staff" },
-          { title: fullName },
-        ]}
+        items={[{ title: "Staff", href: "/staff" }, { title: fullName }]}
       />
       <PageHeader
-        title={fullName}
+        title={
+          <>
+            <StaffAvatar staff={staff} />
+            {fullName}
+          </>
+        }
         titleAccessory={
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClass}`}
-            >
-              {statusLabel}
-            </span>
-            {staff.owner && (
-              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-400">
-                Owner
-              </span>
+          <span className="flex items-center gap-2">
+            <StatusPill tone={staff.active ? "pos" : "muted"} dot>
+              {staff.active ? "Active" : "Inactive"}
+            </StatusPill>
+            {staff.owner && <StatusPill tone="warn">Owner</StatusPill>}
+            {!staff.dashboardAccess && !staff.posAccess && staff.active && (
+              <StatusPill tone="muted">No access</StatusPill>
             )}
           </span>
         }
@@ -261,7 +321,7 @@ export default async function StaffPage({
           <>
             <Button asChild variant="outline" size="sm">
               <Link href={`/staff/${staff.id}/edit`}>
-                <Pencil className="mr-1.5 h-4 w-4" />
+                <Pencil className="h-4 w-4" />
                 Edit
               </Link>
             </Button>
@@ -277,16 +337,68 @@ export default async function StaffPage({
           initialTab={initialTab}
           salesContent={salesContent}
           auditContent={auditContent}
+          metrics={metrics}
+          currency={currency}
+          tenureLabel={tenureOf(staff.joiningDate)}
         />
-        {!staff.owner && (
-          <div className="mt-6 rounded-lg border bg-card p-4">
-            <StaffAssignmentsSection
-              staffId={staff.id}
-              primaryLocationId={staff.locationId}
-            />
-          </div>
-        )}
       </PageBody>
     </PageShell>
   );
+}
+
+// ─── helpers ──────────────────────────────────────────────────────────
+
+/** Circular avatar for the page title — picture when set, else initials on
+ *  the staff member's roster colour. */
+function StaffAvatar({ staff }: { staff: Staff }) {
+  const initials =
+    `${staff.firstName?.[0] ?? ""}${staff.lastName?.[0] ?? ""}`.toUpperCase() ||
+    "?";
+  if (staff.pictureUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={staff.pictureUrl}
+        alt=""
+        className="h-11 w-11 shrink-0 rounded-full border border-line object-cover"
+      />
+    );
+  }
+  return (
+    <span
+      aria-hidden
+      className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-line bg-canvas text-[15px] font-bold tracking-tight text-ink-2"
+      style={
+        staff.color ? { background: staff.color, color: "#fff", borderColor: staff.color } : undefined
+      }
+    >
+      {initials}
+    </span>
+  );
+}
+
+/** "Aug 17, 2026" for a single day, else "Aug 1 – Aug 17, 2026". */
+function formatRange(from: string, to: string): string {
+  try {
+    const start = parseISO(from);
+    const end = parseISO(to);
+    if (from === to) return format(start, "MMM d, yyyy");
+    return `${format(start, "MMM d")} – ${format(end, "MMM d, yyyy")}`;
+  } catch {
+    return `${from} – ${to}`;
+  }
+}
+
+/** "2 yr 4 mo" — computed here so no `Date.now()` seeds the client render. */
+function tenureOf(joiningDate: string | null): string | null {
+  if (!joiningDate) return null;
+  const joined = parseISO(joiningDate);
+  if (Number.isNaN(joined.getTime())) return null;
+  const months = differenceInMonths(new Date(), joined);
+  if (months < 0) return null;
+  if (months < 1) return "under a month";
+  const years = Math.floor(months / 12);
+  const rest = months % 12;
+  if (years === 0) return `${months} mo`;
+  return rest > 0 ? `${years} yr ${rest} mo` : `${years} yr`;
 }

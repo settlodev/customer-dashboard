@@ -26,6 +26,12 @@ export const CreateLpoItemSchema = z.object({
       .nonnegative("Unit cost cannot be negative"),
   ),
   currency: currencyCode.optional().or(z.literal("").transform(() => undefined)),
+  /**
+   * Per-line tax override. Unset (`null`/undefined) means "use the stock
+   * item's default" — see the resolution chain in
+   * docs/superpowers/specs/2026-08-03-purchase-tax-design.md.
+   */
+  taxTypeId: z.string().uuid().optional().nullable(),
 });
 
 // Create-time financing is retired (2026-08-03 LPO-financing design, D1):
@@ -37,6 +43,12 @@ export const CreateLpoSchema = z.object({
   supplierId: z
     .string({ required_error: "Supplier is required" })
     .uuid("Supplier is required"),
+  /**
+   * Document-level override: this supplier's unit costs on this LPO are
+   * already tax-inclusive. A property of how the supplier quotes, not of
+   * the goods.
+   */
+  pricesIncludeTax: z.boolean().optional().default(false),
   notes: z.string().optional(),
   items: z.array(CreateLpoItemSchema).min(1, "Add at least one item"),
 });

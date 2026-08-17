@@ -40,7 +40,7 @@ export const columns: ColumnDef<Grn>[] = [
     cell: ({ row }) => (
       <Link
         href={`/goods-received/${row.original.id}`}
-        className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded hover:underline"
+        className="font-mono text-xs font-semibold text-ink-2 bg-muted px-2 py-0.5 rounded hover:underline"
       >
         {row.original.grnNumber}
       </Link>
@@ -50,7 +50,7 @@ export const columns: ColumnDef<Grn>[] = [
     accessorKey: "supplierName",
     header: "Supplier",
     cell: ({ row }) => (
-      <span className="text-gray-600">{row.original.supplierName || "—"}</span>
+      <span className="text-ink-2">{row.original.supplierName || "—"}</span>
     ),
   },
   {
@@ -62,7 +62,7 @@ export const columns: ColumnDef<Grn>[] = [
         0,
       );
       return (
-        <div className="text-right text-gray-600">{total?.toLocaleString() ?? 0}</div>
+        <div className="text-right text-ink-2">{total?.toLocaleString() ?? 0}</div>
       );
     },
   },
@@ -78,7 +78,7 @@ export const columns: ColumnDef<Grn>[] = [
       const currency =
         row.original.currency || row.original.items?.[0]?.currency || DEFAULT_CURRENCY;
       return (
-        <div className="text-right font-medium text-gray-900">
+        <div className="text-right font-medium text-ink">
           <Money amount={total} currency={currency} />
         </div>
       );
@@ -88,7 +88,7 @@ export const columns: ColumnDef<Grn>[] = [
     accessorKey: "receivedByName",
     header: "Received by",
     cell: ({ row }) => (
-      <span className="text-gray-600">
+      <span className="text-ink-2">
         {row.original.receivedByName || "—"}
       </span>
     ),
@@ -108,7 +108,7 @@ export const columns: ColumnDef<Grn>[] = [
     accessorKey: "receivedDate",
     header: "Received",
     cell: ({ row }) => (
-      <span className="text-gray-600 whitespace-nowrap">
+      <span className="text-ink-2 whitespace-nowrap">
         {formatDate(row.original.receivedDate)}
       </span>
     ),

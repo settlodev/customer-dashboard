@@ -204,6 +204,9 @@ export const createStaff = async (
       scopeId: destination.id,
     };
     delete payload.password;
+    // Department is optional — send nothing rather than an empty string,
+    // which would fail UUID binding on the backend.
+    if (!fields.departmentId) delete payload.departmentId;
     if (fields.dateOfBirth)
       payload.dateOfBirth = fields.dateOfBirth.toISOString().split("T")[0];
     if (fields.joiningDate)
@@ -252,6 +255,13 @@ export const updateStaff = async (
       ...fields
     } = validatedData.data;
     const payload: Record<string, unknown> = { ...fields };
+    // The update endpoint reads a missing departmentId as "leave unchanged",
+    // so detaching a staff member from their department needs the explicit
+    // flag — otherwise clearing the picker would be a silent no-op.
+    if (!fields.departmentId) {
+      delete payload.departmentId;
+      payload.clearDepartment = true;
+    }
     if (fields.dateOfBirth)
       payload.dateOfBirth = fields.dateOfBirth.toISOString().split("T")[0];
     if (fields.joiningDate)

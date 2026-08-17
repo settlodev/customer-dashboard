@@ -16,6 +16,14 @@ export interface SupplierReturn {
   grnId: string | null;
   status: SupplierReturnStatus;
   currency: string | null;
+  /** Header override: this return's unit costs are tax-inclusive. */
+  pricesIncludeTax?: boolean;
+  /** Sum of line net amounts, base currency. */
+  netAmount?: number;
+  /** Sum of line tax amounts credited, base currency — recoverable or memo depending on `SupplierReturnItem.taxRecoverable`. */
+  taxAmount?: number;
+  /** Gross — `netAmount + taxAmount`. Equals `netAmount` when there is no recoverable tax. */
+  totalAmount?: number;
   reason: string | null;
   returnedBy: string | null;
   returnedByName: string | null;
@@ -53,6 +61,20 @@ export interface PublicSupplierReturnItem {
   unitCost: number | null;
   currency: string | null;
   reason: string | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /**
+   * Line tax credited, base currency. Recoverable (added on top) or
+   * memo-only (already inside `unitCost`) per `taxRecoverable`. Present on
+   * the wire — `PublicSupplierReturnResponse` (Settlo Inventory Service)
+   * reuses the same `SupplierReturnItemResponse` class as the authenticated
+   * endpoint — just not previously declared on this type.
+   */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` at document-write time — false means it is already folded into `unitCost`. */
+  taxRecoverable?: boolean;
 }
 
 export interface SupplierReturnItem {
@@ -66,6 +88,14 @@ export interface SupplierReturnItem {
   originalUnitCost: number | null;
   rateUsed: number | null;
   reason: string | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /** Line tax credited, base currency. Recoverable (added on top) or memo-only (already inside `unitCost`) per `taxRecoverable`. */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` at document-write time — false means it is already folded into `unitCost`. */
+  taxRecoverable?: boolean;
 }
 
 export interface CreateSupplierReturnItemPayload {
@@ -74,6 +104,8 @@ export interface CreateSupplierReturnItemPayload {
   unitCost?: number;
   currency?: string;
   reason?: string;
+  /** Per-line override. `null`/omitted falls through to the stock item's default. */
+  taxTypeId?: string | null;
 }
 
 export interface CreateSupplierReturnPayload {
@@ -82,6 +114,8 @@ export interface CreateSupplierReturnPayload {
   grnId?: string;
   reason?: string;
   notes?: string;
+  /** This return's unit costs are tax-inclusive. */
+  pricesIncludeTax?: boolean;
   items: CreateSupplierReturnItemPayload[];
 }
 
@@ -94,11 +128,11 @@ export const SUPPLIER_RETURN_STATUS_LABELS: Record<SupplierReturnStatus, string>
 };
 
 export const SUPPLIER_RETURN_STATUS_TONES: Record<SupplierReturnStatus, string> = {
-  DRAFT: "bg-gray-50 text-gray-700",
-  CONFIRMED: "bg-blue-50 text-blue-700",
-  DISPATCHED: "bg-amber-50 text-amber-700",
-  COMPLETED: "bg-green-50 text-green-700",
-  CANCELLED: "bg-red-50 text-red-700",
+  DRAFT: "bg-muted text-ink-2",
+  CONFIRMED: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  DISPATCHED: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  COMPLETED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
 };
 
 export function canConfirmReturn(status: SupplierReturnStatus): boolean {

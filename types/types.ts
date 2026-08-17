@@ -84,7 +84,9 @@ export type InternalRole =
     | "SUPER_ADMIN"
     | "SUPPORT_AGENT"
     | "BOARD_MEMBER"
-    | "SALES_TEAM";
+    | "SALES_TEAM"
+    | "LOAN_OFFICER"
+    | "FINANCE";
 
 export type SubjectType = "USER" | "STAFF" | "DEVICE";
 

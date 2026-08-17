@@ -34,6 +34,12 @@ export const CreateGrnItemSchema = z
     supplierBatchReference: z.string().optional(),
     expiryDate: z.string().optional(),
     serialNumbers: z.array(z.string().min(1, "Serial cannot be empty")).optional(),
+    /**
+     * Per-line tax override. Unset (`null`/undefined) means "use the stock
+     * item's default" — see the resolution chain in
+     * docs/superpowers/specs/2026-08-03-purchase-tax-design.md.
+     */
+    taxTypeId: z.string().uuid().optional().nullable(),
   })
   .superRefine((val, ctx) => {
     if (val.serialNumbers && val.serialNumbers.length > 0) {
@@ -58,6 +64,11 @@ export const CreateGrnItemSchema = z
 export const CreateGrnSchema = z.object({
   lpoId: z.string().uuid().optional().or(z.literal("")),
   supplierId: z.string({ required_error: "Supplier is required" }).uuid("Supplier is required"),
+  /**
+   * Document-level override: this supplier's unit costs on this GRN already
+   * include tax. A property of how the supplier invoices, not of the goods.
+   */
+  pricesIncludeTax: z.boolean().optional().default(false),
   receivedBy: z.string({ required_error: "Receiver is required" }).uuid("Receiver is required"),
   receivedDate: z
     .string({ required_error: "Received date is required" })

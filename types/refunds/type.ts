@@ -1,30 +1,3 @@
-import { UUID } from "crypto";
-
-export interface OrderItemRefunds {
-  id: UUID;
-  quantity: number;
-  dateOfReturn: string;
-  reason: string;
-  order: UUID;
-  orderNumber: string;
-  orderItem: UUID;
-  orderItemNetAmount: UUID;
-  orderItemName: string;
-  staff: UUID;
-  staffName: string;
-  approvedBy: string;
-  approvedByName: string;
-  stockReturned: boolean;
-  locationId: string;
-  status: boolean;
-  canDelete: boolean;
-  isArchived: boolean;
-  refundAmount: number;
-  returnedCost: number;
-  latestRefunded: Date;
-  earliestRefunded: Date;
-}
-
 /**
  * One refunded line, mirroring the Reports Service {@code RefundReportDto} 1:1
  * (Jackson camelCase). `returnedCost` is the COGS of the refunded units, derived
@@ -41,7 +14,10 @@ export interface RefundReportRow {
   refundNetAmount: number;
   returnedCost: number | null;
   stockReturned: boolean;
+  /** Free-text note the cashier typed. */
   reason: string | null;
+  /** The picked `RefundReason` enum — the list's filter dimension. */
+  reasonType: string | null;
   refundType: string | null;
   refundDate: string | null;
   refundedByName: string | null;

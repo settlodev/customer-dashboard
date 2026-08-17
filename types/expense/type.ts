@@ -85,18 +85,18 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
 };
 
 export const EXPENSE_STATUS_TONES: Record<ExpenseStatus, string> = {
-  DRAFT: "bg-gray-100 text-gray-700",
-  PENDING: "bg-amber-50 text-amber-700",
-  APPROVED: "bg-green-50 text-green-700",
-  REJECTED: "bg-red-50 text-red-700",
-  CANCELLED: "bg-gray-100 text-gray-500",
-  VOIDED: "bg-gray-100 text-gray-500",
+  DRAFT: "bg-muted text-ink-2",
+  PENDING: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  APPROVED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  REJECTED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  CANCELLED: "bg-muted text-ink-3",
+  VOIDED: "bg-muted text-ink-3",
 };
 
 export const PAYMENT_STATUS_TONES: Record<PaymentStatus, string> = {
-  UNPAID: "bg-red-50 text-red-700",
-  PARTIALLY_PAID: "bg-amber-50 text-amber-700",
-  PAID: "bg-green-50 text-green-700",
+  UNPAID: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  PARTIALLY_PAID: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  PAID: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
 };
 
 // ── Close-of-Day session summary ──────────────────────────────────────

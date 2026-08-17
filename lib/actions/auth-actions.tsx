@@ -35,7 +35,12 @@ import {
   updateAuthToken,
 } from "@/lib/auth-utils";
 import { isStaffToken, extractReferralAgent, extractInternalRole } from "@/lib/jwt-utils";
-import { establishCustomerSession } from "@/lib/customer-session";
+import {
+  establishCustomerSession,
+  fetchCallerIdentity,
+  withCallerIdentity,
+} from "@/lib/customer-session";
+import type { MeProfile } from "@/lib/identity/me-profile";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseApiError, getUIErrorMessage } from "@/lib/settlo-api-error-handler";
 import { cookies } from "next/headers";
@@ -1090,43 +1095,51 @@ export const oauthLogin = async (
       });
     }
 
-    await createAuthTokenFromLogin(loginData, {
-      firstName: profileData.firstName,
-      lastName: profileData.lastName,
-      phoneNumber: profileData.phoneNumber,
-      pictureUrl: profileData.pictureUrl || profileData.avatar,
-      isBusinessRegistrationComplete:
-        profileData.isBusinessRegistrationComplete ?? false,
-      isLocationRegistrationComplete:
-        profileData.isLocationRegistrationComplete ?? false,
-      countryId: profileData.countryId,
-      countryCode: profileData.countryCode,
-      theme: profileData.theme,
-      hasInvitedAccess,
-    });
+    // Identity (name/phone/picture) comes from the caller's OWN row, not the
+    // account holder's — see fetchCallerIdentity. Same overlay the password
+    // login gets via establishCustomerSession.
+    const profile = withCallerIdentity(
+      {
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        phoneNumber: profileData.phoneNumber,
+        pictureUrl: profileData.pictureUrl || profileData.avatar,
+        isBusinessRegistrationComplete:
+          profileData.isBusinessRegistrationComplete ?? false,
+        isLocationRegistrationComplete:
+          profileData.isLocationRegistrationComplete ?? false,
+        countryId: profileData.countryId,
+        countryCode: profileData.countryCode,
+        theme: profileData.theme,
+        hasInvitedAccess,
+      },
+      await fetchCallerIdentity(loginData.accessToken),
+    );
+
+    await createAuthTokenFromLogin(loginData, profile);
 
     await signIn("credentials", {
       __preAuthenticated: "true",
       userId: loginData.userId,
       email: loginData.email,
-      name: `${profileData.firstName || ""} ${profileData.lastName || ""}`.trim(),
-      firstName: profileData.firstName || "",
-      lastName: profileData.lastName || "",
-      phoneNumber: profileData.phoneNumber || "",
+      name: `${profile.firstName || ""} ${profile.lastName || ""}`.trim(),
+      firstName: profile.firstName || "",
+      lastName: profile.lastName || "",
+      phoneNumber: profile.phoneNumber || "",
       accessToken: loginData.accessToken,
       refreshToken: loginData.refreshToken,
       emailVerified: String(loginData.emailVerified),
       isBusinessRegistrationComplete: String(
-        profileData.isBusinessRegistrationComplete ?? false,
+        profile.isBusinessRegistrationComplete ?? false,
       ),
       isLocationRegistrationComplete: String(
-        profileData.isLocationRegistrationComplete ?? false,
+        profile.isLocationRegistrationComplete ?? false,
       ),
-      countryId: profileData.countryId || "",
-      countryCode: profileData.countryCode || "",
+      countryId: profile.countryId || "",
+      countryCode: profile.countryCode || "",
       accountId: loginData.accountId || "",
-      theme: profileData.theme || "",
-      pictureUrl: profileData.pictureUrl || profileData.avatar || "",
+      theme: profile.theme || "",
+      pictureUrl: profile.pictureUrl || "",
       redirect: false,
     });
 
@@ -1918,26 +1931,34 @@ export const updateUser = async (
       });
     }
 
-    // Map frontend field names to Accounts Service field names
+    // PATCH the caller's OWN row, not the account. `PUT /accounts/{id}` doesn't
+    // exist (this silently 405'd for everyone), and pointing it at the account
+    // would have let an invited member or staff user rename the account owner —
+    // members and staff have their own name rows. The service picks the row
+    // from the token; email/phone stay out of the payload because both are
+    // verified credentials changed through the Auth flows (PhoneCard / email
+    // change), and bio + picture only exist on the account holder's row.
     const payload: Record<string, unknown> = {
       firstName: validatedData.data.firstName,
       lastName: validatedData.data.lastName,
     };
     if (validatedData.data.bio !== undefined) payload.bio = validatedData.data.bio;
-    if (validatedData.data.email !== undefined) payload.email = validatedData.data.email;
-    if (validatedData.data.phoneNumber !== undefined) payload.phoneNumber = validatedData.data.phoneNumber;
     if (validatedData.data.avatar !== undefined) payload.pictureUrl = validatedData.data.avatar;
-    if (validatedData.data.country !== undefined) payload.countryId = validatedData.data.country;
 
     const apiClient = new ApiClient();
-    await apiClient.put(`/api/v1/accounts/${authToken.accountId}`, payload);
+    const updated = await apiClient.patch<MeProfile, typeof payload>(
+      `/api/v1/me/profile`,
+      payload,
+    );
 
-    // Update local auth token with new profile data
+    // Mirror the saved identity into the auth cookie so the sidebar/greeting
+    // update on the spot. Trust the response over the submitted values — a
+    // member's row stores no avatar, so it comes back null.
     await updateAuthToken({
       ...authToken,
-      firstName: validatedData.data.firstName,
-      lastName: validatedData.data.lastName,
-      ...(validatedData.data.avatar !== undefined && { pictureUrl: validatedData.data.avatar }),
+      firstName: updated?.firstName ?? validatedData.data.firstName,
+      lastName: updated?.lastName ?? validatedData.data.lastName,
+      pictureUrl: updated?.pictureUrl ?? null,
     });
 
     revalidatePath("/", "layout");

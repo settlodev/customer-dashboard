@@ -140,6 +140,28 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
     return acc;
   }, new Map<string, number>());
   const hasMixedCurrency = totalsByCurrency.size > 1;
+  const itemsTotal = lpo.items.reduce(
+    (sum, item) => sum + Number(item.orderedQuantity || 0) * Number(item.unitCost || 0),
+    0,
+  );
+
+  // Server-authoritative tax breakdown, same approach as the GRN detail
+  // page. `lpo.netAmount`/`totalAmount` are trusted as-is; `itemsTotal`
+  // above is kept only as a defensive fallback for an LPO payload that
+  // predates these fields. Deliberately NOT reading `lpo.taxAmount` for
+  // display: it sums recoverable lines only, so it is always 0 for a
+  // non-VAT-registered business — the per-line sum below is the full tax
+  // regardless of recoverability, which is what the memo figure needs.
+  const netAmount = lpo.netAmount ?? itemsTotal;
+  const totalAmount = lpo.totalAmount ?? netAmount;
+  const lineTaxTotal = lpo.items.reduce(
+    (sum, item) => sum + Number(item.taxAmount || 0),
+    0,
+  );
+  // Recoverable is uniform across a document (it's the business's VAT
+  // status at write time, not a per-line choice) — any line answers for all.
+  const taxRecoverable = lpo.items.some((item) => item.taxRecoverable === true);
+  const subtotal = taxRecoverable ? netAmount : totalAmount;
 
   const statusInfo = effectiveLpoStatus(lpo.status, lpo.supplierAcknowledgement);
 
@@ -361,6 +383,25 @@ export default async function LpoDetailPage({ params }: { params: Params }) {
                   </DetailTd>
                 </DetailTableTotals>
               </DetailTable>
+
+              {!hasMixedCurrency && (
+                <div className="flex flex-col items-end gap-1 border-t border-line px-5 py-4 text-[13px]">
+                  <div className="flex w-64 justify-between">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <Money amount={subtotal} currency={lpoCurrency} />
+                  </div>
+                  <div className="flex w-64 justify-between">
+                    <span className="text-muted-foreground">
+                      {taxRecoverable ? "Tax" : "Tax (included in cost)"}
+                    </span>
+                    <Money amount={lineTaxTotal} currency={lpoCurrency} />
+                  </div>
+                  <div className="flex w-64 justify-between border-t border-line pt-1 font-semibold">
+                    <span>Total</span>
+                    <Money amount={totalAmount} currency={lpoCurrency} />
+                  </div>
+                </div>
+              )}
             </PanelCard>
 
             <AttachmentsPanel

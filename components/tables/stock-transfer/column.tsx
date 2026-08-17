@@ -51,7 +51,7 @@ export const getColumns = ({
       </Button>
     ),
     cell: ({ row }) => (
-      <span className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
+      <span className="font-mono text-xs font-semibold text-ink-2 bg-muted px-2 py-0.5 rounded">
         {row.original.transferNumber}
       </span>
     ),
@@ -61,9 +61,9 @@ export const getColumns = ({
     header: "Route",
     cell: ({ row }) => (
       <div >
-        <span className="text-gray-900">{row.original.sourceLocationName || "Source"}</span>
-        <span className="text-gray-400 mx-1">&rarr;</span>
-        <span className="text-gray-900">{row.original.destinationLocationName || "Destination"}</span>
+        <span className="text-ink">{row.original.sourceLocationName || "Source"}</span>
+        <span className="text-ink-3 mx-1">&rarr;</span>
+        <span className="text-ink">{row.original.destinationLocationName || "Destination"}</span>
       </div>
     ),
   },
@@ -71,7 +71,7 @@ export const getColumns = ({
     id: "items",
     header: "Items",
     cell: ({ row }) => (
-      <span className="text-gray-600">
+      <span className="text-ink-2">
         {row.original.items?.length ?? 0}
       </span>
     ),
@@ -81,7 +81,7 @@ export const getColumns = ({
     header: "Status",
     cell: ({ row }) => {
       const status = row.original.status;
-      const colors = TRANSFER_STATUS_COLORS[status] || "bg-gray-100 text-gray-600";
+      const colors = TRANSFER_STATUS_COLORS[status] || "bg-muted text-ink-2";
       return (
         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colors}`}>
           {getTransferStatusLabel(row.original, activeDestinationId)}
@@ -93,7 +93,7 @@ export const getColumns = ({
     accessorKey: "createdAt",
     header: "Date",
     cell: ({ row }) => (
-      <span className="text-gray-600">
+      <span className="text-ink-2">
         {new Date(row.original.createdAt).toLocaleDateString("en-GB", {
           day: "2-digit",
           month: "short",

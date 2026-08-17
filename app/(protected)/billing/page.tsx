@@ -17,17 +17,8 @@ import {
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import { BillingClient } from "@/components/billing/billing-client";
 import { StatusPill, toPillTone } from "@/components/billing/pill";
-import {
-  getAddons,
-  getCreditBalances,
-  getCreditPacks,
-  getCreditTransactions,
-  getCurrentSubscription,
-  getPackages,
-  getSubscriptionInvoices,
-} from "@/lib/actions/billing-actions";
+import { getBillingOverview } from "@/lib/actions/billing-overview-actions";
 import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
-import { getEntitlements } from "@/lib/actions/entitlement-actions";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { getWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { getAuthToken } from "@/lib/auth-utils";
@@ -39,23 +30,76 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/**
+ * The `?expired=<type>&reason=<reason>` banner set by the protected layout when the active
+ * destination's own subscription is locked and it redirected here. Tells the owner why they
+ * landed on this page rather than the one they asked for — without it the redirect reads as
+ * the app losing their click. `lockReason` further distinguishes "this entity's subscription
+ * actually lapsed" from every other case (see (protected)/layout.tsx) — telling a paid-up
+ * customer their subscription lapsed when we merely couldn't confirm it (billing outage, or
+ * some future third `reason` this branch has never seen) is the wrong message. The branching
+ * below is deliberately positive on "lapsed" — only that exact value gets the accusatory
+ * copy — rather than positive on today's other known value ("no-entitlement-data"), so an
+ * unrecognized future reason falls into the neutral copy instead of silently reading as
+ * "you didn't pay". Reused across all three `getBillingOverview()` outcomes (see the three
+ * branches below), since a redirect can land on any of them.
+ */
+function LockBanner({
+  lockedEntity,
+  lockReason,
+}: {
+  lockedEntity: string;
+  lockReason?: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-warn/30 bg-warn-tint px-4 py-3.5">
+      <Lock className="mt-0.5 h-4 w-4 flex-none text-warn" />
+      {lockReason === "lapsed" ? (
+        <div>
+          <p className="text-[13.5px] font-semibold text-ink">
+            This {lockedEntity}&apos;s subscription has lapsed
+          </p>
+          <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">
+            It stays locked until it&apos;s paid for. Settle it below to restore
+            access — or switch to another destination and come back to this
+            whenever you&apos;re ready.
+          </p>
+        </div>
+      ) : (
+        <div>
+          <p className="text-[13.5px] font-semibold text-ink">
+            Access to this {lockedEntity} is restricted
+          </p>
+          <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">
+            Please try again shortly, or contact support if this continues —
+            or switch to another destination and come back to this whenever
+            you&apos;re ready.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ expired?: string }>;
+  searchParams?: Promise<{ expired?: string; reason?: string }>;
 }) {
-  // Set by the protected layout when the active destination's own subscription has lapsed and
-  // it redirected here. Tells the owner why they landed on this page rather than the one they
-  // asked for — without it the redirect reads as the app losing their click.
-  const lockedEntity = (await searchParams)?.expired;
-  const subscription = await getCurrentSubscription();
+  const params = await searchParams;
+  const lockedEntity = params?.expired;
+  const lockReason = params?.reason;
+  const result = await getBillingOverview();
 
-  if (!subscription) {
+  if (result.status === "no-subscription") {
     return (
       <PageShell>
         <PageBreadcrumbs items={[{ title: "Billing" }]} />
         <PageHeader title="Billing" subtitle="Manage your subscription, invoices, and credits." />
         <PageBody>
+          {lockedEntity && (
+            <LockBanner lockedEntity={lockedEntity} lockReason={lockReason} />
+          )}
           <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-line bg-card py-16 text-center">
             <div className="grid h-12 w-12 place-items-center rounded-full bg-canvas">
               <AlertCircle className="h-5 w-5 text-muted-foreground" />
@@ -67,6 +111,15 @@ export default async function BillingPage({
                 Pick a plan to get started.
               </p>
             </div>
+            {/*
+             * No known in-app route serves "pick a plan for an already-registered,
+             * already-authenticated business" — /select-subscription doesn't exist
+             * anywhere under app/, and the only other plan picker, (auth)/subscription,
+             * terminates in business-registration's createBusinessWithLocations, which
+             * creates a NEW business rather than a subscription for this one. Left
+             * pointing at /select-subscription deliberately rather than wiring a worse
+             * destination; see task-7-report.md.
+             */}
             <Button asChild size="sm">
               <Link href="/select-subscription">Choose a plan</Link>
             </Button>
@@ -76,6 +129,42 @@ export default async function BillingPage({
     );
   }
 
+  if (result.status === "unreachable") {
+    // Distinct from "no-subscription" above on purpose: this business may be fully paid up —
+    // we simply couldn't get a trustworthy answer from billing. Must never say "no
+    // subscription" or offer the plan-picker CTA, or a paying customer during an outage reads
+    // it as an accusation of non-payment (see C1 in the Task 7 review).
+    return (
+      <PageShell>
+        <PageBreadcrumbs items={[{ title: "Billing" }]} />
+        <PageHeader title="Billing" subtitle="Manage your subscription, invoices, and credits." />
+        <PageBody>
+          {lockedEntity && (
+            <LockBanner lockedEntity={lockedEntity} lockReason={lockReason} />
+          )}
+          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-line bg-card py-16 text-center">
+            <div className="grid h-12 w-12 place-items-center rounded-full bg-canvas">
+              <AlertCircle className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-ink">
+                We couldn&apos;t reach the billing service
+              </p>
+              <p className="mt-1 max-w-md text-xs text-muted-foreground">
+                This isn&apos;t about whether you&apos;ve paid — we just couldn&apos;t
+                confirm your subscription right now. Please try again shortly, or use
+                the sidebar to switch to another destination in the meantime.
+              </p>
+            </div>
+          </div>
+        </PageBody>
+      </PageShell>
+    );
+  }
+
+  const overview = result.data;
+  const subscription = overview.subscription;
+
   const [business, authToken] = await Promise.all([getCurrentBusiness(), getAuthToken()]);
   const businessId = business?.id ?? subscription.businessId;
   const contactDefaults = {
@@ -83,38 +172,42 @@ export default async function BillingPage({
     phone: authToken?.phoneNumber ?? "",
   };
 
-  const [
-    packages,
-    addons,
-    invoicesPage,
-    creditBalances,
-    creditPacks,
-    creditTransactionsPage,
-    locations,
-    warehouses,
-    entitlements,
-  ] = await Promise.all([
-    getPackages().catch(() => []),
-    getAddons().catch(() => []),
-    getSubscriptionInvoices(subscription.id).catch(() => null),
-    getCreditBalances(businessId).catch(() => []),
-    getCreditPacks().catch(() => []),
-    getCreditTransactions(businessId, 0, 10).catch(() => null),
+  // fetchAllLocations/getWarehouses hit the accounts service, not billing, so they
+  // stay outside the overview call.
+  const [locations, warehouses] = await Promise.all([
     fetchAllLocations().catch(() => null),
     getWarehouses(businessId).catch(() => []),
-    // The exemption lives on the entitlements response, not the subscription. This is a
-    // free ride: getEntitlements is React-cache()d per request and the (protected) layout
-    // has already called it, so this resolves from that cache rather than a second call.
-    getEntitlements().catch(() => null),
   ]);
+
+  const packages = overview.packages;
+  const addons = overview.addons;
+  const creditBalances = overview.creditBalances;
+  const creditPacks = overview.creditPacks;
+  const entitlements = overview.entitlements;
 
   // Internal account: never invoiced, never expires. Its paidThrough deliberately keeps the
   // true (often past) value, so the money surfaces below must not be read as a live runway.
   const isBillingExempt = entitlements?.billingExempt === true;
 
-  const invoices = invoicesPage?.content ?? [];
-  const totalInvoiceCount = invoicesPage?.totalElements ?? invoices.length;
-  const creditTransactions = creditTransactionsPage?.content ?? [];
+  // The overview endpoint returns flat arrays + totals rather than Spring Page objects.
+  // Rebuild the {content, totalElements} shape the rest of this page reads — the billing
+  // components downstream (BillingClient, InvoicesTab, CreditsTab) only ever touch
+  // `content` and `totalElements`; none of them read totalPages/number/size.
+  // `?? []`/`?? 0` guard against a payload that's missing a field despite the type saying
+  // it's required — without it a bare `undefined` here would throw downstream on the first
+  // `.filter(...)`/`.reduce(...)` call and 500 the page instead of degrading.
+  const invoicesPage = {
+    content: overview.invoices ?? [],
+    totalElements: overview.invoicesTotal ?? 0,
+  };
+  const creditTransactionsPage = {
+    content: overview.creditTransactions ?? [],
+    totalElements: overview.creditTransactionsTotal ?? 0,
+  };
+
+  const invoices = invoicesPage.content;
+  const totalInvoiceCount = invoicesPage.totalElements;
+  const creditTransactions = creditTransactionsPage.content;
 
   const entityLabels: Record<string, string> = {};
   for (const loc of locations ?? []) {
@@ -163,19 +256,7 @@ export default async function BillingPage({
 
       <PageBody>
         {lockedEntity && (
-          <div className="flex items-start gap-3 rounded-xl border border-warn/30 bg-warn-tint px-4 py-3.5">
-            <Lock className="mt-0.5 h-4 w-4 flex-none text-warn" />
-            <div>
-              <p className="text-[13.5px] font-semibold text-ink">
-                This {lockedEntity}&apos;s subscription has lapsed
-              </p>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">
-                It stays locked until it&apos;s paid for. Settle it below to restore
-                access — or switch to another destination and come back to this
-                whenever you&apos;re ready.
-              </p>
-            </div>
-          </div>
+          <LockBanner lockedEntity={lockedEntity} lockReason={lockReason} />
         )}
         <KpiStrip cols={4}>
           <KpiCard

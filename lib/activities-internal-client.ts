@@ -26,7 +26,7 @@ function requireConfig() {
 
 function buildUrl(
   path: string,
-  query?: Record<string, string | number | undefined | null>,
+  query?: Record<string, string | number | boolean | undefined | null>,
 ): string {
   requireConfig();
   const url = new URL(`${ACTIVITIES_SERVICE_URL}${path}`);
@@ -79,7 +79,7 @@ async function rejectWithApiError(
 
 export async function activitiesInternalGet<T>(
   path: string,
-  params?: Record<string, string | number | undefined | null>,
+  params?: Record<string, string | number | boolean | undefined | null>,
 ): Promise<T> {
   const url = buildUrl(path, params);
   const headers: Record<string, string> = { Accept: "application/json" };

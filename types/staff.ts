@@ -40,6 +40,8 @@ export interface Staff {
   fullName: string;
   firstName: string;
   lastName: string;
+  /** Avatar the staff member uploaded on their own profile; null until they do. */
+  pictureUrl?: string | null;
   active: boolean;
   dashboardAccess: boolean;
   posAccess: boolean;
@@ -66,7 +68,8 @@ export interface Staff {
   notes: string | null;
   nationalityId: string | null;
   nationalityName: string | null;
-  departmentId: string;
+  /** Primary department — null for staff who aren't attached to one. */
+  departmentId: string | null;
   departmentName: string | null;
   departments: DepartmentInfo[];
   roles: RoleInfo[];
@@ -220,6 +223,9 @@ export const StaffSchema = object({
     1,
     "Enter a valid last name",
   ),
+  /** Avatar (R2 URL from the upload widget). Optional — staff can also set
+   *  their own later from /profile. */
+  pictureUrl: string().optional(),
   // Required on the dashboard for reachability — backend keeps it
   // optional, so the dashboard tightens the contract without breaking
   // any service-to-service caller. Validated against libphonenumber so
@@ -238,8 +244,12 @@ export const StaffSchema = object({
     1,
     "Enter a job title",
   ),
-  departmentId: string({ required_error: "Department is required" }).uuid(
-    "Select a department",
+  // Optional — accounts that don't organise their people into departments
+  // (or whose package only exposes the auto-created Main one) leave this
+  // empty, and the backend stores staff with no primary department.
+  departmentId: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().uuid("Select a department").optional(),
   ),
   departmentIds: array(string().uuid()).optional(),
   roleIds: array(string().uuid()).min(1, "Select at least one role"),

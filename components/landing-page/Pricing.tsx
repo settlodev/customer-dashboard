@@ -3,10 +3,12 @@
 import { getPackages } from "@/lib/actions/billing-actions";
 import type { Package } from "@/types/billing/types";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { PricingCard } from "@/components/landing-page/PricingCard";
 
 type EntityType = "LOCATION" | "STORE" | "WAREHOUSE";
+type TabStatus = "idle" | "loading" | "error";
 
 const TABS: { label: string; value: EntityType }[] = [
   { label: "Store", value: "STORE" },
@@ -24,30 +26,38 @@ export const Pricing: React.FC = () => {
   const [packagesByType, setPackagesByType] = useState<
     Partial<Record<EntityType, Package[]>>
   >({});
-  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<Record<EntityType, TabStatus>>({
+    STORE: "idle",
+    LOCATION: "idle",
+    WAREHOUSE: "idle",
+  });
+
+  const fetchPlans = useCallback(async (type: EntityType) => {
+    setStatus((prev) => ({ ...prev, [type]: "loading" }));
+    try {
+      const data = await getPackages(type);
+      const excludedCodes = EXCLUDED_CODES[type] ?? [];
+      setPackagesByType((prev) => ({
+        ...prev,
+        [type]: data.filter(
+          (p) => p.isActive && !excludedCodes.some((code) => p.code?.includes(code)),
+        ),
+      }));
+      setStatus((prev) => ({ ...prev, [type]: "idle" }));
+    } catch (error) {
+      console.error("Error fetching packages:", error);
+      setStatus((prev) => ({ ...prev, [type]: "error" }));
+    }
+  }, []);
 
   useEffect(() => {
-    if (packagesByType[activeTab]) return;
-
-    const fetchPlans = async () => {
-      setLoading(true);
-      try {
-        const data = await getPackages(activeTab);
-        setPackagesByType((prev) => ({
-          ...prev,
-          [activeTab]: data.filter((p) => p.isActive),
-        }));
-      } catch (error) {
-        console.error("Error fetching packages:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPlans();
-  }, [activeTab, packagesByType]);
+    if (packagesByType[activeTab] || status[activeTab] !== "idle") return;
+    fetchPlans(activeTab);
+  }, [activeTab, packagesByType, status, fetchPlans]);
 
   const packages = packagesByType[activeTab] ?? [];
+  const loading = status[activeTab] === "loading";
+  const hasError = status[activeTab] === "error";
 
   return (
     <section
@@ -129,6 +139,7 @@ export const Pricing: React.FC = () => {
               ))}
 
             {!loading &&
+              !hasError &&
               packages.map((plan, index) => {
                 const isPopular = plan.code?.includes("PROFESSIONAL");
                 return (
@@ -147,7 +158,22 @@ export const Pricing: React.FC = () => {
                 );
               })}
 
-            {!loading && packages.length === 0 && (
+            {!loading && hasError && (
+              <div className="col-span-full flex flex-col items-center gap-3 text-center py-12">
+                <p className="text-gray-500 dark:text-gray-400">
+                  Couldn&apos;t load plans right now. Please try again.
+                </p>
+                <button
+                  onClick={() => fetchPlans(activeTab)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-primary border border-primary/30 hover:bg-primary-light dark:hover:bg-gray-800 transition-colors duration-200"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {!loading && !hasError && packages.length === 0 && (
               <div className="col-span-full text-center text-gray-500 dark:text-gray-400 py-12">
                 No packages available for this category yet.
               </div>

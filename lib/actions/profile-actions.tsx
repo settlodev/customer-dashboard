@@ -9,6 +9,7 @@ import {
   deleteCurrentBusinessCookie,
   getAuthToken,
 } from "@/lib/auth-utils";
+import { fetchCallerIdentity } from "@/lib/customer-session";
 import { clearDestination } from "./destination";
 import { revalidatePath } from "next/cache";
 
@@ -195,15 +196,28 @@ export const switchAccount = async (accountId: string): Promise<FormResponse> =>
     }
 
     // Replace the auth token with the new account's tokens and profile.
-    // Identity fields (name/phone/picture/theme) come from the EXISTING token —
-    // the logged-in user's identity must not change across account switches.
-    // Only account-context fields (registration flags, country) change.
+    // Identity fields (name/phone/picture) come from the caller's OWN row in
+    // the account they switched into (`/me/profile`) — never from the account
+    // profile above, which is the account HOLDER and would rename the user to
+    // the owner of every account they're invited into. Falls back to the
+    // existing token's identity if that lookup fails, since the signed-in
+    // person doesn't change across a switch.
     const existing = await getAuthToken();
+    const identity = await fetchCallerIdentity(loginData.accessToken);
+    const hasIdentity = !!(identity?.firstName || identity?.lastName);
     await createAuthTokenFromLogin(loginData, {
-      firstName: existing?.firstName || profileData.firstName,
-      lastName: existing?.lastName || profileData.lastName,
-      phoneNumber: existing?.phoneNumber || profileData.phoneNumber,
-      pictureUrl: existing?.pictureUrl ?? profileData.pictureUrl,
+      firstName: hasIdentity
+        ? identity?.firstName || ""
+        : existing?.firstName || profileData.firstName,
+      lastName: hasIdentity
+        ? identity?.lastName || ""
+        : existing?.lastName || profileData.lastName,
+      phoneNumber: hasIdentity
+        ? identity?.phoneNumber || existing?.phoneNumber
+        : existing?.phoneNumber || profileData.phoneNumber,
+      pictureUrl: hasIdentity
+        ? (identity?.pictureUrl ?? null)
+        : (existing?.pictureUrl ?? profileData.pictureUrl),
       theme: existing?.theme ?? profileData.theme,
       // account-context (the NEW account's) — these legitimately change on switch:
       isBusinessRegistrationComplete:

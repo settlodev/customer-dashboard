@@ -28,6 +28,8 @@ export interface ListSoldItemsParams {
    * matters when scanning a list.
    */
   status?: SoldItemStatus;
+  /** Optional department filter. */
+  departmentId?: string;
   /** Optional product category filter. */
   categoryId?: string;
   /** Optional staff filter (the staff that added the item). */
@@ -62,6 +64,8 @@ export interface SoldItemLine {
   variantName: string | null;
   categoryId: UUID | string | null;
   categoryName: string | null;
+  departmentId: UUID | string | null;
+  departmentName: string | null;
   imageUrl: string | null;
 
   // ── Volume ──────────────────────────────────────────────────────

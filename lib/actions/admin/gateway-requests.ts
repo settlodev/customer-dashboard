@@ -25,6 +25,10 @@ export async function listGatewayRequests(
     {
       page: Math.max(0, params.page ?? 0),
       size: params.size ?? 20,
+      upstreamServerName: params.upstreamServerName || undefined,
+      httpMethod: params.httpMethod || undefined,
+      upstreamStatusCode: params.upstreamStatusCode ?? undefined,
+      hasUpstreamError: params.hasUpstreamError ?? undefined,
     },
   );
   return parseStringify(data);

@@ -216,10 +216,10 @@ export function LandedCostsPanel({ grnId, costs, currency, disabled }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50/60">
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Type</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Description</th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Amount</th>
+                <tr className="border-b bg-muted/60">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Type</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Description</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -239,7 +239,7 @@ export function LandedCostsPanel({ grnId, costs, currency, disabled }: Props) {
                     </tr>
                   );
                 })}
-                <tr className="bg-gray-50/60 font-semibold">
+                <tr className="bg-muted/60 font-semibold">
                   <td colSpan={2} className="px-3 py-2 text-right">Total</td>
                   <td className="px-3 py-2 text-right">
                     <Money amount={total} currency={currency} />
