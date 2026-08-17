@@ -27,8 +27,9 @@ export const PricingCard: React.FC<PricingCardProps> = ({
   const router = useRouter();
   const [showAll, setShowAll] = useState(false);
 
-  const displayAmount = plan.basePrice * 12;
-  const period = plan.billingInterval === "MONTHLY" ? "/month" : "/year";
+  const displayAmount =
+    plan.billingInterval === "YEARLY" ? plan.basePrice : plan.basePrice * 12;
+  const period = "/year";
 
   const formattedAmount = displayAmount.toLocaleString("en-US", {
     style: "currency",
