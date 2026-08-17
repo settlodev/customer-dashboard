@@ -1,6 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
+
+const scrollToPricing = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  e.preventDefault();
+  document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
+};
 
 const highlights = [
   "No credit card required",
@@ -24,7 +31,7 @@ export const Hero = () => {
             {/* Image — shown first on mobile */}
             <div className="relative lg:hidden">
               <Image
-                src="/images/1.png"
+                src="/images/11.png"
                 alt="Settlo POS Interface"
                 width={600}
                 height={400}
@@ -57,7 +64,8 @@ export const Hero = () => {
 
               <div className="flex flex-col sm:flex-row gap-3">
                 <Link
-                  href="/register"
+                  href="#pricing"
+                  onClick={scrollToPricing}
                   className="inline-flex items-center justify-center px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 shadow-sm hover:shadow-md transition-all duration-200"
                 >
                   Start Free Trial
