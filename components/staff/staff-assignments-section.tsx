@@ -122,13 +122,13 @@ export function StaffAssignmentsSection({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-sm font-semibold">Additional locations</h3>
-        <p className="text-xs text-muted-foreground">
-          Assign this person to other locations (with a role each) so they can
-          work at and switch between them.
-        </p>
-      </div>
+      {/* The section title comes from the enclosing PanelCard on the staff
+          detail page's Access tab — only the explainer lives here. */}
+      <p className="text-[13px] leading-relaxed text-ink-3">
+        Assign this person to other locations (with a role each) so they can
+        work at and switch between them. Their primary location is set by their
+        roles, not here.
+      </p>
 
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

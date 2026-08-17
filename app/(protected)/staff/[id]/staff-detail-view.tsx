@@ -7,58 +7,122 @@ import {
   Briefcase,
   CalendarDays,
   Clock,
+  Coins,
   Flame,
-  History as HistoryIcon,
   IdCard,
   Layers,
   Mail,
   MapPin,
   Phone,
+  Receipt,
   Shield,
   ShoppingCart,
   Sparkles,
-  Star,
+  StickyNote,
   Target,
   Trophy,
   User,
   Users,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
+
+import { cn } from "@/lib/utils";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  EmptyState,
+  FactGrid,
+  HeroCard,
+  HeroChip,
+  HeroLabel,
+  HeroMeter,
+  HeroValue,
+  PanelCard,
+  RailCard,
+  SegTabs,
+  StatusTag,
+  fact,
+  type Fact,
+  type SegTab,
+} from "@/components/layouts/order-detail";
+import { Badge } from "@/components/ui/badge";
 import type { Staff, StaffDetail, StaffXpTransaction } from "@/types/staff";
+import { StaffAccessPanel } from "./staff-access-panel";
+
+export interface StaffSalesMetrics {
+  rangeLabel: string;
+  orders: number;
+  openOrders: number;
+  closedOrders: number;
+  unpaidOrders: number;
+  grossSales: number;
+  netSales: number | null;
+  grossProfit: number | null;
+  itemsSold: number | null;
+  ordersCompleted: number | null;
+  rank: number | null;
+  peers: number;
+  sharePct: number | null;
+}
 
 interface Props {
   staff: Staff;
   detail: StaffDetail | null;
-  /** Tab to open on mount (from `?tab=`), e.g. "sales" when arriving from a report. */
   initialTab?: string;
-  /** Pre-rendered Sales-tab content — the per-staff Orders/Abandoned view
-   * with its date filter, KPIs, and tables, built on the server. */
   salesContent: React.ReactNode;
-  /** Pre-rendered Audit-tab content (server-fetched audit page). */
   auditContent: React.ReactNode;
+  metrics: StaffSalesMetrics;
+  currency: string;
+  tenureLabel?: string | null;
 }
 
-const TABS = [
-  { key: "overview", label: "Overview", icon: User },
-  { key: "sales", label: "Sales", icon: ShoppingCart },
-  { key: "access", label: "Access & PIN", icon: Shield },
-  { key: "performance", label: "Performance", icon: Trophy },
-  { key: "schedule", label: "Schedule", icon: CalendarDays },
-  { key: "history", label: "Activity", icon: HistoryIcon },
-  { key: "audit", label: "Audit", icon: ActivityIcon },
-] as const;
+type TabKey =
+  | "overview"
+  | "sales"
+  | "access"
+  | "performance"
+  | "schedule"
+  | "audit";
 
-type TabKey = (typeof TABS)[number]["key"];
+const formatNumber = (value: number | null | undefined, fractionDigits = 0) => {
+  if (value === null || value === undefined) return "—";
+  return Intl.NumberFormat("en", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(value);
+};
+
+const DATE_FMT = new Intl.DateTimeFormat("en", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
+const TIME_FMT = new Intl.DateTimeFormat("en", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+const formatDate = (value: string | null | undefined) => {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return DATE_FMT.format(d);
+};
+
+const formatDateTime = (value: string | null | undefined) => {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${DATE_FMT.format(d)}, ${TIME_FMT.format(d)}`;
+};
+
+const titleCase = (s?: string | null) =>
+  s
+    ? s
+        .replace(/_/g, " ")
+        .toLowerCase()
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+    : null;
+
+const clamp = (n: number) => Math.max(0, Math.min(100, n));
 
 export function StaffDetailView({
   staff,
@@ -66,507 +130,685 @@ export function StaffDetailView({
   initialTab,
   salesContent,
   auditContent,
+  metrics,
+  currency,
+  tenureLabel,
 }: Props) {
-  const [tab, setTab] = useState<TabKey>(
-    TABS.some((t) => t.key === initialTab)
-      ? (initialTab as TabKey)
-      : "overview",
-  );
-
   const gamification = detail?.gamification;
-  const loyalty = detail?.loyalty;
   const attendance = detail?.attendance;
 
-  const xpToNext = gamification?.xpToNextLevel ?? 0;
-  const totalXp = gamification?.totalXp ?? 0;
+  const scheduleCount =
+    (attendance?.recentSchedules?.length ?? 0) +
+    (attendance?.recentTimesheetEntries?.length ?? 0);
+  const showPerformance = !!gamification?.enabled;
+  const showSchedule = scheduleCount > 0;
+
+  const tabs: SegTab<TabKey>[] = [
+    { id: "overview", label: "Overview", icon: User },
+    {
+      id: "sales",
+      label: "Sales",
+      icon: ShoppingCart,
+      count: metrics.orders || undefined,
+    },
+    { id: "access", label: "Access", icon: Shield },
+    ...(showPerformance
+      ? [{ id: "performance" as const, label: "Performance", icon: Trophy }]
+      : []),
+    ...(showSchedule
+      ? [
+          {
+            id: "schedule" as const,
+            label: "Schedule",
+            icon: CalendarDays,
+            count: scheduleCount,
+          },
+        ]
+      : []),
+    { id: "audit", label: "Activity", icon: ActivityIcon },
+  ];
+
+  const [tab, setTab] = useState<TabKey>(() => {
+    const requested = initialTab === "history" ? "performance" : initialTab;
+    return tabs.some((t) => t.id === requested)
+      ? (requested as TabKey)
+      : "overview";
+  });
+
+  return (
+    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
+      <aside className="flex flex-col gap-3.5 lg:sticky lg:top-4">
+        <SalesHero metrics={metrics} currency={currency} />
+        <RailCard
+          icon={<Sparkles className="h-3.5 w-3.5" />}
+          title="Profitability"
+        >
+          <ProfitSplit metrics={metrics} />
+        </RailCard>
+        <RailCard
+          icon={<Coins className="h-3.5 w-3.5" />}
+          title="Sales breakdown"
+        >
+          <SalesLedger metrics={metrics} />
+        </RailCard>
+      </aside>
+
+      <main className="flex min-w-0 flex-col gap-3.5">
+        <SegTabs tabs={tabs} active={tab} onSelect={setTab} />
+        <div>
+          {tab === "overview" && (
+            <OverviewPanel staff={staff} tenureLabel={tenureLabel} />
+          )}
+          {tab === "sales" && salesContent}
+          {tab === "access" && <StaffAccessPanel staff={staff} />}
+          {tab === "performance" && (
+            <PerformancePanel gamification={gamification} />
+          )}
+          {tab === "schedule" && <SchedulePanel attendance={attendance} />}
+          {tab === "audit" && auditContent}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function SalesHero({
+  metrics,
+  currency,
+}: {
+  metrics: StaffSalesMetrics;
+  currency: string;
+}) {
+  const hasRollup = metrics.netSales != null;
+  const headline = hasRollup
+    ? (metrics.netSales as number)
+    : metrics.grossSales;
+  const orders = metrics.ordersCompleted ?? metrics.closedOrders;
+  const hasActivity = headline > 0 || metrics.orders > 0;
+
+  return (
+    <HeroCard>
+      <div className="flex items-center justify-between gap-3">
+        <HeroLabel>{hasRollup ? "Net sales" : "Gross sales"}</HeroLabel>
+        {metrics.rank != null ? (
+          <HeroChip tone="brand" icon={<Trophy className="h-3 w-3" />}>
+            #{metrics.rank} of {metrics.peers} by sales
+          </HeroChip>
+        ) : (
+          hasActivity && <HeroChip>{metrics.orders} orders</HeroChip>
+        )}
+      </div>
+      <HeroValue value={formatNumber(headline)} unit={currency} />
+
+      <div className="mt-1.5 font-mono text-[10.5px] text-white/50">
+        {metrics.rangeLabel}
+      </div>
+
+      {hasActivity ? (
+        metrics.sharePct != null ? (
+          <HeroMeter
+            pct={metrics.sharePct}
+            color="#12B981"
+            left={`${formatNumber(metrics.sharePct, 1)}% of location`}
+            right={`${formatNumber(orders)} order${orders === 1 ? "" : "s"}`}
+          />
+        ) : (
+          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 font-mono text-[10.5px] text-white/70">
+            <span className="font-semibold text-white">
+              {formatNumber(metrics.orders)} orders
+            </span>
+            <span className="font-semibold text-white">
+              {formatNumber(metrics.closedOrders)} closed
+            </span>
+            {metrics.openOrders > 0 && (
+              <span className="font-semibold text-white">
+                {formatNumber(metrics.openOrders)} open
+              </span>
+            )}
+          </div>
+        )
+      ) : (
+        <div className="mt-4 text-[12.5px] font-medium text-white/60">
+          No sales recorded in this range.
+        </div>
+      )}
+    </HeroCard>
+  );
+}
+
+function ProfitSplit({ metrics }: { metrics: StaffSalesMetrics }) {
+  const net = metrics.netSales ?? 0;
+  const profit = metrics.grossProfit ?? 0;
+
+  if (metrics.netSales == null) {
+    return (
+      <p className="py-1 font-mono text-[11.5px] text-muted-foreground">
+        Profitability needs the analytics service — unavailable for this
+        location or hidden by your permissions.
+      </p>
+    );
+  }
+
+  if (net <= 0) {
+    return (
+      <p className="py-1 font-mono text-[11.5px] text-muted-foreground">
+        No sales in this range, so there is nothing to split.
+      </p>
+    );
+  }
+
+  const cost = Math.max(0, net - profit);
+  const base = cost + Math.max(0, profit);
+  const costPct = clamp(base > 0 ? (cost / base) * 100 : 0);
+  const profitPct = clamp(100 - costPct);
+  const margin = net > 0 ? (profit / net) * 100 : null;
+
+  return (
+    <div>
+      <div className="mb-2.5 flex items-center justify-between gap-2.5">
+        <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          Cost vs profit
+        </span>
+        {margin != null && (
+          <span
+            className={cn(
+              "text-[13px] font-bold tabular-nums",
+              margin >= 0 ? "text-pos" : "text-neg",
+            )}
+          >
+            {formatNumber(margin, 1)}% margin
+          </span>
+        )}
+      </div>
+      <div className="flex h-[26px] overflow-hidden rounded-md bg-canvas">
+        <span
+          className="flex items-center overflow-hidden whitespace-nowrap px-2.5 font-mono text-[10.5px] font-semibold text-white"
+          style={{ width: `${costPct}%`, background: "#8A8A85" }}
+        >
+          Cost
+        </span>
+        <span
+          className="flex items-center overflow-hidden whitespace-nowrap px-2.5 font-mono text-[10.5px] font-semibold text-white"
+          style={{ width: `${profitPct}%`, background: "#0E8B5F" }}
+        >
+          Profit
+        </span>
+      </div>
+      <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1.5">
+        <LegendItem color="#8A8A85" label="Cost" value={formatNumber(cost)} />
+        <LegendItem
+          color="#0E8B5F"
+          label="Gross profit"
+          value={formatNumber(profit)}
+        />
+      </div>
+    </div>
+  );
+}
+
+function LegendItem({
+  color,
+  label,
+  value,
+}: {
+  color: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 text-[12px] text-ink-3">
+      <span
+        className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
+        style={{ background: color }}
+      />
+      {label} <b className="font-semibold tabular-nums text-ink">{value}</b>
+    </div>
+  );
+}
+
+function LRow({
+  label,
+  value,
+  tone,
+  strong,
+  dim,
+}: {
+  label: string;
+  value: React.ReactNode;
+  tone?: "pos" | "neg";
+  strong?: boolean;
+  dim?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-3 py-2.5 text-[13px]",
+        strong
+          ? "mt-0.5 border-t border-line-2 pt-3"
+          : "border-b border-dashed border-line last:border-b-0",
+      )}
+    >
+      <span
+        className={cn(
+          "flex items-center gap-2",
+          dim
+            ? "text-muted-2"
+            : strong
+              ? "font-semibold text-ink"
+              : "text-ink-3",
+        )}
+      >
+        {label}
+      </span>
+      <span
+        className={cn(
+          "tabular-nums font-semibold",
+          strong && "text-[16px] font-bold",
+          tone === "pos"
+            ? "text-pos"
+            : tone === "neg"
+              ? "text-neg"
+              : dim
+                ? "font-medium text-muted-2"
+                : "text-ink",
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function SalesLedger({ metrics }: { metrics: StaffSalesMetrics }) {
+  const orders = metrics.ordersCompleted ?? metrics.closedOrders;
+  const basis = metrics.netSales ?? metrics.grossSales;
+  const avg = orders > 0 ? basis / orders : 0;
+
+  return (
+    <div className="flex flex-col">
+      <LRow
+        label="Gross sales"
+        value={metrics.grossSales > 0 ? formatNumber(metrics.grossSales) : "—"}
+        dim={metrics.grossSales === 0}
+      />
+      {metrics.netSales != null && (
+        <LRow label="Net sales" value={formatNumber(metrics.netSales)} strong />
+      )}
+      {metrics.grossProfit != null && (
+        <LRow
+          label="Gross profit"
+          value={formatNumber(metrics.grossProfit)}
+          tone={metrics.grossProfit > 0 ? "pos" : undefined}
+          dim={metrics.grossProfit === 0}
+        />
+      )}
+      {metrics.itemsSold != null && (
+        <LRow
+          label="Items sold"
+          value={metrics.itemsSold > 0 ? formatNumber(metrics.itemsSold) : "—"}
+          dim={metrics.itemsSold === 0}
+        />
+      )}
+      <LRow
+        label="Orders closed"
+        value={orders > 0 ? formatNumber(orders) : "—"}
+        dim={orders === 0}
+      />
+      <LRow
+        label="Still open"
+        value={metrics.openOrders > 0 ? formatNumber(metrics.openOrders) : "—"}
+        dim={metrics.openOrders === 0}
+      />
+      <LRow
+        label="Unpaid orders"
+        value={
+          metrics.unpaidOrders > 0 ? formatNumber(metrics.unpaidOrders) : "—"
+        }
+        tone={metrics.unpaidOrders > 0 ? "neg" : undefined}
+        dim={metrics.unpaidOrders === 0}
+      />
+      <LRow
+        label="Average order"
+        value={avg > 0 ? formatNumber(avg) : "—"}
+        dim={avg === 0}
+        strong={avg > 0}
+      />
+    </div>
+  );
+}
+
+// ─── overview ────────────────────────────────────────────────────────
+
+function OverviewPanel({
+  staff,
+  tenureLabel,
+}: {
+  staff: Staff;
+  tenureLabel?: string | null;
+}) {
+  const departmentNames =
+    staff.departments && staff.departments.length > 0
+      ? staff.departments.map((d) => d.name).join(", ")
+      : staff.departmentName;
+
+  const personal: Fact[] = [
+    fact("Phone", staff.phoneNumber, <Phone className="h-3 w-3" />, {
+      mono: true,
+    }),
+    fact("Email", staff.email, <Mail className="h-3 w-3" />, { mono: true }),
+    fact("Gender", titleCase(staff.gender), <User className="h-3 w-3" />),
+    fact(
+      "Date of birth",
+      formatDate(staff.dateOfBirth),
+      <CalendarDays className="h-3 w-3" />,
+    ),
+    fact("Nationality", staff.nationalityName, <MapPin className="h-3 w-3" />),
+    fact("Address", staff.address, <MapPin className="h-3 w-3" />),
+  ];
+
+  const employment: Fact[] = [
+    fact("Job title", staff.jobTitle, <Briefcase className="h-3 w-3" />),
+    fact("Employee #", staff.employeeNumber, <IdCard className="h-3 w-3" />, {
+      mono: true,
+    }),
+    fact("Department", departmentNames, <Layers className="h-3 w-3" />),
+    staff.roles?.length
+      ? {
+          label: "Roles",
+          icon: <Award className="h-3 w-3" />,
+          badge: (
+            <span className="inline-flex flex-wrap items-center justify-end gap-1">
+              {staff.roles.slice(0, 4).map((r) => (
+                <Badge key={r.id} variant="soft" className="text-[10.5px]">
+                  {r.name}
+                </Badge>
+              ))}
+              {staff.roles.length > 4 && (
+                <span className="font-mono text-[10.5px] text-muted-foreground">
+                  +{staff.roles.length - 4}
+                </span>
+              )}
+            </span>
+          ),
+        }
+      : fact("Roles", null, <Award className="h-3 w-3" />),
+    fact(
+      "Joined",
+      staff.joiningDate
+        ? `${formatDate(staff.joiningDate)}${tenureLabel ? ` · ${tenureLabel}` : ""}`
+        : null,
+      <CalendarDays className="h-3 w-3" />,
+    ),
+    fact("Identifier", staff.identifier, <IdCard className="h-3 w-3" />, {
+      mono: true,
+    }),
+    fact(
+      "Added on",
+      formatDate(staff.createdAt),
+      <Clock className="h-3 w-3" />,
+    ),
+    fact(
+      "Last updated",
+      formatDateTime(staff.updatedAt),
+      <Clock className="h-3 w-3" />,
+      { mono: true },
+    ),
+  ];
+
+  const hasEmergency =
+    !!staff.emergencyName ||
+    !!staff.emergencyNumber ||
+    !!staff.emergencyRelationship;
+
+  return (
+    <div className="space-y-3.5">
+      <PanelCard
+        icon={<Briefcase className="h-3.5 w-3.5" />}
+        title="Employment"
+      >
+        <FactGrid rows={employment} cols={2} />
+      </PanelCard>
+
+      <PanelCard
+        icon={<User className="h-3.5 w-3.5" />}
+        title="Personal details"
+      >
+        <FactGrid rows={personal} cols={2} />
+      </PanelCard>
+
+      {hasEmergency && (
+        <PanelCard
+          icon={<Users className="h-3.5 w-3.5" />}
+          title="Emergency contact"
+        >
+          <FactGrid
+            rows={[
+              fact("Name", staff.emergencyName, <User className="h-3 w-3" />),
+              fact(
+                "Phone",
+                staff.emergencyNumber,
+                <Phone className="h-3 w-3" />,
+                { mono: true },
+              ),
+              fact(
+                "Relationship",
+                staff.emergencyRelationship,
+                <Users className="h-3 w-3" />,
+              ),
+            ]}
+            cols={2}
+          />
+        </PanelCard>
+      )}
+
+      {staff.notes && (
+        <PanelCard icon={<StickyNote className="h-3.5 w-3.5" />} title="Notes">
+          <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink-2">
+            {staff.notes}
+          </p>
+        </PanelCard>
+      )}
+    </div>
+  );
+}
+
+// ─── performance (gamification) ──────────────────────────────────────
+
+function PerformancePanel({
+  gamification,
+}: {
+  gamification: StaffDetail["gamification"] | undefined;
+}) {
+  if (!gamification?.enabled) {
+    return (
+      <PanelCard icon={<Trophy className="h-3.5 w-3.5" />} title="Performance">
+        <EmptyState
+          icon={<Trophy className="h-5 w-5" />}
+          title="Gamification is off"
+          sub="Turn on points and challenges for this location to track XP, levels and streaks."
+        />
+      </PanelCard>
+    );
+  }
+
+  const totalXp = gamification.totalXp ?? 0;
+  const xpToNext = gamification.xpToNextLevel ?? 0;
   const levelProgress =
     totalXp + xpToNext > 0
       ? Math.round((totalXp / (totalXp + xpToNext)) * 100)
       : 0;
 
-  return (
-    <div className="space-y-6">
-      {/* ── Summary KPIs ──────────────────────────────────────── */}
-      <KpiStrip cols={6}>
-        <KpiCard
-          icon={<Star className="h-3 w-3" />}
-          label="Loyalty"
-          value={
-            loyalty
-              ? loyalty.points.toLocaleString()
-              : "—"
-          }
-          unit={loyalty ? "pts" : undefined}
-          delta={
-            loyalty && loyalty.minimumRedeemablePoints > 0
-              ? loyalty.redeemable
-                ? "Redeemable"
-                : `Need ${(loyalty.minimumRedeemablePoints - loyalty.points).toLocaleString()} more`
-              : undefined
-          }
-          deltaTone={
-            loyalty?.redeemable ? "pos" : loyalty ? "neutral" : "neutral"
-          }
-        />
-        <KpiCard
-          icon={<Sparkles className="h-3 w-3" />}
-          label="Total XP"
-          value={
-            gamification?.enabled ? totalXp.toLocaleString() : "—"
-          }
-        />
-        <KpiCard
-          icon={<Trophy className="h-3 w-3" />}
-          label="Level"
-          value={
-            gamification?.enabled
-              ? `${gamification.currentLevel}`
-              : "—"
-          }
-          delta={gamification?.enabled ? gamification.levelName : undefined}
-          deltaTone="neutral"
-        />
-        <KpiCard
-          icon={<Flame className="h-3 w-3" />}
-          label="Streak"
-          value={
-            gamification?.enabled
-              ? gamification.currentStreak.toString()
-              : "—"
-          }
-          unit={gamification?.enabled ? "days" : undefined}
-          delta={
-            gamification?.enabled && gamification.longestStreak > 0
-              ? `Best ${gamification.longestStreak}`
-              : undefined
-          }
-          deltaTone={
-            gamification?.enabled &&
-            gamification.currentStreak >= gamification.longestStreak
-              ? "pos"
-              : "neutral"
-          }
-        />
-        <KpiCard
-          icon={<Target className="h-3 w-3" />}
-          label="Rank"
-          value={
-            gamification?.enabled && gamification.leaderboardRank > 0
-              ? `#${gamification.leaderboardRank}`
-              : "—"
-          }
-        />
-        <KpiCard
-          icon={<ShoppingCart className="h-3 w-3" />}
-          label="Orders today"
-          value={
-            gamification?.enabled
-              ? gamification.ordersToday.toLocaleString()
-              : "—"
-          }
-        />
-      </KpiStrip>
+  const challenges = gamification.activeChallenges ?? [];
+  const xp = gamification.recentXpTransactions ?? [];
 
-      {/* ── Tabs (segmented underline — matches product detail) ── */}
-      <div className="overflow-x-auto rounded-xl border border-line bg-card">
-        <div className="flex min-w-max gap-0 border-b border-line bg-surface px-2">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const isActive = tab === t.key;
-            let badge: string | null = null;
-            if (t.key === "performance" && gamification?.enabled) {
-              const challenges = gamification.activeChallenges?.length ?? 0;
-              if (challenges > 0) badge = String(challenges);
-            }
-            if (t.key === "schedule") {
-              const ct =
-                (attendance?.recentSchedules?.length ?? 0) +
-                (attendance?.recentTimesheetEntries?.length ?? 0);
-              if (ct > 0) badge = String(ct);
-            }
-            return (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                role="tab"
-                aria-selected={isActive}
-                className={`-mb-px flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 py-3 text-[12.5px] font-medium transition-colors ${
-                  isActive
-                    ? "border-primary text-ink"
-                    : "border-transparent text-muted-foreground hover:text-ink-2"
-                }`}
-              >
-                <Icon
-                  className={`h-3.5 w-3.5 ${
-                    isActive ? "text-primary" : "text-muted-foreground"
-                  }`}
-                />
-                {t.label}
-                {badge && (
-                  <span
-                    className={`rounded-[3px] px-1.5 font-mono text-[9.5px] tracking-[0.02em] ${
-                      isActive
-                        ? "border border-line bg-card text-ink-3"
-                        : "bg-canvas text-muted-foreground"
-                    }`}
-                  >
-                    {badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Tab content ───────────────────────────────────────── */}
-      {tab === "overview" && <OverviewTab staff={staff} />}
-      {tab === "sales" && salesContent}
-      {tab === "access" && <AccessTab staff={staff} />}
-      {tab === "performance" && (
-        <PerformanceTab
-          gamification={gamification}
-          levelProgress={levelProgress}
-        />
-      )}
-      {tab === "schedule" && <ScheduleTab attendance={attendance} />}
-      {tab === "history" && (
-        <HistoryTab xp={gamification?.recentXpTransactions ?? []} />
-      )}
-      {tab === "audit" && auditContent}
-    </div>
-  );
-}
-
-// ── Overview ────────────────────────────────────────────────────────
-
-function OverviewTab({ staff }: { staff: Staff }) {
-  const departmentNames =
-    staff.departments && staff.departments.length > 0
-      ? staff.departments.map((d) => d.name).join(", ")
-      : staff.departmentName;
-  const roleNames =
-    staff.roles && staff.roles.length > 0
-      ? staff.roles.map((r) => r.name).join(", ")
-      : null;
-
-  return (
-    <div className="space-y-6">
-      {/* Personal + work info */}
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          <h3 className="flex items-center gap-2 text-sm font-semibold">
-            <User className="h-4 w-4 text-muted-foreground" />
-            Profile
-          </h3>
-
-          <div className="overflow-hidden rounded-lg border border-line bg-line">
-            <dl className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2">
-              <DetailRow icon={Phone} label="Phone" value={staff.phoneNumber} />
-              <DetailRow icon={Mail} label="Email" value={staff.email} />
-              <DetailRow label="Gender" value={staff.gender} />
-              <DetailRow
-                icon={CalendarDays}
-                label="Date of birth"
-                value={
-                  staff.dateOfBirth
-                    ? new Date(staff.dateOfBirth).toLocaleDateString()
-                    : null
-                }
-              />
-              <DetailRow
-                label="Nationality"
-                value={staff.nationalityName}
-              />
-              <DetailRow icon={MapPin} label="Address" value={staff.address} />
-
-              <DetailRow
-                icon={Briefcase}
-                label="Job title"
-                value={staff.jobTitle}
-              />
-              <DetailRow
-                icon={IdCard}
-                label="Employee #"
-                value={staff.employeeNumber}
-              />
-              <DetailRow
-                icon={Layers}
-                label="Department"
-                value={departmentNames}
-              />
-              <DetailRow
-                icon={Award}
-                label="Roles"
-                value={
-                  roleNames ? (
-                    <span className="inline-flex flex-wrap items-center justify-end gap-1">
-                      {staff.roles.slice(0, 4).map((r) => (
-                        <Badge
-                          key={r.id}
-                          variant="soft"
-                          className="text-[10.5px]"
-                        >
-                          {r.name}
-                        </Badge>
-                      ))}
-                      {staff.roles.length > 4 && (
-                        <span className="font-mono text-[10.5px] text-muted-foreground">
-                          +{staff.roles.length - 4}
-                        </span>
-                      )}
-                    </span>
-                  ) : null
-                }
-              />
-              <DetailRow
-                icon={CalendarDays}
-                label="Joining date"
-                value={
-                  staff.joiningDate
-                    ? new Date(staff.joiningDate).toLocaleDateString()
-                    : null
-                }
-              />
-              <DetailRow
-                icon={IdCard}
-                label="Identifier"
-                value={
-                  staff.identifier ? (
-                    <span className="font-mono text-[11px] tracking-[0.02em]">
-                      {staff.identifier}
-                    </span>
-                  ) : null
-                }
-              />
-            </dl>
-          </div>
-
-          {(staff.emergencyName ||
-            staff.emergencyNumber ||
-            staff.emergencyRelationship) && (
-            <>
-              <h3 className="mt-2 flex items-center gap-2 text-sm font-semibold">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                Emergency contact
-              </h3>
-              <div className="overflow-hidden rounded-lg border border-line bg-line">
-                <dl className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2">
-                  <DetailRow label="Name" value={staff.emergencyName} />
-                  <DetailRow
-                    icon={Phone}
-                    label="Phone"
-                    value={staff.emergencyNumber}
-                  />
-                  <DetailRow
-                    label="Relationship"
-                    value={staff.emergencyRelationship}
-                  />
-                </dl>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// ── Access & PIN ────────────────────────────────────────────────────
-
-function AccessTab({ staff }: { staff: Staff }) {
-  const accessItems: Array<{
-    icon: React.ComponentType<{ className?: string }>;
-    title: string;
-    body: string;
-    enabled: boolean;
-    extra?: React.ReactNode;
-  }> = [
-    {
-      icon: Shield,
-      title: "Dashboard access",
-      body: staff.dashboardAccess
-        ? "Can sign in and use the merchant dashboard."
-        : "No dashboard sign-in. Grant access from the menu above.",
-      enabled: staff.dashboardAccess,
-      extra: staff.email ? (
-        <DetailKey label="Login email" value={staff.email} />
-      ) : null,
-    },
-    {
-      icon: User,
-      title: "POS access",
-      body: staff.posAccess
-        ? "Can log in at paired POS terminals."
-        : "Cannot log in at POS terminals.",
-      enabled: staff.posAccess,
-      extra: staff.posAccess ? (
-        <div className="space-y-1.5">
-          <DetailKey label="PIN" value={staff.hasPin ? "Set" : "Not set"} />
-          {staff.pinUpdatedAt && (
-            <DetailKey
-              label="Last updated"
-              value={new Date(staff.pinUpdatedAt).toLocaleString()}
-            />
-          )}
-        </div>
-      ) : null,
-    },
+  const stats: Fact[] = [
+    fact("Total XP", formatNumber(totalXp), <Sparkles className="h-3 w-3" />),
+    fact(
+      "Streak",
+      gamification.currentStreak > 0
+        ? `${gamification.currentStreak} day${gamification.currentStreak === 1 ? "" : "s"}`
+        : null,
+      <Flame className="h-3 w-3" />,
+    ),
+    fact(
+      "Longest streak",
+      gamification.longestStreak > 0
+        ? `${gamification.longestStreak} days`
+        : null,
+      <Flame className="h-3 w-3" />,
+    ),
+    fact(
+      "Leaderboard",
+      gamification.leaderboardRank > 0
+        ? `#${gamification.leaderboardRank}`
+        : null,
+      <Target className="h-3 w-3" />,
+    ),
+    fact(
+      "Orders today",
+      gamification.ordersToday > 0
+        ? formatNumber(gamification.ordersToday)
+        : null,
+      <Receipt className="h-3 w-3" />,
+    ),
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      {accessItems.map((it) => {
-        const Icon = it.icon;
-        return (
-          <Card key={it.title}>
-            <CardContent className="space-y-3 pt-6">
-              <div className="flex items-start gap-3">
-                <div
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg border ${
-                    it.enabled
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-400"
-                      : "border-line bg-canvas text-muted-foreground"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-sm font-semibold">{it.title}</h4>
-                    <Badge variant={it.enabled ? "pos" : "soft"}>
-                      {it.enabled ? "Enabled" : "Disabled"}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {it.body}
-                  </p>
-                </div>
-              </div>
-              {it.extra}
-            </CardContent>
-          </Card>
-        );
-      })}
-
-    </div>
-  );
-}
-
-// ── Performance ─────────────────────────────────────────────────────
-
-function PerformanceTab({
-  gamification,
-  levelProgress,
-}: {
-  gamification: StaffDetail["gamification"] | undefined;
-  levelProgress: number;
-}) {
-  if (!gamification?.enabled) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <Trophy className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            Gamification is disabled for this location, or this staff member
-            has no XP yet.
+    <div className="space-y-3.5">
+      <PanelCard
+        icon={<Trophy className="h-3.5 w-3.5" />}
+        title={`Level ${gamification.currentLevel} · ${gamification.levelName}`}
+      >
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3 font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+            <span>Progress to next level</span>
+            <span className="tabular-nums">{levelProgress}%</span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-canvas">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${clamp(levelProgress)}%` }}
+            />
+          </div>
+          <p className="text-[12px] text-muted-foreground">
+            {formatNumber(xpToNext)} XP to next level
           </p>
-        </CardContent>
-      </Card>
-    );
-  }
+        </div>
+        <div className="mt-3.5">
+          <FactGrid rows={stats} cols={2} />
+        </div>
+      </PanelCard>
 
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Trophy className="h-4 w-4 text-muted-foreground" />
-              Level {gamification.currentLevel} ·{" "}
-              <span className="text-muted-foreground">
-                {gamification.levelName}
-              </span>
-            </h3>
-            {gamification.badgeIcon && (
-              <span className="text-2xl leading-none">
-                {gamification.badgeIcon}
-              </span>
-            )}
-          </div>
-
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span className="font-mono uppercase tracking-wide">
-                Progress to next level
-              </span>
-              <span className="font-mono">{levelProgress}%</span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-canvas">
-              <div
-                className="h-full rounded-full bg-primary transition-all"
-                style={{ width: `${levelProgress}%` }}
-              />
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              {gamification.xpToNextLevel.toLocaleString()} XP to next level
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {gamification.activeChallenges?.length > 0 && (
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Target className="h-4 w-4 text-muted-foreground" />
-              Active challenges
-            </h3>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {gamification.activeChallenges.map((c) => {
-                const pct = Math.min(100, Math.max(0, c.progressPercentage));
-                return (
-                  <div
-                    key={c.challengeId}
-                    className="space-y-2 rounded-lg border border-line bg-card p-3"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium">
-                        {c.challengeName}
-                      </span>
-                      {c.completed && (
-                        <Badge variant="pos" className="text-[10.5px]">
-                          Done
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-canvas">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                      <span>{c.distanceMessage}</span>
-                      <span className="font-mono tabular-nums">
-                        {c.currentValue.toLocaleString()} /{" "}
-                        {c.targetValue.toLocaleString()}
-                      </span>
-                    </div>
+      <PanelCard
+        icon={<Target className="h-3.5 w-3.5" />}
+        title="Active challenges"
+        count={challenges.length || undefined}
+      >
+        {challenges.length ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {challenges.map((c) => {
+              const pct = clamp(c.progressPercentage);
+              return (
+                <div
+                  key={c.challengeId}
+                  className="space-y-2 rounded-lg border border-line bg-canvas p-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[13px] font-semibold text-ink">
+                      {c.challengeName}
+                    </span>
+                    {c.completed && <StatusTag tone="pos">Done</StatusTag>}
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-line">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                    <span>{c.distanceMessage}</span>
+                    <span className="font-mono tabular-nums">
+                      {formatNumber(c.currentValue)} /{" "}
+                      {formatNumber(c.targetValue)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState
+            icon={<Target className="h-5 w-5" />}
+            title="No active challenges"
+            sub="Challenges assigned to this staff member will show their progress here."
+          />
+        )}
+      </PanelCard>
+
+      <PanelCard
+        icon={<Sparkles className="h-3.5 w-3.5" />}
+        title="XP activity"
+        count={xp.length || undefined}
+        pad0={xp.length > 0}
+      >
+        {xp.length ? (
+          <XpTable rows={xp} />
+        ) : (
+          <EmptyState
+            icon={<Sparkles className="h-5 w-5" />}
+            title="No XP yet"
+            sub="Activity populates as this staff member completes orders and tasks."
+          />
+        )}
+      </PanelCard>
     </div>
   );
 }
 
-// ── Schedule / Attendance ──────────────────────────────────────────
+function XpTable({ rows }: { rows: StaffXpTransaction[] }) {
+  return (
+    <div className="max-h-[560px] overflow-auto">
+      <table className="w-full border-collapse text-[13px]">
+        <thead>
+          <tr>
+            <Th>When</Th>
+            <Th>Source</Th>
+            <Th>Description</Th>
+            <Th right>XP</Th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {rows.map((t) => (
+            <tr key={t.id}>
+              <td className="whitespace-nowrap px-3.5 py-3 font-mono text-[11px] text-muted-foreground">
+                {formatDateTime(t.createdAt) ?? "—"}
+              </td>
+              <td className="px-3.5 py-3">
+                <StatusTag tone="muted">{t.xpSource}</StatusTag>
+              </td>
+              <td className="px-3.5 py-3 text-[12.5px] text-ink-3">
+                {t.description || "—"}
+              </td>
+              <td
+                className={cn(
+                  "px-3.5 py-3 text-right font-semibold tabular-nums",
+                  t.xpAmount >= 0 ? "text-pos" : "text-neg",
+                )}
+              >
+                {t.xpAmount >= 0 ? "+" : ""}
+                {formatNumber(t.xpAmount)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
-function ScheduleTab({
+// ─── schedule / attendance ───────────────────────────────────────────
+
+function SchedulePanel({
   attendance,
 }: {
   attendance: StaffDetail["attendance"] | undefined;
@@ -574,234 +816,141 @@ function ScheduleTab({
   const schedules = attendance?.recentSchedules ?? [];
   const timesheets = attendance?.recentTimesheetEntries ?? [];
 
-  if (schedules.length === 0 && timesheets.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <CalendarDays className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            No recent shifts or timesheet entries.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      {schedules.length > 0 && (
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <CalendarDays className="h-4 w-4 text-muted-foreground" />
-              Recent schedules
-            </h3>
-            <div className="overflow-hidden rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Shift</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {schedules.slice(0, 8).map((s, i) => {
-                    const row = s as Record<string, unknown>;
-                    const date =
-                      (row.scheduleDate as string | undefined) ??
-                      (row.date as string | undefined) ??
-                      "";
-                    const shiftName =
-                      (row.shiftName as string | undefined) ??
-                      (row.shiftTemplateName as string | undefined) ??
-                      "—";
-                    const status =
-                      (row.status as string | undefined) ?? "Scheduled";
-                    return (
-                      <TableRow key={(row.id as string | undefined) ?? i}>
-                        <TableCell className="font-mono text-[12px] tabular-nums">
-                          {date
-                            ? new Date(date).toLocaleDateString()
-                            : "—"}
-                        </TableCell>
-                        <TableCell>{shiftName}</TableCell>
-                        <TableCell>
-                          <Badge variant="soft" className="text-[10.5px]">
-                            {status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+    <div className="space-y-3.5">
+      <PanelCard
+        icon={<CalendarDays className="h-3.5 w-3.5" />}
+        title="Recent shifts"
+        count={schedules.length || undefined}
+        pad0={schedules.length > 0}
+      >
+        {schedules.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[13px]">
+              <thead>
+                <tr>
+                  <Th>Date</Th>
+                  <Th>Shift</Th>
+                  <Th right>Status</Th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {schedules.slice(0, 8).map((s, i) => {
+                  const row = s as Record<string, unknown>;
+                  const date =
+                    (row.scheduleDate as string | undefined) ??
+                    (row.date as string | undefined) ??
+                    null;
+                  const shiftName =
+                    (row.shiftName as string | undefined) ??
+                    (row.shiftTemplateName as string | undefined) ??
+                    "—";
+                  const status =
+                    (row.status as string | undefined) ?? "Scheduled";
+                  return (
+                    <tr key={(row.id as string | undefined) ?? i}>
+                      <td className="px-3.5 py-3 font-mono text-[11.5px] tabular-nums text-ink-3">
+                        {formatDate(date) ?? "—"}
+                      </td>
+                      <td className="px-3.5 py-3 font-semibold text-ink">
+                        {shiftName}
+                      </td>
+                      <td className="px-3.5 py-3 text-right">
+                        <StatusTag tone="muted">{titleCase(status)}</StatusTag>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            icon={<CalendarDays className="h-5 w-5" />}
+            title="No shifts scheduled"
+            sub="Rostered shifts for this staff member will appear here."
+          />
+        )}
+      </PanelCard>
 
-      {timesheets.length > 0 && (
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              Recent timesheet
-            </h3>
-            <div className="overflow-hidden rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Clock in</TableHead>
-                    <TableHead>Clock out</TableHead>
-                    <TableHead className="text-right">Hours</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {timesheets.slice(0, 8).map((t, i) => {
-                    const row = t as Record<string, unknown>;
-                    const inAt =
-                      (row.clockInTime as string | undefined) ??
-                      (row.clockIn as string | undefined) ??
-                      null;
-                    const outAt =
-                      (row.clockOutTime as string | undefined) ??
-                      (row.clockOut as string | undefined) ??
-                      null;
-                    const hours =
-                      (row.hoursWorked as number | undefined) ??
-                      (row.totalHours as number | undefined);
-                    return (
-                      <TableRow key={(row.id as string | undefined) ?? i}>
-                        <TableCell className="font-mono text-[12px] tabular-nums">
-                          {inAt ? new Date(inAt).toLocaleString() : "—"}
-                        </TableCell>
-                        <TableCell className="font-mono text-[12px] tabular-nums">
-                          {outAt ? new Date(outAt).toLocaleString() : "—"}
-                        </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums">
-                          {hours != null ? hours.toFixed(2) : "—"}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <PanelCard
+        icon={<Clock className="h-3.5 w-3.5" />}
+        title="Recent timesheet"
+        count={timesheets.length || undefined}
+        pad0={timesheets.length > 0}
+      >
+        {timesheets.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[13px]">
+              <thead>
+                <tr>
+                  <Th>Clock in</Th>
+                  <Th>Clock out</Th>
+                  <Th right>Hours</Th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {timesheets.slice(0, 8).map((t, i) => {
+                  const row = t as Record<string, unknown>;
+                  const inAt =
+                    (row.clockInTime as string | undefined) ??
+                    (row.clockIn as string | undefined) ??
+                    null;
+                  const outAt =
+                    (row.clockOutTime as string | undefined) ??
+                    (row.clockOut as string | undefined) ??
+                    null;
+                  const hours =
+                    (row.hoursWorked as number | undefined) ??
+                    (row.totalHours as number | undefined);
+                  return (
+                    <tr key={(row.id as string | undefined) ?? i}>
+                      <td className="px-3.5 py-3 font-mono text-[11.5px] tabular-nums text-ink-3">
+                        {formatDateTime(inAt) ?? "—"}
+                      </td>
+                      <td className="px-3.5 py-3 font-mono text-[11.5px] tabular-nums text-ink-3">
+                        {formatDateTime(outAt) ?? (
+                          <span className="text-warn">Still clocked in</span>
+                        )}
+                      </td>
+                      <td className="px-3.5 py-3 text-right font-semibold tabular-nums text-ink">
+                        {hours != null ? formatNumber(hours, 2) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            icon={<Clock className="h-5 w-5" />}
+            title="No timesheet entries"
+            sub="Clock-in and clock-out records will appear here."
+          />
+        )}
+      </PanelCard>
     </div>
   );
 }
 
-// ── Activity history (XP transactions) ─────────────────────────────
+// ─── shared table header ─────────────────────────────────────────────
 
-function HistoryTab({ xp }: { xp: StaffXpTransaction[] }) {
-  if (xp.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <HistoryIcon className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            No XP transactions yet. Activity will populate as the staff member
-            completes orders and tasks.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardContent className="space-y-3 pt-6">
-        <h3 className="flex items-center gap-2 text-sm font-semibold">
-          <HistoryIcon className="h-4 w-4 text-muted-foreground" />
-          Recent XP activity
-        </h3>
-        <div className="max-h-[600px] overflow-auto rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>When</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-right">XP</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {xp.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {new Date(t.createdAt).toLocaleString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="soft" className="text-[10.5px]">
-                      {t.xpSource}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {t.description || "—"}
-                  </TableCell>
-                  <TableCell
-                    className={`text-right font-mono font-medium tabular-nums ${
-                      t.xpAmount >= 0
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-red-600 dark:text-red-400"
-                    }`}
-                  >
-                    {t.xpAmount >= 0 ? "+" : ""}
-                    {t.xpAmount.toLocaleString()}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ── Helpers ────────────────────────────────────────────────────────
-
-function DetailRow({
-  label,
-  value,
-  icon: Icon,
+function Th({
+  children,
+  right,
 }: {
-  label: string;
-  value: React.ReactNode;
-  icon?: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+  right?: boolean;
 }) {
-  const isEmpty =
-    value == null || (typeof value === "string" && value.trim() === "");
   return (
-    <div className="flex flex-col gap-1 bg-card px-4 py-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-      <dt className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:shrink-0">
-        {Icon && <Icon className="h-3 w-3" />}
-        {label}
-      </dt>
-      <dd className="min-w-0 break-words text-sm font-medium text-ink sm:text-right">
-        {isEmpty ? <span className="text-muted-foreground">—</span> : value}
-      </dd>
-    </div>
-  );
-}
-
-function DetailKey({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between rounded-md border border-line bg-canvas px-3 py-2">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      <span className="text-sm font-medium text-ink">{value}</span>
-    </div>
+    <th
+      className={cn(
+        "whitespace-nowrap border-b border-line bg-canvas px-3.5 py-2.5 font-mono text-[10px] font-semibold uppercase tracking-[0.07em] text-muted-foreground",
+        right ? "text-right" : "text-left",
+      )}
+    >
+      {children}
+    </th>
   );
 }

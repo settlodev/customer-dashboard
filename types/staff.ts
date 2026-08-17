@@ -68,7 +68,8 @@ export interface Staff {
   notes: string | null;
   nationalityId: string | null;
   nationalityName: string | null;
-  departmentId: string;
+  /** Primary department — null for staff who aren't attached to one. */
+  departmentId: string | null;
   departmentName: string | null;
   departments: DepartmentInfo[];
   roles: RoleInfo[];
@@ -243,8 +244,12 @@ export const StaffSchema = object({
     1,
     "Enter a job title",
   ),
-  departmentId: string({ required_error: "Department is required" }).uuid(
-    "Select a department",
+  // Optional — accounts that don't organise their people into departments
+  // (or whose package only exposes the auto-created Main one) leave this
+  // empty, and the backend stores staff with no primary department.
+  departmentId: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().uuid("Select a department").optional(),
   ),
   departmentIds: array(string().uuid()).optional(),
   roleIds: array(string().uuid()).min(1, "Select at least one role"),

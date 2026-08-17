@@ -2,69 +2,27 @@
 
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import { ApiResponse } from "@/types/types";
-import { UUID } from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
-import { OrderItemRefunds, RefundDetailsResponse } from "@/types/refunds/type";
+import { RefundDetailsResponse } from "@/types/refunds/type";
+import { RefundDashboard, RefundRecord } from "@/types/reports/refunds";
 
-export const searchOrderItemRefunds = async (
-  q: string,
-  page: number,
-  pageLimit: number,
-): Promise<ApiResponse<OrderItemRefunds>> => {
-  try {
-    const apiClient = new ApiClient();
-    const query = {
-      filters: [
-        {
-          key: "orderItem.name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-      ],
-      sorts: [
-        {
-          key: "dateOfReturn",
-          direction: "DESC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-    const location = await getCurrentLocation();
-    // console.log("The location passed is: ", location)
-    const refunds = await apiClient.post(
-      `/api/order-item-refunds/${location?.id}`,
-      query,
-    );
-    // console.log("The list of refunds in this location: ", refunds)
-    return parseStringify(refunds);
-  } catch (error) {
-    throw error;
-  }
-};
-export const getRefund = async (
-  id: UUID,
-): Promise<ApiResponse<OrderItemRefunds>> => {
-  const apiClient = new ApiClient();
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
+/**
+ * One refund by id, for the refund detail page.
+ *
+ * <p>Sourced from the Reports Service, not the OMS: the retired monolith's
+ * `POST /api/order-item-refunds/{locationId}` (which this used to call) no
+ * longer exists behind the gateway, and the OMS only lists refunds per order
+ * or per day session — neither can answer "this refund id".
+ */
+export const getRefundRecord = async (
+  id: string,
+): Promise<RefundRecord | null> => {
+  const apiClient = new ApiClient("reports");
   const location = await getCurrentLocation();
-  const refund = await apiClient.post(
-    `/api/order-item-refunds/${location?.id}`,
-    query,
+  if (!location?.id) return null;
+
+  const refund = await apiClient.get<RefundRecord>(
+    `/api/v2/analytics/refunds/${id}?locationId=${location.id}`,
   );
   return parseStringify(refund);
 };
@@ -82,16 +40,57 @@ export const getRefund = async (
  * required query param — the `X-Location-Id` header ApiClient attaches does not
  * satisfy it.
  */
+/**
+ * The whole refunds dashboard for a business-date range in one read —
+ * headline totals, the daily trend and the reason / refund-type / payback-
+ * method / item / staff breakdowns.
+ *
+ * <p>One call rather than one per panel: every panel aggregates the same
+ * `fact_refunds` slice server-side, so a single request keeps them consistent
+ * with each other and with the KPI strip.
+ *
+ * <p>Same binding rules as {@link GetRefundReport}: `yyyy-MM-dd` dates (the
+ * endpoint binds `LocalDate` and rejects a time component) and an explicit
+ * `locationId` query param — the `X-Location-Id` header does not satisfy it.
+ */
+export const getRefundDashboard = async ({
+  startDate,
+  endDate,
+}: {
+  startDate: string;
+  endDate?: string;
+}): Promise<RefundDashboard | null> => {
+  const apiClient = new ApiClient("reports");
+  const location = await getCurrentLocation();
+  if (!location?.id) return null;
+
+  const queryParams = new URLSearchParams();
+  queryParams.append("locationId", location.id);
+  queryParams.append("startDate", startDate);
+  if (endDate) queryParams.append("endDate", endDate);
+
+  const dashboard = await apiClient.get<RefundDashboard>(
+    `/api/v2/analytics/refunds/dashboard?${queryParams.toString()}`,
+  );
+  return parseStringify(dashboard);
+};
+
 export const GetRefundReport = async ({
   startDate,
   endDate,
   page = 0,
   size = 20,
+  search,
+  reasonType,
 }: {
   startDate?: string;
   endDate?: string;
   page?: number;
   size?: number;
+  /** Case-insensitive match on the refunded item's name. */
+  search?: string;
+  /** `RefundReason` code — CUSTOMER_REQUEST, DAMAGED, … */
+  reasonType?: string;
 }): Promise<RefundDetailsResponse | null> => {
   const apiClient = new ApiClient("reports");
   const location = await getCurrentLocation();
@@ -103,6 +102,10 @@ export const GetRefundReport = async ({
   if (endDate) queryParams.append("endDate", endDate);
   queryParams.append("page", String(page));
   queryParams.append("size", String(size));
+  // The summary totals on the response follow these filters, so the list's
+  // KPI strip always describes the rows actually shown.
+  if (search?.trim()) queryParams.append("search", search.trim());
+  if (reasonType) queryParams.append("reasonType", reasonType);
 
   const report = await apiClient.get<RefundDetailsResponse>(
     `/api/v2/analytics/refunds/details?${queryParams.toString()}`,

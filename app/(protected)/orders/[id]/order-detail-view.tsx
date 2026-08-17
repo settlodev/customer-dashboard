@@ -27,11 +27,20 @@ import {
 
 import { cn } from "@/lib/utils";
 import {
+  EmptyState,
+  FactGrid,
+  fact,
+  HeroCard,
+  HeroChip,
+  HeroLabel,
+  HeroMeter,
+  HeroValue,
   PanelCard,
   RailCard,
   SegTabs,
   StatusPill,
   StatusTag,
+  type Fact,
   type Tone,
 } from "@/components/layouts/order-detail";
 import {
@@ -125,16 +134,6 @@ const fulfillmentLabel = (o: OrderDetail) =>
   ] ?? titleCase(o.fulfillmentStatus);
 
 // ─── tones ───────────────────────────────────────────────────────────
-
-// Fixed hues for chips rendered on the always-dark money hero, where the
-// translucent tint classes above would wash out.
-const TONE_HEX: Record<Tone, string> = {
-  pos: "#12B981",
-  warn: "#E0A43B",
-  neg: "#EF7457",
-  info: "#5B9BFF",
-  muted: "rgba(255,255,255,0.5)",
-};
 
 const paymentToneOf = (p?: string | null): Tone => {
   switch ((p ?? "").toUpperCase()) {
@@ -238,72 +237,29 @@ function MoneyHero({
   const payTone = paymentToneForOrder(order);
 
   return (
-    // Permanently dark accent card (fixed colours in both themes — like the
-    // marketing footer), so the order's headline number always pops.
-    <div
-      className="relative overflow-hidden rounded-xl border border-[#0C2523] p-5 text-white shadow-sm"
-      style={{ background: "radial-gradient(120% 140% at 85% 0%, #173B39, #0C2523)" }}
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(60% 80% at 92% -5%, rgba(235,127,68,0.16), transparent 60%)",
-        }}
-      />
-      <div className="relative">
-        <div className="flex items-center justify-between gap-3">
-          <div className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-white/60">
-            {label}
-          </div>
-          {payLabel && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white">
-              <span
-                className="h-1.5 w-1.5 rounded-full"
-                style={{ background: TONE_HEX[payTone] }}
-              />
-              {payLabel}
-            </span>
-          )}
-        </div>
-        <div className="mt-2 flex items-baseline gap-2 text-[40px] font-bold leading-none tracking-[-0.035em]">
-          {big}
-          <span className="font-mono text-[15px] font-semibold tracking-[0.02em] text-white/60">
-            {currency}
+    <HeroCard>
+      <div className="flex items-center justify-between gap-3">
+        <HeroLabel>{label}</HeroLabel>
+        {payLabel && <HeroChip tone={payTone}>{payLabel}</HeroChip>}
+      </div>
+      <HeroValue value={big} unit={currency} />
+
+      {cancelled ? (
+        <div className="mt-4 inline-flex items-center gap-2 text-[12.5px] font-semibold">
+          <span className="font-medium text-white/60">Voided value</span>
+          <span className="tabular-nums">
+            {formatNumber(sumItemsNet(order))} {currency}
           </span>
         </div>
-
-        {cancelled ? (
-          <div className="mt-4 inline-flex items-center gap-2 text-[12.5px] font-semibold">
-            <span className="font-medium text-white/60">Voided value</span>
-            <span className="tabular-nums">
-              {formatNumber(sumItemsNet(order))} {currency}
-            </span>
-          </div>
-        ) : (
-          <>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/15">
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${pct}%`,
-                  background: hasDue ? "#E0A43B" : "#12B981",
-                }}
-              />
-            </div>
-            <div className="mt-2 flex justify-between font-mono text-[10.5px] text-white/70">
-              <span className="font-semibold text-white">
-                Paid {formatNumber(paid)}
-              </span>
-              <span className="font-semibold text-white">
-                {hasDue ? `Due ${formatNumber(unpaid)}` : "Settled in full"}
-              </span>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+      ) : (
+        <HeroMeter
+          pct={pct}
+          color={hasDue ? "#E0A43B" : "#12B981"}
+          left={`Paid ${formatNumber(paid)}`}
+          right={hasDue ? `Due ${formatNumber(unpaid)}` : "Settled in full"}
+        />
+      )}
+    </HeroCard>
   );
 }
 
@@ -492,73 +448,7 @@ function Ledger({ order }: { order: OrderDetail }) {
   );
 }
 
-// ─── facts grid ──────────────────────────────────────────────────────
-
-type Fact = {
-  label: string;
-  icon?: React.ReactNode;
-  value?: React.ReactNode;
-  mono?: boolean;
-  empty?: boolean;
-  badge?: React.ReactNode;
-};
-
-const isBlank = (v: unknown) =>
-  v == null || (typeof v === "string" && v.trim() === "");
-
-function fact(
-  label: string,
-  value: React.ReactNode,
-  icon?: React.ReactNode,
-  opts?: { mono?: boolean },
-): Fact {
-  const empty = isBlank(value);
-  return {
-    label,
-    icon,
-    value: empty ? "—" : value,
-    mono: !!opts?.mono && !empty,
-    empty,
-  };
-}
-
-function FactGrid({ rows, cols }: { rows: Fact[]; cols: 1 | 2 }) {
-  return (
-    <div
-      className={cn(
-        "grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-line bg-line",
-        cols === 2 && "sm:grid-cols-2",
-      )}
-    >
-      {rows.map((r, i) => (
-        <div
-          key={i}
-          className="flex min-h-[52px] items-center justify-between gap-3 bg-card px-4 py-3"
-        >
-          <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-            {r.icon && <span className="opacity-70">{r.icon}</span>}
-            {r.label}
-          </span>
-          {r.badge ? (
-            r.badge
-          ) : (
-            <span
-              className={cn(
-                "min-w-0 break-words text-right text-[13px] font-semibold tracking-tight",
-                r.mono && "font-mono text-[11.5px] font-medium",
-                r.empty ? "font-medium text-muted-2" : "text-ink",
-              )}
-            >
-              {r.value}
-            </span>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── tables + empty state ────────────────────────────────────────────
+// ─── tables ──────────────────────────────────────────────────────────
 
 function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
   return (
@@ -570,26 +460,6 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
     >
       {children}
     </th>
-  );
-}
-
-function EmptyState({
-  icon,
-  title,
-  sub,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  sub?: string;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 px-5 py-11 text-center">
-      <span className="grid h-11 w-11 place-items-center rounded-xl border border-line bg-canvas text-muted-2">
-        {icon}
-      </span>
-      <div className="text-[14px] font-semibold text-ink-2">{title}</div>
-      {sub && <p className="max-w-[34ch] text-[12.5px] text-muted-foreground">{sub}</p>}
-    </div>
   );
 }
 
