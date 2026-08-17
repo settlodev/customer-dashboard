@@ -69,22 +69,26 @@ export function extractBusinessId(accessToken: string): string | null {
   return typeof businessId === "string" && businessId.length > 0 ? businessId : null;
 }
 
-const INTERNAL_ROLES: InternalRole[] = [
-  "SYSTEM_ADMIN",
-  "SUPER_ADMIN",
-  "SUPPORT_AGENT",
-  "BOARD_MEMBER",
-  "SALES_TEAM",
-];
-
 const SUBJECT_TYPES: SubjectType[] = ["USER", "STAFF", "DEVICE"];
 
+/**
+ * Extract the `internal_role` claim's raw value. Returns it whenever present,
+ * NOT restricted to the known InternalRole literals — the Auth Service sets
+ * this claim to the internal user's effective role CODE, which is an enum
+ * name for system roles but an arbitrary string for a custom (DB-backed)
+ * role created via the internal-roles admin endpoint, e.g. "CALL_CENTER".
+ * Validating against a fixed frontend list would silently treat every custom
+ * role as "not staff", since custom codes are unbounded and can't be
+ * enumerated here. The claim is only ever set on an internal user's token
+ * (JwtTokenProvider gates it on internalRoleCode != null, which is only
+ * populated in the internal-user login branch), so presence alone is already
+ * a reliable signal — no allowlist needed.
+ */
 export function extractInternalRole(accessToken: string): InternalRole | null {
   const claims = decodeJwtClaims(accessToken);
   if (!claims) return null;
   const role = claims.internal_role;
-  if (typeof role !== "string") return null;
-  return INTERNAL_ROLES.includes(role as InternalRole) ? (role as InternalRole) : null;
+  return typeof role === "string" && role.length > 0 ? (role as InternalRole) : null;
 }
 
 export function extractInternalPermissions(accessToken: string): string[] {
