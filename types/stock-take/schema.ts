@@ -11,12 +11,15 @@ const uuid = z.string().uuid("Must be a valid UUID");
 export const CreateStockTakeSchema = z
   .object({
     cycleCountType: z
-      .enum(["FULL", "ABC_CLASS", "DEPARTMENT", "RANDOM", "ZONE"])
+      .enum(["FULL", "ABC_CLASS", "CATEGORY", "DEPARTMENT", "RANDOM", "ZONE"])
       .default("FULL"),
     blindCount: z.boolean().optional(),
     notes: z.string().max(2000, "Notes cannot exceed 2000 characters").optional(),
 
     abcClass: z.enum(["A", "B", "C"]).optional(),
+    categoryId: uuid.optional(),
+    /** Counts stocks with no category instead of a named one. Mutually exclusive with categoryId. */
+    uncategorised: z.boolean().optional(),
     departmentId: uuid.optional(),
     zoneId: uuid.optional(),
 
@@ -42,6 +45,23 @@ export const CreateStockTakeSchema = z
             code: z.ZodIssueCode.custom,
             path: ["abcClass"],
             message: "Pick an ABC class",
+          });
+        }
+        break;
+      case "CATEGORY":
+        // Exactly one, matching the backend's own rule: "everything in Drinks"
+        // and "everything nobody has filed yet" are disjoint scopes.
+        if (data.uncategorised && data.categoryId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["categoryId"],
+            message: "Pick a category or count uncategorised items, not both",
+          });
+        } else if (!data.uncategorised && !data.categoryId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["categoryId"],
+            message: "Pick a stock category",
           });
         }
         break;

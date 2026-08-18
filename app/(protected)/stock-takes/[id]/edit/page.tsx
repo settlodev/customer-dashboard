@@ -80,6 +80,13 @@ function toFormValues(stockTake: StockTake): Partial<CreateStockTakeInput> {
           ? (String(parsed.classification).toUpperCase() as "A" | "B" | "C")
           : undefined,
       };
+    case "CATEGORY":
+      return {
+        ...base,
+        uncategorised: parsed.uncategorised === true,
+        categoryId:
+          typeof parsed.categoryId === "string" ? parsed.categoryId : undefined,
+      };
     case "DEPARTMENT":
       return {
         ...base,
