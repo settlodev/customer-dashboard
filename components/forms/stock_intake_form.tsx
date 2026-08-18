@@ -90,6 +90,7 @@ import { useBusinessDayGuard } from "@/hooks/use-business-day-guard";
 import { getCachedTaxTypes } from "@/lib/cache/reference-data";
 import type { TaxType } from "@/types/tax-type/type";
 import { formatMoney } from "@/lib/helpers";
+import { usePurchaseTaxPreview } from "@/hooks/use-purchase-tax-preview";
 import {
   computePurchaseTaxPreview,
   findBusinessDefaultTaxTypeId,
@@ -183,10 +184,18 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
           items: item.items.length
             ? item.items.map((line) => ({
                 stockVariantId: line.stockVariantId,
-                quantity: line.quantity,
-                unitCost: line.unitCost,
+                // Re-fill what the operator TYPED, not what was stored.
+                // `quantity` is in stock units and `unitCost` is post-tax in
+                // base currency, but the save path re-runs pack conversion,
+                // FX and tax over whatever this form sends. Seeding it with
+                // the stored values while also sending `purchaseUnitId` made
+                // every edit re-convert: a 12-bottle crate line saved as 24
+                // came back as 24 and went out as 288, and a tax-inclusive
+                // line lost its tax fraction again on each save.
+                quantity: line.purchaseQuantity ?? line.quantity,
+                unitCost: line.originalUnitCost ?? line.unitCost,
                 purchaseUnitId: line.purchaseUnitId ?? undefined,
-                currency: line.currency ?? locationCurrency,
+                currency: line.originalCurrency ?? line.currency ?? locationCurrency,
                 batchNumber: line.batchNumber ?? "",
                 expiryDate: line.expiryDate ?? "",
                 supplierBatchReference: line.supplierBatchReference ?? "",
@@ -246,32 +255,72 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
     [taxTypes],
   );
 
-  const totals = useMemo(
-    () =>
-      computePurchaseTaxPreview(
-        (watchedItems ?? []).map((row, index) => {
-          const fieldId = fields[index]?.id;
-          return {
-            quantity: Number(row?.quantity || 0),
-            cost: Number(row?.unitCost || 0),
-            taxTypeOverride: row?.taxTypeId,
-            stockDefaultTaxTypeId: fieldId ? stockTaxTypeIdMap[fieldId] : undefined,
-            stockPurchaseTaxInclusive: fieldId ? stockPurchaseTaxInclusiveMap[fieldId] : undefined,
-          };
-        }),
-        { pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes },
-      ),
-    [
-      watchedItems,
-      fields,
-      stockTaxTypeIdMap,
-      stockPurchaseTaxInclusiveMap,
-      pricesIncludeTax,
-      vatRegistered,
-      businessDefaultTaxTypeId,
-      taxTypes,
-    ],
+  // Deliberately NOT memoised on `watchedItems`. react-hook-form mutates its
+  // value tree in place, so `watch("items")` returns the same array reference
+  // every render — a useMemo keyed on it never re-runs when a quantity or
+  // cost changes, which is why this footer used to sit at 0.00 until some
+  // unrelated dependency (adding a row, picking a variant) happened to fire.
+  // The arithmetic is a handful of multiplications over a few rows; running
+  // it per render costs nothing and cannot go stale.
+  const estimatedTotals = computePurchaseTaxPreview(
+    (watchedItems ?? []).map((row, index) => {
+      const fieldId = fields[index]?.id;
+      return {
+        quantity: Number(row?.quantity || 0),
+        cost: Number(row?.unitCost || 0),
+        taxTypeOverride: row?.taxTypeId,
+        stockDefaultTaxTypeId: fieldId ? stockTaxTypeIdMap[fieldId] : undefined,
+        stockPurchaseTaxInclusive: fieldId ? stockPurchaseTaxInclusiveMap[fieldId] : undefined,
+      };
+    }),
+    { pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes },
   );
+
+  // Server-computed figures, from the same pricing pipeline the save runs
+  // (pack conversion, then FX, then purchase tax). The local estimate above
+  // is only the fallback while this is in flight or unreachable — it cannot
+  // convert foreign currency or apply a purchase pack, so it drifts exactly
+  // where those apply.
+  const { preview, status: previewStatus } = usePurchaseTaxPreview(
+    (watchedItems ?? []).map((row) => ({
+      stockVariantId: row?.stockVariantId ?? "",
+      quantity: Number(row?.quantity || 0),
+      unitCost: Number(row?.unitCost || 0),
+      purchaseUnitId: row?.purchaseUnitId ?? null,
+      currency: row?.currency ?? null,
+      taxTypeId: row?.taxTypeId ?? null,
+    })),
+    // Raw, not coerced: before the operator touches the header toggle this
+    // may be undefined, and that is what lets the server fall back to each
+    // item's own default rather than forcing "exclusive".
+    pricesIncludeTax,
+  );
+
+  const isServerPriced = previewStatus === "live" && !!preview;
+  const totals = isServerPriced
+    ? {
+        // netAmount is already gross for a business that cannot reclaim tax,
+        // which is what the subtotal row should show in that case.
+        subtotal: preview!.netAmount,
+        taxAmount: preview!.taxRecoverable
+          ? preview!.taxAmount
+          : preview!.nonRecoverableTaxAmount,
+        totalAmount: preview!.totalAmount,
+      }
+    : {
+        subtotal: estimatedTotals.subtotal,
+        taxAmount: estimatedTotals.taxAmount,
+        totalAmount: estimatedTotals.totalAmount,
+      };
+
+  // Rows the server could not price — an unknown variant, a pack with no
+  // conversion, an unstated unit on a pack-tracked item. Worth surfacing:
+  // each one is a line that will fail on save.
+  const previewLineErrors = isServerPriced
+    ? preview!.items
+        .filter((line) => !!line.error)
+        .map((line) => ({ index: line.index, error: line.error as string }))
+    : [];
 
   // Whether the operator has manually flipped the header toggle — once they
   // have, the auto-default effect below backs off and leaves their choice
@@ -1055,23 +1104,52 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                 </div>
 
                 <div className="flex flex-col gap-1 items-end text-sm mt-2 pt-3 border-t">
+                  {previewLineErrors.length > 0 && (
+                    <div className="w-64 mb-2 space-y-1">
+                      {previewLineErrors.map(({ index, error }) => (
+                        <p key={index} className="text-[11px] text-amber-600 text-right">
+                          Item {index + 1}: {error}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex justify-between w-64">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span>{formatMoney(totals.subtotal, locationCurrency)}</span>
+                    <span>
+                      {formatMoney(
+                        totals.subtotal,
+                        isServerPriced ? preview!.currency : locationCurrency,
+                      )}
+                    </span>
                   </div>
                   <div className="flex justify-between w-64">
                     <span className="text-muted-foreground">
-                      {vatRegistered ? "Tax" : "Tax (included in cost)"}
+                      {(isServerPriced ? preview!.taxRecoverable : vatRegistered)
+                        ? "Tax"
+                        : "Tax (included in cost)"}
                     </span>
-                    <span>{formatMoney(totals.taxAmount, locationCurrency)}</span>
+                    <span>
+                      {formatMoney(
+                        totals.taxAmount,
+                        isServerPriced ? preview!.currency : locationCurrency,
+                      )}
+                    </span>
                   </div>
                   <div className="flex justify-between w-64 font-medium border-t pt-1">
                     <span>Total</span>
-                    <span>{formatMoney(totals.totalAmount, locationCurrency)}</span>
+                    <span>
+                      {formatMoney(
+                        totals.totalAmount,
+                        isServerPriced ? preview!.currency : locationCurrency,
+                      )}
+                    </span>
                   </div>
                   <p className="w-64 text-[11px] text-muted-foreground text-right">
-                    Estimated from the tax rates above — the server confirms
-                    the exact figures on save.
+                    {previewStatus === "live"
+                      ? "Confirmed by the server — these are the figures this intake will be saved with."
+                      : previewStatus === "loading"
+                        ? "Estimated — confirming with the server…"
+                        : "Estimated from the tax rates above. The server could not be reached, so foreign-currency and purchase-pack lines may differ on save."}
                   </p>
                 </div>
               </div>

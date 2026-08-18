@@ -173,23 +173,27 @@ export default function LpoForm({ initialValues }: LpoFormProps = {}) {
     [taxTypes],
   );
 
-  const totals = useMemo(
-    () =>
-      computePurchaseTaxPreview(
-        watchedItems.map((item, i) => {
-          const fieldId = fields[i]?.id;
-          const meta = fieldId ? itemMeta[fieldId] : undefined;
-          return {
-            quantity: Number(item?.orderedQuantity || 0),
-            cost: Number(item?.unitCost || 0),
-            taxTypeOverride: item?.taxTypeId,
-            stockDefaultTaxTypeId: meta?.stockTaxTypeId,
-            stockPurchaseTaxInclusive: meta?.stockPurchaseTaxInclusive,
-          };
-        }),
-        { pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes },
-      ),
-    [watchedItems, fields, itemMeta, pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes],
+  // Deliberately NOT memoised on `watchedItems`. react-hook-form mutates its
+  // value tree in place, so `watch("items")` returns the same array reference
+  // every render (its internal spread is shallow). A useMemo keyed on it never
+  // re-runs when a quantity or cost changes, so this footer sat frozen at the
+  // values the rows held when some unrelated dependency last fired — in
+  // practice 0.00, because nothing changes identity while you type. The
+  // arithmetic is a few multiplications over a few rows; running it per
+  // render costs nothing and cannot go stale.
+  const totals = computePurchaseTaxPreview(
+    watchedItems.map((item, i) => {
+      const fieldId = fields[i]?.id;
+      const meta = fieldId ? itemMeta[fieldId] : undefined;
+      return {
+        quantity: Number(item?.orderedQuantity || 0),
+        cost: Number(item?.unitCost || 0),
+        taxTypeOverride: item?.taxTypeId,
+        stockDefaultTaxTypeId: meta?.stockTaxTypeId,
+        stockPurchaseTaxInclusive: meta?.stockPurchaseTaxInclusive,
+      };
+    }),
+    { pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes },
   );
 
   // Whether the operator has manually flipped the header toggle — once they
