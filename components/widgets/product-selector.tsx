@@ -1,5 +1,5 @@
 import { Product } from "@/types/product/type";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Combobox } from "@/components/ui/combobox";
 
 interface ProductProps {
     label: string;
@@ -20,20 +20,16 @@ function ProductSelector({
     products
 }: ProductProps) {
     return (
-        <Select value={value} onValueChange={onChange} disabled={isDisabled}>
-            <SelectTrigger>
-                <SelectValue placeholder={products.length > 0 ? placeholder : "No product found"}/>
-            </SelectTrigger>
-            <SelectContent>
-                {products && products.length > 0 ?
-                    products.map((item, index) => {
-                        return <SelectItem key={index} value={item.id}>
-                            {item.name}
-                        </SelectItem>
-                    })
-                    : <></>}
-            </SelectContent>
-        </Select>
+        <Combobox
+            options={products.map((item) => ({ value: item.id, label: item.name }))}
+            value={value ?? null}
+            onChange={(v) => onChange(v ?? "")}
+            placeholder={products.length > 0 ? placeholder : "No product found"}
+            searchPlaceholder="Search products…"
+            emptyText="No products found."
+            disabled={isDisabled}
+            ariaLabel="Product"
+        />
     )
 }
 export default ProductSelector

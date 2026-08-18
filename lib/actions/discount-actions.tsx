@@ -2,181 +2,129 @@
 
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
-import { ApiResponse, FormResponse } from "@/types/types";
+import { FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
-import { UUID } from "node:crypto";
-import {
-  getCurrentBusiness,
-  getCurrentLocation,
-} from "./business/get-current-business";
 import { Discount } from "@/types/discount/type";
 import { DiscountSchema } from "@/types/discount/schema";
 
-export const searchDiscount = async (
-  q: string,
-  page: number,
-  pageLimit: number,
-): Promise<ApiResponse<Discount>> => {
-  await getAuthenticatedUser();
+const oms = () => new ApiClient("orders");
+const BASE = "/api/v1/discounts";
 
+// ---------------------------------------------------------------------------
+// List
+// ---------------------------------------------------------------------------
+
+/**
+ * `GET /api/v1/discounts` returns a flat array — no Spring Data page
+ * envelope (no `content`/`totalElements`/`totalPages`) — so pagination and
+ * search filtering for the list page happen client-side, the same pattern
+ * `fetchCategoriesHierarchical` uses.
+ */
+export const fetchAllDiscounts = async (): Promise<Discount[]> => {
   try {
-    const apiClient = new ApiClient();
-    const query = {
-      filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-      ],
-      sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-    const location = await getCurrentLocation();
-    const discountData = await apiClient.post(
-      `/api/discounts/${location?.id}`,
-      query,
-    );
-    return parseStringify(discountData);
+    const data = await oms().get<Discount[]>(BASE);
+    return parseStringify(data) ?? [];
   } catch (error) {
     throw error;
   }
 };
 
-export const createDiscount = async (
+// ---------------------------------------------------------------------------
+// Get
+// ---------------------------------------------------------------------------
+
+export const getDiscount = async (id: string): Promise<Discount> => {
+  const data = await oms().get(`${BASE}/${id}`);
+  return parseStringify(data);
+};
+
+// ---------------------------------------------------------------------------
+// Create
+// ---------------------------------------------------------------------------
+
+export async function createDiscount(
   discount: z.infer<typeof DiscountSchema>,
-): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
+): Promise<FormResponse<Discount>> {
+  const validated = DiscountSchema.safeParse(discount);
 
-  const discountValidData = DiscountSchema.safeParse(discount);
-
-  if (!discountValidData.success) {
-    formResponse = {
+  if (!validated.success) {
+    return parseStringify({
       responseType: "error",
       message: "Please fill all the required fields",
-      error: new Error(discountValidData.error.message),
-    };
-    return parseStringify(formResponse);
+      error: new Error(validated.error.message),
+    });
   }
 
-  const location = await getCurrentLocation();
-  const business = await getCurrentBusiness();
-
-  const payload = {
-    ...discountValidData.data,
-    location: location?.id,
-    business: business?.id,
-  };
   try {
-    const apiClient = new ApiClient();
+    const response = await oms().post<Discount, typeof validated.data>(
+      BASE,
+      validated.data,
+    );
 
-    await apiClient.post(`/api/discounts/${location?.id}/create`, payload);
-    formResponse = {
+    revalidatePath("/discounts");
+    return parseStringify({
       responseType: "success",
       message: "Discount created successfully",
-    };
-  } catch (error) {
-    formResponse = {
+      data: parseStringify(response),
+    });
+  } catch (error: any) {
+    return parseStringify({
       responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
+      message: error?.message || "Failed to create discount",
       error: error instanceof Error ? error : new Error(String(error)),
-    };
+    });
   }
+}
 
-  revalidatePath("/discounts");
-  return parseStringify(formResponse);
-};
+// ---------------------------------------------------------------------------
+// Update
+// ---------------------------------------------------------------------------
 
 export const updateDiscount = async (
-  id: UUID,
+  id: string,
   discount: z.infer<typeof DiscountSchema>,
-): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
-  const discountValidData = DiscountSchema.safeParse(discount);
+): Promise<FormResponse<Discount>> => {
+  const validated = DiscountSchema.safeParse(discount);
 
-  if (!discountValidData.success) {
-    formResponse = {
+  if (!validated.success) {
+    return parseStringify({
       responseType: "error",
       message: "Please fill all the required fields",
-      error: new Error(discountValidData.error.message),
-    };
-    return parseStringify(formResponse);
+      error: new Error(validated.error.message),
+    });
   }
 
-  const location = await getCurrentLocation();
-  const payload = {
-    ...discountValidData.data,
-    location: location?.id,
-  };
-
   try {
-    const apiClient = new ApiClient();
+    const response = await oms().put<Discount, typeof validated.data>(
+      `${BASE}/${id}`,
+      validated.data,
+    );
 
-    await apiClient.put(`/api/discounts/${location?.id}/${id}`, payload);
-
-    formResponse = {
+    revalidatePath("/discounts");
+    return parseStringify({
       responseType: "success",
       message: "Discount updated successfully",
-    };
-  } catch (error) {
-    console.error("Error updating discount", error);
-    formResponse = {
+      data: parseStringify(response),
+    });
+  } catch (error: any) {
+    return parseStringify({
       responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
+      message: error?.message || "Failed to update discount",
       error: error instanceof Error ? error : new Error(String(error)),
-    };
+    });
   }
-
-  revalidatePath("/discounts");
-  return parseStringify(formResponse);
 };
 
-export const getDiscount = async (id: UUID): Promise<ApiResponse<Discount>> => {
-  const apiClient = new ApiClient();
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
-  const location = await getCurrentLocation();
-  const discountResponse = await apiClient.post(
-    `/api/discounts/${location?.id}`,
-    query,
-  );
+// ---------------------------------------------------------------------------
+// Delete
+// ---------------------------------------------------------------------------
 
-  return parseStringify(discountResponse);
-};
-
-export const deleteDiscount = async (id: UUID): Promise<void> => {
+export const deleteDiscount = async (id: string): Promise<void> => {
   if (!id) throw new Error("Discount ID is required to perform this request");
 
-  await getAuthenticatedUser();
-
   try {
-    const apiClient = new ApiClient();
-
-    const location = await getCurrentLocation();
-
-    await apiClient.delete(`/api/discounts/${location?.id}/${id}`);
+    await oms().delete(`${BASE}/${id}`);
     revalidatePath("/discounts");
   } catch (error) {
     throw error;

@@ -2,9 +2,10 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { controlComboboxTriggerClass } from "@/components/ui/field";
 import {
   Command,
   CommandEmpty,
@@ -19,7 +20,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Product } from "@/types/product/type";
-import { fectchAllProducts } from "@/lib/actions/product-actions";
+import { fetchAllProducts } from "@/lib/actions/product-actions";
 import { Variant } from "@/types/variant/type";
 
 interface Props {
@@ -53,7 +54,7 @@ const ProductVariantSelector: React.FC<Props> = ({
     async function loadProducts() {
         try {
             setIsLoading(true);
-            const fetchedProducts = await fectchAllProducts();
+            const fetchedProducts = await fetchAllProducts();
             setProducts(fetchedProducts);
         } catch (error: any) {
             console.log("Error fetching products:", error);
@@ -82,16 +83,19 @@ const ProductVariantSelector: React.FC<Props> = ({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between"
+            className={controlComboboxTriggerClass}
             disabled={isDisabled || isLoading}
           >
-            {isLoading 
-              ? "Loading product items..." 
-              : selectedOption 
-                ? selectedOption.displayName 
-                : placeholder
-            }
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <span
+              className={cn("truncate text-left flex-1", !selectedOption && "text-muted-2")}
+            >
+              {isLoading
+                ? "Loading product items..."
+                : selectedOption
+                  ? selectedOption.displayName
+                  : placeholder}
+            </span>
+            <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-2" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[400px] p-0">

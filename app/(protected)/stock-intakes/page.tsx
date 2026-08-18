@@ -1,79 +1,108 @@
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/stock-intake/column";
-import { searchStockIntakes } from "@/lib/actions/stock-intake-actions";
-import { StockIntake } from "@/types/stock-intake/type";
+import { columns } from "@/components/tables/stock-intake-record/columns";
+import { searchStockIntakeRecords } from "@/lib/actions/stock-intake-record-actions";
+import { softFetch } from "@/lib/list-fallback";
+import { getCurrentDestination } from "@/lib/actions/context";
+import { getStockIntakeKpi } from "@/lib/actions/reports-analytics-actions";
+import { StockIntakeKpiStrip } from "@/components/widgets/inventory/stock-intake-kpi-strip";
+import {
+  INTAKE_PAYMENT_TERMS_LABELS,
+  IntakePaymentTerms,
+  STOCK_INTAKE_RECORD_STATUS_LABELS,
+  StockIntakeRecordStatus,
+} from "@/types/stock-intake-record/type";
 
-const breadCrumbItems = [{ title: "Stock Intake", link: "/stock-intakes" }];
+const STATUS_VALUES: StockIntakeRecordStatus[] = ["DRAFT", "CONFIRMED", "CANCELLED"];
+const PAYMENT_TERMS_VALUES: IntakePaymentTerms[] = ["CREDIT", "CASH", "BANK"];
 
 type Params = {
   searchParams: Promise<{
-    search?: string;
     page?: string;
     limit?: string;
+    status?: string;
   }>;
 };
 
-async function Page({ searchParams }: Params) {
-  const resolvedSearchParams = await searchParams;
+export default async function Page({ searchParams }: Params) {
+  const resolvedParams = await searchParams;
+  const page = Number(resolvedParams.page) || 0;
+  const pageLimit = Number(resolvedParams.limit) || 20;
+  const status = STATUS_VALUES.find((s) => s === resolvedParams.status);
 
-  const q = resolvedSearchParams.search || "";
-  const page = Number(resolvedSearchParams.page) || 0;
-  const pageLimit = Number(resolvedSearchParams.limit);
+  const [responseData, location] = await Promise.all([
+    softFetch(searchStockIntakeRecords(page ? page - 1 : 0, pageLimit, status)),
+    getCurrentDestination(),
+  ]);
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
-  const responseData = await searchStockIntakes(q, page, pageLimit);
-  const data: StockIntake[] = responseData.content;
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const kpi = location?.id ? await getStockIntakeKpi(location.id) : null;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      {/* Header row */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <BreadcrumbsNav items={breadCrumbItems} />
-
-        <div className="flex items-center gap-2">
-          <Button asChild>
-            <Link href="/stock-intakes/new">Record intake</Link>
-          </Button>
-        </div>
-      </div>
-
-      {/* Content */}
-      {total > 0 || q !== "" ? (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg sm:text-xl">Stock Intake</CardTitle>
-            <CardDescription>
-              Record stock intake in your location
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-2 sm:px-6">
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Stock Intakes" }]} />
+      <PageHeader
+        title="Stock Intakes"
+        subtitle="Record received goods and confirm batches into inventory."
+        actions={
+          <>
+            <Button asChild size="sm">
+              <Link href="/stock-intakes/new">
+                <Plus className="mr-1.5 h-4 w-4" />
+                Record intake
+              </Link>
+            </Button>
+          </>
+        }
+      />
+      <PageBody>
+        {!responseData ? (
+          <DataLoadError itemName="stock intakes" />
+        ) : total > 0 || status ? (
+          <>
+            <StockIntakeKpiStrip summary={kpi} />
             <DataTable
               columns={columns}
               data={data}
-              searchKey="stockAndStockVariantName"
+              searchKey="referenceNumber"
               pageNo={page}
               total={total}
               pageCount={pageCount}
+              defaultPageSize={pageLimit}
+              disableArchive
+              filterKey="status"
+              filterOptions={STATUS_VALUES.map((s) => ({
+                value: s,
+                label: STOCK_INTAKE_RECORD_STATUS_LABELS[s],
+              }))}
+              extraFilters={[
+                {
+                  key: "paymentTerms",
+                  label: "Payment terms",
+                  options: PAYMENT_TERMS_VALUES.map((v) => ({
+                    value: v,
+                    label: INTAKE_PAYMENT_TERMS_LABELS[v],
+                  })),
+                },
+              ]}
             />
-          </CardContent>
-        </Card>
-      ) : (
-        <NoItems newItemUrl="/stock-intakes/new" itemName="Stock intakes" />
-      )}
-    </div>
+          </>
+        ) : (
+          <NoItems newItemUrl="/stock-intakes/new" itemName="stock intakes" />
+        )}
+      </PageBody>
+    </PageShell>
   );
 }
-
-export default Page;

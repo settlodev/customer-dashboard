@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import SummaryResponse from "@/types/dashboard/type";
+import OverviewResponse from "@/types/dashboard/type";
 import { Business } from "@/types/business/type";
 import { Location } from "@/types/location/type";
 import ReportLetterhead from "@/components/widgets/report-letterhead";
@@ -24,7 +24,7 @@ const ProfitLossStatement = ({
   business,
   location,
 }: {
-  salesData: SummaryResponse;
+  salesData: OverviewResponse;
   business: Business;
   location: Location;
 }) => {
@@ -405,7 +405,7 @@ const ProfitLossStatement = ({
                   Less: Refunds
                 </span>
                 <span className="tabular-nums text-muted-foreground">
-                  ({fmt(salesData.refundsAmount)})
+                  ({fmt(salesData.totalRefundedAmount)})
                 </span>
               </div>
             </div>
@@ -545,16 +545,16 @@ const ProfitLossStatement = ({
                     {location.name}
                   </div>
                 )}
-                {(location.address || location.city) && (
+                {(location.address || location.region) && (
                   <div style={{ fontSize: 12, color: "#6b7280" }}>
-                    {[location.address, location.city, location.region]
+                    {[location.address, location.region]
                       .filter(Boolean)
                       .join(", ")}
                   </div>
                 )}
-                {location.phone && (
+                {location.phoneNumber && (
                   <div style={{ fontSize: 12, color: "#6b7280" }}>
-                    Tel: {location.phone}
+                    Tel: {location.phoneNumber}
                   </div>
                 )}
                 {location.email && (
@@ -562,14 +562,9 @@ const ProfitLossStatement = ({
                     {location.email}
                   </div>
                 )}
-                {business.identificationNumber && (
+                {business.identifier && (
                   <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
-                    TIN: {business.identificationNumber}
-                  </div>
-                )}
-                {business.vrn && (
-                  <div style={{ fontSize: 11, color: "#6b7280" }}>
-                    VRN: {business.vrn}
+                    ID: {business.identifier}
                   </div>
                 )}
               </div>
@@ -703,7 +698,7 @@ const ProfitLossStatement = ({
             />
             <Row
               label="Less: Refunds"
-              value={`(${fmt(salesData.refundsAmount)})`}
+              value={`(${fmt(salesData.totalRefundedAmount)})`}
               indent
               muted
             />
@@ -724,7 +719,7 @@ const ProfitLossStatement = ({
             <SectionTitle>Operating expenses</SectionTitle>
             <Row
               label="Total operating expenses"
-              value={fmt(salesData.totalExpensePaidAmount)}
+              value={fmt(salesData.expensesPaidAmount)}
             />
 
             {/* Double line */}

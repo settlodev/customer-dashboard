@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import React, { useCallback, useEffect, useState, useTransition } from "react";
-import { EmailVerificationSchema, RegisterSchema } from "@/types/data-schemas";
+import { RegisterSchema } from "@/types/data-schemas";
 import { FieldErrors, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,11 +30,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-
 import { BusinessTimeType } from "@/types/types";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
-import { register, resendVerificationEmail } from "@/lib/actions/auth-actions";
+import {
+  register,
+  verifyEmailCode,
+  resendVerificationCode,
+} from "@/lib/actions/auth-actions";
+import {
+  createBusinessWithLocations,
+  OperatingHoursEntry,
+  LocationInput,
+} from "@/lib/actions/auth/business";
 import {
   CheckIcon,
   EyeIcon,
@@ -44,85 +52,218 @@ import {
   Building2,
   User,
   Mail,
+  KeyRound,
+  MapPin,
+  Clock,
+  Shield,
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
-import _ from "lodash";
-import { BusinessSchema } from "@/types/business/schema";
-import { createBusiness } from "@/lib/actions/auth/business";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import BusinessTypeSelector from "@/components/widgets/business-type-selector";
 import { Textarea } from "@/components/ui/textarea";
-import { LocationSchema } from "@/types/location/schema";
-import { createBusinessLocation } from "@/lib/actions/auth/location";
 import { PhoneInput } from "../ui/phone-input";
 import { businessTimes } from "@/types/constants";
 import { useSession } from "next-auth/react";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
-import GenderSelector from "../widgets/gender-selector";
 import CountrySelector from "@/components/widgets/country-selector";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+import SocialAuthButtons from "@/components/widgets/social-auth-buttons";
+import Link from "next/link";
+import { safeRandomUUID } from "@/lib/utils";
+import { executeRecaptcha, preloadRecaptcha } from "@/lib/recaptcha";
+
+// Fallback country ISO code when no DEFAULT_COUNTRY env UUID is configured.
+// CountrySelector resolves this ISO to the matching country's UUID once the
+// country list loads.
+const DEFAULT_COUNTRY_CODE = "TZ";
 const defaultCountry = process.env.DEFAULT_COUNTRY;
 
-// Combined schema for business and location
-const CombinedBusinessLocationSchema = BusinessSchema.merge(
-  LocationSchema.omit({ email: true }),
-).extend({
-  locationName: z.string().min(1, { message: "Location name is required" }),
-  locationImage: z.string().optional(),
+// Simplified schema for step 3 — only name/businessTypeId/countryId are required.
+// Everything else is optional and can be filled later in the dashboard.
+const BusinessSetupSchema = z.object({
+  name: z
+    .string({ required_error: "Business name is required" })
+    .min(2, "Business name must be at least 2 characters")
+    .max(255, "Business name can not be more than 255 characters"),
+  businessTypeId: z
+    .string({ required_error: "Business type is required" })
+    .uuid("Business type is required"),
+  countryId: z
+    .string({ required_error: "Country is required" })
+    .uuid("Country is required"),
+  description: z.string().max(2000).optional(),
+  phoneNumber: z.string().optional(),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  website: z.string().optional(),
+  region: z.string().max(100).optional(),
+  address: z.string().max(500).optional(),
 });
+
+// ── Operating hours defaults ──────────────────────────────────────
+
+const DAYS_OF_WEEK = [
+  "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY",
+  "FRIDAY", "SATURDAY", "SUNDAY",
+] as const;
+
+const DAY_LABELS: Record<string, string> = {
+  MONDAY: "Monday", TUESDAY: "Tuesday", WEDNESDAY: "Wednesday", THURSDAY: "Thursday",
+  FRIDAY: "Friday", SATURDAY: "Saturday", SUNDAY: "Sunday",
+};
+
+function getDefaultOperatingHours(): OperatingHoursEntry[] {
+  return DAYS_OF_WEEK.map((day) => ({
+    dayOfWeek: day,
+    openTime: "08:00",
+    closeTime: "21:00",
+    closed: day === "SUNDAY",
+  }));
+}
+
+// ── Location entry for multi-location mode ────────────────────────
+
+interface LocationFormEntry {
+  id: string; // client-side key
+  name: string;
+  city: string;
+  address: string;
+  phone: string;
+  email: string;
+  website: string;
+  operatingHours: OperatingHoursEntry[];
+  hoursExpanded: boolean;
+  continuousOperation: boolean;
+  dailyCutoffTime: string;
+}
+
+function createEmptyLocation(): LocationFormEntry {
+  return {
+    id: safeRandomUUID(),
+    name: "",
+    city: "",
+    address: "",
+    phone: "",
+    email: "",
+    website: "",
+    operatingHours: getDefaultOperatingHours(),
+    hoursExpanded: false,
+    continuousOperation: false,
+    dailyCutoffTime: "04:00",
+  };
+}
+
+// ── Operating hours compact display ───────────────────────────────
+
+function OperatingHoursTable({
+  hours,
+  onChange,
+  disabled,
+}: {
+  hours: OperatingHoursEntry[];
+  onChange: (hours: OperatingHoursEntry[]) => void;
+  disabled: boolean;
+}) {
+  const update = (dayOfWeek: string, field: keyof OperatingHoursEntry, value: string | boolean) => {
+    onChange(hours.map((h) => (h.dayOfWeek === dayOfWeek ? { ...h, [field]: value } : h)));
+  };
+
+  return (
+    <div className="rounded-lg border border-gray-200 dark:border-border overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 dark:bg-muted/50 text-[10px] font-semibold text-gray-400 dark:text-muted-foreground uppercase tracking-wider">
+        <span className="w-24 shrink-0">Day</span>
+        <span className="w-10 shrink-0">Open</span>
+        <span className="flex-1">From</span>
+        <span className="flex-1">To</span>
+      </div>
+      {hours.map((entry) => (
+        <div
+          key={entry.dayOfWeek}
+          className={`flex items-center gap-3 px-4 py-2 border-t border-gray-100 dark:border-border ${entry.closed ? "bg-gray-50/60 dark:bg-muted/40" : ""}`}
+        >
+          <span className="w-24 shrink-0 text-sm font-medium text-gray-700 dark:text-foreground">{DAY_LABELS[entry.dayOfWeek]}</span>
+          <div className="w-10 shrink-0">
+            <Switch
+              checked={!entry.closed}
+              onCheckedChange={(checked) => update(entry.dayOfWeek, "closed", !checked)}
+              disabled={disabled}
+            />
+          </div>
+          <div className="flex-1">
+            <Select disabled={disabled || entry.closed} value={entry.openTime} onValueChange={(v) => update(entry.dayOfWeek, "openTime", v)}>
+              <SelectTrigger className={`h-9 text-sm ${entry.closed ? "opacity-40" : ""}`}><SelectValue /></SelectTrigger>
+              <SelectContent>{businessTimes.map((t: BusinessTimeType, i: number) => (<SelectItem key={i} value={t.name}>{t.label}</SelectItem>))}</SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1">
+            <Select disabled={disabled || entry.closed} value={entry.closeTime} onValueChange={(v) => update(entry.dayOfWeek, "closeTime", v)}>
+              <SelectTrigger className={`h-9 text-sm ${entry.closed ? "opacity-40" : ""}`}><SelectValue /></SelectTrigger>
+              <SelectContent>{businessTimes.map((t: BusinessTimeType, i: number) => (<SelectItem key={i} value={t.name}>{t.label}</SelectItem>))}</SelectContent>
+            </Select>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Step definitions ──────────────────────────────────────────────
 
 interface SignUpStepItemType {
   id: string;
-  label: string;
   title: string;
   icon: React.ReactNode;
 }
 
-const signUpSteps = [
-  {
-    id: "step1",
-    label: "01",
-    title: "Personal Info",
-    icon: <User className="w-4 h-4" />,
-  },
-  {
-    id: "step2",
-    label: "02",
-    title: "Email Verification",
-    icon: <Mail className="w-4 h-4" />,
-  },
-  {
-    id: "step3",
-    label: "03",
-    title: "Business Setup",
-    icon: <Building2 className="w-4 h-4" />,
-  },
+const signUpSteps: SignUpStepItemType[] = [
+  { id: "step1", title: "Account", icon: <User className="w-4 h-4" /> },
+  { id: "step2", title: "Verify", icon: <Mail className="w-4 h-4" /> },
+  { id: "step3", title: "Business", icon: <Building2 className="w-4 h-4" /> },
 ];
+
+// ── Main component ────────────────────────────────────────────────
 
 function RegisterForm({ step }: { step: string }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
-  const [, setIsRegistrationComplete] = useState<boolean>(false);
-  const [stepsDone, _setStepsDone] = useState<SignUpStepItemType[]>(() => {
-    const currentStepIndex = signUpSteps.findIndex((s) => s.id === step);
-    if (currentStepIndex <= 0) return [];
-    return signUpSteps.slice(0, currentStepIndex);
-  });
-  const [currentStep, setCurrentStep] = useState<SignUpStepItemType>(() => {
-    return signUpSteps.find((s) => s.id === step) || signUpSteps[0];
-  });
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [emailVerified] = useState<boolean>(false);
-  const [emailSent, setEmailSent] = useState<boolean>(false);
-  const [businessImageUrl, setBusinessImageUrl] = useState<string>("");
-  const [locationImageUrl, _setLocationImageUrl] = useState<string>("");
+  const [currentStep, setCurrentStep] = useState<SignUpStepItemType>(
+    () => signUpSteps.find((s) => s.id === step) || signUpSteps[0],
+  );
+  const [showPassword, setShowPassword] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Step 3 state
+  const [businessImageUrl, setBusinessImageUrl] = useState("");
+  const [multipleLocations, setMultipleLocations] = useState(false);
+  const [singleLocationHours, setSingleLocationHours] = useState<OperatingHoursEntry[]>(getDefaultOperatingHours);
+  const [singleContinuous, setSingleContinuous] = useState(false);
+  const [singleCutoffTime, setSingleCutoffTime] = useState("04:00");
+  const [contactDetailsExpanded, setContactDetailsExpanded] = useState(false);
+  const [locations, setLocations] = useState<LocationFormEntry[]>([createEmptyLocation()]);
+
   const router = useRouter();
   const session = useSession();
   const searchParams = useSearchParams();
   const subscription = searchParams.get("package");
   const referredByCode = searchParams.get("referredByCode");
   const { toast } = useToast();
+
+  // Start the reCAPTCHA download on mount — doing it inside submit puts a
+  // multi-hundred-KB fetch on the critical path of the sign-up click.
+  useEffect(() => {
+    preloadRecaptcha();
+  }, []);
 
   useEffect(() => {
     if (subscription) {
@@ -131,946 +272,720 @@ function RegisterForm({ step }: { step: string }) {
     }
   }, [subscription]);
 
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
+  // ── Form instances ──────────────────────────────────────────────
+
   const form = useForm<z.infer<typeof RegisterSchema>>({
     resolver: zodResolver(RegisterSchema),
     defaultValues: {
-      referredByCode: referredByCode,
-      country: defaultCountry,
+      firstName: "", lastName: "", email: "", phoneNumber: "",
+      password: "", confirmPassword: "",
+      countryId: defaultCountry ?? "",
+      gender: undefined,
+      referredByCode: referredByCode ?? "",
     },
   });
 
-  const emailVerificationForm = useForm<
-    z.infer<typeof EmailVerificationSchema>
-  >({
-    resolver: zodResolver(EmailVerificationSchema),
+  const businessForm = useForm<z.infer<typeof BusinessSetupSchema>>({
+    resolver: zodResolver(BusinessSetupSchema),
     defaultValues: {
-      email: session.data?.user?.email,
-      name: session.data?.user?.name,
+      name: "",
+      businessTypeId: "",
+      countryId: defaultCountry ?? "",
+      // Only trust the ambient session here when this instance was mounted
+      // directly on step 3 (/business-registration, gated by middleware on
+      // a currently-valid authToken). When the flow starts at step 1
+      // (/register), the session hasn't been established by THIS signup
+      // yet and may still be a stale leftover from a previous account on
+      // this browser — see the step-1-value backfill in
+      // submitVerificationCode below, which is the trustworthy source for
+      // that path.
+      email: step === "step3" ? (session?.data?.user.email ?? "") : "",
+      phoneNumber:
+        step === "step3" ? (session?.data?.user.phoneNumber ?? "") : "",
+      description: "",
+      region: "",
+      address: "",
+      website: "",
     },
   });
 
-  const storedSubscription =
-    typeof window !== "undefined" ? localStorage.getItem("subscription") : null;
-
-  const combinedBusinessLocationForm = useForm<
-    z.infer<typeof CombinedBusinessLocationSchema>
-  >({
-    resolver: zodResolver(CombinedBusinessLocationSchema),
-    defaultValues: {
-      email: session?.data?.user.email,
-      phone: session?.data?.user.phoneNumber,
-      openingTime: "08:00",
-      closingTime: "18:00",
-      subscription: storedSubscription,
-    },
-  });
-
-  const onInvalid = useCallback(
-    (errors: FieldErrors) => {
-      console.log(errors);
-      toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description:
-          typeof errors.message === "string"
-            ? errors.message
-            : "There was an issue submitting your form, please try later",
-      });
-    },
-    [toast],
-  );
-
-  const setMyCurrentStep = useCallback(() => {
-    const currentStepIndex = signUpSteps.findIndex(
-      (s) => s.id === currentStep.id,
-    );
-    if (currentStepIndex < signUpSteps.length - 1) {
-      setCurrentStep(signUpSteps[currentStepIndex + 1]);
+  // Session resolves asynchronously — when it lands, backfill email/phone on
+  // the business form if the user hasn't already typed over them. Only
+  // applies to the direct step-3 entry point; see note above.
+  useEffect(() => {
+    if (step !== "step3") return;
+    const user = session?.data?.user;
+    if (!user) return;
+    if (!businessForm.getValues("email") && user.email) {
+      businessForm.setValue("email", user.email);
     }
+    if (!businessForm.getValues("phoneNumber") && user.phoneNumber) {
+      businessForm.setValue("phoneNumber", user.phoneNumber);
+    }
+  }, [step, session?.data?.user, businessForm]);
+
+  // ── Helpers ─────────────────────────────────────────────────────
+
+  const stepIndex = signUpSteps.findIndex((s) => s.id === currentStep.id);
+
+  const advanceStep = useCallback(() => {
+    const idx = signUpSteps.findIndex((s) => s.id === currentStep.id);
+    if (idx < signUpSteps.length - 1) setCurrentStep(signUpSteps[idx + 1]);
   }, [currentStep.id]);
 
-  const submitData = async (values: z.infer<typeof RegisterSchema>) => {
-    setError("");
-    setSuccess("");
+  const onInvalid = useCallback((errors: FieldErrors) => {
+    console.log("Form errors:", errors);
+    toast({
+      variant: "destructive",
+      title: "Uh oh! Something went wrong.",
+      description: "Please check the form for errors and try again.",
+    });
+  }, [toast]);
 
+  const addLocation = useCallback(() => {
+    setLocations((prev) => [...prev, createEmptyLocation()]);
+  }, []);
+
+  const removeLocation = useCallback((id: string) => {
+    setLocations((prev) => (prev.length <= 1 ? prev : prev.filter((l) => l.id !== id)));
+  }, []);
+
+  const updateLocation = useCallback(
+    (id: string, field: keyof LocationFormEntry, value: any) => {
+      setLocations((prev) => prev.map((l) => (l.id === id ? { ...l, [field]: value } : l)));
+    }, [],
+  );
+
+  // ── Submission handlers ─────────────────────────────────────────
+
+  const submitData = async (values: z.infer<typeof RegisterSchema>) => {
+    setError(""); setSuccess("");
     startTransition(async () => {
       try {
-        const data = await register(values);
-
-        if (data.responseType === "error") {
-          setError(data.message);
+        let recaptchaToken: string | undefined;
+        try {
+          recaptchaToken = await executeRecaptcha("register");
+        } catch (recaptchaErr) {
+          console.error("[REGISTER] reCAPTCHA failed:", recaptchaErr);
+          setError(
+            "Security verification failed. Please refresh the page and try again.",
+          );
           return;
         }
 
-        if (data.responseType === "success") {
-          setIsRegistrationComplete(true);
-          setMyCurrentStep();
-        }
-      } catch (error: any) {
-        console.error("Registration exception:", error);
-        const errorMessage =
-          error?.data?.message ||
-          error?.message ||
-          "An unexpected error occurred. Please try again.";
-        setError(errorMessage);
-        setIsRegistrationComplete(false);
+        const data = await register(values, recaptchaToken);
+        if (data.responseType === "error") { setError(data.message); return; }
+        if (data.responseType === "success") advanceStep();
+      } catch (err: any) {
+        setError(err?.message || "An unexpected error occurred.");
       }
     });
   };
 
-  const submitCombinedBusinessLocationData = useCallback(
-    async (values: z.infer<typeof CombinedBusinessLocationSchema>) => {
-      setError("");
-      setSuccess("");
+  const submitVerificationCode = useCallback(async () => {
+    if (verificationCode.length !== 6) { setError("Please enter the complete 6-digit code."); return; }
+    setError(""); setSuccess("");
+    startTransition(async () => {
+      try {
+        const data = await verifyEmailCode(verificationCode);
+        if (data.responseType === "error") { setError(data.message); return; }
+        if (data.responseType === "success") {
+          setSuccess(data.message);
+          if (data.data && (data.data as any).requiresLogin) { router.push("/login"); return; }
+          // Prefill the business contact fields from what THIS user just
+          // typed in step 1, not from the ambient NextAuth session — the
+          // session cookie can still belong to a previous account on this
+          // browser at this point. See businessForm's defaultValues above.
+          const step1Values = form.getValues();
+          if (step1Values.email) businessForm.setValue("email", step1Values.email);
+          if (step1Values.phoneNumber) businessForm.setValue("phoneNumber", step1Values.phoneNumber);
+          advanceStep();
+        }
+      } catch (err: any) {
+        setError(err?.message || "Verification failed.");
+      }
+    });
+  }, [verificationCode, advanceStep, router, form, businessForm]);
+
+  const handleResendCode = useCallback(async () => {
+    if (resendCooldown > 0) return;
+    setError("");
+    startTransition(async () => {
+      try {
+        const resp = await resendVerificationCode();
+        if (resp.responseType === "error") { setError(resp.message); }
+        else { setSuccess("Verification code sent!"); setResendCooldown(60); }
+      } catch { setError("Failed to resend code."); }
+    });
+  }, [resendCooldown]);
+
+  const submitBusinessData = useCallback(
+    async (values: z.infer<typeof BusinessSetupSchema>) => {
+      setError(""); setSuccess("");
+
+      // Build locations array
+      let locationsList: LocationInput[];
+
+      if (multipleLocations) {
+        // Validate that locations have names
+        const invalid = locations.find((l) => !l.name.trim());
+        if (invalid) { setError("Each location must have a name."); return; }
+        // Validate operating hours — at least one day must be open per location
+        // (only when not in continuous-operation mode)
+        const allClosed = locations.find(
+          (l) => !l.continuousOperation && l.operatingHours.every((h) => h.closed),
+        );
+        if (allClosed) { setError(`"${allClosed.name || "A location"}" must be open at least one day of the week.`); return; }
+        // Validate that 24h locations have a cutoff time
+        const missingCutoff = locations.find((l) => l.continuousOperation && !l.dailyCutoffTime);
+        if (missingCutoff) { setError(`"${missingCutoff.name || "A 24-hour location"}" needs a daily cutoff time.`); return; }
+
+        locationsList = locations.map((l) => ({
+          name: l.name,
+          // Implicit inheritance: empty per-location contact fields fall back to business
+          phoneNumber: l.phone || values.phoneNumber || undefined,
+          email: l.email || values.email || undefined,
+          website: l.website || values.website || undefined,
+          region: l.city || values.region || undefined,
+          address: l.address || values.address || undefined,
+          continuousOperation: l.continuousOperation,
+          dailyCutoffTime: l.continuousOperation ? l.dailyCutoffTime : undefined,
+          operatingHours: l.continuousOperation ? undefined : l.operatingHours,
+        }));
+      } else {
+        // Validate operating hours — at least one day must be open
+        // (only when not in continuous-operation mode)
+        if (!singleContinuous && singleLocationHours.every((h) => h.closed)) {
+          setError("Your business must be open at least one day of the week.");
+          return;
+        }
+        if (singleContinuous && !singleCutoffTime) {
+          setError("Please pick a daily cutoff time for the 24-hour operation.");
+          return;
+        }
+
+        // Single location: share ALL business-level identity fields into the location
+        locationsList = [{
+          name: values.name,
+          phoneNumber: values.phoneNumber || undefined,
+          email: values.email || undefined,
+          website: values.website || undefined,
+          region: values.region || undefined,
+          address: values.address || undefined,
+          continuousOperation: singleContinuous,
+          dailyCutoffTime: singleContinuous ? singleCutoffTime : undefined,
+          operatingHours: singleContinuous ? undefined : singleLocationHours,
+        }];
+      }
+
+      const planCode = (typeof window !== "undefined" ? localStorage.getItem("subscription") : null) || undefined;
 
       startTransition(async () => {
         try {
-          const businessData = {
-            name: values.name,
-            businessType: values.businessType,
-            country: values.country,
-            description: values.description,
+          const response = await createBusinessWithLocations({
+            businessName: values.name,
+            description: values.description || undefined,
+            phoneNumber: values.phoneNumber,
             email: values.email,
-            image: businessImageUrl || undefined,
-          };
-
-          const businessResponse = await createBusiness(businessData);
-
-          if (businessResponse && businessResponse.responseType === "error") {
-            setError(businessResponse.message);
-            return;
+            website: values.website || undefined,
+            businessTypeId: values.businessTypeId,
+            countryId: values.countryId,
+            region: values.region || undefined,
+            address: values.address || undefined,
+            logoUrl: businessImageUrl || undefined,
+            planCode,
+            locations: locationsList,
+          });
+          if (!response) { setError("Something went wrong."); return; }
+          if (response.responseType === "error") {
+            // Specific name-conflict codes — surface a field-level error
+            // so the offending input is highlighted, not just a banner.
+            // Falls back to the global error string for anything else.
+            const code = (response as { errorCode?: string }).errorCode;
+            if (code === "BUSINESS_NAME_TAKEN" || code === "LOCATION_NAME_TAKEN") {
+              // Step 3 reuses the business name field as the
+              // single-location's name when only one location is being
+              // registered, so a conflict on either side maps to the
+              // same input. Multi-location flows still see the message
+              // in the global banner with enough context to act on it.
+              businessForm.setError("name", { type: "server", message: response.message });
+              setError(response.message);
+            } else {
+              setError(response.message);
+            }
           }
-
-          // Then create the location
-          const locationData = {
-            name: values.locationName,
-            phone: values.phone,
-            email: values.email!,
-            city: values.city,
-            address: values.address,
-            openingTime: values.openingTime,
-            closingTime: values.closingTime,
-            subscription: values.subscription,
-            image: businessImageUrl || undefined,
-          };
-
-          const locationResponse = await createBusinessLocation(locationData);
-
-          if (!locationResponse) {
-            setError(
-              "Something went wrong while processing your request, please try again",
-            );
-            return;
-          }
-
-          if (locationResponse.responseType === "error") {
-            setError(locationResponse.message);
-          } else if (locationResponse.responseType === "success") {
+          else if (response.responseType === "success") {
+            if (typeof window !== "undefined") localStorage.removeItem("subscription");
             router.push("/dashboard");
           }
-        } catch (error: any) {
-          const errorMessage = error.message || "An unexpected error occurred";
-          setError(errorMessage);
+        } catch (err: any) {
+          setError(err.message || "An unexpected error occurred.");
         }
       });
     },
-    [businessImageUrl, locationImageUrl, router],
+    [
+      businessImageUrl,
+      multipleLocations,
+      locations,
+      singleLocationHours,
+      singleContinuous,
+      singleCutoffTime,
+      router,
+    ],
   );
 
-  const submitEmailVerificationData = useCallback(
-    async (values: z.infer<typeof EmailVerificationSchema>) => {
-      setError("");
-      setEmailSent(false);
-
-      startTransition(async () => {
-        try {
-          const resp = await resendVerificationEmail(values.name, values.email);
-
-          if (resp.responseType === "error") {
-            console.error("Email verification error:", resp.message);
-            setError(resp.message);
-            setEmailSent(false);
-          } else {
-            setEmailSent(true);
-          }
-        } catch (error: any) {
-          console.error("Email verification exception:", error);
-          setError("Failed to send verification email. Please try again.");
-          setEmailSent(false);
-        }
-      });
-    },
-    [],
-  );
+  // ── Render ──────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col items-center justify-center w-full">
-      {/* Progress Bar */}
-      <div className="w-full max-w-4xl mb-8">
-        <div className="relative">
-          <div className="absolute inset-0 bg-gray-200/50 rounded-full h-1 top-[20px]"></div>
-          <div
-            className="absolute bg-gradient-to-r from-primary to-orange-600 h-1 rounded-full top-[20px] transition-all duration-500"
-            style={{
-              width: `${((stepsDone.length + 1) / signUpSteps.length) * 100}%`,
-            }}
-          ></div>
-          <div className="relative flex justify-between">
-            {signUpSteps.map((item, index) => {
-              const isCurrent = currentStep.id === item.id;
-              const isDone = _.includes(stepsDone, item);
-              return (
-                <motion.div
-                  key={item.id}
-                  className="flex flex-col items-center"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <div
-                    className={`
-                      w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
-                      ${
-                        isDone
-                          ? "bg-gradient-to-r from-primary to-orange-600 shadow-lg shadow-primary/30"
-                          : isCurrent
-                            ? "bg-white border-2 border-primary shadow-md"
-                            : "bg-white border-2 border-gray-300"
-                      }
-                  `}
-                  >
-                    {isDone ? (
-                      <CheckIcon size={20} className="text-white" />
-                    ) : (
-                      <span
-                        className={`${isCurrent ? "text-primary" : "text-gray-400"}`}
-                      >
-                        {item.icon}
-                      </span>
-                    )}
+      {/* Step indicator */}
+      <div className="w-full max-w-2xl mb-8">
+        <div className="flex items-center justify-between">
+          {signUpSteps.map((item, index) => {
+            const isCurrent = currentStep.id === item.id;
+            const isDone = index < stepIndex;
+            return (
+              <React.Fragment key={item.id}>
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${isDone ? "bg-primary text-white" : isCurrent ? "bg-primary/10 text-primary border-2 border-primary" : "bg-gray-100 dark:bg-muted text-gray-400 dark:text-muted-foreground"}`}>
+                    {isDone ? <CheckIcon size={16} /> : item.icon}
                   </div>
-                  <span
-                    className={`text-xs mt-2 font-medium transition-colors ${isCurrent ? "text-gray-900" : "text-gray-500"} `}
-                  >
+                  <span className={`text-sm font-medium hidden sm:inline transition-colors ${isCurrent ? "text-gray-900 dark:text-foreground" : isDone ? "text-primary" : "text-gray-400 dark:text-muted-foreground"}`}>
                     {item.title}
                   </span>
-                </motion.div>
-              );
-            })}
-          </div>
+                </div>
+                {index < signUpSteps.length - 1 && (
+                  <div className={`flex-1 h-px mx-4 transition-colors duration-300 ${index < stepIndex ? "bg-primary" : "bg-gray-200 dark:bg-muted"}`} />
+                )}
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
 
-      <motion.div
-        key={currentStep.id}
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -20 }}
-        transition={{ duration: 0.3 }}
-        className="w-full max-w-4xl"
-      >
-        {currentStep.id === "step1" ? (
-          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-            <CardHeader className="space-y-1 pb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <User className="w-5 h-5 text-primary" />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentStep.id}
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -30 }}
+          transition={{ duration: 0.25 }}
+          className="w-full max-w-2xl"
+        >
+          {/* ═══════ STEP 1: Account ═══════ */}
+          {currentStep.id === "step1" && (
+            <Card className="border-0 shadow-xl bg-white/90 dark:bg-card/90 backdrop-blur-sm overflow-hidden">
+              <CardHeader className="pb-4 pt-8 px-8">
+                <CardTitle className="text-2xl font-bold text-gray-900 dark:text-foreground">Create your account</CardTitle>
+                <CardDescription className="text-gray-500 dark:text-muted-foreground">Get started in under 2 minutes</CardDescription>
+              </CardHeader>
+              <CardContent className="px-8 pb-6 space-y-5">
+                {error && <FormError message={error} />}
+                {success && <FormSuccess message={success} />}
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(submitData)} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField control={form.control} name="firstName" render={({ field }) => (
+                        <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">First name</FormLabel><FormControl><Input disabled={isPending} placeholder="John" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={form.control} name="lastName" render={({ field }) => (
+                        <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">Last name</FormLabel><FormControl><Input disabled={isPending} placeholder="Doe" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField control={form.control} name="email" render={({ field }) => (
+                        <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">Email address</FormLabel><FormControl><Input placeholder="you@example.com" type="email" disabled={isPending} {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={form.control} name="phoneNumber" render={({ field }) => (
+                        <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">Phone number</FormLabel><FormControl><PhoneInput placeholder="Enter phone number" {...field} disabled={isPending} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField control={form.control} name="gender" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm text-gray-700 dark:text-foreground">Gender</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value ?? ""}
+                            disabled={isPending}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select gender" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="MALE">Male</SelectItem>
+                              <SelectItem value="FEMALE">Female</SelectItem>
+                              <SelectItem value="UNDISCLOSED">Prefer not to say</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="countryId" render={({ field }) => (
+                        <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">Country</FormLabel><FormControl><CountrySelector {...field} defaultCode={DEFAULT_COUNTRY_CODE} isDisabled={isPending} placeholder="Select country" /></FormControl><FormMessage /></FormItem>
+                      )} />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField control={form.control} name="password" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm text-gray-700 dark:text-foreground">Password</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input disabled={isPending} type={showPassword ? "text" : "password"} placeholder="Min. 8 characters" className="pr-10" {...field} />
+                              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground hover:text-gray-600 dark:hover:text-foreground/80" tabIndex={-1}>
+                                {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
+                              </button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+                        <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">Confirm password</FormLabel><FormControl><Input disabled={isPending} type={showPassword ? "text" : "password"} placeholder="Re-enter password" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                    </div>
+                    <FormField control={form.control} name="referredByCode" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm text-gray-700 dark:text-foreground">Referral code <span className="text-gray-400 dark:text-muted-foreground font-normal">(optional)</span></FormLabel>
+                        <FormControl><Input {...field} disabled={isPending} value={field.value || ""} placeholder="Enter referral code" /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <Button type="submit" disabled={isPending} className="w-full h-11 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-200 shadow-md shadow-primary/20">
+                      {isPending ? <Loader2Icon className="w-4 h-4 animate-spin" /> : <span className="flex items-center gap-2">Create Account<ArrowRight className="w-4 h-4" /></span>}
+                    </Button>
+                  </form>
+                </Form>
+                <div className="relative pt-1"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-200 dark:border-border" /></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-white dark:bg-card px-3 text-gray-400 dark:text-muted-foreground font-medium">or</span></div></div>
+                <SocialAuthButtons mode="register" onError={(msg) => setError(msg)} disabled={isPending} />
+                <p className="text-center text-sm text-gray-500 dark:text-muted-foreground">Already have an account?{" "}<Link href="/login" className="font-semibold text-primary hover:text-orange-700 transition-colors">Sign in</Link></p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ═══════ STEP 2: Email Verification ═══════ */}
+          {(currentStep.id === "step2" || step === "step2") && (
+            <Card className="border-0 shadow-xl bg-white/90 dark:bg-card/90 backdrop-blur-sm overflow-hidden">
+              <CardHeader className="pb-2 pt-8 px-8 text-center">
+                <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4"><KeyRound className="w-7 h-7 text-primary" /></div>
+                <CardTitle className="text-2xl font-bold text-gray-900 dark:text-foreground">Check your email</CardTitle>
+                <CardDescription className="text-gray-500 dark:text-muted-foreground mt-1">We sent a 6-digit verification code to your inbox</CardDescription>
+              </CardHeader>
+              <CardContent className="px-8 pb-8 space-y-6">
+                {error && <FormError message={error} />}
+                {success && <FormSuccess message={success} />}
+                <div className="flex flex-col items-center space-y-6 pt-2">
+                  <InputOTP maxLength={6} value={verificationCode} onChange={(value) => setVerificationCode(value)} disabled={isPending}>
+                    <InputOTPGroup><InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} /><InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} /></InputOTPGroup>
+                  </InputOTP>
+                  <Button onClick={submitVerificationCode} disabled={isPending || verificationCode.length !== 6} className="w-full h-11 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-200 shadow-md shadow-primary/20">
+                    {isPending ? <Loader2Icon className="w-4 h-4 animate-spin" /> : <span className="flex items-center gap-2">Verify & Continue<ArrowRight className="w-4 h-4" /></span>}
+                  </Button>
                 </div>
-                <CardTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  Personal Information
-                </CardTitle>
-              </div>
-              <CardDescription className="text-gray-600">
-                Let&#39;s start with your personal details
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <FormError message={error} />
-              <FormSuccess message={success} />
-              <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit(submitData)}
-                  className="space-y-6"
-                >
-                  {/* Basic Information Section */}
-                  <div className="space-y-4">
-                    <div className="grid lg:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="firstName"
-                        render={({ field }) => (
+                <p className="text-center text-sm text-gray-500 dark:text-muted-foreground">
+                  Didn&#39;t receive the code?{" "}
+                  {resendCooldown > 0 ? <span className="text-gray-400 dark:text-muted-foreground">Resend in {resendCooldown}s</span> : (
+                    <button type="button" onClick={handleResendCode} disabled={isPending} className="font-semibold text-primary hover:text-orange-700 transition-colors disabled:opacity-50">Resend code</button>
+                  )}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ═══════ STEP 3: Business Setup ═══════ */}
+          {(currentStep.id === "step3" || step === "step3") && (
+            <Card className="border-0 shadow-xl bg-white/90 dark:bg-card/90 backdrop-blur-sm overflow-hidden">
+              <CardHeader className="pb-2 pt-8 px-8">
+                <CardTitle className="text-2xl font-bold text-gray-900 dark:text-foreground">Set up your business</CardTitle>
+                <CardDescription className="text-gray-500 dark:text-muted-foreground">Almost done! Tell us about your business so we can get you started.</CardDescription>
+              </CardHeader>
+              <CardContent className="px-8 pb-8">
+                {error && <FormError message={error} />}
+                {success && <FormSuccess message={success} />}
+
+                <Form {...businessForm}>
+                  <form className="space-y-6 mt-4" onSubmit={businessForm.handleSubmit(submitBusinessData, onInvalid)}>
+
+                    {/* ── Required fields: name, type, country ─────────────────── */}
+                    <div className="flex flex-col sm:flex-row gap-5">
+                      <div className="shrink-0">
+                        <div className="w-24 h-24 bg-gray-50 dark:bg-muted/50 rounded-xl border border-gray-200 dark:border-border flex items-center justify-center overflow-hidden">
+                          <UploadImageWidget imagePath="business" displayStyle="default" displayImage setImage={setBusinessImageUrl} label="Logo" />
+                        </div>
+                      </div>
+                      <div className="flex-1 space-y-4">
+                        <FormField control={businessForm.control} name="name" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-700">
-                              First Name *
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                disabled={isPending}
-                                placeholder="Enter your first name"
-                                className=""
-                                {...field}
-                              />
-                            </FormControl>
+                            <FormLabel className="text-sm text-gray-700 dark:text-foreground">Business name <span className="text-red-500">*</span></FormLabel>
+                            <FormControl><Input placeholder={`e.g. ${session?.data?.user?.firstName || "Your"}'s Business`} {...field} disabled={isPending} /></FormControl>
                             <FormMessage />
                           </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="lastName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">
-                              Last Name *
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                disabled={isPending}
-                                placeholder="Enter your last name"
-                                className=""
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid lg:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="country"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">
-                              Nationality *
-                            </FormLabel>
-                            <FormControl>
-                              <CountrySelector
-                                {...field}
-                                isDisabled={isPending}
-                                placeholder="Select your nationality"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="phoneNumber"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                            <FormLabel className="text-gray-700 mt-2">
-                              Phone Number *
-                            </FormLabel>
-                            <FormControl>
-                              <PhoneInput
-                                placeholder="Enter phone number"
-                                {...field}
-                                disabled={isPending}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid lg:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="gender"
-                        render={({ field }) => {
-                          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                          const { ref: _ref, ...customSelectRef } = field;
-                          return (
+                        )} />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <FormField control={businessForm.control} name="businessTypeId" render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-gray-700">
-                                Gender *
-                              </FormLabel>
-                              <FormControl>
-                                <GenderSelector
-                                  {...customSelectRef}
-                                  isRequired
-                                  isDisabled={isPending}
-                                  label="Gender"
-                                  placeholder="Select your gender"
-                                />
-                              </FormControl>
+                              <FormLabel className="text-sm text-gray-700 dark:text-foreground">Business type <span className="text-red-500">*</span></FormLabel>
+                              <FormControl><BusinessTypeSelector value={field.value} onChange={field.onChange} onBlur={field.onBlur} isRequired isDisabled={isPending} label="Business Type" placeholder="Select type" /></FormControl>
                               <FormMessage />
                             </FormItem>
-                          );
-                        }}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="referredByCode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">
-                              Referral Code
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                disabled={isPending}
-                                value={field.value || ""}
-                                placeholder="Enter referral code (optional)"
-                                className=""
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid lg:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">
-                              Email address *
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Enter your email address"
-                                {...field}
-                                type="email"
-                                disabled={isPending}
-                                className=""
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">
-                              Password *
-                            </FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Input
-                                  disabled={isPending}
-                                  type={showPassword ? "text" : "password"}
-                                  placeholder="Create a strong password"
-                                  className="pr-10"
-                                  {...field}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setShowPassword(!showPassword)}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
-                                >
-                                  {showPassword ? (
-                                    <EyeOffIcon size={18} />
-                                  ) : (
-                                    <EyeIcon size={18} />
-                                  )}
-                                </button>
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-6">
-                    <Button
-                      type="submit"
-                      disabled={isPending || emailVerified}
-                      className="w-full bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium py-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
-                    >
-                      {isPending ? (
-                        <Loader2Icon className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          Continue to Email Verification
-                          <ArrowRight className="w-5 h-5" />
-                        </span>
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        ) : currentStep.id === "step2" || step === "step2" ? (
-          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-            <CardHeader className="space-y-1 pb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <Mail className="w-5 h-5 text-primary" />
-                </div>
-                <CardTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  Verify Your Email
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <FormError
-                message={
-                  error
-                    ? `${error}. Please log in to resend the email for verification.`
-                    : ""
-                }
-              />
-              <FormSuccess message={success} />
-
-              <Form {...emailVerificationForm}>
-                <form
-                  onSubmit={emailVerificationForm.handleSubmit(
-                    submitEmailVerificationData,
-                  )}
-                >
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 space-y-4">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-orange-100 rounded-full mt-1">
-                        <Mail className="w-4 h-4 text-primary" />
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-gray-700 font-medium">
-                          We&#39;ve sent an activation link to your email
-                          address.
-                        </p>
-                        <p className="text-gray-600 text-sm">
-                          Please check your email and click the link to verify
-                          your account.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4">
-                    <p className="text-sm text-amber-800">
-                      <strong>Haven&#39;t received the email?</strong> Check
-                      your spam/junk folder, or click the button below to resend
-                      it.
-                    </p>
-                  </div>
-
-                  {emailSent ? (
-                    <div className="mt-6">
-                      <FormSuccess message="Verification email sent successfully! Please check your inbox and spam folder." />
-                    </div>
-                  ) : (
-                    <Button
-                      type="submit"
-                      className="w-full mt-6 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium py-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
-                      disabled={isPending}
-                    >
-                      {isPending ? (
-                        <Loader2Icon className="w-5 h-5 animate-spin" />
-                      ) : (
-                        "Resend Verification Email"
-                      )}
-                    </Button>
-                  )}
-
-                  <div className="hidden">
-                    <FormField
-                      control={emailVerificationForm.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} disabled={isPending} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={emailVerificationForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input {...field} disabled={isPending} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        ) : currentStep.id === "step3" || step === "step3" ? (
-          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-            <CardHeader className="space-y-1 pb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <Building2 className="w-5 h-5 text-primary" />
-                </div>
-                <CardTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  Business Setup
-                </CardTitle>
-              </div>
-              <CardDescription className="text-gray-600">
-                Tell us about your business and location
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <FormError message={error} />
-              <FormSuccess message={success} />
-              <Form {...combinedBusinessLocationForm}>
-                <form
-                  className="space-y-8"
-                  onSubmit={combinedBusinessLocationForm.handleSubmit(
-                    submitCombinedBusinessLocationData,
-                    onInvalid,
-                  )}
-                >
-                  {/* Business Information Section */}
-                  <div className="space-y-6">
-                    <div className="flex flex-col lg:flex-row gap-6">
-                      <div className="lg:w-1/4">
-                        <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 p-6 rounded-xl border border-orange-200">
-                          <UploadImageWidget
-                            imagePath={"business"}
-                            displayStyle={"default"}
-                            displayImage={true}
-                            setImage={setBusinessImageUrl}
-                            label={"Upload logo"}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex-1 space-y-4">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          <FormField
-                            control={combinedBusinessLocationForm.control}
-                            name="name"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700">
-                                  Business name *
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="Enter your business name"
-                                    {...field}
-                                    disabled={isPending}
-                                    className=""
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={combinedBusinessLocationForm.control}
-                            name="locationName"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700">
-                                  Location name *
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="Enter location name"
-                                    {...field}
-                                    disabled={isPending}
-                                    className=""
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          <FormField
-                            control={combinedBusinessLocationForm.control}
-                            name="phone"
-                            render={({ field }) => (
-                              <FormItem className="flex flex-col pt-2">
-                                <FormLabel className="text-gray-700">
-                                  Phone number ( business ) *
-                                </FormLabel>
-                                <FormControl>
-                                  <PhoneInput
-                                    placeholder="Enter the business phone number"
-                                    {...field}
-                                    disabled={isPending}
-                                    value={field.value || ""}
-                                    onChange={(value) => field.onChange(value)}
-                                    className=""
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={combinedBusinessLocationForm.control}
-                            name="email"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700">
-                                  Email address ( business ) *
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    disabled={isPending}
-                                    type="email"
-                                    value={field.value || ""}
-                                    placeholder="Enter your business email address"
-                                    className=""
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          <FormField
-                            control={combinedBusinessLocationForm.control}
-                            name="businessType"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700">
-                                  Business type *
-                                </FormLabel>
-                                <FormControl>
-                                  <BusinessTypeSelector
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                    onBlur={field.onBlur}
-                                    isRequired
-                                    isDisabled={isPending}
-                                    label="Business Type"
-                                    placeholder="Select business type"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={combinedBusinessLocationForm.control}
-                            name="country"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700">
-                                  Country of registration *
-                                </FormLabel>
-                                <FormControl>
-                                  <CountrySelector
-                                    {...field}
-                                    isDisabled={isPending}
-                                    placeholder="Select country"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          <FormField
-                            control={combinedBusinessLocationForm.control}
-                            name="city"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700">
-                                  City / Region *
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    disabled={isPending}
-                                    placeholder="Enter city name"
-                                    className=""
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={combinedBusinessLocationForm.control}
-                            name="address"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700">
-                                  Address *
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    disabled={isPending}
-                                    placeholder="Enter address"
-                                    className=""
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          <FormField
-                            control={combinedBusinessLocationForm.control}
-                            name="openingTime"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700">
-                                  Opening time
-                                </FormLabel>
-                                <FormControl>
-                                  <Select
-                                    disabled={isPending}
-                                    onValueChange={field.onChange}
-                                    value={field.value}
-                                  >
-                                    <SelectTrigger className="">
-                                      <SelectValue placeholder="Select opening time" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {businessTimes.map(
-                                        (
-                                          item: BusinessTimeType,
-                                          index: number,
-                                        ) => (
-                                          <SelectItem
-                                            key={index}
-                                            value={item.name}
-                                          >
-                                            {item.label}
-                                          </SelectItem>
-                                        ),
-                                      )}
-                                    </SelectContent>
-                                  </Select>
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={combinedBusinessLocationForm.control}
-                            name="closingTime"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700">
-                                  Closing time
-                                </FormLabel>
-                                <FormControl>
-                                  <Select
-                                    disabled={isPending}
-                                    onValueChange={field.onChange}
-                                    value={field.value}
-                                  >
-                                    <SelectTrigger className="">
-                                      <SelectValue placeholder="Select closing time" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {businessTimes.map(
-                                        (
-                                          item: BusinessTimeType,
-                                          index: number,
-                                        ) => (
-                                          <SelectItem
-                                            key={index}
-                                            value={item.name}
-                                          >
-                                            {item.label}
-                                          </SelectItem>
-                                        ),
-                                      )}
-                                    </SelectContent>
-                                  </Select>
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                          )} />
+                          <FormField control={businessForm.control} name="countryId" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm text-gray-700 dark:text-foreground">Country <span className="text-red-500">*</span></FormLabel>
+                              <FormControl><CountrySelector {...field} defaultCode={DEFAULT_COUNTRY_CODE} isDisabled={isPending} placeholder="Select country" /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
                         </div>
                       </div>
                     </div>
 
-                    <FormField
-                      control={combinedBusinessLocationForm.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-700">
-                            Business Description
-                          </FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Tell us about your business..."
-                              {...field}
+                    {/* ── Optional contact details (collapsible) ─────────── */}
+                    <div className="rounded-lg border border-gray-200 dark:border-border overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setContactDetailsExpanded((v) => !v)}
+                        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-muted/50 hover:bg-gray-100 dark:hover:bg-muted transition-colors"
+                      >
+                        <div className="text-left">
+                          <p className="text-sm font-medium text-gray-700 dark:text-foreground">Add contact details</p>
+                          <p className="text-xs text-gray-400 dark:text-muted-foreground">Phone, email, address, description (optional — you can fill these later)</p>
+                        </div>
+                        {contactDetailsExpanded ? <ChevronUp size={16} className="text-gray-400 dark:text-muted-foreground" /> : <ChevronDown size={16} className="text-gray-400 dark:text-muted-foreground" />}
+                      </button>
+                      {contactDetailsExpanded && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 space-y-4 border-t border-gray-100 dark:border-border">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormField control={businessForm.control} name="phoneNumber" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm text-gray-700 dark:text-foreground">Phone</FormLabel>
+                                <FormControl><PhoneInput placeholder="Phone number" {...field} disabled={isPending} value={field.value || ""} onChange={(v) => field.onChange(v)} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+                            <FormField control={businessForm.control} name="email" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm text-gray-700 dark:text-foreground">Email</FormLabel>
+                                <FormControl><Input {...field} disabled={isPending} type="email" value={field.value || ""} placeholder="info@yourbusiness.com" /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+                          </div>
+                          <FormField control={businessForm.control} name="website" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm text-gray-700 dark:text-foreground">Website</FormLabel>
+                              <FormControl><Input {...field} disabled={isPending} value={field.value || ""} placeholder="https://yourbusiness.com" /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormField control={businessForm.control} name="region" render={({ field }) => (
+                              <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">City / Region</FormLabel><FormControl><Input {...field} disabled={isPending} placeholder="e.g. Dar es Salaam" value={field.value || ""} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                            <FormField control={businessForm.control} name="address" render={({ field }) => (
+                              <FormItem><FormLabel className="text-sm text-gray-700 dark:text-foreground">Street address</FormLabel><FormControl><Input {...field} disabled={isPending} placeholder="e.g. 123 Uhuru Street" value={field.value || ""} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                          </div>
+                          <FormField control={businessForm.control} name="description" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm text-gray-700 dark:text-foreground">Description</FormLabel>
+                              <FormControl><Textarea placeholder="Briefly describe what your business does..." {...field} disabled={isPending} className="min-h-[80px] resize-none" maxLength={200} value={field.value || ""} /></FormControl>
+                              <FormDescription className="text-xs text-gray-400 dark:text-muted-foreground">{field.value?.length || 0}/200</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                        </motion.div>
+                      )}
+                    </div>
+
+                    {/* ── Location mode toggle ─────────── */}
+                    <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-muted/50 border border-gray-200 dark:border-border px-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 dark:text-foreground">Multiple locations?</p>
+                        <p className="text-xs text-gray-400 dark:text-muted-foreground">Toggle on if your business has more than one branch</p>
+                      </div>
+                      <Switch
+                        checked={multipleLocations}
+                        onCheckedChange={setMultipleLocations}
+                        disabled={isPending}
+                      />
+                    </div>
+
+                    {/* ── Single location (default): just operating hours / 24h ────── */}
+                    {!multipleLocations && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-4">
+                        <div className="pt-1">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Clock className="w-4 h-4 text-primary" />
+                            <span className="text-sm font-semibold text-gray-900 dark:text-foreground uppercase tracking-wide">Operating Hours</span>
+                          </div>
+
+                          {/* 24-hour switch */}
+                          <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-muted/50 border border-gray-200 dark:border-border px-4 py-3 mb-3">
+                            <div>
+                              <p className="text-sm font-medium text-gray-700 dark:text-foreground">This location is open 24 hours</p>
+                              <p className="text-xs text-gray-400 dark:text-muted-foreground">Toggle on for round-the-clock operations</p>
+                            </div>
+                            <Switch
+                              checked={singleContinuous}
+                              onCheckedChange={setSingleContinuous}
                               disabled={isPending}
-                              className="min-h-[120px] resize-none"
-                              maxLength={200}
-                              value={field.value || ""}
                             />
-                          </FormControl>
-                          <FormDescription className="text-xs text-gray-500">
-                            {field.value?.length || 0}/200 characters
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                          </div>
 
-                  <Button
-                    type="submit"
-                    disabled={isPending}
-                    className="w-full bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium py-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
-                  >
-                    {isPending ? (
-                      <Loader2Icon className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <span className="flex items-center gap-2">
-                        Complete Registration
-                        <CheckIcon className="w-5 h-5" />
-                      </span>
+                          {singleContinuous ? (
+                            <div className="rounded-lg border border-gray-200 dark:border-border p-4">
+                              <label className="text-xs font-medium text-gray-600 dark:text-foreground/80 mb-1 block">Daily cutoff time <span className="text-red-500">*</span></label>
+                              <Select value={singleCutoffTime} onValueChange={setSingleCutoffTime} disabled={isPending}>
+                                <SelectTrigger><SelectValue placeholder="e.g. 04:00 — quiet hour when we roll over the business day" /></SelectTrigger>
+                                <SelectContent>{businessTimes.map((t: BusinessTimeType, i: number) => (<SelectItem key={i} value={t.name}>{t.label}</SelectItem>))}</SelectContent>
+                              </Select>
+                              <p className="text-xs text-gray-400 dark:text-muted-foreground mt-2">e.g. 04:00 — quiet hour when we roll over the business day</p>
+                            </div>
+                          ) : (
+                            <OperatingHoursTable hours={singleLocationHours} onChange={setSingleLocationHours} disabled={isPending} />
+                          )}
+                        </div>
+                      </motion.div>
                     )}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-600">Registration Complete!</p>
-          </div>
-        )}
-      </motion.div>
+
+                    {/* ── Multiple locations ────────────── */}
+                    {multipleLocations && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-primary" />
+                          <span className="text-sm font-semibold text-gray-900 dark:text-foreground uppercase tracking-wide">Locations</span>
+                          <span className="ml-auto text-xs text-gray-400 dark:text-muted-foreground">{locations.length} location{locations.length !== 1 ? "s" : ""}</span>
+                        </div>
+                        <p className="text-xs text-gray-400 dark:text-muted-foreground -mt-2">
+                          Empty contact fields on a location will inherit from the business above.
+                        </p>
+
+                        {locations.map((loc, idx) => (
+                          <div key={loc.id} className="rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card overflow-hidden">
+                            <div className="flex items-center justify-between bg-gray-50 dark:bg-muted/50 px-4 py-2.5 border-b border-gray-100 dark:border-border">
+                              <span className="text-sm font-medium text-gray-700 dark:text-foreground">Location {idx + 1}</span>
+                              <div className="flex items-center gap-1">
+                                <button type="button" onClick={() => updateLocation(loc.id, "hoursExpanded", !loc.hoursExpanded)} className="p-1 text-gray-400 dark:text-muted-foreground hover:text-gray-600 dark:hover:text-foreground/80 transition-colors" title="Toggle hours">
+                                  {loc.hoursExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+                                {locations.length > 1 && (
+                                  <button type="button" onClick={() => removeLocation(loc.id)} className="p-1 text-gray-400 dark:text-muted-foreground hover:text-red-500 transition-colors" title="Remove location">
+                                    <Trash2 size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <div className="p-4 space-y-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="text-xs font-medium text-gray-600 dark:text-foreground/80 mb-1 block">Location name *</label>
+                                  <Input value={loc.name} onChange={(e) => updateLocation(loc.id, "name", e.target.value)} placeholder="e.g. Main Branch" disabled={isPending} />
+                                </div>
+                                <div>
+                                  <label className="text-xs font-medium text-gray-600 dark:text-foreground/80 mb-1 block">City / Region</label>
+                                  <Input value={loc.city} onChange={(e) => updateLocation(loc.id, "city", e.target.value)} placeholder="e.g. Dar es Salaam" disabled={isPending} />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-xs font-medium text-gray-600 dark:text-foreground/80 mb-1 block">Street address</label>
+                                <Input value={loc.address} onChange={(e) => updateLocation(loc.id, "address", e.target.value)} placeholder="e.g. 123 Uhuru Street" disabled={isPending} />
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="text-xs font-medium text-gray-600 dark:text-foreground/80 mb-1 block">Phone <span className="text-gray-400 dark:text-muted-foreground">(inherits from business)</span></label>
+                                  <PhoneInput placeholder="Leave empty to inherit" value={loc.phone || ""} onChange={(v) => updateLocation(loc.id, "phone", v || "")} disabled={isPending} />
+                                </div>
+                                <div>
+                                  <label className="text-xs font-medium text-gray-600 dark:text-foreground/80 mb-1 block">Email <span className="text-gray-400 dark:text-muted-foreground">(inherits from business)</span></label>
+                                  <Input type="email" value={loc.email} onChange={(e) => updateLocation(loc.id, "email", e.target.value)} placeholder="Leave empty to inherit" disabled={isPending} />
+                                </div>
+                              </div>
+
+                              {/* 24-hour toggle per location */}
+                              <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-muted/50 border border-gray-100 dark:border-border px-3 py-2">
+                                <div>
+                                  <p className="text-xs font-medium text-gray-700 dark:text-foreground">Open 24 hours</p>
+                                </div>
+                                <Switch
+                                  checked={loc.continuousOperation}
+                                  onCheckedChange={(checked) => updateLocation(loc.id, "continuousOperation", checked)}
+                                  disabled={isPending}
+                                />
+                              </div>
+
+                              {loc.continuousOperation ? (
+                                <div className="rounded-lg border border-gray-200 dark:border-border p-3">
+                                  <label className="text-xs font-medium text-gray-600 dark:text-foreground/80 mb-1 block">Daily cutoff time *</label>
+                                  <Select
+                                    value={loc.dailyCutoffTime}
+                                    onValueChange={(v) => updateLocation(loc.id, "dailyCutoffTime", v)}
+                                    disabled={isPending}
+                                  >
+                                    <SelectTrigger><SelectValue placeholder="e.g. 04:00" /></SelectTrigger>
+                                    <SelectContent>{businessTimes.map((t: BusinessTimeType, i: number) => (<SelectItem key={i} value={t.name}>{t.label}</SelectItem>))}</SelectContent>
+                                  </Select>
+                                  <p className="text-xs text-gray-400 dark:text-muted-foreground mt-2">Quiet hour when we roll over the business day</p>
+                                </div>
+                              ) : (
+                                <>
+                                  {loc.hoursExpanded && (
+                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pt-1">
+                                      <OperatingHoursTable
+                                        hours={loc.operatingHours}
+                                        onChange={(h) => updateLocation(loc.id, "operatingHours", h)}
+                                        disabled={isPending}
+                                      />
+                                    </motion.div>
+                                  )}
+                                  {!loc.hoursExpanded && (
+                                    <p className="text-xs text-gray-400 dark:text-muted-foreground flex items-center gap-1">
+                                      <Clock size={12} /> Monday-Saturday 8:00 AM - 9:00 PM, Sunday Closed
+                                      <button type="button" onClick={() => updateLocation(loc.id, "hoursExpanded", true)} className="ml-1 text-primary hover:underline">Edit</button>
+                                    </p>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+
+                        <button
+                          type="button"
+                          onClick={addLocation}
+                          disabled={isPending}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 border-dashed border-gray-200 dark:border-border text-sm font-medium text-gray-500 dark:text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+                        >
+                          <Plus size={16} /> Add another location
+                        </button>
+                      </motion.div>
+                    )}
+
+                    {/* ── Submit ────────────────────────── */}
+                    <Button type="submit" disabled={isPending} className="w-full h-11 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-200 shadow-md shadow-primary/20">
+                      {isPending ? <Loader2Icon className="w-4 h-4 animate-spin" /> : (
+                        <span className="flex items-center gap-2">Complete Setup<CheckIcon className="w-4 h-4" /></span>
+                      )}
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      <p className="mt-6 text-center text-xs text-gray-400 dark:text-muted-foreground flex items-center justify-center gap-1.5">
+        <Shield className="w-3 h-3" /> Secured with end-to-end encryption
+      </p>
     </div>
   );
 }

@@ -1,8 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { startTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Home, RotateCcw, Mail } from "lucide-react";
+import SessionExpired, { isSessionExpiredError } from "@/components/auth/session-expired";
+import PermissionDenied, {
+  extractPermissionDeniedDetails,
+  isPermissionDeniedError,
+} from "@/components/auth/permission-denied";
 
 export default function Error({
   error,
@@ -11,6 +18,39 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+
+  if (isSessionExpiredError(error)) {
+    return <SessionExpired />;
+  }
+
+  if (isPermissionDeniedError(error)) {
+    const { message, correlationId, requiredPermission } =
+      extractPermissionDeniedDetails(error);
+    return (
+      <PermissionDenied
+        message={message}
+        correlationId={correlationId}
+        requiredPermission={requiredPermission}
+      />
+    );
+  }
+
+  const handleReset = () => {
+    startTransition(() => {
+      router.refresh();
+      reset();
+    });
+  };
+
+  // Transient backend failures (gateway 502/503/504 → SERVICE_UNAVAILABLE,
+  // timeouts/connection drops → NETWORK_ERROR). digest survives the RSC
+  // boundary — SettloApiError sets it to err.code. Give these an accurate,
+  // reassuring message instead of the generic "something went wrong", since a
+  // retry usually fixes them and the user's data is fine.
+  const isTransient =
+    error.digest === "SERVICE_UNAVAILABLE" || error.digest === "NETWORK_ERROR";
+
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4">
       <div className="w-full max-w-md text-center space-y-6">
@@ -22,11 +62,12 @@ export default function Error({
         {/* Text */}
         <div className="space-y-2">
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            Something went wrong
+            {isTransient ? "Service temporarily unavailable" : "Something went wrong"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            An unexpected error occurred while processing your request. Please
-            try again or return to the dashboard.
+            {isTransient
+              ? "We couldn't reach the server just now. This is usually temporary and your data is safe — please try again in a moment."
+              : "An unexpected error occurred while processing your request. Please try again or return to the dashboard."}
           </p>
         </div>
 
@@ -44,7 +85,7 @@ export default function Error({
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Button onClick={reset} variant="default" className="w-full sm:w-auto">
+          <Button onClick={handleReset} variant="default" className="w-full sm:w-auto">
             <RotateCcw className="mr-2 h-4 w-4" />
             Try again
           </Button>

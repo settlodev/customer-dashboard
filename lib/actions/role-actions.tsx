@@ -1,201 +1,223 @@
 "use server";
 
-import { UUID } from "node:crypto";
-
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
-
-import { Role } from "@/types/roles/type";
-import { ApiResponse, FormResponse } from "@/types/types";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { Role, RoleScope } from "@/types/roles/type";
+import { RoleSchema } from "@/types/roles/schema";
+import { FormResponse } from "@/types/types";
+import { getAuthToken } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import { RoleSchema } from "@/types/roles/schema";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 
-export const fetchAllRoles = async (): Promise<Role[]> => {
-  await getAuthenticatedUser();
+// ---------------------------------------------------------------------------
+// Scope resolution
+// ---------------------------------------------------------------------------
 
-  try {
-    const apiClient = new ApiClient();
+// Resolve the scopeId the backend expects for a given scope from the current
+// business/location context cookies. ACCOUNT scope must have null scopeId;
+// STORE/WAREHOUSE require the caller to pass one explicitly since there is
+// no current-store/current-warehouse cookie.
+async function resolveScopeId(
+  scope: RoleScope,
+  explicitScopeId?: string,
+): Promise<string | null> {
+  if (scope === RoleScope.ACCOUNT) return null;
+  if (explicitScopeId) return explicitScopeId;
 
+  if (scope === RoleScope.LOCATION) {
     const location = await getCurrentLocation();
-
-    const rolesData = await apiClient.get(`/api/roles/${location?.id}`);
-
-    return parseStringify(rolesData);
-  } catch (error) {
-    throw error;
+    if (!location?.id) throw new Error("No current location selected for LOCATION-scoped role");
+    return location.id;
   }
+
+  if (scope === RoleScope.BUSINESS) {
+    const businessId = (await getAuthToken())?.businessId;
+    if (!businessId) throw new Error("No current business selected for BUSINESS-scoped role");
+    return businessId;
+  }
+
+  throw new Error(`scopeId is required for ${scope}-scoped role`);
+}
+
+// ---------------------------------------------------------------------------
+// List
+// ---------------------------------------------------------------------------
+
+// Low-level scoped fetch. Both args are required, so a role list can never be
+// fetched unscoped (i.e. across every location/store/warehouse) by accident.
+export const fetchRolesByScope = async (
+  scope: RoleScope,
+  scopeId: string,
+): Promise<Role[]> => {
+  const apiClient = new ApiClient();
+  const params = new URLSearchParams({ scope, scopeId });
+  const data = await apiClient.get(`/api/v1/roles?${params.toString()}`);
+  return parseStringify(data);
 };
 
-export const searchRoles = async (
-  q: string,
-  page: number,
-  pageLimit: number,
-): Promise<ApiResponse<Role>> => {
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-
-    const query = {
-      filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-      ],
-      sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-
-    const location = await getCurrentLocation();
-
-    const rolesData = await apiClient.post(`/api/roles/${location?.id}`, query);
-
-    return parseStringify(rolesData);
-  } catch (error) {
-    throw error;
-  }
+// Account-wide roles (Owner / Manager). These have a null scopeId and apply
+// everywhere, so they're fetched on their own rather than via a destination.
+export const fetchAccountRoles = async (): Promise<Role[]> => {
+  const apiClient = new ApiClient();
+  const data = await apiClient.get(`/api/v1/roles?scope=${RoleScope.ACCOUNT}`);
+  return parseStringify(data);
 };
+
+// Roles for the active workspace destination (location / store / warehouse),
+// optionally merged with the account-wide roles. When no destination is active
+// it returns just the account roles (or [] when those aren't requested) — it
+// never falls back to an unscoped, cross-destination list.
+export const fetchRolesForCurrentDestination = async (
+  opts?: { includeAccountRoles?: boolean },
+): Promise<Role[]> => {
+  const destination = await getCurrentDestination();
+  const accountRoles = opts?.includeAccountRoles ? await fetchAccountRoles() : [];
+  if (!destination) return accountRoles;
+  const scopedRoles = await fetchRolesByScope(RoleScope[destination.type], destination.id);
+  return [...accountRoles, ...scopedRoles];
+};
+
+// ---------------------------------------------------------------------------
+// Get
+// ---------------------------------------------------------------------------
+
+export const getRole = async (id: string): Promise<Role> => {
+  const apiClient = new ApiClient();
+  const data = await apiClient.get(`/api/v1/roles/${id}`);
+  return parseStringify(data);
+};
+
+// ---------------------------------------------------------------------------
+// Create
+// ---------------------------------------------------------------------------
 
 export const createRole = async (
   role: z.infer<typeof RoleSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
-
   const validatedData = RoleSchema.safeParse(role);
-
   if (!validatedData.success) {
-    formResponse = {
+    return parseStringify({
       responseType: "error",
-      message: "Please fill in all the fields marked with * before proceeding",
+      message: "Please fill in all required fields",
       error: new Error(validatedData.error.message),
-    };
-
-    return parseStringify(formResponse);
+    });
   }
 
   try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    console.log("validatedData.data: ", validatedData.data);
+    const scopeId = await resolveScopeId(
+      validatedData.data.scope,
+      validatedData.data.scopeId,
+    );
+
     const payload = {
-      ...validatedData.data,
-      location: location?.id,
+      name: validatedData.data.name,
+      description: validatedData.data.description,
+      scope: validatedData.data.scope,
+      scopeId,
+      permissionKeys: validatedData.data.permissionKeys ?? [],
     };
 
-    await apiClient.post(`/api/roles/${location?.id}/create`, payload);
-    formResponse = {
-      responseType: "success",
-      message: "Role created successfully",
-    };
-  } catch (error: unknown) {
-    formResponse = {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/roles`, payload);
+    revalidatePath("/roles");
+    return parseStringify({ responseType: "success", message: "Role created successfully" });
+  } catch (error: any) {
+    return parseStringify({
       responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
+      message: error?.message || "Failed to create role",
       error: error instanceof Error ? error : new Error(String(error)),
-    };
+    });
   }
-
-  revalidatePath("/roles");
-  return parseStringify(formResponse);
 };
+
+// ---------------------------------------------------------------------------
+// Update
+// ---------------------------------------------------------------------------
 
 export const updateRole = async (
-  id: UUID,
+  id: string,
   role: z.infer<typeof RoleSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
-
   const validatedData = RoleSchema.safeParse(role);
-
   if (!validatedData.success) {
-    formResponse = {
+    return parseStringify({
       responseType: "error",
-      message: "Please fill in all the fields marked with * before proceeding",
+      message: "Please fill in all required fields",
       error: new Error(validatedData.error.message),
-    };
-
-    return parseStringify(formResponse);
+    });
   }
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-
     const payload = {
-      ...validatedData.data,
-      location: location?.id,
+      name: validatedData.data.name,
+      description: validatedData.data.description,
+      permissionKeys: validatedData.data.permissionKeys ?? [],
     };
-
-    console.log("The payload passed is", payload);
-
-    await apiClient.put(`/api/roles/${location?.id}/${id}`, payload);
-
-    formResponse = {
-      responseType: "success",
-      message: "Role updated successfully",
-    };
-  } catch (error: unknown) {
-    console.log("Error occuring during updating role ", error);
-    formResponse = {
+    await apiClient.put(`/api/v1/roles/${id}`, payload);
+    revalidatePath("/roles");
+    revalidatePath(`/roles/${id}`);
+    return parseStringify({ responseType: "success", message: "Role updated successfully" });
+  } catch (error: any) {
+    return parseStringify({
       responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
+      message: error?.message || "Failed to update role",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Delete
+// ---------------------------------------------------------------------------
+
+export const deleteRole = async (id: string): Promise<void> => {
+  const apiClient = new ApiClient();
+  await apiClient.delete(`/api/v1/roles/${id}`);
+  revalidatePath("/roles");
+};
+
+// ---------------------------------------------------------------------------
+// Permission management on roles
+// ---------------------------------------------------------------------------
+
+export const assignPermissionsToRole = async (
+  roleId: string,
+  permissionKeys: string[],
+  additive: boolean = false,
+): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/roles/${roleId}/permissions`, { permissionKeys, additive });
+    revalidatePath("/roles");
+    revalidatePath(`/roles/${roleId}`);
+    return { responseType: "success", message: "Permissions updated" };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to update permissions",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
-
-  revalidatePath("/roles");
-  return parseStringify(formResponse);
 };
 
-export const getRole = async (id: UUID): Promise<ApiResponse<Role>> => {
-  const apiClient = new ApiClient();
-
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
-
-  const location = await getCurrentLocation();
-
-  const roleData = await apiClient.post(`/api/roles/${location?.id}`, query);
-
-  return parseStringify(roleData);
-};
-
-export const deleteRole = async (id: UUID): Promise<void> => {
-  if (!id) throw new Error("Role ID is required to perform this request");
-  await getAuthenticatedUser();
-
+export const removePermissionsFromRole = async (
+  roleId: string,
+  permissionKeys: string[],
+): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-
-    await apiClient.delete(`/api/roles/${location?.id}/${id}`);
+    await apiClient.delete(`/api/v1/roles/${roleId}/permissions`, { data: permissionKeys });
     revalidatePath("/roles");
+    revalidatePath(`/roles/${roleId}`);
+    return { responseType: "success", message: "Permissions removed" };
   } catch (error) {
-    throw error;
+    return {
+      responseType: "error",
+      message: "Failed to remove permissions",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
   }
 };

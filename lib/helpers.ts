@@ -1,4 +1,7 @@
 import { ExtendedProduct } from "@/types/site/type";
+import type { SubscriptionItemResponse } from "@/types/admin/billing";
+
+export const DEFAULT_CURRENCY = "TZS";
 
 export const getProductPrice = (product: ExtendedProduct): number => {
   // First try to get price from the first variant if available
@@ -13,8 +16,63 @@ export const getCategoryId = (category: string): string => {
   return category.toLowerCase().replace(/\s+/g, '-');
 };
 
-export const formatPrice = (price: number, currency: string = 'TZS'): string => {
-  return `${price.toLocaleString()} ${currency}`;
+export const formatPrice = (
+  price: number | null | undefined,
+  currency: string | null | undefined = 'TZS',
+): string => {
+  if (price == null || Number.isNaN(price)) return '—';
+  const code = (currency || 'TZS').toUpperCase();
+  return `${price.toLocaleString()} ${code}`;
+};
+
+/**
+ * A subscription item's monthly recurring-revenue contribution, in the
+ * subscription's currency. Prefer the Billing Service's term-normalized
+ * `monthlyAmount` (resolveTermPrice ÷ term months; 0 for bundled units).
+ * Falls back to interval-normalizing `basePrice` only for API responses that
+ * predate `monthlyAmount` — a YEARLY plan's `basePrice` is the *annual* charge,
+ * so summing it raw overstates MRR 12×.
+ */
+export const subscriptionItemMrr = (item: SubscriptionItemResponse): number => {
+  if (item.monthlyAmount != null) return item.monthlyAmount;
+  if (item.isBundled) return 0;
+  const base = item.packageInfo?.basePrice ?? 0;
+  return item.packageInfo?.billingInterval === "YEARLY" ? base / 12 : base;
+};
+
+/**
+ * Format a money value with a currency code. If an `original` audit payload is
+ * passed (original currency + amount + rate), the output appends a subtitle
+ * describing the source-currency reconciliation (e.g. `50,000 TZS · 25 USD @ 2000`).
+ */
+export const formatMoney = (
+  amount: number | null | undefined,
+  currency: string | null | undefined,
+  original?: {
+    currency?: string | null;
+    amount?: number | null;
+    rate?: number | null;
+  },
+): string => {
+  if (amount == null || Number.isNaN(amount)) return '—';
+  const code = (currency || 'TZS').toUpperCase();
+  const base = `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${code}`;
+
+  const originalCurrency = original?.currency ? original.currency.toUpperCase() : null;
+  const hasOriginal =
+    originalCurrency &&
+    originalCurrency !== code &&
+    original?.amount != null &&
+    !Number.isNaN(original.amount);
+
+  if (!hasOriginal) return base;
+
+  const rate = original?.rate;
+  const rateLabel =
+    rate != null && !Number.isNaN(rate) && rate !== 1
+      ? ` @ ${rate.toLocaleString(undefined, { maximumFractionDigits: 6 })}`
+      : '';
+  return `${base} · ${original!.amount!.toLocaleString()} ${originalCurrency}${rateLabel}`;
 };
 
 export const scrollToCategory = (category: string): void => {

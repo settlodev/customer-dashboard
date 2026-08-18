@@ -1,10 +1,16 @@
-import { UUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import { Role } from "@/types/roles/type";
-import { ApiResponse, PrivilegeActionItem } from "@/types/types";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { isProtectedRole, Role } from "@/types/roles/type";
+import { Permission } from "@/types/permissions/type";
 import { getRole } from "@/lib/actions/role-actions";
+import { fetchAllPermissions } from "@/lib/actions/permissions-actions";
+import { groupByDomain, resolveKeys } from "@/lib/permissions/grouping";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,180 +18,177 @@ import {
   Shield,
   CheckCircle2,
   Info,
+  Lock,
+  ChevronRight,
 } from "lucide-react";
 
 type Params = Promise<{ id: string }>;
 
-export default async function RolesPage({
-  params,
-}: {
-  params: Params;
-}) {
+export default async function RolesPage({ params }: { params: Params }) {
   const resolvedParams = await params;
 
   if (resolvedParams.id === "new") {
     redirect("/roles/new/edit");
   }
 
-  let item: ApiResponse<Role> | null = null;
+  let role: Role | null = null;
+  let catalog: Permission[] = [];
 
   try {
-    item = await getRole(resolvedParams.id as UUID);
-    if (item.totalElements == 0) notFound();
-  } catch (error) {
-    console.log(error);
+    // The role only carries permission *keys*; fetch the account catalog in
+    // parallel so we can resolve each key to its human-readable name, domain,
+    // and description. The catalog is best-effort — if it fails we still render
+    // the keys (humanized) rather than break the page.
+    const [loadedRole, list] = await Promise.all([
+      getRole(resolvedParams.id),
+      fetchAllPermissions().catch(() => null),
+    ]);
+    role = loadedRole;
+    catalog = list?.all ?? [];
+  } catch {
     throw new Error("Failed to load role data");
   }
 
-  const role = item.content[0];
+  if (!role) notFound();
 
-  const breadcrumbItems = [
-    { title: "Roles", link: "/roles" },
-    { title: role.name, link: "" },
-  ];
-
-  // Group permissions by section and sort alphabetically
-  const permissionsBySection: Record<string, PrivilegeActionItem[]> = {};
-  role.privilegeActions?.forEach((action) => {
-    const section = action.privilegeSectionName || "Other";
-    if (!permissionsBySection[section]) {
-      permissionsBySection[section] = [];
-    }
-    permissionsBySection[section].push(action);
-  });
-
-  // Sort sections alphabetically, and actions within each section
-  const sortedSections = Object.keys(permissionsBySection).sort((a, b) =>
-    a.localeCompare(b)
-  );
-  sortedSections.forEach((section) => {
-    permissionsBySection[section].sort((a, b) =>
-      (a.action || "").localeCompare(b.action || "")
-    );
-  });
+  const domains = groupByDomain(resolveKeys(role.permissionKeys ?? [], catalog));
+  const totalPermissions =
+    role.permissionCount ?? role.permissionKeys?.length ?? 0;
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-      {/* Breadcrumbs */}
-      <BreadcrumbsNav items={breadcrumbItems} />
+    <PageShell>
+      <PageBreadcrumbs
+        items={[{ title: "Roles", href: "/roles" }, { title: role.name }]}
+      />
+      <PageHeader
+        title={role.name}
+        titleAccessory={
+          <span className="inline-flex items-center gap-1.5">
+            {role.system && (
+              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                System
+              </span>
+            )}
+            {isProtectedRole(role) && (
+              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                <Lock className="h-3 w-3" />
+                Protected
+              </span>
+            )}
+          </span>
+        }
+        subtitle={role.description ?? undefined}
+        actions={
+          !isProtectedRole(role) ? (
+            <Button asChild size="sm">
+              <Link href={`/roles/${role.id}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Role
+              </Link>
+            </Button>
+          ) : undefined
+        }
+      />
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {role.name}
-            </h1>
-            <span
-              className={`h-2.5 w-2.5 rounded-full ${role.status ? "bg-green-500" : "bg-red-500"}`}
-            />
-          </div>
-          {role.description && (
-            <p className="text-muted-foreground mt-1 text-sm">
-              {role.description}
-            </p>
-          )}
-        </div>
-
-        <Link href={`/roles/${role.id}/edit`}>
-          <Button size="sm">
-            <Edit className="h-4 w-4 mr-2" />
-            Edit Role
-          </Button>
-        </Link>
-      </div>
-
-      {/* Role Details */}
-      <Card className="rounded-xl shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <Info className="h-4 w-4 text-muted-foreground" />
-            Role Details
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="space-y-1">
-              <span className="text-xs text-muted-foreground">Status</span>
-              <div>
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                    role.status
-                      ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
-                      : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                  }`}
-                >
-                  {role.status ? "Active" : "Inactive"}
+      <PageBody>
+        <Card className="rounded-xl shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <Info className="h-4 w-4 text-muted-foreground" />
+              Role Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <span className="text-xs text-muted-foreground">Scope</span>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
+                  {role.scope.toLowerCase()}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <span className="text-xs text-muted-foreground">Type</span>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {role.system ? "System" : "Custom"}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <span className="text-xs text-muted-foreground">
+                  Total Permissions
                 </span>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {totalPermissions}
+                </p>
               </div>
             </div>
-            <div className="space-y-1">
-              <span className="text-xs text-muted-foreground">POS Access</span>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {role.posAccess ? "Yes" : "No"}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <span className="text-xs text-muted-foreground">Dashboard Access</span>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {role.dashboardAccess ? "Yes" : "No"}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <span className="text-xs text-muted-foreground">Total Permissions</span>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {role.privilegeActions?.length ?? 0}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Permissions */}
-      <Card className="rounded-xl shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <Shield className="h-4 w-4 text-muted-foreground" />
-            Permissions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {sortedSections.length > 0 ? (
-            <div className="space-y-4">
-              {sortedSections.map((section) => (
-                <div
-                  key={section}
-                  className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden"
-                >
-                  <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      {section}
-                    </h4>
-                  </div>
-                  <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {permissionsBySection[section].map((action) => (
-                      <div
-                        key={action.id}
-                        className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20"
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <span className="text-xs font-medium text-primary">
-                          {action.action}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No permissions assigned to this role.
+        <Card className="rounded-xl shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              Permissions
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Grouped by area. Hover any permission to see what it allows.
             </p>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          </CardHeader>
+          <CardContent>
+            {domains.length > 0 ? (
+              <div className="space-y-3">
+                {domains.map((domain) => (
+                  <details
+                    key={domain.domain}
+                    open
+                    className="group rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden"
+                  >
+                    <summary className="flex items-center justify-between gap-2 px-4 py-3 bg-muted/50 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                      <span className="flex items-center gap-2">
+                        <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
+                        <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                          {domain.domain}
+                        </span>
+                      </span>
+                      <span className="inline-flex items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-medium px-2 py-0.5">
+                        {domain.count}
+                      </span>
+                    </summary>
+                    <div className="divide-y divide-border border-t border-border">
+                      {domain.resources.map((resource) => (
+                        <div
+                          key={resource.category}
+                          className="px-4 py-3 sm:flex sm:gap-4"
+                        >
+                          <div className="text-xs font-medium text-muted-foreground mb-2 sm:mb-0 sm:w-40 sm:shrink-0 sm:pt-1">
+                            {resource.label}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {resource.permissions.map((perm) => (
+                              <span
+                                key={perm.key}
+                                title={perm.description ?? undefined}
+                                className="inline-flex items-center gap-1.5 rounded-md bg-primary/5 border border-primary/15 px-2 py-1 text-xs font-medium text-foreground"
+                              >
+                                <CheckCircle2 className="h-3 w-3 text-primary shrink-0" />
+                                {perm.name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No permissions assigned to this role.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </PageBody>
+    </PageShell>
   );
 }
-

@@ -1,19 +1,19 @@
 "use server";
 
-import { getAuthenticatedUser } from "../auth-utils";
 import ApiClient from "../settlo-api-client";
 import { parseStringify } from "../utils";
 import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 import { ApiResponse, FormResponse } from "@/types/types";
-import { UUID } from "node:crypto";
+type UUID = string;
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { getCurrentLocation } from "./business/get-current-business";
 import {
   Space,
   SpaceDTO,
   FloorPlan,
   TableCombination,
+  TableStats,
+  SpaceStats,
 } from "@/types/space/type";
 import {
   SpaceSchema,
@@ -25,7 +25,7 @@ import {
 
 function buildSpacePayload(
   d: z.infer<typeof SpaceSchema>,
-  locationId: UUID,
+  expectedVersion?: number,
 ): SpaceDTO {
   return {
     name: d.name,
@@ -40,210 +40,254 @@ function buildSpacePayload(
     posX: d.posX ?? null,
     posY: d.posY ?? null,
     color: d.color ?? "",
-    needsCleaning: d.needsCleaning,
     description: d.description ?? null,
     sortOrder: d.sortOrder ?? null,
     parentSpaceId: d.parentSpaceId ?? null,
     floorPlanId: d.floorPlanId ?? null,
-    status: d.status ?? true,
-    canDelete: true,
-    isArchived: false,
-    location: locationId,
+    ...(expectedVersion !== undefined ? { expectedVersion } : {}),
   };
 }
 
-// ─── Tables & Spaces ─────────────────────────────────────────────────
+function buildSearchParams(args: {
+  q?: string;
+  page: number;
+  pageLimit: number;
+  parentSpaceId?: string;
+  topLevel?: boolean;
+}): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set("page", String(args.page ? args.page - 1 : 0));
+  params.set("size", String(args.pageLimit || 10));
+  params.set("sortBy", "name");
+  params.set("sortDirection", "ASC");
+  if (args.q) params.set("name", args.q);
+  if (args.topLevel) {
+    params.set("topLevel", "true");
+  } else if (args.parentSpaceId) {
+    params.set("parentSpaceId", args.parentSpaceId);
+  }
+  return params;
+}
 
-export const fetchAllSpaces = async (): Promise<Space[]> => {
-  await getAuthenticatedUser();
+const FETCH_ALL_SIZE = 1000;
+
+// ─── Tables ─────────────────────────────────────────────────────────
+// /api/v1/tables — bookable items only (TABLE, SEAT).
+
+export const fetchAllTables = async (): Promise<Space[]> => {
+  const apiClient = new ApiClient("orders");
+  const data = await apiClient.get(
+    `/api/v1/tables?size=${FETCH_ALL_SIZE}&sortBy=name&sortDirection=ASC`,
+  );
+  const page = parseStringify(data) as ApiResponse<Space>;
+  return page.content;
+};
+
+export const searchTables = async (
+  q: string,
+  page: number,
+  pageLimit: number,
+  parentSpaceId?: string,
+): Promise<ApiResponse<Space>> => {
+  const apiClient = new ApiClient("orders");
+  const params = buildSearchParams({ q, page, pageLimit, parentSpaceId });
+  const data = await apiClient.get(`/api/v1/tables?${params.toString()}`);
+  return parseStringify(data);
+};
+
+export const getTable = async (id: UUID): Promise<Space> => {
+  const apiClient = new ApiClient("orders");
+  const data = await apiClient.get(`/api/v1/tables/${id}`);
+  return parseStringify(data);
+};
+
+export const createTable = async (
+  table: z.infer<typeof SpaceSchema>,
+): Promise<FormResponse | void> => {
+  const valid = SpaceSchema.safeParse(table);
+  if (!valid.success) {
+    return SettloErrorHandler.createErrorResponse(
+      valid.error,
+      "Please fill all the required fields",
+    );
+  }
 
   try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const spaceData = await apiClient.get(
-      `/api/tables-and-spaces/${location?.id}`,
-    );
-    return parseStringify(spaceData);
-  } catch (error) {
-    throw error;
+    const apiClient = new ApiClient("orders");
+    await apiClient.post("/api/v1/tables", buildSpacePayload(valid.data));
+  } catch (error: unknown) {
+    revalidatePath("/tables");
+    return SettloErrorHandler.createErrorResponse(error, "Failed to create table");
   }
+  revalidatePath("/tables");
+  return SettloErrorHandler.createSuccessResponse("Table created successfully");
+};
+
+export const updateTable = async (
+  id: UUID,
+  table: z.infer<typeof SpaceSchema>,
+  expectedVersion: number,
+): Promise<FormResponse | void> => {
+  const valid = SpaceSchema.safeParse(table);
+  if (!valid.success) {
+    return SettloErrorHandler.createErrorResponse(
+      valid.error,
+      "Please fill all the required fields",
+    );
+  }
+
+  try {
+    const apiClient = new ApiClient("orders");
+    await apiClient.put(
+      `/api/v1/tables/${id}`,
+      buildSpacePayload(valid.data, expectedVersion),
+    );
+  } catch (error: unknown) {
+    revalidatePath("/tables");
+    return SettloErrorHandler.createErrorResponse(error, "Failed to update table");
+  }
+  revalidatePath("/tables");
+  return SettloErrorHandler.createSuccessResponse("Table updated successfully");
+};
+
+export const deleteTable = async (id: UUID): Promise<void> => {
+  if (!id) throw new Error("Table ID is required to perform this request");
+  const apiClient = new ApiClient("orders");
+  await apiClient.delete(`/api/v1/tables/${id}`);
+  revalidatePath("/tables");
+};
+
+export const getTableStats = async (): Promise<TableStats> => {
+  const apiClient = new ApiClient("orders");
+  const data = await apiClient.get("/api/v1/tables/stats");
+  return parseStringify(data);
+};
+
+// ─── Spaces ─────────────────────────────────────────────────────────
+// /api/v1/spaces — area types only (HALL, SECTION, TERRACE, BAR, COUNTER, ROOM).
+
+export const fetchAllSpaces = async (): Promise<Space[]> => {
+  const apiClient = new ApiClient("orders");
+  const data = await apiClient.get(
+    `/api/v1/spaces?size=${FETCH_ALL_SIZE}&sortBy=name&sortDirection=ASC`,
+  );
+  const page = parseStringify(data) as ApiResponse<Space>;
+  return page.content;
 };
 
 export const searchSpaces = async (
   q: string,
   page: number,
   pageLimit: number,
+  parentSpaceId?: string,
+  topLevel?: boolean,
 ): Promise<ApiResponse<Space>> => {
-  await getAuthenticatedUser();
+  const apiClient = new ApiClient("orders");
+  const params = buildSearchParams({ q, page, pageLimit, parentSpaceId, topLevel });
+  const data = await apiClient.get(`/api/v1/spaces?${params.toString()}`);
+  return parseStringify(data);
+};
 
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-
-    const query = {
-      filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-      ],
-      sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-
-    const spaceData = await apiClient.post(
-      `/api/tables-and-spaces/${location?.id}`,
-      query,
-    );
-
-    return parseStringify(spaceData);
-  } catch (error) {
-    throw error;
-  }
+export const getSpace = async (id: UUID): Promise<Space> => {
+  const apiClient = new ApiClient("orders");
+  const data = await apiClient.get(`/api/v1/spaces/${id}`);
+  return parseStringify(data);
 };
 
 export const createSpace = async (
   space: z.infer<typeof SpaceSchema>,
 ): Promise<FormResponse | void> => {
-  // let formResponse: FormResponse | null = null;
-  const validSpaceData = SpaceSchema.safeParse(space);
-
-  if (!validSpaceData.success) {
+  const valid = SpaceSchema.safeParse(space);
+  if (!valid.success) {
     return SettloErrorHandler.createErrorResponse(
-      validSpaceData.error,
+      valid.error,
       "Please fill all the required fields",
     );
   }
 
-  const location = await getCurrentLocation();
-  await getAuthenticatedUser();
-
-  const payload = buildSpacePayload(validSpaceData.data, location!.id);
-
   try {
-    const apiClient = new ApiClient();
-    await apiClient.post(
-      `/api/tables-and-spaces/${location?.id}/create`,
-      payload,
-    );
+    const apiClient = new ApiClient("orders");
+    await apiClient.post("/api/v1/spaces", buildSpacePayload(valid.data));
   } catch (error: unknown) {
     revalidatePath("/spaces");
-    return SettloErrorHandler.createErrorResponse(
-      error,
-      "Failed to create table/space",
-    );
+    return SettloErrorHandler.createErrorResponse(error, "Failed to create space");
   }
   revalidatePath("/spaces");
-  return SettloErrorHandler.createSuccessResponse(
-    "Table/space created successfully",
-  );
-};
-
-export const getSpace = async (id: UUID): Promise<ApiResponse<Space>> => {
-  const apiClient = new ApiClient();
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
-
-  const location = await getCurrentLocation();
-
-  const spaceResponse = await apiClient.post(
-    `/api/tables-and-spaces/${location?.id}`,
-    query,
-  );
-
-  console.log("Space data", parseStringify(spaceResponse));
-  return parseStringify(spaceResponse);
+  return SettloErrorHandler.createSuccessResponse("Space created successfully");
 };
 
 export const updateSpace = async (
   id: UUID,
   space: z.infer<typeof SpaceSchema>,
+  expectedVersion: number,
 ): Promise<FormResponse | void> => {
-  const validSpaceData = SpaceSchema.safeParse(space);
-
-  if (!validSpaceData.success) {
+  const valid = SpaceSchema.safeParse(space);
+  if (!valid.success) {
     return SettloErrorHandler.createErrorResponse(
-      validSpaceData.error,
+      valid.error,
       "Please fill all the required fields",
     );
   }
 
-  const location = await getCurrentLocation();
-
-  const payload = buildSpacePayload(validSpaceData.data, location!.id);
-
   try {
-    const apiClient = new ApiClient();
+    const apiClient = new ApiClient("orders");
     await apiClient.put(
-      `/api/tables-and-spaces/${location?.id}/${id}`,
-      payload,
+      `/api/v1/spaces/${id}`,
+      buildSpacePayload(valid.data, expectedVersion),
     );
   } catch (error: unknown) {
     revalidatePath("/spaces");
-    return SettloErrorHandler.createErrorResponse(
-      error,
-      "Failed to update table/space",
-    );
+    return SettloErrorHandler.createErrorResponse(error, "Failed to update space");
   }
   revalidatePath("/spaces");
-  return SettloErrorHandler.createSuccessResponse(
-    "Table/space updated successfully",
-  );
+  return SettloErrorHandler.createSuccessResponse("Space updated successfully");
 };
 
 export const deleteSpace = async (id: UUID): Promise<void> => {
   if (!id) throw new Error("Space ID is required to perform this request");
-  await getAuthenticatedUser();
+  const apiClient = new ApiClient("orders");
+  await apiClient.delete(`/api/v1/spaces/${id}`);
+  revalidatePath("/spaces");
+};
 
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    await apiClient.delete(`/api/tables-and-spaces/${location?.id}/${id}`);
-    revalidatePath("/spaces");
-  } catch (error) {
-    throw error;
-  }
+export const getSpaceStats = async (): Promise<SpaceStats> => {
+  const apiClient = new ApiClient("orders");
+  const data = await apiClient.get("/api/v1/spaces/stats");
+  return parseStringify(data);
 };
 
 // ─── Floor Plans ─────────────────────────────────────────────────────
 
-export const fetchFloorPlans = async (): Promise<FloorPlan[]> => {
-  await getAuthenticatedUser();
+export const fetchAllFloorPlans = async (): Promise<FloorPlan[]> => {
+  const apiClient = new ApiClient("orders");
+  const data = await apiClient.get(
+    `/api/v1/floor-plans?size=${FETCH_ALL_SIZE}&sortBy=name&sortDirection=ASC`,
+  );
+  const page = parseStringify(data) as ApiResponse<FloorPlan>;
+  return page.content;
+};
 
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const data = await apiClient.get(`/api/floor-plans/${location?.id}`);
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
+export const searchFloorPlans = async (
+  q: string,
+  page: number,
+  pageLimit: number,
+): Promise<ApiResponse<FloorPlan>> => {
+  const apiClient = new ApiClient("orders");
+  const params = buildSearchParams({ q, page, pageLimit });
+  const data = await apiClient.get(`/api/v1/floor-plans?${params.toString()}`);
+  return parseStringify(data);
+};
+
+export const getFloorPlan = async (id: UUID): Promise<FloorPlan> => {
+  const apiClient = new ApiClient("orders");
+  const data = await apiClient.get(`/api/v1/floor-plans/${id}`);
+  return parseStringify(data);
 };
 
 export const createFloorPlan = async (
   floorPlan: z.infer<typeof FloorPlanSchema>,
 ): Promise<FormResponse | void> => {
   const validated = FloorPlanSchema.safeParse(floorPlan);
-
   if (!validated.success) {
     return SettloErrorHandler.createErrorResponse(
       validated.error,
@@ -251,21 +295,18 @@ export const createFloorPlan = async (
     );
   }
 
-  const location = await getCurrentLocation();
-
   try {
-    const apiClient = new ApiClient();
-    await apiClient.post(
-      `/api/floor-plans/${location?.id}/create`,
-      validated.data,
-    );
+    const apiClient = new ApiClient("orders");
+    await apiClient.post("/api/v1/floor-plans", validated.data);
   } catch (error: unknown) {
-    revalidatePath("/spaces");
+    revalidatePath("/floor-plans");
     return SettloErrorHandler.createErrorResponse(
       error,
       "Failed to create floor plan",
     );
   }
+  revalidatePath("/floor-plans");
+  revalidatePath("/tables");
   revalidatePath("/spaces");
   return SettloErrorHandler.createSuccessResponse(
     "Floor plan created successfully",
@@ -275,9 +316,9 @@ export const createFloorPlan = async (
 export const updateFloorPlan = async (
   id: UUID,
   floorPlan: z.infer<typeof FloorPlanSchema>,
+  expectedVersion: number,
 ): Promise<FormResponse | void> => {
   const validated = FloorPlanSchema.safeParse(floorPlan);
-
   if (!validated.success) {
     return SettloErrorHandler.createErrorResponse(
       validated.error,
@@ -285,21 +326,21 @@ export const updateFloorPlan = async (
     );
   }
 
-  const location = await getCurrentLocation();
-
   try {
-    const apiClient = new ApiClient();
-    await apiClient.put(
-      `/api/floor-plans/${location?.id}/${id}`,
-      validated.data,
-    );
+    const apiClient = new ApiClient("orders");
+    await apiClient.put(`/api/v1/floor-plans/${id}`, {
+      ...validated.data,
+      expectedVersion,
+    });
   } catch (error: unknown) {
-    revalidatePath("/spaces");
+    revalidatePath("/floor-plans");
     return SettloErrorHandler.createErrorResponse(
       error,
       "Failed to update floor plan",
     );
   }
+  revalidatePath("/floor-plans");
+  revalidatePath("/tables");
   revalidatePath("/spaces");
   return SettloErrorHandler.createSuccessResponse(
     "Floor plan updated successfully",
@@ -308,38 +349,41 @@ export const updateFloorPlan = async (
 
 export const deleteFloorPlan = async (id: UUID): Promise<void> => {
   if (!id) throw new Error("Floor plan ID is required");
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    await apiClient.delete(`/api/floor-plans/${location?.id}/${id}`);
-    revalidatePath("/spaces");
-  } catch (error) {
-    throw error;
-  }
+  const apiClient = new ApiClient("orders");
+  await apiClient.delete(`/api/v1/floor-plans/${id}`);
+  revalidatePath("/floor-plans");
+  revalidatePath("/tables");
+  revalidatePath("/spaces");
 };
 
 // ─── Table Combinations ──────────────────────────────────────────────
 
-export const fetchTableCombinations = async (): Promise<TableCombination[]> => {
-  await getAuthenticatedUser();
+export const fetchAllTableCombinations = async (): Promise<TableCombination[]> => {
+  const apiClient = new ApiClient("orders");
+  const data = await apiClient.get(
+    `/api/v1/table-combinations?size=${FETCH_ALL_SIZE}&sortBy=name&sortDirection=ASC`,
+  );
+  const page = parseStringify(data) as ApiResponse<TableCombination>;
+  return page.content;
+};
 
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const data = await apiClient.get(`/api/table-combinations/${location?.id}`);
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
+export const searchTableCombinations = async (
+  q: string,
+  page: number,
+  pageLimit: number,
+): Promise<ApiResponse<TableCombination>> => {
+  const apiClient = new ApiClient("orders");
+  const params = buildSearchParams({ q, page, pageLimit });
+  const data = await apiClient.get(
+    `/api/v1/table-combinations?${params.toString()}`,
+  );
+  return parseStringify(data);
 };
 
 export const createTableCombination = async (
   combination: z.infer<typeof TableCombinationSchema>,
 ): Promise<FormResponse | void> => {
   const validated = TableCombinationSchema.safeParse(combination);
-
   if (!validated.success) {
     return SettloErrorHandler.createErrorResponse(
       validated.error,
@@ -347,22 +391,17 @@ export const createTableCombination = async (
     );
   }
 
-  const location = await getCurrentLocation();
-
   try {
-    const apiClient = new ApiClient();
-    await apiClient.post(
-      `/api/table-combinations/${location?.id}/create`,
-      validated.data,
-    );
+    const apiClient = new ApiClient("orders");
+    await apiClient.post("/api/v1/table-combinations", validated.data);
   } catch (error: unknown) {
-    revalidatePath("/spaces");
+    revalidatePath("/table-combinations");
     return SettloErrorHandler.createErrorResponse(
       error,
       "Failed to create table combination",
     );
   }
-  revalidatePath("/spaces");
+  revalidatePath("/table-combinations");
   return SettloErrorHandler.createSuccessResponse(
     "Table combination created successfully",
   );
@@ -371,9 +410,9 @@ export const createTableCombination = async (
 export const updateTableCombination = async (
   id: UUID,
   combination: z.infer<typeof TableCombinationSchema>,
+  expectedVersion: number,
 ): Promise<FormResponse | void> => {
   const validated = TableCombinationSchema.safeParse(combination);
-
   if (!validated.success) {
     return SettloErrorHandler.createErrorResponse(
       validated.error,
@@ -381,22 +420,20 @@ export const updateTableCombination = async (
     );
   }
 
-  const location = await getCurrentLocation();
-
   try {
-    const apiClient = new ApiClient();
-    await apiClient.put(
-      `/api/table-combinations/${location?.id}/${id}`,
-      validated.data,
-    );
+    const apiClient = new ApiClient("orders");
+    await apiClient.put(`/api/v1/table-combinations/${id}`, {
+      ...validated.data,
+      expectedVersion,
+    });
   } catch (error: unknown) {
-    revalidatePath("/spaces");
+    revalidatePath("/table-combinations");
     return SettloErrorHandler.createErrorResponse(
       error,
       "Failed to update table combination",
     );
   }
-  revalidatePath("/spaces");
+  revalidatePath("/table-combinations");
   return SettloErrorHandler.createSuccessResponse(
     "Table combination updated successfully",
   );
@@ -404,14 +441,25 @@ export const updateTableCombination = async (
 
 export const deleteTableCombination = async (id: UUID): Promise<void> => {
   if (!id) throw new Error("Table combination ID is required");
-  await getAuthenticatedUser();
+  const apiClient = new ApiClient("orders");
+  await apiClient.delete(`/api/v1/table-combinations/${id}`);
+  revalidatePath("/table-combinations");
+};
 
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    await apiClient.delete(`/api/table-combinations/${location?.id}/${id}`);
-    revalidatePath("/spaces");
-  } catch (error) {
-    throw error;
-  }
+/**
+ * Populate `tables: Space[]` on each combination by zipping `tableIds`
+ * against a tables list. Combinations with a missing/deleted member get
+ * a partial `tables` array (the deleted member is silently dropped).
+ */
+export const hydrateCombinations = async (
+  combos: TableCombination[],
+  tables: Space[],
+): Promise<TableCombination[]> => {
+  const byId = new Map(tables.map((t) => [String(t.id), t]));
+  return combos.map((c) => ({
+    ...c,
+    tables: (c.tableIds ?? [])
+      .map((id) => byId.get(String(id)))
+      .filter((t): t is Space => t !== undefined),
+  }));
 };

@@ -26,7 +26,7 @@ export default function InviteStaffEmailTemplate({token}: EmailProps) {
                 </Text>
                 <Section style={buttonContainer}>
                     <Button
-                        href={`${process.env.NEXT_PUBLIC_APP_URL}/update-password?token=${token}&action=create`}
+                        href={`${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}&action=create`}
                         style={button}
                     >
                         Create Your Password

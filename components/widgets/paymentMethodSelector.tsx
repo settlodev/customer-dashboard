@@ -1,12 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { fetchLocationPaymentMethods } from "@/lib/actions/payment-method-actions";
 import { PaymentMethod, PaymentMethodChild } from "@/types/payments/type";
 
@@ -30,7 +24,6 @@ function PaymentMethodSelectorWidget({
   value,
   isDisabled,
   onChange,
-  onBlur,
 }: PaymentMethodSelectorProps) {
   const [options, setOptions] = useState<PaymentMethodChild[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,32 +51,23 @@ function PaymentMethodSelectorWidget({
     placeholder ?? (mode === "bank" ? "Select a bank" : "Select an MNO");
 
   return (
-    <Select
-      value={value}
-      onValueChange={onChange}
+    <Combobox
+      options={options.map((item) => ({
+        value: item.id,
+        label: item.displayName,
+      }))}
+      value={value ?? null}
+      onChange={(v) => onChange(v ?? "")}
+      placeholder={defaultPlaceholder}
+      searchPlaceholder={mode === "bank" ? "Search banks…" : "Search MNOs…"}
+      emptyText={
+        isLoading
+          ? "Loading…"
+          : `No ${mode === "bank" ? "banks" : "MNOs"} available`
+      }
       disabled={isDisabled || isLoading}
-    >
-      <SelectTrigger onBlur={onBlur}>
-        <SelectValue
-          placeholder={isLoading ? "Loading…" : defaultPlaceholder}
-        />
-      </SelectTrigger>
-      <SelectContent>
-        {options.length > 0 ? (
-          options.map((item) => (
-            <SelectItem key={item.id} value={item.id}>
-              {item.displayName}
-            </SelectItem>
-          ))
-        ) : (
-          <div className="p-2 text-sm text-gray-500">
-            {isLoading
-              ? "Loading…"
-              : `No ${mode === "bank" ? "banks" : "MNOs"} available`}
-          </div>
-        )}
-      </SelectContent>
-    </Select>
+      ariaLabel={mode === "bank" ? "Bank" : "MNO"}
+    />
   );
 }
 

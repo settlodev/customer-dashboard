@@ -1,29 +1,229 @@
-import { UUID } from "crypto"
+export type MovementType =
+  | "PURCHASE"
+  | "SALE"
+  | "TRANSFER_IN"
+  | "TRANSFER_OUT"
+  | "RETURN"
+  | "ADJUSTMENT"
+  | "DAMAGE"
+  | "RECIPE_USAGE"
+  | "OPENING_BALANCE"
+  | "WASTE"
+  | "CONTAINER_RETURN_IN"
+  | "CONTAINER_RETURN_OUT"
+  | "PACKAGING_CONSUMED";
 
-export declare interface StockMovement {
-    id: UUID,
-    quantity:number,
-    value:number,
-    stockMovementType:string,
-    previousAverageValue:number,
-    previousTotalQuantity:number,
-    newAverageValue:number,
-    newTotalQuantity:number,
-    stockModification:UUID,
-    stockIntake:UUID,
-    stockIntakeBatchNumber:string,
-    orderItem:UUID,
-    orderItemName:string,
-    staff:UUID,
-    staffName:string,
-    stock:UUID,
-    stockName:string,
-    stockVariant:UUID,
-    stockVariantName:string,
-    location:UUID,
-    status:boolean,
-    isArchived:boolean,
-    canDelete:boolean
+export type ReferenceType =
+  | "GRN"
+  | "SALE_ORDER"
+  | "TRANSFER"
+  | "ADJUSTMENT"
+  | "RETURN"
+  | "CONSUMPTION_RULE"
+  | "BOM_RULE"
+  | "STOCK_MODIFICATION"
+  | "OPENING_STOCK"
+  | "STOCK_INTAKE"
+  | "SUPPLIER_RETURN"
+  | "ORDER_VOID"
+  | "PRODUCTION_ORDER"
+  | "BATCH_RECALL";
+
+export interface StockMovement {
+  movementId: string;
+  variantId: string;
+  stockName: string;
+  variantName: string;
+  unitId: string;
+  unitName: string;
+  unitAbbreviation: string;
+  divisibleUnitId: string | null;
+  divisibleUnitName: string | null;
+  divisibleUnitAbbreviation: string | null;
+  divisibleUnitRatio: number | null;
+  locationId: string;
+  locationType: string;
+  businessDate: string;
+  movementType: MovementType;
+  referenceType: ReferenceType | null;
+  referenceId: string | null;
+  /** Friendly source code (e.g. "GRN-1234"). Phase 2 (V021). */
+  referenceNumber?: string | null;
+  /** Staff/user who triggered the movement. Phase 2 (V021). */
+  userId?: string | null;
+  quantity: number;
+  baseQuantity: number;
+  unitCost: number | null;
+  totalCost: number | null;
+  /** Backend-computed direction so the UI doesn't have to infer it. */
+  direction?: "IN" | "OUT";
+  /** Absolute |quantity| — display this with an explicit `+`/`-` prefix
+   *  driven by `direction`. No more Math.abs / sign-checking on the UI. */
+  quantityAbs?: number;
+  /** Absolute |totalCost|. Negative-magnitude rows (e.g. supplier returns)
+   *  display the magnitude; the colour treatment indicates direction. */
+  totalCostAbs?: number;
+  currency: string | null;
+  /** Pre/post deltas. Phase 2 (V021). */
+  previousBalance?: number | null;
+  newBalance?: number | null;
+  /**
+   * `newBalance` of the entry written immediately before this one — what
+   * `previousBalance` must equal for the ledger to add up. Chained server-side
+   * in commit order, so it is NOT the row rendered below this one: an entry
+   * whose business time back-dates its write (a modification's date, a GRN's
+   * received date, a bill opened long before it closed) sits elsewhere in the
+   * list. Null on the range's first entry and on the location-wide list.
+   */
+  previousClosingBalance?: number | null;
+  previousAverageCost?: number | null;
+  newAverageCost?: number | null;
+  priorBatchId?: string | null;
+  /**
+   * The specific refund this movement reverses (V073). A partially-refunded
+   * line writes several RETURN movements against the same order, so the order
+   * id alone can't identify which one. Null on non-refund movements.
+   */
+  refundId?: string | null;
+  /** Categorised reversal reason, as the upstream enum's name. Phase 3 (V073). */
+  reasonCode?: string | null;
+  /** Free text the operator gave for the reversal. Phase 3 (V073). */
+  reasonNote?: string | null;
+  occurredAt: string;
+  eventTime: string;
 }
 
+export interface MovementTypeBreakdown {
+  movementType: string;
+  count: number;
+  totalQuantity: number;
+  totalCost: number;
+  /** Backend-computed direction (sign of totalQuantity). */
+  direction?: "IN" | "OUT";
+  /** Absolute |totalQuantity| ready to render. */
+  totalQuantityAbs?: number;
+}
 
+export interface StockMovementSummary {
+  locationId: string;
+  startDate: string;
+  endDate: string;
+  totalMovements: number;
+  totalQuantityIn: number;
+  totalQuantityOut: number;
+  netQuantityChange: number;
+  totalCostIn: number;
+  totalCostOut: number;
+  byType: MovementTypeBreakdown[];
+}
+
+export interface StockMovementByItem {
+  variantId: string;
+  stockName: string;
+  variantName: string;
+  movementCount: number;
+  totalQuantityIn: number;
+  totalQuantityOut: number;
+  netQuantityChange: number;
+  totalCostIn: number;
+  totalCostOut: number;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+}
+
+/** Query shape for one page of a single variant's movement ledger. */
+export interface VariantMovementQuery {
+  locationId: string;
+  variantId: string;
+  /** yyyy-MM-dd. Required by the backend — use {@link ALL_TIME_START} for "all time". */
+  startDate: string;
+  /** yyyy-MM-dd. Defaults to today when omitted. */
+  endDate?: string;
+  movementType?: string;
+  referenceType?: string;
+  /** 0-based. */
+  page?: number;
+  size?: number;
+}
+
+/**
+ * Floor date for the ledger's "All time" range. `startDate` is a required
+ * request param on the Reports Service endpoint, so "all time" is expressed as
+ * a date that predates any Settlo location rather than by omitting the bound.
+ */
+export const ALL_TIME_START = "2015-01-01";
+
+export const MOVEMENT_TYPE_LABELS: Record<MovementType, string> = {
+  PURCHASE: "Purchase",
+  SALE: "Sale",
+  TRANSFER_IN: "Transfer In",
+  TRANSFER_OUT: "Transfer Out",
+  RETURN: "Return",
+  ADJUSTMENT: "Adjustment",
+  DAMAGE: "Damage",
+  RECIPE_USAGE: "Recipe Usage",
+  OPENING_BALANCE: "Opening Balance",
+  WASTE: "Waste",
+  CONTAINER_RETURN_IN: "Empties returned",
+  CONTAINER_RETURN_OUT: "Empties handed back",
+  PACKAGING_CONSUMED: "Packaging consumed",
+};
+
+/**
+ * Friendly labels for the source-document type. Used in the variant
+ * detail page's Movements tab to render rows like
+ * "Stock modification — MOD-7890" or "GRN — GRN-1234".
+ */
+export const REFERENCE_TYPE_LABELS: Record<ReferenceType, string> = {
+  GRN: "GRN",
+  SALE_ORDER: "Sale",
+  TRANSFER: "Stock transfer",
+  ADJUSTMENT: "Adjustment",
+  RETURN: "Return",
+  CONSUMPTION_RULE: "Recipe rule",
+  BOM_RULE: "BOM rule",
+  STOCK_MODIFICATION: "Stock modification",
+  OPENING_STOCK: "Opening stock",
+  STOCK_INTAKE: "Stock intake",
+  SUPPLIER_RETURN: "Supplier return",
+  ORDER_VOID: "Order void",
+  PRODUCTION_ORDER: "Production order",
+  BATCH_RECALL: "Batch recall",
+};
+
+/** Which check a ledger discrepancy failed. */
+export type DiscrepancyKind = "CHAIN_BREAK" | "ROW_MATH";
+
+/**
+ * One point where a variant's ledger stops adding up, found by scanning the
+ * whole history server-side rather than only the page on screen.
+ */
+export interface LedgerDiscrepancy {
+  kind: DiscrepancyKind;
+  movementId: string;
+  variantId: string;
+  variantName: string;
+  occurredAt: string;
+  movementType: MovementType;
+  referenceType: ReferenceType | null;
+  referenceNumber: string | null;
+  /** Closing balance of the entry immediately before this one. */
+  previousClosingBalance: number;
+  previousBalance: number;
+  newBalance: number;
+  quantity: number;
+  /** Signed size of the disagreement. */
+  delta: number;
+}
+
+export const DISCREPANCY_KIND_LABELS: Record<DiscrepancyKind, string> = {
+  CHAIN_BREAK: "Unexplained change",
+  ROW_MATH: "Entry doesn't add up",
+};

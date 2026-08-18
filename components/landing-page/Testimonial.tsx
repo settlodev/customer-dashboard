@@ -44,7 +44,7 @@ const TestimonialCard: React.FC<{ testimonial: Testimonial }> = ({
   testimonial,
 }) => {
   return (
-    <div className="flex-shrink-0 w-full flex flex-col bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-all duration-300">
+    <div className="flex-shrink-0 w-full flex flex-col bg-card rounded-2xl p-8 border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-all duration-300">
       {/* Quote icon */}
       <div className="mb-5">
         <Quote className="w-8 h-8 text-primary/20" />

@@ -1,112 +1,100 @@
 "use client";
-import {ColumnDef} from "@tanstack/react-table";
-import {ArrowUpDown} from "lucide-react";
-import {Checkbox} from "@/components/ui/checkbox";
-import {Button} from "@/components/ui/button";
-// import {CellAction} from "@/components/tables/stock-transfer/cell-action";
-import { StockMovement } from "@/types/stock-movement/type";
 
+import { ColumnDef } from "@tanstack/react-table";
+import { StockMovement, MOVEMENT_TYPE_LABELS } from "@/types/stock-movement/type";
+import { Money } from "@/components/widgets/money";
+import { formatDivisibleQuantity } from "@/lib/format-divisible-quantity";
 
+const TYPE_COLORS: Record<string, string> = {
+  PURCHASE: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  SALE: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  TRANSFER_IN: "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-400",
+  TRANSFER_OUT: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400",
+  RETURN: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  ADJUSTMENT: "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400",
+  DAMAGE: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  RECIPE_USAGE: "bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400",
+  OPENING_BALANCE: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+  WASTE: "bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400",
+};
 
 export const columns: ColumnDef<StockMovement>[] = [
-    {
-        id: "select",
-        header: ({ table }) => (
-            <Checkbox
-                aria-label="Select all"
-                checked={table.getIsAllPageRowsSelected()}
-                onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-            />
-        ),
-        cell: ({ row }) => (
-            <Checkbox
-                aria-label="Select row"
-                checked={row.getIsSelected()}
-                onCheckedChange={(value) => row.toggleSelected(!!value)}
-            />
-        ),
-        enableSorting: false,
-        enableHiding: false,
+  {
+    accessorKey: "movementType",
+    header: "Type",
+    cell: ({ row }) => {
+      const type = row.original.movementType;
+      const colors = TYPE_COLORS[type] || "bg-muted text-ink-2";
+      return (
+        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colors}`}>
+          {MOVEMENT_TYPE_LABELS[type] || type}
+        </span>
+      );
     },
-    {
-        
-        accessorKey: "stockName",
-        header: "Stock",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const name = row.original.stockName;
-            return <div className="text-[16px]">{name}</div>;
-        }
-       
+  },
+  {
+    accessorKey: "variantName",
+    header: "Stock Item",
+    cell: ({ row }) => (
+      <div className="min-w-0">
+        <span className="font-medium text-gray-900 dark:text-gray-100 block truncate">
+          {row.original.variantName}
+        </span>
+        <span className="text-xs text-muted-foreground">{row.original.stockName}</span>
+      </div>
+    ),
+  },
+  {
+    accessorKey: "quantity",
+    header: "Quantity",
+    cell: ({ row }) => {
+      const qty = row.original.quantity;
+      const isPositive = qty > 0;
+      return (
+        <span className={`font-medium ${isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+          {isPositive ? "+" : ""}
+          {formatDivisibleQuantity(qty, {
+            baseUnitName: row.original.unitName ?? "",
+            divisibleUnitRatio: row.original.divisibleUnitRatio,
+            divisibleUnitName: row.original.divisibleUnitName,
+          })}
+        </span>
+      );
     },
-    {
-        
-        accessorKey: "stockVariantName",
-        header: "Item",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const name = row.original.stockVariantName;
-            return <div className="text-[16px] ">{name}</div>;
-        }
-       
-    },
-    
-    {
-        accessorKey: "stockMovementType",
-        enableHiding: false,
-        header: ({ column }) => {
-            return (
-                <Button
-                    className="text-left p-0"
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                    Type of Movement
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            );
-        },
-    },
- 
-    {
-        accessorKey: "quantity",
-        header: "Quantity",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const quantity = row.original.quantity;
-            const formatted = new Intl.NumberFormat().format(quantity);
-            return <div className="w-[100px]">{formatted}</div>;
-        }
-       
-    },
-    {
-        
-        accessorKey: "value",
-        header: "Value / Amount",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const value = row.original.value;
-            const formatted = new Intl.NumberFormat().format(value);
-            return <div className="w-[100px]">{formatted}</div>;
-        }
-       
-    },
-   
-    {
-        
-        accessorKey: "staffName",
-        header: "Staff",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const staff = row.original.staffName;
-            return <div className="w-[100px]">{staff}</div>;
-        }
-       
-    },
-
-    // {
-    //     id: "actions",
-    //     accessorKey: "actions",
-    //     enableHiding: false,
-    //     cell: ({ row }) => <CellAction data={row.original} />,
-    // },
+  },
+  {
+    accessorKey: "unitCost",
+    header: "Unit Cost",
+    cell: ({ row }) => (
+      <Money
+        amount={row.original.unitCost}
+        currency={row.original.currency}
+        className="text-ink-2"
+      />
+    ),
+  },
+  {
+    accessorKey: "totalCost",
+    header: "Total Cost",
+    cell: ({ row }) => (
+      <Money
+        amount={row.original.totalCost}
+        currency={row.original.currency}
+        className="font-medium text-ink-2"
+      />
+    ),
+  },
+  {
+    accessorKey: "occurredAt",
+    header: "Date",
+    cell: ({ row }) => (
+      <span className="text-ink-2">
+        {new Date(row.original.occurredAt).toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })}
+      </span>
+    ),
+  },
 ];

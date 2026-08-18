@@ -64,7 +64,7 @@ export const columns: ColumnDef<StockIntake>[] = [
       return (
         <div>
           {formatted}
-          <span className="text-sm ml-1">Tsh</span>
+          <span className="ml-1">Tsh</span>
         </div>
       );
     },

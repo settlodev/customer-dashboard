@@ -1,259 +1,312 @@
 "use server";
 
 import { z } from "zod";
-import {
-  CustomerSchema,
-  CustomerAddressSchema,
-  CustomerPreferenceSchema,
-  CustomerGroupSchema,
-  CustomersGroupChangeSchema,
-} from "@/types/customer/schema";
+import { revalidatePath } from "next/cache";
+import { UUID } from "node:crypto";
+
 import ApiClient from "@/lib/settlo-api-client";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
-import { revalidatePath } from "next/cache";
+import {
+  BulkGroupChangeSchema,
+  CustomerAddressSchema,
+  CustomerGroupSchema,
+  CustomerPreferenceSchema,
+  CustomerSchema,
+} from "@/types/customer/schema";
 import {
   Customer,
   CustomerAddress,
-  CustomerPreference,
   CustomerGroup,
+  CustomerPreference,
 } from "@/types/customer/type";
-import { UUID } from "node:crypto";
-import { getCurrentLocation } from "./business/get-current-business";
+import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
+
+// ─── Helpers ─────────────────────────────────────────────────────────
+
+const customerMatchesQuery = (customer: Customer, query: string): boolean => {
+  if (!query) return true;
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  return [
+    customer.firstName,
+    customer.lastName,
+    customer.fullName,
+    customer.phoneNumber,
+    customer.email,
+    customer.customerAccountNumber,
+    customer.identifier,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .some((value) => value.toLowerCase().includes(needle));
+};
+
+const groupMatchesQuery = (group: CustomerGroup, query: string): boolean => {
+  if (!query) return true;
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  return [group.name, group.description, group.identifier]
+    .filter((value): value is string => Boolean(value))
+    .some((value) => value.toLowerCase().includes(needle));
+};
+
+const buildPagedResponse = <T,>(
+  items: T[],
+  page: number,
+  pageLimit: number,
+): ApiResponse<T> => {
+  const size = pageLimit > 0 ? pageLimit : 10;
+  // Dashboard pager is 1-indexed (?page=1 is the first page); convert to a
+  // 0-indexed slice index here. Without this, ?page=1 was returning the
+  // second slice — empty for most accounts, producing a flash-then-blank.
+  const pageIndex = Math.max(0, (page > 0 ? page : 1) - 1);
+  const totalElements = items.length;
+  const totalPages = totalElements === 0 ? 0 : Math.ceil(totalElements / size);
+  const start = pageIndex * size;
+  const content = items.slice(start, start + size);
+
+  return parseStringify({
+    content,
+    totalElements,
+    totalPages,
+    size,
+    number: pageIndex,
+    first: pageIndex === 0,
+    last: pageIndex >= Math.max(0, totalPages - 1),
+    numberOfElements: content.length,
+    empty: content.length === 0,
+    pageable: {
+      totalElements,
+      pageNumber: pageIndex,
+      pageSize: size,
+      sort: { empty: true, unsorted: true, sorted: false },
+      offset: start,
+      paged: true,
+      unpaged: false,
+    },
+    sort: { empty: true, unsorted: true, sorted: false },
+    data: null,
+    warehouseStockRequestStatus: "",
+  });
+};
+
+const buildErrorResponse = (
+  fallbackMessage: string,
+  error: unknown,
+): FormResponse => {
+  const message =
+    (error as { message?: string; details?: { message?: string } })?.message ||
+    (error as { details?: { message?: string } })?.details?.message ||
+    fallbackMessage;
+  return {
+    responseType: "error",
+    message,
+    error: error instanceof Error ? error : new Error(String(message)),
+  };
+};
 
 // ─── Customers ───────────────────────────────────────────────────────
 
-export const fetchAllCustomers = async (): Promise<Customer[]> => {
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const customerData = await apiClient.get(`/api/customers/${location?.id}`);
-    return parseStringify(customerData);
-  } catch (error) {
-    throw error;
-  }
+export const fetchAllCustomers = async (
+  options: { includeInactive?: boolean } = {},
+): Promise<Customer[]> => {
+  const apiClient = new ApiClient();
+  const location = await getCurrentLocation();
+  const params = new URLSearchParams();
+  if (location?.id) params.append("locationId", String(location.id));
+  if (options.includeInactive) params.append("includeInactive", "true");
+  const query = params.toString();
+  const data = await apiClient.get<Customer[]>(
+    `/api/v1/customers${query ? `?${query}` : ""}`,
+  );
+  return parseStringify(data);
 };
 
 export const searchCustomer = async (
   q: string,
   page: number,
   pageLimit: number,
+  active?: boolean,
 ): Promise<ApiResponse<Customer>> => {
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-    const query = {
-      filters: [
-        {
-          key: "firstName",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-        {
-          key: "isArchived",
-          operator: "EQUAL",
-          field_type: "BOOLEAN",
-          value: false,
-        },
-      ],
-      sorts: [
-        {
-          key: "firstName",
-          direction: "ASC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-    const location = await getCurrentLocation();
-    const customerData = await apiClient.post(
-      `/api/customers/${location?.id}`,
-      query,
-    );
-    return parseStringify(customerData);
-  } catch (error) {
-    throw error;
+  const customers = await fetchAllCustomers({ includeInactive: true });
+  let filtered = q ? customers.filter((c) => customerMatchesQuery(c, q)) : customers;
+  if (active !== undefined) {
+    filtered = filtered.filter((c) => c.active === active);
   }
+  return buildPagedResponse(filtered, page, pageLimit);
 };
+
+/**
+ * Roll-up counts for the list KPI strip and status tabs. Computed from
+ * the full customer list so `Active` / `Inactive` totals stay in sync
+ * regardless of which tab the page is currently rendering.
+ */
+export const getCustomerCount = async (): Promise<{
+  total: number;
+  active: number;
+  inactive: number;
+}> => {
+  const customers = await fetchAllCustomers({ includeInactive: true });
+  let active = 0;
+  let inactive = 0;
+  for (const c of customers) {
+    if (c.active) active += 1;
+    else inactive += 1;
+  }
+  return { total: customers.length, active, inactive };
+};
+
+/**
+ * Aggregate stats used by the list-page KPI strip — loyalty totals,
+ * credit-line coverage, and no-show counts. Derived from the full
+ * customer list so the figures remain stable across pages and tabs.
+ */
+export const getCustomerSummaryStats = async (): Promise<{
+  loyaltyPointsTotal: number;
+  creditLimitCount: number;
+  withEmail: number;
+  noShowCustomers: number;
+}> => {
+  const customers = await fetchAllCustomers({ includeInactive: true });
+  let loyaltyPointsTotal = 0;
+  let creditLimitCount = 0;
+  let withEmail = 0;
+  let noShowCustomers = 0;
+  for (const c of customers) {
+    loyaltyPointsTotal += c.loyaltyPoints ?? 0;
+    if ((c.creditLimit ?? 0) > 0) creditLimitCount += 1;
+    if (c.email) withEmail += 1;
+    if ((c.noShowCount ?? 0) > 0) noShowCustomers += 1;
+  }
+  return { loyaltyPointsTotal, creditLimitCount, withEmail, noShowCustomers };
+};
+
+export const getCustomer = async (id: UUID): Promise<Customer> => {
+  const apiClient = new ApiClient();
+  const data = await apiClient.get<Customer>(`/api/v1/customers/${id}`);
+  return parseStringify(data);
+};
+
+export const getCustomerById = async (id: UUID): Promise<Customer> => getCustomer(id);
 
 export const createCustomer = async (
   customer: z.infer<typeof CustomerSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
-  const customerValidData = CustomerSchema.safeParse(customer);
-
-  if (!customerValidData.success) {
-    formResponse = {
+  const validated = CustomerSchema.safeParse(customer);
+  if (!validated.success) {
+    return parseStringify({
       responseType: "error",
       message: "Please fill all the required fields",
-      error: new Error(customerValidData.error.message),
-    };
-    return parseStringify(formResponse);
+      error: new Error(validated.error.message),
+    } satisfies FormResponse);
   }
 
-  const location = await getCurrentLocation();
+  const [business, location] = await Promise.all([
+    getCurrentBusiness(),
+    getCurrentLocation(),
+  ]);
+
+  if (!business?.id || !location?.id) {
+    return parseStringify({
+      responseType: "error",
+      message: "Active business or location not selected",
+      error: new Error("Missing business/location context"),
+    } satisfies FormResponse);
+  }
 
   const payload = {
-    ...customerValidData.data,
-    location: location?.id,
+    ...validated.data,
+    businessId: business.id,
+    locationId: location.id,
   };
 
+  let created: Customer | undefined;
   try {
     const apiClient = new ApiClient();
-    await apiClient.post(`/api/customers/${location?.id}/create`, payload);
-    formResponse = {
-      responseType: "success",
-      message: "Customer created successfully",
-    };
-  } catch (error: any) {
+    created = await apiClient.post<Customer, typeof payload>(
+      `/api/v1/customers`,
+      payload,
+    );
+  } catch (error) {
     console.error("Error creating customer", error);
-    const apiMessage = error?.message || error?.details?.message;
-    formResponse = {
-      responseType: "error",
-      message: apiMessage || "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(apiMessage || error)),
-    };
+    return parseStringify(buildErrorResponse("Failed to create customer", error));
   }
 
-  if (formResponse?.responseType === "error")
-    return parseStringify(formResponse);
-
   revalidatePath("/customers");
-  return parseStringify(formResponse);
-};
-
-export const getCustomer = async (
-  id: UUID,
-): Promise<ApiResponse<Customer>> => {
-  const apiClient = new ApiClient();
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
-  const location = await getCurrentLocation();
-  const customerResponse = await apiClient.post(
-    `/api/customers/${location?.id}`,
-    query,
-  );
-  return parseStringify(customerResponse);
-};
-
-export const getCustomerById = async (id: UUID): Promise<Customer> => {
-  await getAuthenticatedUser();
-  const apiClient = new ApiClient();
-  const location = await getCurrentLocation();
-  const data = await apiClient.get(
-    `/api/customers/${location?.id}/${id}`,
-  );
-  return parseStringify(data);
+  return parseStringify({
+    responseType: "success",
+    message: "Customer created successfully",
+    data: created,
+  } satisfies FormResponse<Customer>);
 };
 
 export const updateCustomer = async (
   id: UUID,
   customer: z.infer<typeof CustomerSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
-  const customerValidData = CustomerSchema.safeParse(customer);
-
-  if (!customerValidData.success) {
-    formResponse = {
+  const validated = CustomerSchema.safeParse(customer);
+  if (!validated.success) {
+    return parseStringify({
       responseType: "error",
       message: "Please fill all the required fields",
-      error: new Error(customerValidData.error.message),
-    };
-    return parseStringify(formResponse);
+      error: new Error(validated.error.message),
+    } satisfies FormResponse);
   }
-
-  const location = await getCurrentLocation();
-  const payload = {
-    ...customerValidData.data,
-    location: location?.id,
-  };
 
   try {
     const apiClient = new ApiClient();
-    await apiClient.put(`/api/customers/${location?.id}/${id}`, payload);
-    formResponse = {
-      responseType: "success",
-      message: "Customer updated successfully",
-    };
-  } catch (error: any) {
-    const apiMessage = error?.message || error?.details?.message;
-    formResponse = {
-      responseType: "error",
-      message: apiMessage || "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(apiMessage || error)),
-    };
+    await apiClient.put(`/api/v1/customers/${id}`, validated.data);
+  } catch (error) {
+    console.error("Error updating customer", error);
+    return parseStringify(buildErrorResponse("Failed to update customer", error));
   }
 
-  if (formResponse?.responseType === "error")
-    return parseStringify(formResponse);
-
   revalidatePath("/customers");
-  return parseStringify(formResponse);
+  return parseStringify({
+    responseType: "success",
+    message: "Customer updated successfully",
+  } satisfies FormResponse);
 };
 
 export const deleteCustomer = async (id: UUID): Promise<void> => {
   if (!id) throw new Error("Customer ID is required to perform this request");
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    await apiClient.delete(`/api/customers/${location?.id}/${id}`);
-    revalidatePath("/customers");
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const archiveCustomer = async (ids: string | string[]): Promise<void> => {
   const apiClient = new ApiClient();
-  const location = await getCurrentLocation();
-
-  const customerIds = Array.isArray(ids) ? ids : [ids];
-
-  await apiClient.put(`/api/customers/${location?.id}/archive`, customerIds);
+  await apiClient.delete(`/api/v1/customers/${id}`);
   revalidatePath("/customers");
 };
 
-export const unarchiveCustomer = async (ids: string | string[]): Promise<void> => {
+export const deactivateCustomer = async (id: UUID | string): Promise<void> => {
   const apiClient = new ApiClient();
-  const location = await getCurrentLocation();
+  await apiClient.post(`/api/v1/customers/${id}/deactivate`, {});
+  revalidatePath("/customers");
+};
 
-  const customerIds = Array.isArray(ids) ? ids : [ids];
+export const reactivateCustomer = async (id: UUID | string): Promise<void> => {
+  const apiClient = new ApiClient();
+  await apiClient.post(`/api/v1/customers/${id}/reactivate`, {});
+  revalidatePath("/customers");
+};
 
-  await apiClient.put(`/api/customers/${location?.id}/unarchive`, customerIds);
+export const restoreCustomer = async (id: UUID | string): Promise<void> => {
+  const apiClient = new ApiClient();
+  await apiClient.post(`/api/v1/customers/${id}/restore`, {});
   revalidatePath("/customers");
 };
 
 // ─── Customer Groups ─────────────────────────────────────────────────
 
-export const fetchCustomerGroups = async (): Promise<CustomerGroup[]> => {
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const data = await apiClient.get(`/api/customer-groups/${location?.id}`);
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
+export const fetchCustomerGroups = async (
+  options: { includeInactive?: boolean } = {},
+): Promise<CustomerGroup[]> => {
+  const apiClient = new ApiClient();
+  const location = await getCurrentLocation();
+  if (!location?.id) return [];
+  const params = new URLSearchParams({ locationId: String(location.id) });
+  if (options.includeInactive) params.append("includeInactive", "true");
+  const data = await apiClient.get<CustomerGroup[]>(
+    `/api/v1/customer-groups?${params.toString()}`,
+  );
+  return parseStringify(data);
 };
 
 export const searchCustomerGroups = async (
@@ -261,184 +314,182 @@ export const searchCustomerGroups = async (
   page: number,
   pageLimit: number,
 ): Promise<ApiResponse<CustomerGroup>> => {
-  await getAuthenticatedUser();
+  const groups = await fetchCustomerGroups({ includeInactive: true });
+  const filtered = q ? groups.filter((g) => groupMatchesQuery(g, q)) : groups;
+  return buildPagedResponse(filtered, page, pageLimit);
+};
 
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const query = {
-      filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-      ],
-      sorts: [{ key: "name", direction: "ASC" }],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-    const data = await apiClient.post(
-      `/api/customer-groups/${location?.id}`,
-      query,
-    );
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
+export const getCustomerGroup = async (id: UUID): Promise<CustomerGroup> => {
+  const apiClient = new ApiClient();
+  const data = await apiClient.get<CustomerGroup>(`/api/v1/customer-groups/${id}`);
+  return parseStringify(data);
 };
 
 export const createCustomerGroup = async (
   group: z.infer<typeof CustomerGroupSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = CustomerGroupSchema.safeParse(group);
-
   if (!validated.success) {
-    formResponse = {
+    return parseStringify({
       responseType: "error",
       message: "Please fill all the required fields",
       error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    } satisfies FormResponse);
   }
 
-  const location = await getCurrentLocation();
+  const [business, location] = await Promise.all([
+    getCurrentBusiness(),
+    getCurrentLocation(),
+  ]);
+
+  if (!business?.id || !location?.id) {
+    return parseStringify({
+      responseType: "error",
+      message: "Active business or location not selected",
+      error: new Error("Missing business/location context"),
+    } satisfies FormResponse);
+  }
+
+  const payload = {
+    ...validated.data,
+    businessId: business.id,
+    locationId: location.id,
+  };
 
   try {
     const apiClient = new ApiClient();
-    await apiClient.post(
-      `/api/customer-groups/${location?.id}/create`,
-      validated.data,
-    );
-    formResponse = {
-      responseType: "success",
-      message: "Customer group created successfully",
-    };
+    await apiClient.post(`/api/v1/customer-groups`, payload);
   } catch (error) {
     console.error("Error creating customer group", error);
-    formResponse = {
-      responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+    return parseStringify(
+      buildErrorResponse("Failed to create customer group", error),
+    );
   }
 
-  revalidatePath("/customers");
-  return parseStringify(formResponse);
+  revalidatePath("/customer-groups");
+  return parseStringify({
+    responseType: "success",
+    message: "Customer group created successfully",
+  } satisfies FormResponse);
 };
 
 export const updateCustomerGroup = async (
   id: UUID,
   group: z.infer<typeof CustomerGroupSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = CustomerGroupSchema.safeParse(group);
-
   if (!validated.success) {
-    formResponse = {
+    return parseStringify({
       responseType: "error",
       message: "Please fill all the required fields",
       error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    } satisfies FormResponse);
   }
-
-  const location = await getCurrentLocation();
 
   try {
     const apiClient = new ApiClient();
-    await apiClient.put(
-      `/api/customer-groups/${location?.id}/${id}`,
-      validated.data,
-    );
-    formResponse = {
-      responseType: "success",
-      message: "Customer group updated successfully",
-    };
+    await apiClient.put(`/api/v1/customer-groups/${id}`, validated.data);
   } catch (error) {
     console.error("Error updating customer group", error);
-    formResponse = {
-      responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+    return parseStringify(
+      buildErrorResponse("Failed to update customer group", error),
+    );
   }
 
-  revalidatePath("/customers");
-  return parseStringify(formResponse);
+  revalidatePath("/customer-groups");
+  return parseStringify({
+    responseType: "success",
+    message: "Customer group updated successfully",
+  } satisfies FormResponse);
 };
 
 export const deleteCustomerGroup = async (id: UUID): Promise<void> => {
   if (!id) throw new Error("Customer group ID is required");
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    await apiClient.delete(`/api/customer-groups/${location?.id}/${id}`);
-    revalidatePath("/customers");
-  } catch (error) {
-    throw error;
-  }
+  const apiClient = new ApiClient();
+  await apiClient.delete(`/api/v1/customer-groups/${id}`);
+  revalidatePath("/customer-groups");
 };
 
 export const addCustomersToGroup = async (
-  data: z.infer<typeof CustomersGroupChangeSchema>,
+  data: z.infer<typeof BulkGroupChangeSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
-
-  const location = await getCurrentLocation();
-
-  try {
-    const apiClient = new ApiClient();
-    await apiClient.put(`/api/customers/${location?.id}/add-to-group`, data);
-    formResponse = {
-      responseType: "success",
-      message: "Customers added to group successfully",
-    };
-  } catch (error) {
-    formResponse = {
+  const validated = BulkGroupChangeSchema.safeParse(data);
+  if (!validated.success) {
+    return parseStringify({
       responseType: "error",
-      message: "Failed to add customers to group",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+      message: "Please provide a valid group and customers",
+      error: new Error(validated.error.message),
+    } satisfies FormResponse);
   }
 
-  revalidatePath("/customers");
-  return parseStringify(formResponse);
-};
-
-export const removeCustomersFromGroup = async (
-  data: z.infer<typeof CustomersGroupChangeSchema>,
-): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
-
   const location = await getCurrentLocation();
+  if (!location?.id) {
+    return parseStringify({
+      responseType: "error",
+      message: "Active location not selected",
+      error: new Error("Missing location context"),
+    } satisfies FormResponse);
+  }
 
   try {
     const apiClient = new ApiClient();
     await apiClient.put(
-      `/api/customers/${location?.id}/remove-from-group`,
-      data,
+      `/api/v1/customers/bulk/add-to-group?locationId=${location.id}`,
+      validated.data,
     );
-    formResponse = {
-      responseType: "success",
-      message: "Customers removed from group successfully",
-    };
   } catch (error) {
-    formResponse = {
-      responseType: "error",
-      message: "Failed to remove customers from group",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+    return parseStringify(
+      buildErrorResponse("Failed to add customers to group", error),
+    );
   }
 
   revalidatePath("/customers");
-  return parseStringify(formResponse);
+  revalidatePath("/customer-groups");
+  return parseStringify({
+    responseType: "success",
+    message: "Customers added to group successfully",
+  } satisfies FormResponse);
+};
+
+export const removeCustomersFromGroup = async (
+  data: z.infer<typeof BulkGroupChangeSchema>,
+): Promise<FormResponse | void> => {
+  const validated = BulkGroupChangeSchema.safeParse(data);
+  if (!validated.success) {
+    return parseStringify({
+      responseType: "error",
+      message: "Please provide a valid group and customers",
+      error: new Error(validated.error.message),
+    } satisfies FormResponse);
+  }
+
+  const location = await getCurrentLocation();
+  if (!location?.id) {
+    return parseStringify({
+      responseType: "error",
+      message: "Active location not selected",
+      error: new Error("Missing location context"),
+    } satisfies FormResponse);
+  }
+
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.put(
+      `/api/v1/customers/bulk/remove-from-group?locationId=${location.id}`,
+      validated.data,
+    );
+  } catch (error) {
+    return parseStringify(
+      buildErrorResponse("Failed to remove customers from group", error),
+    );
+  }
+
+  revalidatePath("/customers");
+  revalidatePath("/customer-groups");
+  return parseStringify({
+    responseType: "success",
+    message: "Customers removed from group successfully",
+  } satisfies FormResponse);
 };
 
 // ─── Customer Addresses ──────────────────────────────────────────────
@@ -446,58 +497,52 @@ export const removeCustomersFromGroup = async (
 export const fetchCustomerAddresses = async (
   customerId: UUID,
 ): Promise<CustomerAddress[]> => {
-  await getAuthenticatedUser();
+  const apiClient = new ApiClient();
+  const data = await apiClient.get<CustomerAddress[]>(
+    `/api/v1/customers/${customerId}/addresses`,
+  );
+  return parseStringify(data);
+};
 
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const data = await apiClient.get(
-      `/api/customer-addresses/${location?.id}/customers/${customerId}`,
-    );
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
+export const getCustomerAddress = async (
+  customerId: UUID,
+  addressId: UUID,
+): Promise<CustomerAddress> => {
+  const apiClient = new ApiClient();
+  const data = await apiClient.get<CustomerAddress>(
+    `/api/v1/customers/${customerId}/addresses/${addressId}`,
+  );
+  return parseStringify(data);
 };
 
 export const createCustomerAddress = async (
   customerId: UUID,
   address: z.infer<typeof CustomerAddressSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = CustomerAddressSchema.safeParse(address);
-
   if (!validated.success) {
-    formResponse = {
+    return parseStringify({
       responseType: "error",
       message: "Please fill all the required fields",
       error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    } satisfies FormResponse);
   }
-
-  const location = await getCurrentLocation();
 
   try {
     const apiClient = new ApiClient();
     await apiClient.post(
-      `/api/customer-addresses/${location?.id}/customers/${customerId}`,
+      `/api/v1/customers/${customerId}/addresses`,
       validated.data,
     );
-    formResponse = {
-      responseType: "success",
-      message: "Address added successfully",
-    };
   } catch (error) {
-    formResponse = {
-      responseType: "error",
-      message: "Failed to add address",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+    return parseStringify(buildErrorResponse("Failed to add address", error));
   }
 
   revalidatePath("/customers");
-  return parseStringify(formResponse);
+  return parseStringify({
+    responseType: "success",
+    message: "Address added successfully",
+  } satisfies FormResponse);
 };
 
 export const updateCustomerAddress = async (
@@ -505,58 +550,41 @@ export const updateCustomerAddress = async (
   addressId: UUID,
   address: z.infer<typeof CustomerAddressSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = CustomerAddressSchema.safeParse(address);
-
   if (!validated.success) {
-    formResponse = {
+    return parseStringify({
       responseType: "error",
       message: "Please fill all the required fields",
       error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    } satisfies FormResponse);
   }
-
-  const location = await getCurrentLocation();
 
   try {
     const apiClient = new ApiClient();
     await apiClient.put(
-      `/api/customer-addresses/${location?.id}/customers/${customerId}/${addressId}`,
+      `/api/v1/customers/${customerId}/addresses/${addressId}`,
       validated.data,
     );
-    formResponse = {
-      responseType: "success",
-      message: "Address updated successfully",
-    };
   } catch (error) {
-    formResponse = {
-      responseType: "error",
-      message: "Failed to update address",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+    return parseStringify(buildErrorResponse("Failed to update address", error));
   }
 
   revalidatePath("/customers");
-  return parseStringify(formResponse);
+  return parseStringify({
+    responseType: "success",
+    message: "Address updated successfully",
+  } satisfies FormResponse);
 };
 
 export const deleteCustomerAddress = async (
   customerId: UUID,
   addressId: UUID,
 ): Promise<void> => {
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    await apiClient.delete(
-      `/api/customer-addresses/${location?.id}/customers/${customerId}/${addressId}`,
-    );
-    revalidatePath("/customers");
-  } catch (error) {
-    throw error;
-  }
+  const apiClient = new ApiClient();
+  await apiClient.delete(
+    `/api/v1/customers/${customerId}/addresses/${addressId}`,
+  );
+  revalidatePath("/customers");
 };
 
 // ─── Customer Preferences ────────────────────────────────────────────
@@ -564,58 +592,52 @@ export const deleteCustomerAddress = async (
 export const fetchCustomerPreferences = async (
   customerId: UUID,
 ): Promise<CustomerPreference[]> => {
-  await getAuthenticatedUser();
+  const apiClient = new ApiClient();
+  const data = await apiClient.get<CustomerPreference[]>(
+    `/api/v1/customers/${customerId}/preferences`,
+  );
+  return parseStringify(data);
+};
 
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const data = await apiClient.get(
-      `/api/customer-preferences/${location?.id}/customers/${customerId}`,
-    );
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
+export const getCustomerPreference = async (
+  customerId: UUID,
+  preferenceId: UUID,
+): Promise<CustomerPreference> => {
+  const apiClient = new ApiClient();
+  const data = await apiClient.get<CustomerPreference>(
+    `/api/v1/customers/${customerId}/preferences/${preferenceId}`,
+  );
+  return parseStringify(data);
 };
 
 export const createCustomerPreference = async (
   customerId: UUID,
   preference: z.infer<typeof CustomerPreferenceSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = CustomerPreferenceSchema.safeParse(preference);
-
   if (!validated.success) {
-    formResponse = {
+    return parseStringify({
       responseType: "error",
       message: "Please fill all the required fields",
       error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    } satisfies FormResponse);
   }
-
-  const location = await getCurrentLocation();
 
   try {
     const apiClient = new ApiClient();
     await apiClient.post(
-      `/api/customer-preferences/${location?.id}/customers/${customerId}`,
+      `/api/v1/customers/${customerId}/preferences`,
       validated.data,
     );
-    formResponse = {
-      responseType: "success",
-      message: "Preference added successfully",
-    };
   } catch (error) {
-    formResponse = {
-      responseType: "error",
-      message: "Failed to add preference",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+    return parseStringify(buildErrorResponse("Failed to add preference", error));
   }
 
   revalidatePath("/customers");
-  return parseStringify(formResponse);
+  return parseStringify({
+    responseType: "success",
+    message: "Preference added successfully",
+  } satisfies FormResponse);
 };
 
 export const updateCustomerPreference = async (
@@ -623,56 +645,39 @@ export const updateCustomerPreference = async (
   preferenceId: UUID,
   preference: z.infer<typeof CustomerPreferenceSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = CustomerPreferenceSchema.safeParse(preference);
-
   if (!validated.success) {
-    formResponse = {
+    return parseStringify({
       responseType: "error",
       message: "Please fill all the required fields",
       error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    } satisfies FormResponse);
   }
-
-  const location = await getCurrentLocation();
 
   try {
     const apiClient = new ApiClient();
     await apiClient.put(
-      `/api/customer-preferences/${location?.id}/customers/${customerId}/${preferenceId}`,
+      `/api/v1/customers/${customerId}/preferences/${preferenceId}`,
       validated.data,
     );
-    formResponse = {
-      responseType: "success",
-      message: "Preference updated successfully",
-    };
   } catch (error) {
-    formResponse = {
-      responseType: "error",
-      message: "Failed to update preference",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+    return parseStringify(buildErrorResponse("Failed to update preference", error));
   }
 
   revalidatePath("/customers");
-  return parseStringify(formResponse);
+  return parseStringify({
+    responseType: "success",
+    message: "Preference updated successfully",
+  } satisfies FormResponse);
 };
 
 export const deleteCustomerPreference = async (
   customerId: UUID,
   preferenceId: UUID,
 ): Promise<void> => {
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    await apiClient.delete(
-      `/api/customer-preferences/${location?.id}/customers/${customerId}/${preferenceId}`,
-    );
-    revalidatePath("/customers");
-  } catch (error) {
-    throw error;
-  }
+  const apiClient = new ApiClient();
+  await apiClient.delete(
+    `/api/v1/customers/${customerId}/preferences/${preferenceId}`,
+  );
+  revalidatePath("/customers");
 };

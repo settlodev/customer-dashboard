@@ -28,7 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "../ui/button";
 import { LocationSchema } from "@/types/location/schema";
-import { createBusinessLocation } from "@/lib/actions/auth/location";
+import { createStandaloneLocation } from "@/lib/actions/auth/location";
 import { Loader2Icon } from "lucide-react";
 import { PhoneInput } from "../ui/phone-input";
 
@@ -54,7 +54,7 @@ const LocationAuthForm = () => {
 
   const submitData = useCallback((values: z.infer<typeof LocationSchema>) => {
     startTransition(() => {
-      createBusinessLocation(values).then((data) => {
+      createStandaloneLocation(values as any).then((data: any) => {
         if (data) {
           if (data.responseType === "success") {
             setResponse(data);
@@ -231,54 +231,54 @@ const LocationAuthForm = () => {
               </div>
             </div>
             <div className="lg:grid grid-cols-2 gap-4 mt-2">
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="openingTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Opening Time</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          placeholder="HH:MM (24 hour format)"
-                          pattern="^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"
-                          title="Please enter time in 24-hour format (HH:mm)"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        When do you open your business location?
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="closingTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Closing Time</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          placeholder="HH:MM (24 hour format)"
-                          pattern="^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"
-                          title="Please enter time in 24-hour format (HH:mm)"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        When do you close your business location?
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              {/*<div className="grid gap-2">*/}
+              {/*  <FormField*/}
+              {/*    control={form.control}*/}
+              {/*    name="openingTime"*/}
+              {/*    render={({ field }) => (*/}
+              {/*      <FormItem>*/}
+              {/*        <FormLabel>Opening Time</FormLabel>*/}
+              {/*        <FormControl>*/}
+              {/*          <Input*/}
+              {/*            {...field}*/}
+              {/*            disabled={isPending}*/}
+              {/*            placeholder="HH:MM (24 hour format)"*/}
+              {/*            pattern="^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"*/}
+              {/*            title="Please enter time in 24-hour format (HH:mm)"*/}
+              {/*          />*/}
+              {/*        </FormControl>*/}
+              {/*        <FormDescription>*/}
+              {/*          When do you open your business location?*/}
+              {/*        </FormDescription>*/}
+              {/*        <FormMessage />*/}
+              {/*      </FormItem>*/}
+              {/*    )}*/}
+              {/*  />*/}
+              {/*</div>*/}
+              {/*<div className="grid gap-2">*/}
+              {/*  <FormField*/}
+              {/*    control={form.control}*/}
+              {/*    name="closingTime"*/}
+              {/*    render={({ field }) => (*/}
+              {/*      <FormItem>*/}
+              {/*        <FormLabel>Closing Time</FormLabel>*/}
+              {/*        <FormControl>*/}
+              {/*          <Input*/}
+              {/*            {...field}*/}
+              {/*            disabled={isPending}*/}
+              {/*            placeholder="HH:MM (24 hour format)"*/}
+              {/*            pattern="^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"*/}
+              {/*            title="Please enter time in 24-hour format (HH:mm)"*/}
+              {/*          />*/}
+              {/*        </FormControl>*/}
+              {/*        <FormDescription>*/}
+              {/*          When do you close your business location?*/}
+              {/*        </FormDescription>*/}
+              {/*        <FormMessage />*/}
+              {/*      </FormItem>*/}
+              {/*    )}*/}
+              {/*  />*/}
+              {/*</div>*/}
             </div>
 
             <div className="grid gap-2 mt-2">

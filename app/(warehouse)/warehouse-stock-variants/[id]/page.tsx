@@ -1,69 +1,20 @@
-import {
-  getStockVariantMovement,
-  getStockVariantSummary,
-} from "@/lib/actions/stock-variant-actions";
-import { UUID } from "crypto";
-import React from "react";
-import StockMovementDashboard from "@/components/widgets/stock-movement";
-
+import { notFound } from "next/navigation";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import StockSummary from "@/components/widgets/stock-variant-summary";
+import { getStock } from "@/lib/actions/stock-actions";
+import StockForm from "@/components/forms/stock_form";
 
 type Params = Promise<{ id: string }>;
+export default async function Page({ params }: { params: Params }) {
+  const { id } = await params;
+  const isNew = id === "new";
+  const item = isNew ? null : await getStock(id);
+  if (!isNew && !item) notFound();
 
-type SearchParams = Promise<{
-  stock?: string;
-  variant?: string;
-  page?: string;
-  size?: string;
-}>;
-
-export default async function StockVariantDetails({
-  params,
-  searchParams,
-}: {
-  params: Params;
-  searchParams: SearchParams;
-}) {
-  const resolvedParams = await params;
-  const resolvedSearchParams = await searchParams;
-  const stock = resolvedSearchParams.stock;
-  const page = parseInt(resolvedSearchParams.page || "1");
-  const size = parseInt(resolvedSearchParams.size || "50");
-
-  try {
-    const [movementData, summaryData] = await Promise.all([
-      getStockVariantMovement(resolvedParams.id as UUID, page, size),
-      getStockVariantSummary(resolvedParams.id as UUID, stock as UUID),
-    ]);
-
-    const breadCrumbItems = [
-      { title: "Stock Items", link: "/warehouse-stock-variants" },
-      {
-        title: `${movementData.content[0]?.stockName}-${movementData.content[0]?.stockVariantName}`, // ✅ Access via .content
-        link: "",
-      },
-    ];
-    return (
-      <div className="p-4 space-y-4 mt-6">
-        <BreadcrumbsNav items={breadCrumbItems} />
-        <StockSummary summary={summaryData} />
-
-        <StockMovementDashboard
-          movements={movementData}
-          currentPage={page}
-          pageSize={size}
-        />
-      </div>
-    );
-  } catch (error) {
-    return (
-      <div className="p-4">
-        <div className="text-red-500">
-          Error loading data:{" "}
-          {error instanceof Error ? error.message : "Unknown error occurred"}
-        </div>
-      </div>
-    );
-  }
+  return (
+    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 mt-12">
+      <BreadcrumbsNav items={[{ title: "Stock Items", link: "/warehouse-stock-variants" }, { title: isNew ? "New" : item?.name || "Edit", link: "" }]} />
+      <h1 className="text-2xl font-bold mt-4">{isNew ? "Add Stock" : "Edit Stock"}</h1>
+      <div className="mt-4"><StockForm item={item} /></div>
+    </div>
+  );
 }

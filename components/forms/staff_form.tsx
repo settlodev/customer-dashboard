@@ -1,486 +1,1294 @@
 "use client";
 
+import React, {
+  useCallback,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useCallback, useState, useTransition } from "react";
-import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
+import {
+  AlertTriangle,
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  Image as ImageIcon,
+  Mail,
+  Palette,
+  Shield,
+  Trash2,
+  User,
+  Users,
+  Briefcase,
+} from "lucide-react";
+import { format } from "date-fns";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { createStaff, updateStaff } from "@/lib/actions/staff-actions";
-import { Staff, StaffSchema } from "@/types/staff";
-import { FormResponse } from "@/types/types";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import CancelButton from "@/components/widgets/cancel-button";
-import { SubmitButton } from "@/components/widgets/submit-button";
+import { PhoneInput } from "@/components/ui/phone-input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlComboboxTriggerClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import GenderSelector from "@/components/widgets/gender-selector";
-import { useToast } from "@/hooks/use-toast";
-import { PhoneInput } from "../ui/phone-input";
-import { Switch } from "../ui/switch";
-import { DefaultCountry } from "@/types/constants";
-import DepartmentSelector from "@/components/widgets/department-selector";
 import RoleSelector from "@/components/widgets/role-selector";
 import CountrySelector from "@/components/widgets/country-selector";
-import { Separator } from "../ui/separator";
-import { useRouter } from "next/navigation";
-import { Card, CardContent } from "../ui/card";
-import { FormError } from "../widgets/form-error";
+import {
+  Alert,
+  AlertIcon,
+  AlertBody,
+  AlertTitle,
+  AlertDescription,
+} from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogIcon,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+
+import { Staff, StaffSchema } from "@/types/staff";
+import type { Department } from "@/types/department/type";
+import { FormResponse } from "@/types/types";
+import { cn } from "@/lib/utils";
+import { createStaff, updateStaff } from "@/lib/actions/staff-actions";
+import { invalidateStaffCache } from "@/lib/cache/reference-data";
+
+import { initialsFor, thumbColor } from "@/components/tables/shared/table-avatar";
+import UploadImageWidget from "@/components/widgets/UploadImageWidget";
+import styles from "./styles/form-shell.module.css";
 
 interface StaffFormProps {
   item: Staff | null | undefined;
-  onFormSubmitted?: (response: FormResponse) => void;
+  /**
+   * Departments available at the current location. Server-fetched so the
+   * form mounts with a valid `departmentId` already in defaultValues —
+   * mirrors the category form pattern. When the merchant's package only
+   * exposes the auto-created Main department (i.e. one entry), the
+   * picker is hidden and that single department is auto-selected.
+   */
+  departments: Department[];
+  /**
+   * Department to pre-select. Defaults to the location's `isDefault`
+   * department, or the only entry when departments has length 1. Pages
+   * compute this server-side so the form mount is fully primed.
+   */
+  defaultDepartmentId?: string;
 }
 
-const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
-  const { toast } = useToast();
-  const [isSubmitting, startTransition] = useTransition();
-  const [response, setResponse] = useState<FormResponse | undefined>();
-  const [isDashboardEnabled, setIsDashboardEnabled] = useState(
-    item?.dashboardAccess ?? false,
-  );
-  const router = useRouter();
+type StaffFormValues = z.infer<typeof StaffSchema>;
 
-  const form = useForm<z.infer<typeof StaffSchema>>({
+/**
+ * Radix `SelectItem` rejects an empty string value, so "no department" rides
+ * a sentinel that maps back to `""` in form state.
+ */
+const NO_DEPARTMENT = "__none__";
+
+export default function StaffForm({
+  item,
+  departments,
+  defaultDepartmentId,
+}: StaffFormProps) {
+  const router = useRouter();
+  const { toast } = useToast();
+  // Single-department merchants (Main only — typical for accounts whose
+  // package doesn't unlock the multi-department feature) skip the
+  // picker entirely. The form just commits the auto-resolved id to the
+  // departmentId field at submit time. Accounts with no departments at
+  // all submit an empty id — the backend stores staff without one.
+  const showDepartmentPicker = departments.length > 1;
+  const today = useMemo(() => new Date(), []);
+  const [isPending, startTransition] = useTransition();
+  const [response, setResponse] = useState<FormResponse | undefined>();
+  const [activeTab, setActiveTab] = useState<
+    "personal" | "work" | "access" | "emergency"
+  >("work");
+
+  const isEditMode = !!item;
+  // The owner-staff record is editable like any other profile, but its roles
+  // are locked: the backend rejects a role change there, since dropping the
+  // Owner role would strip the account owner of their own dashboard.
+  const isOwnerRecord = !!item?.owner;
+
+  const form = useForm<StaffFormValues>({
     resolver: zodResolver(StaffSchema),
     defaultValues: {
-      ...item,
-      nationality: item?.nationality || DefaultCountry,
-      status: item ? item.status : true,
+      firstName: item?.firstName ?? "",
+      lastName: item?.lastName ?? "",
+      pictureUrl: item?.pictureUrl ?? "",
+      phoneNumber: item?.phoneNumber ?? "",
+      email: item?.email ?? "",
+      gender: item?.gender,
+      jobTitle: item?.jobTitle ?? "",
+      // Only new staff fall back to the location's default department —
+      // an existing member with none has been deliberately left without
+      // one, and pre-filling would silently re-attach them on save.
+      departmentId: item ? (item.departmentId ?? "") : (defaultDepartmentId ?? ""),
+      departmentIds: item?.departments?.map((d) => d.id) ?? [],
+      roleIds: item?.roles?.map((r) => r.id) ?? [],
+      color: item?.color ?? "",
+      employeeNumber: item?.employeeNumber ?? "",
+      dateOfBirth: item?.dateOfBirth ? new Date(item.dateOfBirth) : undefined,
+      joiningDate: item?.joiningDate ? new Date(item.joiningDate) : undefined,
+      nationalityId: item?.nationalityId ?? "",
+      address: item?.address ?? "",
+      notes: item?.notes ?? "",
+      emergencyName: item?.emergencyName ?? "",
+      emergencyNumber: item?.emergencyNumber ?? "",
+      emergencyRelationship: item?.emergencyRelationship ?? "",
+      posAccess: item?.posAccess ?? false,
+      dashboardAccess: item?.dashboardAccess ?? false,
+      pin: "",
+      referredByCode: "",
     },
   });
 
+  // Watched values feed both the live preview card and the per-section
+  // completion checklist. Keep this list lean — every entry is a
+  // re-render trigger.
+  const firstName = form.watch("firstName");
+  const lastName = form.watch("lastName");
+  const jobTitle = form.watch("jobTitle");
+  const gender = form.watch("gender");
+  const dashboardAccess = form.watch("dashboardAccess");
+  const posAccess = form.watch("posAccess");
+  const email = form.watch("email");
+  const color = form.watch("color");
+  const pictureUrl = form.watch("pictureUrl");
+  const roleIds = form.watch("roleIds") ?? [];
+
+  const fullName = useMemo(
+    () => `${firstName ?? ""} ${lastName ?? ""}`.trim(),
+    [firstName, lastName],
+  );
+
+  // Required-field checklist. Mirrors what the Zod schema enforces
+  // server-side so the readiness bar can't lie. When `dashboardAccess`
+  // is on, only email becomes required — the staff member sets their own
+  // password via an emailed link, so none is collected here.
+  const requiredFlags = useMemo(() => {
+    const baseRequired = [
+      !!firstName?.trim(),
+      !!lastName?.trim(),
+      !!jobTitle?.trim(),
+      !!gender,
+      roleIds.length > 0,
+    ];
+    if (!isEditMode && dashboardAccess) {
+      baseRequired.push(!!email?.trim());
+    }
+    return baseRequired;
+  }, [
+    firstName,
+    lastName,
+    jobTitle,
+    gender,
+    roleIds,
+    isEditMode,
+    dashboardAccess,
+    email,
+  ]);
+  const completion = Math.round(
+    (requiredFlags.filter(Boolean).length / requiredFlags.length) * 100,
+  );
+  const isValid = requiredFlags.every(Boolean);
+  const remainingFields = requiredFlags.filter((v) => !v).length;
+
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
+      const firstError =
+        Object.values(errors)[0]?.message ??
+        "Please check the highlighted fields and try again.";
       toast({
         variant: "destructive",
         title: "Form validation failed",
-        description:
-          typeof errors.message === "string" && errors.message
-            ? errors.message
-            : "Please check your inputs and try again.",
+        description: typeof firstError === "string" ? firstError : undefined,
       });
     },
     [toast],
   );
 
-  const submitData = async (values: z.infer<typeof StaffSchema>) => {
-    setResponse(undefined);
-
-    startTransition(async () => {
-      try {
-        let result: FormResponse | void;
-
-        if (item) {
-          result = await updateStaff(item.id, values);
-        } else {
-          result = await createStaff(values);
-        }
-
-        if (result) {
+  const submit = useCallback(
+    (values: StaffFormValues) => {
+      setResponse(undefined);
+      startTransition(async () => {
+        try {
+          const result = isEditMode
+            ? await updateStaff(item!.id, values)
+            : await createStaff(values);
+          if (!result) return;
           setResponse(result);
-
           if (result.responseType === "success") {
-            toast({ variant: "success", title: "Success", description: result.message });
-            onFormSubmitted?.(result);
+            invalidateStaffCache();
+            toast({
+              variant: "success",
+              title: isEditMode ? "Staff updated" : "Staff created",
+              description: result.message,
+            });
             router.push("/staff");
-          } else if (result.responseType === "error") {
+          } else {
             toast({
               variant: "destructive",
-              title: "Error",
-              description:
-                result.message || "An error occurred while processing your request.",
+              title: "Couldn't save staff",
+              description: result.message,
             });
           }
+        } catch (error) {
+          toast({
+            variant: "destructive",
+            title: "Something went wrong",
+            description:
+              (error as Error)?.message ?? "Please try again later.",
+          });
         }
-      } catch (error: any) {
-        const errorMessage =
-          error?.message || "There was an issue with your request, please try again later";
+      });
+    },
+    [isEditMode, item, router, toast],
+  );
 
-        toast({
-          variant: "destructive",
-          title: "Uh oh! Something went wrong.",
-          description: errorMessage,
-        });
-      }
-    });
-  };
+  const handleDiscard = useCallback(() => {
+    router.back();
+  }, [router]);
 
   return (
     <Form {...form}>
-      <FormError message={response?.message} />
+      {response?.responseType === "error" && response?.message ? (
+        <Alert tone="danger" className="mb-3">
+          <AlertIcon>
+            <AlertTriangle className="h-3.5 w-3.5" />
+          </AlertIcon>
+          <AlertBody>
+            <AlertTitle>We couldn&apos;t save this staff member</AlertTitle>
+            <AlertDescription>{response.message}</AlertDescription>
+          </AlertBody>
+        </Alert>
+      ) : null}
+
       <form
-        onSubmit={form.handleSubmit(submitData, onInvalid)}
-        className="space-y-6"
+        onSubmit={form.handleSubmit(submit, onInvalid)}
+        className={styles.formRoot}
       >
-        {/* Basic Information */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-6">
-            <div>
-              <h3 className="text-lg font-medium mb-4">Basic Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="firstName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        First Name <span className="text-red-500">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter first name"
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+        <div className={styles.formGrid}>
+          {/* ── LEFT — form column ─────────────────────────────── */}
+          <div className={styles.formStack}>
+            {/* Identity card */}
+            <section className={styles.formCard}>
+              <header className={styles.formCardHead}>
+                <div className={styles.icoBox}>
+                  <User className="h-3.5 w-3.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3>Identity</h3>
+                  <p className={styles.formCardHeadDesc}>
+                    The basics shown across the dashboard and POS.
+                  </p>
+                </div>
+                <div className={styles.formCardActions}>
+                  <span className={styles.stepBadge}>STEP 01</span>
+                </div>
+              </header>
 
-                <FormField
-                  control={form.control}
-                  name="lastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Last Name <span className="text-red-500">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter last name"
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <PhoneInput
-                          placeholder="Enter phone number"
-                          {...field}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="gender"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Gender</FormLabel>
-                      <FormControl>
-                        <GenderSelector
-                          {...field}
-                          isDisabled={isSubmitting}
-                          label="Select staff gender"
-                          placeholder="Select gender"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="nationality"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nationality</FormLabel>
-                      <FormControl>
-                        <CountrySelector
-                          {...field}
-                          isDisabled={isSubmitting}
-                          label="Select staff nationality"
-                          placeholder="Select nationality"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Work Details */}
-            <div>
-              <h3 className="text-lg font-medium mb-4">Work Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="jobTitle"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Job Title</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter job title"
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="department"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Department</FormLabel>
-                      <FormControl>
-                        <DepartmentSelector
-                          {...field}
-                          isDisabled={isSubmitting}
-                          placeholder="Select department"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Role</FormLabel>
-                      <FormControl>
-                        <RoleSelector
-                          {...field}
-                          isDisabled={isSubmitting}
-                          placeholder="Select role"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* System Access */}
-            <div>
-              <h3 className="text-lg font-medium mb-4">System Access</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="dashboardAccess"
-                  render={({ field }) => (
-                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-sm font-medium cursor-pointer">
-                          Dashboard Access
-                        </FormLabel>
-                        <p className="text-xs text-muted-foreground">
-                          Allow access to admin dashboard
-                        </p>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={(checked) => {
-                            field.onChange(checked);
-                            setIsDashboardEnabled(checked);
-                          }}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="posAccess"
-                  render={({ field }) => (
-                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-sm font-medium cursor-pointer">
-                          POS Access
-                        </FormLabel>
-                        <p className="text-xs text-muted-foreground">
-                          Allow access to POS system
-                        </p>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {isDashboardEnabled && (
-                <div className="mt-4">
+              <div className={styles.formBody}>
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3">
                   <FormField
                     control={form.control}
-                    name="email"
+                    name="firstName"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Email Address{" "}
-                          <span className="text-red-500">*</span>
-                        </FormLabel>
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel required>First name</FieldLabel>
                         <FormControl>
-                          <Input
-                            type="email"
-                            placeholder="Enter email address"
+                          <ControlInput
+                            placeholder="e.g. Amani"
+                            disabled={isPending}
                             {...field}
-                            disabled={isSubmitting}
                             value={field.value ?? ""}
                           />
                         </FormControl>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Required for dashboard login
-                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel required>Last name</FieldLabel>
+                        <FormControl>
+                          <ControlInput
+                            placeholder="e.g. Mushi"
+                            disabled={isPending}
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="gender"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel required>Gender</FieldLabel>
+                        <FormControl>
+                          <GenderSelector
+                            {...field}
+                            isDisabled={isPending}
+                            label="Select gender"
+                            placeholder="Select gender"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel>Phone number</FieldLabel>
+                        <FormControl>
+                          <PhoneInput
+                            placeholder="Enter phone number"
+                            disabled={isPending}
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="nationalityId"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel>Nationality</FieldLabel>
+                        <FormControl>
+                          <CountrySelector
+                            {...field}
+                            isDisabled={isPending}
+                            label="Select nationality"
+                            placeholder="Select nationality"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="color"
+                    render={({ field }) => (
+                      <FormItem className="min-w-0 space-y-[7px]">
+                        <FieldLabel>
+                          <span className="inline-flex items-center gap-1">
+                            <Palette className="h-3 w-3" /> Tag colour
+                          </span>
+                        </FieldLabel>
+                        <FormControl>
+                          <div className="flex items-center gap-2 rounded-md border border-line bg-card px-2 py-1.5">
+                            <Input
+                              type="color"
+                              {...field}
+                              value={field.value ?? "#0E8B5F"}
+                              disabled={isPending}
+                              className="h-7 w-9 cursor-pointer rounded border-0 bg-transparent p-0"
+                            />
+                            <span className="font-mono text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+                              {field.value || "default"}
+                            </span>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Photo lives in the right rail — see the Photo card
+                      beside the live preview. */}
                 </div>
+              </div>
+            </section>
+
+            {/* Tabs section */}
+            <section className={styles.formCard}>
+              <div className={styles.formTabs} role="tablist">
+                {(
+                  [
+                    {
+                      id: "work",
+                      label: "Work",
+                      icon: <Briefcase className="h-3.5 w-3.5" />,
+                    },
+                    {
+                      id: "personal",
+                      label: "Personal",
+                      icon: <User className="h-3.5 w-3.5" />,
+                    },
+                    {
+                      id: "access",
+                      label: "Access & PIN",
+                      icon: <Shield className="h-3.5 w-3.5" />,
+                    },
+                    {
+                      id: "emergency",
+                      label: "Emergency",
+                      icon: <Users className="h-3.5 w-3.5" />,
+                    },
+                  ] as const
+                )
+                  .filter((t) => t.id !== "access" || !isEditMode)
+                  .map((t) => (
+                    <button
+                      type="button"
+                      key={t.id}
+                      role="tab"
+                      aria-selected={activeTab === t.id}
+                      onClick={() => setActiveTab(t.id)}
+                      className={`${styles.formTab} ${
+                        activeTab === t.id ? styles.formTabOn : ""
+                      }`}
+                    >
+                      {t.icon} {t.label}
+                    </button>
+                  ))}
+              </div>
+
+              {/* Personal — DOB, address, notes */}
+              {activeTab === "personal" && (
+                <>
+                  <header
+                    className={styles.formCardHead}
+                    style={{ borderTop: "1px solid var(--pf-line)" }}
+                  >
+                    <div className={styles.icoBox}>
+                      <User className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3>Personal details</h3>
+                      <p className={styles.formCardHeadDesc}>
+                        Birth date, residence and any notes about this person.
+                      </p>
+                    </div>
+                  </header>
+                  <div className={styles.formBody}>
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="dateOfBirth"
+                        render={({ field }) => {
+                          const selected = field.value
+                            ? new Date(field.value)
+                            : undefined;
+                          return (
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel>Date of birth</FieldLabel>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      disabled={isPending}
+                                      className={cn(
+                                        controlComboboxTriggerClass,
+                                        "justify-start",
+                                        !selected && "text-muted-2",
+                                      )}
+                                    >
+                                      <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
+                                      {selected
+                                        ? format(selected, "PPP")
+                                        : "Pick a date"}
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="w-[300px] p-0"
+                                  align="start"
+                                >
+                                  <Calendar
+                                    mode="single"
+                                    selected={selected}
+                                    onSelect={(d) => field.onChange(d)}
+                                    // Backend has @Past — disallow today
+                                    // and any future date so the request
+                                    // round-trips cleanly.
+                                    disabled={(date) => date >= today}
+                                    captionLayout="dropdown"
+                                    fromYear={1900}
+                                    toYear={today.getFullYear()}
+                                    defaultMonth={selected ?? undefined}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="address"
+                        render={({ field }) => (
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Address</FieldLabel>
+                            <FormControl>
+                              <ControlInput
+                                placeholder="Street, city or area"
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem className="mt-[15px] space-y-[7px]">
+                          <FieldLabel>
+                            Notes
+                            <span className="ml-auto font-mono text-[10px] tracking-[0.04em] text-muted-foreground">
+                              {(field.value ?? "").length}/1000
+                            </span>
+                          </FieldLabel>
+                          <FormControl>
+                            <ControlTextarea
+                              placeholder="Anything teammates should know — allergies, training notes, etc."
+                              maxLength={1000}
+                              disabled={isPending}
+                              {...field}
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
               )}
-            </div>
 
-            <Separator />
+              {/* Work */}
+              {activeTab === "work" && (
+                <>
+                  <header
+                    className={styles.formCardHead}
+                    style={{ borderTop: "1px solid var(--pf-line)" }}
+                  >
+                    <div className={styles.icoBox}>
+                      <Briefcase className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3>Work details</h3>
+                      <p className={styles.formCardHeadDesc}>
+                        Job title, department, and the roles that grant
+                        permissions inside the dashboard and POS.
+                      </p>
+                    </div>
+                  </header>
+                  <div className={styles.formBody}>
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3">
+                      <FormField
+                        control={form.control}
+                        name="jobTitle"
+                        render={({ field }) => (
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel required>Job title</FieldLabel>
+                            <FormControl>
+                              <ControlInput
+                                placeholder="e.g. Cashier, Barista"
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-            {/* Emergency Contact */}
-            <div>
-              <h3 className="text-lg font-medium mb-4">Emergency Contact</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="employeeNumber"
+                        render={({ field }) => (
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Employee #</FieldLabel>
+                            <FormControl>
+                              <ControlInput
+                                placeholder="EMP-001"
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="joiningDate"
+                        render={({ field }) => {
+                          const selected = field.value
+                            ? new Date(field.value)
+                            : undefined;
+                          return (
+                            <FormItem className="space-y-[7px]">
+                              <FieldLabel>Joining date</FieldLabel>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      disabled={isPending}
+                                      className={cn(
+                                        controlComboboxTriggerClass,
+                                        "justify-start",
+                                        !selected && "text-muted-2",
+                                      )}
+                                    >
+                                      <CalendarIcon className="mr-2 h-4 w-4 text-muted-2" />
+                                      {selected
+                                        ? format(selected, "PPP")
+                                        : "Pick a date"}
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="w-[300px] p-0"
+                                  align="start"
+                                >
+                                  <Calendar
+                                    mode="single"
+                                    selected={selected}
+                                    onSelect={(d) => field.onChange(d)}
+                                    captionLayout="dropdown"
+                                    fromYear={1990}
+                                    toYear={today.getFullYear() + 1}
+                                    defaultMonth={selected ?? today}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
+                      />
+                    </div>
+
+                    {showDepartmentPicker ? (
+                      <FormField
+                        control={form.control}
+                        name="departmentId"
+                        render={({ field }) => (
+                          <FormItem className="mt-[15px] space-y-[7px]">
+                            <FieldLabel>Primary department</FieldLabel>
+                            <Select
+                              onValueChange={(v) =>
+                                field.onChange(v === NO_DEPARTMENT ? "" : v)
+                              }
+                              value={field.value || NO_DEPARTMENT}
+                              disabled={isPending}
+                            >
+                              <FormControl>
+                                <SelectTrigger className={controlSelectTriggerClass}>
+                                  <SelectValue placeholder="Select primary department" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value={NO_DEPARTMENT}>
+                                  No department
+                                </SelectItem>
+                                {departments.map((d) => (
+                                  <SelectItem key={d.id} value={d.id}>
+                                    {d.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FieldHint>
+                              Optional — leave as &ldquo;No department&rdquo; if
+                              this person isn&rsquo;t tied to one.
+                            </FieldHint>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    ) : (
+                      // Hidden when the merchant's package only exposes
+                      // the auto-created Main department. The hidden
+                      // input keeps the field in the form state so the
+                      // submit handler still POSTs the resolved id.
+                      <input
+                        type="hidden"
+                        {...form.register("departmentId")}
+                        value={form.watch("departmentId") ?? ""}
+                      />
+                    )}
+
+                    <FormField
+                      control={form.control}
+                      name="roleIds"
+                      render={({ field }) => (
+                        <FormItem className="mt-[15px] space-y-[7px]">
+                          <FieldLabel>
+                            Roles <span className="text-primary">*</span>
+                            <span className="ml-auto font-mono text-[10px] tracking-[0.04em] text-muted-foreground">
+                              {(field.value ?? []).length} SELECTED
+                            </span>
+                          </FieldLabel>
+                          <FormControl>
+                            <RoleSelector
+                              value={field.value ?? []}
+                              onChange={field.onChange}
+                              isDisabled={isPending || isOwnerRecord}
+                              placeholder="Pick at least one role"
+                              multiple
+                            />
+                          </FormControl>
+                          <FieldHint>
+                            {isOwnerRecord
+                              ? "The account owner keeps the Owner role — everything else on this page is editable, but roles and permissions are locked here."
+                              : "At least one role is required — roles control what this person can do in the dashboard and on the POS."}
+                          </FieldHint>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {!isEditMode && (
+                      <FormField
+                        control={form.control}
+                        name="referredByCode"
+                        render={({ field }) => (
+                          <FormItem className="mt-[15px] space-y-[7px]">
+                            <FieldLabel optional>Referral code</FieldLabel>
+                            <FormControl>
+                              <ControlInput
+                                placeholder="Code from the referring teammate"
+                                maxLength={16}
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Access & PIN — create mode only; edit mode manages access from the detail page */}
+              {activeTab === "access" && !isEditMode && (
+                <>
+                  <header
+                    className={styles.formCardHead}
+                    style={{ borderTop: "1px solid var(--pf-line)" }}
+                  >
+                    <div className={styles.icoBox}>
+                      <Shield className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3>Access &amp; PIN</h3>
+                      <p className={styles.formCardHeadDesc}>
+                        Decide whether this person can sign into the dashboard
+                        or the POS the moment they&apos;re created.
+                      </p>
+                    </div>
+                  </header>
+                  <div className={styles.formBody}>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                          <FormField
+                            control={form.control}
+                            name="dashboardAccess"
+                            render={({ field }) => (
+                              <FormItem className={styles.toggleRow}>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium">
+                                    Dashboard access
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    Sign in at admin.settlo.co.tz to manage
+                                    products, reports and settings.
+                                  </p>
+                                </div>
+                                <FormControl>
+                                  <Switch
+                                    checked={!!field.value}
+                                    onCheckedChange={field.onChange}
+                                    disabled={isPending}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="posAccess"
+                            render={({ field }) => (
+                              <FormItem className={styles.toggleRow}>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium">
+                                    POS access
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    Staff will be required to set their PIN
+                                    when they start using their account.
+                                  </p>
+                                </div>
+                                <FormControl>
+                                  <Switch
+                                    checked={!!field.value}
+                                    onCheckedChange={field.onChange}
+                                    disabled={isPending}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        {dashboardAccess && (
+                          <div className="rounded-lg border border-primary/30 bg-primary/[0.04] p-4 space-y-3">
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-3.5 w-3.5 text-primary" />
+                              <span className="text-[12.5px] font-medium text-ink">
+                                Dashboard credentials
+                              </span>
+                            </div>
+                            <FormField
+                              control={form.control}
+                              name="email"
+                              render={({ field }) => (
+                                <FormItem className="space-y-[7px]">
+                                  <FieldLabel required>Login email</FieldLabel>
+                                  <FormControl>
+                                    <ControlInput
+                                      type="email"
+                                      placeholder="staff@example.com"
+                                      disabled={isPending}
+                                      {...field}
+                                      value={field.value ?? ""}
+                                    />
+                                  </FormControl>
+                                  <FieldHint>
+                                    We&apos;ll email this person a secure link to
+                                    set their own password — you don&apos;t need
+                                    to create one.
+                                  </FieldHint>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        )}
+
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Emergency contact */}
+              {activeTab === "emergency" && (
+                <>
+                  <header
+                    className={styles.formCardHead}
+                    style={{ borderTop: "1px solid var(--pf-line)" }}
+                  >
+                    <div className={styles.icoBox}>
+                      <Users className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3>Emergency contact</h3>
+                      <p className={styles.formCardHeadDesc}>
+                        Optional — surfaces in HR exports and on the staff
+                        detail screen for managers to act on.
+                      </p>
+                    </div>
+                  </header>
+                  <div className={styles.formBody}>
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3">
+                      <FormField
+                        control={form.control}
+                        name="emergencyName"
+                        render={({ field }) => (
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Contact name</FieldLabel>
+                            <FormControl>
+                              <ControlInput
+                                placeholder="e.g. Maria Mushi"
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="emergencyNumber"
+                        render={({ field }) => (
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Contact phone</FieldLabel>
+                            <FormControl>
+                              <PhoneInput
+                                placeholder="Enter contact number"
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="emergencyRelationship"
+                        render={({ field }) => (
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Relationship</FieldLabel>
+                            <FormControl>
+                              <ControlInput
+                                placeholder="e.g. Spouse, Parent"
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </section>
+          </div>
+
+          {/* ── RIGHT — preview + readiness ───────────────────── */}
+          <aside className={styles.formStack}>
+            <LivePreviewCard
+              fullName={fullName || "New staff"}
+              jobTitle={jobTitle || "—"}
+              pictureUrl={pictureUrl || undefined}
+              color={color || undefined}
+              gender={gender}
+              dashboardAccess={!!dashboardAccess}
+              posAccess={!!posAccess}
+              roleCount={roleIds.length}
+              checklist={[
+                { label: "First name", done: requiredFlags[0] },
+                { label: "Last name", done: requiredFlags[1] },
+                { label: "Job title", done: requiredFlags[2] },
+                { label: "Gender", done: requiredFlags[3] },
+                { label: "At least one role", done: requiredFlags[4] },
+                ...(!isEditMode && dashboardAccess
+                  ? [{ label: "Login email", done: requiredFlags[5] }]
+                  : []),
+              ]}
+              completion={completion}
+            />
+
+            {/* Photo — optional, and in the right rail rather than the
+                Identity grid for the same reason the product form puts media
+                there: a square picker wedged into a row of text inputs
+                stretches the whole row. Staff with dashboard access can also
+                change it themselves from /profile. */}
+            <section className={`${styles.formCard} ${styles.formCardOptional}`}>
+              <header className={styles.formCardHead}>
+                <div className={styles.icoBox}>
+                  <ImageIcon className="h-3.5 w-3.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3>
+                    Photo <span className={styles.optionalTag}>OPTIONAL</span>
+                  </h3>
+                  <p className={styles.formCardHeadDesc}>
+                    Click the circle to upload. Shown on the staff profile and
+                    at POS.
+                  </p>
+                </div>
+              </header>
+              <div className={styles.formBody}>
                 <FormField
                   control={form.control}
-                  name="emergencyName"
+                  name="pictureUrl"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Contact Name</FormLabel>
+                    <FormItem className="space-y-[7px]">
                       <FormControl>
-                        <Input
-                          placeholder="Enter contact name"
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="emergencyNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Contact Phone</FormLabel>
-                      <FormControl>
-                        <PhoneInput
-                          placeholder="Enter contact number"
-                          {...field}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="emergencyRelationship"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Relationship</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter relationship"
-                          {...field}
-                          value={field.value ?? ""}
-                          disabled={isSubmitting}
-                        />
+                        {/* The widget paints a square tile; the wrapper clips
+                            it to the circle the photo is actually shown in. */}
+                        <div className="mx-auto w-[168px] overflow-hidden rounded-full border border-line">
+                          <UploadImageWidget
+                            imagePath="profiles"
+                            displayStyle="default"
+                            displayImage
+                            showLabel={false}
+                            label="Photo"
+                            image={field.value || null}
+                            setImage={field.onChange}
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-            </div>
+            </section>
+          </aside>
+        </div>
 
-            <Separator />
-
-            {/* Notes */}
-            <div>
-              <h3 className="text-lg font-medium mb-4">Additional Notes</h3>
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Enter any additional notes"
-                        {...field}
-                        value={field.value ?? ""}
-                        disabled={isSubmitting}
-                        className="min-h-[100px]"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-          </CardContent>
-        </Card>
-
-        {/* Actions */}
-        <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
-          <CancelButton />
-          <Separator orientation="vertical" className="h-5" />
-          <SubmitButton
-            isPending={isSubmitting}
-            label={item ? "Update staff" : "Create staff"}
-          />
+        {/* Sticky footer */}
+        <div className={styles.formFoot}>
+          <div className={styles.formFootSpacer} />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isPending}
+                title="Discard changes and go back"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Discard
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent tone="danger">
+              <AlertDialogIcon>
+                <Trash2 className="h-5 w-5" />
+              </AlertDialogIcon>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Anything you typed since opening the form will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDiscard}>
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button
+            type="submit"
+            disabled={isPending || !isValid}
+            title={
+              isValid
+                ? isEditMode
+                  ? "Save changes"
+                  : "Create staff"
+                : `Complete required fields (${remainingFields} remaining)`
+            }
+          >
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+            {isEditMode ? "Save changes" : "Create staff"}
+          </Button>
         </div>
       </form>
     </Form>
   );
-};
+}
 
-export default StaffForm;
+// ─────────────────────────────────────────────────────────────────────
+// Right-rail: live preview card mirroring the products live preview
+// ─────────────────────────────────────────────────────────────────────
+
+interface LivePreviewProps {
+  fullName: string;
+  jobTitle: string;
+  /** Uploaded photo, if any — otherwise the initials tile stands in. */
+  pictureUrl?: string;
+  color: string | undefined;
+  gender: string | undefined;
+  dashboardAccess: boolean;
+  posAccess: boolean;
+  roleCount: number;
+  checklist: Array<{ label: string; done: boolean }>;
+  completion: number;
+}
+
+function LivePreviewCard({
+  fullName,
+  jobTitle,
+  pictureUrl,
+  color,
+  gender,
+  dashboardAccess,
+  posAccess,
+  roleCount,
+  checklist,
+  completion,
+}: LivePreviewProps) {
+  const initials = initialsFor(fullName || "?");
+  const swatch = color || thumbColor(fullName);
+
+  return (
+    <div className={styles.previewCard}>
+      <div className={styles.previewHead}>
+        <span className={styles.liveDot} />
+        Live preview
+      </div>
+      <div className={styles.previewBody}>
+        <div
+          className={cn(styles.previewThumb, "relative overflow-hidden")}
+          style={
+            pictureUrl
+              ? undefined
+              : {
+                  background: `linear-gradient(135deg, ${swatch}, ${swatch}cc)`,
+                }
+          }
+        >
+          {pictureUrl ? (
+            <Image
+              src={pictureUrl}
+              alt={fullName || "Staff photo"}
+              fill
+              sizes="72px"
+              className="object-cover"
+            />
+          ) : (
+            initials
+          )}
+        </div>
+        <div className={styles.previewName}>{fullName}</div>
+        <div className={styles.previewMeta}>
+          {jobTitle}
+          {gender ? ` · ${gender}` : ""}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {dashboardAccess && (
+            <Badge variant="soft" className="text-[10.5px]">
+              Dashboard
+            </Badge>
+          )}
+          {posAccess && (
+            <Badge variant="pos" className="text-[10.5px]">
+              POS
+            </Badge>
+          )}
+          {roleCount > 0 && (
+            <Badge variant="soft" className="text-[10.5px]">
+              {roleCount} {roleCount === 1 ? "role" : "roles"}
+            </Badge>
+          )}
+          {!dashboardAccess && !posAccess && (
+            <Badge variant="warn" className="text-[10.5px]">
+              No access
+            </Badge>
+          )}
+        </div>
+
+        <div className={styles.checklist}>
+          {checklist.map((c) => (
+            <div
+              key={c.label}
+              className={`${styles.checklistItem} ${
+                c.done ? styles.checklistItemDone : ""
+              }`}
+            >
+              <span className={styles.checklistMark}>
+                {c.done ? <CheckCircle2 className="h-2.5 w-2.5" /> : null}
+              </span>
+              {c.label}
+            </div>
+          ))}
+        </div>
+
+        <div className={styles.readiness}>
+          <div className={styles.readinessHead}>
+            <span className={styles.readinessLabel}>Readiness</span>
+            <span
+              className={`${styles.readinessPct} ${
+                completion === 100 ? styles.readinessPctDone : ""
+              }`}
+            >
+              {completion}%
+            </span>
+          </div>
+          <div className={styles.readinessBar}>
+            <div
+              className={`${styles.readinessBarFill} ${
+                completion === 100 ? styles.readinessBarFillDone : ""
+              }`}
+              style={{ width: `${completion}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+

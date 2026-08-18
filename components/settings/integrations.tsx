@@ -36,13 +36,13 @@ export default function IntegrationsSettings() {
         </TabsList>
 
         <TabsContent value="payments" className="mt-6">
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="bg-card rounded-xl border border-border p-6">
             <PaymentIntegrations />
           </div>
         </TabsContent>
 
         <TabsContent value="accounting" className="mt-6">
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="bg-card rounded-xl border border-border p-6">
             <AccountingIntegrations />
           </div>
         </TabsContent>

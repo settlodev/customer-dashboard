@@ -2,119 +2,170 @@
 
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
-import { UUID } from "node:crypto";
-import {
-  getCurrentBusiness,
-  getCurrentLocation,
-} from "./business/get-current-business";
-import { Department, Report } from "@/types/department/type";
+import { Department, DepartmentCount } from "@/types/department/type";
 import { DepartmentSchema } from "@/types/department/schema";
+import { getCurrentDestination } from "@/lib/actions/context";
 
-export const fectchAllDepartments = async (): Promise<Department[]> => {
-  await getAuthenticatedUser();
+// ---------------------------------------------------------------------------
+// List / Search
+// ---------------------------------------------------------------------------
 
+export const fetchAllDepartments = async (): Promise<Department[]> => {
   try {
     const apiClient = new ApiClient();
-
-    const location = await getCurrentLocation();
-
-    const departmentData = await apiClient.get(
-      `/api/departments/${location?.id}`,
-    );
-
-    return parseStringify(departmentData);
+    const data = await apiClient.get(`/api/v1/departments/list`);
+    return parseStringify(data);
   } catch (error) {
     throw error;
   }
 };
+
 export const searchDepartment = async (
   q: string,
   page: number,
   pageLimit: number,
 ): Promise<ApiResponse<Department>> => {
-  await getAuthenticatedUser();
-
   try {
     const apiClient = new ApiClient();
-    const query = {
-      filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-      ],
-      sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-    const location = await getCurrentLocation();
-    const departmentData = await apiClient.post(
-      `/api/departments/${location?.id}`,
-      query,
+    const params = new URLSearchParams({
+      search: q,
+      page: String(page ? page - 1 : 0),
+      size: String(pageLimit || 10),
+    });
+    const data = await apiClient.get(
+      `/api/v1/departments?${params.toString()}`,
     );
-    return parseStringify(departmentData);
+    return parseStringify(data);
   } catch (error) {
     throw error;
   }
 };
 
+export const searchDepartmentByName = async (
+  query: string,
+): Promise<Department[]> => {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(
+      `/api/v1/departments/search?query=${encodeURIComponent(query)}`,
+    );
+    return parseStringify(data);
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Fetch the active departments attached to an EXPLICIT location id.
+ * Departments live on a location, so a store has none of its own — a store
+ * context must pass its PARENT location id (a store id returns nothing). For
+ * the active location/store destination, prefer
+ * {@link fetchDepartmentsForCurrentLocation}.
+ */
+export const fetchDepartmentsByLocation = async (
+  locationId: string,
+  activeOnly: boolean = true,
+): Promise<Department[]> => {
+  if (!locationId) return [];
+  try {
+    const apiClient = new ApiClient();
+    const params = new URLSearchParams({
+      locationId,
+      activeOnly: String(activeOnly),
+    });
+    const data = await apiClient.get(
+      `/api/v1/departments/list?${params.toString()}`,
+    );
+    return parseStringify(data);
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Fetch the active departments for the user's current location/store
+ * destination. Used by the category form to drive the auto-select vs
+ * dropdown decision: a single result means "auto-pick", several mean
+ * "show a picker". NOTE: in a STORE context this passes the store id, which
+ * owns no departments — surfaces that need the store's parent-location
+ * departments must resolve the parent and call {@link fetchDepartmentsByLocation}.
+ */
+export const fetchDepartmentsForCurrentLocation = async (
+  activeOnly: boolean = true,
+): Promise<Department[]> => {
+  const destination = await getCurrentDestination();
+  if (!destination) return [];
+  return fetchDepartmentsByLocation(destination.id, activeOnly);
+};
+
+export const getDepartmentList = async (
+  activeOnly?: boolean,
+  ordered?: boolean,
+): Promise<Department[]> => {
+  try {
+    const apiClient = new ApiClient();
+    const params = new URLSearchParams();
+    if (activeOnly !== undefined)
+      params.append("activeOnly", String(activeOnly));
+    if (ordered !== undefined) params.append("ordered", String(ordered));
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const data = await apiClient.get(`/api/v1/departments/list${query}`);
+    return parseStringify(data);
+  } catch (error) {
+    throw error;
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Get
+// ---------------------------------------------------------------------------
+
+export const getDepartment = async (id: string): Promise<Department> => {
+  const apiClient = new ApiClient();
+  const data = await apiClient.get(`/api/v1/departments/${id}`);
+  return parseStringify(data);
+};
+
+// ---------------------------------------------------------------------------
+// Count
+// ---------------------------------------------------------------------------
+
+export const getDepartmentCount = async (): Promise<DepartmentCount> => {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(`/api/v1/departments/count`);
+    return parseStringify(data);
+  } catch (error) {
+    throw error;
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Create
+// ---------------------------------------------------------------------------
+
 export const createDepartment = async (
   department: z.infer<typeof DepartmentSchema>,
-  path: string,
 ): Promise<FormResponse<Department>> => {
-  // Authenticate user
-  const authenticatedUser = await getAuthenticatedUser();
-  if ("responseType" in authenticatedUser) {
-    return parseStringify(authenticatedUser);
-  }
-
-  // Validate input data
   const validatedData = DepartmentSchema.safeParse(department);
   if (!validatedData.success) {
     return parseStringify({
       responseType: "error",
-      message: "Please fill in all the required fields",
+      message: "Please fill in all required fields",
       error: new Error(validatedData.error.message),
     });
   }
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const business = await getCurrentBusiness();
-
-    // Prepare payload with location and business
-    const payload = {
-      ...validatedData.data,
-      location: location?.id,
-      business: business?.id,
-    };
-
-    // Make API request
     const response = await apiClient.post(
-      `/api/departments/${location?.id}/create`,
-      payload,
+      `/api/v1/departments`,
+      validatedData.data,
     );
-
-    // Handle path revalidation
-    revalidatePath(path);
-
-    // if (path === "department") {
-    //     redirect("/departments");
-    // }
-
-    // Return success response with created department data
+    revalidatePath("/departments");
     return parseStringify({
       responseType: "success",
       message: "Department created successfully",
@@ -123,149 +174,94 @@ export const createDepartment = async (
   } catch (error: any) {
     return parseStringify({
       responseType: "error",
-      message:
-        error.message ?? "Failed to create department. Please try again.",
+      message: error?.message || "Failed to create department",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
 };
 
-export const getDepartment = async (
-  id: UUID,
-): Promise<ApiResponse<Department>> => {
-  const apiClient = new ApiClient();
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
-  const location = await getCurrentLocation();
-  const departmentResponse = await apiClient.post(
-    `/api/departments/${location?.id}`,
-    query,
-  );
-
-  return parseStringify(departmentResponse);
-};
+// ---------------------------------------------------------------------------
+// Update
+// ---------------------------------------------------------------------------
 
 export const updateDepartment = async (
-  id: UUID,
+  id: string,
   department: z.infer<typeof DepartmentSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
-  const departmentValidData = DepartmentSchema.safeParse(department);
-
-  if (!departmentValidData.success) {
-    formResponse = {
+  const validatedData = DepartmentSchema.safeParse(department);
+  if (!validatedData.success) {
+    return parseStringify({
       responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(departmentValidData.error.message),
-    };
-    return parseStringify(formResponse);
+      message: "Please fill in all required fields",
+      error: new Error(validatedData.error.message),
+    });
   }
-
-  const location = await getCurrentLocation();
-  const business = await getCurrentBusiness();
-
-  const payload = {
-    ...departmentValidData.data,
-    location: location?.id,
-    business: business?.id,
-  };
 
   try {
     const apiClient = new ApiClient();
-
-    await apiClient.put(`/api/departments/${location?.id}/${id}`, payload);
-
+    await apiClient.put(`/api/v1/departments/${id}`, validatedData.data);
     revalidatePath("/departments");
-    formResponse = {
+    return parseStringify({
       responseType: "success",
       message: "Department updated successfully",
-    };
-    return parseStringify(formResponse);
-  } catch (error) {
-    console.error("Error updating department", error);
-    formResponse = {
+    });
+  } catch (error: any) {
+    return parseStringify({
       responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
+      message: error?.message || "Failed to update department",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Delete
+// ---------------------------------------------------------------------------
+
+export const deleteDepartment = async (id: string): Promise<void> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.delete(`/api/v1/departments/${id}`);
+    revalidatePath("/departments");
+  } catch (error) {
+    throw error;
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Deactivate / Reactivate
+// ---------------------------------------------------------------------------
+
+export const deactivateDepartment = async (
+  id: string,
+): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/departments/${id}/deactivate`, {});
+    revalidatePath("/departments");
+    return { responseType: "success", message: "Department deactivated" };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to deactivate department",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
-
-  if (formResponse) {
-    return parseStringify(formResponse);
-  }
 };
 
-export const deleteDepartment = async (id: UUID): Promise<void> => {
-  if (!id) throw new Error("Department ID is required to perform this request");
-
-  await getAuthenticatedUser();
-
+export const reactivateDepartment = async (
+  id: string,
+): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient();
-
-    const location = await getCurrentLocation();
-
-    await apiClient.delete(`/api/departments/${location?.id}/${id}`);
+    await apiClient.post(`/api/v1/departments/${id}/reactivate`, {});
     revalidatePath("/departments");
+    return { responseType: "success", message: "Department reactivated" };
   } catch (error) {
-    throw error;
-  }
-};
-
-export const DepartmentReport = async (
-  id: UUID,
-  startDate?: string,
-  endDate?: string,
-): Promise<Report> => {
-  if (!id) throw new Error("Department ID is required to perform this request");
-
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-    const queryParams = new URLSearchParams();
-
-    if (startDate) queryParams.append("startDate", startDate);
-    if (endDate) queryParams.append("endDate", endDate);
-
-    const queryString = queryParams.toString();
-    const url = `/api/reports/${id}/department/summary${queryString ? `?${queryString}` : ""}`;
-
-    const report = await apiClient.get(url);
-
-    return parseStringify(report);
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const fetchDepartmentsByLocation = async (
-  locationId: string,
-): Promise<Department[]> => {
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-
-    const departmentData = await apiClient.get(
-      `/api/departments/${locationId}`,
-    );
-
-    return parseStringify(departmentData);
-  } catch (error) {
-    console.error("Error fetching departments by location:", error);
-    throw error;
+    return {
+      responseType: "error",
+      message: "Failed to reactivate department",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
   }
 };

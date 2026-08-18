@@ -2,7 +2,6 @@
 
 import {z} from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
@@ -12,7 +11,6 @@ import { Salary } from "@/types/salary/type";
 import { SalarySchema } from "@/types/salary/schema";
 
 export const fectchSalaries = async () : Promise<Salary[]> => {
-    await  getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
@@ -35,7 +33,6 @@ export const searchSalary = async (
     page:number,
     pageLimit:number
 ): Promise<ApiResponse<Salary>> =>{
-    await getAuthenticatedUser();
 
 
     try {
@@ -202,7 +199,6 @@ export const updateSalary = async (
 export const deleteSalary = async (id: UUID): Promise<void> => {
     if (!id) throw new Error("Salary ID is required to perform this request");
 
-    await getAuthenticatedUser();
 
    try{
     const apiClient = new ApiClient();

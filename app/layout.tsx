@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Open_Sans } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { Providers } from "./providers";
@@ -8,8 +8,6 @@ import React from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { Viewport } from "next";
 import { GoogleAnalytics } from "@next/third-parties/google";
-import WhatsAppButton from "@/components/whatsapp-button";
-import { cookies } from "next/headers";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.settlo.co.tz"),
@@ -302,9 +300,20 @@ export const metadata: Metadata = {
   },
 };
 
-const openSans = Open_Sans({
+// App-wide fonts. Single source of truth — every other reference should
+// route through `var(--font-sans)` / `var(--font-mono)` (or the Tailwind
+// `font-sans` / `font-mono` utilities). Email templates and PDF widgets
+// stay on inline font-family strings because their renderers don't share
+// runtime fonts.
+const fontSans = Inter({
   subsets: ["latin"],
   display: "swap",
+  variable: "--font-sans",
+});
+const fontMono = JetBrains_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-mono",
 });
 
 export const viewport: Viewport = {
@@ -318,40 +327,21 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await auth();
-  const cookieStore = await cookies();
-
-  let businessName: string | undefined;
-  let locationName: string | undefined;
-
-  try {
-    const bizCookie = cookieStore.get("currentBusiness");
-    if (bizCookie) businessName = JSON.parse(bizCookie.value)?.name;
-  } catch {}
-
-  try {
-    const locCookie = cookieStore.get("currentLocation");
-    if (locCookie) locationName = JSON.parse(locCookie.value)?.name;
-  } catch {}
 
   return (
     <html
       lang="en"
       className="bg-primary-light"
+      data-scroll-behavior="smooth"
       suppressHydrationWarning={true}
     >
       <head />
       <body
-        className={`${openSans.className} antialiased bg-primary-light dark:bg-boxdark-2 dark:text-bodydark`}
+        className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased bg-primary-light dark:bg-boxdark-2 dark:text-bodydark`}
       >
         <SessionProvider session={session}>
           <Providers>{children}</Providers>
         </SessionProvider>
-        <WhatsAppButton
-          userName={session?.user?.name ?? undefined}
-          businessName={businessName}
-          locationName={locationName}
-          hideOnReserve
-        />
         <Analytics />
         <GoogleAnalytics gaId="G-7FEFKJQ300" />
       </body>

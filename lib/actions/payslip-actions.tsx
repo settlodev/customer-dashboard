@@ -1,7 +1,6 @@
 "use server";
 
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
@@ -10,7 +9,6 @@ import { getCurrentLocation } from "./business/get-current-business";
 import { Payslip } from "@/types/payslip/type";
 
 export const fectchPayslip = async () : Promise<Payslip[]> => {
-    await  getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
@@ -33,7 +31,6 @@ export const searchPayslip = async (
     page:number,
     pageLimit:number
 ): Promise<ApiResponse<Payslip>> =>{
-    await getAuthenticatedUser();
 
 
     try {
@@ -98,7 +95,6 @@ export const getPayslip= async (id:UUID) : Promise<ApiResponse<Payslip>> => {
 export const deletePayslip = async (id: UUID): Promise<void> => {
     if (!id) throw new Error("Payslip ID is required to perform this request");
 
-    await getAuthenticatedUser();
 
    try{
     const apiClient = new ApiClient();

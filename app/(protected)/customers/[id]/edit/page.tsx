@@ -1,57 +1,55 @@
-import { Customer, CustomerPreference } from "@/types/customer/type";
-import { getCustomerById, fetchCustomerPreferences } from "@/lib/actions/customer-actions";
+import { notFound, redirect } from "next/navigation";
 import { UUID } from "node:crypto";
-import { notFound } from "next/navigation";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import CustomerForm from "@/components/forms/customer_form";
+import {
+  fetchCustomerGroups,
+  getCustomerById,
+} from "@/lib/actions/customer-actions";
+import type { Customer, CustomerGroup } from "@/types/customer/type";
 
 type Params = Promise<{ id: string }>;
 
 export default async function CustomerEditPage({ params }: { params: Params }) {
-  const resolvedParams = await params;
-  let item: Customer | null = null;
-  let preferences: CustomerPreference[] = [];
+  const { id } = await params;
 
+  // /customers/new is the dedicated create route — bounce there if
+  // someone hits the edit URL with a literal "new" id.
+  if (id === "new") redirect("/customers/new");
+
+  let customer: Customer | null = null;
   try {
-    const customerId = resolvedParams.id as UUID;
-    const [customer, prefs] = await Promise.all([
-      getCustomerById(customerId),
-      fetchCustomerPreferences(customerId),
-    ]);
-    item = customer;
-    preferences = prefs ?? [];
-  } catch (error) {
-    console.log(error);
+    customer = await getCustomerById(id as UUID);
+    if (!customer) notFound();
+  } catch {
     throw new Error("Failed to load customer details");
   }
 
-  if (!item) notFound();
+  const groups: CustomerGroup[] = await fetchCustomerGroups().catch(() => []);
 
-  const breadCrumbItems = [
-    { title: "Customers", link: "/customers" },
-    { title: item.firstName + " " + item.lastName, link: `/customers/${item.id}` },
-    { title: "Edit", link: "" },
-  ];
+  const fullName = `${customer.firstName} ${customer.lastName}`;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between mb-2">
-        <div className="relative flex-1">
-          <BreadcrumbsNav items={breadCrumbItems} />
-        </div>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Edit customer details</CardTitle>
-          <CardDescription>
-            Update information for {item.firstName} {item.lastName}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CustomerForm item={item} preferences={preferences} />
-        </CardContent>
-      </Card>
-    </div>
+    <PageShell>
+      <PageBreadcrumbs
+        items={[
+          { title: "Customers", href: "/customers" },
+          { title: fullName, href: `/customers/${customer.id}` },
+          { title: "Edit" },
+        ]}
+      />
+      <PageHeader
+        title={`Edit ${fullName}`}
+        subtitle="Update profile, contact, identification, and loyalty preferences."
+      />
+      <PageBody>
+        <CustomerForm item={customer} groups={groups} />
+      </PageBody>
+    </PageShell>
   );
 }

@@ -1,4 +1,4 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import {Department} from "@/types/department/type";
 
 interface ProductDepartmentSelectorProps {
@@ -20,20 +20,19 @@ function ProductDepartmentSelector({
     departments
 }: ProductDepartmentSelectorProps) {
     return (
-        <Select value={value} onValueChange={onChange} disabled={isDisabled}>
-            <SelectTrigger>
-                <SelectValue placeholder={placeholder || "Select category"}/>
-            </SelectTrigger>
-            <SelectContent>
-                {departments && departments.length > 0 ?
-                    departments.map((item, index) => {
-                        return <SelectItem key={index} value={item.id}>
-                            {item.name}
-                        </SelectItem>
-                    })
-                    : <></>}
-            </SelectContent>
-        </Select>
+        <Combobox
+            options={(departments ?? []).map((item) => ({
+                value: item.id,
+                label: item.name,
+            }))}
+            value={value ?? null}
+            onChange={(v) => onChange(v ?? "")}
+            placeholder={placeholder || "Select category"}
+            searchPlaceholder="Search categories…"
+            emptyText="No categories found."
+            disabled={isDisabled}
+            ariaLabel="Category"
+        />
     )
 }
 export default ProductDepartmentSelector

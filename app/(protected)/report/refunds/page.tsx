@@ -1,461 +1,366 @@
-"use client";
-import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { endOfMonth, format, startOfMonth } from "date-fns";
 import {
-  CalendarIcon,
-  DownloadIcon,
-  PackageIcon,
-  RotateCcwIcon,
-  User,
+  Boxes,
+  Coins,
+  Package,
+  Percent,
+  RotateCcw,
+  Wallet,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+
+import { SectionCard } from "@/components/admin/shared/section-card";
+import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
+import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Calendar } from "@/components/ui/calendar";
-import { toast } from "@/hooks/use-toast";
-import SubmitButton from "@/components/widgets/submit-button";
-import { cn } from "@/lib/utils";
-import { ItemRefunds, RefundReport } from "@/types/refunds/type";
-import { GetRefundReport } from "@/lib/actions/refund-actions";
+  PageBody,
+  PageBreadcrumbs,
+  PageHeader,
+  PageShell,
+} from "@/components/layouts/page-shell";
+import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
+import { RefundExportButton } from "@/components/reports/refunds/refund-export-button";
+import {
+  RefundBreakdownList,
+  RefundImpactPanel,
+  RefundReasonComposition,
+} from "@/components/reports/refunds/refund-panels";
+import { RefundTrendChart } from "@/components/reports/refunds/refund-trend-chart";
+import { DataTable } from "@/components/tables/data-table";
+import { refundColumns } from "@/components/tables/refunds/columns";
+import { getLocationCurrency } from "@/lib/actions/currency-actions";
+import { fetchOverview } from "@/lib/actions/dashboard-action";
+import {
+  getRefundDashboard,
+  GetRefundReport,
+} from "@/lib/actions/refund-actions";
+import { requireReportsReadAll } from "@/lib/auth-utils";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import {
+  buildRefundTrendSeries,
+  fmtQuantity,
+  fmtRefundAmount,
+  pluralize,
+} from "@/types/reports/refunds";
+import type OverviewResponse from "@/types/dashboard/type";
 
-interface DatePickerProps {
-  value: Date;
-  onChange: (date: Date) => void;
-  label: string;
-}
-
-interface FormValues {
-  startDate: Date;
-  endDate: Date;
-}
-
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(amount);
-
-const getTodayRange = () => {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
+type Params = {
+  searchParams: Promise<{
+    from?: string;
+    to?: string;
+    page?: string;
+    limit?: string;
+  }>;
 };
 
-export default function RefundReportPage() {
-  const [refunds, setRefunds] = useState<RefundReport>();
-  const [loading, setLoading] = useState(false);
-  const [initialLoad, setInitialLoad] = useState(true);
-  const [dateError, setDateError] = useState<string>();
+export default async function RefundReportPage({ searchParams }: Params) {
+  const resolved = await searchParams;
+  await requireReportsReadAll();
 
-  const { start, end } = getTodayRange();
-  const [formValues, setFormValues] = useState<FormValues>({
-    startDate: start,
-    endDate: end,
-  });
+  // Current month by default — the standard window on every report screen.
+  const now = new Date();
+  const from = resolved.from ?? format(startOfMonth(now), "yyyy-MM-dd");
+  const to = resolved.to ?? format(endOfMonth(now), "yyyy-MM-dd");
+  const page = Math.max(1, Number(resolved.page) || 1);
+  const limit = Math.max(1, Number(resolved.limit) || DEFAULT_PAGE_SIZE);
 
-  useEffect(() => {
-    const { start, end } = getTodayRange();
-    setLoading(true);
-    GetRefundReport(start.toISOString(), end.toISOString())
-      .then(setRefunds)
-      .catch(() =>
-        toast({
-          variant: "destructive",
-          title: "Error loading today's report",
-        }),
-      )
-      .finally(() => {
-        setLoading(false);
-        setInitialLoad(false);
-      });
-  }, []);
+  const [dashboard, overview, currency, detail] = await Promise.all([
+    // One aggregated read behind the KPI strip, the trend and every
+    // breakdown — null renders the in-page retry rather than an empty screen.
+    getRefundDashboard({ startDate: from, endDate: to }).catch((e) => {
+      rethrowIfBoundary(e);
+      return null;
+    }),
+    // Sales-side denominator for the refund rate. Taken from the same
+    // overview the sales screens use, so the two never disagree.
+    fetchOverview(from, to)
+      .then((data) => data as OverviewResponse | null)
+      .catch((e) => {
+        rethrowIfBoundary(e);
+        return null;
+      }),
+    getLocationCurrency().catch(() => "TZS"),
+    // The line-item table pages server-side and keeps its own range-wide
+    // totals, so it stays a separate read from the aggregates above.
+    GetRefundReport({
+      startDate: from,
+      endDate: to,
+      page: page - 1,
+      size: limit,
+    }).catch((e) => {
+      rethrowIfBoundary(e);
+      return null;
+    }),
+  ]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formValues.startDate > formValues.endDate) {
-      setDateError("Start date must be before end date");
-      return;
-    }
-    setDateError(undefined);
-    setLoading(true);
-    try {
-      const data = await GetRefundReport(
-        formValues.startDate.toISOString(),
-        formValues.endDate.toISOString(),
-      );
-      setRefunds(data);
-    } catch {
-      toast({
-        variant: "destructive",
-        title: "Error loading report",
-        description: "Please try again.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const subtitle =
+    from === to
+      ? `Refunds on ${format(new Date(from), "MMM d, yyyy")}`
+      : `Refunds ${format(new Date(from), "MMM d")} – ${format(new Date(to), "MMM d, yyyy")}`;
 
-  const DateTimePicker = ({ value, onChange, label }: DatePickerProps) => {
-    const handleDateSelect = (date: Date | undefined) => {
-      if (date) {
-        const d = new Date(date);
-        d.setHours(value.getHours());
-        d.setMinutes(value.getMinutes());
-        onChange(d);
-      }
-    };
-    const handleTimeChange = (type: "hour" | "minute", val: string) => {
-      const d = new Date(value);
-      type === "hour"
-        ? d.setHours(parseInt(val, 10))
-        : d.setMinutes(parseInt(val, 10));
-      onChange(d);
-    };
+  const header = (
+    <>
+      <PageBreadcrumbs
+        items={[{ title: "Reports", href: "/dashboard" }, { title: "Refunds" }]}
+      />
+      <PageHeader
+        title="Refunds"
+        subtitle={subtitle}
+        titleAccessory={
+          <span className="inline-flex items-center rounded-full border border-line bg-canvas px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+            {currency}
+          </span>
+        }
+      />
+    </>
+  );
+
+  if (!dashboard) {
     return (
-      <div className="flex flex-col gap-1.5">
-        <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-          {label}
-        </span>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full justify-start text-left font-normal h-9 text-sm",
-                !value && "text-muted-foreground",
-              )}
-            >
-              <CalendarIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
-              {value ? (
-                format(value, "dd MMM yyyy, HH:mm")
-              ) : (
-                <span>Pick date and time</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <div className="sm:flex">
-              <Calendar
-                mode="single"
-                selected={value}
-                onSelect={handleDateSelect}
-                initialFocus
-              />
-              <div className="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x">
-                <ScrollArea className="w-64 sm:w-auto">
-                  <div className="flex sm:flex-col p-2">
-                    {Array.from({ length: 24 }, (_, i) => i)
-                      .reverse()
-                      .map((h) => (
-                        <Button
-                          key={h}
-                          size="icon"
-                          variant={
-                            value?.getHours() === h ? "default" : "ghost"
-                          }
-                          className="sm:w-full shrink-0 aspect-square text-xs"
-                          onClick={() => handleTimeChange("hour", h.toString())}
-                        >
-                          {h}
-                        </Button>
-                      ))}
-                  </div>
-                  <ScrollBar orientation="horizontal" className="sm:hidden" />
-                </ScrollArea>
-                <ScrollArea className="w-64 sm:w-auto">
-                  <div className="flex sm:flex-col p-2">
-                    {Array.from({ length: 12 }, (_, i) => i * 5).map((m) => (
-                      <Button
-                        key={m}
-                        size="icon"
-                        variant={
-                          value?.getMinutes() === m ? "default" : "ghost"
-                        }
-                        className="sm:w-full shrink-0 aspect-square text-xs"
-                        onClick={() => handleTimeChange("minute", m.toString())}
-                      >
-                        {m.toString().padStart(2, "0")}
-                      </Button>
-                    ))}
-                  </div>
-                  <ScrollBar orientation="horizontal" className="sm:hidden" />
-                </ScrollArea>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
+      <PageShell>
+        {header}
+        <PageBody>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <OrdersDateFilter from={from} to={to} />
+          </div>
+          <DataLoadError itemName="refunds" />
+        </PageBody>
+      </PageShell>
     );
-  };
+  }
+
+  const {
+    totalRefundCount: refundCount,
+    totalRefundedAmount: refundedAmount,
+    totalReturnedCost: returnedCost,
+    totalQuantity: unitsReturned,
+    refundedOrderCount,
+    restockedCount,
+    averageRefundAmount,
+    largestRefundAmount,
+  } = dashboard;
+
+  const hasRefunds = refundCount > 0;
+  const netSales = overview?.netSales ?? 0;
+  // Only meaningful against real sales — a period with refunds but no sales
+  // (returns against an earlier month) would otherwise read as an absurd %.
+  const refundRate = netSales > 0 ? (refundedAmount / netSales) * 100 : null;
+  const costRecoveryRate =
+    refundedAmount > 0 ? (returnedCost / refundedAmount) * 100 : 0;
+  const restockRate = hasRefunds ? (restockedCount / refundCount) * 100 : 0;
+
+  const trend = buildRefundTrendSeries(from, to, dashboard.trend);
+
+  const rows = detail?.refunds ?? [];
+  const detailTotal = detail?.totalElements ?? 0;
+  const detailPages = detail?.totalPages ?? 0;
 
   return (
-    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 space-y-5 min-h-screen">
-      {/* ── Page header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">
-            Refund report
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {refunds
-              ? `${format(formValues.startDate, "dd MMM yyyy")} — ${format(formValues.endDate, "dd MMM yyyy, HH:mm")}`
-              : "Select a date range to load report"}
-          </p>
-        </div>
-      </div>
+    <PageShell>
+      {header}
 
-      {/* ── Filter bar ── */}
-      <div className="p-4 bg-background border rounded-xl">
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-col sm:flex-row sm:items-end gap-3"
-        >
-          <div className="flex flex-col flex-1">
-            <DateTimePicker
-              value={formValues.startDate}
-              onChange={(d) => setFormValues((p) => ({ ...p, startDate: d }))}
-              label="Start date"
-            />
-          </div>
-          <div className="flex flex-col flex-1">
-            <DateTimePicker
-              value={formValues.endDate}
-              onChange={(d) => setFormValues((p) => ({ ...p, endDate: d }))}
-              label="End date"
-            />
-          </div>
-          <SubmitButton
-            isPending={loading && !initialLoad}
-            label="Apply filter"
-            className="h-9 text-sm sm:w-auto w-full"
+      <PageBody>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <OrdersDateFilter from={from} to={to} />
+          <RefundExportButton
+            from={from}
+            to={to}
+            currency={currency}
+            refundCount={refundCount}
+            refundedAmount={refundedAmount}
+            returnedCost={returnedCost}
+            unitsReturned={unitsReturned}
+            ordersAffected={refundedOrderCount}
+            restockedCount={restockedCount}
+            averageRefund={averageRefundAmount}
+            largestRefund={largestRefundAmount}
+            refundRate={refundRate}
+            byReason={dashboard.byReason}
+            byRefundType={dashboard.byRefundType}
+            byPaymentMethod={dashboard.byPaymentMethod}
+            topItems={dashboard.topItems}
+            byStaff={dashboard.byStaff}
+            disabled={!hasRefunds}
           />
-        </form>
-        {dateError && <p className="text-xs text-red-500 mt-2">{dateError}</p>}
-      </div>
-
-      {/* ── Metric cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-background border rounded-xl p-4 relative overflow-hidden">
-          <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-2">
-            Total refunds
-          </p>
-          <p className="text-2xl font-semibold tabular-nums text-amber-600 dark:text-amber-400">
-            {refunds?.totalRefunds ?? 0}
-            <span className="text-sm font-normal text-muted-foreground ml-1">
-              transactions
-            </span>
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Refund count in period
-          </p>
         </div>
 
-        <div className="bg-background border rounded-xl p-4 relative overflow-hidden">
-          <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-2">
-            Total refunded amount
-          </p>
-          <p className="text-2xl font-semibold tabular-nums text-red-600 dark:text-red-400">
-            TZS {formatCurrency(refunds?.totalRefundsAmount ?? 0)}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Revenue reversed to customers
-          </p>
-        </div>
+        {!hasRefunds ? (
+          <NoItems itemName="refunds in this period" />
+        ) : (
+          <>
+            <KpiStrip cols={6}>
+              <KpiCard
+                icon={<Wallet className="h-3 w-3" />}
+                label="Refunded"
+                value={fmtRefundAmount(refundedAmount)}
+                unit={currency}
+                delta={pluralize(refundCount, "refund")}
+                deltaTone="neg"
+              />
+              <KpiCard
+                icon={<Percent className="h-3 w-3" />}
+                label="Refund rate"
+                value={refundRate != null ? `${refundRate.toFixed(1)}%` : "—"}
+                delta={
+                  refundRate != null
+                    ? `of ${fmtRefundAmount(netSales)} net sales`
+                    : "no sales in period"
+                }
+                deltaTone={refundRate != null && refundRate > 5 ? "neg" : "neutral"}
+              />
+              <KpiCard
+                icon={<Boxes className="h-3 w-3" />}
+                label="Units returned"
+                value={fmtQuantity(unitsReturned)}
+                delta={`across ${pluralize(refundedOrderCount, "order")}`}
+                deltaTone="neutral"
+              />
+              <KpiCard
+                icon={<Coins className="h-3 w-3" />}
+                label="Cost recovered"
+                value={fmtRefundAmount(returnedCost)}
+                unit={currency}
+                delta={`${costRecoveryRate.toFixed(0)}% of refunded value`}
+                deltaTone="pos"
+              />
+              <KpiCard
+                icon={<Package className="h-3 w-3" />}
+                label="Restocked"
+                value={`${restockRate.toFixed(0)}%`}
+                delta={`${restockedCount.toLocaleString()} of ${refundCount.toLocaleString()}`}
+                deltaTone={restockRate >= 80 ? "pos" : "neutral"}
+              />
+              <KpiCard
+                icon={<RotateCcw className="h-3 w-3" />}
+                label="Average refund"
+                value={fmtRefundAmount(averageRefundAmount)}
+                unit={currency}
+                delta={`largest ${fmtRefundAmount(largestRefundAmount)}`}
+                deltaTone="neutral"
+              />
+            </KpiStrip>
 
-        <div className="bg-background border rounded-xl p-4 relative overflow-hidden">
-          <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-2">
-            Total returned cost
-          </p>
-          <p className="text-2xl font-semibold tabular-nums text-purple-600 dark:text-purple-400">
-            TZS {formatCurrency(refunds?.totalReturnedCost ?? 0)}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Cost of goods returned to stock
-          </p>
-        </div>
-      </div>
+            <div className="grid gap-4 lg:grid-cols-3">
+              <SectionCard
+                className="lg:col-span-2"
+                title="Refunds over time"
+                subtitle="Value refunded per business day, with the refund count"
+              >
+                <RefundTrendChart data={trend} currency={currency} />
+              </SectionCard>
 
-      {/* ── Loading ── */}
-      {loading && (
-        <div className="flex items-center justify-center py-16 text-muted-foreground gap-3">
-          <div className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full" />
-          <span className="text-sm">
-            {initialLoad ? "Loading today's report…" : "Loading report…"}
-          </span>
-        </div>
-      )}
-
-      {/* ── Refunded items table ── */}
-      {!loading &&
-        refunds &&
-        refunds.refundedItems &&
-        refunds.refundedItems.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                Refunded items
-              </p>
-              <span className="text-xs text-muted-foreground">
-                {refunds.refundedItems.length} items
-              </span>
+              <SectionCard
+                title="Margin impact"
+                subtitle="What the refunds actually cost"
+              >
+                <RefundImpactPanel
+                  refundedAmount={refundedAmount}
+                  returnedCost={returnedCost}
+                  restockedCount={restockedCount}
+                  refundCount={refundCount}
+                  currency={currency}
+                />
+              </SectionCard>
             </div>
 
-            <div className="bg-background border rounded-xl overflow-hidden">
-              {/* Desktop table */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-muted/40 border-b">
-                      {[
-                        "Item",
-                        "Qty",
-                        "Refund amount",
-                        "Returned cost",
-                        "Earliest",
-                        "Latest",
-                        "Processed by",
-                      ].map((h, i) => (
-                        <th
-                          key={h}
-                          className={cn(
-                            "px-4 py-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground whitespace-nowrap",
-                            i >= 1 && i <= 3 ? "text-right" : "text-left",
-                          )}
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {refunds.refundedItems.map(
-                      (item: ItemRefunds, index: number) => (
-                        <tr
-                          key={index}
-                          className="hover:bg-muted/30 transition-colors"
-                        >
-                          <td className="px-4 py-3">
-                            <p className="font-medium text-sm">
-                              {item.orderItemName}
-                            </p>
-                          </td>
-                          <td className="px-4 py-3 text-right tabular-nums text-sm font-medium">
-                            {item.quantity}
-                            <span className="text-muted-foreground font-normal ml-1">
-                              units
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right tabular-nums text-sm text-red-600 dark:text-red-400">
-                            TZS {formatCurrency(item.refundAmount)}
-                          </td>
-                          <td className="px-4 py-3 text-right tabular-nums text-sm text-purple-600 dark:text-purple-400">
-                            TZS {formatCurrency(item.returnedCost)}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                            {format(
-                              new Date(item.earliestRefunded),
-                              "dd MMM, HH:mm",
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                            {format(
-                              new Date(item.latestRefunded),
-                              "dd MMM, HH:mm",
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <User className="h-3 w-3 shrink-0" />
-                              {item.staffName || "—"}
-                            </div>
-                          </td>
-                        </tr>
-                      ),
-                    )}
-                  </tbody>
-                </table>
-              </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <SectionCard
+                title="Why customers refunded"
+                subtitle={`Share of refunded value by reason · ${pluralize(dashboard.byReason.length, "reason")}`}
+              >
+                <RefundReasonComposition
+                  rows={dashboard.byReason}
+                  currency={currency}
+                />
+              </SectionCard>
 
-              {/* Mobile card list */}
-              <div className="md:hidden divide-y">
-                {refunds.refundedItems.map(
-                  (item: ItemRefunds, index: number) => (
-                    <div key={index} className="p-4">
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <p className="font-medium text-sm">
-                          {item.orderItemName}
-                        </p>
-                        <span className="text-xs tabular-nums font-medium text-muted-foreground whitespace-nowrap">
-                          {item.quantity} units
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="bg-muted/40 rounded-lg p-2.5">
-                          <p className="text-muted-foreground mb-0.5">
-                            Refund amount
-                          </p>
-                          <p className="font-semibold tabular-nums text-red-600">
-                            TZS {formatCurrency(item.refundAmount)}
-                          </p>
-                        </div>
-                        <div className="bg-muted/40 rounded-lg p-2.5">
-                          <p className="text-muted-foreground mb-0.5">
-                            Returned cost
-                          </p>
-                          <p className="font-semibold tabular-nums text-purple-600">
-                            TZS {formatCurrency(item.returnedCost)}
-                          </p>
-                        </div>
-                        <div className="bg-muted/40 rounded-lg p-2.5">
-                          <p className="text-muted-foreground mb-0.5">
-                            Earliest
-                          </p>
-                          <p className="font-medium">
-                            {format(
-                              new Date(item.earliestRefunded),
-                              "dd MMM, HH:mm",
-                            )}
-                          </p>
-                        </div>
-                        <div className="bg-muted/40 rounded-lg p-2.5">
-                          <p className="text-muted-foreground mb-0.5">Latest</p>
-                          <p className="font-medium">
-                            {format(
-                              new Date(item.latestRefunded),
-                              "dd MMM, HH:mm",
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-2.5 text-xs text-muted-foreground">
-                        <User className="h-3 w-3" />
-                        <span>{item.staffName || "—"}</span>
-                      </div>
-                    </div>
-                  ),
-                )}
-              </div>
+              <SectionCard
+                title="Most refunded items"
+                subtitle="Top items by refunded value, with the cost that came back"
+              >
+                <RefundBreakdownList
+                  rows={dashboard.topItems}
+                  currency={currency}
+                  emptyLabel="No refunded items in this period."
+                  numbered
+                  showQuantity
+                  showCost
+                />
+              </SectionCard>
             </div>
-          </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <SectionCard
+                title="Processed by"
+                subtitle="Which staff put the refunds through"
+              >
+                <RefundBreakdownList
+                  rows={dashboard.byStaff}
+                  currency={currency}
+                  emptyLabel="No staff attribution on these refunds."
+                  barColor="hsl(var(--primary))"
+                />
+              </SectionCard>
+
+              <SectionCard
+                title="Refund type & payback"
+                subtitle="How the refund was issued, and how the money went back"
+              >
+                <div className="space-y-5">
+                  <div>
+                    <p className="mb-2.5 font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+                      Refund type
+                    </p>
+                    <RefundBreakdownList
+                      rows={dashboard.byRefundType}
+                      currency={currency}
+                      emptyLabel="No refund types recorded."
+                    />
+                  </div>
+                  <div className="border-t border-dashed border-line pt-4">
+                    <p className="mb-2.5 font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+                      Paid back via
+                    </p>
+                    <RefundBreakdownList
+                      rows={dashboard.byPaymentMethod}
+                      currency={currency}
+                      emptyLabel="No payback method recorded."
+                      barColor="hsl(var(--warn))"
+                    />
+                  </div>
+                </div>
+              </SectionCard>
+            </div>
+
+            <SectionCard
+              id="refund-detail"
+              title="Refund detail"
+              subtitle={
+                detail
+                  ? `${pluralize(detailTotal, "refunded line")} in this period`
+                  : "Refund line items for the period"
+              }
+            >
+              {detail ? (
+                <DataTable
+                  columns={refundColumns}
+                  data={rows}
+                  searchKey="orderItemName"
+                  hideSearch
+                  pageNo={page - 1}
+                  total={detailTotal}
+                  pageCount={detailPages}
+                  defaultPageSize={limit}
+                  rowClickBasePath="/refunds"
+                />
+              ) : (
+                <DataLoadError itemName="refund line items" />
+              )}
+            </SectionCard>
+          </>
         )}
-
-      {/* ── Empty state ── */}
-      {!loading &&
-        refunds &&
-        (!refunds.refundedItems || refunds.refundedItems.length === 0) && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
-              <RotateCcwIcon className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <p className="text-sm font-medium">No refunds in this period</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Try selecting a different date range
-            </p>
-          </div>
-        )}
-    </div>
+      </PageBody>
+    </PageShell>
   );
 }

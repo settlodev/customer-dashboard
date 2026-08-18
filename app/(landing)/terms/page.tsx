@@ -124,7 +124,7 @@ export default function LandingPage() {
             Terms of Service
           </h1>
           <p className="text-base text-muted-foreground">
-            Settlo Technologies Limited · Last updated January 2025
+            Settlo Technologies Ltd · Last updated January 2025
           </p>
         </div>
       </div>
@@ -140,7 +140,7 @@ export default function LandingPage() {
             legal agreement between you, as a current or prospective customer of
             Settlo&apos;s services (&apos;you&apos;, &apos;your&apos;) and{" "}
             <strong className="text-foreground font-medium">
-              Settlo Technologies Limited
+              Settlo Technologies Ltd
             </strong>{" "}
             (&apos;Settlo&apos;, &apos;we&apos;, &apos;our&apos;,
             &apos;us&apos;) and govern your use of Settlo&apos;s services. By
@@ -230,7 +230,7 @@ export default function LandingPage() {
           <p style={{ color: "#0F6E56" }}>
             I, the business owner or an authorised employee, have read and
             understood all terms and conditions in this binding contract of
-            service between my business and Settlo Technologies Limited.
+            service between my business and Settlo Technologies Ltd.
           </p>
         </div>
 
@@ -246,7 +246,7 @@ export default function LandingPage() {
             conditions.
           </p>
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Settlo Technologies Limited. All rights
+            © {new Date().getFullYear()} Settlo Technologies Ltd. All rights
             reserved.
           </p>
         </div>

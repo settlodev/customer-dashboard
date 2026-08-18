@@ -1,4 +1,4 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Stock } from "@/types/stock/type";
 
 interface StockProps {
@@ -20,20 +20,16 @@ function StockSelector({
     stocks
 }: StockProps) {
     return (
-        <Select value={value} onValueChange={onChange} disabled={isDisabled}>
-            <SelectTrigger>
-                <SelectValue placeholder={placeholder || "Select stock"}/>
-            </SelectTrigger>
-            <SelectContent>
-                {stocks && stocks.length > 0 ?
-                    stocks.map((item, index) => {
-                        return <SelectItem key={index} value={item.id}>
-                            {item.name}
-                        </SelectItem>
-                    })
-                    : <></>}
-            </SelectContent>
-        </Select>
+        <Combobox
+            options={stocks.map((item) => ({ value: item.id, label: item.name }))}
+            value={value ?? null}
+            onChange={(v) => onChange(v ?? "")}
+            placeholder={placeholder || "Select stock"}
+            searchPlaceholder="Search stocks…"
+            emptyText="No stocks found."
+            disabled={isDisabled}
+            ariaLabel="Stock"
+        />
     )
 }
 export default StockSelector

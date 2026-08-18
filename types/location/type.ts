@@ -1,31 +1,31 @@
-import { UUID } from "crypto";
-import { subscriptionStatus } from "../enums";
-
+// Mirrors LocationResponse from the Settlo Accounts Service
+// (`/api/v1/locations/{id}`). `identifier` and `slug` are server-managed;
+// `accountId` / `businessId` are immutable once assigned. `website` is not
+// returned by the accounts service (retained optional for legacy consumers
+// reading older cached payloads).
 export interface Location {
-  type: any;
-  id: UUID;
-  name: string;
-  phone: string;
-  locationAccountNumber: string;
-  email: string;
-  city: string;
-  region: string;
-  street: string;
-  address: string;
-  description: string;
-  image: string;
-  openingTime: string;
-  closingTime: string;
-  status: boolean;
-  isArchived: boolean;
-  canDelete: boolean;
-  dateCreated: string;
-  settings: UUID;
-  business: UUID;
+  id: string;
+  accountId: string;
+  businessId: string;
   businessName: string;
-  locationBusinessType: UUID;
-  locationBusinessTypeName: string;
-  subscriptionStatus: subscriptionStatus;
-  subscriptionStartDate: string;
-  subscriptionEndDate: string;
+  identifier: string;
+  name: string;
+  description: string;
+  phoneNumber: string;
+  email: string;
+  active: boolean;
+  countryId: string;
+  businessTypeId?: string;
+  businessTypeName?: string;
+  region: string;
+  district: string;
+  ward: string;
+  address: string;
+  postalCode: string;
+  latitude: number | null;
+  longitude: number | null;
+  timezone: string;
+  website?: string;
+  createdAt: string;
+  updatedAt: string;
 }

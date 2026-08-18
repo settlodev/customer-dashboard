@@ -1,62 +1,34 @@
 "use server";
-import { deleteActiveLocationCookie } from "@/lib/auth-utils";
-import ApiClient from "@/lib/settlo-api-client";
-import { parseStringify } from "@/lib/utils";
-import { ActiveSubscription } from "@/types/subscription/type";
-import { revalidatePath } from "next/cache";
+
 import { cookies } from "next/headers";
+import type { Warehouses } from "@/types/warehouse/warehouse/type";
+import { getCurrentBusinessId } from "@/lib/actions/business/get-current-business";
 
-export const getCurrentWarehouse = async (): Promise<any | undefined> => {
+/** Reads the active warehouse from the `currentWarehouse` cookie, if any. */
+export const getCurrentWarehouse = async (): Promise<Warehouses | undefined> => {
   const cookieStore = await cookies();
-  const warehouseCookie = cookieStore.get("currentWarehouse");
-  if (!warehouseCookie) return undefined;
+  const raw = cookieStore.get("currentWarehouse")?.value;
+  if (!raw || !raw.trim()) return undefined;
 
+  let warehouse: Warehouses;
   try {
-    return JSON.parse(warehouseCookie.value) as any;
-  } catch (error) {
-    console.error("Failed to parse Warehouse cookie:", error);
-
+    warehouse = JSON.parse(raw) as Warehouses;
+  } catch {
     return undefined;
   }
-};
-export const refreshWarehouse = async (data: any): Promise<void> => {
-  if (!data) throw new Error("Business ID is required to perform this request");
 
-  await deleteActiveLocationCookie();
-
-  const cookieStore = await cookies();
-  cookieStore.set({
-    name: "currentWarehouse",
-    value: JSON.stringify(data),
-    sameSite: "strict",
-  });
-
-  revalidatePath("/warehouse");
-};
-
-export const deleteActiveWarehouseCookie = async () => {
-  const cookieStore = await cookies();
-  cookieStore.delete("activeWarehouse");
-  console.log("Deleting current warehouse cookies");
-};
-
-export const getActiveSubscriptionForWarehouse = async (
-  locationId?: string | null,
-): Promise<ActiveSubscription> => {
-  let warehouse;
-  if (locationId) {
-    warehouse = { id: locationId };
-  } else {
-    warehouse = await getCurrentWarehouse();
+  // The active warehouse must belong to the active business. A warehouse
+  // lingering from a previous business after a switch would stamp a
+  // cross-business X-Location-Id and 403 against business-scoped services.
+  // Treat a mismatch as "no active warehouse". (Mirrors getCurrentLocation.)
+  const businessId = await getCurrentBusinessId();
+  if (
+    businessId &&
+    warehouse.businessId &&
+    warehouse.businessId !== businessId
+  ) {
+    return undefined;
   }
 
-  try {
-    const apiClient = new ApiClient();
-    const response = await apiClient.get(
-      `/api/warehouse-subscriptions/${warehouse?.id}/last-active`,
-    );
-    return parseStringify(response);
-  } catch (error) {
-    throw error;
-  }
+  return warehouse;
 };

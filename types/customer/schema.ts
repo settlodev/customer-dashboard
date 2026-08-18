@@ -1,15 +1,19 @@
 import {
+  array,
   boolean,
   nativeEnum,
   number,
   object,
-  string,
-  enum as zenum,
   preprocess,
-  array,
+  string,
 } from "zod";
 import { isValidPhoneNumber } from "libphonenumber-js";
-import { Gender } from "@/types/enums";
+import {
+  AddressType,
+  CustomerCreatedFrom,
+  CustomerSource,
+  Gender,
+} from "@/types/enums";
 
 const optionalNumber = preprocess((val) => {
   if (val === null || val === undefined || val === "") return undefined;
@@ -21,17 +25,16 @@ const optionalNumber = preprocess((val) => {
 }, number().nonnegative().optional());
 
 export const CustomerSchema = object({
-  // ── Personal ────────────────────────────────────────────────
-  firstName: string({ required_error: "Customer first name is required" }).min(
+  firstName: string({ required_error: "First name is required" }).min(
     1,
     "Please enter a valid name",
   ),
-  lastName: string({ required_error: "Customer last name is required" }).min(
+  lastName: string({ required_error: "Last name is required" }).min(
     1,
     "Please enter a valid name",
   ),
   gender: nativeEnum(Gender, { required_error: "Gender is required" }),
-  phoneNumber: string({ message: "Customer phone number is required" }).refine(
+  phoneNumber: string({ required_error: "Phone number is required" }).refine(
     isValidPhoneNumber,
     { message: "Invalid phone number" },
   ),
@@ -42,64 +45,27 @@ export const CustomerSchema = object({
     .transform((val) => (val === "" ? undefined : val)),
   dateOfBirth: string().optional(),
 
-  // ── Identification ───────────────────────────────────────────
   idType: string().optional(),
   idNumber: string().optional(),
   tinNumber: string().optional(),
   vrn: string().optional(),
 
-  // ── Financial & Loyalty ──────────────────────────────────────
   creditLimit: optionalNumber,
-  loyaltyPoints: optionalNumber,
-  noShowCount: optionalNumber,
 
-  // ── Preferences & Group ──────────────────────────────────────
-  seatingPreference: string().optional(),
-  source: zenum([
-    "POS",
-    "ONLINE",
-    "GOOGLE",
-    "INSTAGRAM",
-    "REFERRAL",
-    "WALK_IN",
-  ]).optional(),
-  createdFrom: zenum([
-    "POS",
-    "MOBILE_APP",
-    "WEBSITE",
-    "RESERVATION",
-  ]).optional(),
-  customerGroup: string()
+  allowNotifications: boolean().optional(),
+  notes: string().optional(),
+
+  source: nativeEnum(CustomerSource).optional(),
+  createdFrom: nativeEnum(CustomerCreatedFrom).optional(),
+  customerGroupId: string()
     .uuid("Please select a valid customer group")
     .optional(),
 
-  // ── Misc ─────────────────────────────────────────────────────
-  notes: string().optional(),
-  allowNotifications: boolean().optional(),
-  status: boolean().optional(),
-
-  // ── Company Association (optional) ───────────────────────────
-  isCompanyAssociated: boolean().default(false),
-  companyName: string().optional(),
-  companyRegistrationNumber: string().optional(),
-  contactPersonRole: string().optional(),
-  companyEmailAddress: string().optional(),
-  companyPhoneNumber: string().optional(),
-  companyPhysicalAddress: string().optional(),
-}).superRefine((data, ctx) => {
-  if (data.isCompanyAssociated) {
-    if (!data.companyName?.trim()) {
-      ctx.addIssue({
-        path: ["companyName"],
-        code: "custom",
-        message: "Company name is required",
-      });
-    }
-  }
+  active: boolean().optional(),
 });
 
 export const CustomerAddressSchema = object({
-  addressType: zenum(["HOME", "WORK", "OTHER"], {
+  addressType: nativeEnum(AddressType, {
     required_error: "Address type is required",
   }),
   addressLine: string({ required_error: "Address is required" }).min(
@@ -123,9 +89,11 @@ export const CustomerGroupSchema = object({
     1,
     "Group name is required",
   ),
+  description: string().optional(),
+  active: boolean().optional(),
 });
 
-export const CustomersGroupChangeSchema = object({
+export const BulkGroupChangeSchema = object({
   customerGroupId: string().uuid("Please select a valid group"),
   customerIds: array(string().uuid()).min(
     1,

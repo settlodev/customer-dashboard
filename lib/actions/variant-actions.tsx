@@ -2,7 +2,6 @@
 
 import {z} from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {UUID} from "node:crypto";
@@ -11,7 +10,6 @@ import { Variant } from "@/types/variant/type";
 import { VariantSchema } from "@/types/variant/schema";
 
 export const fetchVariants = async () : Promise<Variant[]> => {
-    await  getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
@@ -32,7 +30,6 @@ export const searchVariants = async (
     page:number,
     pageLimit:number
 ): Promise<ApiResponse<Variant>> =>{
-    await getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
@@ -187,7 +184,6 @@ export const updateVariant = async (
 export const deleteVariant = async (id: UUID, productId: UUID): Promise<void> => {
     if (!id) throw new Error("Product ID is required to perform this request");
 
-    await getAuthenticatedUser();
 
    try{
     const apiClient = new ApiClient();

@@ -1,0 +1,161 @@
+import type { DestinationType } from "@/types/catalogue/enums";
+
+// ── Enums (match backend) ──────────────────────────────────────────
+
+export type RequisitionStatus =
+  | "DRAFT"
+  | "SUBMITTED"
+  | "APPROVED"
+  | "REJECTED"
+  | "CONVERTED_TO_LPO"
+  | "CANCELLED";
+
+export type RequisitionPriority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
+
+// ── Entities ───────────────────────────────────────────────────────
+
+export interface PurchaseRequisition {
+  id: string;
+  requisitionNumber: string;
+  locationType: DestinationType;
+  locationId: string;
+  businessId: string;
+  requestedBy: string;
+  requestedByName: string | null;
+  status: RequisitionStatus;
+  currency: string | null;
+  priority: RequisitionPriority;
+  requiredByDate: string | null;
+  approvedBy: string | null;
+  approvedByName: string | null;
+  approvedAt: string | null;
+  rejectedBy: string | null;
+  rejectedByName: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+  convertedLpoId: string | null;
+  convertedAt: string | null;
+  notes: string | null;
+  shareToken: string | null;
+  shareTokenIssuedAt: string | null;
+  items: RequisitionItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Public payload returned by GET /api/v1/public/purchase-requisitions/{token}.
+// Letterhead is embedded so the share page renders branded headers without a
+// second round-trip.
+export interface PublicRequisition {
+  id: string;
+  requisitionNumber: string;
+  status: RequisitionStatus;
+  priority: RequisitionPriority;
+  requiredByDate: string | null;
+  currency: string | null;
+  notes: string | null;
+  createdAt: string;
+  approvedAt: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+  shareTokenIssuedAt: string | null;
+  items: PublicRequisitionItem[];
+  letterhead: import("@/types/letterhead/type").LocationLetterhead | null;
+}
+
+export interface PublicRequisitionItem {
+  id: string;
+  stockVariantId: string;
+  stockVariantDisplayName: string | null;
+  requestedQuantity: number;
+  estimatedUnitCost: number | null;
+  currency: string | null;
+  preferredSupplierId: string | null;
+  notes: string | null;
+}
+
+export interface RequisitionItem {
+  id: string;
+  stockVariantId: string;
+  stockVariantDisplayName: string | null;
+  requestedQuantity: number;
+  estimatedUnitCost: number | null;
+  currency: string | null;
+  preferredSupplierId: string | null;
+  notes: string | null;
+}
+
+// ── Payloads ───────────────────────────────────────────────────────
+
+export interface CreateRequisitionItemPayload {
+  stockVariantId: string;
+  requestedQuantity: number;
+  estimatedUnitCost?: number;
+  preferredSupplierId?: string;
+  notes?: string;
+}
+
+export interface CreateRequisitionPayload {
+  locationType: DestinationType;
+  priority?: RequisitionPriority;
+  requiredByDate?: string;
+  notes?: string;
+  items: CreateRequisitionItemPayload[];
+}
+
+// ── Display helpers ────────────────────────────────────────────────
+
+export const REQUISITION_STATUS_LABELS: Record<RequisitionStatus, string> = {
+  DRAFT: "Draft",
+  SUBMITTED: "Submitted",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+  CONVERTED_TO_LPO: "Converted to LPO",
+  CANCELLED: "Cancelled",
+};
+
+export const REQUISITION_STATUS_TONES: Record<RequisitionStatus, string> = {
+  DRAFT: "bg-muted text-ink-2",
+  SUBMITTED: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  APPROVED: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400",
+  REJECTED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  CONVERTED_TO_LPO: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+};
+
+export const PRIORITY_LABELS: Record<RequisitionPriority, string> = {
+  LOW: "Low",
+  NORMAL: "Normal",
+  HIGH: "High",
+  URGENT: "Urgent",
+};
+
+export const PRIORITY_TONES: Record<RequisitionPriority, string> = {
+  LOW: "bg-muted text-ink-2",
+  NORMAL: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  HIGH: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  URGENT: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+};
+
+export const PRIORITY_OPTIONS: { value: RequisitionPriority; label: string }[] = [
+  { value: "LOW", label: "Low" },
+  { value: "NORMAL", label: "Normal" },
+  { value: "HIGH", label: "High" },
+  { value: "URGENT", label: "Urgent" },
+];
+
+export function canSubmitRequisition(status: RequisitionStatus): boolean {
+  return status === "DRAFT";
+}
+
+export function canApproveRequisition(status: RequisitionStatus): boolean {
+  return status === "SUBMITTED";
+}
+
+export function canCancelRequisition(status: RequisitionStatus): boolean {
+  return status === "DRAFT" || status === "SUBMITTED";
+}
+
+export function canConvertRequisition(status: RequisitionStatus): boolean {
+  return status === "APPROVED";
+}

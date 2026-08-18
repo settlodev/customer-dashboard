@@ -9,7 +9,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import { PageShell, PageHeader, PageBreadcrumbs, PageBody } from "@/components/layouts/page-shell";
 import {ApiResponse} from "@/types/types";
 import { Salary } from "@/types/salary/type";
 import { getSalary } from "@/lib/actions/salary-actions";
@@ -33,24 +33,19 @@ export default async function SalaryPage ({params}: {params: Params}) {
         }
     }
 
-    const breadcrumbItems = [
-        { title: "Salary", link: "/salaries" },
-        {
-            title: isNewItem ? "New" : item?.content[0]?.amount.toString() || "Edit",
-            link: "",
-        },
-    ];
-
     return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <div className="flex items-center justify-between mb-2">
-                <div className="relative flex-1 md:max-w-md">
-                    <BreadcrumbsNav items={breadcrumbItems} />
-                </div>
-            </div>
-
-            <SalaryCard isNewItem={isNewItem} item={item?.content[0]} />
-        </div>
+        <PageShell>
+            <PageBreadcrumbs
+                items={[
+                    { title: "Salaries", href: "/salaries" },
+                    { title: isNewItem ? "New" : item?.content[0]?.amount.toString() || "Edit" },
+                ]}
+            />
+            <PageHeader title={isNewItem ? "Add salary" : "Edit salary"} />
+            <PageBody>
+                <SalaryCard isNewItem={isNewItem} item={item?.content[0]} />
+            </PageBody>
+        </PageShell>
     );
 }
 

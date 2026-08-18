@@ -1,126 +1,333 @@
-import { UUID } from "node:crypto";
 import { Gender } from "@/types/enums";
 import {
   boolean,
-  date,
   nativeEnum,
   object,
   preprocess,
   string,
+  array,
+  date,
+  RefinementCtx,
 } from "zod";
 import { isValidPhoneNumber } from "libphonenumber-js";
 
-export const StaffSchema = object({
-  firstName: string({ required_error: "Staff first name is required" }).min(
-    1,
-    "Please enter a valid first name"
-  ),
-  lastName: string({ required_error: "Staff last name is required" }).min(
-      1,
-      "Please enter a valid last name"
-  ),
-  color: preprocess((val) => (val === null ? "" : val), string().optional()),
-  email: string()
-    .min(1, "Please enter a valid email address")
-    .email("Please enter a valid email address")
-    .optional()
-    .nullish(),
-  phone: string({ required_error: "Phone number is required" }).refine(
-    isValidPhoneNumber,
-    {
-      message: "Invalid phone number",
-    }
-  ),
-  image: preprocess((val) => (val === null ? "" : val), string().optional()),
-  status: boolean(),
-  department: string({ message: "Staff department is required" }).uuid(
-    "Please select a valid department"
-  ),
-  salary: string({ message: "Salary is required" }).uuid(
-    "Please select a valid salary"
-  ).optional().nullish(),
-  role: string({ message: "Staff role is required" }).uuid(
-    "Please select a valid role"
-  ),
-  address: preprocess((val) => (val === null ? "" : val), string().optional()),
-  employeeNumber: string().optional().nullish(),
-  gender: nativeEnum(Gender),
-  dateOfBirth: preprocess((val) => {
-    if (val === null) return undefined;
-    if (typeof val === "string" && val.trim() !== "") {
-      return new Date(val);
-    }
+// ---------------------------------------------------------------------------
+// Nested info types returned inside StaffResponse
+// ---------------------------------------------------------------------------
 
-    return val;
-  }, date().optional()),
-  nationality: preprocess(
-    (val) => (val === null ? "" : val),
-    string().optional()
-  ),
-  joiningDate: preprocess((val) => {
-    if (val === null) return undefined;
-    if (typeof val === "string" && val.trim() !== "") {
-      return new Date(val);
-    }
-    return val;
-  }, date().optional()),
-  jobTitle: string({message:"Job title is required"}).min(3, "Please enter a valid job title"),
-  emergencyName: preprocess((val) => (val === null ? "" : val), string().optional()),
-  emergencyNumber: preprocess((val) => (val === null ? "" : val), string().optional()),
-  emergencyRelationship: preprocess((val) => (val === null ? "" : val), string().optional()),
-  notes: preprocess((val) => (val === null ? "" : val), string().optional()),
-  posAccess: boolean().optional(),
-  dashboardAccess: boolean().optional(),
-});
-
-export declare interface Staff {
-  id: UUID;
-  firstName: string;
-  lastName: string;
-  name?: string;
-  email?: string;
-  phone?: string;
-  image?: string;
-  passCode?: number;
-  color?: string;
-  salary: string;
-  role: string;
-  roleName?: string;
-  gender: Gender;
-  jobTitle: string;
-  business: string;
-  location: string;
-  employeeNumber?: string;
-  department?: UUID;
-  departmentName?: string;
-  address?: string;
-  notes?: string;
-  emergencyNumber?: string;
-  emergencyName?: string;
-  emergencyRelationship?: string;
-  posAccess: boolean;
-  dashboardAccess: boolean;
-  loyaltyPoints: number | null;
-  salaryAmount?: number | null;
-  nationalityName?: string;
-  userType?: string;
-  canDelete: boolean;
-  isArchived: boolean;
-  status: boolean;
-  dateOfBirth?: Date;
-  nationality?: string;
-  joiningDate: Date;
-  warehouseRole?: string;
+export interface DepartmentInfo {
+  id: string;
+  name: string;
+  color: string;
 }
 
-export declare interface StaffSummaryReport{
-  staffReports:staffReports[]
-} 
+export interface RoleInfo {
+  id: string;
+  name: string;
+  scope: string;
+}
 
-export declare interface staffReports {
-  id: UUID;
+// ---------------------------------------------------------------------------
+// Staff (matches StaffResponse from Accounts Service)
+// ---------------------------------------------------------------------------
+
+export interface Staff {
+  id: string;
+  accountId: string;
+  locationId: string;
+  authId: string | null;
+  identifier: string;
+  fullName: string;
+  firstName: string;
+  lastName: string;
+  /** Avatar the staff member uploaded on their own profile; null until they do. */
+  pictureUrl?: string | null;
+  active: boolean;
+  dashboardAccess: boolean;
+  posAccess: boolean;
+  /** True when this staff record is the account owner. Backend blocks
+   * deactivation and access revocation for the owner-staff. */
+  owner: boolean;
+  /** Whether the staff has a POS PIN set. Hash itself is never returned —
+   * the paired device gets it via the internal staff-sync endpoint. */
+  hasPin: boolean;
+  /** Timestamp of the last PIN change, or null if no PIN has been set. */
+  pinUpdatedAt: string | null;
+  color: string | null;
+  employeeNumber: string | null;
+  gender: Gender;
+  dateOfBirth: string | null;
+  joiningDate: string | null;
+  jobTitle: string | null;
+  emergencyNumber: string | null;
+  emergencyName: string | null;
+  emergencyRelationship: string | null;
+  phoneNumber: string | null;
+  email: string | null;
+  address: string | null;
+  notes: string | null;
+  nationalityId: string | null;
+  nationalityName: string | null;
+  /** Primary department — null for staff who aren't attached to one. */
+  departmentId: string | null;
+  departmentName: string | null;
+  departments: DepartmentInfo[];
+  roles: RoleInfo[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Enriched staff (list view with gamification)
+// ---------------------------------------------------------------------------
+
+export interface StaffListEnriched {
+  staff: Staff;
+  gamificationSummary: {
+    totalXp: number;
+    currentLevel: number;
+    levelName: string;
+    badgeIcon: string;
+    currentStreak: number;
+    leaderboardRank: number;
+    activeChallenges: Array<{
+      challengeName: string;
+      challengeType: string;
+      currentValue: number;
+      targetValue: number;
+      completed: boolean;
+      leading: boolean;
+    }>;
+  } | null;
+  loyaltyPoints: number;
+}
+
+// ---------------------------------------------------------------------------
+// Staff detail (single view with gamification, loyalty, attendance)
+// ---------------------------------------------------------------------------
+
+export interface StaffDetail {
+  profile: Staff;
+  gamification: {
+    enabled: boolean;
+    totalXp: number;
+    currentLevel: number;
+    levelName: string;
+    badgeIcon: string;
+    xpToNextLevel: number;
+    currentStreak: number;
+    longestStreak: number;
+    leaderboardRank: number;
+    ordersToday: number;
+    activeChallenges: Array<{
+      challengeId: string;
+      challengeName: string;
+      currentValue: number;
+      targetValue: number;
+      progressPercentage: number;
+      completed: boolean;
+      distanceMessage: string;
+    }>;
+    recentXpTransactions: StaffXpTransaction[];
+  } | null;
+  loyalty: {
+    points: number;
+    carryOver: number;
+    redeemable: boolean;
+    minimumRedeemablePoints: number;
+  } | null;
+  attendance: {
+    recentSchedules: any[];
+    recentTimesheetEntries: any[];
+  } | null;
+}
+
+export interface StaffXpTransaction {
+  id: string;
+  staffId: string;
+  xpAmount: number;
+  xpSource: string;
+  referenceType: string;
+  referenceId: string;
+  description: string;
+  createdAt: string;
+}
+
+// Matches StaffAuditEventResponse from the Accounts Service.
+export interface StaffAuditEvent {
+  id: string;
+  action: string; // e.g. "DEACTIVATED", "ROLES_ASSIGNED", "PIN_SET"
+  actorName: string | null;
+  actorType: string; // USER | STAFF | DEVICE | SYSTEM
+  impersonated: boolean;
+  details: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Staff count
+// ---------------------------------------------------------------------------
+
+export interface StaffCount {
+  total: number;
+  active: number;
+  inactive: number;
+  /** Account-wide count of staff with POS access (server-computed, not page-derived). */
+  posAccess: number;
+  /** Account-wide count of staff with dashboard access. */
+  dashboardAccess: number;
+  /** Account-wide count of staff with an offline PIN set. */
+  pinSet: number;
+}
+
+// ---------------------------------------------------------------------------
+// Staff summary report (from Reports Service)
+// ---------------------------------------------------------------------------
+
+export interface StaffSummaryReport {
+  staffReports: StaffReportItem[];
+}
+
+export interface StaffReportItem {
+  id: string;
   name: string;
   image: string;
+  totalOrdersCompleted: number;
+  totalItemsSold: number;
+  totalStockIntakePerformed: number;
+  totalGrossAmount: number;
+  totalNetAmount: number;
+  totalGrossProfit: number;
+}
+
+// ---------------------------------------------------------------------------
+// Schema for changing a dashboard-staff member's login email
+// ---------------------------------------------------------------------------
+
+export const ChangeStaffEmailSchema = object({
+  email: string({ required_error: "Email is required" }).email(
+    "Enter a valid email address",
+  ),
+});
+
+// ---------------------------------------------------------------------------
+// Schema for create/update staff form
+// ---------------------------------------------------------------------------
+
+export const StaffSchema = object({
+  firstName: string({ required_error: "First name is required" }).min(
+    1,
+    "Enter a valid first name",
+  ),
+  lastName: string({ required_error: "Last name is required" }).min(
+    1,
+    "Enter a valid last name",
+  ),
+  /** Avatar (R2 URL from the upload widget). Optional — staff can also set
+   *  their own later from /profile. */
+  pictureUrl: string().optional(),
+  // Required on the dashboard for reachability — backend keeps it
+  // optional, so the dashboard tightens the contract without breaking
+  // any service-to-service caller. Validated against libphonenumber so
+  // emergency calls and SMS reminders actually work.
+  phoneNumber: string({ required_error: "Phone number is required" })
+    .min(1, "Phone number is required")
+    .refine(isValidPhoneNumber, { message: "Enter a valid phone number" }),
+  // Optional everywhere except when dashboardAccess is on — that
+  // conditional rule is enforced in the superRefine block below.
+  email: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().email("Enter a valid email").optional(),
+  ),
+  gender: nativeEnum(Gender, { required_error: "Gender is required" }),
+  jobTitle: string({ required_error: "Job title is required" }).min(
+    1,
+    "Enter a job title",
+  ),
+  // Optional — accounts that don't organise their people into departments
+  // (or whose package only exposes the auto-created Main one) leave this
+  // empty, and the backend stores staff with no primary department.
+  departmentId: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().uuid("Select a department").optional(),
+  ),
+  departmentIds: array(string().uuid()).optional(),
+  roleIds: array(string().uuid()).min(1, "Select at least one role"),
+  color: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().optional(),
+  ),
+  employeeNumber: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().optional(),
+  ),
+  dateOfBirth: preprocess((val) => {
+    if (!val || val === "") return undefined;
+    if (typeof val === "string") return new Date(val);
+    return val;
+  }, date().optional()),
+  joiningDate: preprocess((val) => {
+    if (!val || val === "") return undefined;
+    if (typeof val === "string") return new Date(val);
+    return val;
+  }, date().optional()),
+  nationalityId: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().uuid().optional(),
+  ),
+  address: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().optional(),
+  ),
+  notes: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().optional(),
+  ),
+  emergencyName: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().optional(),
+  ),
+  emergencyNumber: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().optional(),
+  ),
+  emergencyRelationship: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().optional(),
+  ),
+  posAccess: boolean().optional(),
+  dashboardAccess: boolean().optional(),
+  pin: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string()
+      .regex(/^\d{4,6}$/, "PIN must be 4-6 digits")
+      .optional(),
+  ),
+  password: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().min(8, "Password must be at least 8 characters").optional(),
+  ),
+  referredByCode: preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    string().max(16, "Referral code cannot exceed 16 characters").optional(),
+  ),
+}).superRefine((data, ctx: RefinementCtx) => {
+  // Dashboard access now requires only an email — the backend creates a
+  // passwordless user and emails a set-password link, so no initial
+  // password is collected here. (`password` stays in the schema as an
+  // ignored optional for backward compatibility with any caller.)
+  if (data.dashboardAccess) {
+    if (!data.email) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["email"],
+        message: "Email is required for dashboard access",
+      });
+    }
+  }
+});
+export interface StaffSummaryReportRow {
+  name: string;
   totalOrdersCompleted: number;
   totalItemsSold: number;
   totalStockIntakePerformed: number;

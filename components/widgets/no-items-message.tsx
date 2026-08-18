@@ -14,7 +14,7 @@ const NoItemsMessage = ({ message, onClick }: NoItemsMessageProp) => (
     }
       
       }>
-      Add {message.includes("recipe") ? "Recipe" : "Stock"}
+      Add {message.includes("consumption") ? "Consumption Rule" : "Stock"}
     </Button>
   </div>
 );

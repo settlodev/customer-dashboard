@@ -1,0 +1,149 @@
+"use client";
+
+import Link from "next/link";
+import { ColumnDef } from "@tanstack/react-table";
+import { ArrowUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Money } from "@/components/widgets/money";
+import { DEFAULT_CURRENCY } from "@/lib/helpers";
+import {
+  StockIntakeRecord,
+  STOCK_INTAKE_RECORD_STATUS_LABELS,
+  StockIntakeRecordStatus,
+  IntakePaymentTerms,
+} from "@/types/stock-intake-record/type";
+
+const TERMS_LABEL: Record<IntakePaymentTerms, string> = {
+  CREDIT: "Credit",
+  CASH: "Cash",
+  BANK: "Bank",
+};
+
+const TERMS_TONES: Record<IntakePaymentTerms, string> = {
+  CREDIT: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
+  CASH: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+  BANK: "bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400",
+};
+
+const STATUS_TONES: Record<StockIntakeRecordStatus, string> = {
+  DRAFT: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  CONFIRMED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+};
+
+const formatDate = (iso: string | null | undefined) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+export const columns: ColumnDef<StockIntakeRecord>[] = [
+  {
+    accessorKey: "referenceNumber",
+    enableHiding: false,
+    header: ({ column }) => (
+      <Button
+        className="text-left p-0 font-semibold"
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Reference
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
+    cell: ({ row }) => (
+      <Link
+        href={`/stock-intakes/${row.original.id}`}
+        className="font-mono text-xs font-semibold text-ink-2 bg-muted px-2 py-0.5 rounded hover:underline"
+      >
+        {row.original.referenceNumber}
+      </Link>
+    ),
+  },
+  {
+    accessorKey: "supplierName",
+    header: "Supplier",
+    cell: ({ row }) => (
+      <div className="min-w-[160px]">
+        <div className="text-ink-2">
+          {row.original.supplierName || <span className="text-ink-3">—</span>}
+        </div>
+        {row.original.supplierReference && (
+          <div className="text-[11px] text-ink-3 font-mono">
+            {row.original.supplierReference}
+          </div>
+        )}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "paymentTerms",
+    header: "Terms",
+    cell: ({ row }) => {
+      const terms = row.original.paymentTerms;
+      if (!terms) return <span className="text-ink-3">—</span>;
+      return (
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${TERMS_TONES[terms]}`}
+        >
+          {TERMS_LABEL[terms]}
+        </span>
+      );
+    },
+  },
+  {
+    id: "totalQuantity",
+    header: () => <div className="text-right">Total qty</div>,
+    cell: ({ row }) => (
+      <div className="text-right text-ink-2">
+        {Number(row.original.totalQuantity ?? 0).toLocaleString()}
+      </div>
+    ),
+  },
+  {
+    id: "totalValue",
+    header: () => <div className="text-right">Value</div>,
+    cell: ({ row }) => (
+      <div className="text-right font-medium text-ink">
+        <Money
+          amount={Number(row.original.totalValue ?? 0)}
+          currency={row.original.currency || DEFAULT_CURRENCY}
+        />
+      </div>
+    ),
+  },
+  {
+    accessorKey: "confirmedByName",
+    header: "Confirmed by",
+    cell: ({ row }) => (
+      <span className="text-ink-2">
+        {row.original.confirmedByName || "—"}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => (
+      <span
+        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_TONES[row.original.status]}`}
+      >
+        {STOCK_INTAKE_RECORD_STATUS_LABELS[row.original.status]}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "receivedDate",
+    header: "Received",
+    cell: ({ row }) => (
+      <span className="text-ink-2 whitespace-nowrap">
+        {formatDate(row.original.receivedDate ?? row.original.createdAt)}
+      </span>
+    ),
+  },
+];

@@ -1,13 +1,11 @@
 "server only";
 
-import { getUserById, validateEmail } from "@/lib/actions/auth-actions";
-import { UUID } from "node:crypto";
 import NextAuth from "next-auth";
 
 import authConfig from "@/auth.config";
-import { SpringAuthAdapter } from "@/lib/spring-auth-adapter";
 import { ExtendedUser } from "@/types/types";
-import { createAuthToken } from "@/lib/auth-utils";
+import { createAuthToken, getAuthToken } from "@/lib/auth-utils";
+import { AUTH_COOKIE_MAX_AGE_SECONDS } from "@/lib/auth-constants";
 
 declare module "next-auth" {
   interface Session {
@@ -16,37 +14,32 @@ declare module "next-auth" {
 }
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
-  adapter: SpringAuthAdapter(process.env.SERVICE_URL!),
-  session: { strategy: "jwt" },
+  // Required for NextAuth callbacks to work across apex + admin.* subdomain
+  // on the same deployment.
+  trustHost: true,
+  // Match the authToken cookie's lifetime (lib/auth-constants.ts) so this
+  // session can't outlive it — otherwise middleware.ts (which only checks
+  // authToken) can treat the browser as logged out while a stale session
+  // for a previous account is still readable by server components.
+  session: { strategy: "jwt", maxAge: AUTH_COOKIE_MAX_AGE_SECONDS },
   pages: {
     signIn: "/login",
     error: "/auth-error",
     newUser: "/business-registration",
   },
   events: {
-    async linkAccount({ user }) {
-      await validateEmail(user.id!);
-    },
     async signIn({ user }) {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      await createAuthToken(user);
+      const existing = await getAuthToken();
+      if (!existing?.accessToken) {
+        await createAuthToken(user);
+      }
     },
     async signOut() {
-      // Cookie deletion is handled in the logout() server action (auth-actions.tsx)
-      // Deleting cookies here fails because NextAuth events don't run
-      // in a Server Action or Route Handler context
+      // Cookie deletion is handled in the logout() server action
     },
   },
   callbacks: {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async signIn({ user, account }) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      //const existingUser = await getUserById(user.id!);
-
-      //Check if email is verified
-      //return existingUser?.emailVerified != null;
-
+    async signIn() {
       return true;
     },
     async session({ token, session }) {
@@ -54,25 +47,23 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         session.user.id = token.sub;
       }
 
-      if (token.email && session.user.email) {
-        session.user.email = token.email;
-      }
-
       if (session.user) {
         session.user.name = token.name as string;
         session.user.email = token.email as string;
         session.user.firstName = token.firstName as string;
-        session.user.bio = token.bio as string;
-        session.user.role = token.role as UUID;
-        session.user.country = token.country as UUID;
         session.user.lastName = token.lastName as string;
+        session.user.bio = token.bio as string;
         session.user.avatar = token.avatar ? (token.avatar as string) : null;
         session.user.phoneNumber = token.phoneNumber as string;
-        session.user.businessId = token.businessId as UUID;
-        session.user.businessComplete = token.businessComplete as boolean;
         session.user.emailVerified = token.emailVerified as Date;
-        session.user.phoneNumberVerified = token.emailVerified as Date;
-        //session.user.emailVerificationToken = token.emailVerificationToken as string;
+        session.user.isBusinessRegistrationComplete =
+          token.isBusinessRegistrationComplete as boolean;
+        session.user.isLocationRegistrationComplete =
+          token.isLocationRegistrationComplete as boolean;
+        session.user.hasInvitedAccess = token.hasInvitedAccess as boolean;
+        session.user.accountId = token.accountId as string;
+        session.user.countryId = token.countryId as string;
+        session.user.countryCode = token.countryCode as string;
         session.user.consent = (token.consent as boolean) ?? null;
         session.user.theme = (token.theme as string) ?? "light";
       }
@@ -80,28 +71,28 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       return session;
     },
 
-    async jwt({ token }) {
+    async jwt({ token, user }) {
       if (!token.sub) return token;
 
-      const existingUser = await getUserById(token.sub);
+      if (user) {
+        const u = user as any;
+        token.name = user.name;
+        token.email = user.email;
+        token.firstName = u.firstName;
+        token.lastName = u.lastName;
+        token.phoneNumber = u.phoneNumber;
+        token.emailVerified = u.emailVerified;
+        token.isBusinessRegistrationComplete = u.isBusinessRegistrationComplete;
+        token.isLocationRegistrationComplete = u.isLocationRegistrationComplete;
+        token.hasInvitedAccess = u.hasInvitedAccess;
+        token.accountId = u.accountId;
+        token.countryId = u.countryId;
+        token.countryCode = u.countryCode;
+        token.theme = u.theme;
+        token.avatar = u.pictureUrl;
+        return token;
+      }
 
-      if (!existingUser) return token;
-
-      token.bio = existingUser.bio;
-      token.role = existingUser.role;
-      token.country = existingUser.country;
-      token.name = existingUser.name;
-      token.email = existingUser.email;
-      token.firstName = existingUser.firstName;
-      token.lastName = existingUser.lastName;
-      token.avatar = existingUser.avatar;
-      token.phoneNumber = existingUser.phoneNumber;
-      token.theme = existingUser.theme;
-      token.consent = existingUser.consent;
-      token.phoneNumberVerified = existingUser.phoneNumberVerified;
-      token.emailVerified = existingUser.emailVerified;
-      token.businessComplete = existingUser.businessComplete;
-      //token.emailVerificationToken = existingUser.emailVerificationToken;
       return token;
     },
   },

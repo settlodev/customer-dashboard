@@ -1,70 +1,115 @@
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/supplier/columns";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import { SupplierTable } from "@/components/tables/supplier/table";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { StatusTabs } from "@/components/layouts/status-tabs";
+import { parseListStatus } from "@/components/layouts/list-status";
 import NoItems from "@/components/layouts/no-items";
-import { searchSuppliers } from "@/lib/actions/supplier-actions";
-import { Supplier } from "@/types/supplier/type";
-import { Plus } from "lucide-react";
+import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
+import { listNominations } from "@/lib/actions/supplier-nomination-actions";
+import type { SupplierNomination } from "@/types/supplier/nomination";
 
-const breadcrumbItems = [{ title: "Suppliers", link: "/suppliers" }];
-
-type Params = {
+type Props = {
   searchParams: Promise<{
     search?: string;
     page?: string;
     limit?: string;
+    status?: string;
   }>;
 };
 
-export default async function Page({ searchParams }: Params) {
-  const resolvedSearchParams = await searchParams;
+export default async function SuppliersPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const status = parseListStatus(params.status);
+  const q = (params.search ?? "").trim().toLowerCase();
+  const page = Number(params.page) || 0;
+  const pageLimit = Number(params.limit) || 25;
 
-  const q = resolvedSearchParams.search || "";
-  const page = Number(resolvedSearchParams.page) || 0;
-  const pageLimit = Number(resolvedSearchParams.limit);
+  const [all, nominations] = await Promise.all([
+    fetchAllSuppliers(),
+    listNominations(),
+  ]);
 
-  const responseData = await searchSuppliers(q, page, pageLimit);
+  // Latest nomination per supplier (by submittedAt) → which suppliers are
+  // currently under review, so the table's marketplace chip can render
+  // without a per-row fetch. Computed here from one bulk fetch instead of
+  // the table doing one `getNominationsForSupplier` call per row.
+  const latestBySupplier = new Map<string, SupplierNomination>();
+  for (const n of nominations) {
+    const existing = latestBySupplier.get(n.sourceSupplierId);
+    if (!existing || new Date(n.submittedAt) > new Date(existing.submittedAt)) {
+      latestBySupplier.set(n.sourceSupplierId, n);
+    }
+  }
+  const underReviewSupplierIds = new Set(
+    [...latestBySupplier.values()]
+      .filter((n) => n.status === "SUBMITTED")
+      .map((n) => n.sourceSupplierId),
+  );
 
-  const data: Supplier[] = responseData.content;
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const scope =
+    status === "archived"
+      ? all.filter((s) => !!s.archivedAt)
+      : all.filter((s) => !s.archivedAt);
+
+  const filtered = q
+    ? scope.filter((s) =>
+        [s.name, s.contactPersonName, s.email, s.phone]
+          .filter(Boolean)
+          .some((v) => v!.toLowerCase().includes(q)),
+      )
+    : scope;
+
+  const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+  const pageIndex = page > 0 ? page - 1 : 0;
+  const start = pageIndex * pageLimit;
+  const data = sorted.slice(start, start + pageLimit);
+  const total = sorted.length;
+  const pageCount = Math.max(1, Math.ceil(total / pageLimit));
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      {/* Header row */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <BreadcrumbsNav items={breadcrumbItems} />
-
-        <div className="flex items-center gap-2">
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Suppliers" }]} />
+      <PageHeader
+        title="Suppliers"
+        subtitle="Vendors that fulfil purchase orders."
+        actions={
           <Button asChild>
             <Link href="/suppliers/new">
               <Plus className="mr-1.5 h-4 w-4" />
-              Add Supplier
+              Add supplier
             </Link>
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Content */}
-      {total > 0 || q !== "" ? (
-        <Card>
-          <CardContent className="px-2 sm:px-6 pt-6">
-            <DataTable
-              columns={columns}
-              data={data}
-              pageCount={pageCount}
-              pageNo={page}
-              searchKey="name"
-              total={total}
-            />
-          </CardContent>
-        </Card>
-      ) : (
-        <NoItems itemName="suppliers" newItemUrl="/suppliers/new" />
-      )}
-    </div>
+      <PageBody>
+        <StatusTabs basePath="/suppliers" value={status} />
+
+        {total > 0 || q !== "" ? (
+          <Card>
+            <CardContent className="px-2 pt-6 sm:px-6">
+              <SupplierTable
+                data={data}
+                underReviewSupplierIds={underReviewSupplierIds}
+                pageCount={pageCount}
+                defaultPageSize={pageLimit}
+                pageNo={page}
+                total={total}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <NoItems itemName="suppliers" newItemUrl="/suppliers/new" />
+        )}
+      </PageBody>
+    </PageShell>
   );
 }

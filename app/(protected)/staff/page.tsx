@@ -1,71 +1,219 @@
 import Link from "next/link";
+import { Plus, Users, UserCheck, UserX, KeyRound, Shield } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/staff/columns";
-import { searchStaff } from "@/lib/actions/staff-actions";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import { Staff } from "@/types/staff";
+import {
+  getStaffAtLocation,
+  getStaffCount,
+  searchStaffByName,
+} from "@/lib/actions/staff-actions";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
-import { Plus } from "lucide-react";
-
-const breadcrumbItems = [{ title: "Staff", link: "/staff" }];
+import DataLoadError from "@/components/layouts/data-load-error";
+import { StaffStatusTabs } from "@/components/tables/staff/status-tabs";
+import { softFetch } from "@/lib/list-fallback";
+import type { StaffListEnriched } from "@/types/staff";
 
 type Params = {
   searchParams: Promise<{
     search?: string;
     page?: string;
     limit?: string;
+    status?: string;
   }>;
 };
 
+// Wrap an enriched row with a top-level `id` so the DataTable's
+// row-click handler — which reads `(row.original as any).id` to build
+// the navigation URL — lands on /staff/{staffId}.
+type EnrichedRow = StaffListEnriched & { id: string };
+
+function withId(rows: StaffListEnriched[]): EnrichedRow[] {
+  return rows.map((r) => ({ ...r, id: r.staff.id }));
+}
+
 export default async function Page({ searchParams }: Params) {
-  const resolvedSearchParams = await searchParams;
+  const resolved = await searchParams;
+  const q = resolved.search?.trim() ?? "";
+  // Same convention as the products page: URL pager is 1-indexed,
+  // backend is 0-indexed, and the conversion lives inside each list
+  // action (see staff-actions.tsx). The page just forwards the raw
+  // URL values straight through.
+  const page = Number(resolved.page) || 0;
+  const pageLimit = Number(resolved.limit);
+  const status: "active" | "inactive" | "all" =
+    resolved.status === "inactive"
+      ? "inactive"
+      : resolved.status === "all"
+        ? "all"
+        : "active";
 
-  const q = resolvedSearchParams.search || "";
-  const page = Number(resolvedSearchParams.page) || 0;
-  const pageLimit = Number(resolvedSearchParams.limit);
+  // Counts roll up at the location level — used both by the KPI strip
+  // and by the status tabs so the merchant can see how many people are
+  // off-roster at a glance without flipping tabs.
+  const counts = await getStaffCount().catch(() => ({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    posAccess: 0,
+    dashboardAccess: 0,
+    pinSet: 0,
+  }));
 
-  const responseData = await searchStaff(q, page, pageLimit);
+  let rows: EnrichedRow[] = [];
+  let total = 0;
+  let pageCount = 1;
+  // A transient backend failure on the primary list/search fetch degrades
+  // only the table area (DataLoadError) instead of crashing the page; the
+  // counts above are already call-site guarded.
+  let loadFailed = false;
 
-  const data: Staff[] = responseData.content;
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  if (q) {
+    // Search returns plain Staff (no enrichment) — wrap each result in
+    // an empty enriched envelope so the columns still render.
+    const results = await softFetch(searchStaffByName(q));
+    if (!results) {
+      loadFailed = true;
+    } else {
+      rows = results.map((s) => ({
+        id: s.id,
+        staff: s,
+        gamificationSummary: null as unknown as StaffListEnriched["gamificationSummary"],
+        loyaltyPoints: 0,
+      }));
+      total = results.length;
+      pageCount = 1;
+    }
+  } else {
+    // Single source of truth: the dedicated by-location endpoint
+    // unions staff anchored at the current location with those
+    // cross-assigned via StaffAssignment, and pre-filters by the tab's
+    // status so the page never has to reconcile per-location rules or
+    // recompute totals on the client.
+    const activeFilter =
+      status === "all" ? undefined : status === "active";
+    const response = await softFetch(
+      getStaffAtLocation(page, pageLimit, activeFilter),
+    );
+    if (!response) {
+      loadFailed = true;
+    } else {
+      const content = response.content ?? [];
+
+      rows = withId(content);
+      total = response.totalElements ?? rows.length;
+      pageCount = response.totalPages ?? 1;
+    }
+  }
+
+  const hasAnyStaff = counts.total > 0;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      {/* Header row */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <BreadcrumbsNav items={breadcrumbItems} />
-
-        <div className="flex items-center gap-2">
-          <Button asChild>
-            <Link href="/staff/new/edit">
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Staff" }]} />
+      <PageHeader
+        title="Staff"
+        subtitle="People who can sell, manage, or access this location."
+        actions={
+          <Button asChild size="sm">
+            <Link href="/staff/new">
               <Plus className="mr-1.5 h-4 w-4" />
-              Add Staff
+              Add staff
             </Link>
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Content */}
-      {total > 0 || q !== "" ? (
-        <Card>
-          <CardContent className="px-2 sm:px-6 pt-6">
-            <DataTable
-              columns={columns}
-              data={data}
-              pageCount={pageCount}
-              pageNo={page}
-              searchKey="firstName"
-              total={total}
-              rowClickBasePath="/staff"
+      <PageBody>
+        {loadFailed ? (
+          <DataLoadError itemName="staff" />
+        ) : hasAnyStaff || q !== "" ? (
+          <>
+            <KpiStrip cols={5}>
+              <KpiCard
+                icon={<Users className="h-3 w-3" />}
+                label="Total"
+                value={counts.total.toLocaleString()}
+              />
+              <KpiCard
+                icon={<UserCheck className="h-3 w-3" />}
+                label="Active"
+                value={counts.active.toLocaleString()}
+                deltaTone="pos"
+              />
+              <KpiCard
+                icon={<UserX className="h-3 w-3" />}
+                label="Inactive"
+                value={
+                  counts.inactive > 0 ? counts.inactive.toLocaleString() : "—"
+                }
+                deltaTone={counts.inactive > 0 ? "neg" : "neutral"}
+              />
+              <KpiCard
+                icon={<KeyRound className="h-3 w-3" />}
+                label="POS access"
+                value={
+                  counts.posAccess > 0 ? counts.posAccess.toLocaleString() : "—"
+                }
+                delta={
+                  counts.posAccess > 0
+                    ? `${counts.pinSet}/${counts.posAccess} PIN set`
+                    : undefined
+                }
+                deltaTone={
+                  counts.posAccess === 0
+                    ? "neutral"
+                    : counts.pinSet === counts.posAccess
+                      ? "pos"
+                      : "neg"
+                }
+              />
+              <KpiCard
+                icon={<Shield className="h-3 w-3" />}
+                label="Dashboard"
+                value={
+                  counts.dashboardAccess > 0
+                    ? counts.dashboardAccess.toLocaleString()
+                    : "—"
+                }
+              />
+            </KpiStrip>
+
+            <StaffStatusTabs
+              value={status}
+              counts={{
+                active: counts.active,
+                inactive: counts.inactive,
+                all: counts.total,
+              }}
             />
-          </CardContent>
-        </Card>
-      ) : (
-        <NoItems itemName="staff" newItemUrl="/staff/new/edit" />
-      )}
-    </div>
+
+            <Card>
+              <CardContent className="px-2 pt-6 sm:px-6">
+                <DataTable
+                  columns={columns}
+                  data={rows}
+                  searchKey="firstName"
+                  pageNo={page}
+                  total={total}
+                  pageCount={pageCount}
+                  rowClickBasePath="/staff"
+                />
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <NoItems itemName="staff" newItemUrl="/staff/new" />
+        )}
+      </PageBody>
+    </PageShell>
   );
 }

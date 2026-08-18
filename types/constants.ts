@@ -1,4 +1,4 @@
-import { Bell, Building2, CalendarClock, CreditCard, Link2, MapPin, Package, Printer, Receipt, Smartphone, Star, ToggleRight, UtensilsCrossed } from "lucide-react";
+import { ArrowLeftRight, Bell, Boxes, Building2, CalendarClock, CalendarOff, Calculator, ClipboardCheck, CreditCard, Link2, MapPin, Monitor, Palette, PackageCheck, Printer, ScanLine, ShoppingBag, Smartphone, Star, Store, Sun, UtensilsCrossed, Truck, Wallet, UserCheck, Search } from "lucide-react";
 
 export const taxClasses=
     [
@@ -76,82 +76,52 @@ export const ItemStatuses = [
 ];
 
 export const settingsNavItems = [
-    {
-        id: 'business',
-        label: 'Business',
-        icon: Building2,
-        description: 'Business details & info'
-    },
-    {
-        id: 'location',
-        label: 'Location',
-        icon: MapPin,
-        description: 'Location details & hours'
-    },
-    {
-        id: 'features',
-        label: 'Features',
-        icon: ToggleRight,
-        description: 'Toggle app features'
-    },
-    {
-        id: 'printing',
-        label: 'Printing & Receipts',
-        icon: Printer,
-        description: 'Tickets, receipts & images'
-    },
-    {
-        id: 'orders-inventory',
-        label: 'Orders & Inventory',
-        icon: Package,
-        description: 'Order rules & stock deduction'
-    },
-    {
-        id: 'notifications',
-        label: 'Notifications',
-        icon: Bell,
-        description: 'Email, SMS & push alerts'
-    },
-    {
-        id: 'reservations',
-        label: 'Reservations',
-        icon: CalendarClock,
-        description: 'Booking rules & questions'
-    },
-    {
-        id: 'digital-menu',
-        label: 'Digital Menu',
-        icon: UtensilsCrossed,
-        description: 'Online ordering menus'
-    },
-    {
-        id: 'payments',
-        label: 'Payments',
-        icon: CreditCard,
-        description: 'Accepted payment methods'
-    },
-    {
-        id: 'loyalty-points',
-        label: 'Loyalty Points',
-        icon: Star,
-        description: 'Customer & staff rewards'
-    },
-    {
-        id: 'efd',
-        label: 'EFD',
-        icon: Receipt,
-        description: 'Tax & fiscal compliance'
-    },
-    {
-        id: 'devices',
-        label: 'Devices',
-        icon: Smartphone,
-        description: 'Linked devices & access'
-    },
-    {
-        id: 'integrations',
-        label: 'Integrations',
-        icon: Link2,
-        description: 'Payment & service integrations'
-    },
+    // Business-level (not location scope)
+    { id: 'business', label: 'Business', icon: Building2, description: 'Business details & info' },
+    { id: 'business-settings', label: 'Business Settings', icon: Palette, description: 'Branding & business-wide defaults' },
+
+    // Location-level — rebuilt against new Accounts Service location settings API
+    { id: 'location', label: 'Location', icon: MapPin, description: 'Location details, currency, operating hours' },
+    { id: 'brand-social', label: 'Brand & social', icon: Palette, description: 'Colours, logos, social links, SEO' },
+    { id: 'orders-pos', label: 'Orders & POS', icon: ShoppingBag, description: 'How orders behave on the POS' },
+    { id: 'order-channels', label: 'Order channels', icon: Truck, description: 'Online, delivery, pickup, dine-in' },
+    { id: 'payment-ops', label: 'Payment ops & approvals', icon: Wallet, description: 'Splits, partials, void / discount approvals' },
+    { id: 'dockets', label: 'Dockets', icon: Monitor, description: 'Kitchen / bar docket formatting' },
+    { id: 'receipts', label: 'Receipts & invoicing', icon: Printer, description: 'Receipts, invoices, tax' },
+    { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Email, SMS & push alerts' },
+    { id: 'loyalty-points', label: 'Customers & loyalty', icon: Star, description: 'Accounts, reviews, and points' },
+    { id: 'customer-prepayments', label: 'Customer prepayments', icon: Wallet, description: 'Top-up limits, expiry, and scope' },
+    { id: 'staff-hr', label: 'Staff & HR', icon: UserCheck, description: 'Shifts, time, performance' },
+    { id: 'stock-inventory', label: 'Stock & inventory', icon: Boxes, description: 'Deduction timing & inventory flags' },
+    { id: 'day-sessions', label: 'Day sessions & hours', icon: Sun, description: 'Operating hours, 24-hour, settlement' },
+    { id: 'digital-menu-config', label: 'Digital menu config', icon: Search, description: 'Domain, ordering, pricing display' },
+    { id: 'closure-dates', label: 'Closure dates', icon: CalendarOff, description: 'Scheduled closures & holidays' },
+    { id: 'accounting', label: 'Accounting mappings', icon: Calculator, description: 'Payment methods → GL & product revenue routing' },
+    { id: 'chart-of-accounts', label: 'Chart of accounts', icon: Calculator, description: 'GL account hierarchy and types' },
+    { id: 'expense-categories', label: 'Expense categories', icon: Calculator, description: 'Categorize expenses; map each to a GL account' },
+    { id: 'tax-types', label: 'Tax types', icon: Calculator, description: 'VAT classes and other tax rates' },
+    { id: 'accounting-periods', label: 'Accounting periods', icon: Calculator, description: 'Close month-end / reopen for adjustments' },
+    { id: 'exchange-rates', label: 'Exchange rates', icon: ArrowLeftRight, description: 'Manual rate overrides for multi-currency' },
+
+    // Not in scope of this rebuild but still accessible
+    { id: 'reservations', label: 'Reservations', icon: CalendarClock, description: 'Booking rules & questions' },
+    { id: 'digital-menu', label: 'Digital menu', icon: UtensilsCrossed, description: 'Online ordering menus' },
+    { id: 'payments', label: 'Payment methods', icon: CreditCard, description: 'Accepted payment methods' },
+    { id: 'devices', label: 'Devices', icon: Smartphone, description: 'Linked devices & access' },
+    { id: 'integrations', label: 'Integrations', icon: Link2, description: 'Service integrations' },
+];
+
+/**
+ * Settings nav shown when the active destination is a STORE. A store is a
+ * stockroom: it holds stock but never sells, so nothing business- or
+ * location-scoped belongs here — only the store's own record and the
+ * inventory / transfer / receiving policies on `store_settings`.
+ */
+export const storeSettingsNavItems = [
+    { id: 'store', label: 'Store', icon: Store, description: 'Store details, code & address' },
+    { id: 'store-inventory', label: 'Stock & inventory', icon: Boxes, description: 'Tracking, negative stock, reorder defaults' },
+    { id: 'store-transfers', label: 'Transfers & requests', icon: ArrowLeftRight, description: 'Inbound, outbound, approvals, over-requests' },
+    { id: 'store-receiving', label: 'Receiving', icon: PackageCheck, description: 'Quality checks, photos, auto-receive' },
+    { id: 'store-tracking', label: 'Storage & tracking', icon: ScanLine, description: 'Bins, lots, serials, barcode scanning' },
+    { id: 'store-counting', label: 'Counting & audit', icon: ClipboardCheck, description: 'Cycle counts and adjustment approvals' },
 ];

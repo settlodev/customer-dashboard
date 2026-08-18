@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Adjust to match your UI library
 import { FormControl, FormField, FormItem, FormMessage } from "../ui/form";
-import RecipeSelector from "./recipe-selector";
+import StockVariantSelector from "./stock-variant-selector";
 import CustomerSelector from "./customer-selector";
 import DepartmentSelector from "./department-selector";
 import CategorySelector from "./category-selector";
@@ -47,7 +47,7 @@ const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange,
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700">Apply discount on (optional)</label>
+        <label className="block text-sm font-medium text-ink-2">Apply discount on (optional)</label>
         <Select onValueChange={handleTrackingTypeChange} value={applyOption || undefined}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select discount apply option" />
@@ -68,13 +68,13 @@ const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange,
             render={({ field }) => (
               <FormItem>
                 <FormControl>
-                  <RecipeSelector
-                    value={field.value || selectedItemId}
+                  <StockVariantSelector
+                    value={field.value || selectedItemId || ""}
                     onChange={(id) => {
                       field.onChange(id);
                       handleItemChange(id);
                     }}
-                    placeholder="Select variant"
+                    placeholder="Select product item"
                   />
                 </FormControl>
                 <FormMessage />

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Loader2Icon, MapPin, Building2, CheckCircle2 } from "lucide-react";
-import { refreshLocation } from "@/lib/actions/business/refresh";
+import { switchToLocation } from "@/lib/actions/destination";
 import { toast } from "@/hooks/use-toast";
 import { Location } from "@/types/location/type";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,7 @@ export function SelectLocation({ locations }: { locations: Location[] }) {
     const setLocation = async (location: Location, index: number) => {
         setPendingIndex(index);
 
-        if (location.subscriptionStatus === "EXPIRED" || location.subscriptionStatus === null) {
+        if (!location.active) {
             toast({
                 variant: "destructive",
                 title: "Subscription Expired",
@@ -25,7 +25,7 @@ export function SelectLocation({ locations }: { locations: Location[] }) {
                 document.location.href = `/subscription?location=${location.id}`;
             }, 3000);
         } else {
-            await refreshLocation(location);
+            await switchToLocation(location);
             document.location.href = "/dashboard";
         }
         setPendingIndex(null);
@@ -63,7 +63,7 @@ export function SelectLocation({ locations }: { locations: Location[] }) {
                             <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
                                 <MapPin className="w-6 h-6 text-emerald-600" />
                             </div>
-                            {location.status && (
+                            {location.active && (
                                 <div className="absolute -bottom-1 -right-1">
                                     <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                                 </div>
@@ -77,16 +77,16 @@ export function SelectLocation({ locations }: { locations: Location[] }) {
                                 </h3>
                                 <span className={cn(
                                     "px-2 py-1 text-xs rounded-full",
-                                    location.subscriptionStatus == subscriptionStatus.OK
+                                    location.active
                                         ? "bg-emerald-100 text-emerald-800"
                                         : "bg-red-100 text-red-800"
                                 )}>
-                                    {location.subscriptionStatus}
+                                    {location.active ? "Active" : "Inactive"}
                                 </span>
                             </div>
                             <div className="mt-1 flex items-center text-sm text-gray-500">
                                 <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
-                                <span className="truncate">{location.city}, {location.region}</span>
+                                <span className="truncate">{location.region}</span>
                             </div>
                         </div>
 

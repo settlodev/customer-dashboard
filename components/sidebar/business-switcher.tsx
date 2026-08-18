@@ -5,7 +5,8 @@ import { ChevronDown, Building2, Loader2, Check } from "lucide-react";
 import Image from "next/image";
 import { useState, useCallback } from "react";
 import { Business } from "@/types/business/type";
-import { refreshBusiness, refreshLocation } from "@/lib/actions/business/refresh";
+import { refreshBusiness } from "@/lib/actions/business/refresh";
+import { switchToLocation } from "@/lib/actions/destination";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import {
   DropdownMenu,
@@ -51,10 +52,13 @@ export const BusinessSwitcher = ({
     try {
       await refreshBusiness(confirmBusiness);
 
-      // Auto-select location if the business has exactly one
-      const locations = await fetchAllLocations();
+      // Auto-select location if the business has exactly one. Scope the
+      // fetch to the just-selected business explicitly so we can never
+      // auto-switch into the *previous* business's location (which would
+      // 403 against business-scoped services on the dashboard).
+      const locations = await fetchAllLocations(confirmBusiness.id);
       if (locations && locations.length === 1) {
-        await refreshLocation(locations[0]);
+        await switchToLocation(locations[0]);
         window.location.href = "/dashboard";
       } else {
         window.location.href = "/select-location";
@@ -73,9 +77,9 @@ export const BusinessSwitcher = ({
   const businessDisplay = (
     <div className="flex items-center gap-3 w-full">
       <div className="relative h-8 w-8 shrink-0">
-        {currentBusiness.logo ? (
+        {currentBusiness.logoUrl ? (
           <Image
-            src={currentBusiness.logo}
+            src={currentBusiness.logoUrl}
             alt={currentBusiness.name}
             fill
             className="rounded-lg object-cover"
@@ -90,9 +94,9 @@ export const BusinessSwitcher = ({
         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate w-full text-left">
           {currentBusiness.name}
         </p>
-        {currentBusiness.countryName && (
+        {currentBusiness.identifier && (
           <p className="text-xs text-gray-500 dark:text-gray-400 truncate w-full text-left">
-            {currentBusiness.countryName}
+            {currentBusiness.identifier}
           </p>
         )}
       </div>
@@ -144,9 +148,9 @@ export const BusinessSwitcher = ({
                   disabled={isActive}
                 >
                   <div className="relative h-8 w-8 shrink-0">
-                    {business.logo ? (
+                    {business.logoUrl ? (
                       <Image
-                        src={business.logo}
+                        src={business.logoUrl}
                         alt={business.name}
                         fill
                         className="rounded-lg object-cover bg-primary/20 p-0.5"
@@ -162,8 +166,7 @@ export const BusinessSwitcher = ({
                       {business.name}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {business.countryName} &middot; {business.totalLocations}{" "}
-                      {business.totalLocations === 1 ? "location" : "locations"}
+                      {business.businessTypeName}
                     </p>
                   </div>
                   {isActive && (

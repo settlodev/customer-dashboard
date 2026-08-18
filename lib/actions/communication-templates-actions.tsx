@@ -2,7 +2,6 @@
 
 import {z} from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
@@ -13,7 +12,6 @@ import { Template } from "@/types/communication-templates/types";
 import { TemplateSchema } from "@/types/communication-templates/schema";
 
 export const fetchTemplates = async () : Promise<Template[]> => {
-    await  getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
@@ -36,7 +34,6 @@ export const searchTemplates = async (
     page:number,
     pageLimit:number
 ): Promise<ApiResponse<Template>> =>{
-    await getAuthenticatedUser();
 
 
     try {
@@ -201,7 +198,6 @@ export const updateTemplate = async (
 export const deleteTemplate = async (id: UUID): Promise<void> => {
     if (!id) throw new Error("Template ID is required to perform this request");
 
-    await getAuthenticatedUser();
 
    try{
     const apiClient = new ApiClient();

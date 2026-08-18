@@ -1,89 +1,438 @@
 "use server";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
+
+import { getAuthToken, updateAuthToken } from "@/lib/auth-utils";
+import { extractSubscriptionStatus } from "@/lib/jwt-utils";
 import { parseStringify } from "@/lib/utils";
-import { BusinessSchema } from "@/types/business/schema";
-import { AuthToken, FormResponse } from "@/types/types";
-import { z } from "zod";
+import { FormResponse, activeBusiness, TokenRefreshResponse } from "@/types/types";
 import ApiClient from "@/lib/settlo-api-client";
+import { getUIErrorMessage } from "@/lib/settlo-api-error-handler";
 import { cookies } from "next/headers";
-import { User } from "next-auth";
 import { Business } from "@/types/business/type";
-import { refreshBusiness } from "../business/refresh";
+import { Location } from "@/types/location/type";
+import { revalidatePath } from "next/cache";
 
-export const createBusiness = async (
-  business: z.infer<typeof BusinessSchema>,
-): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
-  const businessValidData = BusinessSchema.safeParse(business);
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || "";
 
-  if (!businessValidData.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(businessValidData.error.message),
+interface BusinessWithLocationsPayload {
+  business: {
+    name: string;
+    description?: string;
+    phoneNumber?: string;
+    email?: string;
+    website?: string;
+    countryId?: string;
+    businessTypeId?: string;
+    region?: string;
+    district?: string;
+    ward?: string;
+    address?: string;
+    postalCode?: string;
+    logoUrl?: string;
+    baseCurrency?: string;
+  };
+  businessSettings?: Record<string, unknown>;
+  locations: Array<{
+    name: string;
+    description?: string;
+    phoneNumber?: string;
+    email?: string;
+    website?: string;
+    region?: string;
+    district?: string;
+    ward?: string;
+    address?: string;
+    postalCode?: string;
+    latitude?: number;
+    longitude?: number;
+    timezone?: string;
+    businessTypeId?: string;
+    planCode?: string;
+    settings?: {
+      operatingHours?: Array<{
+        dayOfWeek: string;
+        openTime: string;
+        closeTime: string;
+        closed: boolean;
+      }>;
+      continuousOperation?: boolean;
+      dailyCutoffTime?: string | null;
+      closeGraceMinutes?: number;
     };
-    return parseStringify(formResponse);
-  }
+  }>;
+}
 
+// API response types from POST /api/v1/businesses/with-locations
+interface ApiBusinessResponse {
+  id: string;
+  accountId: string;
+  identifier?: string;
+  name: string;
+  description?: string;
+  phoneNumber?: string;
+  email?: string;
+  website?: string;
+  active: boolean;
+  countryId?: string;
+  businessTypeId?: string;
+  businessTypeName?: string;
+  region?: string;
+  district?: string;
+  ward?: string;
+  address?: string;
+  postalCode?: string;
+  logoUrl?: string;
+  baseCurrency?: string;
+  slug?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface ApiLocationResponse {
+  id: string;
+  accountId: string;
+  businessId: string;
+  businessName: string;
+  identifier?: string;
+  name: string;
+  description?: string;
+  phoneNumber?: string;
+  email?: string;
+  website?: string;
+  active: boolean;
+  countryId?: string;
+  region?: string;
+  district?: string;
+  ward?: string;
+  address?: string;
+  postalCode?: string;
+  latitude?: number;
+  longitude?: number;
+  timezone?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface ApiBusinessWithLocationsResponse {
+  business: ApiBusinessResponse;
+  locations: ApiLocationResponse[];
+}
+
+/**
+ * Maps the new API business response to the existing Business type
+ * used throughout the app.
+ */
+function mapApiBusinessToExisting(
+  apiBusiness: ApiBusinessResponse,
+): Business {
+  return {
+    id: apiBusiness.id,
+    accountId: apiBusiness.accountId,
+    identifier: apiBusiness.identifier || apiBusiness.slug || "",
+    name: apiBusiness.name,
+    description: apiBusiness.description || "",
+    phoneNumber: apiBusiness.phoneNumber || "",
+    email: apiBusiness.email || "",
+    website: apiBusiness.website || "",
+    active: apiBusiness.active,
+    countryId: apiBusiness.countryId || "",
+    businessTypeId: apiBusiness.businessTypeId || "",
+    businessTypeName: apiBusiness.businessTypeName || "",
+    region: apiBusiness.region || "",
+    district: apiBusiness.district || "",
+    ward: apiBusiness.ward || "",
+    address: apiBusiness.address || "",
+    postalCode: apiBusiness.postalCode || "",
+    logoUrl: apiBusiness.logoUrl || "",
+    baseCurrency: apiBusiness.baseCurrency || "",
+    createdAt: apiBusiness.createdAt || "",
+    updatedAt: apiBusiness.updatedAt || "",
+  };
+}
+
+/**
+ * Maps the new API location response to the existing Location type
+ * used throughout the app.
+ */
+function mapApiLocationToExisting(
+  apiLocation: ApiLocationResponse,
+): Location {
+  return {
+    id: apiLocation.id,
+    accountId: apiLocation.accountId,
+    businessId: apiLocation.businessId,
+    businessName: apiLocation.businessName,
+    identifier: apiLocation.identifier || apiLocation.id,
+    name: apiLocation.name,
+    description: apiLocation.description || "",
+    phoneNumber: apiLocation.phoneNumber || "",
+    email: apiLocation.email || "",
+    active: apiLocation.active,
+    countryId: apiLocation.countryId || "",
+    region: apiLocation.region || "",
+    district: apiLocation.district || "",
+    ward: apiLocation.ward || "",
+    address: apiLocation.address || "",
+    postalCode: apiLocation.postalCode || "",
+    latitude: apiLocation.latitude ?? null,
+    longitude: apiLocation.longitude ?? null,
+    timezone: apiLocation.timezone || "",
+    website: apiLocation.website || "",
+    createdAt: apiLocation.createdAt || "",
+    updatedAt: apiLocation.updatedAt || "",
+  };
+}
+
+export interface OperatingHoursEntry {
+  dayOfWeek: string;
+  openTime: string;
+  closeTime: string;
+  closed: boolean;
+}
+
+export interface LocationInput {
+  name: string;
+  description?: string;
+  phoneNumber?: string;
+  email?: string;
+  website?: string;
+  region?: string;
+  district?: string;
+  ward?: string;
+  address?: string;
+  postalCode?: string;
+  latitude?: number;
+  longitude?: number;
+  timezone?: string;
+  countryId?: string;
+  businessTypeId?: string;
+  operatingHours?: OperatingHoursEntry[];
+  continuousOperation?: boolean;
+  dailyCutoffTime?: string | null;
+  closeGraceMinutes?: number;
+}
+
+export const createBusinessWithLocations = async (data: {
+  businessName: string;
+  description?: string;
+  phoneNumber?: string;
+  email?: string;
+  website?: string;
+  businessTypeId?: string;
+  countryId?: string;
+  region?: string;
+  district?: string;
+  ward?: string;
+  address?: string;
+  postalCode?: string;
+  logoUrl?: string;
+  baseCurrency?: string;
+  planCode?: string;
+  locations: LocationInput[];
+}): Promise<FormResponse> => {
   try {
-    const apiClient = new ApiClient();
-    const AuthenticatedUser = (await getAuthenticatedUser()) as User;
-    const userId = AuthenticatedUser.id;
-    const owner = userId;
+    const authToken = await getAuthToken();
+    if (!authToken) {
+      return parseStringify({
+        responseType: "error",
+        message: "Session expired, please login to proceed.",
+        error: new Error("No auth token"),
+      });
+    }
 
-    const payload = {
-      ...businessValidData.data,
-      owner,
-    };
-
-    const response = await apiClient.post(
-      `/api/businesses/${userId}/create`,
-      payload,
-    );
-
-    if (response) {
-      const cookieStore = await cookies();
-      const token = cookieStore.get("authToken")?.value;
-      if (token) {
-        // Set auth token business complete as true
-        const authToken = JSON.parse(token) as AuthToken;
-        authToken.businessComplete = true;
-        cookieStore.set("authToken", JSON.stringify(authToken), {
-          path: "/",
-          httpOnly: true,
-        });
-
-        console.log(
-          "Current business BEFORE creating",
-          cookieStore.get("currentBusiness")?.value,
-        );
-
-        // Set active business to currently created business
-        await refreshBusiness(response as Business);
-
-        console.log(
-          "Current business AFTER creating",
-          cookieStore.get("currentBusiness")?.value,
-        );
+    const payload: BusinessWithLocationsPayload = {
+      business: {
+        name: data.businessName,
+        description: data.description,
+        phoneNumber: data.phoneNumber,
+        email: data.email,
+        website: data.website,
+        countryId: data.countryId || authToken.countryId,
+        businessTypeId: data.businessTypeId,
+        region: data.region,
+        district: data.district,
+        ward: data.ward,
+        address: data.address,
+        postalCode: data.postalCode,
+        logoUrl: data.logoUrl,
+        baseCurrency: data.baseCurrency,
+      },
+      locations: data.locations.map((loc) => {
+        // Build settings: prefer continuousOperation when true (omit operatingHours);
+        // otherwise include operatingHours (omit continuousOperation/dailyCutoffTime).
+        const settings: NonNullable<BusinessWithLocationsPayload["locations"][number]["settings"]> = {};
+        if (loc.continuousOperation) {
+          settings.continuousOperation = true;
+          if (loc.dailyCutoffTime) settings.dailyCutoffTime = loc.dailyCutoffTime;
+        } else {
+          if (loc.operatingHours?.length) settings.operatingHours = loc.operatingHours;
+          if (typeof loc.closeGraceMinutes === "number") {
+            settings.closeGraceMinutes = loc.closeGraceMinutes;
+          }
+        }
+        const hasSettings = Object.keys(settings).length > 0;
 
         return {
-          responseType: "success",
-          message: "Business created successfully",
-          data: response,
+          name: loc.name,
+          description: loc.description,
+          phoneNumber: loc.phoneNumber || data.phoneNumber,
+          email: loc.email || data.email,
+          website: loc.website || data.website,
+          region: loc.region,
+          district: loc.district,
+          ward: loc.ward,
+          address: loc.address,
+          postalCode: loc.postalCode,
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          timezone: loc.timezone,
+          businessTypeId: loc.businessTypeId || data.businessTypeId,
+          planCode: data.planCode,
+          settings: hasSettings ? settings : undefined,
         };
-      } else {
-        console.log("No token found");
-      }
-    } else {
-      console.log("Unexpected response:", response);
-    }
-  } catch (error) {
-    formResponse = {
-      responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
+      }),
     };
-    return parseStringify(formResponse);
+
+    const apiClient = new ApiClient();
+    const apiResponse = await apiClient.post<
+      ApiBusinessWithLocationsResponse,
+      BusinessWithLocationsPayload
+    >("/api/v1/businesses/with-locations", payload);
+
+    if (apiResponse) {
+      // Update auth token flags
+      const updatedToken = {
+        ...authToken,
+        isBusinessRegistrationComplete: true,
+        isLocationRegistrationComplete: true,
+      };
+      await updateAuthToken(updatedToken);
+
+      // Map API response to existing types
+      const business = mapApiBusinessToExisting(apiResponse.business);
+      const locations = (apiResponse.locations || []).map(mapApiLocationToExisting);
+
+      // Set active business cookie (inline, without redirect)
+      const cookieStore = await cookies();
+      const isProduction = process.env.NODE_ENV === "production";
+
+      const minimalBusiness = {
+        id: business.id,
+        identifier: business.identifier,
+        name: business.name,
+        businessTypeId: business.businessTypeId,
+        businessTypeName: business.businessTypeName,
+        logoUrl: business.logoUrl || null,
+        active: business.active,
+        accountId: business.accountId,
+        countryId: business.countryId,
+      };
+
+      cookieStore.set({
+        name: "currentBusiness",
+        value: JSON.stringify(minimalBusiness),
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "strict" : "lax",
+      });
+
+      const businessActive: activeBusiness = {
+        businessId: business.id as `${string}-${string}-${string}-${string}-${string}`,
+      };
+      cookieStore.set({
+        name: "activeBusiness",
+        value: JSON.stringify(businessActive),
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "strict" : "lax",
+      });
+
+      // Seed the currentLocation cookie directly so the first dashboard render has context.
+      if (locations.length > 0) {
+        cookieStore.set({
+          name: "currentLocation",
+          value: JSON.stringify(locations[0]),
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: isProduction ? "strict" : "lax",
+        });
+      }
+
+      // Refresh the access token so it picks up the new business/location
+      // claims (business_id, assigned_to_id, updated permissions).
+      try {
+        const whitelabelClientId = process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID;
+        const refreshResponse = await fetch(
+          `${AUTH_SERVICE_URL}/auth/token-refresh`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(whitelabelClientId ? { "X-Client-Id": whitelabelClientId } : {}),
+            },
+            body: JSON.stringify({ refreshToken: authToken.refreshToken }),
+          },
+        );
+
+        if (refreshResponse.ok) {
+          const refreshData: TokenRefreshResponse = await refreshResponse.json();
+          await updateAuthToken({
+            ...authToken,
+            accessToken: refreshData.accessToken,
+            refreshToken: refreshData.refreshToken || authToken.refreshToken,
+            isBusinessRegistrationComplete: true,
+            isLocationRegistrationComplete: true,
+            subscriptionStatus: extractSubscriptionStatus(refreshData.accessToken),
+          });
+          console.log("[BUSINESS] Access token refreshed with new business/location claims");
+        }
+      } catch {
+        // Non-critical — the old token still works, just missing the new claims
+        console.warn("[BUSINESS] Token refresh after business creation failed (non-critical)");
+      }
+
+      revalidatePath("/", "layout");
+
+      return parseStringify({
+        responseType: "success",
+        message: "Business and location created successfully!",
+        data: { business, locations },
+      });
+    }
+
+    return parseStringify({
+      responseType: "error",
+      message: "Unexpected response from server.",
+      error: new Error("Empty response"),
+    });
+  } catch (error: any) {
+    // Re-throw Next.js redirect errors
+    if (
+      error instanceof Error &&
+      "digest" in error &&
+      typeof (error as any).digest === "string" &&
+      (error as any).digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+
+    // Pull the structured error code (set by handleSettloApiError on the
+    // ErrorResponseType it throws) and translate via UI_ERROR_MESSAGES so
+    // the form gets human-readable copy without each caller branching.
+    // BUSINESS_NAME_TAKEN / LOCATION_NAME_TAKEN are the field-level
+    // signals the form uses to highlight the offending input.
+    const errorCode: string | undefined = error?.code;
+    const friendlyMessage = getUIErrorMessage(
+      errorCode,
+      error?.message,
+      "Something went wrong while processing your request, please try again.",
+    );
+
+    return parseStringify({
+      responseType: "error",
+      message: friendlyMessage,
+      errorCode,
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
   }
 };
+

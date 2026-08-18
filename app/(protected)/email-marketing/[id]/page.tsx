@@ -10,7 +10,12 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { ApiResponse } from "@/types/types";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+    PageShell,
+    PageHeader,
+    PageBreadcrumbs,
+    PageBody,
+} from "@/components/layouts/page-shell";
 import EmailForm from "@/components/forms/email_form";
 import { Email } from "@/types/email/type";
 import { getEmail } from "@/lib/actions/broadcast-email-action";
@@ -32,24 +37,28 @@ export default async function EmailMarketingPage({params}: {params: Params}) {
         }
     }
 
-    const breadcrumbItems = [
-        { title: "Email Marketing", link: "/email-marketing" },
-        {
-            title: isNewItem ? "New" : item?.content[0]?.subject || "",
-            link: "",
-        },
-    ];
+    const title = isNewItem ? "Send Email" : item?.content[0]?.subject || "Email";
 
     return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <div className="flex items-center justify-between mb-2">
-                <div className="relative flex-1 md:max-w-md">
-                    <BreadcrumbsNav items={breadcrumbItems} />
-                </div>
-            </div>
-
-            <TemplateCard isNewItem={isNewItem} item={item?.content[0]} />
-        </div>
+        <PageShell>
+            <PageBreadcrumbs
+                items={[
+                    { title: "Email Marketing", href: "/email-marketing" },
+                    { title: isNewItem ? "New" : item?.content[0]?.subject || "" },
+                ]}
+            />
+            <PageHeader
+                title={title}
+                subtitle={
+                    isNewItem
+                        ? "Broadcast Email from your business location towards your customers"
+                        : undefined
+                }
+            />
+            <PageBody>
+                <TemplateCard isNewItem={isNewItem} item={item?.content[0]} />
+            </PageBody>
+        </PageShell>
     );
 }
 

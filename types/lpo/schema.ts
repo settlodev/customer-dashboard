@@ -1,0 +1,76 @@
+import { z } from "zod";
+
+const toNumber = (val: unknown) => {
+  if (typeof val === "string" && val.trim() !== "") return parseFloat(val);
+  if (typeof val === "number") return val;
+  return undefined;
+};
+
+const currencyCode = z
+  .string()
+  .regex(/^[A-Za-z]{3}$/, "Currency must be a 3-letter code")
+  .transform((v) => v.toUpperCase());
+
+export const CreateLpoItemSchema = z.object({
+  stockVariantId: z.string({ required_error: "Stock item is required" }).uuid(),
+  orderedQuantity: z.preprocess(
+    toNumber,
+    z
+      .number({ required_error: "Ordered quantity is required" })
+      .positive("Ordered quantity must be greater than zero"),
+  ),
+  unitCost: z.preprocess(
+    toNumber,
+    z
+      .number({ required_error: "Unit cost is required" })
+      .nonnegative("Unit cost cannot be negative"),
+  ),
+  currency: currencyCode.optional().or(z.literal("").transform(() => undefined)),
+  /**
+   * Per-line tax override. Unset (`null`/undefined) means "use the stock
+   * item's default" — see the resolution chain in
+   * docs/superpowers/specs/2026-08-03-purchase-tax-design.md.
+   */
+  taxTypeId: z.string().uuid().optional().nullable(),
+});
+
+// Create-time financing is retired (2026-08-03 LPO-financing design, D1):
+// the backend rejects SETTLO_FINANCING at POST /api/v1/lpos, and financing
+// is requested from the order page after supplier acceptance. New LPOs are
+// always DIRECT — the payload simply omits paymentMethod and the backend
+// defaults it.
+export const CreateLpoSchema = z.object({
+  supplierId: z
+    .string({ required_error: "Supplier is required" })
+    .uuid("Supplier is required"),
+  /**
+   * Document-level override: this supplier's unit costs on this LPO are
+   * already tax-inclusive. A property of how the supplier quotes, not of
+   * the goods.
+   */
+  pricesIncludeTax: z.boolean().optional().default(false),
+  notes: z.string().optional(),
+  items: z.array(CreateLpoItemSchema).min(1, "Add at least one item"),
+});
+
+export const UpdateLpoStatusSchema = z.object({
+  status: z.enum([
+    "DRAFT",
+    "SUBMITTED",
+    "APPROVED",
+    "PARTIALLY_RECEIVED",
+    "RECEIVED",
+    "CANCELLED",
+  ]),
+});
+
+export const AcknowledgeLpoSchema = z.object({
+  decision: z.enum(["ACCEPTED", "REJECTED"], {
+    required_error: "Choose Accept or Reject",
+  }),
+  note: z
+    .string()
+    .max(2000, "Note cannot exceed 2000 characters")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+});

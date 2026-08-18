@@ -1,27 +1,4 @@
-import { UUID } from 'crypto';
-
-export declare interface Variant {
-    id: UUID,
-    name: string,
-    price: number,
-    purchasingPrice: number,
-    sku: string,
-    barcode: string,
-    description: string,
-    image: string,
-    status: boolean,
-    canDelete: boolean,
-    color: string,
-    taxIncluded: boolean,
-    taxAmount: number,
-    taxClass: string,
-    product: UUID,
-    tag: UUID,
-    isArchived: boolean,
-    unit: string,
-    unitName:string,
-    trackInventory: boolean,
-    trackingType: string | null,
-    trackItem: UUID | null,
-    availableStock: number,
-}
+// ProductVariant is now defined in types/product/type.ts
+// This file re-exports for backward compatibility with existing imports.
+export type { ProductVariant as Variant } from "@/types/product/type";
+export type { ProductVariant } from "@/types/product/type";

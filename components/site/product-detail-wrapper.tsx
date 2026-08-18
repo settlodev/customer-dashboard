@@ -17,11 +17,11 @@ const ProductDetailsPageWrapper: React.FC<ProductDetailsPageWrapperProps> = ({
 
   // Set locationId when component mounts (only if it's different)
   useEffect(() => {
-    if (product.location && state.locationId !== product.location) {
-      console.log("Setting locationId in wrapper:", product.location);
-      setLocationId(product.location);
+    if (product.locationId && state.locationId !== product.locationId) {
+      console.log("Setting locationId in wrapper:", product.locationId);
+      setLocationId(product.locationId);
     }
-  }, [product.location, state.locationId, setLocationId]);
+  }, [product.locationId, state.locationId, setLocationId]);
 
   const handleAddToCart = (
     product: ExtendedProduct,
@@ -74,7 +74,7 @@ const ProductDetailsPageWrapper: React.FC<ProductDetailsPageWrapperProps> = ({
         onAddToWishlist={handleAddToWishlist}
       />
       {/* CartSidebar with locationId */}
-      <CartSidebar businessType={businessType} locationId={product.location} />
+      <CartSidebar businessType={businessType} locationId={product.locationId} />
     </>
   );
 };

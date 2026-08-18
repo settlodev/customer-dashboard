@@ -1,410 +1,2349 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
-import { useForm, useFieldArray, FieldErrors } from "react-hook-form";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import {
+  useForm,
+  useFieldArray,
+  useWatch,
+  type FieldErrors,
+  type UseFormReturn,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { Trash2, Plus } from "lucide-react";
+import {
+  Trash2,
+  Plus,
+  Package,
+  Barcode as BarcodeIcon,
+  Hash,
+  Archive,
+  ArchiveRestore,
+  Loader2,
+  Wand2,
+  SlidersHorizontal,
+  ChevronDown,
+  ChevronRight,
+  ImageIcon,
+  ArrowUpFromLine,
+  X as XIcon,
+  CheckCircle2,
+  FileText,
+  Boxes,
+  AlertTriangle,
+  Percent,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
   FormDescription,
+  FormMessage,
 } from "@/components/ui/form";
-import { CardContent, Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  ControlBox,
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  SegmentedRadio,
+  controlInputClass,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
+import { cn } from "@/lib/utils";
 import { NumericFormat } from "react-number-format";
-import { FormError } from "../widgets/form-error";
-import CancelButton from "../widgets/cancel-button";
-import { SubmitButton } from "../widgets/submit-button";
-import { createStock, updateStock } from "@/lib/actions/stock-actions";
-import { Stock } from "@/types/stock/type";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Alert,
+  AlertIcon,
+  AlertBody,
+  AlertTitle,
+  AlertDescription,
+} from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogIcon,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import {
+  createStock,
+  createStockWithProduct,
+  updateStock,
+  archiveStockVariant,
+  unarchiveStockVariant,
+  saveStockDraft,
+  publishStock,
+} from "@/lib/actions/stock-actions";
+import { updateLocationSettings } from "@/lib/actions/location-settings-actions";
+import type { LocationSettingsUpdate } from "@/types/location-settings/schema";
+import {
+  useLocationInventoryFlags,
+  markLocationInventoryFlags,
+} from "@/hooks/use-location-inventory-flags";
+import { uploadService } from "@/lib/uploads/upload-service";
+import { assignBarcode } from "@/lib/actions/barcode-actions";
+import {
+  getCachedCategories,
+  getCachedStocks,
+  getCachedTaxTypes,
+  invalidateStocksCache,
+  useCachedUnits,
+} from "@/lib/cache/reference-data";
+import type { Stock } from "@/types/stock/type";
+import type { UnitOfMeasure } from "@/types/unit/type";
+import type { Category } from "@/types/category/type";
+import type { TaxType } from "@/types/tax-type/type";
 import { StockSchema } from "@/types/stock/schema";
-import { useTransition } from "react";
-import { FormResponse } from "@/types/types";
-import UnitSelector from "../widgets/unit-selector";
+import type { FormResponse } from "@/types/types";
+import UnitSelector from "@/components/widgets/unit-selector";
+import StockCategorySelector from "@/components/widgets/stock-category-selector";
+import CompatibleUnitSelector from "@/components/widgets/compatible-unit-selector";
+import SupplierSelector from "@/components/widgets/supplier-selector";
+import StockVariantSelector from "@/components/widgets/stock-variant-selector";
+import CurrencySelector from "@/components/widgets/currency-selector";
+import CreateCategoryDialog from "@/components/widgets/create-category-dialog";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { MATERIAL_TYPE_OPTIONS } from "@/types/catalogue/enums";
+import { BusinessDayClosedDialog } from "@/components/widgets/business-day-closed-dialog";
+import { useBusinessDayGuard } from "@/hooks/use-business-day-guard";
+import { useLocationCurrency } from "@/hooks/use-location-currency";
+import { formatMoney } from "@/lib/helpers";
 
-type StockFormProps = {
+import styles from "./styles/form-shell.module.css";
+
+interface StockFormProps {
   item: Stock | null | undefined;
+  balances?: Record<
+    string,
+    { quantityOnHand: number; averageCost: number | null }
+  >;
+}
+
+const DEFAULT_VARIANT = {
+  name: "",
+  serialTracked: false,
+  archived: false,
+  initialQuantity: 0,
+  initialUnitCost: 0,
+  reorderPoint: undefined as number | undefined,
+  reorderQuantity: undefined as number | undefined,
+  preferredSupplierId: "",
+  lowStockThreshold: undefined as number | undefined,
+  overstockThreshold: undefined as number | undefined,
+  sellingPrice: undefined as number | undefined,
+  depositValue: undefined as number | undefined,
+  depositCurrency: undefined as string | undefined,
+  containerMode: "RETURNABLE" as "RETURNABLE" | "CONSUMABLE",
+  returnableContainers: [] as { containerStockVariantId: string; quantityPerUnit: number }[],
 };
 
-export default function StockForm({ item }: StockFormProps) {
+interface GalleryImage {
+  name: string;
+  size: number;
+  type: string;
+  dataUrl: string;
+}
+
+export default function StockForm({ item, balances }: StockFormProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
+  const businessDayGuard = useBusinessDayGuard();
+  const [archivingIndex, setArchivingIndex] = useState<number | null>(null);
+  const [generatingBarcode, setGeneratingBarcode] = useState<number | null>(null);
+  const [reorderOpen, setReorderOpen] = useState<Record<number, boolean>>({});
+  const { data: cachedUnitsData } = useCachedUnits();
+  const units: UnitOfMeasure[] = cachedUnitsData ?? [];
+  const { toast } = useToast();
+
+  // ── Auto-create matching product (create-mode only) ───────────────
+  // Off by default — most stock items in restaurant POS are raw
+  // materials (flour, oil) that don't need a sellable product. The
+  // merchant flips this on when the stock IS the sellable thing
+  // (bottled drinks, packaged goods). Selling price lives per-variant
+  // (variants[i].sellingPrice) so Coca-Cola 330ml and 500ml are priced
+  // independently.
+  const [autoCreateProduct, setAutoCreateProduct] = useState<boolean>(false);
+  // Categories are required by the product side when autoCreateProduct is on.
+  // Held outside the form because they're not part of StockSchema — they
+  // travel as productOptions to createStockWithProduct.
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  // Purchase tax type picker — same source and shape as the product form's
+  // tax-type selector (types/tax-type/type, getCachedTaxTypes) so the two
+  // forms behave identically.
+  const [taxTypes, setTaxTypes] = useState<TaxType[]>([]);
+  const locationCurrency = useLocationCurrency();
+  const inventoryFlags = useLocationInventoryFlags();
+  // Default on — most merchants who bother filling in reorder/alert config
+  // want it to actually fire. They can flip it off to configure the stock
+  // now and turn on the location-wide switch later themselves.
+  const [syncInventoryAlertSettings, setSyncInventoryAlertSettings] =
+    useState(true);
+
+  const isEditing = !!item;
+  const lastSyncedNameRef = useRef("");
+
+  // Lazy-load categories the first time the merchant flips on
+  // autoCreateProduct, so create-only-stock flows skip the round-trip.
+  useEffect(() => {
+    if (!autoCreateProduct || categories.length > 0) return;
+    getCachedCategories()
+      .then((c) => setCategories(c ?? []))
+      .catch(() => setCategories([]));
+  }, [autoCreateProduct, categories.length]);
+
+  // Purchase tax types — fetched unconditionally (unlike categories above)
+  // since the tax-type picker is always visible on this form, not gated
+  // behind a toggle. Same active-only filter + sortOrder/code ordering as
+  // the product form's tax-type selector.
+  useEffect(() => {
+    getCachedTaxTypes()
+      .then((tx) => {
+        const activeTaxTypes = ((tx ?? []) as TaxType[])
+          .filter((t) => t.active)
+          .sort(
+            (a, b) =>
+              (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+              a.code.localeCompare(b.code),
+          );
+        setTaxTypes(activeTaxTypes);
+      })
+      .catch(() => setTaxTypes([]));
+  }, []);
+
+  const unitMap = useMemo(
+    () => new Map(units.map((u) => [u.id, u])),
+    [units],
+  );
 
   const form = useForm<z.infer<typeof StockSchema>>({
     resolver: zodResolver(StockSchema),
     defaultValues: {
-      name: item?.name || "",
-      description: item?.description || "",
-      status: item?.status ?? true,
-      unit: item?.unit || "",
-      stockVariants: item?.stockVariants.map((variant) => ({
-        id: variant.id,
-        name: variant.name,
-        startingQuantity: variant.startingQuantity,
-        startingValue: variant.startingValue,
-        alertLevel: variant.alertLevel,
-        imageOption: variant.imageOption || "",
-      })) || [
-        {
-          name: "",
-          startingQuantity: 0,
-          startingValue: 0,
-          alertLevel: 0,
-          imageOption: "",
-        },
-      ],
+      name: item?.name ?? "",
+      description: item?.description ?? "",
+      baseUnitId: item?.baseUnitId ?? "",
+      divisibleUnitId: item?.divisibleUnitId ?? "",
+      materialType: item?.materialType ?? "FINISHED_GOOD",
+      categoryId: item?.categoryId ?? "",
+      // Left unset (undefined) rather than "" — taxTypeId is optional +
+      // nullable, not the optional-uuid-with-empty-string-default pattern
+      // used by divisibleUnitId/categoryId above, so it must never default
+      // to a picked value.
+      taxTypeId: item?.taxTypeId ?? undefined,
+      purchaseTaxInclusive: item?.purchaseTaxInclusive ?? false,
+      imageUrls: item?.imageUrls?.length
+        ? item.imageUrls
+        : item?.imageUrl
+          ? [item.imageUrl]
+          : [],
+      variants: item?.variants?.length
+        ? item.variants.map((v) => ({
+            id: v.id,
+            name: v.name,
+            sku: v.sku ?? undefined,
+            barcode: v.barcode ?? undefined,
+            serialTracked: v.serialTracked,
+            archived: v.archived,
+            initialQuantity: 0,
+            initialUnitCost: 0,
+            serialNumbers: [] as string[],
+            reorderPoint: undefined as number | undefined,
+            reorderQuantity: undefined as number | undefined,
+            preferredSupplierId: "",
+            lowStockThreshold: undefined as number | undefined,
+            overstockThreshold: undefined as number | undefined,
+            sellingPrice: undefined as number | undefined,
+            depositValue: v.depositValue ?? undefined,
+            depositCurrency: v.depositCurrency ?? undefined,
+            containerMode: v.containerMode ?? "RETURNABLE",
+            returnableContainers: v.returnableContainers ?? [],
+          }))
+        : [DEFAULT_VARIANT],
     },
   });
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: "stockVariants",
+    name: "variants",
   });
 
-  const onInvalid = useCallback((errors: FieldErrors) => {
-    console.log("errors", errors);
+  const stockName = form.watch("name");
+  const baseUnitId = form.watch("baseUnitId");
+  const materialType = form.watch("materialType");
+  // Packaging items (crates/bottles) carry the deposit inline on each variant and
+  // have no "link a container" step, so the deposit shows in Variant details and
+  // the Packaging tab is hidden. Everything else can link a returnable container
+  // per variant via the Packaging tab.
+  const isPackaging = materialType === "PACKAGING";
+  // Ids of variants belonging to PACKAGING stocks — the valid empty
+  // containers (crates/bottles) offerable in the returnable-container
+  // picker below. Fetched once; the selector itself re-derives display
+  // names from the same cached catalogue.
+  const [packagingVariantIds, setPackagingVariantIds] = useState<string[]>([]);
+  useEffect(() => {
+    getCachedStocks()
+      .then((stocks) =>
+        setPackagingVariantIds(
+          stocks
+            .filter((s) => s.materialType === "PACKAGING" && !s.archived)
+            .flatMap((s) => s.variants.filter((v) => !v.archived).map((v) => v.id)),
+        ),
+      )
+      .catch(() => setPackagingVariantIds([]));
   }, []);
-  const handleAddVariant = () => {
-    append({
-      name: "",
-      startingQuantity: 0,
-      startingValue: 0,
-      alertLevel: 0,
-      imageOption: "",
-      // unit: form.getValues("unit")
-    });
-  };
+  // useWatch (vs form.watch) for the variants array so nested field updates
+  // — especially sellingPrice typed inside <NumericFormat> — reliably
+  // re-trigger the readiness memo.
+  const watchedVariants = useWatch({
+    control: form.control,
+    name: "variants",
+  });
+
+  // Reorder/alert config only takes effect if the matching location-wide
+  // switch is on (Settings → Stock & inventory). Filling these fields
+  // without that switch on is a silent no-op, so flag it and offer to flip
+  // the switch alongside the save. Create-only — the fields are hidden when
+  // editing, so this can't apply there.
+  const needsAutoReorder = useMemo(
+    () =>
+      (watchedVariants ?? []).some(
+        (v) =>
+          v?.reorderPoint != null ||
+          v?.reorderQuantity != null ||
+          !!v?.preferredSupplierId,
+      ),
+    [watchedVariants],
+  );
+  const needsLowStockAlert = useMemo(
+    () => (watchedVariants ?? []).some((v) => v?.lowStockThreshold != null),
+    [watchedVariants],
+  );
+  const showAutoReorderPrompt =
+    !isEditing &&
+    needsAutoReorder &&
+    inventoryFlags?.autoReorderEnabled === false;
+  const showLowStockAlertPrompt =
+    !isEditing &&
+    needsLowStockAlert &&
+    inventoryFlags?.enableLowStockAlerts === false;
+
+  // Auto-sync stock name → first variant name (single-variant create flow)
+  useEffect(() => {
+    if (isEditing || fields.length > 1) return;
+    const current = form.getValues("variants.0.name");
+    if (current === "" || current === lastSyncedNameRef.current) {
+      form.setValue("variants.0.name", stockName || "");
+      lastSyncedNameRef.current = stockName || "";
+    }
+  }, [stockName, isEditing, fields.length, form]);
+
+  // Stable callback so the memoised VariantRow doesn't re-render on every
+  // parent tick — the row's archive button captures this through props,
+  // and a fresh reference here would invalidate React.memo's shallow
+  // comparison.
+  const handleVariantArchive = useCallback(
+    async (index: number, shouldArchive: boolean) => {
+      const variantId = form.getValues(`variants.${index}.id`);
+      if (!variantId || !item) return;
+      setArchivingIndex(index);
+      const result = shouldArchive
+        ? await archiveStockVariant(item.id, variantId)
+        : await unarchiveStockVariant(item.id, variantId);
+      if (result.responseType === "success") {
+        invalidateStocksCache();
+        form.setValue(`variants.${index}.archived`, shouldArchive);
+        toast({
+          title: shouldArchive ? "Archived" : "Restored",
+          description: `Variant has been ${shouldArchive ? "archived" : "restored"}.`,
+        });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: result.message });
+      }
+      setArchivingIndex(null);
+    },
+    [form, item, toast],
+  );
+
+  const handleGenerateBarcode = useCallback(
+    async (index: number) => {
+      const variantId = form.getValues(`variants.${index}.id`);
+      if (!variantId) return;
+      setGeneratingBarcode(index);
+      try {
+        const updated = await assignBarcode(variantId);
+        if (updated?.barcode) {
+          form.setValue(`variants.${index}.barcode`, updated.barcode);
+          toast({ title: "Barcode generated", description: updated.barcode });
+        }
+      } catch {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to generate barcode.",
+        });
+      } finally {
+        setGeneratingBarcode(null);
+      }
+    },
+    [form, toast],
+  );
+
+  const onInvalid = useCallback(
+    (_errors: FieldErrors) => {
+      toast({
+        variant: "destructive",
+        title: "Validation failed",
+        description: "Please check your inputs.",
+      });
+    },
+    [toast],
+  );
 
   const submitData = (values: z.infer<typeof StockSchema>) => {
-    const stored = localStorage.getItem("pagination-stock-variants");
-    const paginationState = stored ? JSON.parse(stored) : null;
-    console.log("Pagination state:", paginationState);
-
     setResponse(undefined);
+    runSubmit(values);
+  };
 
-    // When updating, preserve the existing variant IDs
-    const updatedValues = {
-      ...values,
-      stockVariants: values.stockVariants.map((variant, index) => {
-        // If this is an existing variant (has an id), preserve it
-        if (item?.stockVariants[index]?.id) {
-          return {
-            ...variant,
-            id: item.stockVariants[index].id,
-            unit: values.unit,
-          };
-        }
-        // For new variants, don't include an id
-        return {
-          ...variant,
-          unit: values.unit,
-        };
-      }),
-    };
-
-    console.log("Starting submitData with values:", updatedValues);
-
+  const runSubmit = (values: z.infer<typeof StockSchema>) => {
+    // Single-variant stock items keep the lone variant's name in lockstep with
+    // the stock item name — the variant-name field is hidden/auto-filled when
+    // there's only one variant. The create flow live-syncs via the effect
+    // above, but edit does not, so enforce it here too so a rename propagates
+    // to the variant on save. Multi-variant items keep their distinct names.
+    const effectiveValues: z.infer<typeof StockSchema> =
+      values.variants.length === 1
+        ? { ...values, variants: [{ ...values.variants[0], name: values.name }] }
+        : values;
     startTransition(() => {
       if (item) {
-        console.log("Updating existing stock with ID:", updatedValues);
-        updateStock(item.id, updatedValues, paginationState)
-          .then((data) => {
-            console.log("Update stock response:", data);
-            if (data) setResponse(data);
-          })
-          .catch((error) => {
-            console.error("Error updating stock:", error);
-          });
+        const currentIds = new Set(
+          effectiveValues.variants.map((v) => v.id).filter(Boolean),
+        );
+        const removed = (item.variants || [])
+          .map((v) => v.id)
+          .filter((vid) => !currentIds.has(vid));
+        updateStock(item.id, effectiveValues, removed).then((d) => {
+          if (businessDayGuard.catch(d, () => runSubmit(values))) return;
+          if (d) {
+            setResponse(d);
+            if (d.responseType === "success") invalidateStocksCache();
+          }
+        });
       } else {
-        // console.log('Creating new stock');
-        createStock(updatedValues)
-          .then((data) => {
-            // console.log('Create stock response:', data);
-            if (data) setResponse(data);
-          })
-          .catch((error) => {
-            console.error("Error creating stock:", error);
+        if (
+          syncInventoryAlertSettings &&
+          (showAutoReorderPrompt || showLowStockAlertPrompt)
+        ) {
+          const patch: LocationSettingsUpdate = {};
+          if (showAutoReorderPrompt) patch.autoReorderEnabled = true;
+          if (showLowStockAlertPrompt) patch.enableLowStockAlerts = true;
+          updateLocationSettings(patch).then((res) => {
+            if (res.responseType === "success") {
+              markLocationInventoryFlags(patch);
+            } else {
+              toast({
+                variant: "destructive",
+                title: "Couldn't turn on the location alert settings",
+                description: res.message,
+              });
+            }
           });
+        }
+        const create = autoCreateProduct
+          ? createStockWithProduct(effectiveValues, { categoryIds })
+          : createStock(effectiveValues);
+        create.then((d) => {
+          if (businessDayGuard.catch(d, () => runSubmit(values))) return;
+          if (d) {
+            setResponse(d);
+            if (d.responseType === "success") invalidateStocksCache();
+          }
+        });
       }
     });
   };
 
-  const isFieldReadOnly = (index: number): boolean => {
-    return Boolean(item && index < (item.stockVariants?.length || 0));
+  const handleAddVariant = () => {
+    append({ ...DEFAULT_VARIANT });
   };
 
-  return (
-    <Form {...form}>
-      <FormError message={response?.message} />
-      <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
-        <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
-          {/* Left Column - Basic Information */}
-          <Card className="order-1 xl:order-none md:col-span-1">
-            <CardContent className="pt-6 space-y-6">
-              {/* Basic Information Section */}
-              <div>
-                <h2 className="text-xl font-semibold mb-4">
-                  Basic Information
-                </h2>
-                <div className="space-y-6">
-                  {/* Stock Name Field */}
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Stock Name</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter stock name"
-                            {...field}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Enter a unique name for this stock item
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+  // ── Image gallery ──────────────────────────────────────────────────
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [primaryIdx, setPrimaryIdx] = useState(0);
+  const [dragOver, setDragOver] = useState(false);
+  const [isUploadingGallery, setIsUploadingGallery] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-                  {/* Stock Unit Field */}
-                  <div className="col-span-4">
+  useEffect(() => {
+    const initial: string[] = item?.imageUrls?.length
+      ? item.imageUrls
+      : item?.imageUrl
+        ? [item.imageUrl]
+        : [];
+    if (!initial.length) return;
+    setGalleryImages((prev) => {
+      if (prev.length) return prev;
+      return initial.map((url: string, i: number) => ({
+        name: i === 0 ? "current image" : `current image ${i + 1}`,
+        size: 0,
+        type: "image/*",
+        dataUrl: url,
+      }));
+    });
+  }, [item]);
+
+  const handleFiles = useCallback(
+    async (files: FileList | File[] | null | undefined) => {
+      if (!files) return;
+      const arr = Array.from(files).filter((f) => f.type.startsWith("image/"));
+      if (!arr.length) return;
+      setIsUploadingGallery(true);
+      try {
+        const uploaded = await Promise.all(
+          arr.map(async (file) => {
+            const result = await uploadService.upload({
+              file,
+              purpose: "STOCK_IMAGE",
+            });
+            return {
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              dataUrl: result.url,
+            };
+          }),
+        );
+        setGalleryImages((prev) => [...prev, ...uploaded].slice(0, 5));
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Upload failed",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Couldn't upload one of the images.",
+        });
+      } finally {
+        setIsUploadingGallery(false);
+      }
+    },
+    [toast],
+  );
+
+  const removeImage = useCallback(
+    (e: React.MouseEvent | undefined, i: number) => {
+      e?.stopPropagation();
+      setGalleryImages((prev) => prev.filter((_, idx) => idx !== i));
+      setPrimaryIdx((p) => (p >= i ? Math.max(0, p - 1) : p));
+    },
+    [],
+  );
+
+  // Sync gallery into form's imageUrls (cover first, then the rest in order).
+  useEffect(() => {
+    const cover = galleryImages[primaryIdx];
+    const rest = galleryImages.filter((_, idx) => idx !== primaryIdx);
+    const ordered = cover ? [cover, ...rest] : rest;
+    form.setValue(
+      "imageUrls",
+      ordered.map((g) => g.dataUrl).filter((u) => !!u),
+      { shouldDirty: true },
+    );
+  }, [galleryImages, primaryIdx, form]);
+
+  // Readiness checklist. The four mandatory items gate submit; "Variant
+  // prices" is advisory — it's tracked in the checklist for visibility but
+  // does NOT block submission. Inline warnings on the price input itself
+  // surface mispricing (qty>0+price=0, price<cost). When autoCreateProduct
+  // is on, "Categories" is also mandatory (the product side rejects
+  // uncategorised products).
+  const allVariantsNamed = useMemo(() => {
+    const active = (watchedVariants ?? []).filter((v) => !v?.archived);
+    if (active.length === 0) return false;
+    return active.every((v) => !!v?.name?.trim());
+  }, [watchedVariants]);
+  const requiredFilled = useMemo(
+    () => [
+      !!stockName?.trim(),
+      !!baseUnitId,
+      !!watchedVariants?.[0]?.name?.trim(),
+      allVariantsNamed,
+      ...(autoCreateProduct ? [categoryIds.length > 0] : []),
+    ],
+    [
+      stockName,
+      baseUnitId,
+      watchedVariants,
+      allVariantsNamed,
+      autoCreateProduct,
+      categoryIds,
+    ],
+  );
+  const advisoryAllPriced = useMemo(() => {
+    if (!autoCreateProduct) return null;
+    const active = (watchedVariants ?? []).filter((v) => !v?.archived);
+    if (active.length === 0) return false;
+    return active.every((v) => {
+      const n = Number(v?.sellingPrice);
+      return Number.isFinite(n) && n > 0;
+    });
+  }, [watchedVariants, autoCreateProduct]);
+  const checklistItems =
+    advisoryAllPriced === null
+      ? requiredFilled
+      : [...requiredFilled, advisoryAllPriced];
+  const completion = Math.round(
+    (checklistItems.filter(Boolean).length / checklistItems.length) * 100,
+  );
+  const isValid = requiredFilled.every(Boolean);
+  const remainingFields = requiredFilled.filter((v) => !v).length;
+
+  const baseUnitAbbr = unitMap.get(baseUnitId ?? "")?.abbreviation ?? "";
+  const materialTypeLabel =
+    MATERIAL_TYPE_OPTIONS.find((m) => m.value === materialType)?.label ??
+    materialType;
+
+  const handleSaveAsDraft = useCallback(() => {
+    startTransition(async () => {
+      const result = await saveStockDraft(form.getValues(), item?.id);
+      if (result?.responseType === "error") {
+        toast({
+          variant: "destructive",
+          title: "Couldn't save draft",
+          description: result.message,
+        });
+        return;
+      }
+      invalidateStocksCache();
+      toast({ title: "Draft saved" });
+      // First save returns the freshly-created stock so we can pin its id
+      // on the URL — subsequent saves PUT against /stocks/{id}.
+      const newId = (result?.data as { id?: string } | undefined)?.id;
+      if (!item?.id && newId) {
+        router.replace(`/stock-variants/${newId}/edit`);
+      }
+    });
+  }, [form, item?.id, router, toast]);
+
+  const handlePublish = useCallback(() => {
+    if (!item?.id) return;
+    startTransition(async () => {
+      const result = await publishStock(item.id);
+      if (result?.responseType === "error") {
+        toast({
+          variant: "destructive",
+          title: "Couldn't publish stock",
+          description: result.message,
+        });
+        return;
+      }
+      invalidateStocksCache();
+      toast({ title: "Stock published" });
+      router.push("/stock-variants");
+    });
+  }, [item?.id, router, toast]);
+
+  const isDraftStock = item?.draft === true;
+
+  const handleDiscard = useCallback(() => {
+    router.back();
+  }, [router]);
+
+  return (
+    <>
+      <BusinessDayClosedDialog
+        open={businessDayGuard.dialogOpen}
+        locationId={businessDayGuard.locationId}
+        reason={businessDayGuard.reason}
+        onDismiss={businessDayGuard.close}
+        onDayOpened={businessDayGuard.onDayOpened}
+      />
+      <Form {...form}>
+        {response?.responseType === "error" && response?.message ? (
+          <Alert tone="danger" className="mb-3">
+            <AlertIcon>
+              <AlertTriangle className="h-3.5 w-3.5" />
+            </AlertIcon>
+            <AlertBody>
+              <AlertTitle>We couldn&apos;t save this stock item</AlertTitle>
+              <AlertDescription>{response.message}</AlertDescription>
+            </AlertBody>
+          </Alert>
+        ) : null}
+        <form
+          onSubmit={form.handleSubmit(submitData, onInvalid)}
+          className={styles.formRoot}
+        >
+          <div className={styles.formGrid}>
+            {/* ── LEFT — form column ─────────────────────────────── */}
+            <div className={styles.formStack}>
+              <section className={styles.formCard}>
+                <header className={styles.formCardHead}>
+                  <div className={styles.icoBox}>
+                    <Package className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3>Stock details</h3>
+                    <p className={styles.formCardHeadDesc}>
+                      Identifies the item across orders, recipes, and reports.
+                    </p>
+                  </div>
+                  <div className={styles.formCardActions}>
+                    <span className={styles.stepBadge}>STEP 01</span>
+                  </div>
+                </header>
+
+                <div className={styles.formBody}>
+                  <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] md:grid-cols-3">
                     <FormField
                       control={form.control}
-                      name="unit"
+                      name="name"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Stock Unit (Optional)</FormLabel>
+                        <FormItem className="min-w-0 space-y-[7px]">
+                          <FieldLabel required>Stock name</FieldLabel>
                           <FormControl>
-                            <UnitSelector
-                              value={field.value}
-                              onChange={field.onChange}
-                              placeholder="Select unit"
-                              // disabled={isPending}
+                            <ControlInput
+                              prefix={<Package className="h-4 w-4" />}
+                              placeholder="e.g. Flour, Cooking Oil"
+                              {...field}
+                              disabled={isPending}
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+
+                    <FormField
+                      control={form.control}
+                      name="materialType"
+                      render={({ field }) => (
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Material type</FieldLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            disabled={isPending}
+                          >
+                            <FormControl>
+                              <SelectTrigger className={controlSelectTriggerClass}>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {MATERIAL_TYPE_OPTIONS.map((o) => (
+                                <SelectItem key={o.value} value={o.value}>
+                                  {o.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FieldHint>
+                            {isPackaging
+                              ? "This item IS a returnable container — set the deposit it carries on each variant."
+                              : "Sold or consumed as-is; can link a returnable container per variant."}
+                          </FieldHint>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="categoryId"
+                      render={({ field }) => (
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Stock category</FieldLabel>
+                          <FormControl>
+                            <StockCategorySelector
+                              value={field.value ?? ""}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              isDisabled={isPending}
+                            />
+                          </FormControl>
+                          <FieldHint>
+                            Optional — used for filtering and reporting.
+                          </FieldHint>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="baseUnitId"
+                      render={({ field }) => (
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel required>Base unit</FieldLabel>
+                          <FormControl>
+                            <UnitSelector
+                              value={field.value}
+                              onChange={field.onChange}
+                              isDisabled={isPending}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="divisibleUnitId"
+                      render={({ field }) => (
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel optional>Divisible unit</FieldLabel>
+                          <FormControl>
+                            <CompatibleUnitSelector
+                              anchorUnitId={baseUnitId}
+                              value={field.value ?? ""}
+                              onChange={field.onChange}
+                              isDisabled={isPending || !baseUnitId}
+                              placeholder="None"
+                            />
+                          </FormControl>
+                          <FieldHint>
+                            Optional — count remaining stock in a smaller unit (e.g. Tots in a Bottle) instead of a decimal. Only units with a whole-number conversion to the base unit are accepted.
+                          </FieldHint>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
-                  {/* Stock Description Field */}
                   <FormField
                     control={form.control}
                     name="description"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
+                      <FormItem className="mt-[15px] space-y-[7px]">
+                        <FieldLabel optional>Description</FieldLabel>
                         <FormControl>
-                          <Textarea
-                            placeholder="Enter stock description"
+                          <ControlTextarea
+                            placeholder="Notes for buyers, recipes, or storage."
                             {...field}
+                            value={field.value ?? ""}
                             disabled={isPending}
-                            className="resize-none min-h-[120px]"
                           />
                         </FormControl>
-                        <FormDescription>
-                          Provide additional details about the stock item
-                        </FormDescription>
-                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {!isEditing && (
+                    <div className="mt-[18px] rounded-xl border border-primary/15 bg-primary/[0.06] p-[18px]">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 space-y-1">
+                          <div className="text-sm font-semibold text-ink">
+                            Also create a sellable product
+                          </div>
+                          <p className="max-w-[78ch] text-xs leading-relaxed text-ink-3">
+                            Use when this stock item IS the sellable thing
+                            (bottled drinks, packaged goods). Creates a matching
+                            product with one variant per stock variant, linked
+                            1:1 with the selling price you set on each variant
+                            below. Leave off for raw materials consumed by
+                            recipes.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={autoCreateProduct}
+                          onCheckedChange={setAutoCreateProduct}
+                          disabled={isPending}
+                        />
+                      </div>
+
+                      {autoCreateProduct && (
+                        <div className="mt-4 space-y-[7px] border-t border-primary/15 pt-4">
+                          <label className="flex items-center gap-1.5 text-[13px] font-semibold leading-none text-ink">
+                            Product category <span className="text-primary">*</span>
+                            <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
+                              {categoryIds.length} selected
+                            </span>
+                          </label>
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <MultiSelect
+                                key={categoryIds.join(",")}
+                                options={categories.map((c) => ({
+                                  label: c.name,
+                                  value: c.id,
+                                }))}
+                                onValueChange={setCategoryIds}
+                                defaultValue={categoryIds}
+                                placeholder="Pick at least one category"
+                                maxCount={5}
+                              />
+                            </div>
+                            <CreateCategoryDialog
+                              onCreated={(category: Category) => {
+                                setCategories((prev) =>
+                                  prev.some((c) => c.id === category.id)
+                                    ? prev
+                                    : [...prev, category],
+                                );
+                                setCategoryIds((prev) => [...prev, category.id]);
+                              }}
+                              trigger={
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  // Match the MultiSelect trigger's box: 44px
+                                  // tall, same 10px radius.
+                                  className="h-11 w-11 shrink-0 rounded-[10px]"
+                                  title="Create a new category"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              }
+                            />
+                          </div>
+                          <FieldHint>
+                            Drives the online menu, reports, and tax rules for
+                            the created product.
+                          </FieldHint>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className={styles.formCard}>
+                <header className={styles.formCardHead}>
+                  <div className={styles.icoBox}>
+                    <Boxes className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3>Variants</h3>
+                    <p className={styles.formCardHeadDesc}>
+                      Different packaging sizes or units of this stock item.
+                    </p>
+                  </div>
+                  <div className={styles.formCardActions}>
+                    <span className={styles.stepBadge}>STEP 02</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddVariant}
+                      disabled={isPending}
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" /> Add variant
+                    </Button>
+                  </div>
+                </header>
+
+                <div className={styles.formBody}>
+                  <div className="space-y-3">
+                    {fields.map((field, index) => (
+                      <VariantRow
+                        key={field.id}
+                        index={index}
+                        form={form}
+                        isEditing={isEditing}
+                        isPending={isPending}
+                        archivingIndex={archivingIndex}
+                        generatingBarcode={generatingBarcode}
+                        balances={balances}
+                        item={item}
+                        fieldsLength={fields.length}
+                        handleVariantArchive={handleVariantArchive}
+                        handleGenerateBarcode={handleGenerateBarcode}
+                        removeVariant={remove}
+                        reorderOpen={reorderOpen}
+                        setReorderOpen={setReorderOpen}
+                        autoCreateProduct={autoCreateProduct}
+                        baseUnitAbbreviation={baseUnitAbbr}
+                        locationCurrency={locationCurrency}
+                        materialType={materialType}
+                        packagingVariantIds={packagingVariantIds}
+                      />
+                    ))}
+                  </div>
+
+                  {(showAutoReorderPrompt || showLowStockAlertPrompt) && (
+                    <div className="mt-4 rounded-xl border border-amber-200/70 bg-amber-50/50 p-4 dark:border-amber-500/20 dark:bg-amber-950/10">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                            Turn on{" "}
+                            {[
+                              showAutoReorderPrompt && "auto-reorder",
+                              showLowStockAlertPrompt && "low-stock alerts",
+                            ]
+                              .filter(Boolean)
+                              .join(" and ")}{" "}
+                            for this location?
+                          </div>
+                          <p className="max-w-[78ch] text-xs leading-relaxed text-ink-3">
+                            {showAutoReorderPrompt &&
+                              "A variant has a reorder point or quantity set, but auto-reorder is currently off — it won't draft an LPO until it's on. "}
+                            {showLowStockAlertPrompt &&
+                              "A variant has a low-stock threshold set, but low-stock alerts are currently off — you won't be notified until it's on. "}
+                            We&apos;ll switch{" "}
+                            {showAutoReorderPrompt && showLowStockAlertPrompt
+                              ? "them"
+                              : "it"}{" "}
+                            on for this location when you save.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={syncInventoryAlertSettings}
+                          onCheckedChange={setSyncInventoryAlertSettings}
+                          disabled={isPending}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className={styles.formCard}>
+                <header className={styles.formCardHead}>
+                  <div className={styles.icoBox}>
+                    <Percent className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3>Purchase tax</h3>
+                    <p className={styles.formCardHeadDesc}>
+                      Set once here — every purchase document for this item
+                      (LPOs, GRNs, intake) inherits it as a default.
+                    </p>
+                  </div>
+                  <div className={styles.formCardActions}>
+                    <span className={styles.stepBadge}>STEP 03</span>
+                  </div>
+                </header>
+
+                <div className={styles.formBody}>
+                  <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="taxTypeId"
+                      render={({ field }) => (
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel optional>Tax type</FieldLabel>
+                          <FormControl>
+                            <Combobox
+                              options={taxTypes.map((t) => ({
+                                value: t.id,
+                                label: `${t.code} — ${t.name} (${t.ratePercent}%)`,
+                              }))}
+                              value={field.value ?? null}
+                              onChange={(v) => field.onChange(v ?? null)}
+                              placeholder={
+                                taxTypes.length === 0
+                                  ? "Loading tax types…"
+                                  : "Pick a tax type"
+                              }
+                              searchPlaceholder="Search tax types…"
+                              emptyText="No tax types found."
+                              disabled={isPending || taxTypes.length === 0}
+                              ariaLabel="Tax type"
+                            />
+                          </FormControl>
+                          <FieldHint>
+                            Optional — falls back to the business default,
+                            and only applies for VAT-registered businesses.
+                            Leave unset otherwise.
+                          </FieldHint>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="purchaseTaxInclusive"
+                    render={({ field }) => (
+                      <FormItem className="mt-[15px] flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel>Supplier prices include tax</FormLabel>
+                          <FormDescription>
+                            Turn this on if suppliers normally quote this
+                            item at a price that already includes tax. You
+                            can still change it on any individual purchase
+                            order or delivery.
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={isPending}
+                          />
+                        </FormControl>
                       </FormItem>
                     )}
                   />
                 </div>
-              </div>
+              </section>
+            </div>
 
-              {/* Status Switch */}
-              {item && (
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center justify-between p-4 rounded-lg border">
-                      <div className="space-y-0.5">
-                        <FormLabel>Stock Status</FormLabel>
-                        <div className="text-sm text-muted-foreground">
-                          {field.value ? "Active" : "Inactive"}
-                        </div>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              )}
-            </CardContent>
-          </Card>
+            {/* ── RIGHT — preview + media ──────────────────────── */}
+            <aside className={styles.formStack}>
+              <StockPreviewCard
+                name={stockName ?? ""}
+                materialTypeLabel={materialTypeLabel}
+                baseUnitAbbr={baseUnitAbbr}
+                variantCount={fields.length}
+                primaryImageUrl={galleryImages[primaryIdx]?.dataUrl}
+                checklist={[
+                  { label: "Stock name", done: requiredFilled[0] },
+                  { label: "Base unit", done: requiredFilled[1] },
+                  { label: "Variant name", done: requiredFilled[2] },
+                  { label: "Variant unit", done: requiredFilled[3] },
+                  ...(autoCreateProduct
+                    ? [
+                        {
+                          label: "Categories",
+                          done: categoryIds.length > 0,
+                        },
+                        {
+                          label: "Variant prices",
+                          done: !!advisoryAllPriced,
+                        },
+                      ]
+                    : []),
+                ]}
+                completion={completion}
+              />
 
-          {/* Right Column - Variants */}
-          <Card className="order-2 xl:order-none md:col-span-1 xl:col-span-2">
-            <CardContent className="pt-6">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 gap-2">
-                <div>
-                  <h2 className="text-xl font-semibold">Stock Variants</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Add at least one variant for this stock item
-                  </p>
-                </div>
+              <StockMediaCard
+                images={galleryImages}
+                primaryIdx={primaryIdx}
+                setPrimaryIdx={setPrimaryIdx}
+                handleFiles={handleFiles}
+                removeImage={removeImage}
+                dragOver={dragOver}
+                setDragOver={setDragOver}
+                fileInputRef={fileInputRef}
+                isUploading={isUploadingGallery}
+              />
+            </aside>
+          </div>
+
+          {/* ── Sticky footer ──────────────────────────────────── */}
+          <div className={styles.formFoot}>
+            <div className={styles.formFootSpacer} />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddVariant}
+                  variant="ghost"
                   disabled={isPending}
+                  title="Discard changes and go back"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Variant
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Discard
                 </Button>
-              </div>
+              </AlertDialogTrigger>
+              <AlertDialogContent tone="danger">
+                <AlertDialogIcon>
+                  <Trash2 className="h-5 w-5" />
+                </AlertDialogIcon>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Discard this draft?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Unsaved changes since the last autosave will be lost. This
+                    cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDiscard}>
+                    Discard
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSaveAsDraft}
+              disabled={isPending}
+            >
+              <FileText className="h-3.5 w-3.5 mr-1.5" /> Save as draft
+            </Button>
+            {isEditing && isDraftStock && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePublish}
+                disabled={isPending || !isValid}
+                title={
+                  isValid
+                    ? "Publish this draft — makes it live in the catalog"
+                    : `Complete required fields (${remainingFields} remaining)`
+                }
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Publish
+              </Button>
+            )}
+            <Button
+              type="submit"
+              disabled={isPending || !isValid}
+              title={
+                isValid
+                  ? isEditing
+                    ? "Save changes"
+                    : autoCreateProduct
+                      ? "Create stock + product"
+                      : "Create stock item"
+                  : `Complete required fields (${remainingFields} remaining)`
+              }
+            >
+              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+              {isEditing
+                ? "Save changes"
+                : autoCreateProduct
+                  ? "Create stock + product"
+                  : "Create stock"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </>
+  );
+}
 
-              {/* Variants List */}
-              <div className="space-y-6 overflow-y-auto pr-2">
-                {fields.map((field, index) => (
-                  <div key={field.id} className="p-4 rounded-lg border bg-card">
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                      {/* Variant Name Field */}
-                      <FormField
-                        control={form.control}
-                        name={`stockVariants.${index}.name`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Variant Name</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Enter variant name"
-                                {...field}
-                                required
-                                disabled={isPending}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+// ─────────────────────────────────────────────────────────────────────
+// Live preview card — right column
+// ─────────────────────────────────────────────────────────────────────
 
-                      {/* Initial Quantity Field */}
-                      <FormField
-                        control={form.control}
-                        name={`stockVariants.${index}.startingQuantity`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Initial Quantity</FormLabel>
-                            <div className="flex items-center gap-2">
-                              <FormControl>
-                                <NumericFormat
-                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:bg-muted"
-                                  value={field.value}
-                                  onValueChange={(values) => {
-                                    field.onChange(Number(values.value));
-                                  }}
-                                  thousandSeparator={true}
-                                  placeholder="Enter quantity"
-                                  disabled={isPending || isFieldReadOnly(index)}
-                                  readOnly={isFieldReadOnly(index)}
-                                />
-                              </FormControl>
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+interface StockPreviewCardProps {
+  name: string;
+  materialTypeLabel: string;
+  baseUnitAbbr: string;
+  variantCount: number;
+  primaryImageUrl?: string;
+  checklist: Array<{ label: string; done: boolean }>;
+  completion: number;
+}
 
-                      {/* Starting Value Field */}
-                      <FormField
-                        control={form.control}
-                        name={`stockVariants.${index}.startingValue`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Starting Value</FormLabel>
-                            <FormControl>
-                              <NumericFormat
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:bg-muted"
-                                value={field.value}
-                                onValueChange={(values) => {
-                                  field.onChange(Number(values.value));
-                                }}
-                                thousandSeparator={true}
-                                placeholder="Enter value"
-                                disabled={isPending || isFieldReadOnly(index)}
-                                readOnly={isFieldReadOnly(index)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+function StockPreviewCard({
+  name,
+  materialTypeLabel,
+  baseUnitAbbr,
+  variantCount,
+  primaryImageUrl,
+  checklist,
+  completion,
+}: StockPreviewCardProps) {
+  const initials = useMemo(() => {
+    const trimmed = (name || "Stock").trim();
+    const parts = trimmed.split(/\s+/).slice(0, 2);
+    const out = parts.map((w) => w[0]?.toUpperCase() ?? "").join("");
+    return out || "ST";
+  }, [name]);
 
-                      {/* Alert Level Field */}
-                      <FormField
-                        control={form.control}
-                        name={`stockVariants.${index}.alertLevel`}
-                        render={({ field }) => (
-                          <div className="flex gap-2 items-start">
-                            <FormItem className="flex-1">
-                              <FormLabel>Alert Level</FormLabel>
-                              <FormControl>
-                                <NumericFormat
-                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                  value={field.value}
-                                  onValueChange={(values) => {
-                                    field.onChange(Number(values.value));
-                                  }}
-                                  thousandSeparator={true}
-                                  placeholder="Set minimum stock level"
-                                  disabled={isPending}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => remove(index)}
-                              disabled={fields.length === 1 || isPending}
-                              className="mt-8"
-                            >
-                              <Trash2 className="w-4 h-4 text-red-500" />
-                            </Button>
-                          </div>
-                        )}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+  const metaLine = [
+    materialTypeLabel?.toUpperCase() || "MATERIAL",
+    baseUnitAbbr ? `BASE ${baseUnitAbbr.toUpperCase()}` : "NO BASE UNIT",
+  ].join(" · ");
+
+  return (
+    <section className={styles.previewCard}>
+      <div className={styles.previewHead}>
+        <span className={styles.liveDot} />
+        <span>LIVE PREVIEW</span>
+      </div>
+      <div className={styles.previewBody}>
+        <div className={styles.previewThumb}>
+          {primaryImageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={primaryImageUrl} alt="" />
+          ) : (
+            initials
+          )}
         </div>
-        <div className="lg:flex mt-3 item-center justify-end">
-          {/* Action Buttons */}
-          <div className="flex items-center space-x-4 order-3 md:order-none">
-            <CancelButton />
-            <Separator orientation="vertical" />
-            <SubmitButton
-              isPending={isPending}
-              label={item ? "Update stock" : "Create stock"}
+        <div className={styles.previewName}>
+          {name?.trim() ? name : "Untitled stock item"}
+        </div>
+        <div className={styles.previewMeta}>{metaLine}</div>
+        <div className={styles.previewPrice}>
+          <span className={styles.previewPriceNum}>{variantCount}</span>
+          <span className={styles.previewPriceCurr}>
+            {variantCount === 1 ? "VARIANT" : "VARIANTS"}
+          </span>
+        </div>
+
+        <div className={styles.checklist}>
+          {checklist.map((step, i) => (
+            <div
+              key={step.label}
+              className={`${styles.checklistItem} ${
+                step.done ? styles.checklistItemDone : ""
+              }`}
+            >
+              <span className={styles.checklistMark}>
+                {step.done ? <CheckCircle2 className="h-2.5 w-2.5" /> : null}
+              </span>
+              <span>{step.label}</span>
+              <span className={styles.checklistNum}>
+                {String(i + 1).padStart(2, "0")}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className={styles.readiness}>
+          <div className={styles.readinessHead}>
+            <span className={styles.readinessLabel}>READINESS</span>
+            <span
+              className={`${styles.readinessPct} ${
+                completion === 100 ? styles.readinessPctDone : ""
+              }`}
+            >
+              {completion}%
+            </span>
+          </div>
+          <div className={styles.readinessBar}>
+            <div
+              className={`${styles.readinessBarFill} ${
+                completion === 100 ? styles.readinessBarFillDone : ""
+              }`}
+              style={{ width: `${completion}%` }}
             />
           </div>
         </div>
-      </form>
-    </Form>
+      </div>
+    </section>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Media card — drag-drop hero zone + 4-thumb gallery rail (5 max)
+// ─────────────────────────────────────────────────────────────────────
+
+interface StockMediaCardProps {
+  images: GalleryImage[];
+  primaryIdx: number;
+  setPrimaryIdx: (i: number) => void;
+  handleFiles: (files: FileList | File[] | null | undefined) => void;
+  removeImage: (e: React.MouseEvent | undefined, i: number) => void;
+  dragOver: boolean;
+  setDragOver: (v: boolean) => void;
+  fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
+  isUploading?: boolean;
+}
+
+function StockMediaCard({
+  images,
+  primaryIdx,
+  setPrimaryIdx,
+  handleFiles,
+  removeImage,
+  dragOver,
+  setDragOver,
+  fileInputRef,
+  isUploading = false,
+}: StockMediaCardProps) {
+  const primary = images[primaryIdx];
+
+  return (
+    <section className={`${styles.formCard} ${styles.formCardOptional}`}>
+      <header className={styles.formCardHead}>
+        <div className={styles.icoBox}>
+          <ImageIcon className="h-3.5 w-3.5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3>
+            Media <span className={styles.optionalTag}>OPTIONAL</span>
+          </h3>
+          <p className={styles.formCardHeadDesc}>
+            First image is the primary thumbnail. Up to 5.
+          </p>
+        </div>
+        <div className={styles.formCardActions}>
+          <span className={styles.stepBadge}>
+            {isUploading ? "Uploading…" : `${images.length}/5`}
+          </span>
+        </div>
+      </header>
+      <div className={styles.formBody}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          style={{ display: "none" }}
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+
+        <div className={styles.mediaZone}>
+          <div
+            className={`${styles.mediaHero} ${
+              dragOver ? styles.mediaHeroDrag : ""
+            }`}
+            onClick={() => {
+              if (!primary) fileInputRef.current?.click();
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              handleFiles(e.dataTransfer.files);
+            }}
+          >
+            {primary ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={primary.dataUrl} alt="" />
+                <div className={styles.mediaHeroTag}>PRIMARY</div>
+                <button
+                  type="button"
+                  className={styles.mediaHeroX}
+                  aria-label="Remove primary image"
+                  onClick={(e) => removeImage(e, primaryIdx)}
+                >
+                  <XIcon className="h-3.5 w-3.5" />
+                </button>
+              </>
+            ) : (
+              <div className={styles.mediaHeroEmpty}>
+                <div className={styles.mediaHeroIco}>
+                  <ArrowUpFromLine className="h-5 w-5" />
+                </div>
+                <div className={styles.mediaHeroCta}>
+                  <b>Click to upload</b> or drop
+                </div>
+                <div className={styles.mediaHeroSpec}>
+                  PNG · JPG · WEBP · 5MB
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className={styles.mediaRailGrid}>
+            {[0, 1, 2, 3].map((i) => {
+              const img = images[i];
+              const isPrimary = img && i === primaryIdx;
+              return (
+                <div
+                  key={i}
+                  className={`${styles.mediaSlot} ${
+                    img ? styles.mediaSlotHas : ""
+                  } ${isPrimary ? styles.mediaSlotPrimary : ""}`}
+                  onClick={() =>
+                    img ? setPrimaryIdx(i) : fileInputRef.current?.click()
+                  }
+                  title={img ? "Set as primary" : "Add image"}
+                >
+                  {img ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.dataUrl} alt="" />
+                      <button
+                        type="button"
+                        className={styles.mediaSlotX}
+                        aria-label={`Remove image ${i + 1}`}
+                        onClick={(e) => removeImage(e, i)}
+                      >
+                        <XIcon className="h-3 w-3" />
+                      </button>
+                    </>
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {primary && primary.size > 0 && (
+            <div className={styles.mediaRailMeta}>
+              <div className="fname">{primary.name}</div>
+              <div className="fsize">
+                {(primary.size / 1024).toFixed(0)} KB ·{" "}
+                {primary.type.split("/")[1]?.toUpperCase()}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// VariantRow — memoised so each row's keystroke only re-renders itself
+// rather than the whole `fields.map()`. Subscribes to its own variant
+// subtree via `useWatch`; parent-level state (isPending, balances, etc.)
+// arrives as props.
+// ─────────────────────────────────────────────────────────────────────
+
+interface VariantRowProps {
+  index: number;
+  form: UseFormReturn<z.infer<typeof StockSchema>>;
+  isEditing: boolean;
+  isPending: boolean;
+  archivingIndex: number | null;
+  generatingBarcode: number | null;
+  balances?: Record<
+    string,
+    { quantityOnHand: number; averageCost: number | null }
+  >;
+  item: Stock | null | undefined;
+  fieldsLength: number;
+  handleVariantArchive: (
+    index: number,
+    shouldArchive: boolean,
+  ) => Promise<void> | void;
+  handleGenerateBarcode: (index: number) => Promise<void> | void;
+  removeVariant: (index: number) => void;
+  reorderOpen: Record<number, boolean>;
+  setReorderOpen: React.Dispatch<
+    React.SetStateAction<Record<number, boolean>>
+  >;
+  autoCreateProduct: boolean;
+  baseUnitAbbreviation: string;
+  locationCurrency: string;
+  materialType: string;
+  packagingVariantIds: string[];
+}
+
+function VariantRowImpl({
+  index,
+  form,
+  isEditing,
+  isPending,
+  archivingIndex,
+  generatingBarcode,
+  balances,
+  item,
+  fieldsLength,
+  handleVariantArchive,
+  handleGenerateBarcode,
+  removeVariant,
+  reorderOpen,
+  setReorderOpen,
+  autoCreateProduct,
+  baseUnitAbbreviation,
+  locationCurrency,
+  materialType,
+  packagingVariantIds,
+}: VariantRowProps) {
+  const [linkOpen, setLinkOpen] = useState(false);
+  // One subscription on the variant subtree — sibling rows changing
+  // doesn't re-render this row.
+  const variant = useWatch({
+    control: form.control,
+    name: `variants.${index}` as const,
+  });
+  const variantId = variant?.id;
+  const isArchived = !!variant?.archived;
+  const isExisting = !!variantId;
+  const isDisabled = isPending || isArchived;
+  const bal = variantId && balances ? balances[variantId] : null;
+  const origVariant = item?.variants?.find((v) => v.id === variantId);
+  const unitAbbr = baseUnitAbbreviation;
+  const serialTracked = !!variant?.serialTracked;
+  const initialQuantity = variant?.initialQuantity ?? 0;
+
+  return (
+    <div
+      className={`border rounded-lg p-4 space-y-3 transition-opacity ${
+        isArchived ? "bg-muted/60 opacity-70" : "bg-muted/40"
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            Variant {index + 1}
+          </span>
+          {index === 0 && fieldsLength === 1 && !isEditing && (
+            <span className="text-xs font-normal text-muted-foreground">
+              (default)
+            </span>
+          )}
+          {origVariant?.isDefault && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 font-medium">
+              Default
+            </span>
+          )}
+          {isArchived && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+              Archived
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {isEditing && isExisting && (
+            <button
+              type="button"
+              onClick={() => handleVariantArchive(index, !isArchived)}
+              disabled={isPending || archivingIndex !== null}
+              className={`p-1.5 rounded text-xs flex items-center gap-1 transition-colors ${
+                isArchived
+                  ? "text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                  : "text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+              }`}
+            >
+              {archivingIndex === index ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : isArchived ? (
+                <ArchiveRestore className="w-3.5 h-3.5" />
+              ) : (
+                <Archive className="w-3.5 h-3.5" />
+              )}
+              <span>{isArchived ? "Unarchive" : "Archive"}</span>
+            </button>
+          )}
+          {fieldsLength > 1 && !isArchived && (
+            <button
+              type="button"
+              onClick={() => removeVariant(index)}
+              disabled={isPending}
+              className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-400 hover:text-red-500 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {isEditing && bal && (
+        <div className="flex gap-4 text-xs bg-blue-50/50 dark:bg-blue-950/20 rounded px-3 py-2">
+          <span className="text-muted-foreground">
+            Qty:{" "}
+            <strong className="text-foreground">
+              {bal.quantityOnHand.toLocaleString()}
+            </strong>
+          </span>
+          {bal.averageCost != null && bal.averageCost > 0 && (
+            <span className="text-muted-foreground">
+              Avg Cost:{" "}
+              <strong className="text-foreground">
+                {formatMoney(bal.averageCost, locationCurrency)}
+              </strong>
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] md:grid-cols-3">
+        <FormField
+          control={form.control}
+          name={`variants.${index}.name`}
+          render={({ field: f }) => (
+            <FormItem className="space-y-[7px]">
+              <FieldLabel required>Name</FieldLabel>
+              <FormControl>
+                <ControlInput
+                  placeholder="e.g. 50kg Bag, 1L Bottle"
+                  {...f}
+                  value={f.value ?? ""}
+                  disabled={isDisabled}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name={`variants.${index}.barcode`}
+          render={({ field: f }) => (
+            <FormItem className="space-y-[7px]">
+              <FieldLabel optional>Barcode</FieldLabel>
+              <FormControl>
+                <ControlBox prefix={<BarcodeIcon className="h-4 w-4" />}>
+                  <input
+                    className={controlInputClass}
+                    placeholder="Scan or enter"
+                    {...f}
+                    value={f.value ?? ""}
+                    disabled={isDisabled}
+                  />
+                  {isEditing && isExisting && !f.value && (
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateBarcode(index)}
+                      disabled={isPending || generatingBarcode !== null}
+                      className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      title="Generate barcode"
+                    >
+                      {generatingBarcode === index ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Wand2 className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
+                </ControlBox>
+              </FormControl>
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name={`variants.${index}.sku`}
+          render={({ field: f }) => (
+            <FormItem className="space-y-[7px]">
+              <FieldLabel optional>SKU</FieldLabel>
+              <FormControl>
+                <ControlInput
+                  prefix={<Hash className="h-4 w-4" />}
+                  placeholder="Auto if empty"
+                  {...f}
+                  value={f.value ?? ""}
+                  disabled={isDisabled}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+      </div>
+
+      {!isEditing && (
+        <>
+          <div className="mb-3 mt-[22px] flex items-center gap-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            Opening stock &amp; pricing
+            <span className="h-px flex-1 bg-line" />
+          </div>
+          <div
+            className={cn(
+              "grid grid-cols-1 gap-x-[18px] gap-y-[15px]",
+              autoCreateProduct ? "sm:grid-cols-3" : "sm:grid-cols-2",
+            )}
+          >
+            <FormField
+              control={form.control}
+              name={`variants.${index}.initialQuantity`}
+              render={({ field: f }) => (
+                <FormItem className="space-y-[7px]">
+                  <FieldLabel>Initial quantity</FieldLabel>
+                  <FormControl>
+                    <ControlBox>
+                      <NumericFormat
+                        className={cn(controlInputClass, "tabular-nums")}
+                        value={f.value}
+                        onValueChange={(v) => f.onChange(v.floatValue ?? 0)}
+                        thousandSeparator
+                        placeholder="0"
+                        disabled={isPending}
+                        decimalScale={serialTracked ? 0 : 6}
+                      />
+                    </ControlBox>
+                  </FormControl>
+                  <FieldHint>On-hand at go-live for this variant.</FieldHint>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={`variants.${index}.initialUnitCost`}
+              render={({ field: f }) => {
+                const qty = Number(variant?.initialQuantity);
+                const cost = Number(f.value);
+                const showQtyNoCost =
+                  Number.isFinite(qty) &&
+                  qty > 0 &&
+                  !(Number.isFinite(cost) && cost > 0);
+                return (
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel>Initial unit cost</FieldLabel>
+                    <FormControl>
+                      <ControlBox suffix={locationCurrency}>
+                        <NumericFormat
+                          className={cn(
+                            controlInputClass,
+                            "tabular-nums",
+                          )}
+                          value={f.value}
+                          onValueChange={(v) => f.onChange(v.floatValue ?? 0)}
+                          thousandSeparator
+                          placeholder="0"
+                          disabled={isPending}
+                          decimalScale={4}
+                        />
+                      </ControlBox>
+                    </FormControl>
+                    {showQtyNoCost ? (
+                      <p className="flex items-center gap-1 text-[11px] text-amber-600">
+                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                        Stock has quantity but no cost.
+                      </p>
+                    ) : (
+                      <FieldHint>Buying price per unit.</FieldHint>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+            {autoCreateProduct && (
+              <FormField
+                control={form.control}
+                name={`variants.${index}.sellingPrice`}
+                render={({ field: f }) => {
+                  const cost = Number(variant?.initialUnitCost);
+                  const price = Number(f.value);
+                  const hasPrice = Number.isFinite(price) && price > 0;
+                  const hasCost = Number.isFinite(cost) && cost > 0;
+                  const showBelowCost = hasPrice && hasCost && price < cost;
+                  return (
+                    <FormItem className="space-y-[7px]">
+                      <FieldLabel>Selling price</FieldLabel>
+                      <FormControl>
+                        <ControlBox suffix={locationCurrency}>
+                          <NumericFormat
+                            className={cn(
+                              controlInputClass,
+                              "tabular-nums",
+                            )}
+                            value={f.value ?? ""}
+                            onValueChange={(v) => f.onChange(v.floatValue)}
+                            thousandSeparator
+                            decimalScale={2}
+                            allowNegative={false}
+                            placeholder="0.00"
+                            disabled={isPending}
+                          />
+                        </ControlBox>
+                      </FormControl>
+                      {showBelowCost ? (
+                        <p className="flex items-center gap-1 text-[11px] text-amber-600">
+                          <AlertTriangle className="h-3 w-3 shrink-0" />
+                          Below unit cost (
+                          {formatMoney(cost, locationCurrency)}) — selling at a
+                          loss.
+                        </p>
+                      ) : (
+                        <FieldHint>Sells 1:1 as a product variant.</FieldHint>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            )}
+          </div>
+        </>
+      )}
+
+      <FormField
+        control={form.control}
+        name={`variants.${index}.serialTracked`}
+        render={({ field: f }) => (
+          <FormItem className="mt-4 flex items-center gap-3 space-y-0">
+            <FormControl>
+              <Switch
+                checked={f.value}
+                onCheckedChange={f.onChange}
+                disabled={isDisabled}
+              />
+            </FormControl>
+            <div className="space-y-0.5">
+              <FormLabel className="cursor-pointer text-[13.5px] font-semibold text-ink">
+                Serial number tracking
+              </FormLabel>
+              <p className="text-xs text-muted-foreground">
+                Capture a unique serial for every unit received and sold.
+              </p>
+            </div>
+          </FormItem>
+        )}
+      />
+
+      {!isEditing &&
+        serialTracked &&
+        initialQuantity > 0 &&
+        (() => {
+          const qty = Math.floor(initialQuantity);
+          const serials = variant?.serialNumbers ?? [];
+          const count = serials.filter((s) => s.trim()).length;
+          const isValidCount = count === qty;
+
+          return (
+            <FormField
+              control={form.control}
+              name={`variants.${index}.serialNumbers`}
+              render={({ field: f }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">
+                    Serial numbers
+                    <span
+                      className={`ml-2 text-[10px] font-normal ${
+                        isValidCount ? "text-green-600" : "text-amber-600"
+                      }`}
+                    >
+                      {count}/{qty} entered
+                    </span>
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder={`Enter ${qty} serial number${qty > 1 ? "s" : ""}, one per line`}
+                      rows={Math.min(qty + 1, 8)}
+                      value={(f.value ?? []).join("\n")}
+                      onChange={(e) => {
+                        const lines = e.target.value.split("\n");
+                        f.onChange(lines);
+                      }}
+                      disabled={isPending}
+                      className="font-mono text-sm"
+                    />
+                  </FormControl>
+                  {!isValidCount && count > 0 && (
+                    <p className="text-[11px] text-amber-600">
+                      {count < qty
+                        ? `${qty - count} more needed`
+                        : `Too many — remove ${count - qty}`}
+                    </p>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          );
+        })()}
+
+      {materialType === "PACKAGING" && (
+        <>
+          <div className="mb-3 mt-[22px] flex items-center gap-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            Container deposit
+            <span className="h-px flex-1 bg-line" />
+          </div>
+          <div className="rounded-xl border border-amber-200/70 bg-amber-50/50 p-4 dark:border-amber-500/20 dark:bg-amber-950/10">
+            <p className="mb-3.5 text-xs leading-relaxed text-ink-3">
+              This item is a returnable container. Set the{" "}
+              <b className="font-semibold text-ink">
+                deposit held per empty unit
+              </b>{" "}
+              — used for deposit valuation and reconciliation.
+            </p>
+            <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name={`variants.${index}.depositValue`}
+                render={({ field: f }) => (
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel>Deposit value</FieldLabel>
+                    <FormControl>
+                      <ControlBox
+                        suffix={
+                          variant?.depositCurrency || locationCurrency || "TZS"
+                        }
+                      >
+                        <NumericFormat
+                          className={cn(
+                            controlInputClass,
+                            "tabular-nums",
+                          )}
+                          value={f.value ?? ""}
+                          onValueChange={(nv) =>
+                            f.onChange(
+                              nv.value === "" ? undefined : Number(nv.value),
+                            )
+                          }
+                          thousandSeparator
+                          decimalScale={4}
+                          allowNegative={false}
+                          placeholder="e.g. 2000"
+                          disabled={isDisabled}
+                        />
+                      </ControlBox>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name={`variants.${index}.depositCurrency`}
+                render={({ field: f }) => (
+                  <FormItem className="space-y-[7px]">
+                    <FieldLabel>Deposit currency</FieldLabel>
+                    <FormControl>
+                      <CurrencySelector
+                        value={f.value || locationCurrency || "TZS"}
+                        onChange={f.onChange}
+                        isDisabled={isDisabled}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name={`variants.${index}.containerMode`}
+              render={({ field: f }) => (
+                <FormItem className="mt-[15px] space-y-[7px]">
+                  <FieldLabel>Container mode</FieldLabel>
+                  <SegmentedRadio
+                    value={f.value ?? "RETURNABLE"}
+                    onChange={f.onChange}
+                    disabled={isDisabled}
+                    options={[
+                      {
+                        value: "RETURNABLE",
+                        label: "Returnable (exchanged 1:1)",
+                      },
+                      {
+                        value: "CONSUMABLE",
+                        label: "Consumed on sale (one-way)",
+                      },
+                    ]}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </>
+      )}
+
+      {materialType !== "PACKAGING" && (
+        <>
+          <div className="mb-3 mt-[22px] flex items-center gap-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            Returnable packaging
+            <span className="h-px flex-1 bg-line" />
+          </div>
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={
+                linkOpen || (variant?.returnableContainers?.length ?? 0) > 0
+              }
+              onCheckedChange={(on) => {
+                setLinkOpen(on);
+                if (!on) {
+                  form.setValue(`variants.${index}.returnableContainers`, []);
+                }
+              }}
+              disabled={isDisabled}
+            />
+            <div className="space-y-0.5">
+              <div className="text-[13.5px] font-semibold text-ink">
+                Sold in a returnable container
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Link the empty crate/bottle exchanged when a unit is sold.
+                Optional, per variant.
+              </p>
+            </div>
+          </div>
+          {(linkOpen || (variant?.returnableContainers?.length ?? 0) > 0) && (
+            <FormField
+              control={form.control}
+              name={`variants.${index}.returnableContainers`}
+              render={({ field: f }) => {
+                const current = (f.value ?? [])[0] as
+                  | { containerStockVariantId: string; quantityPerUnit: number }
+                  | undefined;
+                const setContainer = (id: string) =>
+                  f.onChange(
+                    id
+                      ? [
+                          {
+                            containerStockVariantId: id,
+                            quantityPerUnit: current?.quantityPerUnit ?? 1,
+                          },
+                        ]
+                      : [],
+                  );
+                const setQty = (qty: number | undefined) =>
+                  current?.containerStockVariantId
+                    ? f.onChange([
+                        {
+                          containerStockVariantId:
+                            current.containerStockVariantId,
+                          quantityPerUnit: qty ?? 1,
+                        },
+                      ])
+                    : undefined;
+                return (
+                  <div className="mt-3 rounded-xl border border-line bg-canvas p-4">
+                    <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-3">
+                      <div className="space-y-[7px] sm:col-span-2">
+                        <label className="flex items-center gap-1.5 text-[13px] font-semibold leading-none text-ink">
+                          Empty container
+                        </label>
+                        <StockVariantSelector
+                          value={current?.containerStockVariantId ?? ""}
+                          onChange={setContainer}
+                          allowedValues={packagingVariantIds}
+                          isDisabled={isDisabled}
+                          placeholder="Select the empty crate/bottle"
+                        />
+                      </div>
+                      <div className="space-y-[7px]">
+                        <label className="flex items-center gap-1.5 text-[13px] font-semibold leading-none text-ink">
+                          Qty per unit
+                        </label>
+                        <ControlBox>
+                          <NumericFormat
+                            className={cn(
+                              controlInputClass,
+                              "tabular-nums",
+                            )}
+                            value={current?.quantityPerUnit ?? ""}
+                            onValueChange={(nv) =>
+                              setQty(
+                                nv.value === "" ? undefined : Number(nv.value),
+                              )
+                            }
+                            thousandSeparator
+                            decimalScale={6}
+                            allowNegative={false}
+                            isAllowed={(values) =>
+                              values.floatValue === undefined ||
+                              values.floatValue > 0
+                            }
+                            placeholder="1"
+                            disabled={
+                              isDisabled || !current?.containerStockVariantId
+                            }
+                          />
+                        </ControlBox>
+                        <FieldHint>Containers exchanged per unit sold.</FieldHint>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+          )}
+        </>
+      )}
+
+      {!isEditing &&
+        (() => {
+          const isOpen = reorderOpen[index] ?? false;
+          const hasAnyValue =
+            variant?.reorderPoint != null ||
+            variant?.reorderQuantity != null ||
+            (variant?.preferredSupplierId &&
+              variant.preferredSupplierId.length > 0) ||
+            variant?.lowStockThreshold != null ||
+            variant?.overstockThreshold != null;
+
+          return (
+            <div className="border-t pt-3 mt-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setReorderOpen((prev) => ({
+                    ...prev,
+                    [index]: !isOpen,
+                  }))
+                }
+                className="flex items-center gap-2 text-xs font-medium text-gray-700 hover:text-gray-900"
+              >
+                {isOpen ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
+                )}
+                <SlidersHorizontal className="h-3 w-3" />
+                Reorder &amp; alert config
+                <span className="font-normal text-muted-foreground">
+                  ({hasAnyValue ? "set" : "optional"})
+                </span>
+              </button>
+
+              {isOpen && (
+                <div className="mt-3 space-y-[15px] rounded-xl border border-line bg-canvas p-4">
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    Tells the system when to alert and auto-generate an LPO. Safe
+                    to leave empty — set these any time from the stock detail
+                    page.
+                  </p>
+                  <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name={`variants.${index}.reorderPoint`}
+                      render={({ field: f }) => (
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Reorder point</FieldLabel>
+                          <FormControl>
+                            <ControlBox suffix={unitAbbr || undefined}>
+                              <NumericFormat
+                                className={cn(
+                                  controlInputClass,
+                                  "tabular-nums",
+                                )}
+                                value={f.value ?? ""}
+                                onValueChange={(v) =>
+                                  f.onChange(
+                                    v.value === "" ? undefined : Number(v.value),
+                                  )
+                                }
+                                thousandSeparator
+                                decimalScale={6}
+                                allowNegative={false}
+                                placeholder="e.g. 20"
+                                disabled={isPending}
+                              />
+                            </ControlBox>
+                          </FormControl>
+                          <FieldHint>Fires an LPO when available ≤ this.</FieldHint>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`variants.${index}.reorderQuantity`}
+                      render={({ field: f }) => (
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Reorder quantity</FieldLabel>
+                          <FormControl>
+                            <ControlBox suffix={unitAbbr || undefined}>
+                              <NumericFormat
+                                className={cn(
+                                  controlInputClass,
+                                  "tabular-nums",
+                                )}
+                                value={f.value ?? ""}
+                                onValueChange={(v) =>
+                                  f.onChange(
+                                    v.value === "" ? undefined : Number(v.value),
+                                  )
+                                }
+                                thousandSeparator
+                                decimalScale={6}
+                                allowNegative={false}
+                                placeholder="e.g. 100"
+                                disabled={isPending}
+                              />
+                            </ControlBox>
+                          </FormControl>
+                          <FieldHint>How much the LPO orders.</FieldHint>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name={`variants.${index}.preferredSupplierId`}
+                    render={({ field: f }) => (
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel>Preferred supplier</FieldLabel>
+                        <FormControl>
+                          <SupplierSelector
+                            label="Preferred supplier"
+                            placeholder="Optional — drives the auto-generated LPO"
+                            value={f.value ?? ""}
+                            onChange={f.onChange}
+                            onBlur={() => {}}
+                            isDisabled={isPending}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 gap-x-[18px] gap-y-[15px] sm:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name={`variants.${index}.lowStockThreshold`}
+                      render={({ field: f }) => (
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Low-stock threshold</FieldLabel>
+                          <FormControl>
+                            <ControlBox suffix={unitAbbr || undefined}>
+                              <NumericFormat
+                                className={cn(
+                                  controlInputClass,
+                                  "tabular-nums",
+                                )}
+                                value={f.value ?? ""}
+                                onValueChange={(v) =>
+                                  f.onChange(
+                                    v.value === "" ? undefined : Number(v.value),
+                                  )
+                                }
+                                thousandSeparator
+                                decimalScale={6}
+                                allowNegative={false}
+                                placeholder="e.g. 10"
+                                disabled={isPending}
+                              />
+                            </ControlBox>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`variants.${index}.overstockThreshold`}
+                      render={({ field: f }) => (
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel>Overstock threshold</FieldLabel>
+                          <FormControl>
+                            <ControlBox suffix={unitAbbr || undefined}>
+                              <NumericFormat
+                                className={cn(
+                                  controlInputClass,
+                                  "tabular-nums",
+                                )}
+                                value={f.value ?? ""}
+                                onValueChange={(v) =>
+                                  f.onChange(
+                                    v.value === "" ? undefined : Number(v.value),
+                                  )
+                                }
+                                thousandSeparator
+                                decimalScale={6}
+                                allowNegative={false}
+                                placeholder="e.g. 500"
+                                disabled={isPending}
+                              />
+                            </ControlBox>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+    </div>
+  );
+}
+
+const VariantRow = React.memo(VariantRowImpl);

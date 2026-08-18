@@ -2,29 +2,26 @@
 
 import {z} from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthenticatedUser} from "@/lib/auth-utils";
+import {getAuthToken} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {UUID} from "node:crypto";
-import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
+import { getCurrentLocation } from "./business/get-current-business";
 import { Shift } from "@/types/shift/type";
 import { ShiftSchema } from "@/types/shift/schema";
 
 export const fectchAllShifts = async () : Promise<Shift[]> => {
-    await  getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
 
-        const location = await getCurrentLocation();
-
         const shiftData= await  apiClient.get(
-            `/api/shifts/${location?.id}`,
+            `/api/v1/shifts/templates`,
         );
 
         console.log("All shifts", shiftData);
-       
+
         return parseStringify(shiftData);
 
     }
@@ -37,33 +34,17 @@ export const searchShift = async (
     page:number,
     pageLimit:number
 ): Promise<ApiResponse<Shift>> =>{
-    await getAuthenticatedUser();
 
 
     try {
         const apiClient = new ApiClient();
-        const query ={
-            filters: [
-                {
-                    key:"name",
-                    operator:"LIKE",
-                    field_type:"STRING",
-                    value:q
-                }
-            ],
-            sorts:[
-                {
-                    key:"name",
-                    direction:"ASC"
-                }
-            ],
-            page:page ? page - 1:0,
-            size:pageLimit ? pageLimit : 10
-        }
-        const location = await getCurrentLocation();
-        const shiftData = await  apiClient.post(
-            `/api/shifts/${location?.id}`,
-            query
+        const params = new URLSearchParams();
+        if (q) params.set("search", q);
+        params.set("page", String(page ? page - 1 : 0));
+        params.set("size", String(pageLimit ? pageLimit : 10));
+
+        const shiftData = await  apiClient.get(
+            `/api/v1/shifts/templates?${params.toString()}`,
         );
         return parseStringify(shiftData);
     }
@@ -93,22 +74,22 @@ export const  createShift= async (
     }
 
     const location = await getCurrentLocation();
-    const business = await getCurrentBusiness();
+    const businessId = (await getAuthToken())?.businessId;
 
     const payload = {
         ...validShiftData.data,
         location: location?.id,
-        business: business?.id
+        business: businessId
     }
 
     console.log("The payload to create shift", payload);
 
     try {
         const apiClient = new ApiClient();
-      
+
 
         await apiClient.post(
-            `/api/shifts/${location?.id}/create`,
+            `/api/v1/shifts/templates`,
             payload
         );
         formResponse = {
@@ -125,33 +106,19 @@ export const  createShift= async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-  
+
     revalidatePath("/shifts");
     return parseStringify(formResponse)
-    
+
 }
 
 export const getShift= async (id:UUID) : Promise<ApiResponse<Shift>> => {
     const apiClient = new ApiClient();
-    const query ={
-        filters:[
-            {
-                key: "id",
-                operator: "EQUAL",
-                field_type: "UUID_STRING",
-                value: id,
-            }
-        ],
-        sorts: [],
-        page: 0,
-        size: 1,
-    }
-    const location = await getCurrentLocation();
-    const shift= await apiClient.post(
-        `/api/shifts/${location?.id}`,
-        query,
+
+    const shift= await apiClient.get(
+        `/api/v1/shifts/templates/${id}`,
     );
-    
+
     return parseStringify(shift)
 }
 
@@ -174,19 +141,19 @@ export const updateShift = async (
     }
 
     const location = await getCurrentLocation();
-    const business = await getCurrentBusiness();
+    const businessId = (await getAuthToken())?.businessId;
 
     const payload = {
         ...validShiftData.data,
         location: location?.id,
-        business: business?.id
+        business: businessId
     };
 
     try {
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/shifts/${location?.id}/${id}`, 
+            `/api/v1/shifts/templates/${id}`,
             payload
         );
         formResponse = {
@@ -195,7 +162,7 @@ export const updateShift = async (
         };
 
     } catch (error) {
-        console.error("Error while updating shift", error); 
+        console.error("Error while updating shift", error);
         formResponse = {
             responseType: "error",
             message:
@@ -206,24 +173,21 @@ export const updateShift = async (
 
     revalidatePath("/shifts");
     return parseStringify(formResponse);
-   
+
 };
 
 export const deleteShift = async (id: UUID): Promise<void> => {
     if (!id) throw new Error("Shift ID is required to perform this request");
 
-    await getAuthenticatedUser();
 
    try{
     const apiClient = new ApiClient();
 
-    const location = await getCurrentLocation();
-   
     await apiClient.delete(
-        `/api/shifts/${location?.id}/${id}`,
+        `/api/v1/shifts/templates/${id}`,
     );
     revalidatePath("/shifts");
-    
+
    }
    catch (error){
        throw error

@@ -1,91 +1,63 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, CornerDownRight } from "lucide-react";
+import { CornerDownRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { CellAction } from "@/components/tables/category/cell-action";
+import { TableAvatar } from "@/components/tables/shared/table-avatar";
+import { SortableHeader } from "@/components/tables/shared/sortable-header";
 import { Category } from "@/types/category/type";
-import Image from "next/image";
 
 export const columns: ColumnDef<Category>[] = [
   {
     id: "select",
     header: ({ table }) => (
-      <div className="w-4">
-        <Checkbox
-          aria-label="Select all"
-          checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) =>
-            table.toggleAllPageRowsSelected(!!value)
-          }
-        />
-      </div>
+      <Checkbox
+        aria-label="Select all"
+        checked={table.getIsAllPageRowsSelected()}
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+      />
     ),
     cell: ({ row }) => (
-      <div className="w-4">
-        <Checkbox
-          aria-label="Select row"
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-        />
-      </div>
+      <Checkbox
+        aria-label="Select row"
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+      />
     ),
     enableSorting: false,
     enableHiding: false,
+    size: 32,
   },
   {
     accessorKey: "name",
     enableHiding: false,
-    header: ({ column }) => {
-      return (
-        <Button
-          className="text-left p-0 font-semibold"
-          variant="ghost"
-          onClick={() =>
-            column.toggleSorting(column.getIsSorted() === "asc")
-          }
-        >
-          Category Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    enableSorting: false,
+    header: () => <SortableHeader sortKey="name" label="Category" />,
     cell: ({ row }) => {
-      const image = row.original.image;
-      const name = row.original.name;
-      const parentName = row.original.parentCategoryName;
-      const hasParent = !!parentName;
-
-      const isValidImageUrl =
-        image &&
-        (image.startsWith("http://") ||
-          image.startsWith("https://") ||
-          image.startsWith("/"));
-
+      const hasParent = !!row.original.parentName;
       return (
-        <div className={`flex items-center gap-3 ${hasParent ? "pl-6" : ""}`}>
+        <div className="flex min-w-[240px] items-center gap-2">
           {hasParent && (
-            <CornerDownRight className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600 shrink-0 -ml-6" />
-          )}
-          {isValidImageUrl && (
-            <Image
-              src={image}
-              alt={name}
-              className="w-8 h-8 rounded-lg object-cover shrink-0"
-              width={32}
-              height={32}
-              loading="lazy"
+            <CornerDownRight
+              className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground/60"
+              aria-hidden
             />
           )}
+          <TableAvatar
+            name={row.original.name}
+            imageUrl={row.original.imageUrl}
+            seed={row.original.id}
+          />
           <div className="min-w-0">
-            <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">
-              {name}
-            </span>
+            <div className="truncate text-[13px] font-medium text-ink">
+              {row.original.name}
+            </div>
             {hasParent && (
-              <span className="text-xs text-muted-foreground block truncate">
-                {parentName}
-              </span>
+              <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                in {row.original.parentName}
+              </div>
             )}
           </div>
         </div>
@@ -93,52 +65,39 @@ export const columns: ColumnDef<Category>[] = [
     },
   },
   {
-    accessorKey: "productCount",
-    header: "Products",
+    accessorKey: "departmentName",
     enableHiding: true,
-    cell: ({ row }) => {
-      const count = (row.original as any).productCount ?? 0;
-      return (
-        <span className="text-sm text-gray-900 dark:text-gray-100">
-          {new Intl.NumberFormat("en-US").format(count)}
-        </span>
-      );
-    },
-  },
-  {
-    accessorKey: "productVariantsCount",
+    enableSorting: false,
     header: () => (
-      <div className="hidden md:block">Variants</div>
+      <SortableHeader
+        sortKey="departmentName"
+        label="Department"
+        className="hidden md:inline-flex"
+      />
     ),
-    enableHiding: true,
     cell: ({ row }) => {
-      const count = (row.original as any).productVariantsCount ?? 0;
+      const name = row.original.departmentName;
+      if (!name) {
+        return <span className="hidden text-muted-foreground md:inline">—</span>;
+      }
       return (
         <div className="hidden md:block">
-          <span className="text-sm text-gray-600 dark:text-gray-400">
-            {new Intl.NumberFormat("en-US").format(count)}
-          </span>
+          <Badge variant="soft">{name}</Badge>
         </div>
       );
     },
   },
   {
     id: "status",
-    accessorKey: "status",
     header: "Status",
     enableHiding: true,
     cell: ({ row }) => {
-      const isActive = row.original.status;
+      const isArchived = row.original.archivedAt != null;
       return (
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-            isActive
-              ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
-              : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-          }`}
-        >
-          {isActive ? "Active" : "Inactive"}
-        </span>
+        <Badge variant={isArchived ? "soft" : "pos"}>
+          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+          {isArchived ? "Archived" : "Active"}
+        </Badge>
       );
     },
   },
@@ -146,6 +105,7 @@ export const columns: ColumnDef<Category>[] = [
     id: "actions",
     enableHiding: false,
     header: () => null,
+    size: 40,
     cell: ({ row }) => (
       <div className="flex justify-end">
         <CellAction data={row.original} />

@@ -54,12 +54,10 @@ export const SpaceSchema = object({
   posX: optionalNonNegativeNumber,
   posY: optionalNonNegativeNumber,
   color: string().optional(),
-  needsCleaning: boolean().default(false),
   description: string().optional(),
   sortOrder: optionalNonNegativeNumber,
   parentSpaceId: string().uuid("Please select a valid parent space").optional(),
   floorPlanId: string().uuid("Please select a valid floor plan").optional(),
-  status: boolean().optional(),
 }).refine(
   (data) => {
     if (data.minCapacity && data.minCapacity > data.capacity) return false;

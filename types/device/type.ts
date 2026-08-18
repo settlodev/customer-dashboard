@@ -1,44 +1,116 @@
-import { UUID } from "crypto";
+// Mirrors DeviceResponse from the Settlo Accounts Service
+// (`/api/v1/devices/{id}`). Pairing lives in the Auth Service: devices arrive
+// in the accounts service via Kafka events and cannot be originated from here.
+// All non-hardware fields are managed server-side (status transitions via
+// lifecycle endpoints, hardware + runtime telemetry via heartbeat / Kafka).
 
-export declare interface Device {
-  id: UUID;
-  deviceId: string;
-  name: string;
-  customName: string;
-  model: string;
-  manufacturer: string;
-  brand: string;
-  serialNumber: string;
-  operatingSystem: string;
-  operatingSystemVersion: string;
-  displayResolution: string;
-  storageInGB: number;
-  ramInGB: number;
-  processor: string | null;
-  batteryLevel: number;
-  batteryInMah: number | null;
-  firebaseToken: string | null;
-  deviceType: string;
-  appVersion: string;
-  buildNumber: string;
-  isTablet: boolean;
-  isEmulator: boolean;
-  ipAddress: string;
-  timezone: string;
-  deviceLocale: string;
-  availableStorage: number;
-  firstInstallTime: number;
-  isCharging: boolean;
-  apiLevel: number | null;
-  loginCode: string | null;
-  imei: string;
-  macAddress: string;
-  userId: UUID;
-  locationId: UUID;
-  departmentId: UUID | null;
-  departmentName: string | null;
+// Mirrors DeviceStatus on both backend services:
+//   PENDING_PAIR — pairing code issued, hardware hasn't completed pairing
+//   ACTIVE       — paired and authenticated; tokens valid
+//   LOGGED_OUT   — tokens revoked, device can re-login without new pairing
+//   DELETED      — terminal; deleted_at set; resurrectable via re-pair
+// Admin-imposed pauses are modelled via the orthogonal `suspended` boolean.
+export type DeviceStatus =
+  | "PENDING_PAIR"
+  | "ACTIVE"
+  | "LOGGED_OUT"
+  | "DELETED";
+
+export type AssignmentType = "LOCATION" | "STORE" | "WAREHOUSE";
+
+export interface Device {
+  id: string;
+  accountId: string;
+  businessId: string;
+  authDeviceId: string | null;
+  fingerprint: string | null;
+
+  // Identity
+  name: string | null;
+  customName: string | null;
+
+  // Assignment
+  assignedToId: string | null;
+  assignmentType: AssignmentType | null;
+  departmentId: string | null;
+
+  // Lifecycle
+  status: DeviceStatus | null;
   suspended: boolean;
-  canDelete: boolean;
-  status: boolean;
-  isArchived: boolean;
+  pinRequired: boolean;
+
+  // Hardware (static)
+  deviceType: string | null;
+  os: string | null;
+  osVersion: string | null;
+  appVersion: string | null;
+  model: string | null;
+  manufacturer: string | null;
+  brand: string | null;
+  serialNumber: string | null;
+  isTablet: boolean | null;
+  imei: string | null;
+  macAddress: string | null;
+  processor: string | null;
+  displayResolution: string | null;
+  storageInGB: number | null;
+  ramInGB: number | null;
+  batteryInMah: number | null;
+  isEmulator: boolean | null;
+  apiLevel: number | null;
+  buildNumber: string | null;
+  firstInstallTime: string | null;
+  timezone: string | null;
+  deviceLocale: string | null;
+
+  // Runtime telemetry (heartbeat)
+  batteryLevel: number | null;
+  isCharging: boolean | null;
+  availableStorage: number | null;
+  lastActiveAt: string | null;
+  lastIp: string | null;
+
+  // Timestamps
+  pairedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
 }
+
+export interface DeviceSettings {
+  id: string;
+  accountId: string;
+  deviceId: string;
+  locationId: string;
+  orderingMode: "STANDARD" | "TABLE_MANAGEMENT" | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ResolvedDeviceSettings {
+  deviceId: string;
+  locationId: string;
+  orderingMode: "STANDARD" | "TABLE_MANAGEMENT" | null;
+  orderingModeSource: "device" | "location";
+}
+
+export interface DeviceCounts {
+  total: number;
+  active: number;
+}
+
+export const DEVICE_STATUS_LABELS: Record<DeviceStatus, string> = {
+  PENDING_PAIR: "Pending pairing",
+  ACTIVE: "Active",
+  LOGGED_OUT: "Logged out",
+  DELETED: "Deleted",
+};
+
+export const DEVICE_STATUS_DESCRIPTIONS: Record<DeviceStatus, string> = {
+  PENDING_PAIR:
+    "A pairing code was issued. The hardware hasn't completed pairing yet.",
+  ACTIVE: "Paired and authenticated. Tokens are valid.",
+  LOGGED_OUT:
+    "Tokens revoked. This seat no longer counts against your device cap. Generate a new pairing code from this row to bring a device back here.",
+  DELETED:
+    "Hidden from the device list. Past activity is preserved in audit. Re-pairing the same hardware creates a new entry rather than resurrecting this one.",
+};

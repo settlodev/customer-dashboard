@@ -190,16 +190,14 @@ const ReservationExceptionManager = ({ exceptions, onRefresh }: Props) => {
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      {exception.canDelete && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(exception.id)}
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(exception.id)}
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
                 );

@@ -152,9 +152,9 @@ const CartPage: React.FC<CartPageProps> = ({
                       <div className="flex gap-4">
                         {/* Product Image */}
                         <div className="w-20 h-20 flex-shrink-0">
-                          {item.image ? (
+                          {item.imageUrl ? (
                             <Image
-                              src={item.image}
+                              src={item.imageUrl}
                               alt={item.name}
                               width={80}
                               height={80}

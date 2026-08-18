@@ -1,86 +1,144 @@
 import Link from "next/link";
-
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+  CheckCircle2,
+  LayoutGrid,
+  Plus,
+  Users,
+  XCircle,
+} from "lucide-react";
+
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { LayoutGrid } from "lucide-react";
 import { DataTable } from "@/components/tables/data-table";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
-import { searchSpaces } from "@/lib/actions/space-actions";
-import { columns } from "@/components/tables/space/columns";
+import DataLoadError from "@/components/layouts/data-load-error";
+import { searchSpaces, getSpaceStats } from "@/lib/actions/space-actions";
+import { softFetch } from "@/lib/list-fallback";
+import { spaceColumns } from "@/components/tables/space/columns";
 
-const breadcrumbItems = [{ title: "Tables & Spaces", link: "/spaces" }];
-
-
-type Params = { 
-    searchParams: Promise<{ 
-        search?: string; 
-        page?: string; 
-        limit?: string; 
-    }> 
+type Params = {
+  searchParams: Promise<{
+    search?: string;
+    page?: string;
+    limit?: string;
+  }>;
 };
 
-export default async function Page({ searchParams }: Params) {
-    
-    const resolvedSearchParams = await searchParams;
-    
-    const q = resolvedSearchParams.search || "";
-    const page = Number(resolvedSearchParams.page) || 0;
-    const pageLimit = Number(resolvedSearchParams.limit);
+const EMPTY_STATS = {
+  total: 0,
+  active: 0,
+  inactive: 0,
+  floorPlansUsed: 0,
+  tablesInZones: 0,
+};
 
-    const responseData = await searchSpaces(q, page, pageLimit);
+export default async function SpacesPage({ searchParams }: Params) {
+  const resolved = await searchParams;
+  const q = resolved.search || "";
+  const page = Number(resolved.page) || 0;
+  const pageLimit = Number(resolved.limit) || 10;
 
-    const data = responseData.content;
-    const total = responseData.totalElements;
-    const pageCount = responseData.totalPages;
+  const [responseData, stats] = await Promise.all([
+    softFetch(searchSpaces(q, page, pageLimit)),
+    getSpaceStats().catch(() => EMPTY_STATS),
+  ]);
 
-    return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 mt-10">
-            <div className="flex items-center justify-between mb-2">
-                <div className="relative flex-1 md:max-w-md">
-                    <BreadcrumbsNav items={breadcrumbItems} />
-                </div>
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
-                <div className="flex items-center space-x-2">
-                    <Button variant="outline" asChild>
-                        <Link href="/spaces/manage">
-                            <LayoutGrid className="h-4 w-4 mr-2" />
-                            Floor Plans & Combinations
-                        </Link>
-                    </Button>
-                    <Button asChild>
-                        <Link href="/spaces/new">Add Table/Space</Link>
-                    </Button>
-                </div>
-            </div>
+  const totalZones = stats.total;
+  const activeZones = stats.active;
+  const inactiveZones = stats.inactive;
+  const tablesInZones = stats.tablesInZones;
+  const floorPlansUsed = stats.floorPlansUsed;
 
-            {total > 0 || q != "" ? (
-                <Card x-chunk="data-table">
-                    <CardHeader>
-                        <CardTitle>Tables & Spaces</CardTitle>
-                        <CardDescription>Manage tables or spaces in your business location</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <DataTable
-                            columns={columns}
-                            data={data}
-                            pageCount={pageCount}
-                            pageNo={page}
-                            searchKey="name"
-                            total={total}
-                        />
-                    </CardContent>
-                </Card>
-            ) : (
-                <NoItems itemName={`table or space`} newItemUrl={`/spaces/new`} />
-            )}
-        </div>
-    );
+  const hasFilters = !!q;
+  const hasAny = totalZones > 0;
 
+  return (
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Spaces" }]} />
+      <PageHeader
+        title="Spaces"
+        subtitle="Sections, halls, rooms, terraces, and bars — the zones that group your tables."
+        actions={
+          <Button asChild size="sm">
+            <Link href="/spaces/new">
+              <Plus className="mr-1.5 h-4 w-4" />
+              Add space
+            </Link>
+          </Button>
+        }
+      />
+
+      <PageBody>
+        {!responseData ? (
+          <DataLoadError itemName="spaces" />
+        ) : hasAny || hasFilters ? (
+          <>
+            <KpiStrip cols={4}>
+              <KpiCard
+                icon={<LayoutGrid className="h-3 w-3" />}
+                label="Total spaces"
+                value={totalZones.toLocaleString()}
+              />
+              <KpiCard
+                icon={<Users className="h-3 w-3" />}
+                label="Tables in spaces"
+                value={tablesInZones > 0 ? tablesInZones.toLocaleString() : "—"}
+                deltaTone="neutral"
+              />
+              <KpiCard
+                icon={<LayoutGrid className="h-3 w-3" />}
+                label="Floor plans used"
+                value={floorPlansUsed > 0 ? floorPlansUsed.toLocaleString() : "—"}
+                deltaTone="neutral"
+              />
+              <KpiCard
+                icon={
+                  inactiveZones > 0 ? (
+                    <XCircle className="h-3 w-3" />
+                  ) : (
+                    <CheckCircle2 className="h-3 w-3" />
+                  )
+                }
+                label="Inactive"
+                value={inactiveZones > 0 ? inactiveZones.toLocaleString() : "—"}
+                deltaTone={inactiveZones > 0 ? "neg" : "neutral"}
+                delta={
+                  inactiveZones > 0
+                    ? `${activeZones.toLocaleString()} active`
+                    : undefined
+                }
+              />
+            </KpiStrip>
+
+            <Card>
+              <CardContent className="px-2 pt-6 sm:px-6">
+                <DataTable
+                  columns={spaceColumns}
+                  data={data}
+                  pageCount={pageCount}
+                  pageNo={page}
+                  searchKey="name"
+                  total={total}
+                  rowClickBasePath="/spaces"
+                />
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <NoItems itemName="space" newItemUrl="/spaces/new" />
+        )}
+      </PageBody>
+    </PageShell>
+  );
 }

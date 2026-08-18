@@ -1,60 +1,27 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 import { format } from "date-fns";
-import {uploadCallBackType} from "@/types/types";
-import { createClient } from '@supabase/supabase-js'
-import {v4} from "uuid";
+import { uploadCallBackType } from "@/types/types";
+import { v4 } from "uuid";
+import { uploadService } from "@/lib/uploads/upload-service";
+import type { UploadPurpose } from "@/lib/uploads/types";
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
-export const parseStringify = (value: unknown) => JSON.parse(JSON.stringify(value));
+export const parseStringify = (value: unknown) =>
+  JSON.parse(JSON.stringify(value));
 
-/**
- * Safely extract a human-readable error message from an API error.
- *
- * The Settlo API can return `message` as:
- *  - a string:  "Something went wrong"
- *  - an array:  [{ field: "reservationTime", message: "must not be null" }, ...]
- *  - an object: { field: "...", message: "..." }
- *
- * This function normalises all shapes into a single string.
- */
-export function extractErrorMessage(
-  error: unknown,
-  fallback = "Something went wrong while processing your request, please try again",
-): string {
-  if (!error) return fallback;
-
-  // If the error is already a string, return it
-  if (typeof error === "string") return error;
-
-  // If it's an array of {field, message} objects (validation errors)
-  if (Array.isArray(error)) {
-    const messages = error
-      .map((e) => {
-        if (typeof e === "string") return e;
-        if (e && typeof e === "object" && "message" in e) {
-          const field = "field" in e ? String(e.field) : "";
-          const msg = String(e.message);
-          return field ? `${field}: ${msg}` : msg;
-        }
-        return null;
-      })
-      .filter(Boolean);
-    return messages.length > 0 ? messages.join(", ") : fallback;
+export function safeRandomUUID(): string {
+  if (
+    typeof globalThis !== "undefined" &&
+    globalThis.crypto &&
+    typeof globalThis.crypto.randomUUID === "function"
+  ) {
+    return globalThis.crypto.randomUUID();
   }
-
-  // If it's an object with a message property
-  if (typeof error === "object" && error !== null && "message" in error) {
-    const msg = (error as { message: unknown }).message;
-    // message itself could be an array (nested case)
-    return extractErrorMessage(msg, fallback);
-  }
-
-  return fallback;
+  return v4();
 }
-
 
 export function formatNumber(value: number): string {
   const formatter = new Intl.NumberFormat("en-US", {
@@ -66,18 +33,25 @@ export function formatNumber(value: number): string {
   return formatter.format(value);
 }
 
-export const formatDateForZod = (date: Date | undefined): string => {
-  if (!date) return "";
-  return format(date, "yyyy-MM-dd'T'HH:mm:ss'Z'");
-}
-
-export const formatDateTime = (date: Date | string | undefined): { dateTime: string; dateDay: string; timeOnly: string; dateOnly: string } => {
+export const formatDateTime = (
+  date: Date | string | undefined,
+): {
+  dateTime: string;
+  dateDay: string;
+  timeOnly: string;
+  dateOnly: string;
+} => {
   if (!date) return { dateTime: "", dateDay: "", timeOnly: "", dateOnly: "" };
 
   const dateValue = typeof date === "string" ? new Date(date) : date;
 
   if (isNaN(dateValue.getTime())) {
-    return { dateTime: "Invalid date", dateDay: "Invalid date", timeOnly: "Invalid date", dateOnly: "Invalid date" };
+    return {
+      dateTime: "Invalid date",
+      dateDay: "Invalid date",
+      timeOnly: "Invalid date",
+      dateOnly: "Invalid date",
+    };
   }
 
   const formattedDate = format(dateValue, "yyyy-MM-dd");
@@ -90,43 +64,69 @@ export const formatDateTime = (date: Date | string | undefined): { dateTime: str
     timeOnly: formattedTime,
     dateOnly: formattedDateOnly,
   };
+};
+
+/**
+ * Legacy callback-style helper used by older forms (business_form,
+ * UploadImageWidget). Maps the path hint to an {@link UploadPurpose}
+ * and delegates to the shared {@link uploadService}, which handles the
+ * presigned-URL flow against R2. New callers should consume
+ * {@code useUpload()} or {@code uploadService.upload()} directly.
+ */
+export async function uploadImage(
+  file: File,
+  path: string,
+  callback: (response: uploadCallBackType) => void,
+) {
+  const purpose = inferUploadPurpose(path);
+  if (!purpose) {
+    callback({
+      success: false,
+      data: `Unknown upload destination "${path}". Use uploadService.upload() with an explicit purpose.`,
+    });
+    return;
+  }
+  try {
+    const result = await uploadService.upload({ file, purpose });
+    callback({ success: true, data: result.url });
+  } catch (error) {
+    callback({
+      success: false,
+      data: error instanceof Error ? error.message : "Upload failed",
+    });
+  }
 }
 
-export async function uploadImage(file: File, path: string, callback: (response: uploadCallBackType) => void) {
-  const url = "https://fhuvexerkaysoazmmlal.supabase.co";
-  const secret = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZodXZleGVya2F5c29hem1tbGFsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyNjcyNzI5MiwiZXhwIjoyMDQyMzAzMjkyfQ.Lzt4PidEk8jvtdV2O1cXfefCe1_LzMbc2zwCYGtZPWk";
-  const supabase = createClient(url, secret);
-
-  let extension='jpg';
-  if(file.type === 'image/png'){
-    extension = 'png'
-  }
-
-  //await supabase.storage.createBucket("Images", {public: true});
-  const sbObject = supabase.storage.from("Images");
-  const imageName = `${path}/${v4()}.${extension}`;
-  const { error } = await sbObject.upload(imageName, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
-
-  const { data } = sbObject.getPublicUrl(imageName);
-
-  if(error){
-    return callback({ success: false, data: "Error uploading image" });
-  }
-  return callback({ success: true, data: data.publicUrl});
+/**
+ * Maps the legacy free-form `imagePath` string callers used to pass to
+ * the upload widgets onto a typed {@link UploadPurpose}. Keep this in
+ * sync with the {@code UploadImageWidget} call sites — adding a new
+ * folder name here means the corresponding purpose also has to exist
+ * on the owning backend service.
+ */
+function inferUploadPurpose(path: string): UploadPurpose | null {
+  const p = path.toLowerCase();
+  if (p.includes("business")) return "BUSINESS_LOGO";
+  if (p.includes("location")) return "LOCATION_LOGO";
+  if (p.includes("profile")) return "PROFILE_PICTURE";
+  if (p.includes("product") && p.includes("collection")) return "PRODUCT_COLLECTION_IMAGE";
+  if (p.includes("collection")) return "PRODUCT_COLLECTION_IMAGE";
+  if (p.includes("product")) return "PRODUCT_IMAGE";
+  if (p.includes("stock")) return "STOCK_IMAGE";
+  if (p.includes("brand")) return "BRAND_LOGO";
+  if (p.includes("categor")) return "CATEGORY_IMAGE";
+  if (p.includes("department")) return "DEPARTMENT_IMAGE";
+  if (p.includes("receipt")) return "RECEIPT_HEADER";
+  return null;
 }
-
 
 export const getBuildInfo = () => {
   return {
-    buildId: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA || 'development',
-    buildNumber: process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
+    buildId: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA || "development",
+    buildNumber:
+      process.env.NEXT_PUBLIC_VERCEL_ENV === "production"
         ? process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF
-        : 'local',
-    environment: process.env.NEXT_PUBLIC_VERCEL_ENV || 'development'
+        : "local",
+    environment: process.env.NEXT_PUBLIC_VERCEL_ENV || "development",
   };
 };
-
-

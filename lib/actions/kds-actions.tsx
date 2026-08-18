@@ -1,18 +1,17 @@
 "use server";
 
-import { getAuthenticatedUser} from "../auth-utils";
+import { getAuthToken } from "../auth-utils";
 import ApiClient from "../settlo-api-client";
 import { parseStringify } from "../utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { UUID } from "node:crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
+import { getCurrentLocation } from "./business/get-current-business";
 import { KDS } from "@/types/kds/type";
 import { KDSSchema } from "@/types/kds/schema";
 
 export const fetchAllKDS = async (): Promise<KDS[]> => {
-  await getAuthenticatedUser();
   
   try {
     const apiClient = new ApiClient();
@@ -33,7 +32,6 @@ export const searchKDS = async (
   page: number,
   pageLimit: number
 ): Promise<ApiResponse<KDS>> => {
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
@@ -88,15 +86,14 @@ export const createKDS = async (
   }
 
   const location = await getCurrentLocation();
-  const business = await getCurrentBusiness();
+  const businessId = (await getAuthToken())?.businessId;
 
   const payload = {
     ...validKDSData.data,
     location: location?.id,
-    business: business?.id,
+    business: businessId,
   };
 
-  await getAuthenticatedUser();
   
   try {
     const apiClient = new ApiClient();
@@ -206,7 +203,6 @@ export const updateKDS = async (
 
 export const deleteKDS = async (id: UUID): Promise<void> => {
   if (!id) throw new Error("KDS ID is required to perform this request");
-  await getAuthenticatedUser();
 
   try {
       const apiClient = new ApiClient();

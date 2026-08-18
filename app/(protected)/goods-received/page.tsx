@@ -1,180 +1,120 @@
-"use client";
-import { useEffect, useState } from "react";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/stock-intake-receivable/column";
-import { useToast } from "@/hooks/use-toast";
-import { searchStockIntakeReceived } from "@/lib/actions/stock-purchase-actions";
-import { Loader2, PackageOpen, Plus } from "lucide-react";
-import { StockReceipt } from "@/types/stock-intake-receipt/type";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Plus } from "lucide-react";
+import {
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
+import { Button } from "@/components/ui/button";
+import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
+import { DataTable } from "@/components/tables/data-table";
+import { columns } from "@/components/tables/grn/columns";
+import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
+import { getGrns } from "@/lib/actions/grn-actions";
+import { getCurrentDestination } from "@/lib/actions/context";
+import { getGrnKpi } from "@/lib/actions/reports-analytics-actions";
+import { GrnKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
+import { softFetch } from "@/lib/list-fallback";
+import { GRN_STATUS_LABELS, GrnStatus } from "@/types/grn/type";
 
-const breadCrumbItems = [
-  { title: "Goods Received", link: "/receivable-goods" },
+const GRN_STATUS_VALUES: GrnStatus[] = [
+  "DRAFT",
+  "INSPECTION_HOLD",
+  "RECEIVED",
+  "CANCELLED",
 ];
 
 type Params = {
   searchParams: Promise<{
-    search?: string;
     page?: string;
     limit?: string;
+    from?: string;
+    to?: string;
+    status?: string;
+    search?: string;
   }>;
 };
 
-function Page({ searchParams }: Params) {
-  const [goodsReceived, setGoodsReceived] = useState<StockReceipt[]>([]);
-  const [total, setTotal] = useState<number>(0);
-  const [pageCount, setPageCount] = useState<number>(0);
-  const [resolvedParams, setResolvedParams] = useState<{
-    search?: string;
-    page?: string;
-    limit?: string;
-  } | null>(null);
-  const [initialLoading, setInitialLoading] = useState<boolean>(true);
+export default async function Page({ searchParams }: Params) {
+  const resolvedParams = await searchParams;
+  const page = Number(resolvedParams.page) || 0;
+  const pageLimit = Number(resolvedParams.limit) || 20;
+  const from = resolvedParams.from;
+  const to = resolvedParams.to;
+  const status = GRN_STATUS_VALUES.find((s) => s === resolvedParams.status);
+  const search = resolvedParams.search?.trim() || undefined;
+  // A live filter must keep the toolbar on screen even when it returns zero
+  // rows — otherwise the user lands on the empty state with no way to clear it.
+  const hasFilters = Boolean(from || to || status || search);
 
-  const { toast } = useToast();
+  const [responseData, location] = await Promise.all([
+    softFetch(
+      getGrns({
+        page: page ? page - 1 : 0,
+        size: pageLimit,
+        from,
+        to,
+        status,
+        search,
+      }),
+    ),
+    getCurrentDestination(),
+  ]);
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
-  // Resolve search params
-  useEffect(() => {
-    const resolveParams = async () => {
-      const params = await searchParams;
-      setResolvedParams(params);
-    };
-    resolveParams();
-  }, [searchParams]);
-
-  // Extract values from resolved params
-  const q = resolvedParams?.search || "";
-  const page = Number(resolvedParams?.page) || 0;
-  const pageLimit = Number(resolvedParams?.limit);
-
-  useEffect(() => {
-    if (resolvedParams === null) return;
-
-    const fetchGoodsReceived = async () => {
-      if (initialLoading) {
-        setInitialLoading(true);
-      }
-
-      try {
-        const responseData = await searchStockIntakeReceived(
-          q,
-          page,
-          pageLimit,
-        );
-
-        const receivedOrders = responseData.content;
-        setGoodsReceived(receivedOrders);
-        setTotal(responseData.totalElements);
-        setPageCount(responseData.totalPages);
-      } catch (error) {
-        console.error("Error fetching goods received:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load goods received. Please try again.",
-        });
-      } finally {
-        setInitialLoading(false);
-      }
-    };
-
-    fetchGoodsReceived();
-  }, [q, page, pageLimit, resolvedParams]);
-
-  // Show loading state while params are being resolved OR during initial load
-  if (resolvedParams === null || initialLoading) {
-    return (
-      <div className={`flex-1 space-y-4 md:p-8 pt-6 mt-10`}>
-        <div className={`flex items-center justify-between mb-2`}>
-          <div className={`relative flex-1 md:max-w-md`}>
-            <div className="h-6 w-48 bg-gray-200 animate-pulse rounded"></div>
-          </div>
-          <div className={`flex items-center space-x-2`}>
-            <div className="h-10 w-36 bg-gray-200 animate-pulse rounded"></div>
-          </div>
-        </div>
-
-        <Card x-chunk="data-table">
-          <CardHeader>
-            <CardTitle>Goods Received</CardTitle>
-            <CardDescription>
-              Track goods received from your suppliers
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-muted-foreground">Loading goods received...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const kpi = location?.id ? await getGrnKpi(location.id) : null;
 
   return (
-    <div className={`flex-1 space-y-4 md:p-8 pt-6 mt-10`}>
-      <div className={`flex items-center justify-between mb-2`}>
-        <div className={`relative flex-1 md:max-w-md`}>
-          <BreadcrumbsNav items={breadCrumbItems} />
-        </div>
-      </div>
-      {total > 0 || q !== "" ? (
-        <Card x-chunk="data-table">
-          <CardHeader>
-            <CardTitle>Goods Received</CardTitle>
-            <CardDescription>
-              Track stock received from your suppliers
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Goods Received" }]} />
+      <PageHeader
+        title="Goods Received"
+        subtitle="Receipt notes against purchase orders — verify, accept, and post stock."
+        actions={
+          <Button asChild size="sm">
+            <Link href="/goods-received/new">
+              <Plus className="mr-1.5 h-4 w-4" />
+              New GRN
+            </Link>
+          </Button>
+        }
+      />
+      <PageBody>
+        {!responseData ? (
+          <DataLoadError itemName="goods received notes" />
+        ) : total > 0 || hasFilters ? (
+          <>
+            <GrnKpiStrip summary={kpi} />
+            <OrdersDateFilter from={from ?? ""} to={to ?? ""} allowClear />
             <DataTable
               columns={columns}
-              data={goodsReceived}
-              searchKey=""
+              data={data}
+              searchKey="grnNumber"
+              searchPlaceholder="Search GRN number or supplier…"
               pageNo={page}
               total={total}
               pageCount={pageCount}
+              defaultPageSize={pageLimit}
+              disableArchive
+              filterKey="status"
+              filterOptions={GRN_STATUS_VALUES.map((s) => ({
+                value: s,
+                label: GRN_STATUS_LABELS[s],
+              }))}
+              manualFilter
             />
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="flex flex-col items-center justify-center h-[calc(100vh-240px)] border border-dashed rounded-lg bg-muted/10">
-          <div className="flex flex-col items-center max-w-md text-center space-y-6 px-4">
-            <div className="p-4 bg-primary/10 rounded-full">
-              <PackageOpen className="h-12 w-12 text-primary" />
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-2xl font-semibold tracking-tight">
-                No Goods Receivable at the moment
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                There are no goods received records found. Start by creating
-                your first local purchase now.
-              </p>
-            </div>
-
-            <Button asChild>
-              <Link href="/stock-purchases/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Local Purchase
-              </Link>
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
+          </>
+        ) : (
+          <NoItems
+            newItemUrl="/goods-received/new"
+            itemName="goods received notes"
+          />
+        )}
+      </PageBody>
+    </PageShell>
   );
 }
-
-export default Page;

@@ -1,13 +1,18 @@
-export default interface SummaryResponse {
+export default interface OverviewResponse {
   locationId: string;
+  staffId: string | null;
   locationName: string;
   startDate: string;
   endDate: string;
 
-  closingBalance: number;
-  transactionsAmount: number;
-  refundsAmount: number;
-  expensesPaidAmount: number;
+  totalOrders: number;
+  completedOrders: number;
+  cancelledOrders: number;
+  refundedOrders: number;
+  openOrders: number;
+  fullyPaidOrders: number;
+  partiallyPaidOrders: number;
+  unpaidOrders: number;
 
   grossSales: number;
   netSales: number;
@@ -16,78 +21,20 @@ export default interface SummaryResponse {
   totalCost: number;
   grossProfit: number;
 
-  expenseCount: number;
-  totalExpenseRecordedAmount: number;
-  totalExpensePaidAmount: number;
-  totalExpenseUnpaidAmount: number;
-  totalTips: number;
+  transactionsAmount: number;
+  complimentaryAmount: number;
+  /** COGS of goods on in-house / COMPLIMENTARY-tender orders (the payment concept). */
+  complimentaryCost: number;
+  /** Estimated cost of free give-away ITEMS (e.g. refills) — separate from the tender above. */
+  giveawayCost: number;
+  signedBillAmount: number;
+  expensesPaidAmount: number;
+  closingBalance: number;
 
-  totalOrders: number;
-  completedOrders: number;
-  cancelledOrders: number;
-  ongoingOrders: number;
-  refundedOrders: number;
-  averageOrderValue: number;
+  totalExpenses: number;
+  totalExpenseAmount: number;
+  totalExpenseUnpaid: number;
 
   totalRefundCount: number;
   totalRefundedAmount: number;
-
-  uniqueCustomers: number;
-
-  transactionsPerPaymentMethod: TransactionsByPaymentMethod[];
-  recentTransactions: RecentTransaction[];
-  topSellingItems: TopSellingItem[];
-  dailyRevenueTrend: DailyRevenue[];
-  monthlyCashflow: MonthlyCashflow[];
-  staffPerformance: StaffPerformance[];
-}
-
-export interface TransactionsByPaymentMethod {
-  acceptedPaymentMethodType: string;
-  acceptedPaymentMethodTypeName: string;
-  transactionCount: number;
-  totalAmount: number;
-  percentage: number;
-}
-
-export interface RecentTransaction {
-  id: string;
-  transactionId: string;
-  orderNumber: string;
-  acceptedPaymentMethodTypeName: string;
-  amount: number;
-  staffName: string;
-  createdAt: string;
-}
-
-export interface TopSellingItem {
-  productId: string;
-  itemName: string;
-  departmentName: string;
-  quantitySold: number;
-  grossSales: number;
-  netSales: number;
-  grossProfit: number;
-}
-
-export interface DailyRevenue {
-  date: string;
-  revenue: number;
-  expenses: number;
-  ordersCount: number;
-}
-
-export interface MonthlyCashflow {
-  month: string;
-  transactionsTotal: number;
-  transactionsCount: number;
-  expensesTotal: number;
-  expensesCount: number;
-}
-
-export interface StaffPerformance {
-  staffId: string;
-  staffName: string;
-  ordersCount: number;
-  ordersValue: number;
 }

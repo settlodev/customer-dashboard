@@ -1,38 +1,36 @@
-import { UUID } from "crypto";
+// ---------------------------------------------------------------------------
+// Department (matches DepartmentResponse from Accounts Service)
+// ---------------------------------------------------------------------------
 
-export declare interface Department {
-    id: UUID;
-    name: string;
-    color: string;
-    image: string;
-    notificationToken: string;
-    location:string
-    business: string;
-    isArchived: boolean;
-    status: boolean;
-    canDelete: boolean;
+export interface Department {
+  id: string;
+  accountId: string;
+  locationId: string;
+  identifier: string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  image: string | null;
+  active: boolean;
+  /**
+   * Auto-created with each location and protected from delete / archive
+   * server-side. Dashboard surfaces a "Default" badge and disables the
+   * Archive action when this is true.
+   */
+  isDefault: boolean;
+  order: number | null;
+  defaultPosView: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export declare interface Report {
-    soldItems: {
-        name: string;
-        productName: string;
-        variantName: string;
-        categoryName: string;
-        imageUrl: string | null;
-        quantity: number;
-        price: number;
-        cost: number;
-        grossProfit: number;
-        latestSoldDate: string;
-        earliestSoldDate: string;
-    }[];
-    startDate: string;
-    endDate: string;
-    name: string;
-    image: string | null;
-    totalItemsSold: number;
-    totalGrossAmount: number;
-    totalNetAmount: number;
-    totalGrossProfit: number;
+// ---------------------------------------------------------------------------
+// Department count
+// ---------------------------------------------------------------------------
+
+export interface DepartmentCount {
+  total: number;
+  active: number;
+  inactive: number;
 }

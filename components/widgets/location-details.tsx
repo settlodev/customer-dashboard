@@ -68,15 +68,9 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
     }
   };
 
-  const statusBadge = getSubscriptionStatusBadge(location.subscriptionStatus);
+  const statusBadge = getSubscriptionStatusBadge(location.active ? "OK" : "SUSPENDED");
 
-  const subscriptionProgress = Math.ceil(
-    ((new Date().getTime() -
-      new Date(location.subscriptionStartDate).getTime()) /
-      (new Date(location.subscriptionEndDate).getTime() -
-        new Date(location.subscriptionStartDate).getTime())) *
-      100,
-  );
+  const subscriptionProgress = 0;
 
   const breadcrumbItems = [
     { title: "Locations", link: "/locations" },
@@ -96,8 +90,8 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
         <div className="space-y-2">
           <BreadcrumbsNav items={breadcrumbItems} />
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-gray-100 rounded-2xl border">
-              <Store className="w-8 h-8 text-gray-700" />
+            <div className="p-3 bg-muted rounded-2xl border">
+              <Store className="w-8 h-8 text-ink-2" />
             </div>
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
@@ -106,9 +100,9 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
               <p className="text-lg text-muted-foreground flex items-center gap-2 mt-1">
                 <Building2 className="w-4 h-4" />
                 {location.businessName}
-                <span className="text-gray-400">•</span>
+                <span className="text-muted-foreground">•</span>
                 <span className="capitalize">
-                  {location.locationBusinessTypeName?.toLowerCase()}
+                  {location.businessName?.toLowerCase()}
                 </span>
               </p>
             </div>
@@ -132,8 +126,8 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-xl">
-                  <div className="p-2 bg-gray-100 rounded-lg border">
-                    <Store className="w-5 h-5 text-gray-700" />
+                  <div className="p-2 bg-muted rounded-lg border">
+                    <Store className="w-5 h-5 text-ink-2" />
                   </div>
                   Add New Location
                 </DialogTitle>
@@ -143,7 +137,7 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
               <LocationForm
                 item={null}
                 onSubmit={handleAddLocation}
-                businessId={location.business ?? null}
+                businessId={location.businessId ?? null}
               />
             </DialogContent>
           </Dialog>
@@ -167,8 +161,8 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gray-100 rounded-lg border">
-                <Sparkles className="w-5 h-5 text-gray-700" />
+              <div className="p-2 bg-muted rounded-lg border">
+                <Sparkles className="w-5 h-5 text-ink-2" />
               </div>
               <div>
                 <h3 className="font-semibold">Subscription Status</h3>
@@ -191,7 +185,7 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
                 {statusBadge.text}
               </Badge>
               <span className="text-sm text-muted-foreground">
-                Until {formatDate(location.subscriptionEndDate)}
+                {location.active ? "Active" : "Inactive"}
               </span>
             </div>
           </div>
@@ -206,63 +200,66 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
           <Card className="group hover:shadow-md transition-all duration-300">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <div className="p-2 bg-gray-100 rounded-lg border">
-                  <Building className="w-4 h-4 text-gray-700" />
+                <div className="p-2 bg-muted rounded-lg border">
+                  <Building className="w-4 h-4 text-ink-2" />
                 </div>
                 Contact Information
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                <Phone className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                <Phone className="w-4 h-4 text-ink-3 flex-shrink-0" />
                 <span
                   className={
-                    location.phone ? "font-medium" : "text-muted-foreground"
+                    location.phoneNumber ? "font-medium" : "text-muted-foreground"
                   }
                 >
-                  {location.phone || "Not provided"}
+                  {location.phoneNumber || "Not provided"}
                 </span>
               </div>
 
               {location.email && location.email !== "null" && (
                 <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                  <Mail className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                  <Mail className="w-4 h-4 text-ink-3 flex-shrink-0" />
                   <span className="font-medium">{location.email}</span>
                 </div>
               )}
 
+              {location.website && (
+                <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                  <Globe className="w-4 h-4 text-ink-3 flex-shrink-0" />
+                  <a
+                    href={location.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-blue-600 hover:underline truncate"
+                  >
+                    {location.website}
+                  </a>
+                </div>
+              )}
+
               {(location.address ||
-                location.street ||
-                location.city ||
                 location.region) && (
                 <div className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                  <MapPin className="w-4 h-4 text-gray-600 flex-shrink-0 mt-1" />
+                  <MapPin className="w-4 h-4 text-ink-3 flex-shrink-0 mt-1" />
                   <div className="space-y-1 capitalize">
-                    {location.street && (
-                      <div className="font-medium">{location.street}</div>
+                    {location.address && (
+                      <div className="font-medium">{location.address}</div>
                     )}
-                    {(location.city || location.region) && (
+                    {location.region && (
                       <div className="text-sm text-muted-foreground">
-                        {[location.city, location.region]
-                          .filter(Boolean)
-                          .join(", ")}
+                        {location.region}
                       </div>
                     )}
-                    {location.address &&
-                      location.address !== location.street && (
-                        <div className="text-sm text-muted-foreground">
-                          {location.address}
-                        </div>
-                      )}
                   </div>
                 </div>
               )}
 
               <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                <Clock className="w-4 h-4 text-ink-3 flex-shrink-0" />
                 <span className="font-medium">
-                  {formatTime(location.openingTime)} –{" "}
-                  {formatTime(location.closingTime)}
+                  {location.timezone || "N/A"}
                 </span>
               </div>
             </CardContent>
@@ -272,8 +269,8 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
           <Card className="group hover:shadow-md transition-all duration-300">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <div className="p-2 bg-gray-100 rounded-lg border">
-                  <Users className="w-4 h-4 text-gray-700" />
+                <div className="p-2 bg-muted rounded-lg border">
+                  <Users className="w-4 h-4 text-ink-2" />
                 </div>
                 Business Details
               </CardTitle>
@@ -284,9 +281,9 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
                   Created
                 </label>
                 <div className="flex items-center gap-2 p-2 rounded-lg border">
-                  <Calendar className="w-4 h-4 text-gray-500" />
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
                   <span className="font-medium">
-                    {formatDate(location.dateCreated)}
+                    {formatDate(location.createdAt)}
                   </span>
                 </div>
               </div>
@@ -295,9 +292,9 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
                   Business Type
                 </label>
                 <div className="flex items-center gap-2 p-3 rounded-lg border bg-gray-50 dark:bg-gray-800/50">
-                  <Globe className="w-4 h-4 text-gray-600" />
+                  <Globe className="w-4 h-4 text-ink-3" />
                   <span className="font-medium capitalize">
-                    {location.locationBusinessTypeName?.toLowerCase()}
+                    {location.businessName?.toLowerCase()}
                   </span>
                 </div>
               </div>
@@ -311,8 +308,8 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
           <Card className="group hover:shadow-md transition-all duration-300">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <div className="p-2 bg-gray-100 rounded-lg border">
-                  <Calendar className="w-4 h-4 text-gray-700" />
+                <div className="p-2 bg-muted rounded-lg border">
+                  <Calendar className="w-4 h-4 text-ink-2" />
                 </div>
                 Subscription Overview
               </CardTitle>
@@ -320,7 +317,7 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-center p-4 rounded-lg border bg-gray-50 dark:bg-gray-800/50">
-                  <div className="text-2xl font-bold text-gray-700 mb-2">
+                  <div className="text-2xl font-bold text-ink-2 mb-2">
                     {statusBadge.text === "ACTIVE"
                       ? "✅"
                       : statusBadge.text === "PAYMENT DUE"
@@ -338,22 +335,22 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
                 </div>
 
                 <div className="text-center p-4 rounded-lg border bg-gray-50 dark:bg-gray-800/50">
-                  <Calendar className="w-6 h-6 text-gray-700 mx-auto mb-2" />
+                  <Calendar className="w-6 h-6 text-ink-2 mx-auto mb-2" />
                   <div className="text-sm font-medium text-muted-foreground">
                     Start Date
                   </div>
                   <div className="text-lg font-bold mt-1">
-                    {formatDate(location.subscriptionStartDate)}
+                    {formatDate(location.createdAt)}
                   </div>
                 </div>
 
                 <div className="text-center p-4 rounded-lg border bg-gray-50 dark:bg-gray-800/50">
-                  <Clock className="w-6 h-6 text-gray-700 mx-auto mb-2" />
+                  <Clock className="w-6 h-6 text-ink-2 mx-auto mb-2" />
                   <div className="text-sm font-medium text-muted-foreground">
                     End Date
                   </div>
                   <div className="text-lg font-bold mt-1">
-                    {formatDate(location.subscriptionEndDate)}
+                    N/A
                   </div>
                 </div>
               </div>
@@ -368,7 +365,7 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
                   <div
-                    className="bg-gray-700 h-2 rounded-full transition-all duration-500"
+                    className="bg-gray-700 dark:bg-gray-300 h-2 rounded-full transition-all duration-500"
                     style={{
                       width: `${Math.min(100, Math.max(0, subscriptionProgress))}%`,
                     }}

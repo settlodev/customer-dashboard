@@ -3,10 +3,11 @@
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import {
+  ArchiveRestore,
+  Eye,
   MoreVertical,
   Pencil as EditIcon,
-  Archive as ArchiveIcon,
-  ArchiveRestore,
+  UserMinus,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,12 @@ import {
 import DeleteModal from "@/components/tables/delete-modal";
 import { toast } from "@/hooks/use-toast";
 import { Customer } from "@/types/customer/type";
-import { archiveCustomer, unarchiveCustomer } from "@/lib/actions/customer-actions";
+import {
+  deactivateCustomer,
+  reactivateCustomer,
+  restoreCustomer,
+} from "@/lib/actions/customer-actions";
+import { invalidateCustomersCache } from "@/lib/cache/reference-data";
 
 interface CellActionProps {
   data: Customer;
@@ -28,49 +34,77 @@ interface CellActionProps {
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
-  const [isArchiveModalOpen, setArchiveModalOpen] = useState(false);
-  const [isUnarchiving, setIsUnarchiving] = useState(false);
+  const [isDeactivateOpen, setDeactivateOpen] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const fullName = `${data.firstName} ${data.lastName}`;
 
-  const handleArchive = async () => {
+  const handleDeactivate = async () => {
     try {
-      await archiveCustomer(data.id);
+      await deactivateCustomer(data.id);
+      invalidateCustomersCache();
       toast({
-        title: "Archived",
-        description: `${fullName} has been archived successfully.`,
+        title: "Deactivated",
+        description: `${fullName} has been deactivated.`,
       });
+      router.refresh();
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Uh oh! Something went wrong.",
+        title: "Couldn't deactivate",
         description:
           (error as Error).message ||
-          "There was an issue with your request, please try again later",
+          "There was an issue with your request, please try again later.",
       });
     } finally {
-      setArchiveModalOpen(false);
+      setDeactivateOpen(false);
     }
   };
 
-  const handleUnarchive = async () => {
-    setIsUnarchiving(true);
+  const handleReactivate = async () => {
+    setIsReactivating(true);
     try {
-      await unarchiveCustomer(data.id);
+      await reactivateCustomer(data.id);
+      invalidateCustomersCache();
       toast({
-        title: "Restored",
-        description: `${fullName} has been restored successfully.`,
+        title: "Reactivated",
+        description: `${fullName} is back to active.`,
       });
+      router.refresh();
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Uh oh! Something went wrong.",
+        title: "Couldn't reactivate",
         description:
           (error as Error).message ||
-          "There was an issue with your request, please try again later",
+          "There was an issue with your request, please try again later.",
       });
     } finally {
-      setIsUnarchiving(false);
+      setIsReactivating(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setIsRestoring(true);
+    try {
+      await restoreCustomer(data.id);
+      invalidateCustomersCache();
+      toast({
+        title: "Restored",
+        description: `${fullName} has been restored.`,
+      });
+      router.refresh();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Couldn't restore",
+        description:
+          (error as Error).message ||
+          "There was an issue with your request, please try again later.",
+      });
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -83,6 +117,10 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => router.push(`/customers/${data.id}`)}>
+            <Eye className="mr-2 h-4 w-4" />
+            View
+          </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => router.push(`/customers/${data.id}/edit`)}
           >
@@ -92,31 +130,39 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           <DropdownMenuSeparator />
           {data.isArchived ? (
             <DropdownMenuItem
-              onClick={handleUnarchive}
-              disabled={isUnarchiving}
-              className="text-green-600 focus:text-green-600"
+              onClick={handleRestore}
+              disabled={isRestoring}
+              className="text-emerald-600 focus:text-emerald-600"
             >
               <ArchiveRestore className="mr-2 h-4 w-4" />
-              {isUnarchiving ? "Restoring..." : "Unarchive"}
+              {isRestoring ? "Restoring…" : "Restore"}
+            </DropdownMenuItem>
+          ) : data.active ? (
+            <DropdownMenuItem
+              onClick={() => setDeactivateOpen(true)}
+              className="text-amber-600 focus:text-amber-600"
+            >
+              <UserMinus className="mr-2 h-4 w-4" />
+              Deactivate
             </DropdownMenuItem>
           ) : (
             <DropdownMenuItem
-              onClick={() => setArchiveModalOpen(true)}
-              className="text-red-600 focus:text-red-600"
+              onClick={handleReactivate}
+              disabled={isReactivating}
+              className="text-emerald-600 focus:text-emerald-600"
             >
-              <ArchiveIcon className="mr-2 h-4 w-4" />
-              Archive
+              <ArchiveRestore className="mr-2 h-4 w-4" />
+              {isReactivating ? "Reactivating…" : "Reactivate"}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Archive Confirmation Modal */}
       <DeleteModal
-        isOpen={isArchiveModalOpen}
+        isOpen={isDeactivateOpen}
         itemName={fullName}
-        onDelete={handleArchive}
-        onOpenChange={() => setArchiveModalOpen(false)}
+        onDelete={handleDeactivate}
+        onOpenChange={() => setDeactivateOpen(false)}
       />
     </>
   );

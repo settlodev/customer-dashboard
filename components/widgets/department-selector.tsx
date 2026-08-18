@@ -1,20 +1,17 @@
 "use client"
 
-import React, { useEffect, useState } from "react";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import React, { useState } from "react";
+import { Combobox } from "@/components/ui/combobox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { Plus, Tag } from "lucide-react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Department } from "@/types/department/type";
-import { fectchAllDepartments, createDepartment } from "@/lib/actions/department-actions";
+import { createDepartment } from "@/lib/actions/department-actions";
+import {
+    invalidateDepartmentsCache,
+    useCachedDepartments,
+} from "@/lib/cache/reference-data";
 import { FormError } from "@/components/widgets/form-error";
 import { usePathname } from 'next/navigation';
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
@@ -32,14 +29,13 @@ interface DepartmentSelectorProps {
 
 const DepartmentSelector: React.FC<DepartmentSelectorProps> = ({
                                                                    placeholder,
-                                                                   isRequired,
                                                                    value,
                                                                    isDisabled,
                                                                    description,
                                                                    onChange,
                                                                }) => {
-    const [departments, setDepartments] = useState<Department[]>([]);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const { data: departmentsData, loading: isLoading } = useCachedDepartments();
+    const departments = departmentsData ?? [];
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newDepartmentName, setNewDepartmentName] = useState("");
     const [color, setColor] = useState("#000000");
@@ -47,22 +43,6 @@ const DepartmentSelector: React.FC<DepartmentSelectorProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | undefined>();
     const pathname = usePathname();
-
-    const loadDepartments = async () => {
-        try {
-            setIsLoading(true);
-            const fetchedDepartments = await fectchAllDepartments();
-            setDepartments(fetchedDepartments ?? []);
-        } catch (error: any) {
-            console.log("Error fetching departments:", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        loadDepartments();
-    }, []);
 
     const resetForm = () => {
         setNewDepartmentName("");
@@ -78,18 +58,14 @@ const DepartmentSelector: React.FC<DepartmentSelectorProps> = ({
 
         setIsSubmitting(true);
         try {
-            const response = await createDepartment(
-                {
-                    name: newDepartmentName,
-                    color: color,
-                    status: true,
-                    image: imageUrl,
-                },
-                pathname,
-            );
+            const response = await createDepartment({
+                name: newDepartmentName,
+                color: color,
+                image: imageUrl,
+            });
 
             if (response.responseType === "success" && response.data) {
-                await loadDepartments();
+                invalidateDepartmentsCache();
                 const newDepartmentId = response.data.id;
                 onChange(newDepartmentId);
                 resetForm();
@@ -108,24 +84,19 @@ const DepartmentSelector: React.FC<DepartmentSelectorProps> = ({
     return (
         <div className="flex gap-2 items-start">
             <div className="flex-1 space-y-2">
-                <Select
-                    defaultValue={value}
+                <Combobox
+                    options={departments.map((department) => ({
+                        value: department.id,
+                        label: department.name,
+                    }))}
+                    value={value ?? null}
+                    onChange={(v) => onChange(v ?? "")}
+                    placeholder={placeholder || "Select department"}
+                    searchPlaceholder="Search departments…"
+                    emptyText={isLoading ? "Loading departments…" : "No departments found."}
                     disabled={isDisabled || isLoading}
-                    value={value}
-                    required={isRequired}
-                    onValueChange={onChange}
-                >
-                    <SelectTrigger className="w-full">
-                        <SelectValue placeholder={placeholder || "Select department"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {departments.map((department) => (
-                            <SelectItem key={department.id} value={department.id}>
-                                {department.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                    ariaLabel="Department"
+                />
                 {description && (
                     <p className="text-sm text-gray-500">{description}</p>
                 )}

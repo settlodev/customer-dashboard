@@ -2,7 +2,6 @@
 
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { getCurrentLocation } from "./business/get-current-business";
 import { OnlineMenu, MenuSettings } from "@/types/online-menu/type";
@@ -13,7 +12,6 @@ import { FormResponse } from "@/types/types";
 const MAX_MENUS_PER_LOCATION = 5;
 
 export const fetchOnlineMenus = async (): Promise<OnlineMenu[]> => {
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
@@ -28,7 +26,6 @@ export const fetchOnlineMenus = async (): Promise<OnlineMenu[]> => {
 };
 
 export const fetchOnlineMenu = async (id: UUID): Promise<OnlineMenu> => {
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
@@ -45,7 +42,6 @@ export const fetchOnlineMenu = async (id: UUID): Promise<OnlineMenu> => {
 export const createOnlineMenu = async (
   menu: z.infer<typeof OnlineMenuSchema>,
 ): Promise<FormResponse & { data?: OnlineMenu }> => {
-  await getAuthenticatedUser();
 
   const validated = OnlineMenuSchema.safeParse(menu);
   if (!validated.success) {
@@ -93,7 +89,6 @@ export const updateOnlineMenu = async (
   id: UUID,
   menu: z.infer<typeof OnlineMenuSchema>,
 ): Promise<FormResponse & { data?: OnlineMenu }> => {
-  await getAuthenticatedUser();
 
   const validated = OnlineMenuSchema.safeParse(menu);
   if (!validated.success) {
@@ -128,7 +123,6 @@ export const updateOnlineMenu = async (
 export const deleteOnlineMenu = async (
   id: UUID,
 ): Promise<FormResponse> => {
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
@@ -150,7 +144,6 @@ export const deleteOnlineMenu = async (
 export const generateQrCode = async (
   id: UUID,
 ): Promise<FormResponse & { data?: OnlineMenu }> => {
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
@@ -176,7 +169,6 @@ export const generateQrCode = async (
 export const fetchMenuSettings = async (
   onlineMenuId: UUID,
 ): Promise<MenuSettings> => {
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
@@ -193,7 +185,6 @@ export const updateMenuSettings = async (
   onlineMenuId: UUID,
   settings: z.infer<typeof MenuSettingsSchema>,
 ): Promise<FormResponse> => {
-  await getAuthenticatedUser();
 
   const validated = MenuSettingsSchema.safeParse(settings);
   if (!validated.success) {

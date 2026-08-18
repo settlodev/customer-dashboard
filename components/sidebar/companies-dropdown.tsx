@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { Location } from "@/types/location/type";
-import { refreshLocation } from "@/lib/actions/business/refresh";
+import { switchToLocation, switchToWarehouse } from "@/lib/actions/destination";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +25,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { deleteActiveWarehouseCookie } from "@/lib/actions/warehouse/current-warehouse-action";
 import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
 
@@ -59,8 +58,8 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
           const q = "";
           const page = 0;
           const pageLimit = 10;
-          const warehouseLists = await searchWarehouses(q, page, pageLimit);
-          setWarehouseList(warehouseLists?.content || []);
+          const warehouseLists = await searchWarehouses();
+          setWarehouseList(warehouseLists || []);
         } catch (error) {
           console.error("Failed to fetch warehouses:", error);
           Sentry.captureException(error);
@@ -98,27 +97,22 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
 
   const handleSwitchLocation = () => {
     router.push("/select-location");
-    deleteActiveWarehouseCookie();
   };
 
   const onRefreshLocation = async (location: Location) => {
     try {
       setLoadingLocationId(location.id);
-      await refreshLocation(location).then((res) => {
-        Sentry.captureMessage("Location switched: " + res);
-        setConfirmationOpen(false);
-        setSelectedLocation(null);
-        setLoadingLocationId(null);
+      await switchToLocation(location);
+      Sentry.captureMessage(`Location switched: ${location.id}`);
+      setConfirmationOpen(false);
+      setSelectedLocation(null);
+      setLoadingLocationId(null);
 
-        if (
-          location.subscriptionStatus === "EXPIRED" ||
-          location.subscriptionStatus === null
-        ) {
-          window.location.href = `/subscription?location=${location.id}`;
-        } else {
-          window.location.href = "/dashboard";
-        }
-      });
+      if (!location.active) {
+        window.location.href = `/subscription?location=${location.id}`;
+      } else {
+        window.location.href = "/dashboard";
+      }
     } catch (error) {
       Sentry.captureException(error);
       setConfirmationOpen(false);
@@ -127,26 +121,20 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
     }
   };
 
-  // Add warehouse switching logic here
   const onRefreshWarehouse = async (warehouse: Warehouses) => {
     try {
       setLoadingLocationId(warehouse.id);
+      await switchToWarehouse(warehouse);
+      Sentry.captureMessage(`Warehouse switched: ${warehouse.id}`);
+      setConfirmationOpen(false);
+      setSelectedLocation(null);
+      setLoadingLocationId(null);
 
-      await refreshLocation(warehouse).then((res) => {
-        Sentry.captureMessage("Warehouse switched: " + res);
-        setConfirmationOpen(false);
-        setSelectedLocation(null);
-        setLoadingLocationId(null);
-
-        if (
-          warehouse.subscriptionStatus === "EXPIRED" ||
-          warehouse.subscriptionStatus === null
-        ) {
-          window.location.href = "/select-location";
-        } else {
-          window.location.href = "/warehouse";
-        }
-      });
+      if (!warehouse.active) {
+        window.location.href = "/select-location";
+      } else {
+        window.location.href = "/warehouse";
+      }
     } catch (error) {
       Sentry.captureException(error);
       setConfirmationOpen(false);
@@ -174,7 +162,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
         >
           <div className="relative h-8 w-8 shrink-0">
             <Image
-              src={business?.logo || "/images/logo.png"}
+              src={business?.logoUrl || "/images/logo.png"}
               alt={location.name}
               fill
               className="rounded-full object-cover bg-primary/20 p-1"
@@ -189,10 +177,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
                 {location.region ? location.region : " "}
               </p>
               <p className="text-xs text-gray-500 truncate bg-gray-100 px-2 py-1 rounded">
-                {location.subscriptionStatus === "EXPIRED" ||
-                location.subscriptionStatus === null
-                  ? "Expired"
-                  : "Active"}
+                {location.active ? "Active" : "Inactive"}
               </p>
             </div>
           </div>
@@ -245,7 +230,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
         >
           <div className="relative h-8 w-8 shrink-0">
             <Image
-              src={business?.logo || "/images/logo.png"}
+              src={business?.logoUrl || "/images/logo.png"}
               alt={warehouse.name || "Warehouse"}
               fill
               className="rounded-full object-cover bg-primary/20 p-1"
@@ -286,7 +271,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
             <div className="flex items-center gap-3 w-full">
               <div className="relative h-8 w-8 shrink-0">
                 <Image
-                  src={business?.logo || "/images/logo.png"}
+                  src={business?.logoUrl || "/images/logo.png"}
                   alt={business?.name || "Business logo"}
                   fill
                   className="rounded-full object-cover bg-primary/20 p-1"

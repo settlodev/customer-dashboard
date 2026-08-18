@@ -1,94 +1,126 @@
 "use client";
 
-import { Edit, MoreHorizontal, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React from "react";
+import React, { useState } from "react";
+import {
+  MoreVertical,
+  Eye as EyeIcon,
+  Pencil as EditIcon,
+  Trash2,
+} from "lucide-react";
 
+import { toast } from "@/hooks/use-toast";
+import { deleteDiscount } from "@/lib/actions/discount-actions";
+import { Discount } from "@/types/discount/type";
 import { Button } from "@/components/ui/button";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import DeleteModal from "@/components/tables/delete-modal";
-import {useDisclosure} from "@/hooks/use-disclosure";
-import {toast} from "@/hooks/use-toast";
-import { Discount } from "@/types/discount/type";
-import { deleteDiscount } from "@/lib/actions/discount-actions";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface CellActionProps {
-    data: Discount;
+  data: Discount;
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
-    const router = useRouter();
-    const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const router = useRouter();
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-    const onDelete = async () => {
-        try {
-            if (data) {
-                await deleteDiscount(data.id);
-                toast({
-                    variant: "success",
-                    title: "Success",
-                    description: "Discount deleted successfully!",
-                });
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "Uh oh! Something went wrong.",
-                    description:
-                        "There was an issue with your request, please try again later",
-                });
-            }
-        } catch (error) {
-            toast({
-                variant: "destructive",
-                title: "Uh oh! Something went wrong.",
-                description:
-                (error as Error).message ||
-                    "There was an issue with your request, please try again later",
-            });
-        } finally {
-            onOpenChange();
-        }
-    };
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteDiscount(data.id);
+      toast({
+        variant: "warning",
+        title: "Deleted",
+        description: `${data.name} has been permanently deleted.`,
+      });
+      router.refresh();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: (error as Error).message || "Failed to delete discount",
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteModalOpen(false);
+    }
+  };
 
-    return (
-        <>
-            <div className="relative flex items-center gap-2">
-                <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                        <Button className="h-8 w-8 p-0" variant="ghost">
-                            <span className="sr-only">Actions</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => router.push(`/discounts/${data.id}`)}>
-                            <Edit className="mr-2 h-4 w-4" /> Update
-                        </DropdownMenuItem>
-                        {data.canDelete && (
-                            <>
-                                <DropdownMenuItem onClick={onOpen}>
-                                    <Trash className="mr-2 h-4 w-4" /> Delete
-                                </DropdownMenuItem>
-                            </>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+  return (
+    <>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => router.push(`/discounts/${data.id}`)}>
+            <EyeIcon className="mr-2 h-4 w-4" />
+            View
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => router.push(`/discounts/${data.id}/edit`)}
+          >
+            <EditIcon className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => setDeleteModalOpen(true)}
+            className="text-red-600 focus:text-red-600"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={isDeleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="space-y-3">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/30">
+              <Trash2 className="h-6 w-6 text-red-600 dark:text-red-400" />
             </div>
-            {data.canDelete && (
-                <DeleteModal
-                    isOpen={isOpen}
-                    itemName={data.name}
-                    onDelete={onDelete}
-                    onOpenChange={onOpenChange}
-                />
-            )}
-        </>
-    );
+            <DialogTitle className="text-center">
+              Delete {data.name}?
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              This action is permanent and cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteModalOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              <Trash2 className="mr-1.5 h-4 w-4" />
+              {isDeleting ? "Deleting..." : "Yes, Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 };

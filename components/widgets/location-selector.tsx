@@ -1,5 +1,5 @@
 import { Location } from "@/types/location/type";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Combobox } from "@/components/ui/combobox";
 
 interface LocationProps {
     label: string;
@@ -20,20 +20,16 @@ function LocationSelector({
     locations
 }: LocationProps) {
     return (
-        <Select value={value} onValueChange={onChange} disabled={isDisabled}>
-            <SelectTrigger>
-                <SelectValue placeholder={placeholder || "Select location"}/>
-            </SelectTrigger>
-            <SelectContent>
-                {locations && locations.length > 0 ?
-                    locations.map((item, index) => {
-                        return <SelectItem key={index} value={item.id}>
-                            {item.name}
-                        </SelectItem>
-                    })
-                    : <></>}
-            </SelectContent>
-        </Select>
+        <Combobox
+            options={locations.map((item) => ({ value: item.id, label: item.name }))}
+            value={value ?? null}
+            onChange={(v) => onChange(v ?? "")}
+            placeholder={placeholder || "Select location"}
+            searchPlaceholder="Search locations…"
+            emptyText="No locations found."
+            disabled={isDisabled}
+            ariaLabel="Location"
+        />
     )
 }
 export default LocationSelector

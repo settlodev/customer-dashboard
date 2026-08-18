@@ -1,0 +1,228 @@
+import type { DestinationType } from "@/types/catalogue/enums";
+
+// ── Status enums (match backend exactly) ────────────────────────────
+
+export type GrnStatus = "DRAFT" | "INSPECTION_HOLD" | "RECEIVED" | "CANCELLED";
+
+export type InspectionStatus = "PENDING" | "PASSED" | "FAILED" | "PARTIAL";
+
+export type LandedCostType = "FREIGHT" | "CUSTOMS" | "INSURANCE" | "HANDLING" | "OTHER";
+
+// ── GRN entities ────────────────────────────────────────────────────
+
+export interface Grn {
+  id: string;
+  grnNumber: string;
+  lpoId: string | null;
+  supplierId: string;
+  /** Populated via LPO/supplier join — may be null if resolution fails. */
+  supplierName?: string | null;
+  locationType: DestinationType;
+  locationId: string;
+  locationName: string | null;
+  receivedBy: string;
+  receivedByName: string | null;
+  receivedDate: string;
+  status: GrnStatus;
+  /** Location base currency — the currency all `unitCost` values are stored in. */
+  currency: string | null;
+  /** Header override: the supplier's unit costs on this GRN are tax-inclusive. */
+  pricesIncludeTax?: boolean;
+  /** Sum of line net amounts, base currency. */
+  netAmount?: number;
+  /** Sum of line tax amounts, base currency — recoverable or memo depending on `GrnItem.taxRecoverable`. */
+  taxAmount?: number;
+  /** Gross — `netAmount + taxAmount`. Equals `netAmount` when there is no tax. */
+  totalAmount?: number;
+  notes: string | null;
+  deliveryPersonName: string | null;
+  deliveryPersonPhone: string | null;
+  deliveryPersonEmail: string | null;
+  shareToken: string | null;
+  shareTokenIssuedAt: string | null;
+  items: GrnItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Public payload returned by GET /api/v1/public/grns/{token}.
+// Letterhead embedded so the share page renders branded headers without
+// a second round-trip.
+export interface PublicGrn {
+  id: string;
+  grnNumber: string;
+  status: GrnStatus;
+  currency: string | null;
+  notes: string | null;
+  receivedDate: string;
+  createdAt: string;
+  shareTokenIssuedAt: string | null;
+  supplierId: string;
+  supplierName: string | null;
+  deliveryPersonName: string | null;
+  deliveryPersonPhone: string | null;
+  deliveryPersonEmail: string | null;
+  /** Header override: the supplier's unit costs on this GRN are tax-inclusive. */
+  pricesIncludeTax?: boolean;
+  /** Sum of line net amounts, base currency. */
+  netAmount?: number;
+  /** Sum of recoverable line tax amounts, base currency — zero for a non-VAT-registered business. */
+  taxAmount?: number;
+  /** Gross — `netAmount + taxAmount`. Equals `netAmount` when there is no recoverable tax. */
+  totalAmount?: number;
+  items: PublicGrnItem[];
+  letterhead: import("@/types/letterhead/type").LocationLetterhead | null;
+}
+
+export interface PublicGrnItem {
+  id: string;
+  stockVariantId: string;
+  variantName: string;
+  receivedQuantity: number;
+  unitCost: number;
+  currency: string | null;
+  batchNumber: string | null;
+  expiryDate: string | null;
+  inspectionStatus: InspectionStatus | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /** Line tax, base currency. Recoverable (added on top) or memo-only (already inside `unitCost`) per `taxRecoverable`. */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` at document-write time — false means it is already folded into `unitCost`. */
+  taxRecoverable?: boolean;
+}
+
+export interface GrnItem {
+  id: string;
+  stockVariantId: string;
+  variantName: string;
+  receivedQuantity: number;
+  /** Converted unit cost in the location's base currency. */
+  unitCost: number;
+  /** Settlement currency — matches the location's base currency. */
+  currency: string | null;
+  /** Supplier-invoiced currency (may differ from `currency` on foreign purchases). */
+  originalCurrency: string | null;
+  /** Supplier's per-unit price in `originalCurrency`. */
+  originalUnitCost: number | null;
+  /** Exchange rate captured at receive time. */
+  rateUsed: number | null;
+  /** Snapshot of the tax type applied — line override, else the stock item's default. `null` = no tax. */
+  taxTypeId?: string | null;
+  /** Rate snapshot at the time this line was written, e.g. `18` for 18%. */
+  taxRatePercent?: number;
+  /** Line tax, base currency. Recoverable (added on top) or memo-only (already inside `unitCost`) per `taxRecoverable`. */
+  taxAmount?: number;
+  /** Whether this business could reclaim `taxAmount` at document-write time — false means it is already folded into `unitCost`. */
+  taxRecoverable?: boolean;
+  /** Pack the operator transacted in (null when entered directly in stock units). */
+  purchaseUnitId: string | null;
+  /** Quantity as the operator typed it in `purchaseUnitId` (null when not used). */
+  purchaseQuantity: number | null;
+  batchNumber: string | null;
+  supplierBatchReference: string | null;
+  expiryDate: string | null;
+  inspectionStatus: InspectionStatus | null;
+  inspectedQuantity: number | null;
+  rejectedQuantity: number | null;
+}
+
+export interface LandedCost {
+  id: string;
+  grnId: string;
+  costType: LandedCostType;
+  amount: number;
+  currency: string | null;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── Request payloads ────────────────────────────────────────────────
+
+export interface CreateGrnItemPayload {
+  stockVariantId: string;
+  receivedQuantity: number;
+  unitCost: number;
+  /** Optional purchase pack — see `GrnItem.purchaseUnitId`. */
+  purchaseUnitId?: string;
+  batchNumber?: string;
+  supplierBatchReference?: string;
+  expiryDate?: string;
+  serialNumbers?: string[];
+  /** Per-line override. `null`/omitted falls through to the stock item's default. */
+  taxTypeId?: string | null;
+}
+
+export interface CreateGrnPayload {
+  lpoId?: string;
+  supplierId: string;
+  locationType: DestinationType;
+  receivedBy: string;
+  receivedDate: string;
+  notes?: string;
+  deliveryPersonName?: string;
+  deliveryPersonPhone?: string;
+  deliveryPersonEmail?: string;
+  /** This supplier's unit costs on this GRN are tax-inclusive. */
+  pricesIncludeTax?: boolean;
+  items: CreateGrnItemPayload[];
+}
+
+export interface AddLandedCostPayload {
+  costType: LandedCostType;
+  amount: number;
+  description?: string;
+}
+
+export interface RecordInspectionPayload {
+  inspectionStatus: InspectionStatus;
+  inspectedQuantity?: number;
+  rejectedQuantity?: number;
+}
+
+// ── Display helpers ─────────────────────────────────────────────────
+
+export const GRN_STATUS_LABELS: Record<GrnStatus, string> = {
+  DRAFT: "Draft",
+  INSPECTION_HOLD: "On Inspection Hold",
+  RECEIVED: "Received",
+  CANCELLED: "Cancelled",
+};
+
+export const GRN_STATUS_TONES: Record<GrnStatus, string> = {
+  DRAFT: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  INSPECTION_HOLD: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400",
+  RECEIVED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+};
+
+export const INSPECTION_STATUS_LABELS: Record<InspectionStatus, string> = {
+  PENDING: "Pending",
+  PASSED: "Passed",
+  FAILED: "Failed",
+  PARTIAL: "Partial",
+};
+
+export const INSPECTION_STATUS_TONES: Record<InspectionStatus, string> = {
+  PENDING: "bg-muted text-ink-2",
+  PASSED: "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400",
+  FAILED: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  PARTIAL: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+};
+
+export const LANDED_COST_TYPE_OPTIONS: { value: LandedCostType; label: string }[] = [
+  { value: "FREIGHT", label: "Freight" },
+  { value: "CUSTOMS", label: "Customs" },
+  { value: "INSURANCE", label: "Insurance" },
+  { value: "HANDLING", label: "Handling" },
+  { value: "OTHER", label: "Other" },
+];
+
+export const INSPECTION_STATUS_OPTIONS: { value: InspectionStatus; label: string }[] = [
+  { value: "PASSED", label: "Passed — all items good" },
+  { value: "PARTIAL", label: "Partial — some rejected" },
+  { value: "FAILED", label: "Failed — nothing accepted" },
+];

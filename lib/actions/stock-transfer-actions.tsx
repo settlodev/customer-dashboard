@@ -1,156 +1,340 @@
 "use server";
 
-import {z} from "zod";
+import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthenticatedUser} from "@/lib/auth-utils";
-import {parseStringify} from "@/lib/utils";
-import {ApiResponse, FormResponse} from "@/types/types";
-import {revalidatePath} from "next/cache";
-import {UUID} from "node:crypto";
-import {getCurrentLocation } from "./business/get-current-business";
-import { console } from "node:inspector";
-import { StockTransfer } from "@/types/stock-transfer/type";
+import { parseStringify } from "@/lib/utils";
+import { ApiResponse, FormResponse } from "@/types/types";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import type {
+  DestinationOption,
+  PublicStockTransfer,
+  StockTransfer,
+  TransferStatus,
+} from "@/types/stock-transfer/type";
 import { StockTransferSchema } from "@/types/stock-transfer/schema";
+import { inventoryUrl } from "./inventory-client";
+import { getCurrentDestination } from "./context";
+import { fetchAllLocations } from "./location-actions";
+import { fetchAllStores } from "./store-actions";
+import { getWarehouses } from "./warehouse/list-warehouse";
 
-export const fetchStockTransfers = async () : Promise<StockTransfer[]> => {
-    await  getAuthenticatedUser();
+export async function searchStockTransfers(
+  page: number = 0,
+  size: number = 20,
+  direction: "outgoing" | "incoming" = "outgoing",
+  status?: TransferStatus,
+): Promise<ApiResponse<StockTransfer>> {
+  try {
+    const apiClient = new ApiClient();
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("size", String(size));
+    params.set("direction", direction);
+    params.set("sortBy", "createdAt");
+    params.set("sortDirection", "desc");
+    if (status) params.set("status", status);
 
-    try {
-        const apiClient = new ApiClient();
-
-        const location = await getCurrentLocation();
-
-        const data = await  apiClient.get(
-            `/api/stock-transfers/${location?.id}/all`,
-        );
-        return parseStringify(data);
-    }
-    catch (error){
-        throw error;
-    }
+    const data = await apiClient.get(
+      inventoryUrl(`/api/v1/stock-transfers?${params.toString()}`),
+    );
+    return parseStringify(data);
+  } catch (error) {
+    throw error;
+  }
 }
-export const searchStockTransfers = async (
-    q:string,
-    page:number,
-    pageLimit:number
-): Promise<ApiResponse<StockTransfer>> =>{
-    await getAuthenticatedUser();
 
-    try {
-        const apiClient = new ApiClient();
-        const query ={
-            filters: [
-                {
-                    key:"stockVariant.stock.name",
-                    operator:"LIKE",
-                    field_type:"STRING",
-                    value:q
-                }
-            ],
-            // sorts:[
-            //     {
-            //         key:"stockVariant.stock.name",
-            //         direction:"ASC"
-            //     }
-            // ],
-            page:page ? page - 1:0,
-            size:pageLimit ? pageLimit : 10
-        }
-        const location = await getCurrentLocation();
-        const data = await  apiClient.post(
-            `/api/stock-transfers/${location?.id}`,
-            query
-        );
-        
-        return parseStringify(data);
-    }
-    catch (error){
-        throw error;
-    }
-
+export async function getStockTransfer(id: string): Promise<StockTransfer | null> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(inventoryUrl(`/api/v1/stock-transfers/${id}`));
+    return parseStringify(data);
+  } catch {
+    return null;
+  }
 }
-import { ErrorResponseType } from "@/types/types";
 
-export const createStockTransfer = async (
-    transfer: z.infer<typeof StockTransferSchema>
-): Promise<FormResponse | void> => {
-    let formResponse: FormResponse | null = null;
+/**
+ * Valid transfer destinations for the current workspace: every location, store
+ * and warehouse the caller can access in the active business, flattened into a
+ * single list and with the active source excluded (you can't transfer to
+ * yourself). Inactive destinations are dropped because the backend rejects them
+ * on create. Each source list is fetched independently so one failing service
+ * doesn't blank out the whole picker.
+ */
+export async function getTransferDestinations(): Promise<DestinationOption[]> {
+  const [source, results] = await Promise.all([
+    getCurrentDestination(),
+    Promise.allSettled([fetchAllLocations(), fetchAllStores(), getWarehouses()]),
+  ]);
+  const [locationsRes, storesRes, warehousesRes] = results;
 
-    const validData = StockTransferSchema.safeParse(transfer);
+  const options: DestinationOption[] = [];
 
-    if (!validData.success) {
-        formResponse = {
-            responseType: "error",
-            message: "Please fill all the required fields",
-            error: new Error(validData.error.message)
-        };
-        return parseStringify(formResponse);
+  if (locationsRes.status === "fulfilled") {
+    for (const loc of locationsRes.value) {
+      if (!loc.active) continue;
+      options.push({
+        id: loc.id,
+        name: loc.name,
+        type: "LOCATION",
+        subline: loc.region || undefined,
+      });
     }
+  }
 
-    const location = await getCurrentLocation();
-    const payload = {
-        ...validData.data,
-    };
-
-    try {
-        const apiClient = new ApiClient();
-        await apiClient.post(
-            `/api/stock-transfers/${location?.id}/create`,
-            payload
-        );
-        
-        formResponse = {
-            responseType: "success",
-            message: "Stock transfer created successfully",
-        };
-    } catch (error: any) {
-        // The error is already processed by your handleSettloApiError function
-        // It should be of type ErrorResponseType
-        const apiError = error as ErrorResponseType;
-        
-        console.error("Error creating stock transfer:", {
-            status: apiError.status,
-            code: apiError.code,
-            message: apiError.message,
-            correlationId: apiError.correlationId,
-            details: apiError.details
-        });
-        
-        formResponse = {
-            responseType: "error",
-            message: apiError.message || "An error occurred while creating the stock transfer",
-            error: new Error(apiError.message),
-        };
+  if (warehousesRes.status === "fulfilled") {
+    for (const wh of warehousesRes.value) {
+      if (!wh.active) continue;
+      const parts = [wh.code, wh.primary ? "Primary" : null].filter(Boolean);
+      options.push({
+        id: wh.id,
+        name: wh.name,
+        type: "WAREHOUSE",
+        subline: parts.length ? parts.join(" · ") : undefined,
+      });
     }
+  }
+
+  if (storesRes.status === "fulfilled") {
+    // When the source is a store, store→store transfers are restricted to
+    // sibling stores under the same parent location (the backend enforces
+    // this authoritatively). Fail open if the source's parent can't be
+    // determined — let the backend reject rather than hide everything.
+    const sourceStoreParentId =
+      source?.type === "STORE"
+        ? storesRes.value.find((s) => s.id === source.id)?.locationId ?? null
+        : null;
+    for (const st of storesRes.value) {
+      if (!st.active) continue;
+      if (sourceStoreParentId && st.locationId !== sourceStoreParentId) continue;
+      options.push({
+        id: st.id,
+        name: st.name,
+        type: "STORE",
+        subline: st.code || undefined,
+      });
+    }
+  }
+
+  return source ? options.filter((o) => o.id !== source.id) : options;
+}
+
+export async function createStockTransfer(
+  transfer: z.infer<typeof StockTransferSchema>,
+): Promise<FormResponse | void> {
+  const validated = StockTransferSchema.safeParse(transfer);
+
+  if (!validated.success) {
+    return parseStringify({
+      responseType: "error",
+      message: "Please fill all required fields",
+      error: new Error(validated.error.message),
+    });
+  }
+
+  // The source is the active destination. The backend resolves the source *id*
+  // from the X-Location-Id header; we send the matching source *type* so a
+  // transfer started from a store/warehouse context isn't mislabeled as a
+  // location. Guard against transferring to the source itself.
+  const source = await getCurrentDestination();
+  if (!source) {
+    return parseStringify({
+      responseType: "error",
+      message:
+        "No active location selected. Choose a workspace before creating a transfer.",
+      error: new Error("No active destination"),
+    });
+  }
+  if (validated.data.destinationLocationId === source.id) {
+    return parseStringify({
+      responseType: "error",
+      message: "The destination must be different from the source location.",
+      error: new Error("Source and destination are the same"),
+    });
+  }
+
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(inventoryUrl("/api/v1/stock-transfers"), {
+      sourceLocationType: source.type,
+      ...validated.data,
+      transferDate: validated.data.transferDate || new Date().toISOString(),
+    });
 
     revalidatePath("/stock-transfers");
-    return parseStringify(formResponse);
-};
-
-
-export const getStockTransferred= async (id:UUID, _stockVariant:UUID) : Promise<ApiResponse<StockTransfer>> => {
-
-    const apiClient = new ApiClient();
-    const query ={
-        filters:[
-            {
-                key: "id",
-                operator: "EQUAL",
-                field_type: "UUID_STRING",
-                value: id,
-            }
-        ],
-        sorts: [],
-        page: 0,
-        size: 1,
-    }
-    const location = await getCurrentLocation();
-    const response = await apiClient.post(
-        `/api/stock-transfers/${location?.id}/${id}`,
-        query,
-    );
-
-    return parseStringify(response)
+    redirect("/stock-transfers");
+  } catch (error: any) {
+    if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to create stock transfer",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
 }
 
+// ── Transfer lifecycle actions ──────────────────────────────────────
 
+export async function confirmTransfer(id: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl(`/api/v1/stock-transfers/${id}/confirm`), {});
+  revalidatePath("/stock-transfers");
+}
+
+export async function dispatchTransfer(id: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl(`/api/v1/stock-transfers/${id}/dispatch`), {});
+  revalidatePath("/stock-transfers");
+}
+
+export async function receiveTransfer(
+  id: string,
+  items?: { stockVariantId: string; receivedQuantity: number }[],
+  notes?: string,
+): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl(`/api/v1/stock-transfers/${id}/receive`), {
+    notes,
+    items,
+  });
+  revalidatePath("/stock-transfers");
+}
+
+export async function acceptTransfer(id: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl(`/api/v1/stock-transfers/${id}/accept`), {});
+  revalidatePath("/stock-transfers");
+}
+
+export async function declineTransfer(id: string, reason?: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl(`/api/v1/stock-transfers/${id}/decline`), { reason });
+  revalidatePath("/stock-transfers");
+}
+
+export async function rejectTransfer(id: string, reason?: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl(`/api/v1/stock-transfers/${id}/reject`), { reason });
+  revalidatePath("/stock-transfers");
+}
+
+export async function returnTransfer(id: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl(`/api/v1/stock-transfers/${id}/return-to-source`), {});
+  revalidatePath("/stock-transfers");
+}
+
+export async function confirmReturnTransfer(id: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl(`/api/v1/stock-transfers/${id}/confirm-return`), {});
+  revalidatePath("/stock-transfers");
+}
+
+export async function cancelTransfer(id: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl(`/api/v1/stock-transfers/${id}/cancel`), {});
+  revalidatePath("/stock-transfers");
+}
+
+// ── Delivery-note sharing (mirrors GRN sharing) ─────────────────────
+
+/**
+ * Mint (or fetch the existing) public delivery-note link. Idempotent —
+ * repeated calls return the same token until {@link revokeStockTransferShare}.
+ */
+export async function shareStockTransfer(
+  id: string,
+): Promise<{ shareToken: string; shareUrl: string } | { error: string }> {
+  try {
+    const apiClient = new ApiClient();
+    const updated = (await apiClient.post(
+      inventoryUrl(`/api/v1/stock-transfers/${id}/share`),
+      {},
+    )) as StockTransfer;
+    revalidatePath(`/stock-transfers/${id}`);
+    if (!updated?.shareToken) {
+      return { error: "Share token missing from server response" };
+    }
+    return {
+      shareToken: updated.shareToken,
+      shareUrl: buildTransferShareUrl(updated.shareToken),
+    };
+  } catch (error: any) {
+    return { error: error?.message ?? "Failed to create share link" };
+  }
+}
+
+export async function revokeStockTransferShare(id: string): Promise<FormResponse> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.delete(inventoryUrl(`/api/v1/stock-transfers/${id}/share`));
+    revalidatePath(`/stock-transfers/${id}`);
+    return { responseType: "success", message: "Share link revoked" };
+  } catch (error: any) {
+    return {
+      responseType: "error",
+      message: error?.message ?? "Failed to revoke share link",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
+/** Public (unauthenticated) delivery-note payload for the /dn/[token] page. */
+export async function getPublicStockTransfer(
+  token: string,
+): Promise<PublicStockTransfer | null> {
+  try {
+    const apiClient = new ApiClient();
+    apiClient.isPlain = true;
+    const data = await apiClient.get<PublicStockTransfer>(
+      inventoryUrl(`/api/v1/public/stock-transfers/${encodeURIComponent(token)}`),
+    );
+    return parseStringify(data);
+  } catch (error: any) {
+    if (error?.status === 404) return null;
+    throw error;
+  }
+}
+
+function buildTransferShareUrl(token: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "";
+  return `${base}/dn/${token}`;
+}
+
+/**
+ * Resolve ONE pending-mapping line on a PENDING_MAPPING transfer — link it to
+ * a destination-catalogue variant the receiver already carries, or have the
+ * backend provision a brand-new (draft) stock item from the source line's
+ * attributes. When the linked item is the same product tracked under a
+ * DIFFERENT base unit, pass `merge: true` + `mergedUnitId` (one of the two
+ * items' current units): both catalogues are re-labelled onto that unit —
+ * quantities keep their numbers, nothing converts — and the items stay
+ * connected via the shared product identity. Either way the backend credits
+ * the line's full outstanding quantity immediately and recomputes the
+ * transfer status (RECEIVED / PARTIALLY_RECEIVED / still PENDING_MAPPING
+ * while other lines wait).
+ */
+export async function reconcileTransferLine(
+  id: string,
+  line: {
+    transferItemId: string;
+    linkToVariantId?: string;
+    createNew?: boolean;
+    merge?: boolean;
+    mergedUnitId?: string;
+  },
+): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(
+    inventoryUrl(`/api/v1/stock-transfers/${id}/reconcile-line`),
+    {
+      transferItemId: line.transferItemId,
+      linkToVariantId: line.linkToVariantId ?? null,
+      createNew: line.createNew ?? false,
+      merge: line.merge ?? false,
+      mergedUnitId: line.mergedUnitId ?? null,
+    },
+  );
+  revalidatePath("/stock-transfers");
+}

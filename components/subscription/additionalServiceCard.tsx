@@ -1,13 +1,13 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Plus, Puzzle } from "lucide-react";
-import { SubscriptionAddons } from "@/types/subscription/type";
+import type { Addon } from "@/types/billing/types";
 import { cn } from "@/lib/utils";
 
 interface AdditionalServiceCardProps {
-  service: SubscriptionAddons;
+  service: Addon;
   isAdded: boolean;
-  onAdd: (service: SubscriptionAddons) => void;
+  onAdd: (service: Addon) => void;
 }
 
 const AdditionalServiceCard: React.FC<AdditionalServiceCardProps> = ({
@@ -43,7 +43,7 @@ const AdditionalServiceCard: React.FC<AdditionalServiceCardProps> = ({
           {service.name}
         </p>
         <p className="text-xs text-gray-500 mt-0.5">
-          TZS {service.amount.toLocaleString()}
+          TZS {service.price.toLocaleString()}
           <span className="text-gray-400"> / month</span>
         </p>
       </div>

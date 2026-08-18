@@ -8,10 +8,11 @@ export const fetchCountries = async () => {
     const apiClient = new ApiClient();
     apiClient.isPlain = true;
 
-    const response = await apiClient.get("/api/countries");
+    const response = await apiClient.get("/api/v1/public/countries");
 
     return parseStringify(response);
   } catch (error) {
-    throw error;
+    console.warn("[COUNTRIES] fetchCountries failed:", (error as any)?.message);
+    return [];
   }
 };

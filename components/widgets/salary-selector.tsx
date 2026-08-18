@@ -1,13 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import {Salary} from "@/types/salary/type";
 import {fectchSalaries} from "@/lib/actions/salary-actions";
 
@@ -23,7 +17,6 @@ interface Props {
 
 const SalarySelector: React.FC<Props> = ({
                                                  placeholder,
-                                                 isRequired,
                                                  value,
                                                  isDisabled,
                                                  description,
@@ -49,29 +42,20 @@ const SalarySelector: React.FC<Props> = ({
 
     return (
         <div className="space-y-2">
-            <Select
-                defaultValue={value}
+            <Combobox
+                options={salaries.map((salary) => ({
+                    value: salary.id,
+                    label: salary.bankName,
+                    description: salary.accountNumber,
+                }))}
+                value={value ?? null}
+                onChange={(v) => onChange(v ?? "")}
+                placeholder={placeholder || "Select salary"}
+                searchPlaceholder="Search salaries…"
+                emptyText={isLoading ? "Loading salaries…" : "No salaries found."}
                 disabled={isDisabled || isLoading}
-                value={value}
-                required={isRequired}
-                onValueChange={onChange}
-            >
-                <SelectTrigger className="w-full">
-                    <SelectValue
-                        placeholder={placeholder || "Select salary"}
-                    />
-                </SelectTrigger>
-                <SelectContent>
-                    {salaries.map((salary) => (
-                        <SelectItem
-                            key={salary.id}
-                            value={salary.id}
-                        >
-                            {salary.bankName}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+                ariaLabel="Salary"
+            />
             {description && (
                 <p className="text-sm text-gray-500">
                     {description}
