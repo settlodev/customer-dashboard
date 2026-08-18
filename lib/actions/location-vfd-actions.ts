@@ -98,9 +98,10 @@ export interface VfdStatusCheck {
  * Asks the Accounting service to re-authenticate this location's DIRM
  * account. For an unverified account this is the trigger that flips
  * verification server-side once DIRM has activated it (the Accounts
- * mirror then updates over Kafka, usually within seconds). Expect this to
- * throw a "not active yet" style error while DIRM/TRA activation is still
- * pending — that's a normal outcome, not a failure.
+ * mirror then updates over Kafka, usually within seconds). While DIRM/TRA
+ * activation is still pending, this resolves to `{ data: { isVerified:
+ * false } }` — a normal outcome, not a failure. `error` is reserved for
+ * actual request failures (network, auth, unexpected 5xx).
  */
 export const checkLocationVfdStatus = async (
   locationId: string,
@@ -112,6 +113,7 @@ export const checkLocationVfdStatus = async (
     );
     return { data: parseStringify(data) };
   } catch (error: unknown) {
+    console.error("[vfd] status check failed:", error);
     return {
       error:
         error instanceof Error

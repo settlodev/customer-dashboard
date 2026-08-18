@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { SettingsSection } from "../shared/settings-section";
+import { SettingsSection, SettingsField } from "../shared/settings-section";
 import { PanelHeader } from "../shared/panel-header";
 import {
   getLocationVfdRegistration,
@@ -19,7 +19,9 @@ import {
 } from "@/lib/actions/location-vfd-actions";
 import type { Business, BusinessSettings } from "@/types/business/type";
 
-const NOT_ACTIVE_YET = /account not active/i;
+// Mirrors the server-side rule (settlo-common TinNumberValidator): exactly
+// 9 digits, and not all the same digit repeated.
+const isValidTin = (tin: string) => /^\d{9}$/.test(tin) && !/^(\d)\1{8}$/.test(tin);
 
 export function VfdRegistrationPanel({
   locationId,
@@ -78,8 +80,12 @@ export function VfdRegistrationPanel({
   const setField = (key: keyof typeof form, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  const tinTrimmed = form.tin.trim();
+  const tinHasError = tinTrimmed !== "" && !isValidTin(tinTrimmed);
+
   const canSubmit =
-    form.tin.trim() !== "" &&
+    tinTrimmed !== "" &&
+    isValidTin(tinTrimmed) &&
     form.businessName.trim() !== "" &&
     form.email.trim() !== "" &&
     form.phone.trim() !== "";
@@ -117,16 +123,14 @@ export function VfdRegistrationPanel({
         if (res.data.isVerified) {
           toast({ variant: "success", title: "VFD account verified." });
         } else {
+          // isOnboarded === false shouldn't normally happen here (the
+          // panel only renders this action once a registration exists),
+          // but it's the same "not verified yet" outcome either way.
           toast({
-            variant: "warning",
+            variant: "default",
             title: "Still awaiting DIRM/TRA activation — try again later.",
           });
         }
-      } else if (NOT_ACTIVE_YET.test(res.error)) {
-        toast({
-          variant: "warning",
-          title: "Still awaiting DIRM/TRA activation — try again later.",
-        });
       } else {
         toast({
           variant: "destructive",
@@ -163,38 +167,44 @@ export function VfdRegistrationPanel({
           }
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Field label="TIN number">
+            <SettingsField label="TIN number">
               <Input
                 value={form.tin}
                 onChange={(e) => setField("tin", e.target.value.replace(/\D/g, ""))}
                 placeholder="e.g. 123456789"
                 inputMode="numeric"
                 disabled={isSubmitting}
+                aria-invalid={tinHasError}
               />
-            </Field>
-            <Field label="Business name">
+              {tinHasError && (
+                <p className="text-xs text-red-600">
+                  TIN must be exactly 9 digits and not all the same digit.
+                </p>
+              )}
+            </SettingsField>
+            <SettingsField label="Business name">
               <Input
                 value={form.businessName}
                 onChange={(e) => setField("businessName", e.target.value)}
                 disabled={isSubmitting}
               />
-            </Field>
-            <Field label="Email address">
+            </SettingsField>
+            <SettingsField label="Email address">
               <Input
                 type="email"
                 value={form.email}
                 onChange={(e) => setField("email", e.target.value)}
                 disabled={isSubmitting}
               />
-            </Field>
-            <Field label="Phone number">
+            </SettingsField>
+            <SettingsField label="Phone number">
               <Input
                 value={form.phone}
                 onChange={(e) => setField("phone", e.target.value)}
                 placeholder="+255712345678"
                 disabled={isSubmitting}
               />
-            </Field>
+            </SettingsField>
           </div>
         </SettingsSection>
       ) : (
@@ -264,17 +274,6 @@ export function VfdRegistrationPanel({
           )}
         </SettingsSection>
       )}
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-        {label}
-      </label>
-      {children}
     </div>
   );
 }
