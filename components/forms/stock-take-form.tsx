@@ -62,6 +62,7 @@ import {
 } from "@/components/ui/alert";
 import ZoneSelector from "@/components/widgets/zone-selector";
 import DepartmentSelector from "@/components/widgets/department-selector";
+import StockCategorySelector from "@/components/widgets/stock-category-selector";
 import {
   createStockTake,
   getStockTakePreview,
@@ -108,6 +109,8 @@ export default function StockTakeForm({
       notes: initialValues?.notes ?? "",
       sampleMode: initialValues?.sampleMode ?? "size",
       abcClass: initialValues?.abcClass,
+      categoryId: initialValues?.categoryId,
+      uncategorised: initialValues?.uncategorised ?? false,
       departmentId: initialValues?.departmentId,
       zoneId: initialValues?.zoneId,
       sampleSize: initialValues?.sampleSize,
@@ -123,9 +126,14 @@ export default function StockTakeForm({
 
   const cycleType = form.watch("cycleCountType");
   const sampleMode = form.watch("sampleMode");
+  const countUncategorised = form.watch("uncategorised");
 
   useEffect(() => {
     if (cycleType !== "ABC_CLASS") form.setValue("abcClass", undefined);
+    if (cycleType !== "CATEGORY") {
+      form.setValue("categoryId", undefined);
+      form.setValue("uncategorised", false);
+    }
     if (cycleType !== "DEPARTMENT") form.setValue("departmentId", undefined);
     if (cycleType !== "ZONE") form.setValue("zoneId", undefined);
     if (cycleType !== "RANDOM") {
@@ -309,6 +317,65 @@ export default function StockTakeForm({
                         </FormItem>
                       )}
                     />
+                  )}
+
+                  {cycleType === "CATEGORY" && (
+                    <div className="space-y-3">
+                      <FormField
+                        control={form.control}
+                        name="categoryId"
+                        render={({ field }) => (
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel>Stock category</FieldLabel>
+                            <FormControl>
+                              <StockCategorySelector
+                                value={field.value ?? ""}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                isDisabled={isPending || countUncategorised}
+                                placeholder="Select a stock category"
+                              />
+                            </FormControl>
+                            <FieldHint>
+                              Counts every variant whose stock item sits in this
+                              category.
+                            </FieldHint>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="uncategorised"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={!!field.value}
+                              onChange={(e) => {
+                                field.onChange(e.target.checked);
+                                // The two scopes are mutually exclusive, so
+                                // ticking this drops any category already picked
+                                // rather than submitting both and being rejected.
+                                if (e.target.checked) {
+                                  form.setValue("categoryId", undefined);
+                                }
+                              }}
+                              disabled={isPending}
+                              className="h-4 w-4"
+                              id="uncategorised"
+                            />
+                            <label
+                              htmlFor="uncategorised"
+                              className="text-sm font-medium cursor-pointer"
+                            >
+                              Count uncategorised items instead
+                            </label>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   )}
 
                   {cycleType === "DEPARTMENT" && (

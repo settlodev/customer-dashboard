@@ -110,6 +110,8 @@ export async function createStockTake(
     blindCount,
     notes,
     abcClass,
+    categoryId,
+    uncategorised,
     departmentId,
     zoneId,
     sampleMode,
@@ -127,6 +129,8 @@ export async function createStockTake(
     filterCriteria: buildFilterCriteria({
       cycleCountType,
       abcClass,
+      categoryId,
+      uncategorised,
       departmentId,
       zoneId,
       sampleMode,
@@ -158,6 +162,8 @@ export async function createStockTake(
 function buildFilterCriteria(args: {
   cycleCountType: z.infer<typeof CreateStockTakeSchema>["cycleCountType"];
   abcClass?: "A" | "B" | "C";
+  categoryId?: string;
+  uncategorised?: boolean;
   departmentId?: string;
   zoneId?: string;
   sampleMode?: "size" | "percentage";
@@ -168,6 +174,11 @@ function buildFilterCriteria(args: {
     case "ABC_CLASS":
       return args.abcClass
         ? JSON.stringify({ classification: args.abcClass })
+        : undefined;
+    case "CATEGORY":
+      if (args.uncategorised) return JSON.stringify({ uncategorised: true });
+      return args.categoryId
+        ? JSON.stringify({ categoryId: args.categoryId })
         : undefined;
     case "DEPARTMENT":
       return args.departmentId
@@ -243,6 +254,8 @@ export async function updateStockTakeDraft(
     blindCount,
     notes,
     abcClass,
+    categoryId,
+    uncategorised,
     departmentId,
     zoneId,
     sampleMode,
@@ -258,6 +271,8 @@ export async function updateStockTakeDraft(
       buildFilterCriteria({
         cycleCountType,
         abcClass,
+        categoryId,
+        uncategorised,
         departmentId,
         zoneId,
         sampleMode,
@@ -291,6 +306,8 @@ export async function getStockTakePreview(
   const {
     cycleCountType,
     abcClass,
+    categoryId,
+    uncategorised,
     departmentId,
     zoneId,
     sampleMode,
@@ -303,6 +320,8 @@ export async function getStockTakePreview(
     filterCriteria: buildFilterCriteria({
       cycleCountType,
       abcClass,
+      categoryId,
+      uncategorised,
       departmentId,
       zoneId,
       sampleMode,

@@ -10,6 +10,7 @@ export type StockTakeStatus =
 export type CycleCountType =
   | "FULL"
   | "ABC_CLASS"
+  | "CATEGORY"
   | "DEPARTMENT"
   | "RANDOM"
   | "ZONE";
@@ -103,6 +104,7 @@ export const STOCK_TAKE_STATUS_TONES: Record<StockTakeStatus, string> = {
 export const CYCLE_COUNT_TYPE_LABELS: Record<CycleCountType, string> = {
   FULL: "Full — every variant",
   ABC_CLASS: "By ABC class",
+  CATEGORY: "By stock category",
   DEPARTMENT: "By department",
   RANDOM: "Random sample",
   ZONE: "By warehouse zone",
@@ -111,6 +113,8 @@ export const CYCLE_COUNT_TYPE_LABELS: Record<CycleCountType, string> = {
 export const CYCLE_COUNT_TYPE_DESCRIPTIONS: Record<CycleCountType, string> = {
   FULL: "Count every variant currently on hand at the location.",
   ABC_CLASS: "Count variants classified as A, B, or C (by value contribution).",
+  CATEGORY:
+    "Count variants in one stock category — or everything not yet categorised.",
   DEPARTMENT:
     "Count variants belonging to products in a department's categories.",
   RANDOM: "Count a randomly selected subset — by count or percentage.",
@@ -120,6 +124,7 @@ export const CYCLE_COUNT_TYPE_DESCRIPTIONS: Record<CycleCountType, string> = {
 export const CYCLE_COUNT_TYPE_OPTIONS: { value: CycleCountType; label: string }[] = [
   { value: "FULL", label: CYCLE_COUNT_TYPE_LABELS.FULL },
   { value: "ABC_CLASS", label: CYCLE_COUNT_TYPE_LABELS.ABC_CLASS },
+  { value: "CATEGORY", label: CYCLE_COUNT_TYPE_LABELS.CATEGORY },
   { value: "DEPARTMENT", label: CYCLE_COUNT_TYPE_LABELS.DEPARTMENT },
   { value: "RANDOM", label: CYCLE_COUNT_TYPE_LABELS.RANDOM },
   { value: "ZONE", label: CYCLE_COUNT_TYPE_LABELS.ZONE },
@@ -140,7 +145,7 @@ export const ABC_CLASS_OPTIONS: { value: AbcClass; label: string; hint: string }
 export function describeFilterCriteria(
   cycleCountType: CycleCountType | null | undefined,
   filterCriteria: string | null | undefined,
-  opts?: { departmentName?: string | null },
+  opts?: { departmentName?: string | null; categoryName?: string | null },
 ): string | null {
   if (!cycleCountType || cycleCountType === "FULL") return null;
   if (!filterCriteria) return CYCLE_COUNT_TYPE_LABELS[cycleCountType];
@@ -160,6 +165,12 @@ export function describeFilterCriteria(
       return parsed.classification
         ? `ABC class ${String(parsed.classification).toUpperCase()}`
         : CYCLE_COUNT_TYPE_LABELS.ABC_CLASS;
+    case "CATEGORY":
+      if (parsed.uncategorised === true) return "Uncategorised items";
+      if (opts?.categoryName) return `Category: ${opts.categoryName}`;
+      return parsed.categoryId
+        ? `Category ${String(parsed.categoryId).slice(0, 8)}…`
+        : CYCLE_COUNT_TYPE_LABELS.CATEGORY;
     case "DEPARTMENT":
       if (opts?.departmentName) return `Department: ${opts.departmentName}`;
       return parsed.departmentId
