@@ -1,6 +1,7 @@
 import { UUID } from "node:crypto";
 import { notFound } from "next/navigation";
 
+import { PermissionGuard } from "@/components/auth/permission-guard";
 import {
   PageBody,
   PageBreadcrumbs,
@@ -13,6 +14,7 @@ import { OrderReceiptShareButton } from "@/components/widgets/orders/receipt-sha
 import { PrintVfdButton } from "@/components/widgets/orders/print-vfd-button";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
+import { getLocationVfdRegistration } from "@/lib/actions/location-vfd-actions";
 import { getOrderDetail } from "@/lib/actions/order-actions";
 import {
   ORDER_STATUS_LABELS,
@@ -35,10 +37,19 @@ export default async function OrderPage({ params }: { params: Params }) {
   }
   if (!detail) notFound();
 
-  const [currentLocation, currency] = await Promise.all([
-    getCurrentLocation(),
+  // `currentLocation` is a synchronous cookie read (no round trip), so
+  // resolving it first — rather than folding it into the Promise.all below
+  // — costs nothing and lets the VFD registration lookup, which needs its
+  // id, run in parallel with the currency fetch instead of after it.
+  const currentLocation = await getCurrentLocation();
+  const [currency, vfdRegistrationResult] = await Promise.all([
     getLocationCurrency(),
+    currentLocation?.id
+      ? getLocationVfdRegistration(currentLocation.id)
+      : Promise.resolve({ data: null } as const),
   ]);
+  const vfdRegistration =
+    "data" in vfdRegistrationResult ? vfdRegistrationResult.data : null;
 
   const status = detail.orderStatus as OrderStatus;
   const statusClass = ORDER_STATUS_PILL[status] ?? "bg-gray-100 text-gray-600";
@@ -76,7 +87,8 @@ export default async function OrderPage({ params }: { params: Params }) {
     paymentStatus === PaymentStatus.PAID || paymentStatus === PaymentStatus.PARTIAL;
   const canShareInvoice =
     paymentStatus === PaymentStatus.NOT_PAID && status !== OrderStatus.CANCELLED;
-  const canPrintVfd = status === OrderStatus.CLOSED;
+  const canPrintVfd =
+    status === OrderStatus.CLOSED && vfdRegistration?.verified === true;
 
   const orderId = detail.id as UUID;
 
@@ -115,10 +127,12 @@ export default async function OrderPage({ params }: { params: Params }) {
                 />
               )}
               {canPrintVfd && (
-                <PrintVfdButton
-                  orderId={orderId}
-                  orderNumber={detail.orderNumber}
-                />
+                <PermissionGuard permission="printing:vfd">
+                  <PrintVfdButton
+                    orderId={orderId}
+                    orderNumber={detail.orderNumber}
+                  />
+                </PermissionGuard>
               )}
             </div>
           ) : undefined

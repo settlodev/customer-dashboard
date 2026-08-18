@@ -358,7 +358,7 @@ export interface OrderDetailTimelineEvent {
 //   POST   /api/v1/orders/{id}/receipts/receipt   → ReceiptDto (snapshot)
 //   GET    /api/v1/orders/{id}/receipts           → ReceiptDto[]
 //   GET    /api/v1/public/receipts/{slug}         → ReceiptDto (no auth)
-//   POST   /api/v1/orders/{id}/prints/vfd         → VfdPrintResponse (stub)
+//   POST   /api/v1/orders/{id}/prints/vfd         → VfdPrintResponse (real TRA fiscal signing; idempotent per order)
 
 export interface OrderShareResponse {
   orderId: UUID;
@@ -463,17 +463,71 @@ export interface ReceiptDto {
   receiptUrl: string | null;
 }
 
+/**
+ * The stored DIRM/VFD fiscal receipt for an order — the nested detail
+ * returned alongside {@link VfdPrintResponse}'s flat fields. Idempotent:
+ * a reprint returns the same stored receipt without re-fiscalising.
+ */
+export interface VfdReceiptDetail {
+  orderId: UUID;
+  accountingId: string;
+  data: {
+    /** "yyyy-MM-dd HH:mm:ss" */
+    dateTime: string | null;
+    /** DIRM rctNum */
+    rctNum: number | null;
+    zNum: number | null;
+    receiptStatus: string | null;
+    vrn: string | null;
+    traReceiptVerificationCode: string | null;
+    traReceiptVerificationUrl: string | null;
+  } | null;
+  totals: {
+    totalTaxExcl: number;
+    totalTaxIncl: number;
+    totalTax: number;
+    discount: number;
+  } | null;
+  vatTotals: Array<{
+    vatRate: string;
+    nettAmount: number;
+    taxAmount: number;
+  }>;
+  vfdInformation: {
+    uin: string | null;
+    taxOffice: string | null;
+    tin: number | null;
+    vrn: string | null;
+    isVatRegistered: boolean | null;
+    tradingName: string | null;
+    physicalAddress: string | null;
+    mobile: string | null;
+    street: string | null;
+  } | null;
+  clientInformation: {
+    businessName: string | null;
+    physicalAddress: string | null;
+    email: string | null;
+    mobile: string | null;
+  } | null;
+}
+
 export interface VfdPrintResponse {
   orderId: UUID;
   orderNumber: string;
+  /** DIRM rctNum. */
   fiscalReceiptNumber: string | null;
+  /** UIN of the signing fiscal device. */
   fiscalDeviceSerial: string | null;
   signedAt: string | null;
   qrCodeData: string | null;
+  /** TRA verification URL. */
   verificationUrl: string | null;
-  /** "STUBBED" while the Accounting integration is pending; "SIGNED" once live. */
+  /** "SIGNED" once the Accounting Service has fiscalised the receipt. */
   accountingServiceStatus: string | null;
   message: string | null;
+  /** Full stored fiscal receipt — present once the order has been signed. */
+  receipt?: VfdReceiptDetail | null;
 }
 
 export interface OrderDetail {

@@ -30,8 +30,9 @@ import { orderRequestSchema } from "@/types/orders/schema";
 import { getCurrentLocation } from "./business/get-current-business";
 
 // ─── Service clients ────────────────────────────────────────────────
-// Orders + their detail/timeline live on the OMS. Receipts, EFD, cart
-// submission, and reports each still target their own legacy services.
+// Orders + their detail/timeline live on the OMS — VFD fiscal printing
+// included (see printOrderVfd below). Receipts, cart submission, and
+// reports each still target their own legacy services.
 
 const oms = () => new ApiClient("orders");
 const ordersBase = "/api/v1/orders";
@@ -438,8 +439,15 @@ export const getPublicReceiptSnapshot = async (
   }
 };
 
-// ─── VFD print (OMS — currently stubbed; backed by Accounting later) ─
+// ─── VFD print (OMS → Accounting → TRA fiscal device, real) ──────────
 
+/**
+ * Fiscalises a CLOSED order via the on-site VFD (TRA fiscal device) and
+ * returns the signed receipt. Idempotent — a reprint returns the stored
+ * receipt without re-signing. Requires `printing:vfd`; the OMS 409s with
+ * `VFD_INVALID_STATE` (not closed), `VFD_SIGNING_FAILED`, or
+ * `VFD_UNAVAILABLE`, all surfaced via `error.message` below.
+ */
 export const printOrderVfd = async (
   id: UUID,
 ): Promise<{ vfd: VfdPrintResponse } | { error: string }> => {

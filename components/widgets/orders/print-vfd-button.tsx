@@ -2,12 +2,7 @@
 
 import { UUID } from "node:crypto";
 import { useState, useTransition } from "react";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Loader2,
-  Printer,
-} from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, Printer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +41,7 @@ export function PrintVfdButton({
   const [isPrinting, startPrint] = useTransition();
   const [result, setResult] = useState<VfdPrintResponse | null>(null);
 
-  const isStub = result?.accountingServiceStatus === "STUBBED";
+  const verificationCode = result?.receipt?.data?.traReceiptVerificationCode;
 
   const handlePrint = () => {
     startPrint(async () => {
@@ -94,23 +89,16 @@ export function PrintVfdButton({
           {!result ? (
             <div className="space-y-3 py-2 text-sm text-muted-foreground">
               <p>
-                A fiscal slip will be requested from the on-site VFD device
-                via the Accounting Service.
+                A fiscal receipt will be requested from the location&apos;s
+                registered VFD device and permanently recorded against this
+                order. Reprinting later returns the same signed receipt.
               </p>
-              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-300">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <p className="text-xs">
-                  VFD integration is currently a placeholder — the
-                  response will be a stubbed fiscal number until the
-                  Accounting Service ships the real device hookup.
-                </p>
-              </div>
             </div>
           ) : (
             <div className="space-y-3 py-2 text-sm">
               <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                 <CheckCircle2 className="h-4 w-4" />
-                <span className="font-medium">VFD receipt recorded</span>
+                <span className="font-medium">VFD receipt issued</span>
               </div>
               <dl className="space-y-2 rounded-md border border-line bg-card p-3 text-xs">
                 <div className="flex justify-between gap-4">
@@ -119,6 +107,14 @@ export function PrintVfdButton({
                     {result.fiscalReceiptNumber ?? "—"}
                   </dd>
                 </div>
+                {verificationCode && (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted-foreground">
+                      Verification code
+                    </dt>
+                    <dd className="font-mono">{verificationCode}</dd>
+                  </div>
+                )}
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Device serial</dt>
                   <dd className="font-mono">
@@ -128,20 +124,6 @@ export function PrintVfdButton({
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Signed at</dt>
                   <dd>{formatTs(result.signedAt) ?? "—"}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Status</dt>
-                  <dd>
-                    <span
-                      className={
-                        isStub
-                          ? "rounded bg-amber-100 px-1.5 py-0.5 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-                          : "rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-                      }
-                    >
-                      {result.accountingServiceStatus ?? "—"}
-                    </span>
-                  </dd>
                 </div>
               </dl>
               {result.message && (
@@ -168,14 +150,26 @@ export function PrintVfdButton({
                 Issue VFD receipt
               </Button>
             ) : (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setOpen(false)}
-              >
-                Done
-              </Button>
+              <>
+                <Button asChild variant="outline" size="sm">
+                  <a
+                    href={`/orders/${orderId}/vfd`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="mr-1.5 h-4 w-4" />
+                    Open printable receipt
+                  </a>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setOpen(false)}
+                >
+                  Done
+                </Button>
+              </>
             )}
           </DialogFooter>
         </DialogContent>
