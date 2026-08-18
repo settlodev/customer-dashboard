@@ -154,32 +154,27 @@ export function SubmitQuoteDialog({ rfq }: Props) {
   const watchedItems = form.watch("items");
   const pricesIncludeTax = form.watch("pricesIncludeTax");
 
-  const totals = useMemo(
-    () =>
-      computePurchaseTaxPreview(
-        watchedItems.map((item, i) => ({
-          quantity: Number(item?.quotedQuantity || 0),
-          cost: Number(item?.quotedUnitPrice || 0),
-          taxTypeOverride: item?.taxTypeId,
-          stockDefaultTaxTypeId:
-            stockTaxTypeByVariant[rfq.items[i]?.stockVariantId ?? ""],
-          stockPurchaseTaxInclusive:
-            stockPurchaseTaxInclusiveByVariant[
-              rfq.items[i]?.stockVariantId ?? ""
-            ],
-        })),
-        { pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes },
-      ),
-    [
-      watchedItems,
-      rfq.items,
-      stockTaxTypeByVariant,
-      stockPurchaseTaxInclusiveByVariant,
-      pricesIncludeTax,
-      vatRegistered,
-      businessDefaultTaxTypeId,
-      taxTypes,
-    ],
+  // Deliberately NOT memoised on `watchedItems`. react-hook-form mutates its
+  // value tree in place, so `watch("items")` returns the same array reference
+  // every render (its internal spread is shallow). A useMemo keyed on it never
+  // re-runs when a quantity or cost changes, so this footer sat frozen at the
+  // values the rows held when some unrelated dependency last fired — in
+  // practice 0.00, because nothing changes identity while you type. The
+  // arithmetic is a few multiplications over a few rows; running it per
+  // render costs nothing and cannot go stale.
+  const totals = computePurchaseTaxPreview(
+    watchedItems.map((item, i) => ({
+      quantity: Number(item?.quotedQuantity || 0),
+      cost: Number(item?.quotedUnitPrice || 0),
+      taxTypeOverride: item?.taxTypeId,
+      stockDefaultTaxTypeId:
+        stockTaxTypeByVariant[rfq.items[i]?.stockVariantId ?? ""],
+      stockPurchaseTaxInclusive:
+        stockPurchaseTaxInclusiveByVariant[
+          rfq.items[i]?.stockVariantId ?? ""
+        ],
+    })),
+    { pricesIncludeTax, vatRegistered, businessDefaultTaxTypeId, taxTypes },
   );
 
   // Sum of the "Line total" column exactly as entered (qty × unit price), so
