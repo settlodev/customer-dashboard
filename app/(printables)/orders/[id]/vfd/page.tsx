@@ -5,16 +5,16 @@ import { notFound } from "next/navigation";
 import { PrintableDocument } from "@/components/documents";
 import { VfdReceiptSheet } from "@/components/widgets/orders/vfd-receipt-sheet";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
-import { getOrderDetail, printOrderVfd } from "@/lib/actions/order-actions";
+import { getOrderDetail, getVfdReceipt } from "@/lib/actions/order-actions";
 
 type Params = Promise<{ id: string }>;
 
 /**
  * Authenticated print/download view for an order's TRA fiscal (VFD)
  * receipt. Mirrors the GRN / Close-of-Day printable routes: chrome-free
- * `(printables)` group, server component, opened in a new tab from the
- * "Open printable receipt" link once `PrintVfdButton` has issued the
- * receipt. `printOrderVfd` is idempotent — landing here again (or a
+ * `(printables)` group, server component, opened directly in a new tab
+ * from `PrintVfdButton` — this route itself issues the receipt via
+ * `getVfdReceipt`, which is idempotent, so landing here again (or a
  * reprint) returns the same stored fiscal receipt rather than re-signing.
  *
  * A failed sign (order not closed, device unreachable, etc.) renders a
@@ -30,7 +30,7 @@ export default async function OrderVfdReceiptPage({
 
   const [order, vfdResult, currency] = await Promise.all([
     getOrderDetail(id as UUID),
-    printOrderVfd(id as UUID),
+    getVfdReceipt(id as UUID),
     getLocationCurrency(),
   ]);
 

@@ -40,6 +40,10 @@ export const getLocationVfdRegistration = async (
     if (error instanceof SettloApiError && error.status === 404) {
       return { data: null };
     }
+    // Any other failure also resolves to a hidden button (fail-closed is
+    // deliberate for a fiscal gate — never show "Print VFD" on a guess),
+    // but log it so a transient/misconfigured lookup doesn't go unnoticed.
+    console.error("[vfd] registration lookup failed:", error);
     return {
       error:
         error instanceof Error

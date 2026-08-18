@@ -127,7 +127,7 @@ export default async function OrderPage({ params }: { params: Params }) {
                 />
               )}
               {canPrintVfd && (
-                <PermissionGuard permission="printing:vfd">
+                <PermissionGuard permission="printing:tax_receipt">
                   <PrintVfdButton
                     orderId={orderId}
                     orderNumber={detail.orderNumber}

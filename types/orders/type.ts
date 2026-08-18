@@ -470,7 +470,7 @@ export interface ReceiptDto {
  */
 export interface VfdReceiptDetail {
   orderId: UUID;
-  accountingId: string;
+  accountingId: UUID;
   data: {
     /** "yyyy-MM-dd HH:mm:ss" */
     dateTime: string | null;
