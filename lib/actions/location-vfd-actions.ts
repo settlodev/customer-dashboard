@@ -52,3 +52,71 @@ export const getLocationVfdRegistration = async (
     };
   }
 };
+
+export interface OnboardLocationVfdPayload {
+  locationId: string;
+  tinNumber: string;
+  businessName: string;
+  emailAddress: string;
+  phoneNumber: string;
+}
+
+/**
+ * Registers a location with TRA through the DIRM virtual fiscal device
+ * service. Creates the Accounts Service mirror row synchronously; the
+ * actual DIRM registration happens async over Kafka, so `verified` stays
+ * `false` until DIRM activates the account (poll via
+ * `checkLocationVfdStatus`).
+ */
+export const onboardLocationVfd = async (
+  payload: OnboardLocationVfdPayload,
+): Promise<{ data: true } | { error: string }> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post<void, OnboardLocationVfdPayload & { provider: "DIRM_VFD" }>(
+      `/api/v1/locations/vfd-registrations`,
+      { ...payload, provider: "DIRM_VFD" },
+    );
+    return { data: true };
+  } catch (error: unknown) {
+    console.error("[vfd] onboarding failed:", error);
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to submit the VFD registration",
+    };
+  }
+};
+
+export interface VfdStatusCheck {
+  isOnboarded: boolean;
+  isVerified: boolean;
+}
+
+/**
+ * Asks the Accounting service to re-authenticate this location's DIRM
+ * account. For an unverified account this is the trigger that flips
+ * verification server-side once DIRM has activated it (the Accounts
+ * mirror then updates over Kafka, usually within seconds). Expect this to
+ * throw a "not active yet" style error while DIRM/TRA activation is still
+ * pending — that's a normal outcome, not a failure.
+ */
+export const checkLocationVfdStatus = async (
+  locationId: string,
+): Promise<{ data: VfdStatusCheck } | { error: string }> => {
+  try {
+    const apiClient = new ApiClient("accounting");
+    const data = await apiClient.get<VfdStatusCheck>(
+      `/api/vfd/${locationId}/status`,
+    );
+    return { data: parseStringify(data) };
+  } catch (error: unknown) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to check the location's VFD status",
+    };
+  }
+};

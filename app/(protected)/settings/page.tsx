@@ -47,6 +47,7 @@ import { PaymentOpsPanel } from "@/components/settings/panels/payment-ops-panel"
 import { PaymentMethodsPanel } from "@/components/settings/panels/payment-methods-panel";
 import { DocketsPanel } from "@/components/settings/panels/dockets-panel";
 import { ReceiptsInvoicingPanel } from "@/components/settings/panels/receipts-panel";
+import { VfdRegistrationPanel } from "@/components/settings/panels/vfd-registration-panel";
 import { NotificationsPanel } from "@/components/settings/panels/notifications-panel";
 import { LoyaltyRewardsPanel } from "@/components/settings/panels/loyalty-panel";
 import { CustomerPrepaymentsPanel } from "@/components/settings/panels/customer-prepayments-panel";
@@ -73,6 +74,7 @@ type TabId =
   | "payment-ops"
   | "dockets"
   | "receipts"
+  | "vfd"
   | "notifications"
   | "loyalty-points"
   | "customer-prepayments"
@@ -337,6 +339,15 @@ function SettingsLayout({
       case "receipts":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
         return <ReceiptsInvoicingPanel settings={settings} onSaved={onSettingsSaved} />;
+      case "vfd":
+        if (!location?.id) return <EmptyState label="No active location" />;
+        return (
+          <VfdRegistrationPanel
+            locationId={location.id}
+            business={business}
+            businessSettings={businessSettings}
+          />
+        );
       case "notifications":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
         return <NotificationsPanel settings={settings} onSaved={onSettingsSaved} />;

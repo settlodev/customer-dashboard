@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Bell, Boxes, Building2, CalendarClock, CalendarOff, Calculator, ClipboardCheck, CreditCard, Link2, MapPin, Monitor, Palette, PackageCheck, Printer, ScanLine, ShoppingBag, Smartphone, Star, Store, Sun, UtensilsCrossed, Truck, Wallet, UserCheck, Search } from "lucide-react";
+import { ArrowLeftRight, Bell, Boxes, Building2, CalendarClock, CalendarOff, Calculator, ClipboardCheck, CreditCard, Link2, MapPin, Monitor, Palette, PackageCheck, Printer, ScanLine, ShieldCheck, ShoppingBag, Smartphone, Star, Store, Sun, UtensilsCrossed, Truck, Wallet, UserCheck, Search } from "lucide-react";
 
 export const taxClasses=
     [
@@ -88,6 +88,7 @@ export const settingsNavItems = [
     { id: 'payment-ops', label: 'Payment ops & approvals', icon: Wallet, description: 'Splits, partials, void / discount approvals' },
     { id: 'dockets', label: 'Dockets', icon: Monitor, description: 'Kitchen / bar docket formatting' },
     { id: 'receipts', label: 'Receipts & invoicing', icon: Printer, description: 'Receipts, invoices, tax' },
+    { id: 'vfd', label: 'VFD / EFD registration', icon: ShieldCheck, description: 'TRA fiscal device registration & status' },
     { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Email, SMS & push alerts' },
     { id: 'loyalty-points', label: 'Customers & loyalty', icon: Star, description: 'Accounts, reviews, and points' },
     { id: 'customer-prepayments', label: 'Customer prepayments', icon: Wallet, description: 'Top-up limits, expiry, and scope' },
