@@ -55,7 +55,11 @@ export default async function RootLayout({children}: {
     // trustworthy answer. This group is warehouse-only, so the warehouse itself is
     // the destination being judged (not store/location as in the protected layout).
     const activeWarehouseId = currentWarehouse?.id;
-    const gate = decideDestinationAccess(entitlementSnapshot, activeWarehouseId);
+    const gate = decideDestinationAccess(
+        entitlementSnapshot,
+        activeWarehouseId,
+        currentBusiness?.id,
+    );
 
     // Billing has to stay reachable, or a locked warehouse is a dead end. Only the final
     // NextResponse.next() forwards x-pathname. If it is absent for any reason we cannot tell

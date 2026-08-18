@@ -107,17 +107,26 @@ export default async function RootLayout({
   // So on a business with two locations where one is still paid, an expired or cancelled
   // location stayed fully accessible: the business reads ACTIVE, and nothing else checked.
   //
-  // EntitlementResponse.items is the per-entity truth. Note the shape: the Billing Service
-  // builds items from ACTIVE + PAST_DUE only, so a lapsed entity is ABSENT rather than present
-  // with active:false — except a bundled entity under a lapsed parent, which IS present with
-  // active:false. `some(entitled && active)` covers both.
+  // EntitlementResponse.items is the per-entity truth. Every entity the subscription knows
+  // about is present: ACTIVE + PAST_DUE carry active:true, and EXPIRED / SUSPENDED /
+  // CANCELLED are appended for identity with active:false, as is a bundled entity under a
+  // lapsed parent. An entity that is ABSENT is therefore UNKNOWN — never provisioned — not
+  // lapsed, and `judge` deliberately lets it through rather than accusing a paying customer
+  // of not having paid over a provisioning gap.
+  //
+  // `currentBusiness?.id` is passed so the gate can reject an answer that is about a
+  // DIFFERENT business than the destination in scope — see decideDestinationAccess.
   //
   // Fails CLOSED when there is no trustworthy answer (billing unreachable and either no
   // snapshot or one stale beyond GRACE_MS) — see decideDestinationAccess (lib/entitlements/gate.ts)
   // for the full decision table and why a billing outage must no longer unlock everyone.
   const activeDestinationId =
     currentStore?.id ?? currentWarehouse?.id ?? currentLocation?.id;
-  const gate = decideDestinationAccess(entitlementSnapshot, activeDestinationId);
+  const gate = decideDestinationAccess(
+    entitlementSnapshot,
+    activeDestinationId,
+    currentBusiness?.id,
+  );
   const entitlements =
     entitlementSnapshot.status === "unavailable" ? null : entitlementSnapshot.data;
 
