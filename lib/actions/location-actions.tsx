@@ -1,46 +1,63 @@
 "use server";
 
-import { UUID } from "node:crypto";
+type UUID = string;
 
-import { revalidatePath } from "next/cache";
+import { cache } from "react";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import * as z from "zod";
 
-import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { getAuthToken } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
-import ApiClient, { AuthenticationError } from "@/lib/settlo-api-client";
-import { ApiResponse, FormResponse } from "@/types/types";
+import ApiClient from "@/lib/settlo-api-client";
+import { FormResponse } from "@/types/types";
 import {
-  getCurrentBusiness,
   getCurrentLocation,
+  getCurrentBusinessId,
 } from "@/lib/actions/business/get-current-business";
 import { Location } from "@/types/location/type";
 import { LocationSchema } from "@/types/location/schema";
-import { refreshLocation } from "./business/refresh";
+import { switchToLocation } from "./destination";
+import { LAYOUT_TAGS } from "@/lib/cache-tags";
 
-export const fetchAllLocations = async (): Promise<Location[] | null> => {
-  try {
-    const business = await getCurrentBusiness();
-
-    if (!business) {
-      return null;
-    }
+// Per-request memoisation only — `unstable_cache` can't wrap this
+// because `ApiClient` reads cookies (auth token, destination headers)
+// inside its interceptors, and Next.js forbids dynamic data sources
+// inside a cache scope. React's `cache()` dedupes parallel callers in
+// a single render without crossing into cross-request storage.
+//
+// Returns `[]` when the user genuinely has no locations under this
+// business. Throws on transport / auth failures so callers — notably
+// the /select-location page — can distinguish "no locations" from
+// "couldn't reach the server" instead of incorrectly bouncing the
+// user to /business-location.
+const _fetchAllLocations = cache(
+  async (businessId?: string): Promise<Location[]> => {
+    // The *selected* business (currentBusiness cookie) is the source of
+    // truth — not the JWT's business_id claim, which is absent for owner
+    // tokens and never changes when the user switches business. An
+    // explicit businessId wins; the JWT is only a last-resort fallback.
+    const resolved =
+      businessId ??
+      (await getCurrentBusinessId()) ??
+      (await getAuthToken())?.businessId ??
+      undefined;
+    if (!resolved) return [];
 
     const apiClient = new ApiClient();
-    const locationsData = await apiClient.get(`/api/locations/${business.id}`);
-    return parseStringify(locationsData);
-  } catch (error: unknown) {
-    if (error instanceof AuthenticationError) {
-      throw error;
-    }
+    // /me/locations is scoped server-side to the caller's accessible
+    // locations (owner → all in the business; invited → their subset).
+    const locationsData = await apiClient.get<Location[] | null>(
+      `/api/v1/me/locations?businessId=${resolved}`,
+    );
+    return parseStringify(locationsData ?? []);
+  },
+);
 
-    const message =
-      error && typeof error === "object" && "message" in error
-        ? (error as { message: string }).message
-        : "Unknown error";
-    console.error("Error in fetchAllLocations:", message);
-    return null;
-  }
+export const fetchAllLocations = async (
+  businessId?: string,
+): Promise<Location[]> => {
+  return _fetchAllLocations(businessId);
 };
 
 export const createLocation = async (
@@ -50,15 +67,6 @@ export const createLocation = async (
   let formResponse: FormResponse | null = null;
 
   try {
-    const authenticatedUser = await getAuthenticatedUser();
-    if ("responseType" in authenticatedUser) {
-      return parseStringify({
-        responseType: "error",
-        message: "Authentication failed",
-        error: new Error("User not authenticated"),
-      });
-    }
-
     const validatedData = LocationSchema.safeParse(location);
 
     if (!validatedData.success) {
@@ -71,16 +79,13 @@ export const createLocation = async (
     }
 
     let targetBusinessId = businessId;
-    console.log("The targetBusinessId is ", targetBusinessId);
 
     if (!targetBusinessId) {
-      const currentBusiness = await getCurrentBusiness();
-      targetBusinessId = currentBusiness?.id;
+      targetBusinessId = (await getAuthToken())?.businessId ?? undefined;
     }
 
     if (!targetBusinessId) {
       console.error("Business not found", {
-        authenticatedUser,
         location,
         businessId,
       });
@@ -95,15 +100,10 @@ export const createLocation = async (
     const payload = {
       ...validatedData.data,
       business: targetBusinessId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     };
 
     const apiClient = new ApiClient();
-    const response = await apiClient.post(
-      `/api/locations/${targetBusinessId}/create`,
-      payload,
-    );
+    const response = await apiClient.post(`/api/v1/locations`, payload);
 
     formResponse = parseStringify({
       responseType: "success",
@@ -111,8 +111,6 @@ export const createLocation = async (
       data: response,
     });
   } catch (error: unknown) {
-    console.error("Error in create location:", error);
-
     return parseStringify({
       responseType: "error",
       message:
@@ -123,12 +121,8 @@ export const createLocation = async (
 
   if (formResponse) {
     if (formResponse.responseType === "success") {
-      // Use businessId to determine if this is multistep
-      if (businessId) {
-        revalidatePath("/select-location");
-      } else {
-        revalidatePath("/select-location");
-      }
+      revalidatePath("/select-location");
+      revalidateTag(LAYOUT_TAGS.locations);
     }
     return formResponse;
   }
@@ -158,10 +152,10 @@ export const updateLocation = async (
 
   try {
     const apiClient = new ApiClient();
-    const business = await getCurrentBusiness();
+    const businessId = (await getAuthToken())?.businessId;
     const currentLocation = await getCurrentLocation();
 
-    if (!business?.id) {
+    if (!businessId) {
       return parseStringify({
         responseType: "error",
         message: "Business information not found",
@@ -171,10 +165,10 @@ export const updateLocation = async (
 
     const payload = {
       ...validatedData.data,
-      business: business.id,
+      business: businessId,
     };
     // Make the API call to update location
-    await apiClient.put(`/api/locations/${business.id}/${id}`, payload);
+    await apiClient.put(`/api/v1/locations/${id}`, payload);
 
     // Refresh location data if we're updating the current location
     if (currentLocation?.id === id) {
@@ -182,7 +176,7 @@ export const updateLocation = async (
         ...currentLocation,
       };
 
-      await refreshLocation(updatedLocation);
+      await switchToLocation(updatedLocation);
     }
   } catch (error: unknown) {
     formResponse = {
@@ -199,43 +193,82 @@ export const updateLocation = async (
   });
 
   revalidatePath("/select-location");
+  revalidateTag(LAYOUT_TAGS.locations);
   return parseStringify(formResponse);
 };
 
-export const getLocation = async (id: UUID): Promise<ApiResponse<Location>> => {
+export const getLocation = async (id: UUID): Promise<Location> => {
   const apiClient = new ApiClient();
 
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
-
-  const business = await getCurrentBusiness();
-
-  const data = await apiClient.post(`/api/locations/${business?.id}`, query);
+  const data = await apiClient.get(`/api/v1/locations/${id}`);
 
   return parseStringify(data);
 };
 
-export const getLocationById = async (): Promise<Location> => {
-  await getAuthenticatedUser();
+/**
+ * Partial payload for `PUT /api/v1/locations/{id}` — mirrors the
+ * `UpdateLocationRequest` DTO on the accounts service exactly. The service
+ * applies a partial-update pattern: only non-null fields are written.
+ * Immutable fields (id, accountId, businessId, identifier, slug) are not
+ * accepted by the endpoint and must not be sent.
+ */
+export type UpdateLocationBasicsRequest = {
+  name?: string;
+  description?: string | null;
+  phoneNumber?: string | null;
+  email?: string | null;
+  countryId?: string | null;
+  businessTypeId?: string | null;
+  region?: string | null;
+  district?: string | null;
+  ward?: string | null;
+  address?: string | null;
+  postalCode?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  timezone?: string | null;
+  active?: boolean;
+};
 
+export type UpdateLocationBasicsResponse =
+  | { responseType: "success"; message: string; data: Location }
+  | { responseType: "error"; message: string; error: Error };
+
+export const updateLocationBasics = async (
+  id: UUID,
+  patch: UpdateLocationBasicsRequest,
+): Promise<UpdateLocationBasicsResponse> => {
   try {
     const apiClient = new ApiClient();
-    const business = await getCurrentBusiness();
+    const updated = await apiClient.put<Location, UpdateLocationBasicsRequest>(
+      `/api/v1/locations/${id}`,
+      patch,
+    );
+    revalidatePath("/select-location");
+    revalidatePath("/settings");
+    revalidateTag(LAYOUT_TAGS.locations);
+    return {
+      responseType: "success",
+      message: "Location updated successfully",
+      data: parseStringify(updated),
+    };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message:
+        error instanceof Error ? error.message : "Failed to update location",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+export const getLocationById = async (): Promise<Location> => {
+  try {
+    const apiClient = new ApiClient();
     const currentLocation = await getCurrentLocation();
 
     const data = await apiClient.get(
-      `/api/locations/${business?.id}/${currentLocation?.id}`,
+      `/api/v1/locations/${currentLocation?.id}`,
     );
 
     return parseStringify(data);
@@ -246,7 +279,6 @@ export const getLocationById = async (): Promise<Location> => {
 };
 
 export const generateLocationCode = async (): Promise<any> => {
-  await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
@@ -262,15 +294,66 @@ export const generateLocationCode = async (): Promise<any> => {
 
 export const deleteLocation = async (id: UUID): Promise<void> => {
   if (!id) throw new Error("Location ID is required to perform this request");
-  await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
 
-    const business = await getCurrentBusiness();
-
-    await apiClient.delete(`/api/locations/${business?.id}/${id}`);
+    await apiClient.delete(`/api/v1/locations/${id}`);
     revalidatePath("/locations");
+    revalidateTag(LAYOUT_TAGS.locations);
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deactivateLocation = async (id: UUID): Promise<FormResponse> => {
+  if (!id) throw new Error("Location ID is required");
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/locations/${id}/deactivate`, {});
+    revalidatePath("/locations");
+    revalidateTag(LAYOUT_TAGS.locations);
+    return {
+      responseType: "success",
+      message: "Location deactivated successfully",
+    };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to deactivate location",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+export const reactivateLocation = async (id: UUID): Promise<FormResponse> => {
+  if (!id) throw new Error("Location ID is required");
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/locations/${id}/reactivate`, {});
+    revalidatePath("/locations");
+    revalidateTag(LAYOUT_TAGS.locations);
+    return {
+      responseType: "success",
+      message: "Location reactivated successfully",
+    };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to reactivate location",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+export const getLocationCount = async (
+  businessId?: string,
+): Promise<{ total: number; active: number; inactive: number }> => {
+  try {
+    const apiClient = new ApiClient();
+    const params = businessId ? `?businessId=${businessId}` : "";
+    const data = await apiClient.get(`/api/v1/locations/count${params}`);
+    return parseStringify(data);
   } catch (error) {
     throw error;
   }
