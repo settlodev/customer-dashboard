@@ -1,13 +1,25 @@
+import * as Sentry from "@sentry/nextjs";
 import { redirect } from "next/navigation";
+import { cookies, headers } from "next/headers";
+import { AlertTriangle } from "lucide-react";
+
 import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
 import LocationList from "@/app/(auth)/select-location/location-list";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
-
-import { cookies } from "next/headers";
-import { headers } from "next/headers";
-import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
+import { getWarehouses } from "@/lib/actions/warehouse/list-warehouse";
+import { fetchAllStores } from "@/lib/actions/store-actions";
+import { getBusinessSubscription } from "@/lib/actions/billing-actions";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
-import { AuthenticationError } from "@/lib/settlo-api-client";
+import { Store } from "@/types/store/type";
+import type { SubscriptionItemStatus } from "@/types/billing/types";
+import RetryButton from "@/app/(auth)/select-business/retry-button";
+import {
+  Alert,
+  AlertBody,
+  AlertDescription,
+  AlertIcon,
+  AlertTitle,
+} from "@/components/ui/alert";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -21,44 +33,123 @@ type Params = {
 };
 
 export default async function SelectLocationPage({ searchParams }: Params) {
-  const resolvedSearchParams = await searchParams;
-  const q = resolvedSearchParams.search || "";
-  const page = Number(resolvedSearchParams.page) || 0;
-  const pageLimit = Number(resolvedSearchParams.limit) || 1000;
+  // Pulled before the try so dynamic mode is established even if a
+  // later step throws.
+  await searchParams;
+  headers();
+  cookies();
 
+  // Resolve the business first — without it we can't know which
+  // locations to fetch. Redirect to /select-business is correct
+  // here because we genuinely don't have a business context.
+  let business: Awaited<ReturnType<typeof getCurrentBusiness>>;
   try {
-    headers();
-    cookies();
-
-    const business = await getCurrentBusiness();
-
-    if (!business) redirect("/select-business");
-    if (business.totalLocations === 0) redirect("/business-location");
-
-    const businessLocations = await fetchAllLocations();
-    const warehouseList = await searchWarehouses(q, page, pageLimit);
-    const data: Warehouses[] = warehouseList.content;
-
-    if (!businessLocations) redirect("/select-business");
-
-    return (
-      <LocationList
-        locations={businessLocations || []}
-        businessName={business.name}
-        warehouses={data}
-      />
-    );
+    business = await getCurrentBusiness();
   } catch (error) {
-    // ✅ Auth errors go to login, not select-business
-    if (error instanceof AuthenticationError) {
-      redirect("/login");
-    }
-
-    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+    if (
+      error instanceof Error &&
+      "digest" in error &&
+      typeof (error as { digest?: unknown }).digest === "string" &&
+      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+    ) {
       throw error;
     }
 
-    console.error("Error in SelectLocationPage:", error);
+    Sentry.captureException(error);
+    return <SelectLocationErrorState />;
+  }
+
+  if (!business) {
     redirect("/select-business");
   }
+
+  // Locations + warehouses + stores fan-out, every list scoped to the
+  // *selected* business. A warehouse/store-service hiccup must not block
+  // location loading — settle them independently.
+  const [locationsResult, warehousesResult, storesResult, subscriptionResult] =
+    await Promise.allSettled([
+      fetchAllLocations(business.id),
+      getWarehouses(business.id),
+      fetchAllStores(business.id),
+      // Per-entity subscription status so the picker can flag a location/
+      // store/warehouse whose payment has lapsed (expired/past-due/suspended).
+      // Best-effort — a billing hiccup must not block destination selection.
+      getBusinessSubscription(business.id),
+    ]);
+
+  if (locationsResult.status === "rejected") {
+    const reason = locationsResult.reason;
+    if (
+      reason instanceof Error &&
+      "digest" in reason &&
+      typeof (reason as { digest?: unknown }).digest === "string" &&
+      (reason as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw reason;
+    }
+
+    Sentry.captureException(reason);
+    return <SelectLocationErrorState />;
+  }
+
+  const businessLocations = locationsResult.value;
+  const warehouses: Warehouses[] =
+    warehousesResult.status === "fulfilled" ? warehousesResult.value : [];
+  const stores: Store[] =
+    storesResult.status === "fulfilled" ? storesResult.value : [];
+
+  // entityId → subscription status. Built from manageableItems (which keeps
+  // degraded rows: PAST_DUE/EXPIRED/SUSPENDED) with the ACTIVE-only `items`
+  // overlaid on top so a paid entity always reads ACTIVE. Empty when billing
+  // is unreachable — the picker then falls back to the entity's `active` flag.
+  const subscription =
+    subscriptionResult.status === "fulfilled" ? subscriptionResult.value : null;
+  const entityStatuses: Record<string, SubscriptionItemStatus> = {};
+  for (const it of subscription?.manageableItems ?? []) {
+    entityStatuses[it.entityId] = it.status;
+  }
+  for (const it of subscription?.items ?? []) {
+    entityStatuses[it.entityId] = it.status;
+  }
+
+  // Confirmed empty — user has a business but no locations yet, so
+  // sending them to /business-location is the correct next step.
+  if (businessLocations.length === 0) {
+    redirect("/business-location");
+  }
+
+  // Pass all data to client component — auto-select logic runs there
+  // where server actions can properly set cookies. Warehouse/store tabs
+  // only appear when those lists are non-empty.
+  return (
+    <LocationList
+      locations={businessLocations}
+      businessName={business.name}
+      warehouses={warehouses}
+      stores={stores}
+      entityStatuses={entityStatuses}
+    />
+  );
+}
+
+function SelectLocationErrorState() {
+  return (
+    <div className="w-full max-w-md mx-auto">
+      <Alert tone="danger" variant="soft">
+        <AlertIcon>
+          <AlertTriangle className="h-3.5 w-3.5" />
+        </AlertIcon>
+        <AlertBody>
+          <AlertTitle>We couldn&apos;t load your locations</AlertTitle>
+          <AlertDescription>
+            Something went wrong reaching our servers. Your account is fine —
+            please try again in a moment.
+          </AlertDescription>
+          <div className="pt-2">
+            <RetryButton />
+          </div>
+        </AlertBody>
+      </Alert>
+    </div>
+  );
 }

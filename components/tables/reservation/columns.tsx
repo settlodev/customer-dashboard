@@ -7,7 +7,7 @@ import { CellAction } from "@/components/tables/reservation/cell-action";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Reservation, RESERVATION_STATUS_LABELS, RESERVATION_STATUS_COLORS, DEPOSIT_STATUS_LABELS, DEPOSIT_STATUS_COLORS } from "@/types/reservation/type";
+import { Reservation, RESERVATION_STATUS_LABELS, RESERVATION_STATUS_COLORS, DEPOSIT_STATUS_LABELS } from "@/types/reservation/type";
 import { ReservationStatus, DepositPaymentStatus } from "@/types/enums";
 
 export const columns: ColumnDef<Reservation>[] = [
@@ -56,7 +56,7 @@ export const columns: ColumnDef<Reservation>[] = [
         <div>
           <div className="font-medium">{formatted}</div>
           {timeStr && (
-            <div className="text-sm text-muted-foreground">{timeStr}</div>
+            <div className="text-muted-foreground">{timeStr}</div>
           )}
         </div>
       );
@@ -82,17 +82,7 @@ export const columns: ColumnDef<Reservation>[] = [
     header: "Table",
     cell: ({ row }) => {
       const name = row.original.tableAndSpaceName;
-      const minSpend = row.original.tableMinimumSpend;
-      return (
-        <div>
-          <div>{name || "Unassigned"}</div>
-          {minSpend != null && (
-            <div className="text-xs text-muted-foreground">
-              Min. spend: {minSpend.toLocaleString()}
-            </div>
-          )}
-        </div>
-      );
+      return <div>{name || "Unassigned"}</div>;
     },
   },
   {
@@ -103,7 +93,7 @@ export const columns: ColumnDef<Reservation>[] = [
       const label =
         RESERVATION_STATUS_LABELS[status] || status;
       const colorClass =
-        RESERVATION_STATUS_COLORS[status] || "bg-gray-100 text-gray-800";
+        RESERVATION_STATUS_COLORS[status] || "bg-muted text-ink-2";
       return (
         <Badge variant="outline" className={colorClass}>
           {label}
@@ -116,24 +106,9 @@ export const columns: ColumnDef<Reservation>[] = [
     header: "Deposit",
     cell: ({ row }) => {
       const status = row.original.depositPaymentStatus as DepositPaymentStatus | null;
-      const amount = row.original.depositAmount;
-      if (!status || status === DepositPaymentStatus.NOT_REQUIRED) {
-        return <div className="text-muted-foreground text-sm">—</div>;
-      }
+      if (!status) return <div className="text-muted-foreground">—</div>;
       const label = DEPOSIT_STATUS_LABELS[status] || status;
-      const colorClass = DEPOSIT_STATUS_COLORS[status] || "bg-gray-100 text-gray-800";
-      return (
-        <div>
-          {amount != null && (
-            <div className="text-sm font-medium">
-              TZS {amount.toLocaleString()}
-            </div>
-          )}
-          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${colorClass}`}>
-            {label}
-          </Badge>
-        </div>
-      );
+      return <div >{label}</div>;
     },
   },
   {
@@ -141,7 +116,7 @@ export const columns: ColumnDef<Reservation>[] = [
     header: "Source",
     cell: ({ row }) => {
       const source = row.original.source;
-      return <div className="text-sm">{source || "—"}</div>;
+      return <div >{source || "—"}</div>;
     },
   },
   {

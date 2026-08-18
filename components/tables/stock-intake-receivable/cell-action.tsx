@@ -11,6 +11,7 @@ interface CellActionProps {
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
+  console.log("Stock purchase data", data);
   const router = useRouter();
   return (
     <div className="relative flex items-center gap-2">

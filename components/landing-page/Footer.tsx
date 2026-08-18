@@ -39,7 +39,7 @@ const contactLinks = [
     href: "tel:+255759229777",
   },
   {
-    text: "5th Floor Auditax International, Coca-Cola Road, Mikocheni, Dar es Salaam",
+    text: "5th Floor, Auditax International, Coca-Cola Road, Mikocheni, Dar Es Salaam.",
     icon: <MapPin className="w-4 h-4" />,
     href: undefined,
   },
@@ -47,7 +47,7 @@ const contactLinks = [
 
 export const Footer = () => {
   return (
-    <footer className="w-full bg-gray-900 text-gray-400">
+    <footer className="w-full bg-neutral-950 text-neutral-400">
       <div className="max-w-[85rem] mx-auto px-4 py-16 md:py-20">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12">
           {/* Brand */}
@@ -61,7 +61,7 @@ export const Footer = () => {
                 className="h-9 w-auto object-contain brightness-0 invert"
               />
             </Link>
-            <p className="text-sm leading-relaxed text-gray-500">
+            <p className="text-sm leading-relaxed text-neutral-500">
               The all-in-one POS platform built for modern businesses across
               Tanzania and beyond.
             </p>
@@ -70,7 +70,7 @@ export const Footer = () => {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="p-2 rounded-lg bg-gray-800 text-gray-400 hover:bg-primary/20 hover:text-primary transition-all duration-200"
+                  className="p-2 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-primary/20 hover:text-primary transition-all duration-200"
                   aria-label={item.name}
                   target="_blank"
                 >
@@ -82,7 +82,7 @@ export const Footer = () => {
 
           {/* Company */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-300">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-300">
               Company
             </h3>
             <ul className="space-y-3">
@@ -90,7 +90,7 @@ export const Footer = () => {
                 <li key={item.name}>
                   <Link
                     href={item.href}
-                    className="text-sm text-gray-500 hover:text-primary transition-colors duration-200"
+                    className="text-sm text-neutral-500 hover:text-primary transition-colors duration-200"
                   >
                     {item.name}
                   </Link>
@@ -101,7 +101,7 @@ export const Footer = () => {
 
           {/* Legal */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-300">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-300">
               Legal
             </h3>
             <ul className="space-y-3">
@@ -109,7 +109,7 @@ export const Footer = () => {
                 <li key={item.name}>
                   <Link
                     href={item.href}
-                    className="text-sm text-gray-500 hover:text-primary transition-colors duration-200"
+                    className="text-sm text-neutral-500 hover:text-primary transition-colors duration-200"
                   >
                     {item.name}
                   </Link>
@@ -120,7 +120,7 @@ export const Footer = () => {
 
           {/* Contact */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-300">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-300">
               Contact
             </h3>
             <ul className="space-y-3">
@@ -129,7 +129,7 @@ export const Footer = () => {
                   {item.href ? (
                     <a
                       href={item.href}
-                      className="flex items-start gap-2.5 text-sm text-gray-500 hover:text-primary transition-colors duration-200"
+                      className="flex items-start gap-2.5 text-sm text-neutral-500 hover:text-primary transition-colors duration-200"
                     >
                       <span className="mt-0.5 flex-shrink-0 text-primary/60">
                         {item.icon}
@@ -137,7 +137,7 @@ export const Footer = () => {
                       {item.text}
                     </a>
                   ) : (
-                    <span className="flex items-start gap-2.5 text-sm text-gray-500">
+                    <span className="flex items-start gap-2.5 text-sm text-neutral-500">
                       <span className="mt-0.5 flex-shrink-0 text-primary/60">
                         {item.icon}
                       </span>

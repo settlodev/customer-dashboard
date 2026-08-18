@@ -3,37 +3,80 @@ import {
   ReservationStatus,
   DepositPaymentStatus,
   ReservationExceptionType,
+  ReservationSource,
 } from "@/types/enums";
 
+/**
+ * Mirrors the OMS `ReservationResponseDto` from settlo-common 0.8.11.
+ * The shape is denormalised — customer / table / business / location are
+ * present both as UUIDs and as flattened display fields.
+ */
 export declare interface Reservation {
   id: UUID;
+
   reservationDate: string;
   reservationTime: string;
   reservationEndTime: string | null;
   peopleCount: number;
   reservationStatus: ReservationStatus;
   specialRequests: string | null;
+
   depositAmount: number | null;
   depositPaymentStatus: DepositPaymentStatus | null;
-  source: string | null;
+  source: ReservationSource | string | null;
+
+  // Table
   tableAndSpace: UUID | null;
   tableAndSpaceName: string | null;
   tableMinimumSpend: number | null;
+  sectionId: UUID | null;
+  sectionName: string | null;
+
+  // Customer (denormalised)
   customer: UUID | null;
   customerName: string | null;
-  answers: ReservationAnswer[];
+  customerPhone: string | null;
+  customerEmail: string | null;
+
+  // Location (denormalised)
   location: UUID;
+  locationName: string | null;
+  locationPhone: string | null;
+  locationEmail: string | null;
+  locationAddress: string | null;
+  locationCity: string | null;
+  locationImage: string | null;
+  locationLogo: string | null;
+  locationBackgroundColor: string | null;
+  locationOpeningTime: string | null;
+  locationClosingTime: string | null;
+
+  // Business (denormalised)
+  business: UUID | null;
+  businessName: string | null;
+  businessLogo: string | null;
+  businessPrimaryColor: string | null;
+  businessSecondaryColor: string | null;
+  businessBannerImageUrl: string | null;
+  businessFaviconUrl: string | null;
+  businessFontFamily: string | null;
+  businessWebsite: string | null;
+
+  // Booking-question answers
+  answers: ReservationAnswer[];
+
+  // Audit / display
   status: boolean;
-  canDelete: boolean;
   isArchived: boolean;
+  canDelete: boolean;
 }
 
 export declare interface ReservationAnswer {
   id: UUID;
-  questionId: UUID;
-  questionText: string;
-  questionType: string;
-  answerText: string;
+  bookingQuestion: UUID;
+  questionText: string | null;
+  questionType: string | null;
+  answerValue: string;
 }
 
 export declare interface ReservationSlot {
@@ -45,10 +88,6 @@ export declare interface ReservationSlot {
   maxReservations: number | null;
   maxGuests: number | null;
   active: boolean;
-  location: UUID;
-  status: boolean;
-  canDelete: boolean;
-  isArchived: boolean;
 }
 
 export declare interface ReservationException {
@@ -58,101 +97,128 @@ export declare interface ReservationException {
   endTime: string | null;
   reason: string | null;
   type: ReservationExceptionType;
-  location: UUID;
-  status: boolean;
-  canDelete: boolean;
-  isArchived: boolean;
+  fullDay: boolean;
 }
+
+// ─── Availability ────────────────────────────────────────────────────
 
 export declare interface AvailableTable {
   id: UUID;
   name: string;
-  code: string | null;
   capacity: number;
   minCapacity: number | null;
-  type: string;
-  turnTimeMinutes: number | null;
-  minimumSpend: number | null;
-  requireDeposit: boolean | null;
-  depositAmount: number | null;
-  depositPerGuest: boolean | null;
-}
-
-export declare interface AvailableCombination {
-  id: UUID;
-  name: string;
-  capacity: number;
-  tableIds: UUID[];
+  parentId: UUID | null;
+  parentName: string | null;
 }
 
 export declare interface AvailableSlot {
   time: string;
-  endTime: string;
+  available: boolean;
+  reservationsRemaining: number | null;
+  guestsRemaining: number | null;
   availableTables: AvailableTable[];
-  availableCombinations: AvailableCombination[];
-  remainingCapacity: number;
-  currentReservations: number;
-  maxReservations: number | null;
-  pacingAvailable: boolean;
 }
 
 export declare interface AvailabilityResponse {
-  date: string;
-  partySize: number;
-  locationOpen: boolean;
-  closureReason: string | null;
   slots: AvailableSlot[];
-
-  // Reservation settings (enriched from API)
-  minPartySize: number | null;
-  maxPartySize: number | null;
-  defaultDurationMinutes: number | null;
-  bookingWindowDays: number | null;
-  minAdvanceBookingHours: number | null;
-  requireGuestEmail: boolean | null;
-  requireGuestPhone: boolean | null;
-  allowSpecialRequests: boolean | null;
-  allowGuestTablePreference: boolean | null;
-  enableOnlineBooking: boolean | null;
-  autoConfirm: boolean | null;
-  cancellationPolicyHours: number | null;
-  allowOnlineCancellation: boolean | null;
-  confirmationMessage: string | null;
-  bookingPageWelcomeMessage: string | null;
-  termsAndConditions: string | null;
-  cancellationPolicyText: string | null;
-  enableOnlineDepositPayment: boolean | null;
-
-  // Default deposit info (from GLOBAL DepositRule)
-  requireDeposit: boolean | null;
-  defaultDepositAmount: number | null;
-  depositPerGuest: boolean | null;
-  depositRequiredMinPartySize: number | null;
-
-  // Booking questions
-  bookingQuestions: AvailabilityBookingQuestion[] | null;
+  closed: boolean;
+  closedReason: string | null;
 }
 
-export declare interface AvailabilityBookingQuestion {
-  id: UUID;
-  questionText: string;
-  questionType: string;
-  required: boolean;
-  sortOrder: number;
-  active: boolean;
-  options: { id?: UUID; optionValue: string; sortOrder: number }[];
-}
+// ─── Allocation result ──────────────────────────────────────────────
 
+/**
+ * Either {@code tableSpaceId} or {@code combinationId} is set, never both.
+ * Combination wins when no single table fits the party.
+ */
 export declare interface TableAllocationResult {
-  allocated: boolean;
-  tableId: UUID | null;
+  tableSpaceId: UUID | null;
   tableName: string | null;
+  capacity: number | null;
   combinationId: UUID | null;
   combinationName: string | null;
-  combinedTableIds: UUID[] | null;
-  totalCapacity: number;
-  reason: string | null;
 }
+
+// ─── Deposit payment ────────────────────────────────────────────────
+
+export declare interface ReservationDepositPaymentResponse {
+  reservationId: UUID;
+  depositAmount: number;
+  depositPaymentStatus: DepositPaymentStatus;
+  paymentStatus: "PROCESSING" | "SUCCESS" | "FAILED" | "ACCEPTED";
+  externalReferenceId: string | null;
+  paymentMethodName: string | null;
+  message: string | null;
+}
+
+// ─── Timeline / event log ───────────────────────────────────────────
+
+/**
+ * One row from the OMS reservation_events table — every action against a
+ * reservation produces one of these. Use {@code GET /reservations/{id}/events}
+ * to fetch the full timeline.
+ */
+export declare interface ReservationEvent {
+  id: UUID;
+  reservationId: UUID;
+  locationId: UUID;
+  eventType: string;
+  /** Staff user who triggered the action; null for system / public events. */
+  actorId: UUID | null;
+  /** USER, DEVICE, SYSTEM, etc. */
+  actorType: string | null;
+  description: string | null;
+  metadata: Record<string, unknown> | null;
+  occurredAt: string;
+  createdAt: string;
+}
+
+// ─── Policy helpers ─────────────────────────────────────────────────
+
+/**
+ * Mirrors the OMS `ReservationService.canHardDelete` rule. Use this when
+ * deciding whether to render a "Delete" affordance — relying solely on the
+ * server's `canDelete` flag means older API responses (where it was always
+ * `true`) would still expose the button on rows the API now rejects with
+ * `RESERVATION_NOT_DELETABLE`.
+ *
+ * Rule: status must be PENDING or CANCELLED, and the deposit must not have
+ * touched a terminal financial state (PAID / FAILED / REFUNDED).
+ */
+export function canHardDeleteReservation(
+  reservation: Pick<Reservation, "reservationStatus" | "depositPaymentStatus" | "canDelete">,
+): boolean {
+  if (reservation.canDelete === false) return false;
+  const status = reservation.reservationStatus;
+  if (status !== ReservationStatus.PENDING && status !== ReservationStatus.CANCELLED) {
+    return false;
+  }
+  const deposit = reservation.depositPaymentStatus;
+  return (
+    deposit !== DepositPaymentStatus.PAID &&
+    deposit !== DepositPaymentStatus.FAILED &&
+    deposit !== DepositPaymentStatus.REFUNDED
+  );
+}
+
+/**
+ * Mirrors the OMS `ReservationService.update` guard: a reservation in a
+ * terminal status (COMPLETED, CANCELLED, NO_SHOW) cannot be edited — the
+ * API rejects the PATCH with InvalidReservationStatusTransitionException.
+ * Hiding the Edit affordance prevents wasted clicks and form fills.
+ */
+export function canEditReservation(
+  reservation: Pick<Reservation, "reservationStatus">,
+): boolean {
+  const status = reservation.reservationStatus;
+  return (
+    status !== ReservationStatus.COMPLETED &&
+    status !== ReservationStatus.CANCELLED &&
+    status !== ReservationStatus.NO_SHOW
+  );
+}
+
+// ─── Display helpers ────────────────────────────────────────────────
 
 export const RESERVATION_STATUS_LABELS: Record<ReservationStatus, string> = {
   [ReservationStatus.PENDING]: "Pending",
@@ -164,12 +230,12 @@ export const RESERVATION_STATUS_LABELS: Record<ReservationStatus, string> = {
 };
 
 export const RESERVATION_STATUS_COLORS: Record<ReservationStatus, string> = {
-  [ReservationStatus.PENDING]: "bg-yellow-100 text-yellow-800",
-  [ReservationStatus.CONFIRMED]: "bg-blue-100 text-blue-800",
-  [ReservationStatus.SEATED]: "bg-emerald-100 text-emerald-800",
-  [ReservationStatus.COMPLETED]: "bg-gray-100 text-gray-800",
-  [ReservationStatus.CANCELLED]: "bg-red-100 text-red-800",
-  [ReservationStatus.NO_SHOW]: "bg-orange-100 text-orange-800",
+  [ReservationStatus.PENDING]: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400",
+  [ReservationStatus.CONFIRMED]: "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400",
+  [ReservationStatus.SEATED]: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400",
+  [ReservationStatus.COMPLETED]: "bg-muted text-ink-2",
+  [ReservationStatus.CANCELLED]: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400",
+  [ReservationStatus.NO_SHOW]: "bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400",
 };
 
 export const DEPOSIT_STATUS_LABELS: Record<DepositPaymentStatus, string> = {
@@ -178,14 +244,6 @@ export const DEPOSIT_STATUS_LABELS: Record<DepositPaymentStatus, string> = {
   [DepositPaymentStatus.PAID]: "Paid",
   [DepositPaymentStatus.FAILED]: "Failed",
   [DepositPaymentStatus.REFUNDED]: "Refunded",
-};
-
-export const DEPOSIT_STATUS_COLORS: Record<DepositPaymentStatus, string> = {
-  [DepositPaymentStatus.NOT_REQUIRED]: "bg-gray-100 text-gray-600",
-  [DepositPaymentStatus.PENDING]: "bg-yellow-100 text-yellow-800",
-  [DepositPaymentStatus.PAID]: "bg-emerald-100 text-emerald-800",
-  [DepositPaymentStatus.FAILED]: "bg-red-100 text-red-800",
-  [DepositPaymentStatus.REFUNDED]: "bg-blue-100 text-blue-800",
 };
 
 export const EXCEPTION_TYPE_LABELS: Record<ReservationExceptionType, string> = {
@@ -216,25 +274,18 @@ export const DAYS_OF_WEEK = [
   "SUNDAY",
 ] as const;
 
-export const VALID_STATUS_TRANSITIONS: Record<ReservationStatus, ReservationStatus[]> = {
-  [ReservationStatus.PENDING]: [ReservationStatus.CONFIRMED, ReservationStatus.CANCELLED],
-  [ReservationStatus.CONFIRMED]: [ReservationStatus.SEATED, ReservationStatus.CANCELLED, ReservationStatus.NO_SHOW],
-  [ReservationStatus.SEATED]: [ReservationStatus.COMPLETED],
-  [ReservationStatus.COMPLETED]: [],
-  [ReservationStatus.CANCELLED]: [],
-  [ReservationStatus.NO_SHOW]: [],
-};
+export const RESERVATION_SOURCES: ReservationSource[] = [
+  ReservationSource.ONLINE,
+  ReservationSource.PHONE,
+  ReservationSource.WALK_IN,
+  ReservationSource.POS,
+  ReservationSource.THIRD_PARTY,
+];
 
-export const RESERVATION_SOURCES = [
-  "ONLINE",
-  "POS",
-  "PHONE",
-  "WALK_IN",
-] as const;
-
-export const RESERVATION_SOURCE_LABELS: Record<string, string> = {
-  ONLINE: "Online",
-  POS: "POS",
-  PHONE: "Phone",
-  WALK_IN: "Walk-in",
+export const RESERVATION_SOURCE_LABELS: Record<ReservationSource, string> = {
+  [ReservationSource.ONLINE]: "Online",
+  [ReservationSource.PHONE]: "Phone",
+  [ReservationSource.WALK_IN]: "Walk-in",
+  [ReservationSource.POS]: "POS",
+  [ReservationSource.THIRD_PARTY]: "Third Party",
 };

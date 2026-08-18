@@ -8,10 +8,148 @@ import { auth } from "@/auth";
 import {
   activeBusiness,
   AuthToken,
-  ExtendedUser,
   FormResponse,
+  LoginResponse,
 } from "@/types/types";
 import { logout } from "@/lib/actions/auth-actions";
+import { AUTH_COOKIE_MAX_AGE_SECONDS } from "@/lib/auth-constants";
+
+// ── Chunked cookie helpers ──────────────────────────────────────────
+// Browser cookie size limit is ~4096 bytes per cookie. JWTs with many
+// claims easily exceed this. We split large values across numbered
+// chunks: authToken.0, authToken.1, etc.
+
+// Chunk well below the browser's ~4096B per-cookie cap. That cap applies to the
+// URL-ENCODED serialization — Next encodeURIComponent's the value, which inflates
+// JSON punctuation (`"` `,` `:` `{` → %XX). A ~3700B raw SYSTEM_ADMIN token
+// encoded past 4096 and the browser SILENTLY dropped the whole cookie, so the
+// staff session never persisted and every admin login bounced back to /login.
+// 3000 raw stays under the cap even after encoding, at 1–2 chunks.
+const COOKIE_CHUNK_SIZE = 3000;
+const MAX_CHUNKS = 10;
+const AUTH_TOKEN_COOKIE = "authToken";
+// NAMING: the "staff" auth token below is for INTERNAL SETTLO OPERATORS — the
+// `admin.*` "Staff Portal", gated on the JWT `internal_role` claim. It is NOT a
+// customer business-staff session, and NOT a `SubjectType.STAFF` POS/device
+// token (those are bulk-minted, carried via X-Staff-Token, and never reach the
+// browser). Customer business staff log in as regular `SubjectType.USER`s via
+// the normal `authToken` flow. Don't conflate these three "staff" meanings.
+const STAFF_AUTH_TOKEN_COOKIE = "staffAuthToken";
+
+// authToken lifetime when no refresh-token expiry is available from login.
+// Bounds the cookie so it can't outlive a reasonable session if the browser
+// is left open indefinitely (previously the authToken chunks had no maxAge
+// and lived for the whole browser session).
+const DEFAULT_AUTH_COOKIE_MAX_AGE = AUTH_COOKIE_MAX_AGE_SECONDS;
+
+/**
+ * Whether auth cookies should carry the `Secure` attribute.
+ *
+ * `Secure` must be set on ANY HTTPS deployment, not just production —
+ * otherwise an HTTPS staging/preview deploy (NODE_ENV !== "production")
+ * ships auth cookies without `Secure`. We can't read the request protocol
+ * here (these run in Server Actions without the request), so deployments
+ * that are HTTPS but not NODE_ENV=production must set `COOKIE_SECURE=true`.
+ * Local http dev leaves both unset, so `secure` stays false and cookies work.
+ */
+function isSecureCookie(): boolean {
+  return (
+    process.env.NODE_ENV === "production" ||
+    process.env.COOKIE_SECURE === "true"
+  );
+}
+
+/**
+ * Derive a maxAge (seconds) for the authToken cookie from the login payload's
+ * refresh-token expiry when present, falling back to a sensible bound. Aligning
+ * with the refresh-token lifetime keeps the cookie alive exactly as long as the
+ * session is recoverable.
+ */
+function authCookieMaxAgeFromLogin(refreshTokenExpiresAt?: string): number {
+  if (refreshTokenExpiresAt) {
+    const expMs = Date.parse(refreshTokenExpiresAt);
+    if (!Number.isNaN(expMs)) {
+      const secs = Math.floor((expMs - Date.now()) / 1000);
+      if (secs > 0) return secs;
+    }
+  }
+  return DEFAULT_AUTH_COOKIE_MAX_AGE;
+}
+
+// Import for internal use — callers should import from "@/lib/jwt-utils" directly
+import {
+  extractBusinessId,
+  extractInternalPermissions,
+  extractInternalRole,
+  extractSubjectType,
+  extractSubscriptionStatus,
+  isAccessTokenExpired,
+} from "@/lib/jwt-utils";
+import { hasReportsReadAll } from "@/lib/permissions/me";
+
+function getCookieOptions() {
+  const isProduction = process.env.NODE_ENV === "production";
+  return {
+    httpOnly: true,
+    secure: isSecureCookie(),
+    sameSite: isProduction ? ("strict" as const) : ("lax" as const),
+  };
+}
+
+async function setChunkedCookie(
+  name: string,
+  value: string,
+  extraOptions?: { maxAge?: number },
+) {
+  const cookieStore = await cookies();
+  const options = { ...getCookieOptions(), ...extraOptions };
+
+  // Delete old chunks and base cookie first
+  try { cookieStore.delete(name); } catch { /* ok */ }
+  for (let i = 0; i < MAX_CHUNKS; i++) {
+    try { cookieStore.delete(`${name}.${i}`); } catch { break; }
+  }
+
+  if (value.length <= COOKIE_CHUNK_SIZE) {
+    cookieStore.set({ name, value, ...options });
+  } else {
+    const numChunks = Math.ceil(value.length / COOKIE_CHUNK_SIZE);
+    for (let i = 0; i < numChunks; i++) {
+      const chunk = value.substring(
+        i * COOKIE_CHUNK_SIZE,
+        (i + 1) * COOKIE_CHUNK_SIZE,
+      );
+      cookieStore.set({ name: `${name}.${i}`, value: chunk, ...options });
+    }
+  }
+}
+
+async function getChunkedCookie(name: string): Promise<string | null> {
+  const cookieStore = await cookies();
+
+  // Try non-chunked first
+  const direct = cookieStore.get(name)?.value;
+  if (direct) return direct;
+
+  // Try chunked
+  let value = "";
+  for (let i = 0; i < MAX_CHUNKS; i++) {
+    const chunk = cookieStore.get(`${name}.${i}`)?.value;
+    if (!chunk) break;
+    value += chunk;
+  }
+  return value || null;
+}
+
+async function deleteChunkedCookie(name: string) {
+  const cookieStore = await cookies();
+  try { cookieStore.delete(name); } catch { /* ok */ }
+  for (let i = 0; i < MAX_CHUNKS; i++) {
+    try { cookieStore.delete(`${name}.${i}`); } catch { /* ok */ }
+  }
+}
+
+// ── Public API ──────────────────────────────────────────────────────
 
 export const getUser = async () => {
   const session = await auth();
@@ -24,62 +162,219 @@ export const getUser = async () => {
 };
 
 export const getAuthToken = async (): Promise<AuthToken | null> => {
-  const cookieStore = await cookies();
+  const raw = await getChunkedCookie(AUTH_TOKEN_COOKIE);
+  if (!raw) return null;
 
-  const tokens = cookieStore.get("authToken")?.value;
-
-  if (!tokens) return null;
-
-  const parsedTokens = JSON.parse(tokens) as AuthToken;
-
-  return parsedTokens.authToken ? parsedTokens : null;
+  try {
+    const parsed = JSON.parse(raw) as AuthToken;
+    return parsed.accessToken ? parsed : null;
+  } catch {
+    return null;
+  }
 };
 
 export const updateAuthToken = async (token: AuthToken) => {
-  const cookieStore = await cookies();
-
-  cookieStore.set({
-    name: "authToken",
-    value: JSON.stringify(token),
-    httpOnly: true, // Only available in server
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+  // businessId is derived from the JWT on every save so it stays in sync
+  // with the access token (the canonical source after a destination switch).
+  const synced: AuthToken = {
+    ...token,
+    businessId: token.accessToken ? extractBusinessId(token.accessToken) : null,
+  };
+  // Preserve a bounded lifetime — re-saving without maxAge would silently
+  // demote the authToken back to a session-only cookie.
+  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(synced), {
+    maxAge: DEFAULT_AUTH_COOKIE_MAX_AGE,
   });
 };
 
-export const createAuthToken = async (user: ExtendedUser) => {
-  const cookieStore = await cookies();
+export const createAuthTokenFromLogin = async (
+  loginResponse: LoginResponse,
+  profileData?: {
+    firstName?: string;
+    lastName?: string;
+    phoneNumber?: string;
+    pictureUrl?: string | null;
+    isBusinessRegistrationComplete?: boolean;
+    isLocationRegistrationComplete?: boolean;
+    hasInvitedAccess?: boolean;
+    countryId?: string;
+    countryCode?: string;
+    theme?: string | null;
+  },
+  opts?: { impersonating?: boolean; impersonatorId?: string | null },
+) => {
   const authTokenData: AuthToken = {
-    firstName: user.firstName,
-    lastName: user.lastName,
-    name: user.name,
-    email: user.email,
-    id: user.id,
-    bio: user.bio,
-    role: user.role,
-    country: user.country,
-    authToken: user.authToken,
-    refreshToken: user.refreshToken,
-    businessComplete: user.businessComplete,
-    locationComplete: user.locationComplete,
-    subscriptionComplete: user.subscriptionComplete,
-    avatar: user.avatar,
-    phoneNumber: user.phoneNumber,
-    emailVerified: user.emailVerified,
-    phoneNumberVerified: user.phoneNumberVerified,
-    //emailVerificationToken: user.emailVerificationToken,
-    consent: user.consent,
-    theme: user.theme,
-    subscriptionStatus: user.subscriptionStatus,
-    businessId: user.businessId,
+    accessToken: loginResponse.accessToken,
+    refreshToken: loginResponse.refreshToken,
+    userId: loginResponse.userId,
+    accountId: loginResponse.accountId,
+    email: loginResponse.email,
+    firstName: profileData?.firstName ?? "",
+    lastName: profileData?.lastName ?? "",
+    phoneNumber: profileData?.phoneNumber ?? "",
+    pictureUrl: profileData?.pictureUrl ?? null,
+    emailVerified: loginResponse.emailVerified,
+    isBusinessRegistrationComplete:
+      profileData?.isBusinessRegistrationComplete ?? false,
+    isLocationRegistrationComplete:
+      profileData?.isLocationRegistrationComplete ?? false,
+    hasInvitedAccess: profileData?.hasInvitedAccess ?? false,
+    countryId: profileData?.countryId ?? "",
+    countryCode: profileData?.countryCode ?? "",
+    theme: profileData?.theme ?? null,
+    verificationResendToken: loginResponse.verificationResendToken,
+    subscriptionStatus: extractSubscriptionStatus(loginResponse.accessToken),
+    businessId: extractBusinessId(loginResponse.accessToken),
+    impersonating: opts?.impersonating ?? false,
+    impersonatorId: opts?.impersonatorId ?? null,
   };
 
-  cookieStore.set({
-    name: "authToken",
-    value: JSON.stringify(authTokenData),
-    httpOnly: true, // Only available in server
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData), {
+    maxAge: authCookieMaxAgeFromLogin(loginResponse.refreshTokenExpiresAt),
+  });
+  return authTokenData;
+};
+
+export const getStaffAuthToken = async (): Promise<AuthToken | null> => {
+  const raw = await getChunkedCookie(STAFF_AUTH_TOKEN_COOKIE);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as AuthToken;
+    if (!parsed.accessToken) return null;
+    // An expired access token with no refresh token is an unrecoverable
+    // session (the ApiClient interceptor can't refresh without a refresh
+    // token). Report it as logged-out so page guards like
+    // `if (!token?.accessToken) redirect("/login")` actually fire, instead of
+    // letting the page render and 401-loop. When a refresh token IS present we
+    // still return the token so the interceptor can refresh it.
+    if (!parsed.refreshToken && isAccessTokenExpired(parsed.accessToken)) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+export const updateStaffAuthToken = async (token: AuthToken) => {
+  const synced: AuthToken = {
+    ...token,
+    internalRole: token.accessToken ? extractInternalRole(token.accessToken) : null,
+    internalPermissions: token.accessToken
+      ? extractInternalPermissions(token.accessToken)
+      : [],
+    subjectType: token.accessToken
+      ? (extractSubjectType(token.accessToken) ?? "STAFF")
+      : "STAFF",
+  };
+  await setChunkedCookie(STAFF_AUTH_TOKEN_COOKIE, JSON.stringify(synced));
+};
+
+export const deleteStaffAuthCookie = async () => {
+  try {
+    await deleteChunkedCookie(STAFF_AUTH_TOKEN_COOKIE);
+  } catch {
+    // Cookies can only be modified in Server Actions or Route Handlers.
+  }
+};
+
+// "Staff" here = internal Settlo operator (Staff Portal, gated on `internal_role`),
+// NOT customer business staff and NOT a `SubjectType.STAFF` POS token. See the
+// note on STAFF_AUTH_TOKEN_COOKIE above.
+export const createStaffAuthToken = async (loginResponse: LoginResponse) => {
+  const internalRole = extractInternalRole(loginResponse.accessToken);
+  const internalPermissions = extractInternalPermissions(loginResponse.accessToken);
+  const subjectType = extractSubjectType(loginResponse.accessToken) ?? "STAFF";
+
+  // Defensive defaults — customer state machine reads these. Even if the cookie
+  // ever leaks to apex, staff users skip onboarding/subscription gates.
+  const authTokenData: AuthToken = {
+    accessToken: loginResponse.accessToken,
+    refreshToken: loginResponse.refreshToken,
+    userId: loginResponse.userId,
+    accountId: loginResponse.accountId,
+    email: loginResponse.email,
+    firstName: "",
+    lastName: "",
+    phoneNumber: "",
+    pictureUrl: null,
+    emailVerified: true,
+    isBusinessRegistrationComplete: true,
+    isLocationRegistrationComplete: true,
+    hasInvitedAccess: false,
+    countryId: "",
+    countryCode: "",
+    theme: null,
+    internalRole,
+    internalPermissions,
+    subjectType,
+  };
+
+  await setChunkedCookie(STAFF_AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData));
+  return authTokenData;
+};
+
+/**
+ * Referral agents (external customer-onboarding partners) log in through the
+ * normal apex flow but have NO Accounts profile (sentinel accountId), so the
+ * profile fetch is skipped and we write a minimal authToken cookie. The
+ * `referralAgent` flag drives the middleware confinement to /referral; the
+ * onboarding flags are set to benign "complete" defaults so the customer state
+ * machine can never trap them even if the referral branch is ever bypassed.
+ */
+export const createReferralAuthToken = async (loginResponse: LoginResponse) => {
+  const authTokenData: AuthToken = {
+    accessToken: loginResponse.accessToken,
+    refreshToken: loginResponse.refreshToken,
+    userId: loginResponse.userId,
+    accountId: loginResponse.accountId,
+    email: loginResponse.email,
+    firstName: "",
+    lastName: "",
+    phoneNumber: "",
+    pictureUrl: null,
+    emailVerified: true,
+    isBusinessRegistrationComplete: true,
+    isLocationRegistrationComplete: true,
+    hasInvitedAccess: false,
+    countryId: "",
+    countryCode: "",
+    theme: null,
+    referralAgent: true,
+  };
+
+  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData), {
+    maxAge: authCookieMaxAgeFromLogin(loginResponse.refreshTokenExpiresAt),
+  });
+  return authTokenData;
+};
+
+export const createAuthToken = async (user: any) => {
+  const authTokenData: AuthToken = {
+    accessToken: user.accessToken ?? "",
+    refreshToken: user.refreshToken ?? "",
+    userId: user.id ?? user.userId ?? "",
+    accountId: user.accountId ?? "",
+    email: user.email ?? "",
+    firstName: user.firstName ?? "",
+    lastName: user.lastName ?? "",
+    phoneNumber: user.phoneNumber ?? "",
+    pictureUrl: user.pictureUrl ?? user.avatar ?? null,
+    emailVerified: user.emailVerified != null,
+    isBusinessRegistrationComplete:
+      user.isBusinessRegistrationComplete ?? false,
+    isLocationRegistrationComplete:
+      user.isLocationRegistrationComplete ?? false,
+    hasInvitedAccess: user.hasInvitedAccess ?? false,
+    countryId: user.countryId ?? user.country ?? "",
+    countryCode: user.countryCode ?? "",
+    theme: user.theme ?? null,
+    businessId: user.accessToken ? extractBusinessId(user.accessToken) : null,
+  };
+
+  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData), {
+    maxAge: authCookieMaxAgeFromLogin(user.refreshTokenExpiresAt),
   });
 };
 
@@ -87,7 +382,6 @@ export const getAuthenticatedUser = async (): Promise<FormResponse | User> => {
   const user = await getUser();
 
   if (!user) {
-    // redirect to log in
     redirect("/login");
   }
 
@@ -96,9 +390,9 @@ export const getAuthenticatedUser = async (): Promise<FormResponse | User> => {
 
 export const deleteAuthCookie = async () => {
   try {
-    const cookieStore = await cookies();
+    await deleteChunkedCookie(AUTH_TOKEN_COOKIE);
 
-    cookieStore.delete("authToken");
+    const cookieStore = await cookies();
     cookieStore.delete("next-auth.session-token");
     cookieStore.delete("next-auth.csrf-token");
     cookieStore.delete("activeBusiness");
@@ -108,16 +402,28 @@ export const deleteAuthCookie = async () => {
     cookieStore.delete("authjs.csrf-token");
     cookieStore.delete("authjs.callback-url");
     cookieStore.delete("authjs.session-token");
-  } catch (e) {
-    // Do not throw error - do NOT call signOut here as it triggers
-    // the signOut event which calls deleteAuthCookie again, causing an infinite loop
-    console.log("Error deleting auth cookie", e);
+    cookieStore.delete("pendingVerification");
+  } catch {
+    // Cookies can only be modified in Server Actions or Route Handlers.
+    // This silently fails when called from Server Components (e.g., layout.tsx).
   }
 };
 
 export const deleteActiveBusinessCookie = async () => {
   const cookieStore = await cookies();
   cookieStore.delete("activeBusiness");
+};
+
+// `currentBusiness` is the *canonical* selected-business cookie — the one
+// `getCurrentBusinessId` / ApiClient read for the X-Business-Id header and the
+// `businessId` query param on every /me/* fetch. It is a SEPARATE cookie from
+// `activeBusiness`, so resetting business context means clearing both. Kept as
+// its own helper (rather than folding it into deleteActiveBusinessCookie)
+// because some callers — e.g. the public menu fetch — intentionally drop only
+// `activeBusiness` and must keep the user's selected business intact.
+export const deleteCurrentBusinessCookie = async () => {
+  const cookieStore = await cookies();
+  cookieStore.delete("currentBusiness");
 };
 
 export const getActiveBusiness = async (): Promise<activeBusiness | null> => {
@@ -131,4 +437,55 @@ export const getActiveBusiness = async (): Promise<activeBusiness | null> => {
 export const deleteActiveLocationCookie = async () => {
   const cookieStore = await cookies();
   cookieStore.delete("activeLocation");
+};
+
+export const storePendingVerification = async (data: {
+  userId: string;
+  email: string;
+  verificationResendToken?: string;
+  accessToken?: string;
+  refreshToken?: string;
+}) => {
+  const cookieStore = await cookies();
+  cookieStore.set({
+    name: "pendingVerification",
+    value: JSON.stringify(data),
+    httpOnly: true,
+    secure: isSecureCookie(),
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    maxAge: 900, // 15 minutes
+  });
+};
+
+export const getPendingVerification = async () => {
+  const cookieStore = await cookies();
+  const data = cookieStore.get("pendingVerification")?.value;
+  if (!data) return null;
+  try {
+    return JSON.parse(data) as {
+      userId: string;
+      email: string;
+      verificationResendToken?: string;
+      accessToken?: string;
+      refreshToken?: string;
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const clearPendingVerification = async () => {
+  const cookieStore = await cookies();
+  cookieStore.delete("pendingVerification");
+};
+
+/**
+ * Server guard for a location-wide report page: redirects a user without
+ * `reports:read_all` back to /dashboard (they must not land on an all-staff
+ * report). Call as the first statement of each location-wide report page.
+ */
+export const requireReportsReadAll = async (): Promise<void> => {
+  if (!(await hasReportsReadAll())) {
+    redirect("/dashboard");
+  }
 };

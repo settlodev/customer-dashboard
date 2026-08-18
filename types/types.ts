@@ -1,196 +1,228 @@
-import { UUID } from "node:crypto";
-import { DefaultSession } from "next-auth";
+import {UUID} from "node:crypto";
+import {DefaultSession} from "next-auth";
 
 export declare interface LoginResponse {
-  id: UUID;
-  email: string;
-  firstName: string;
-  lastName: string;
-  picture: string;
-  phoneNumber: string;
-  authToken: string;
-  refreshToken: string;
-  phoneNumberVerified: string;
-  emailVerified: string;
-  consent: boolean;
-  theme: string;
-  subscriptionStatus: string;
-  businessId: UUID;
+    accessToken: string;
+    refreshToken: string;
+    tokenType: string;
+    expiresIn: number;
+    accessTokenExpiresAt: string;
+    refreshTokenExpiresAt: string;
+    userId: string;
+    accountId: string;
+    appId?: string;
+    email: string;
+    emailVerified: boolean;
+    systemAdmin?: boolean;
+    supportAgent?: boolean;
+    /** True when this is an external referral-agent login (not internal staff). */
+    referralAgent?: boolean;
+    verificationResendToken?: string;
+    verificationResendTokenExpiresAt?: string;
+    mfaRequired?: boolean;
+    mfaToken?: string;
+    /** Set on tokens minted via POST /auth/impersonate ("login on behalf"). */
+    impersonating?: boolean;
+    /** Auth user id of the staff member performing the impersonation. */
+    impersonatorId?: string;
 }
 
 export type ApiResponse<T> = {
-  warehouseStockRequestStatus: string;
-  data: any;
-  totalPages: number;
-  totalElements: number;
-  first: boolean;
-  last: boolean;
-  size: number;
-  content: T[];
-  number: number;
-  sort: ApiSortResponse;
-  pageable: ApiResponsePage;
-  numberOfElements: number;
-  empty: boolean;
+    warehouseStockRequestStatus: string;
+    data: any;
+    totalPages: number;
+    totalElements: number;
+    first: boolean;
+    last: boolean;
+    size: number;
+    content: T[];
+    number: number;
+    sort: ApiSortResponse;
+    pageable: ApiResponsePage;
+    numberOfElements: number;
+    empty: boolean;
 };
 
 export type ApiResponsePage = {
-  totalElements: number;
-  pageNumber: number;
-  pageSize: number;
-  sort: ApiSortResponse;
-  offset: number;
-  paged: boolean;
-  unpaged: boolean;
+    totalElements: number;
+    pageNumber: number;
+    pageSize: number;
+    sort: ApiSortResponse;
+    offset: number;
+    paged: boolean;
+    unpaged: boolean;
 };
 
 export type ApiSortResponse = {
-  empty: boolean;
-  unsorted: boolean;
-  sorted: boolean;
+    empty: boolean;
+    unsorted: boolean;
+    sorted: boolean;
 };
 
 export interface FormResponse<T = unknown> {
-  responseType: "success" | "error";
-  message: string;
-  error?: Error | null;
-  data?: T;
+    responseType: "success" | "error" | "needs_verification" | "mfa_required";
+    message: string;
+    error?: Error | null;
+    data?: T;
+    errorCode?: string;
+    /**
+     * HTTP status of the underlying failure, when known (set from
+     * `SettloApiError.status`). Lets a caller distinguish transport-level
+     * unavailability (502/503/504, all mapped to the same `SERVICE_UNAVAILABLE`
+     * errorCode by `handleSettloApiError` — the server's own `serverCode` is
+     * discarded on that branch) from a real domain conflict that happens to
+     * share a code. See `acceptOffer` / `offer-step.tsx`'s 503 retry.
+     */
+    status?: number;
+    metadata?: Record<string, unknown>;
 }
 
+export type SubscriptionStatus = "TRIAL" | "ACTIVE" | "PAST_DUE" | "EXPIRED" | "SUSPENDED" | "CANCELLED" | null;
+
+export type InternalRole =
+    | "SYSTEM_ADMIN"
+    | "SUPER_ADMIN"
+    | "SUPPORT_AGENT"
+    | "BOARD_MEMBER"
+    | "SALES_TEAM"
+    | "LOAN_OFFICER"
+    | "FINANCE";
+
+export type SubjectType = "USER" | "STAFF" | "DEVICE";
+
 export declare interface AuthToken {
-  id: string;
-  name: string;
-  bio: string;
-  role: string;
-  country: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  avatar: string | null;
-  phoneNumber: string;
-  authToken: string;
-  refreshToken: string;
-  emailVerified: Date | null;
-  phoneNumberVerified: Date | null;
-  consent: boolean | null;
-  theme: string | null;
-  subscriptionStatus: string;
-  businessComplete: boolean;
-  locationComplete: boolean;
-  subscriptionComplete: boolean;
-  businessId: UUID | null;
-  //emailVerificationToken: string|null;
-  // businesses: Business[];
-  // locations: Location[];
-  // activeBusiness: string | null;
+    accessToken: string;
+    refreshToken: string;
+    userId: string;
+    accountId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phoneNumber: string;
+    pictureUrl: string | null;
+    emailVerified: boolean;
+    isBusinessRegistrationComplete: boolean;
+    isLocationRegistrationComplete: boolean;
+    countryId: string;
+    countryCode: string;
+    theme: string | null;
+    verificationResendToken?: string;
+    subscriptionStatus?: SubscriptionStatus;
+    businessId?: string | null;
+    internalRole?: InternalRole | null;
+    internalPermissions?: string[];
+    subjectType?: SubjectType;
+    /** True when this session belongs to an external referral agent (not internal staff). */
+    referralAgent?: boolean;
+    /** True when this customer session was minted by staff impersonation. */
+    impersonating?: boolean;
+    /** Auth user id of the staff member impersonating this account. */
+    impersonatorId?: string | null;
+    hasInvitedAccess: boolean;
 }
+
 export declare interface activeBusiness {
-  businessId: UUID | null;
+    businessId: UUID | null;
 }
 
 export type ExtendedUser = DefaultSession["user"] & {
-  id: string;
-  name: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  bio: string;
-  avatar: string | null;
-  country: UUID;
-  role: UUID;
-  phoneNumber: string;
-  authToken: string;
-  refreshToken: string;
-  emailVerified: Date | null;
-  phoneNumberVerified: Date | null;
-  consent: boolean | null;
-  theme: string | null;
-  subscriptionStatus: string;
-  businessComplete: boolean;
-  locationComplete: boolean;
-  subscriptionComplete: boolean;
-  businessId: UUID | null;
-  gender: string;
-  referredByCode: string;
+    id: string;
+    name: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    bio: string;
+    avatar: string | null;
+    phoneNumber: string;
+    accessToken: string;
+    refreshToken: string;
+    emailVerified: Date | null;
+    consent: boolean | null;
+    theme: string | null;
+    isBusinessRegistrationComplete: boolean;
+    isLocationRegistrationComplete: boolean;
+    hasInvitedAccess: boolean;
+    accountId: string;
+    countryId: string;
+    countryCode: string;
 };
 
 export declare interface RegisterResponse {
-  message: string;
-  success: boolean;
+    id: string;
+    fullName: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+    pictureUrl: string | null;
+    active: boolean;
+    authId: string;
+    accountNumber: string;
+    isBusinessRegistrationComplete: boolean;
+    isLocationRegistrationComplete: boolean;
+    countryId: string;
+    countryCode: string;
+    emailVerificationRequired: boolean;
+    message: string;
+}
+
+export declare interface VerifyAndLoginResponse {
+    success: boolean;
+    message: string;
+    userId: string;
+    accountId: string;
+    email: string;
+    accessToken: string;
+    refreshToken: string;
+    tokenType: string;
+    expiresIn: number;
+    accessTokenExpiresAt: string;
+    refreshTokenExpiresAt: string;
+}
+
+export declare interface TokenRefreshResponse {
+    accessToken: string;
+    refreshToken: string;
+    tokenType: string;
+    expiresIn: number;
+    accessTokenExpiresAt: string;
+    refreshTokenExpiresAt: string;
+}
+
+export declare interface ResetPasswordVerifyResponse {
+    success: boolean;
+    message: string;
+    userId: string;
+    resetToken: string;
 }
 
 export declare interface BusinessTimeType {
-  name: string;
-  label: string;
+    name: string;
+    label: string;
 }
 
-export declare interface uploadCallBackType {
-  success: boolean;
-  data: string;
+export declare interface uploadCallBackType{
+    success: boolean;
+    data: string;
 }
 
 export declare interface ErrorResponseType {
-  status: number;
-  code: string;
-  message: string;
-  details?: unknown;
-  timestamp: string;
-  path?: string;
-  correlationId?: string;
-  serverError?: {
-    name?: string;
-    stack?: string;
+    status: number;
+    code: string;
+    message: string;
     details?: unknown;
-  };
+    metadata?: Record<string, unknown>;
+    timestamp: string;
+    path?: string;
+    correlationId?: string;
+    serverError?: {
+        name?: string;
+        stack?: string;
+        details?: unknown;
+    };
 }
 
-export declare interface PrivilegeItem {
-  id: UUID;
-  name: string;
-  code: string;
-  status: boolean;
-  canDelete: boolean;
-  isArchived: boolean;
-  privilegeActions: PrivilegeActionItem[];
-}
-
-export declare interface PrivilegeActionItem {
-  id: UUID;
-  privilegeSectionName: string;
-  action: string;
-  privilegeSection: UUID;
-  privilegeSectionCode: string;
-  status: boolean;
-  canDelete: boolean;
-  isArchived: boolean;
-}
-
-export declare interface FormPrivilegeActionItem {
-  id: UUID;
-}
-
-export declare interface StatusItem {
-  name: string;
-  value: boolean;
-}
-
-export declare interface WarehousePrivilegeItem {
-  id: UUID;
-  name: string;
-  code: string;
-  status: boolean;
-  canDelete: boolean;
-  isArchived: boolean;
-  warehousePrivilegeActions: WarehousePrivilegeActionItem[];
-}
-
-export declare interface WarehousePrivilegeActionItem {
-  id: UUID;
-  warehouseprivilegeSectionName: string;
-  action: string;
-  warehouseprivilegeSection: UUID;
-  warehouseprivilegeSectionCode: string;
-  status: boolean;
-  canDelete: boolean;
-  isArchived: boolean;
+export declare interface StatusItem{
+    name: string;
+    value: boolean;
 }

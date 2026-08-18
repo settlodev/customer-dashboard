@@ -5,7 +5,6 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
-  CreditCard,
   ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,15 +21,17 @@ interface PaymentStatusModalProps {
   onClose: () => void;
 }
 
+// ─── Status config ────────────────────────────────────────────────────────────
+
 const STATUS_CONFIG = {
   INITIATING: {
     title: "Initiating Payment",
     description: "Please wait while we prepare your payment request.",
     progress: 20,
-    icon: CreditCard,
-    iconClass: "text-primary",
+    icon: Loader2,
+    iconClass: "text-primary animate-spin",
     iconBg: "bg-primary-light",
-    ringClass: "ring-primary-light",
+    ringClass: "ring-primary/15",
     progressClass: "bg-primary",
     showClose: false,
     closable: false,
@@ -40,10 +41,10 @@ const STATUS_CONFIG = {
     description: "Check your phone and complete the M-Pesa prompt to proceed.",
     progress: 45,
     icon: Loader2,
-    iconClass: "text-warning animate-spin",
-    iconBg: "bg-warning/10",
-    ringClass: "ring-warning/20",
-    progressClass: "bg-warning",
+    iconClass: "text-warn animate-spin",
+    iconBg: "bg-warn-tint",
+    ringClass: "ring-warn/15",
+    progressClass: "bg-warn",
     showClose: false,
     closable: false,
   },
@@ -54,7 +55,7 @@ const STATUS_CONFIG = {
     icon: Loader2,
     iconClass: "text-primary animate-spin",
     iconBg: "bg-primary-light",
-    ringClass: "ring-primary/20",
+    ringClass: "ring-primary/15",
     progressClass: "bg-primary",
     showClose: false,
     closable: false,
@@ -64,30 +65,32 @@ const STATUS_CONFIG = {
     description: "Your subscription has been activated. You're all set!",
     progress: 100,
     icon: CheckCircle2,
-    iconClass: "text-success",
-    iconBg: "bg-success/10",
-    ringClass: "ring-success/20",
-    progressClass: "bg-success",
+    iconClass: "text-pos",
+    iconBg: "bg-pos-tint",
+    ringClass: "ring-pos/15",
+    progressClass: "bg-pos",
     showClose: true,
     closable: true,
     closeLabel: "Continue",
-    closeClass: "bg-success hover:bg-success/90 text-white",
+    closeClass: "bg-pos hover:bg-pos/90 text-white",
   },
   FAILED: {
     title: "Payment Failed",
     description: "Something went wrong. Please try again or contact support.",
     progress: 100,
     icon: XCircle,
-    iconClass: "text-danger",
-    iconBg: "bg-danger/10",
-    ringClass: "ring-danger/20",
-    progressClass: "bg-danger",
+    iconClass: "text-neg",
+    iconBg: "bg-neg-tint",
+    ringClass: "ring-neg/15",
+    progressClass: "bg-neg",
     showClose: true,
     closable: true,
     closeLabel: "Try Again",
-    closeClass: "bg-danger hover:bg-danger/90 text-white",
+    closeClass: "bg-neg hover:bg-neg/90 text-white",
   },
 } as const;
+
+// ─── Animated progress bar ────────────────────────────────────────────────────
 
 function ProgressBar({
   value,
@@ -99,11 +102,18 @@ function ProgressBar({
   indeterminate?: boolean;
 }) {
   return (
-    <div className="w-full h-1.5 bg-gray-2 rounded-full overflow-hidden">
+    <div className="w-full h-1.5 bg-canvas rounded-full overflow-hidden">
       {indeterminate ? (
+        // Indeterminate — sliding animation for processing states
         <div
-          className={cn("h-full w-1/3 rounded-full", colorClass)}
-          style={{ animation: "slide 1.4s ease-in-out infinite" }}
+          className={cn(
+            "h-full w-1/3 rounded-full",
+            colorClass,
+            "animate-[slide_1.4s_ease-in-out_infinite]",
+          )}
+          style={{
+            animation: "slide 1.4s ease-in-out infinite",
+          }}
         />
       ) : (
         <div
@@ -117,6 +127,8 @@ function ProgressBar({
     </div>
   );
 }
+
+// ─── Step dots ────────────────────────────────────────────────────────────────
 
 const STEPS = ["Initiate", "Pending", "Verify", "Complete"] as const;
 const STEP_MAP: Record<string, number> = {
@@ -145,39 +157,42 @@ function StepIndicator({
 
         return (
           <React.Fragment key={step}>
+            {/* Dot */}
             <div className="flex flex-col items-center gap-1">
               <div
                 className={cn(
                   "h-2.5 w-2.5 rounded-full transition-all duration-300",
                   isFail
-                    ? "bg-danger ring-4 ring-danger/20"
+                    ? "bg-neg ring-4 ring-neg/20"
                     : isActive
                       ? "bg-primary ring-4 ring-primary/20 scale-125"
                       : isComplete
-                        ? "bg-primary"
-                        : "bg-gray-DEFAULT",
+                        ? "bg-pos"
+                        : "bg-line",
                 )}
               />
               <span
                 className={cn(
                   "text-[10px] font-medium whitespace-nowrap",
                   isFail
-                    ? "text-danger"
+                    ? "text-neg"
                     : isActive
-                      ? "text-black"
+                      ? "text-ink"
                       : isComplete
-                        ? "text-primary"
-                        : "text-bodydark2",
+                        ? "text-pos"
+                        : "text-muted-2",
                 )}
               >
                 {step}
               </span>
             </div>
+
+            {/* Connector line */}
             {i < STEPS.length - 1 && (
               <div
                 className={cn(
                   "h-0.5 w-10 sm:w-14 mb-3.5 transition-all duration-500",
-                  i < activeStep ? "bg-primary/40" : "bg-stroke",
+                  i < activeStep ? "bg-pos" : "bg-line",
                 )}
               />
             )}
@@ -187,6 +202,8 @@ function StepIndicator({
     </div>
   );
 }
+
+// ─── Main modal ───────────────────────────────────────────────────────────────
 
 const PaymentStatusModal: React.FC<PaymentStatusModalProps> = ({
   isOpen,
@@ -203,6 +220,7 @@ const PaymentStatusModal: React.FC<PaymentStatusModalProps> = ({
 
   return (
     <>
+      {/* Inline keyframes for the indeterminate bar */}
       <style>{`
         @keyframes slide {
           0%   { transform: translateX(-100%); }
@@ -211,16 +229,32 @@ const PaymentStatusModal: React.FC<PaymentStatusModalProps> = ({
         }
       `}</style>
 
+      {/* Backdrop */}
       <div
         className="fixed inset-0 z-50 flex items-center justify-center p-4"
         aria-modal="true"
         role="dialog"
       >
+        {/* Blurred dark overlay */}
         <div
           className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           onClick={isTerminal ? onClose : undefined}
         />
-        <div className="relative z-10 w-full max-w-sm rounded-2xl bg-white shadow-2xl ring-1 ring-stroke overflow-hidden">
+
+        {/* Card */}
+        <div className="relative z-10 w-full max-w-sm rounded-2xl bg-card shadow-2xl ring-1 ring-line overflow-hidden">
+          {/* Top accent bar */}
+          <div
+            className={cn(
+              "h-1 w-full transition-all duration-700",
+              isFailed
+                ? "bg-neg"
+                : status === "SUCCESS"
+                  ? "bg-pos"
+                  : "bg-primary",
+            )}
+          />
+
           <div className="px-6 pt-7 pb-6 space-y-6">
             {/* Icon */}
             <div className="flex justify-center">
@@ -237,8 +271,8 @@ const PaymentStatusModal: React.FC<PaymentStatusModalProps> = ({
 
             {/* Title + description */}
             <div className="text-center space-y-1.5">
-              <h3 className="text-base font-bold text-black">{cfg.title}</h3>
-              <p className="text-sm text-body leading-relaxed">
+              <h3 className="text-base font-bold text-ink">{cfg.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 {cfg.description}
               </p>
             </div>
@@ -258,13 +292,13 @@ const PaymentStatusModal: React.FC<PaymentStatusModalProps> = ({
 
             {/* Processing hint */}
             {!isTerminal && (
-              <p className="text-center text-xs text-bodydark2 flex items-center justify-center gap-1.5">
+              <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Secure payment — do not close this window
               </p>
             )}
 
-            {/* Action button */}
+            {/* Close / action button */}
             {isTerminal && "closeLabel" in cfg && (
               <button
                 onClick={onClose}

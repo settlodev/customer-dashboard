@@ -69,11 +69,7 @@ const BusinessList = ({ businesses, currentAccountId }: BusinessListProps) => {
           }
           // Invalidate the account-switcher cache so the sidebar re-fetches
           // and highlights the correct account after this cross-account switch.
-          try {
-            sessionStorage.removeItem(ACCOUNT_CTX_CACHE_KEY);
-          } catch {
-            /* ok */
-          }
+          try { sessionStorage.removeItem(ACCOUNT_CTX_CACHE_KEY); } catch { /* ok */ }
         }
 
         await refreshBusiness(selectedBusiness);

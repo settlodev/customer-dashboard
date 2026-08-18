@@ -103,7 +103,10 @@ export const createLocation = async (
     };
 
     const apiClient = new ApiClient();
-    const response = await apiClient.post(`/api/v1/locations`, payload);
+    const response = await apiClient.post(
+      `/api/v1/locations`,
+      payload,
+    );
 
     formResponse = parseStringify({
       responseType: "success",
@@ -256,13 +259,16 @@ export const updateLocationBasics = async (
     return {
       responseType: "error",
       message:
-        error instanceof Error ? error.message : "Failed to update location",
+        error instanceof Error
+          ? error.message
+          : "Failed to update location",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
 };
 
 export const getLocationById = async (): Promise<Location> => {
+
   try {
     const apiClient = new ApiClient();
     const currentLocation = await getCurrentLocation();
@@ -313,10 +319,7 @@ export const deactivateLocation = async (id: UUID): Promise<FormResponse> => {
     await apiClient.post(`/api/v1/locations/${id}/deactivate`, {});
     revalidatePath("/locations");
     revalidateTag(LAYOUT_TAGS.locations);
-    return {
-      responseType: "success",
-      message: "Location deactivated successfully",
-    };
+    return { responseType: "success", message: "Location deactivated successfully" };
   } catch (error) {
     return {
       responseType: "error",
@@ -333,10 +336,7 @@ export const reactivateLocation = async (id: UUID): Promise<FormResponse> => {
     await apiClient.post(`/api/v1/locations/${id}/reactivate`, {});
     revalidatePath("/locations");
     revalidateTag(LAYOUT_TAGS.locations);
-    return {
-      responseType: "success",
-      message: "Location reactivated successfully",
-    };
+    return { responseType: "success", message: "Location reactivated successfully" };
   } catch (error) {
     return {
       responseType: "error",
@@ -346,9 +346,7 @@ export const reactivateLocation = async (id: UUID): Promise<FormResponse> => {
   }
 };
 
-export const getLocationCount = async (
-  businessId?: string,
-): Promise<{ total: number; active: number; inactive: number }> => {
+export const getLocationCount = async (businessId?: string): Promise<{ total: number; active: number; inactive: number }> => {
   try {
     const apiClient = new ApiClient();
     const params = businessId ? `?businessId=${businessId}` : "";

@@ -1,139 +1,136 @@
-"use client";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import NoItems from "@/components/layouts/no-items";
-import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/stock-transfer/column";
+import DataLoadError from "@/components/layouts/data-load-error";
+import { StockTransferTable } from "@/components/tables/stock-transfer/table";
 import { searchStockTransfers } from "@/lib/actions/stock-transfer-actions";
-import { StockTransfer } from "@/types/stock-transfer/type";
-import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
-import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { softFetch } from "@/lib/list-fallback";
+import { getCurrentDestination } from "@/lib/actions/context";
+import { getStockTransferKpi } from "@/lib/actions/reports-analytics-actions";
+import { StockTransferKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
+import type { TransferStatus } from "@/types/stock-transfer/type";
+import { cn } from "@/lib/utils";
 
-const breadCrumbItems = [{ title: "Stock Transfer", link: "/stock-transfers" }];
+const STATUS_OPTIONS = [
+  { label: "All", value: "" },
+  { label: "Requested", value: "REQUESTED" },
+  { label: "Accepted", value: "ACCEPTED" },
+  { label: "Confirmed", value: "CONFIRMED" },
+  { label: "Dispatched", value: "DISPATCHED" },
+  { label: "Partially Received", value: "PARTIALLY_RECEIVED" },
+  { label: "Pending Item Mapping", value: "PENDING_MAPPING" },
+  { label: "Received", value: "RECEIVED" },
+  { label: "Rejected", value: "REJECTED" },
+  { label: "Declined", value: "DECLINED" },
+  { label: "Return In Transit", value: "RETURN_IN_TRANSIT" },
+  { label: "Returned", value: "RETURNED" },
+  { label: "Cancelled", value: "CANCELLED" },
+];
+
+const TABS = [
+  { key: "outgoing", label: "Outgoing" },
+  { key: "incoming", label: "Incoming" },
+] as const;
 
 type Params = {
   searchParams: Promise<{
-    search?: string;
     page?: string;
     limit?: string;
+    direction?: string;
+    status?: string;
   }>;
 };
 
-function Page({ searchParams }: Params) {
-  const [totalLocations, setTotalLocations] = useState<number | undefined>(
-    undefined,
-  );
-  const [data, setData] = useState<StockTransfer[]>([]);
-  const [total, setTotal] = useState<number>(0);
-  const [pageCount, setPageCount] = useState<number>(0);
-  const [resolvedParams, setResolvedParams] = useState<{
-    search?: string;
-    page?: string;
-    limit?: string;
-  } | null>(null);
+export default async function Page({ searchParams }: Params) {
+  const resolvedParams = await searchParams;
+  const page = Number(resolvedParams.page) || 0;
+  const pageLimit = Number(resolvedParams.limit) || 20;
+  const direction =
+    resolvedParams.direction === "incoming" ? "incoming" : "outgoing";
+  const status = (resolvedParams.status || undefined) as
+    | TransferStatus
+    | undefined;
 
-  const { toast } = useToast();
-  const router = useRouter();
+  const [responseData, location] = await Promise.all([
+    softFetch(
+      searchStockTransfers(page ? page - 1 : 0, pageLimit, direction, status),
+    ),
+    getCurrentDestination(),
+  ]);
 
-  // Resolve search params
-  useEffect(() => {
-    const resolveParams = async () => {
-      const params = await searchParams;
-      setResolvedParams(params);
-    };
-    resolveParams();
-  }, [searchParams]);
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
-  // Extract values from resolved params
-  const q = resolvedParams?.search || "";
-  const page = Number(resolvedParams?.page) || 0;
-  const pageLimit = Number(resolvedParams?.limit);
-
-  useEffect(() => {
-    const fetchBusinessData = async () => {
-      const business = await getCurrentBusiness();
-      setTotalLocations(business?.totalLocations);
-    };
-
-    fetchBusinessData();
-  }, []);
-
-  useEffect(() => {
-    if (resolvedParams === null) return;
-
-    const fetchStockTransfers = async () => {
-      const responseData = await searchStockTransfers(q, page, pageLimit);
-      setData(responseData.content);
-      setTotal(responseData.totalElements);
-      setPageCount(responseData.totalPages);
-    };
-
-    fetchStockTransfers();
-  }, [q, page, pageLimit, resolvedParams]);
-
-  const handleStockTransfer = async () => {
-    if (totalLocations && totalLocations <= 1) {
-      toast({
-        title: "You can't transfer stock",
-        description: "You can only transfer stock between two locations",
-        variant: "destructive",
-      });
-    } else {
-      await router.push(`/stock-transfers/new`);
-    }
-  };
-
-  // Show loading state while params are being resolved
-  if (resolvedParams === null) {
-    return <div>Loading...</div>;
-  }
+  const kpi = location?.id ? await getStockTransferKpi(location.id) : null;
 
   return (
-    <div className="flex-1 space-y-4 px-4 lg:px-8 mt-1">
-      <div className={`flex items-center justify-between mb-2`}>
-        <div className={`relative flex-1 md:max-w-md`}>
-          <BreadcrumbsNav items={breadCrumbItems} />
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Stock Transfers" }]} />
+      <PageHeader
+        title="Stock Transfers"
+        subtitle="Move stock between locations, stores, and warehouses."
+        actions={
+          <Button asChild size="sm">
+            <Link href="/stock-transfers/new">
+              <Plus className="mr-1.5 h-4 w-4" />
+              New Transfer
+            </Link>
+          </Button>
+        }
+      />
+      <PageBody>
+        <div className="inline-flex rounded-lg border bg-muted/40 p-1">
+          {TABS.map((tab) => {
+            const params = new URLSearchParams();
+            params.set("direction", tab.key);
+            if (status) params.set("status", status);
+            const active = direction === tab.key;
+            return (
+              <Link
+                key={tab.key}
+                href={`/stock-transfers?${params.toString()}`}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  active
+                    ? "bg-background text-ink shadow-sm"
+                    : "text-muted-foreground hover:text-ink",
+                )}
+              >
+                {tab.label}
+              </Link>
+            );
+          })}
         </div>
-        <div className={`flex items-center space-x-2`}>
-          <Button onClick={handleStockTransfer}>Transfer Stock</Button>
-        </div>
-      </div>
-      {total > 0 || q !== "" ? (
-        <Card x-chunk="data-table">
-          <CardHeader>
-            <CardTitle>Stock Transfers</CardTitle>
-            <CardDescription>
-              Transfer stock from one location to another
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DataTable
-              columns={columns}
+
+        {!responseData ? (
+          <DataLoadError itemName="stock transfers" />
+        ) : total > 0 || status ? (
+          <>
+            <StockTransferKpiStrip summary={kpi} />
+            <StockTransferTable
               data={data}
-              searchKey="stockVariantName"
+              activeDestinationId={location?.id ?? null}
               pageNo={page}
               total={total}
               pageCount={pageCount}
+              defaultPageSize={pageLimit}
+              filterOptions={STATUS_OPTIONS}
             />
-          </CardContent>
-        </Card>
-      ) : (
-        <NoItems
-          newItemUrl={`/stock-transfers/new`}
-          itemName={`Stock Transfer`}
-        />
-      )}
-    </div>
+          </>
+        ) : direction === "outgoing" ? (
+          <NoItems newItemUrl="/stock-transfers/new" itemName="stock transfers" />
+        ) : (
+          <NoItems itemName="incoming transfers" />
+        )}
+      </PageBody>
+    </PageShell>
   );
 }
-
-export default Page;

@@ -1,83 +1,165 @@
 "use server";
 
-import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { cache } from "react";
 import { parseStringify } from "@/lib/utils";
-import ApiClient, { AuthenticationError } from "@/lib/settlo-api-client";
-import { ApiResponse } from "@/types/types";
-import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
+import ApiClient from "@/lib/settlo-api-client";
+import { FormResponse } from "@/types/types";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
+import { getAuthToken } from "@/lib/auth-utils";
+import { getCurrentBusinessId } from "@/lib/actions/business/get-current-business";
 import { getCurrentWarehouse } from "./current-warehouse-action";
+import { LAYOUT_TAGS } from "@/lib/cache-tags";
 
-export const getWarehouse = async (id?: string): Promise<Warehouses | null> => {
-  try {
-    const business = await getCurrentBusiness();
+// ── Queries ─────────────────────────────────────────────────────────
 
-    if (!business) {
-      return null;
-    }
-
+// Per-request memoisation — `unstable_cache` can't be used here
+// because `ApiClient` reads cookies inside its interceptors and
+// Next.js forbids dynamic data sources inside a cache scope.
+const _fetchWarehouses = cache(
+  async (businessId?: string): Promise<Warehouses[]> => {
     const apiClient = new ApiClient();
-    const warehouse = id ? { id } : await getCurrentWarehouse();
+    // /me/warehouses is scoped server-side to the caller's accessible
+    // warehouses (owner → all; invited → their subset).
+    const url = businessId
+      ? `/api/v1/me/warehouses?businessId=${businessId}`
+      : `/api/v1/me/warehouses`;
+    const data = await apiClient.get<Warehouses[] | null>(url);
+    return parseStringify(data ?? []) as Warehouses[];
+  },
+);
 
-    const warehousesData = await apiClient.get(
-      `/api/warehouses/${business.id}/${warehouse?.id}`,
-    );
-
-    return parseStringify(warehousesData);
-  } catch (error) {
-    console.error("Error in getWarehouses:", error);
-    throw error;
+export async function getWarehouses(businessId?: string): Promise<Warehouses[]> {
+  try {
+    // Prefer the *selected* business (cookie) over the JWT's business_id
+    // claim, which is stale after a business switch.
+    const biz =
+      businessId ??
+      (await getCurrentBusinessId()) ??
+      (await getAuthToken())?.businessId ??
+      undefined;
+    return await _fetchWarehouses(biz);
+  } catch {
+    return [];
   }
-};
+}
 
-export const searchWarehouses = async (
-  q: string,
-  page: number,
-  pageLimit: number,
-): Promise<ApiResponse<Warehouses>> => {
+export async function getWarehouse(id?: string): Promise<Warehouses | null> {
   try {
-    await getAuthenticatedUser();
-
-    const business = await getCurrentBusiness();
-
-    if (!business) {
-      throw new AuthenticationError("No business found");
-    }
-
     const apiClient = new ApiClient();
-
-    const query = {
-      filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "UUID_STRING",
-          value: q,
-        },
-        {
-          key: "isArchived",
-          operator: "EQUAL",
-          field_type: "BOOLEAN",
-          value: false,
-        },
-      ],
-      sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-
-    const data = await apiClient.post(`/api/warehouses/${business.id}`, query);
-
+    const warehouseId = id || (await getCurrentWarehouse())?.id;
+    if (!warehouseId) return null;
+    const data = await apiClient.get(`/api/v1/warehouses/${warehouseId}`);
     return parseStringify(data);
-  } catch (error) {
-    if (error instanceof AuthenticationError) throw error; // ✅ never swallow auth errors
-    console.error("Error in search warehouses:", error);
-
-    throw error;
+  } catch {
+    return null;
   }
-};
+}
+
+export async function getPrimaryWarehouse(businessId: string): Promise<Warehouses | null> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(`/api/v1/warehouses/primary?businessId=${businessId}`);
+    return parseStringify(data);
+  } catch {
+    return null;
+  }
+}
+
+export async function getWarehouseCount(businessId?: string): Promise<{ total: number; active: number; inactive: number }> {
+  try {
+    const apiClient = new ApiClient();
+    const params = businessId ? `?businessId=${businessId}` : "";
+    const data = await apiClient.get(`/api/v1/warehouses/count${params}`);
+    return parseStringify(data);
+  } catch {
+    return { total: 0, active: 0, inactive: 0 };
+  }
+}
+
+// ── CRUD ─────────────────────────────────────────────────────────────
+
+export async function createWarehouse(data: {
+  name: string;
+  description?: string;
+  code?: string;
+  primary?: boolean;
+  capacity?: number;
+}): Promise<FormResponse | void> {
+  try {
+    const businessId = (await getAuthToken())?.businessId;
+    if (!businessId) {
+      return parseStringify({ responseType: "error", message: "No business selected" });
+    }
+
+    const apiClient = new ApiClient();
+    await apiClient.post("/api/v1/warehouses", {
+      businessId,
+      ...data,
+    });
+
+    revalidatePath("/warehouses");
+    revalidateTag(LAYOUT_TAGS.warehouses);
+    return parseStringify({ responseType: "success", message: "Warehouse created successfully" });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to create warehouse",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function updateWarehouse(
+  id: string,
+  data: {
+    name?: string;
+    description?: string;
+    code?: string;
+    primary?: boolean;
+    capacity?: number;
+    active?: boolean;
+  },
+): Promise<FormResponse | void> {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.put(`/api/v1/warehouses/${id}`, data);
+
+    revalidatePath("/warehouses");
+    revalidateTag(LAYOUT_TAGS.warehouses);
+    return parseStringify({ responseType: "success", message: "Warehouse updated successfully" });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to update warehouse",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function deleteWarehouse(id: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.delete(`/api/v1/warehouses/${id}`);
+  revalidatePath("/warehouses");
+  revalidateTag(LAYOUT_TAGS.warehouses);
+}
+
+export async function deactivateWarehouse(id: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(`/api/v1/warehouses/${id}/deactivate`, {});
+  revalidatePath("/warehouses");
+  revalidateTag(LAYOUT_TAGS.warehouses);
+}
+
+export async function reactivateWarehouse(id: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(`/api/v1/warehouses/${id}/reactivate`, {});
+  revalidatePath("/warehouses");
+  revalidateTag(LAYOUT_TAGS.warehouses);
+}
+
+// ── Backward compat aliases ─────────────────────────────────────────
+
+export async function searchWarehouses(): Promise<Warehouses[]> {
+  return getWarehouses();
+}

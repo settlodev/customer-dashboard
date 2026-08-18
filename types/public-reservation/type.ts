@@ -41,4 +41,4 @@ export interface GuestInfo {
   customerPhone: string;
 }
 
-export type ReservationStep = "booking" | "details" | "extras" | "deposit" | "confirmation";
+export type ReservationStep = "booking" | "details" | "extras" | "confirmation";

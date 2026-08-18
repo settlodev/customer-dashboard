@@ -307,26 +307,29 @@ const ProfitLossStatement = ({
           {
             label: "Gross sales",
             value: fmt(salesData.grossSales),
-            color: "text-black",
+            accent: "bg-blue-500",
+            color: "text-blue-600 dark:text-blue-400",
           },
           {
             label: "Net sales",
             value: fmt(salesData.netSales),
-            color: "text-black",
+            accent: "bg-cyan-500",
+            color: "text-cyan-600 dark:text-cyan-400",
           },
           {
             label: "Gross profit",
             value: fmt(salesData.grossProfit),
             sub: `${grossMargin}% margin`,
-            color: "text-black",
+            accent: "bg-emerald-500",
+            color: "text-emerald-600 dark:text-emerald-400",
           },
           {
             label: isProfit ? "Net profit" : "Net loss",
-            value: fmt(salesData.netProfit),
+            value: fmt(salesData.closingBalance),
             sub: `${netMargin}% margin`,
             accent: isProfit ? "bg-emerald-500" : "bg-red-500",
             color: isProfit
-              ? "text-primary dark:text-primary/40"
+              ? "text-emerald-600 dark:text-emerald-400"
               : "text-red-600 dark:text-red-400",
           },
         ].map((card) => (
@@ -335,7 +338,7 @@ const ProfitLossStatement = ({
             className="bg-background border rounded-xl p-4 relative overflow-hidden"
           >
             <div
-              className={`absolute left-0 top-0 bottom-0 w-[3px]  rounded-l-xl`}
+              className={`absolute left-0 top-0 bottom-0 w-[3px] ${card.accent} rounded-l-xl`}
             />
             <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-2">
               {card.label}
@@ -433,14 +436,14 @@ const ProfitLossStatement = ({
                 </span>
               </div>
             </div>
-            <div className="mt-2 flex justify-between items-center rounded-lg bg-primary-light dark:bg-primary-light/30 px-4 py-3 text-sm">
+            <div className="mt-2 flex justify-between items-center rounded-lg bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3 text-sm">
               <div>
                 <span className="font-semibold">Gross profit</span>
                 <span className="text-xs text-muted-foreground ml-2">
                   {grossMargin}% margin
                 </span>
               </div>
-              <span className="tabular-nums font-bold text-primary">
+              <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">
                 {fmt(salesData.grossProfit)}
               </span>
             </div>
@@ -469,7 +472,7 @@ const ProfitLossStatement = ({
             className={cn(
               "flex justify-between items-center rounded-lg p-4 text-sm",
               isProfit
-                ? "bg-primary-light/50 dark:bg-primary-light/30"
+                ? "bg-emerald-50 dark:bg-emerald-950/30"
                 : "bg-red-50 dark:bg-red-950/30",
             )}
           >
@@ -484,10 +487,12 @@ const ProfitLossStatement = ({
             <p
               className={cn(
                 "text-2xl font-bold tabular-nums",
-                isProfit ? "text-primary" : "text-red-600 dark:text-red-400",
+                isProfit
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-red-600 dark:text-red-400",
               )}
             >
-              {fmt(salesData.netProfit)}
+              {fmt(salesData.closingBalance)}
             </p>
           </div>
           <p className="text-xs text-muted-foreground text-center pt-1">
@@ -636,7 +641,7 @@ const ProfitLossStatement = ({
               },
               {
                 label: isProfit ? "Net profit" : "Net loss",
-                value: fmt(salesData.netProfit),
+                value: fmt(salesData.closingBalance),
                 sub: `${netMargin}% margin`,
               },
             ].map((c, i) => (
@@ -728,7 +733,7 @@ const ProfitLossStatement = ({
 
             <SummaryRow
               label={`${isProfit ? "NET PROFIT" : "NET LOSS"} — Net margin: ${netMargin}%`}
-              value={fmt(salesData.netProfit)}
+              value={fmt(salesData.closingBalance)}
               color="#111827"
               bg="#f3f4f6"
               large

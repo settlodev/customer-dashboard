@@ -1,9 +1,19 @@
 import { UUID } from "node:crypto";
+import { BookingQuestionType } from "@/types/enums";
 
+/**
+ * Mirrors the OMS {@code ReservationSettingResponse}. One row per location.
+ *
+ * <p>Note: deposit policy (require / amount / per-guest / min party size) is
+ * NO LONGER part of reservation settings — those rules now live in the
+ * separate {@code deposit_rules} entity which supports priority-based
+ * overrides per slot/table/global. See {@code DepositRule}.
+ */
 export declare interface ReservationSetting {
   id: UUID;
+  locationId: UUID;
 
-  // Category 1: Booking Rules
+  // Booking Rules
   minPartySize: number;
   maxPartySize: number | null;
   bookingWindowDays: number;
@@ -15,84 +25,79 @@ export declare interface ReservationSetting {
   requireGuestPhone: boolean;
   allowSpecialRequests: boolean;
 
-  // Category 2: Confirmation
+  // Confirmation
   autoConfirm: boolean;
   autoConfirmMaxPartySize: number | null;
 
-  // Category 3: Cancellation & No-Show
+  // Cancellation & No-Show
   cancellationPolicyHours: number | null;
   allowOnlineCancellation: boolean;
   cancellationPolicyText: string | null;
   chargeNoShowFee: boolean;
   noShowFeeAmount: number | null;
+  /** Minutes after reservation time before the no-show scheduler fires. */
+  noShowGraceMinutes: number;
 
-  // Category 5: Notifications & Reminders
+  // Notifications & Reminders
   sendConfirmationEmail: boolean;
   sendConfirmationSms: boolean;
   sendReminderNotification: boolean;
   reminderHoursBeforeReservation: number;
 
-  // Category 6: Pacing & Capacity
+  // Pacing & Capacity
   defaultTurnTimeMinutes: number;
   bufferMinutesBetweenSeatings: number;
   maxDailyReservations: number | null;
   maxDailyGuests: number | null;
 
-  // Category 7: Waitlist
+  // Waitlist
   enableWaitlist: boolean;
   maxWaitlistSize: number | null;
 
-  // Category 8: Table Assignment
+  // Deposit collection (the "should we collect online vs cash" toggle —
+  // the actual deposit rules live in DepositRule).
+  enableOnlineDepositPayment: boolean;
+
+  // Table Assignment
   autoAssignTable: boolean;
   allowGuestTablePreference: boolean;
 
-  // Deposit Payment
-  enableOnlineDepositPayment: boolean;
-
-  // Category 9: Guest-Facing Messages
+  // Guest-Facing Messages
   confirmationMessage: string | null;
   bookingPageWelcomeMessage: string | null;
   termsAndConditions: string | null;
 }
 
-export declare interface PublicReservationSetting extends ReservationSetting {
-  location: string;
-
-  // Branding (from business)
-  logoUrl: string | null;
-  bannerImageUrl: string | null;
-  primaryColor: string | null;
-  secondaryColor: string | null;
-  faviconUrl: string | null;
-  fontFamily: string | null;
-
-  // SEO (from business)
-  metaTitle: string | null;
-  metaDescription: string | null;
-  shareImageUrl: string | null;
-
-  // Socials (from business)
-  facebook: string | null;
-  twitter: string | null;
-  instagram: string | null;
-  linkedin: string | null;
-  youtube: string | null;
-  tiktok: string | null;
-  website: string | null;
+/**
+ * Mirrors the OMS {@code PublicReservationSettingDto}. Returned from
+ * {@code GET /api/v1/public/locations/{locationId}/reservations/settings}.
+ * Strict subset of {@link ReservationSetting} — never exposes pacing /
+ * internal fields to public callers.
+ */
+export declare interface PublicReservationSetting {
+  enableOnlineBooking: boolean;
+  requireGuestEmail: boolean;
+  requireGuestPhone: boolean;
+  allowSpecialRequests: boolean;
+  enableOnlineDepositPayment: boolean;
+  minPartySize: number;
+  maxPartySize: number | null;
+  bookingWindowDays: number;
+  minAdvanceBookingHours: number;
+  bookingPageWelcomeMessage: string | null;
+  termsAndConditions: string | null;
+  confirmationMessage: string | null;
 }
 
-export type BookingQuestionType =
-  | "MULTI_SELECT"
-  | "SINGLE_SELECT"
-  | "ACKNOWLEDGEMENT"
-  | "FREE_TEXT";
-
+/** Mirrors {@code BookingQuestionOption}. */
 export declare interface BookingQuestionOption {
   id?: UUID;
-  optionValue: string;
+  label: string;
+  value: string;
   sortOrder: number;
 }
 
+/** Mirrors {@code BookingQuestionResponse}. */
 export declare interface BookingQuestion {
   id: UUID;
   questionText: string;
@@ -110,6 +115,7 @@ export type ReservationSettingCategory =
   | "notifications"
   | "pacing"
   | "waitlist"
+  | "deposit_collection"
   | "table_assignment"
   | "messages";
 
@@ -271,6 +277,16 @@ export const RESERVATION_SETTINGS_CONFIG: ReservationSettingField[] = [
     step: 0.01,
     dependsOn: "chargeNoShowFee",
   },
+  {
+    key: "noShowGraceMinutes",
+    label: "No-Show Grace Period (minutes)",
+    type: "number",
+    category: "cancellation",
+    placeholder: "30",
+    helperText: "Wait this long after reservation time before marking NO_SHOW",
+    min: 0,
+    step: 5,
+  },
 
   // Notifications & Reminders
   {
@@ -361,6 +377,16 @@ export const RESERVATION_SETTINGS_CONFIG: ReservationSettingField[] = [
     dependsOn: "enableWaitlist",
   },
 
+  // Deposit Collection (deposit RULES live in DepositRule, not here)
+  {
+    key: "enableOnlineDepositPayment",
+    label: "Collect Deposits Online",
+    type: "switch",
+    category: "deposit_collection",
+    helperText:
+      "When on, deposits are taken via Payment Service (mobile money, card). When off, staff manually confirm payments.",
+  },
+
   // Table Assignment
   {
     key: "autoAssignTable",
@@ -375,13 +401,6 @@ export const RESERVATION_SETTINGS_CONFIG: ReservationSettingField[] = [
     type: "switch",
     category: "table_assignment",
     helperText: "Let guests request a table or area preference",
-  },
-  {
-    key: "enableOnlineDepositPayment",
-    label: "Enable Online Deposit Payment",
-    type: "switch",
-    category: "table_assignment",
-    helperText: "Collect deposits via mobile payment (Selcom). When off, staff confirms deposits manually.",
   },
 
   // Guest-Facing Messages
@@ -421,6 +440,15 @@ export const RESERVATION_SETTING_CATEGORY_TITLES: Record<
   notifications: "Notifications & Reminders",
   pacing: "Pacing & Capacity",
   waitlist: "Waitlist",
+  deposit_collection: "Deposit Collection",
   table_assignment: "Table Assignment",
   messages: "Guest-Facing Messages",
+};
+
+export const BOOKING_QUESTION_TYPE_LABELS: Record<BookingQuestionType, string> = {
+  [BookingQuestionType.TEXT]: "Free text",
+  [BookingQuestionType.NUMBER]: "Number",
+  [BookingQuestionType.BOOLEAN]: "Yes / No",
+  [BookingQuestionType.SINGLE_CHOICE]: "Single choice",
+  [BookingQuestionType.MULTI_CHOICE]: "Multiple choice",
 };

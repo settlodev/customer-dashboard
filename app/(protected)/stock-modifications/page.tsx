@@ -1,88 +1,99 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  PageShell,
+  PageHeader,
+  PageBreadcrumbs,
+  PageBody,
+} from "@/components/layouts/page-shell";
 import NoItems from "@/components/layouts/no-items";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-modification/column";
 import { searchStockModifications } from "@/lib/actions/stock-modification-actions";
-import { StockModification } from "@/types/stock-modification/type";
+import { softFetch } from "@/lib/list-fallback";
+import { getCurrentDestination } from "@/lib/actions/context";
+import { getStockModificationKpi } from "@/lib/actions/reports-analytics-actions";
+import { StockModificationKpiStrip } from "@/components/widgets/inventory/stock-management-kpi-strips";
 import { Plus } from "lucide-react";
-
-const breadCrumbItems = [
-  { title: "Stock Modification", link: "/stock-modifications" },
-];
+import {
+  MODIFICATION_CATEGORY_OPTIONS,
+  ModificationCategory,
+} from "@/types/stock-modification/type";
 
 type Params = {
   searchParams: Promise<{
-    search?: string;
     page?: string;
     limit?: string;
+    category?: string;
   }>;
 };
 
-async function Page({ searchParams }: Params) {
-  const resolvedSearchParams = await searchParams;
+export default async function Page({ searchParams }: Params) {
+  const resolvedParams = await searchParams;
+  const page = Number(resolvedParams.page) || 0;
+  const pageLimit = Number(resolvedParams.limit) || 20;
+  const category = MODIFICATION_CATEGORY_OPTIONS.some(
+    (o) => o.value === resolvedParams.category,
+  )
+    ? (resolvedParams.category as ModificationCategory)
+    : undefined;
 
-  const q = resolvedSearchParams.search || "";
-  const page = Number(resolvedSearchParams.page) || 0;
-  const pageLimit = Number(resolvedSearchParams.limit);
+  const [responseData, location] = await Promise.all([
+    softFetch(searchStockModifications(page ? page - 1 : 0, pageLimit, category)),
+    getCurrentDestination(),
+  ]);
 
-  const responseData = await searchStockModifications(q, page, pageLimit);
+  const data = responseData?.content ?? [];
+  const total = responseData?.totalElements ?? 0;
+  const pageCount = responseData?.totalPages ?? 0;
 
-  const data: StockModification[] = responseData.content;
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  const kpi = location?.id ? await getStockModificationKpi(location.id) : null;
 
   return (
-    <div className="flex-1 space-y-4 px-4 lg:px-8 mt-1">
-      {/* Header row */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2 pt-4">
-        <BreadcrumbsNav items={breadCrumbItems} />
-
-        <div className="self-end sm:self-auto">
-          <Button asChild>
-            <Link href="/stock-modifications/new">
-              <Plus className="h-4 w-4 sm:mr-1.5" />
-              <span className="hidden sm:inline">Modify Stock Item</span>
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      {total > 0 || q !== "" ? (
-        <Card>
-          <CardHeader className="px-4 sm:px-6">
-            <CardTitle>Stock Modifications</CardTitle>
-            <CardDescription>
-              Modify stock in your business location
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-2 sm:px-6">
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Stock Modifications" }]} />
+      <PageHeader
+        title="Stock Modifications"
+        subtitle="Adjust stock for damages, losses, write-offs, and reclassifications."
+        actions={
+          <>
+            <Button asChild size="sm">
+              <Link href="/stock-modifications/new">
+                <Plus className="mr-1.5 h-4 w-4" />
+                Modify Stock
+              </Link>
+            </Button>
+          </>
+        }
+      />
+      <PageBody>
+        {!responseData ? (
+          <DataLoadError itemName="stock modifications" />
+        ) : total > 0 || category ? (
+          <>
+            <StockModificationKpiStrip summary={kpi} />
             <DataTable
               columns={columns}
               data={data}
-              searchKey="stockVariantName"
+              searchKey="modificationNumber"
               pageNo={page}
               total={total}
               pageCount={pageCount}
+              defaultPageSize={pageLimit}
+              disableArchive
+              rowClickBasePath="/stock-modifications"
+              filterKey="category"
+              filterOptions={MODIFICATION_CATEGORY_OPTIONS.map((o) => ({
+                label: o.label,
+                value: o.value,
+              }))}
             />
-          </CardContent>
-        </Card>
-      ) : (
-        <NoItems
-          newItemUrl="/stock-modifications/new"
-          itemName="Stock Modifications"
-        />
-      )}
-    </div>
+          </>
+        ) : (
+          <NoItems newItemUrl="/stock-modifications/new" itemName="stock modifications" />
+        )}
+      </PageBody>
+    </PageShell>
   );
 }
-
-export default Page;

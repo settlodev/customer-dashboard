@@ -1,292 +1,202 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import * as Sentry from "@sentry/nextjs";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   MapPin,
   Loader2Icon,
   ChevronRight,
-  PlusIcon,
   Warehouse,
+  Store as StoreIcon,
 } from "lucide-react";
 import { Location } from "@/types/location/type";
-import { refreshLocation, clearBusiness } from "@/lib/actions/business/refresh";
+import { Store } from "@/types/store/type";
+import { Warehouses } from "@/types/warehouse/warehouse/type";
+import type { SubscriptionItemStatus } from "@/types/billing/types";
+import { clearBusiness } from "@/lib/actions/business/refresh";
+import {
+  switchToLocation,
+  switchToStore,
+  switchToWarehouse,
+} from "@/lib/actions/destination";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import WareHouseRegisterForm from "@/components/forms/warehouse/register_form";
-import { refreshWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
-import WarehouseSubscriptionModal from "@/components/widgets/warehouse/warehouse-subscription-modal";
-import { UUID } from "crypto";
-import PaymentStatusModal from "@/components/widgets/paymentStatusModal";
-import { createInvoice, payInvoice } from "@/lib/actions/invoice-actions";
-import { verifyPayment } from "@/lib/actions/subscriptions";
+
+type DestKind = "location" | "warehouse" | "store";
+
+// Common shape across the three destination types — every entity carries
+// id / name / active, plus a few optional fields used for the subtitle line.
+type DestItem = {
+  id: string;
+  name: string;
+  active?: boolean;
+  address?: string;
+  region?: string;
+  district?: string;
+  code?: string;
+  description?: string;
+};
+
+const TAB_META: Record<
+  DestKind,
+  { label: string; singular: string; Icon: typeof MapPin }
+> = {
+  location: { label: "Locations", singular: "location", Icon: MapPin },
+  warehouse: { label: "Warehouses", singular: "warehouse", Icon: Warehouse },
+  store: { label: "Stores", singular: "store", Icon: StoreIcon },
+};
+
+// A lapsed subscription is the headline signal on each destination tile. A
+// deactivated entity with no status row falls back to a plain "Inactive".
+const PAYMENT_BADGE: Partial<
+  Record<SubscriptionItemStatus, { label: string; className: string }>
+> = {
+  EXPIRED: { label: "Payment expired", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+  PAST_DUE: { label: "Payment due", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+  SUSPENDED: { label: "Suspended", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+  CANCELLED: { label: "Cancelled", className: "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300" },
+};
+
+function getStatusBadge(
+  item: DestItem,
+  status?: SubscriptionItemStatus,
+): { label: string; className: string } | null {
+  const lapsed = status ? PAYMENT_BADGE[status] : undefined;
+  if (lapsed) return lapsed;
+  if (item.active === false) {
+    return {
+      label: "Inactive",
+      className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+    };
+  }
+  return null;
+}
+
+// Selection should land on /billing (renew) rather than the workspace when
+// payment has lapsed or the entity is deactivated.
+function isBillingBlocked(item: DestItem, status?: SubscriptionItemStatus): boolean {
+  return (
+    item.active === false ||
+    status === "EXPIRED" ||
+    status === "PAST_DUE" ||
+    status === "SUSPENDED" ||
+    status === "CANCELLED"
+  );
+}
 
 const LocationList = ({
   locations,
   businessName,
   warehouses,
+  stores,
+  entityStatuses = {},
 }: {
   locations: Location[];
   businessName: string;
-  warehouses: any[];
+  warehouses: Warehouses[];
+  stores: Store[];
+  entityStatuses?: Record<string, SubscriptionItemStatus>;
 }) => {
   const [pendingIndex, setPendingIndex] = useState<number | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [locationType, setLocationType] = useState<"all" | "warehouse">("all");
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [selectedWarehouse, setSelectedWarehouse] = useState<any>(null);
-  const [paymentStatus, setPaymentStatus] = useState<
-    "INITIATING" | "PENDING" | "PROCESSING" | "FAILED" | "SUCCESS" | null
-  >(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
   const { toast } = useToast();
+  const autoSelectRan = useRef(false);
 
-  const displayedItems = useMemo(() => {
-    return locationType === "warehouse" ? warehouses : locations;
-  }, [locations, warehouses, locationType]);
+  // Only show a tab for a destination type that actually exists. Locations
+  // are always present (the page redirects to /business-location otherwise);
+  // warehouses and stores appear only when the business has any.
+  const tabs = useMemo<DestKind[]>(() => {
+    const t: DestKind[] = ["location"];
+    if (warehouses.length > 0) t.push("warehouse");
+    if (stores.length > 0) t.push("store");
+    return t;
+  }, [warehouses.length, stores.length]);
 
-  const getSubscriptionState = (
-    subscriptionStatus: string | null | undefined,
-  ) => {
-    switch (subscriptionStatus) {
-      case "EXPIRED":
-      case "EXPIRED_TRIAL":
-      case "DUE":
-      case "PAST_DUE":
-      case null:
-      case undefined:
-      case "":
-        return "inactive";
-      default:
-        return "active";
-    }
-  };
+  const [activeTab, setActiveTab] = useState<DestKind>("location");
 
-  const handlePendingPayment = useCallback(
-    (transactionId: string, invoice: string) => {
-      setTimeout(() => {
-        let attemptCount = 0;
-        const maxAttempts = 12;
-        const pollingInterval = 5000;
-        const maxDuration = 300000;
-        const startTime = Date.now();
+  const displayedItems = useMemo<DestItem[]>(() => {
+    if (activeTab === "warehouse") return warehouses as DestItem[];
+    if (activeTab === "store") return stores as DestItem[];
+    return locations as DestItem[];
+  }, [activeTab, locations, warehouses, stores]);
 
-        const verificationInterval = setInterval(async () => {
-          attemptCount++;
-
-          if (Date.now() - startTime > maxDuration) {
-            clearInterval(verificationInterval);
-            setPaymentStatus("FAILED");
-            toast({
-              title: "Payment Timeout",
-              description:
-                "Payment verification timed out. Please check your payment status.",
-              variant: "destructive",
-            });
-            return;
-          }
-
-          try {
-            const verificationResult = await verifyPayment(
-              transactionId,
-              invoice,
-            );
-            setPaymentStatus(verificationResult.invoicePaymentStatus);
-
-            if (verificationResult.invoicePaymentStatus === "SUCCESS") {
-              clearInterval(verificationInterval);
-              handleSuccessfulPayment(verificationResult);
-            } else if (
-              verificationResult.invoicePaymentStatus === "PROCESSING"
-            ) {
-              setPaymentStatus("PROCESSING");
-            } else if (verificationResult.invoicePaymentStatus === "FAILED") {
-              clearInterval(verificationInterval);
-              setPaymentStatus("FAILED");
-              setTimeout(() => setIsModalOpen(false), 2000);
-            } else if (attemptCount >= maxAttempts) {
-              clearInterval(verificationInterval);
-              setPaymentStatus("FAILED");
-            }
-          } catch (error) {
-            console.error("Payment verification error:", error);
-            clearInterval(verificationInterval);
-            setPaymentStatus("FAILED");
-          }
-        }, pollingInterval);
-      }, 20000);
-    },
-    [toast],
-  );
-
-  const handleWarehouseSubscription = async (
-    packageId: string,
-    email: string,
-    phone: string,
-    numberOfMonths: number,
-  ) => {
-    try {
-      setIsModalOpen(true);
-      setPaymentStatus("INITIATING");
-
-      const invoicePayload = {
-        warehouseSubscriptions: [
-          {
-            warehouseId: selectedWarehouse.id,
-            subscriptionDurationType: "MONTHS",
-            subscriptionDurationCount: numberOfMonths,
-            warehouseSubscriptionPackageId: packageId,
-          },
-        ],
-        email,
-        phone,
-      };
-
-      const response = await createInvoice(invoicePayload);
-
-      if (response && typeof response === "object" && "id" in response) {
-        const invoiceId = (response as { id: UUID }).id;
-
-        try {
-          setPaymentStatus("PENDING");
-          const paymentResponse = await payInvoice(invoiceId, email, phone);
-          setPaymentStatus("PROCESSING");
-          handlePendingPayment(paymentResponse.id, paymentResponse.invoice);
-        } catch (error) {
-          console.error("Error paying invoice:", error);
-          setPaymentStatus("FAILED");
-          setTimeout(() => setIsModalOpen(false), 3000);
-        }
-      }
-
-      setShowSubscriptionModal(false);
-      setSelectedWarehouse(null);
-    } catch (error: any) {
-      console.error("Error creating invoice:", error);
-      setPaymentStatus("FAILED");
-      setTimeout(() => setIsModalOpen(false), 3000);
-
-      toast({
-        variant: "destructive",
-        title: "Subscription Failed",
-        description:
-          "There was an error processing your subscription. Please try again.",
-      });
-    }
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleSuccessfulPayment = useCallback(
-    (_response: any) => {
-      toast({
-        title: "Subscription Successful",
-        description: "Your warehouse subscription has been activated.",
-      });
-
-      setTimeout(async () => {
-        setIsModalOpen(false);
-        setIsRedirecting(true);
-        await refreshWarehouse(selectedWarehouse);
-        window.location.href = "/warehouse";
-      }, 2000);
-    },
-    [selectedWarehouse, toast],
-  );
-
-  const handleLocationSelect = async (item: any, index: number) => {
+  const handleSelect = async (item: DestItem, index: number, kind: DestKind) => {
     if (isRedirecting || pendingIndex !== null) return;
     setPendingIndex(index);
-
-    const isWarehouse = locationType === "warehouse";
-    const isInactive =
-      getSubscriptionState(item.subscriptionStatus) === "inactive";
-
-    if (isWarehouse) {
-      if (isInactive) {
-        setSelectedWarehouse(item);
-        setShowSubscriptionModal(true);
-        setPendingIndex(null);
-        return;
-      }
-      setIsRedirecting(true);
-      await refreshWarehouse(item);
-      window.location.href = "/warehouse";
-    } else {
-      if (isInactive) {
-        toast({
-          variant: "destructive",
-          title: "Subscription Expired",
-          description: "Please renew your subscription to continue.",
-        });
-        setIsRedirecting(true);
-        await refreshLocation(item);
-        window.location.href = `/renew-subscription?location=${item.id}`;
-      } else {
-        setIsRedirecting(true);
-        await refreshLocation(item);
-        window.location.href = "/dashboard";
-      }
-    }
-
-    setPendingIndex(null);
-  };
-
-  const handleSuccessfulCreation = () => {
     setIsRedirecting(true);
-    toast({
-      title: "Warehouse Created",
-      description: "Your warehouse has been created successfully.",
-    });
-    setTimeout(() => {
-      window.location.href = "/select-location";
-    }, 1500);
+
+    try {
+      // Routing mirrors the in-app destination switcher
+      // (components/navigation/location-switcher.tsx): active destinations
+      // go to their landing page and the per-destination subscription claim
+      // is enforced downstream by middleware; an inactive one is bounced to
+      // the right recovery flow.
+      const status = entityStatuses[item.id];
+      if (kind === "warehouse") {
+        await switchToWarehouse(item as unknown as Warehouses);
+        window.location.href = isBillingBlocked(item, status)
+          ? "/billing"
+          : "/warehouse";
+      } else if (kind === "store") {
+        await switchToStore(item as unknown as Store);
+        // A store always ships with a plan, so a blocked store means a lapsed
+        // payment → send them to /billing to renew instead of bouncing back
+        // here (previously /select-location, an infinite loop). Otherwise land
+        // on Stock items — a store has no sales/analytics dashboard.
+        window.location.href = isBillingBlocked(item, status)
+          ? "/billing"
+          : "/stock-variants";
+      } else {
+        await switchToLocation(item as unknown as Location);
+        // Locations keep the onboarding-recovery path: an inactive location may
+        // simply have no plan yet (→ plan picker).
+        window.location.href = item.active
+          ? "/dashboard"
+          : `/subscription?location=${item.id}`;
+      }
+    } catch (error) {
+      Sentry.captureException(error);
+      setIsRedirecting(false);
+      setPendingIndex(null);
+      toast({
+        variant: "destructive",
+        title: "Something went wrong",
+        description: "Couldn't open that destination. Please try again.",
+      });
+    }
   };
 
-  const getStatusBadge = (item: any) => {
-    const isInactive =
-      getSubscriptionState(item.subscriptionStatus) === "inactive";
-    if (!isInactive) return null;
+  // Auto-select when there is exactly one destination overall — a single
+  // location and nothing else. Runs once on mount.
+  useEffect(() => {
+    if (
+      locations.length === 1 &&
+      warehouses.length === 0 &&
+      stores.length === 0 &&
+      !autoSelectRan.current
+    ) {
+      autoSelectRan.current = true;
+      handleSelect(locations[0] as DestItem, 0, "location");
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const isWarehouse = locationType === "warehouse";
+  const getSubtitle = (item: DestItem, kind: DestKind): string | null => {
+    if (kind === "warehouse") {
+      if (item.code) return `Code · ${item.code}`;
+      return item.description || null;
+    }
     return (
-      <span
-        className={cn(
-          "text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full",
-          isWarehouse
-            ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
-            : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-        )}
-      >
-        {isWarehouse ? "Unsubscribed" : "Expired"}
-      </span>
+      item.address ||
+      [item.region, item.district].filter(Boolean).join(", ") ||
+      null
     );
   };
 
   return (
     <section className="relative">
-      {showCreateModal && (
-        <WareHouseRegisterForm
-          setShowCreateModal={setShowCreateModal}
-          onSuccess={handleSuccessfulCreation}
-        />
-      )}
-
-      {showSubscriptionModal && selectedWarehouse && (
-        <WarehouseSubscriptionModal
-          warehouse={selectedWarehouse}
-          onClose={() => {
-            setShowSubscriptionModal(false);
-            setSelectedWarehouse(null);
-          }}
-          onSubscribe={handleWarehouseSubscription}
-        />
-      )}
-
       <div className="relative w-full max-w-md mx-auto">
         {isRedirecting && (
-          <div className="absolute inset-0 bg-white/60 dark:bg-gray-950/60 backdrop-blur-sm z-30 rounded-xl flex items-center justify-center flex-col gap-3">
+          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm z-30 rounded-xl flex items-center justify-center flex-col gap-3">
             <Loader2Icon className="w-6 h-6 text-primary animate-spin" />
             <p className="text-sm text-primary font-medium">Redirecting...</p>
           </div>
@@ -297,138 +207,114 @@ const LocationList = ({
             {businessName}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Choose a {locationType === "warehouse" ? "warehouse" : "location"}{" "}
-            to continue
+            Choose a {TAB_META[activeTab].singular} to continue
           </p>
         </div>
 
-        {/* Toggle */}
-        <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-5">
-          <button
-            onClick={() => setLocationType("all")}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200",
-              locationType === "all"
-                ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700",
-            )}
-          >
-            <MapPin className="w-4 h-4" />
-            Locations
-          </button>
-          <button
-            onClick={() => setLocationType("warehouse")}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200",
-              locationType === "warehouse"
-                ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700",
-            )}
-          >
-            <Warehouse className="w-4 h-4" />
-            Warehouses
-          </button>
-        </div>
+        {/* Tabs — only rendered when more than one destination type exists */}
+        {tabs.length > 1 && (
+          <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-5">
+            {tabs.map((kind) => {
+              const { label, Icon } = TAB_META[kind];
+              return (
+                <button
+                  key={kind}
+                  onClick={() => setActiveTab(kind)}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200",
+                    activeTab === kind
+                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700",
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* List */}
         <div className="space-y-3 max-h-[60vh] overflow-y-auto">
           {displayedItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 px-4">
               <div className="w-14 h-14 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-                {locationType === "warehouse" ? (
-                  <Warehouse className="w-6 h-6 text-gray-400" />
-                ) : (
-                  <MapPin className="w-6 h-6 text-gray-400" />
-                )}
+                {React.createElement(TAB_META[activeTab].Icon, {
+                  className: "w-6 h-6 text-gray-400",
+                })}
               </div>
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                No {locationType === "warehouse" ? "warehouses" : "locations"}{" "}
-                found
+                No {TAB_META[activeTab].label.toLowerCase()} found
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                Create a new{" "}
-                {locationType === "warehouse" ? "warehouse" : "location"} to get
-                started
-              </p>
-              {locationType === "warehouse" && (
-                <Button
-                  className="mt-5 bg-primary hover:bg-primary/90 rounded-lg text-sm"
-                  onClick={() => setShowCreateModal(true)}
-                >
-                  <PlusIcon className="w-4 h-4 mr-1.5" />
-                  Create Warehouse
-                </Button>
-              )}
             </div>
           ) : (
-            displayedItems.map((item, index) => (
-              <button
-                key={item.id}
-                onClick={() => handleLocationSelect(item, index)}
-                disabled={pendingIndex === index || isRedirecting}
-                className={cn(
-                  "w-full flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 text-left",
-                  pendingIndex === index
-                    ? "border-primary/30 bg-primary/5"
-                    : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-primary/30 hover:shadow-sm",
-                )}
-              >
-                <div
+            displayedItems.map((item, index) => {
+              const subtitle = getSubtitle(item, activeTab);
+              const isWarehouse = activeTab === "warehouse";
+              const badge = getStatusBadge(item, entityStatuses[item.id]);
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleSelect(item, index, activeTab)}
+                  disabled={pendingIndex === index || isRedirecting}
                   className={cn(
-                    "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0",
-                    locationType === "warehouse"
+                    "w-full flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 text-left",
+                    pendingIndex === index
                       ? "border-primary/30 bg-primary/5"
-                      : "bg-primary/10",
+                      : "border-border bg-card hover:border-primary/30 hover:shadow-sm",
                   )}
                 >
-                  {locationType === "warehouse" ? (
-                    <Warehouse className="w-5 h-5 text-primary" />
-                  ) : (
-                    <MapPin className="w-5 h-5 text-primary" />
-                  )}
-                </div>
-                <div className="flex-grow min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
-                      {item.name}
-                    </h3>
-                    {getStatusBadge(item)}
+                  <div
+                    className={cn(
+                      "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0",
+                      isWarehouse ? "bg-blue-50 dark:bg-blue-900/20" : "bg-primary/10",
+                    )}
+                  >
+                    {React.createElement(TAB_META[activeTab].Icon, {
+                      className: cn(
+                        "w-5 h-5",
+                        isWarehouse
+                          ? "text-blue-600 dark:text-blue-400"
+                          : "text-primary",
+                      ),
+                    })}
                   </div>
-                  {item.city && (
-                    <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                      <MapPin className="w-3 h-3" />
-                      <span className="truncate">
-                        {item.city}
-                        {item.address ? ` · ${item.address}` : ""}
-                      </span>
+                  <div className="flex-grow min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
+                        {item.name}
+                      </h3>
+                      {badge && (
+                        <span
+                          className={cn(
+                            "text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full",
+                            badge.className,
+                          )}
+                        >
+                          {badge.label}
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
-                <div className="flex-shrink-0">
-                  {pendingIndex === index ? (
-                    <Loader2Icon className="w-5 h-5 text-primary animate-spin" />
-                  ) : (
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  )}
-                </div>
-              </button>
-            ))
+                    {subtitle && (
+                      <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                        {!isWarehouse && <MapPin className="w-3 h-3" />}
+                        <span className="truncate">{subtitle}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0">
+                    {pendingIndex === index ? (
+                      <Loader2Icon className="w-5 h-5 text-primary animate-spin" />
+                    ) : (
+                      <ChevronRight className="w-5 h-5 text-gray-400" />
+                    )}
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
-
-        {/* Create warehouse */}
-        {locationType === "warehouse" && displayedItems.length > 0 && (
-          <div className="mt-5">
-            <Button
-              variant="outline"
-              className="w-full rounded-xl border-dashed border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-primary/40 hover:text-primary transition-colors"
-              onClick={() => setShowCreateModal(true)}
-            >
-              <PlusIcon className="w-4 h-4 mr-1.5" />
-              Create New Warehouse
-            </Button>
-          </div>
-        )}
 
         {/* Switch business */}
         <div className="mt-6 text-center">
@@ -445,12 +331,6 @@ const LocationList = ({
           </button>
         </div>
       </div>
-
-      <PaymentStatusModal
-        isOpen={isModalOpen}
-        status={paymentStatus}
-        onClose={() => setIsModalOpen(false)}
-      />
     </section>
   );
 };

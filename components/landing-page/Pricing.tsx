@@ -1,187 +1,73 @@
 "use client";
-import { fetchSubscriptions } from "@/lib/actions/subscriptions";
-import { Subscriptions, SubscriptionFeature } from "@/types/subscription/type";
-import { ArrowRight, CheckIcon, Sparkles } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 
-interface PricingCardProps {
-  sub: Subscriptions;
-  packageName: string;
-  amount: number;
-  discount: number;
-  packageCode: string;
-  subscriptionFeatures: string[];
-  isPopular?: boolean;
-}
-const EXCLUDED_PACKAGE_NAMES = ["SETTLO BASIC"];
+import { getPackages } from "@/lib/actions/billing-actions";
+import type { Package } from "@/types/billing/types";
+import { AnimatePresence, motion } from "framer-motion";
+import { RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { PricingCard } from "@/components/landing-page/PricingCard";
 
-const PricingCard: React.FC<PricingCardProps> = ({
-  sub,
-  packageName,
-  amount,
-  subscriptionFeatures,
-  isPopular = false,
-}) => {
-  const router = useRouter();
-  const [showAll, setShowAll] = useState(false);
-  const shouldShowMoreButton = subscriptionFeatures.length > 10;
-  const displayedFeatures = showAll
-    ? subscriptionFeatures
-    : subscriptionFeatures.slice(0, 10);
+type EntityType = "LOCATION" | "STORE" | "WAREHOUSE";
+type TabStatus = "idle" | "loading" | "error";
 
-  const annualAmount = amount * 12;
-  const formattedAnnualAmount = annualAmount.toLocaleString("en-US", {
-    style: "currency",
-    currency: "TZS",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
+const TABS: { label: string; value: EntityType }[] = [
+  { label: "Store", value: "STORE" },
+  { label: "Location", value: "LOCATION" },
+  { label: "Warehouse", value: "WAREHOUSE" },
+];
 
-  const handleGetStarted = () => {
-    router.push(`/register?package=${sub.id}`);
-  };
-
-  return (
-    <div
-      className={`relative flex flex-col rounded-2xl p-6 transition-all duration-300 ${
-        isPopular
-          ? "bg-gray-900 text-white shadow-2xl scale-[1.03]"
-          : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:shadow-lg"
-      }`}
-    >
-      {isPopular && (
-        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-          <span className="inline-flex items-center gap-1.5 bg-primary text-white px-4 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow-md">
-            <Sparkles className="w-3.5 h-3.5" />
-            Most Popular
-          </span>
-        </div>
-      )}
-
-      <div className="mb-8">
-        <h3
-          className={`text-sm font-semibold uppercase tracking-wider mb-4 ${
-            isPopular ? "text-primary" : "text-primary"
-          }`}
-        >
-          {packageName}
-        </h3>
-        <div className="flex items-baseline gap-1">
-          <span
-            className={`text-4xl font-bold ${
-              isPopular ? "text-white" : "text-gray-900 dark:text-gray-100"
-            }`}
-          >
-            {formattedAnnualAmount}
-          </span>
-          <span
-            className={`text-sm ${
-              isPopular ? "text-gray-400" : "text-gray-500"
-            }`}
-          >
-            /year
-          </span>
-        </div>
-      </div>
-
-      <div
-        className={`h-px mb-6 ${
-          isPopular ? "bg-gray-700" : "bg-gray-100 dark:bg-gray-800"
-        }`}
-      />
-
-      <div className="flex-grow space-y-3.5 mb-8">
-        {displayedFeatures.map((feature, index) => (
-          <div key={index} className="flex items-start gap-3">
-            <div
-              className={`flex-shrink-0 rounded-full p-0.5 mt-0.5 ${
-                isPopular ? "bg-primary/20" : "bg-primary/10"
-              }`}
-            >
-              <CheckIcon
-                className={`w-3.5 h-3.5 ${
-                  isPopular ? "text-primary" : "text-primary"
-                }`}
-                strokeWidth={3}
-              />
-            </div>
-            <span
-              className={`text-sm leading-relaxed ${
-                isPopular ? "text-gray-300" : "text-gray-600 dark:text-gray-400"
-              }`}
-            >
-              {feature}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-auto space-y-3">
-        {shouldShowMoreButton && !showAll ? (
-          <button
-            onClick={() => setShowAll(true)}
-            className={`w-full px-6 py-3 rounded-xl text-sm font-medium transition-colors duration-200 ${
-              isPopular
-                ? "text-gray-300 bg-gray-800 hover:bg-gray-700"
-                : "text-primary bg-primary/5 hover:bg-primary/10"
-            }`}
-          >
-            Show All Features
-          </button>
-        ) : (
-          <button
-            onClick={handleGetStarted}
-            className={`w-full px-6 py-3.5 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 text-sm ${
-              isPopular
-                ? "bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/25"
-                : "bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100"
-            }`}
-          >
-            Get Started
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-    </div>
-  );
+// Plans to exclude per entity type, e.g. Basic isn't offered for Location
+const EXCLUDED_CODES: Partial<Record<EntityType, string[]>> = {
+  LOCATION: ["BASIC"],
 };
 
 export const Pricing: React.FC = () => {
-  const [subscriptions, setSubscriptions] = useState<Subscriptions[]>([]);
+  const [activeTab, setActiveTab] = useState<EntityType>("LOCATION");
+  const [packagesByType, setPackagesByType] = useState<
+    Partial<Record<EntityType, Package[]>>
+  >({});
+  const [status, setStatus] = useState<Record<EntityType, TabStatus>>({
+    STORE: "idle",
+    LOCATION: "idle",
+    WAREHOUSE: "idle",
+  });
 
-  useEffect(() => {
-    const getSubscriptions = async () => {
-      try {
-        const data = await fetchSubscriptions();
-        const filteredPlans = data.filter((plan) => {
-          const name = plan.packageName.toUpperCase().trim();
-          const isTrial = name.includes("TRIAL");
-          const isExcluded = EXCLUDED_PACKAGE_NAMES.includes(name);
-          return !isTrial && !isExcluded;
-        });
-        setSubscriptions(filteredPlans);
-      } catch (error) {
-        console.error("Error fetching subscriptions:", error);
-      }
-    };
-    getSubscriptions();
+  const fetchPlans = useCallback(async (type: EntityType) => {
+    setStatus((prev) => ({ ...prev, [type]: "loading" }));
+    try {
+      const data = await getPackages(type);
+      const excludedCodes = EXCLUDED_CODES[type] ?? [];
+      setPackagesByType((prev) => ({
+        ...prev,
+        [type]: data.filter(
+          (p) => p.isActive && !excludedCodes.some((code) => p.code?.includes(code)),
+        ),
+      }));
+      setStatus((prev) => ({ ...prev, [type]: "idle" }));
+    } catch (error) {
+      console.error("Error fetching packages:", error);
+      setStatus((prev) => ({ ...prev, [type]: "error" }));
+    }
   }, []);
 
-  const isPopularPackage = (subscription: Subscriptions): boolean => {
-    return subscription.packageName.toLowerCase().includes("professional");
-  };
+  useEffect(() => {
+    if (packagesByType[activeTab] || status[activeTab] !== "idle") return;
+    fetchPlans(activeTab);
+  }, [activeTab, packagesByType, status, fetchPlans]);
+
+  const packages = packagesByType[activeTab] ?? [];
+  const loading = status[activeTab] === "loading";
+  const hasError = status[activeTab] === "error";
 
   return (
     <section
       id="pricing"
       className="relative z-20 w-full overflow-hidden py-28 md:py-32"
     >
-      {/* Background */}
-      <div className="absolute inset-0 bg-white dark:bg-gray-950" />
+      <div className="absolute inset-0 bg-background" />
 
       <div className="relative max-w-[85rem] mx-auto px-4">
-        <div className="max-w-2xl mx-auto text-center mb-14 md:mb-20">
+        <div className="max-w-2xl mx-auto text-center mb-12 md:mb-16">
           <h2
             className="text-3xl md:text-4xl lg:text-[2.75rem] font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-5"
             style={{ lineHeight: "1.35" }}
@@ -197,22 +83,103 @@ export const Pricing: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 max-w-5xl mx-auto items-start">
-          {subscriptions.map((sub) => (
-            <PricingCard
-              key={sub.id}
-              sub={sub}
-              packageName={sub.packageName}
-              amount={sub.amount}
-              discount={sub.discount}
-              packageCode={sub.packageCode}
-              subscriptionFeatures={sub.subscriptionFeatures.map(
-                (feature) => (feature as SubscriptionFeature).name,
-              )}
-              isPopular={isPopularPackage(sub)}
-            />
-          ))}
+        {/* Tab switcher */}
+        <div className="flex justify-center mb-14">
+          <div className="relative inline-flex items-center gap-1 p-1 rounded-full bg-gray-100 dark:bg-gray-800/60 border border-border">
+            {TABS.map((tab) => {
+              const isActive = tab.value === activeTab;
+              return (
+                <button
+                  key={tab.value}
+                  onClick={() => setActiveTab(tab.value)}
+                  className="relative px-5 py-2 text-sm font-medium rounded-full transition-colors duration-200"
+                >
+                  {isActive && (
+                    <motion.span
+                      layoutId="pricing-tab-pill"
+                      className="absolute inset-0 bg-white dark:bg-gray-900 rounded-full shadow-sm"
+                      transition={{
+                        type: "spring",
+                        stiffness: 400,
+                        damping: 32,
+                      }}
+                    />
+                  )}
+                  <span
+                    className={`relative z-10 ${
+                      isActive
+                        ? "text-gray-900 dark:text-gray-100"
+                        : "text-gray-500 dark:text-gray-400"
+                    }`}
+                  >
+                    {tab.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
+
+        {/* Cards */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 max-w-5xl mx-auto min-h-[24rem] items-start"
+          >
+            {loading &&
+              Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl border border-border bg-card animate-pulse h-96"
+                />
+              ))}
+
+            {!loading &&
+              !hasError &&
+              packages.map((plan, index) => {
+                const isPopular = plan.code?.includes("PROFESSIONAL");
+                return (
+                  <motion.div
+                    key={plan.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.35,
+                      delay: index * 0.08,
+                      ease: "easeOut",
+                    }}
+                  >
+                    <PricingCard plan={plan} isPopular={isPopular} />
+                  </motion.div>
+                );
+              })}
+
+            {!loading && hasError && (
+              <div className="col-span-full flex flex-col items-center gap-3 text-center py-12">
+                <p className="text-gray-500 dark:text-gray-400">
+                  Couldn&apos;t load plans right now. Please try again.
+                </p>
+                <button
+                  onClick={() => fetchPlans(activeTab)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-primary border border-primary/30 hover:bg-primary-light dark:hover:bg-gray-800 transition-colors duration-200"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {!loading && !hasError && packages.length === 0 && (
+              <div className="col-span-full text-center text-gray-500 dark:text-gray-400 py-12">
+                No packages available for this category yet.
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </section>
   );

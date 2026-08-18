@@ -1,15 +1,10 @@
 "use client";
 
-import React, {
-  useEffect,
-  useState,
-  useMemo,
-  useCallback,
-  useRef,
-} from "react";
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { controlComboboxTriggerClass } from "@/components/ui/field";
 import {
   Command,
   CommandEmpty,
@@ -23,15 +18,31 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { searchStock, getStockVariantById } from "@/lib/actions/stock-actions";
-import { Stock } from "@/types/stock/type";
-import { StockVariant } from "@/types/stockVariant/type";
-import { ApiResponse } from "@/types/types";
+import { getCachedStocks } from "@/lib/cache/reference-data";
+import type { Stock, StockVariant } from "@/types/stock/type";
 
-type VariantInfo = {
-  stockName: string;
-  variant?: { id?: string; name: string };
-} | null;
+export interface VariantMeta {
+  id: string;
+  displayName: string;
+  serialTracked: boolean;
+  /** The variant's tracking unit — anchor for compatible-unit lookups. */
+  unitId: string;
+  /**
+   * The parent stock item's default purchase tax type (`Stock.taxTypeId`).
+   * `null` when the item has none configured. Purchase forms use this to
+   * resolve/preview a line's effective tax type before the operator picks
+   * an explicit per-line override.
+   */
+  stockTaxTypeId?: string | null;
+  /**
+   * The parent stock item's `purchaseTaxInclusive` default — true when this
+   * supplier normally quotes the item tax-inclusive. Defaults to `false`
+   * server-side, so this is always a concrete boolean (never `null`).
+   * Purchase forms use this to default the document-level "prices include
+   * tax" toggle to what the line items imply (Fix 1, 2026-08 fix wave).
+   */
+  stockPurchaseTaxInclusive: boolean;
+}
 
 interface Props {
   placeholder?: string;
@@ -39,11 +50,17 @@ interface Props {
   value?: string;
   isDisabled?: boolean;
   description?: string;
-  // Now also passes back the selected variant info so the parent doesn't
-  // have to refetch.
-  onChange: (value: string, info?: VariantInfo) => void;
+  onChange: (value: string) => void;
+  onVariantMeta?: (meta: VariantMeta | null) => void;
   disabledValues?: string[];
-  initialVariantInfo?: VariantInfo;
+  /** When provided, the dropdown only surfaces variants whose id is in this list. */
+  allowedValues?: string[];
+  /**
+   * Fired when this selector's internal catalogue fetch starts and finishes.
+   * Lets parent forms aggregate loading state across rows so they can disable
+   * Submit / Cancel until every selector has resolved its initial value.
+   */
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 const StockVariantSelector: React.FC<Props> = ({
@@ -52,49 +69,26 @@ const StockVariantSelector: React.FC<Props> = ({
   isDisabled,
   description,
   onChange,
+  onVariantMeta,
   disabledValues = [],
-  initialVariantInfo,
+  allowedValues,
+  onLoadingChange,
 }) => {
   const [open, setOpen] = useState(false);
   const [stocks, setStocks] = useState<Stock[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isLoadingVariant, setIsLoadingVariant] = useState<boolean>(false);
+  // Start in loading state when an initial value is present so the trigger
+  // shows a spinner immediately instead of flashing the "Select stock item"
+  // placeholder before the catalogue arrives and the matching variant is
+  // resolved.
+  const [isLoading, setIsLoading] = useState(!!value);
   const [searchTerm, setSearchTerm] = useState("");
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-
-  const [selectedVariantInfo, setSelectedVariantInfo] = useState<{
-    id: string;
-    displayName: string;
-  } | null>(() => {
-    if (
-      value &&
-      initialVariantInfo?.variant?.name &&
-      initialVariantInfo.stockName
-    ) {
-      return {
-        id: value,
-        displayName: `${initialVariantInfo.stockName} - ${initialVariantInfo.variant.name}`,
-      };
-    }
-    return null;
-  });
-
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const [triggerWidth, setTriggerWidth] = useState<number>(0);
-
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const fetchedIdsRef = useRef<Set<string>>(new Set());
-  const displayNameCacheRef = useRef<Map<string, string>>(new Map());
-
-  const ITEMS_PER_PAGE = 20;
+  const [triggerWidth, setTriggerWidth] = useState(0);
+  const hasFetchedRef = useRef(false);
 
   useEffect(() => {
     const measure = () => {
-      if (triggerRef.current) {
-        setTriggerWidth(triggerRef.current.offsetWidth);
-      }
+      if (triggerRef.current) setTriggerWidth(triggerRef.current.offsetWidth);
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -102,229 +96,116 @@ const StockVariantSelector: React.FC<Props> = ({
     return () => ro.disconnect();
   }, []);
 
-  const getDisplayName = useCallback((stock: Stock, variant: StockVariant) => {
-    return `${stock.name} - ${variant.name}`;
-  }, []);
-
-  const setSelectedInfo = useCallback((id: string, displayName: string) => {
-    displayNameCacheRef.current.set(id, displayName);
-    setSelectedVariantInfo({ id, displayName });
-  }, []);
-
-  const loadSpecificVariantInfo = useCallback(
-    async (variantId: string) => {
-      if (fetchedIdsRef.current.has(variantId)) return;
-      fetchedIdsRef.current.add(variantId);
-
-      setIsLoadingVariant(true);
-      try {
-        const variantInfo = await getStockVariantById(variantId);
-        if (variantInfo && variantInfo.variant) {
-          const displayName = `${variantInfo.stockName || ""} - ${variantInfo.variant.name}`;
-          setSelectedInfo(variantInfo.variant.id, displayName);
-        }
-      } catch (error) {
-        fetchedIdsRef.current.delete(variantId);
-        console.error("Error loading specific variant info:", error);
-      } finally {
-        setIsLoadingVariant(false);
-      }
-    },
-    [setSelectedInfo],
-  );
-
-  // Hydrate from initialVariantInfo when it arrives, but only ADD info —
-  // never let a stale or null prop wipe a good local display.
   useEffect(() => {
-    if (!value) return;
-    if (!initialVariantInfo?.variant?.name) return;
-    if (selectedVariantInfo?.id === value) return;
-    const displayName = `${initialVariantInfo.stockName} - ${initialVariantInfo.variant.name}`;
-    setSelectedInfo(value, displayName);
-    fetchedIdsRef.current.add(value);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, initialVariantInfo]);
+    if (hasFetchedRef.current) return;
+    if (!open && !value) return;
+    hasFetchedRef.current = true;
+    setIsLoading(true);
+    getCachedStocks()
+      .then(setStocks)
+      .catch(() => setStocks([]))
+      .finally(() => setIsLoading(false));
+  }, [open, value]);
 
-  // When value changes — resolve display via cache first, then stocks, then fetch.
+  // Bubble loading state up so parent forms can disable Submit/Cancel until
+  // the catalogue arrives — important when the form was pre-filled with
+  // existing variant ids (e.g. GRN form pre-linked to an LPO).
   useEffect(() => {
-    if (!value) {
-      setSelectedVariantInfo(null);
-      return;
-    }
+    onLoadingChange?.(isLoading);
+  }, [isLoading, onLoadingChange]);
 
-    if (selectedVariantInfo?.id === value) return;
-
-    const cachedName = displayNameCacheRef.current.get(value);
-    if (cachedName) {
-      setSelectedVariantInfo({ id: value, displayName: cachedName });
-      return;
-    }
-
-    for (const stock of stocks) {
-      const variant = stock.stockVariants.find((v) => v.id === value);
-      if (variant) {
-        const displayName = getDisplayName(stock, variant);
-        setSelectedInfo(variant.id, displayName);
-        return;
-      }
-    }
-
-    if (initialVariantInfo?.variant?.name) {
-      const displayName = `${initialVariantInfo.stockName} - ${initialVariantInfo.variant.name}`;
-      setSelectedInfo(value, displayName);
-      return;
-    }
-
-    loadSpecificVariantInfo(value);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
-
-  useEffect(() => {
-    if (!value || selectedVariantInfo?.id === value) return;
-    for (const stock of stocks) {
-      const variant = stock.stockVariants.find((v) => v.id === value);
-      if (variant) {
-        const displayName = getDisplayName(stock, variant);
-        setSelectedInfo(variant.id, displayName);
-        return;
-      }
-    }
-  }, [stocks, value, selectedVariantInfo?.id, getDisplayName, setSelectedInfo]);
-
-  useEffect(() => {
-    if (open && stocks.length === 0) {
-      loadStocks("", 1);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
-    const timeout = setTimeout(() => {
-      setPage(1);
-      loadStocks(searchTerm, 1);
-    }, 300);
-    debounceTimeoutRef.current = timeout;
-    return () => {
-      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, open]);
-
-  const loadStocks = useCallback(
-    async (query: string, currentPage: number, showLoading = true) => {
-      try {
-        if (abortControllerRef.current) abortControllerRef.current.abort();
-        abortControllerRef.current = new AbortController();
-        if (showLoading) setIsLoading(true);
-
-        const response: ApiResponse<Stock> = await searchStock(
-          query,
-          currentPage,
-          ITEMS_PER_PAGE,
-        );
-
-        if (currentPage === 1) {
-          setStocks(response.content);
-        } else {
-          setStocks((prev) => [...prev, ...response.content]);
-        }
-        setHasMore(!response.last);
-      } catch (error: any) {
-        if (error.name !== "AbortError") {
-          console.error("Error fetching stocks:", error);
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [],
-  );
-
-  // Options now carry the raw stock+variant so handleSelect can pass them up.
   const allVariantOptions = useMemo(
     () =>
-      stocks.flatMap((stock) =>
-        stock.stockVariants.map((variant) => ({
-          id: variant.id,
-          displayName: getDisplayName(stock, variant),
-          disabled: disabledValues.includes(variant.id),
-          searchString: `${stock.name.toLowerCase()} ${variant.name.toLowerCase()}`,
-          stock,
-          variant,
-        })),
-      ),
-    [stocks, disabledValues, getDisplayName],
+      stocks
+        .filter((s) => !s.archived)
+        .flatMap((stock) =>
+          stock.variants
+            .filter((v) => !v.archived)
+            .map((variant) => ({
+              id: variant.id,
+              displayName: variant.displayName || `${stock.name} - ${variant.name}`,
+              serialTracked: variant.serialTracked ?? false,
+              unitId: variant.unitId,
+              stockTaxTypeId: stock.taxTypeId ?? null,
+              stockPurchaseTaxInclusive: stock.purchaseTaxInclusive ?? false,
+              disabled: disabledValues.includes(variant.id),
+              searchString: `${stock.name} ${variant.name} ${variant.sku || ""}`.toLowerCase(),
+            })),
+        ),
+    [stocks, disabledValues],
   );
+
+  const displayedOptions = useMemo(() => {
+    const restricted = allowedValues
+      ? allVariantOptions.filter((o) => allowedValues.includes(o.id))
+      : allVariantOptions;
+    if (!searchTerm) return restricted;
+    const term = searchTerm.toLowerCase();
+    return restricted.filter((o) => o.searchString.includes(term));
+  }, [allVariantOptions, allowedValues, searchTerm]);
 
   const selectedOption = useMemo(() => {
     if (!value) return null;
-    if (selectedVariantInfo && selectedVariantInfo.id === value) {
-      return selectedVariantInfo;
-    }
-    const cachedName = displayNameCacheRef.current.get(value);
-    if (cachedName) return { id: value, displayName: cachedName };
-    const option = allVariantOptions.find((o) => o.id === value);
-    if (option) return { id: option.id, displayName: option.displayName };
-    return null;
-  }, [allVariantOptions, value, selectedVariantInfo]);
-
-  const handleScroll = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) => {
-      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-      if (
-        scrollHeight - scrollTop - clientHeight < 50 &&
-        !isLoading &&
-        hasMore
-      ) {
-        const nextPage = page + 1;
-        setPage(nextPage);
-        loadStocks(searchTerm, nextPage, false);
-      }
-    },
-    [isLoading, hasMore, page, searchTerm, loadStocks],
-  );
+    return allVariantOptions.find((o) => o.id === value) ?? null;
+  }, [allVariantOptions, value]);
 
   const handleSelect = useCallback(
     (option: {
       id: string;
       displayName: string;
-      stock: Stock;
-      variant: StockVariant;
+      serialTracked: boolean;
+      unitId: string;
+      stockTaxTypeId: string | null;
+      stockPurchaseTaxInclusive: boolean;
     }) => {
-      const newValue = option.id === value ? "" : option.id;
-
-      if (newValue) {
-        displayNameCacheRef.current.set(newValue, option.displayName);
-        setSelectedVariantInfo({
-          id: newValue,
-          displayName: option.displayName,
-        });
-        fetchedIdsRef.current.add(newValue);
-
-        // Hand the info up so parent doesn't have to refetch
-        const info: VariantInfo = {
-          stockName: option.stock.name,
-          variant: { id: option.variant.id, name: option.variant.name },
-        };
-        onChange(newValue, info);
-      } else {
-        setSelectedVariantInfo(null);
-        onChange(newValue, null);
-      }
-
+      const deselecting = option.id === value;
+      onChange(deselecting ? "" : option.id);
+      onVariantMeta?.(
+        deselecting
+          ? null
+          : {
+              id: option.id,
+              displayName: option.displayName,
+              serialTracked: option.serialTracked,
+              unitId: option.unitId,
+              stockTaxTypeId: option.stockTaxTypeId,
+              stockPurchaseTaxInclusive: option.stockPurchaseTaxInclusive,
+            },
+      );
       setOpen(false);
     },
-    [value, onChange],
+    [value, onChange, onVariantMeta],
   );
 
-  const displayText = useMemo(() => {
-    if (selectedOption) return selectedOption.displayName;
-    if (isLoadingVariant && value) return "Loading...";
-    return placeholder;
-  }, [isLoadingVariant, selectedOption, placeholder, value]);
+  // Emit meta once when an incoming `value` first resolves to a real variant
+  // (initial mount, edit forms). Tracks the last-emitted id so it never
+  // double-fires for user-driven selections handled by handleSelect.
+  const lastEmittedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!onVariantMeta) return;
+    if (!value) {
+      lastEmittedRef.current = null;
+      return;
+    }
+    if (lastEmittedRef.current === value) return;
+    const opt = allVariantOptions.find((o) => o.id === value);
+    if (!opt) return;
+    lastEmittedRef.current = value;
+    onVariantMeta({
+      id: opt.id,
+      displayName: opt.displayName,
+      serialTracked: opt.serialTracked,
+      unitId: opt.unitId,
+      stockTaxTypeId: opt.stockTaxTypeId,
+      stockPurchaseTaxInclusive: opt.stockPurchaseTaxInclusive,
+    });
+  }, [value, allVariantOptions, onVariantMeta]);
 
+  // While we have a value but haven't resolved it yet, show a loading
+  // indicator instead of the placeholder. Once the fetch settles, fall
+  // back to the placeholder if the variant truly doesn't exist (e.g.
+  // archived or filtered out by the parent) so the user can re-pick.
+  const isResolvingValue = !!value && !selectedOption && isLoading;
   const popoverWidth = Math.max(triggerWidth, 300);
 
   return (
@@ -336,44 +217,44 @@ const StockVariantSelector: React.FC<Props> = ({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between overflow-hidden"
+            className={cn(controlComboboxTriggerClass, "overflow-hidden")}
             disabled={isDisabled}
           >
-            <span className="flex items-center gap-2 min-w-0 flex-1">
-              {isLoadingVariant && !selectedOption && (
-                <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+            <span className="truncate text-left flex-1 flex items-center gap-2">
+              {isResolvingValue ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin opacity-60" />
+                  <span className="text-muted-2">Loading...</span>
+                </>
+              ) : selectedOption ? (
+                <span className="truncate">{selectedOption.displayName}</span>
+              ) : (
+                <span className="text-muted-2">{placeholder}</span>
               )}
-              <span className="truncate text-left">{displayText}</span>
             </span>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-2" />
           </Button>
         </PopoverTrigger>
 
-        <PopoverContent
-          className="p-0"
-          style={{ width: popoverWidth }}
-          align="start"
-        >
+        <PopoverContent className="p-0" style={{ width: popoverWidth }} align="start">
           <Command shouldFilter={false}>
             <CommandInput
-              placeholder={`Search ${placeholder.toLowerCase()}...`}
+              placeholder="Search stock items..."
               value={searchTerm}
               onValueChange={setSearchTerm}
             />
-            <CommandList onScroll={handleScroll} className="max-h-[300px]">
+            <CommandList className="max-h-[300px]">
               <CommandEmpty>
-                {isLoading ? "Searching..." : "No stock items found."}
+                {isLoading ? "Loading..." : "No stock items found."}
               </CommandEmpty>
               <CommandGroup>
-                {allVariantOptions.length === 0 && isLoading ? (
+                {isLoading && displayedOptions.length === 0 ? (
                   <div className="py-6 text-center">
                     <Loader2 className="mx-auto h-5 w-5 animate-spin opacity-50" />
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Loading stock items...
-                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">Loading stock items...</p>
                   </div>
                 ) : (
-                  allVariantOptions.map((option) => (
+                  displayedOptions.map((option) => (
                     <CommandItem
                       key={option.id}
                       value={option.searchString}
@@ -390,21 +271,6 @@ const StockVariantSelector: React.FC<Props> = ({
                       <span className="break-words">{option.displayName}</span>
                     </CommandItem>
                   ))
-                )}
-
-                {isLoading && allVariantOptions.length > 0 && (
-                  <div className="py-2 text-center">
-                    <Loader2 className="mx-auto h-4 w-4 animate-spin opacity-50" />
-                    <p className="text-sm text-muted-foreground">
-                      Loading more...
-                    </p>
-                  </div>
-                )}
-
-                {!isLoading && hasMore && allVariantOptions.length > 0 && (
-                  <div className="py-2 text-center text-sm text-muted-foreground">
-                    Scroll down to load more
-                  </div>
                 )}
               </CommandGroup>
             </CommandList>

@@ -4,61 +4,101 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
-import { Separator } from "../ui/separator";
 
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogIcon,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
   createCategory,
-  fetchAllCategories,
   updateCategory,
 } from "@/lib/actions/category-actions";
-import CancelButton from "@/components/widgets/cancel-button";
-import { SubmitButton } from "@/components/widgets/submit-button";
+import {
+  invalidateCategoriesCache,
+  useCachedCategories,
+} from "@/lib/cache/reference-data";
+import type { Department } from "@/types/department/type";
 import { Category } from "@/types/category/type";
-import { FormResponse } from "@/types/types";
 import { CategorySchema } from "@/types/category/schema";
-import { FormError } from "@/components/widgets/form-error";
-import { Input } from "@/components/ui/input";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
-import ProductCategorySelector from "@/components/widgets/product-category-selector";
+import CategorySelector from "@/components/widgets/category-selector";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent } from "../ui/card";
 import { useRouter } from "next/navigation";
-import { Switch } from "../ui/switch";
+import { CheckCircle2, FolderOpen, Trash2, X } from "lucide-react";
 
-const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
+import styles from "./styles/form-shell.module.css";
+
+type CategoryFormProps = {
+  item: Category | null | undefined;
+  departments: Department[];
+  defaultDepartmentId?: string;
+};
+
+const CategoryForm = ({
+  item,
+  departments,
+  defaultDepartmentId,
+}: CategoryFormProps) => {
   const [isPending, startTransition] = useTransition();
-  const [response, setResponse] = useState<FormResponse | undefined>();
-  const [imageUrl, setImageUrl] = useState<string>(item?.image || "");
-  const [categories, setCategories] = useState<Category[] | null>([]);
+  const [imageUrl, setImageUrl] = useState<string>(item?.imageUrl || "");
+  const { data: cachedCategoriesData } = useCachedCategories();
+  const categories: Category[] | null = cachedCategoriesData ?? [];
 
   const { toast } = useToast();
   const router = useRouter();
-
-  useEffect(() => {
-    const getData = async () => {
-      const categories = await fetchAllCategories();
-      setCategories(categories);
-    };
-    getData();
-  }, []);
+  const isEditing = !!item;
 
   const form = useForm<z.infer<typeof CategorySchema>>({
     resolver: zodResolver(CategorySchema),
     defaultValues: {
-      ...item,
-      image: imageUrl || item?.image || "",
-      parentCategory: item?.parentCategory || "",
-      status: item ? item.status : true,
+      name: item?.name ?? "",
+      description: item?.description ?? "",
+      imageUrl: imageUrl || item?.imageUrl || "",
+      parentId: item?.parentId || "",
+      departmentId: item?.departmentId ?? defaultDepartmentId ?? "",
+      sortOrder: 0,
+      active: item?.active ?? true,
     },
   });
+
+  const showDepartmentPicker = departments.length > 1;
+
+  // A category must belong to the same department as its parent, so once a
+  // parent is chosen the department is locked to the parent's (set on
+  // selection below). `watch` reflects the parent that's already set when
+  // editing, so the lock holds on first render too.
+  const selectedParentId = form.watch("parentId");
+  const departmentLocked = !!selectedParentId;
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
@@ -75,36 +115,27 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
   );
 
   const submitData = (values: z.infer<typeof CategorySchema>) => {
-    setResponse(undefined);
-    if (imageUrl) values.image = imageUrl;
+    if (imageUrl) values.imageUrl = imageUrl;
+    values.sortOrder = 0;
 
     startTransition(() => {
       if (item) {
-        const updatedValues = {
-          ...values,
-          parentCategory: values.parentCategory || item.parentCategory || "",
-        };
-
-        updateCategory(item.id, updatedValues, "category").then((data) => {
-          if (data) setResponse(data);
+        updateCategory(item.id, values, "category").then((data) => {
           if (data?.responseType === "success") {
-            toast({
-              variant: "success",
-              title: "Success",
-              description: data.message,
-            });
+            invalidateCategoriesCache();
+            toast({ variant: "success", title: "Success", description: data.message });
+          } else if (data?.responseType === "error") {
+            toast({ variant: "destructive", title: "Error", description: data.message });
           }
         });
       } else {
         createCategory(values, "category").then((data) => {
-          if (data) setResponse(data);
           if (data?.responseType === "success") {
-            toast({
-              variant: "success",
-              title: "Success",
-              description: data.message,
-            });
+            invalidateCategoriesCache();
+            toast({ variant: "success", title: "Success", description: data.message });
             router.push("/categories");
+          } else if (data?.responseType === "error") {
+            toast({ variant: "destructive", title: "Error", description: data.message });
           }
         });
       }
@@ -113,66 +144,173 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
 
   return (
     <Form {...form}>
-      <FormError message={response?.message} />
       <form
         onSubmit={form.handleSubmit(submitData, onInvalid)}
-        className="space-y-6"
+        className={styles.formRoot}
       >
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-6">
-            <div>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Image */}
-                <div className="flex flex-col items-center">
-                  <UploadImageWidget
-                    imagePath="categories"
-                    displayStyle="default"
-                    displayImage={true}
-                    showLabel={true}
-                    label="Category image"
-                    setImage={setImageUrl}
-                    image={imageUrl}
-                  />
+        <div className={styles.formStack}>
+          <section className={styles.formCard}>
+            <header className={styles.formCardHead}>
+              <div className={styles.icoBox}>
+                <FolderOpen className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3>Category details</h3>
+                <p className={styles.formCardHeadDesc}>
+                  Groups products in the catalog. Optionally nest under a
+                  parent or assign to a department.
+                </p>
+              </div>
+              <div className={styles.formCardActions}>
+                <span className={styles.stepBadge}>STEP 01</span>
+              </div>
+            </header>
+
+            <div className={styles.formBody}>
+              <div className="flex flex-col sm:flex-row gap-6">
+                <div className="flex-shrink-0 self-start">
+                  <div className="w-[200px] h-[200px]">
+                    <UploadImageWidget
+                      imagePath="categories"
+                      displayStyle="default"
+                      displayImage={true}
+                      showLabel={true}
+                      label="Category image"
+                      setImage={setImageUrl}
+                      image={imageUrl}
+                    />
+                  </div>
                 </div>
 
-                {/* Name & Parent */}
-                <div className="lg:col-span-2 space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Category Name <span className="text-red-500">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter category name"
-                            {...field}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                <div className="flex-1 min-w-0 space-y-4">
+                  <div
+                    className={`grid grid-cols-1 gap-4 ${
+                      showDepartmentPicker ? "sm:grid-cols-3" : "sm:grid-cols-2"
+                    }`}
+                  >
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem className="space-y-[7px]">
+                          <FieldLabel required>Category name</FieldLabel>
+                          <FormControl>
+                            <ControlInput
+                              placeholder="Enter category name"
+                              {...field}
+                              disabled={isPending}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="parentId"
+                      render={({ field }) => (
+                        <FormItem className="space-y-[7px]">
+                          <div className="flex items-center gap-2">
+                            <FieldLabel>Parent category</FieldLabel>
+                            {field.value ? (
+                              <button
+                                type="button"
+                                onClick={() => field.onChange("")}
+                                disabled={isPending}
+                                title="Remove from parent category"
+                                className="ml-auto inline-flex items-center gap-1 whitespace-nowrap font-mono text-[10px] tracking-[0.04em] text-muted-foreground transition-colors hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <X className="h-3 w-3" />
+                                Clear
+                              </button>
+                            ) : (
+                              <span className="ml-auto font-mono text-[10px] tracking-[0.04em] text-muted-foreground">
+                                OPTIONAL
+                              </span>
+                            )}
+                          </div>
+                          <FormControl>
+                            <CategorySelector
+                              simple
+                              categories={categories}
+                              onChange={(value) => {
+                                field.onChange(value);
+                                // Inherit (and lock to) the parent's
+                                // department — every category carries one.
+                                const parentDeptId = value
+                                  ? categories?.find((c) => c.id === value)
+                                      ?.departmentId
+                                  : undefined;
+                                if (parentDeptId) {
+                                  form.setValue("departmentId", parentDeptId, {
+                                    shouldValidate: true,
+                                    shouldDirty: true,
+                                  });
+                                }
+                              }}
+                              onBlur={field.onBlur}
+                              isDisabled={isPending}
+                              placeholder="Select parent"
+                              value={field.value || ""}
+                              showChildren={false}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {showDepartmentPicker && (
+                      <FormField
+                        control={form.control}
+                        name="departmentId"
+                        render={({ field }) => (
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel required>Department</FieldLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value ?? ""}
+                              disabled={isPending || departmentLocked}
+                            >
+                              <FormControl>
+                                <SelectTrigger className={controlSelectTriggerClass}>
+                                  <SelectValue placeholder="Select department" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {departments.map((d) => (
+                                  <SelectItem key={d.id} value={d.id}>
+                                    {d.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {departmentLocked && (
+                              <FieldHint>
+                                Set by the parent category — a category stays in
+                                its parent&apos;s department.
+                              </FieldHint>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     )}
-                  />
+
+                  </div>
 
                   <FormField
                     control={form.control}
-                    name="parentCategory"
+                    name="description"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Parent Category</FormLabel>
+                      <FormItem className="space-y-[7px]">
+                        <FieldLabel optional>Description</FieldLabel>
                         <FormControl>
-                          <ProductCategorySelector
-                            onChange={field.onChange}
-                            onBlur={field.onBlur}
-                            isRequired
-                            isDisabled={isPending}
-                            label="Category"
-                            placeholder="Select parent category"
-                            categories={categories}
-                            value={field.value || ""}
+                          <ControlTextarea
+                            placeholder="Brief description"
+                            {...field}
+                            disabled={isPending}
                           />
                         </FormControl>
                         <FormMessage />
@@ -182,52 +320,44 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                 </div>
               </div>
             </div>
+          </section>
+        </div>
 
-            {/* Status (edit only) */}
-            {item && (
-              <>
-                <Separator />
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Settings</h3>
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-sm font-medium cursor-pointer">
-                            Category Status
-                          </FormLabel>
-                          <p className="text-xs text-muted-foreground">
-                            {field.value
-                              ? "This category is currently active and visible"
-                              : "This category is currently inactive and hidden"}
-                          </p>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Actions */}
-        <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
-          <CancelButton />
-          <Separator orientation="vertical" className="h-5" />
-          <SubmitButton
-            isPending={isPending}
-            label={item ? "Update category" : "Create category"}
-          />
+        <div className={styles.formFoot}>
+          <div className={styles.formFootSpacer} />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isPending}
+                title="Discard changes and go back"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Discard
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent tone="danger">
+              <AlertDialogIcon>
+                <Trash2 className="h-5 w-5" />
+              </AlertDialogIcon>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Unsaved changes will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction onClick={() => router.back()}>
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button type="submit" disabled={isPending}>
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+            {isEditing ? "Update category" : "Create category"}
+          </Button>
         </div>
       </form>
     </Form>

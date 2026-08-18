@@ -2,7 +2,6 @@
 
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 import { FormResponse } from "@/types/types";
@@ -12,39 +11,47 @@ import { getCurrentLocation } from "./business/get-current-business";
 import { DepositRule } from "@/types/deposit-rule/type";
 import { DepositRuleSchema } from "@/types/deposit-rule/schema";
 
-export const fetchDepositRules = async (): Promise<DepositRule[]> => {
-  await getAuthenticatedUser();
+/**
+ * CRUD against the OMS deposit-rules endpoint. Rules are priority-resolved
+ * at reservation-create time: TABLE_SLOT > TABLE > SLOT > GLOBAL.
+ *
+ * <p>The dashboard typically lets staff configure these on the
+ * "Reservation settings" page alongside slots and exceptions.
+ */
+const oms = () => new ApiClient("orders");
 
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const data = await apiClient.get(`/api/deposit-rules/${location?.id}`);
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
+const base = (locationId: string) =>
+  `/api/v1/locations/${locationId}/deposit-rules`;
+
+export const fetchDepositRules = async (): Promise<DepositRule[]> => {
+  const location = await getCurrentLocation();
+  if (!location?.id) return [];
+  const data = await oms().get<DepositRule[]>(base(location.id));
+  return parseStringify(data);
+};
+
+export const getDepositRule = async (id: UUID): Promise<DepositRule> => {
+  const location = await getCurrentLocation();
+  const data = await oms().get<DepositRule>(
+    `${base(location?.id as string)}/${id}`,
+  );
+  return parseStringify(data);
 };
 
 export const createDepositRule = async (
   rule: z.infer<typeof DepositRuleSchema>,
 ): Promise<FormResponse | void> => {
   const validated = DepositRuleSchema.safeParse(rule);
-
   if (!validated.success) {
     return SettloErrorHandler.createErrorResponse(
       validated.error,
-      "Please fill all the required fields",
+      "Please correct the highlighted fields",
     );
   }
 
   const location = await getCurrentLocation();
-
   try {
-    const apiClient = new ApiClient();
-    await apiClient.post(
-      `/api/deposit-rules/${location?.id}/create`,
-      validated.data,
-    );
+    await oms().post(base(location?.id as string), validated.data);
   } catch (error: unknown) {
     return SettloErrorHandler.createErrorResponse(
       error,
@@ -52,7 +59,7 @@ export const createDepositRule = async (
     );
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/reservations/settings");
   return SettloErrorHandler.createSuccessResponse(
     "Deposit rule created successfully",
   );
@@ -63,22 +70,16 @@ export const updateDepositRule = async (
   rule: z.infer<typeof DepositRuleSchema>,
 ): Promise<FormResponse | void> => {
   const validated = DepositRuleSchema.safeParse(rule);
-
   if (!validated.success) {
     return SettloErrorHandler.createErrorResponse(
       validated.error,
-      "Please fill all the required fields",
+      "Please correct the highlighted fields",
     );
   }
 
   const location = await getCurrentLocation();
-
   try {
-    const apiClient = new ApiClient();
-    await apiClient.put(
-      `/api/deposit-rules/${location?.id}/${id}`,
-      validated.data,
-    );
+    await oms().put(`${base(location?.id as string)}/${id}`, validated.data);
   } catch (error: unknown) {
     return SettloErrorHandler.createErrorResponse(
       error,
@@ -86,7 +87,7 @@ export const updateDepositRule = async (
     );
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/reservations/settings");
   return SettloErrorHandler.createSuccessResponse(
     "Deposit rule updated successfully",
   );
@@ -94,14 +95,7 @@ export const updateDepositRule = async (
 
 export const deleteDepositRule = async (id: UUID): Promise<void> => {
   if (!id) throw new Error("Deposit rule ID is required");
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    await apiClient.delete(`/api/deposit-rules/${location?.id}/${id}`);
-    revalidatePath("/settings");
-  } catch (error) {
-    throw error;
-  }
+  const location = await getCurrentLocation();
+  await oms().delete(`${base(location?.id as string)}/${id}`);
+  revalidatePath("/reservations/settings");
 };

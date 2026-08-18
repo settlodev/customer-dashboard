@@ -9,11 +9,11 @@ interface ReportLetterheadProps {
 }
 
 const ReportLetterhead = ({ business, location }: ReportLetterheadProps) => {
-  const hasAddress = location.address || location.city || location.region;
-  const hasTaxDetails = business.identificationNumber || business.vrn;
+  const hasAddress = location.address || location.region;
+  const hasTaxDetails = business.identifier;
 
   return (
-    <div className="flex flex-col sm:flex-row sm:justify-between gap-4 rounded-lg bg-primary-light dark:bg-gray-800 px-5 py-4">
+    <div className="flex flex-col sm:flex-row sm:justify-between gap-4 rounded-lg bg-gray-100 dark:bg-gray-800 px-5 py-4">
       {/* Business / Location info */}
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
@@ -22,23 +22,25 @@ const ReportLetterhead = ({ business, location }: ReportLetterheadProps) => {
             {business.name}
           </span>
         </div>
-        <p className="text-xs text-muted-foreground pl-6">{location.name}</p>
+        <p className="text-xs text-muted-foreground pl-6">
+          {location.name}
+        </p>
         {hasAddress && (
           <div className="flex items-start gap-2">
             <MapPin className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0 mt-0.5" />
             <span className="text-xs text-muted-foreground">
-              {[location.address, location.city, location.region]
+              {[location.address, location.region]
                 .filter(Boolean)
                 .join(", ")}
             </span>
           </div>
         )}
         <div className="flex flex-wrap gap-x-4 gap-y-1 pl-6">
-          {location.phone && (
+          {location.phoneNumber && (
             <div className="flex items-center gap-1.5">
               <Phone className="h-3 w-3 text-gray-500 dark:text-gray-400" />
               <span className="text-xs text-muted-foreground">
-                {location.phone}
+                {location.phoneNumber}
               </span>
             </div>
           )}
@@ -56,36 +58,10 @@ const ReportLetterhead = ({ business, location }: ReportLetterheadProps) => {
       {/* Tax details */}
       {hasTaxDetails && (
         <div className="sm:text-right space-y-1">
-          {business.identificationNumber && (
+          {business.identifier && (
             <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-gray-900 dark:text-gray-100">
-                TIN:
-              </span>{" "}
-              {business.identificationNumber}
-            </p>
-          )}
-          {business.vrn && (
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-gray-900 dark:text-gray-100">
-                VRN:
-              </span>{" "}
-              {business.vrn}
-            </p>
-          )}
-          {business.serial && (
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-gray-900 dark:text-gray-100">
-                Serial:
-              </span>{" "}
-              {business.serial}
-            </p>
-          )}
-          {business.uin && (
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-gray-900 dark:text-gray-100">
-                UIN:
-              </span>{" "}
-              {business.uin}
+              <span className="font-medium text-gray-900 dark:text-gray-100">ID:</span>{" "}
+              {business.identifier}
             </p>
           )}
         </div>

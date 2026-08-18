@@ -1,98 +1,177 @@
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/orders/column";
-import { searchOrder } from "@/lib/actions/order-actions";
-import OrdersSummary from "@/components/widgets/order/orders-list-summary";
-import EfdFilterToggle from "@/components/widgets/order/efd-filter-toggle";
+import { endOfMonth, format, startOfMonth } from "date-fns";
 
-const breadCrumbItems = [{ title: "Orders", link: "/orders" }];
+import {
+  PageBody,
+  PageBreadcrumbs,
+  PageHeader,
+  PageShell,
+} from "@/components/layouts/page-shell";
+import NoItems from "@/components/layouts/no-items";
+import {
+  OrdersPanel,
+  type OrdersKpis,
+  type SalesView,
+} from "@/components/orders/orders-panel";
+import { OrdersRealtimeBridge } from "@/components/realtime/orders-realtime-bridge";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getLocationCurrency } from "@/lib/actions/currency-actions";
+import { fetchOverview } from "@/lib/actions/dashboard-action";
+import { getLocationSettings } from "@/lib/actions/location-settings-actions";
+import { searchOrders } from "@/lib/actions/order-actions";
+import { fetchAllStaff } from "@/lib/actions/staff-actions";
+import { fetchAllTables } from "@/lib/actions/space-actions";
+import { resolveOrderRowNames } from "@/lib/orders/order-list-view";
+import { OrderStatus } from "@/types/orders/type";
+import type OverviewResponse from "@/types/dashboard/type";
 
 type Params = {
   searchParams: Promise<{
     search?: string;
     page?: string;
     limit?: string;
-    efdPrinted?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    tab?: string;
   }>;
 };
 
-async function Page({ searchParams }: Params) {
-  const resolvedSearchParams = await searchParams;
+export default async function Page({ searchParams }: Params) {
+  const resolved = await searchParams;
+  const q = resolved.search ?? "";
+  const page = Number(resolved.page) || 1;
+  const limit = Number(resolved.limit) || 10;
+  const tab: SalesView = resolved.tab === "abandoned" ? "abandoned" : "orders";
+  const statusParam = (resolved.status ?? "") as OrderStatus | "";
 
-  const q = resolvedSearchParams.search || "";
-  const page = Number(resolvedSearchParams.page) || 0;
-  const pageLimit = Number(resolvedSearchParams.limit);
+  // Default to current month when no explicit range is supplied — keeps
+  // the initial load bounded instead of pulling every order ever made
+  // at this location.
+  const now = new Date();
+  const from = resolved.from ?? format(startOfMonth(now), "yyyy-MM-dd");
+  const to = resolved.to ?? format(endOfMonth(now), "yyyy-MM-dd");
 
-  // Parse the efdPrinted query param into a tri-state value
-  const efdPrintedRaw = resolvedSearchParams.efdPrinted;
-  const efdPrinted =
-    efdPrintedRaw === "true"
-      ? true
-      : efdPrintedRaw === "false"
-        ? false
-        : undefined;
+  // On the Abandoned tab the status is fixed — the user-supplied
+  // `status` filter dropdown is hidden and we hard-code ABANDONED on
+  // the request side so the OMS only returns the relevant rows.
+  const effectiveStatus: OrderStatus | undefined =
+    tab === "abandoned" ? OrderStatus.ABANDONED : statusParam || undefined;
 
-  const responseData = await searchOrder(q, page, pageLimit, efdPrinted);
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  // One server page of orders + the KPI strip (Reports overview) in parallel.
+  // The OMS does the filtering, search, and paging; the strip totals come from
+  // ClickHouse — so neither scales with the location's order volume. The
+  // overview excludes ABANDONED, so it's only fetched for the Orders tab.
+  const [
+    ordersPage,
+    overview,
+    currentLocation,
+    locationSettings,
+    staffList,
+    tablesList,
+    currency,
+  ] = await Promise.all([
+    searchOrders({
+      fromDate: from,
+      toDate: to,
+      status: effectiveStatus,
+      excludeAbandoned: tab === "orders",
+      search: q || undefined,
+      page,
+      limit,
+    }),
+    tab === "orders"
+      ? fetchOverview(from, to).catch(() => null)
+      : Promise.resolve(null),
+    getCurrentLocation(),
+    getLocationSettings().catch(() => null),
+    fetchAllStaff().catch(() => []),
+    fetchAllTables().catch(() => []),
+    getLocationCurrency().catch(() => "TZS"),
+  ]);
+
+  const pageData = ordersPage.content ?? [];
+  const total = ordersPage.totalElements ?? 0;
+  const pageCount = ordersPage.totalPages ?? 0;
+
+  // Resolve assigned-to / closed-by / table names for just this page's rows.
+  const { staffNames, tableNames } = resolveOrderRowNames(
+    pageData,
+    staffList,
+    tablesList,
+  );
+
+  // Table-based ordering swaps the lead column to the table name; the
+  // standard mode keeps the order number in front.
+  const tableMode = locationSettings?.orderingMode === "TABLE_MANAGEMENT";
+
+  const ov = overview as OverviewResponse | null;
+  const kpis: OrdersKpis | undefined = ov
+    ? {
+        totalOrders: ov.totalOrders ?? 0,
+        openOrders: ov.openOrders ?? 0,
+        closedOrders: ov.completedOrders ?? 0,
+        grossSales: ov.grossSales ?? 0,
+        unpaidOrders: ov.unpaidOrders ?? 0,
+      }
+    : undefined;
+
+  // The default current-month range shouldn't count as a "user filter" —
+  // we want first-time locations to land on the empty state, not on a
+  // populated table-shell with no rows. A URL-supplied from/to does.
+  const isDefaultRange = !resolved.from && !resolved.to;
+  const hasFilters =
+    q !== "" || (tab === "orders" && !!statusParam) || !isDefaultRange;
+  // Range has orders if either the overview (Orders tab) or the paged total
+  // (Abandoned tab, or overview unavailable) reports any.
+  const hasAny = (ov?.totalOrders ?? total) > 0 || total > 0;
+
+  const subtitle =
+    from === to
+      ? `Activity for ${format(new Date(from), "MMM d, yyyy")}`
+      : `Activity ${format(new Date(from), "MMM d")} – ${format(new Date(to), "MMM d, yyyy")}`;
 
   return (
-    <div className="flex-1 space-y-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between mb-2">
-        <div className="relative flex-1 md:max-w-md">
-          <BreadcrumbsNav items={breadCrumbItems} />
-        </div>
-        <EfdFilterToggle />
-      </div>
-
-      <OrdersSummary data={responseData} />
-
-      {total > 0 || q !== "" ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Orders</CardTitle>
-            <CardDescription>
-              A list of all orders with detailed information
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DataTable
-              columns={columns}
-              data={responseData.content}
-              searchKey="orderNumber"
-              pageNo={page}
-              total={total}
-              pageCount={pageCount}
-              filterKey="orderStatus"
-              filterOptions={[
-                { label: "All", value: "" },
-                { label: "Closed", value: "CLOSED" },
-                { label: "Open", value: "OPEN" },
-              ]}
-            />
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="h-[calc(100vh-240px)] border border-dashed">
-          <div className="m-auto flex h-full w-full flex-col items-center justify-center gap-2">
-            <h1 className="text-[1.5rem] font-bold leading-tight">
-              No order data found
-            </h1>
-            <p className="text-sm text-center text-muted-foreground">
-              There are no order records found at the moment.
-            </p>
-          </div>
-        </div>
+    <PageShell>
+      <PageBreadcrumbs items={[{ title: "Orders" }]} />
+      <PageHeader title="Orders" subtitle={subtitle} />
+      {currentLocation?.id && (
+        <OrdersRealtimeBridge locationId={currentLocation.id} />
       )}
-    </div>
+
+      <PageBody>
+        <OrdersPanel
+          basePath="/orders"
+          tabParamKey="tab"
+          view={tab}
+          from={from}
+          to={to}
+          kpis={tab === "orders" ? kpis : undefined}
+          pageData={pageData}
+          pageCount={pageCount}
+          pageNo={page - 1}
+          total={total}
+          tableMode={tableMode}
+          staffNames={staffNames}
+          tableNames={tableNames}
+          currency={currency}
+          scope="location"
+          statusParam={statusParam}
+          emptyState={
+            hasAny || hasFilters ? undefined : (
+              <NoItems
+                itemName={tab === "abandoned" ? "abandoned orders" : "orders"}
+              />
+            )
+          }
+          preservedParams={{
+            search: resolved.search,
+            from: resolved.from,
+            to: resolved.to,
+            limit: resolved.limit,
+            status: resolved.status,
+          }}
+        />
+      </PageBody>
+    </PageShell>
   );
 }
-
-export default Page;

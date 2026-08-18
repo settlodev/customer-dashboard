@@ -9,46 +9,46 @@ import {
   ArrowRight,
   Sparkles,
 } from "lucide-react";
-import { Subscriptions } from "@/types/subscription/type";
+import type { Package } from "@/types/billing/types";
 import { cn } from "@/lib/utils";
 
 interface SubscriptionPlanCardProps {
-  plan: Subscriptions;
+  plan: Package;
   isSelected: boolean;
   isCurrent: boolean;
   actionType: "upgrade" | "downgrade" | "renew" | "switch" | "subscribe";
-  onSelect: (plan: Subscriptions) => void;
+  onSelect: (plan: Package) => void;
 }
 
 const ACTION_CONFIG = {
   upgrade: {
     label: "Upgrade Plan",
     icon: ArrowUp,
-    className: "bg-primary hover:bg-primary/90 text-primary-foreground",
+    className: "bg-blue-600 hover:bg-blue-700 text-white",
   },
   downgrade: {
     label: "Downgrade",
     icon: ArrowDown,
-    className: "bg-warning hover:bg-warning/90 text-white",
+    className: "bg-amber-500 hover:bg-amber-600 text-white",
   },
   renew: {
     label: "Renew Plan",
     icon: RotateCcw,
-    className: "bg-success hover:bg-success/90 text-white",
+    className: "bg-emerald-600 hover:bg-emerald-700 text-white",
   },
   switch: {
     label: "Switch Plan",
     icon: ArrowRight,
-    className: "bg-black hover:bg-black/90 text-white",
+    className: "bg-slate-700 hover:bg-slate-800 text-white",
   },
   subscribe: {
     label: "Select Plan",
     icon: Plus,
-    className: "bg-black hover:bg-black/90 text-white",
+    className: "bg-slate-700 hover:bg-slate-800 text-white",
   },
 };
 
-const isDiamond = (name: string) => name?.toLowerCase().includes("diamond");
+const isPremium = (name: string) => name?.toLowerCase().includes("diamond") || name?.toLowerCase().includes("premium");
 
 const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
   plan,
@@ -57,32 +57,32 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
   actionType,
   onSelect,
 }) => {
-  const annualAmount = plan.amount * 12;
+  const annualAmount = plan.basePrice * 12;
   const config = ACTION_CONFIG[actionType];
-  const diamond = isDiamond(plan.packageName);
+  const diamond = isPremium(plan.name);
 
   return (
     <div
       className={cn(
         "relative flex flex-col rounded-2xl border p-5 transition-all duration-200 cursor-pointer group",
         isSelected
-          ? "border-primary bg-primary/5 shadow-md ring-1 ring-primary/40"
+          ? "border-emerald-400 bg-emerald-50/60 shadow-md ring-1 ring-emerald-300"
           : diamond
-            ? "border-meta-10/40 bg-gradient-to-b from-meta-10/5 to-white hover:border-meta-10/60 hover:shadow-md"
-            : "border-stroke bg-white hover:border-gray hover:shadow-sm",
+            ? "border-violet-200 bg-gradient-to-b from-violet-50/80 to-white hover:border-violet-300 hover:shadow-md"
+            : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm",
       )}
       onClick={() => !isSelected && onSelect(plan)}
     >
       {/* Badges */}
       <div className="absolute -top-3 right-4 flex gap-1.5">
         {isCurrent && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-success px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-white/80" />
             Current
           </span>
         )}
         {diamond && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-meta-10 px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+          <span className="inline-flex items-center gap-1 rounded-full bg-violet-500 px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
             <Sparkles className="h-2.5 w-2.5" />
             Premium
           </span>
@@ -91,40 +91,27 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
 
       {/* Plan name + price */}
       <div className="mb-4">
-        <h3 className="text-sm font-semibold text-body uppercase tracking-wide mb-1">
-          {plan.packageName}
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
+          {plan.name}
         </h3>
         <div className="flex items-baseline gap-1">
-          <span className="text-2xl font-bold text-black">
+          <span className="text-2xl font-bold text-gray-900">
             TZS {annualAmount.toLocaleString()}
           </span>
-          <span className="text-xs text-body font-normal">/year</span>
+          <span className="text-xs text-gray-400 font-normal">/year</span>
         </div>
-        <p className="text-xs text-body mt-0.5">
-          TZS {plan.amount.toLocaleString()} / month
+        <p className="text-xs text-gray-400 mt-0.5">
+          TZS {plan.basePrice.toLocaleString()} / month
         </p>
       </div>
 
       {/* Divider */}
-      <div className="h-px bg-stroke mb-4" />
+      <div className="h-px bg-gray-100 mb-4" />
 
-      {/* Features */}
-      <ul className="flex-1 space-y-2 mb-5">
-        {plan.subscriptionFeatures.slice(0, 5).map((feature) => (
-          <li
-            key={feature.id}
-            className="flex items-start gap-2 text-sm text-body"
-          >
-            <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
-            <span>{feature.name}</span>
-          </li>
-        ))}
-        {plan.subscriptionFeatures.length > 5 && (
-          <li className="text-xs text-bodydark2 pl-5">
-            +{plan.subscriptionFeatures.length - 5} more features
-          </li>
-        )}
-      </ul>
+      {/* Description */}
+      {plan.description && (
+        <p className="text-xs text-gray-500 mb-4">{plan.description}</p>
+      )}
 
       {/* CTA */}
       <Button
@@ -137,7 +124,7 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
         className={cn(
           "w-full h-9 text-sm font-medium rounded-xl transition-all",
           isSelected
-            ? "bg-primary/10 text-primary border border-primary/30 cursor-default"
+            ? "bg-emerald-100 text-emerald-700 border border-emerald-300 cursor-default"
             : config.className,
         )}
       >

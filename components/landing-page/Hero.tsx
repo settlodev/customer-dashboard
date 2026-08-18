@@ -1,6 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
+
+const scrollToPricing = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  e.preventDefault();
+  document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
+};
 
 const highlights = [
   "No credit card required",
@@ -12,11 +19,11 @@ export const Hero = () => {
   return (
     <section className="relative w-full overflow-hidden -mt-16">
       {/* Background — extends behind the navbar */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary-light via-white to-white dark:from-gray-900 dark:via-gray-950 dark:to-gray-950" />
+      <div className="absolute inset-0 bg-gradient-to-b from-primary-light via-white to-white dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-950" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(235,127,68,0.08),transparent_50%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(235,127,68,0.06),transparent_50%)]" />
       {/* Bottom fade to white */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white dark:from-gray-950 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white dark:from-neutral-950 to-transparent" />
 
       <div className="relative pt-36 pb-16 md:pt-44 md:pb-24 px-4">
         <div className="mx-auto max-w-[85rem] w-full">
@@ -51,13 +58,14 @@ export const Hero = () => {
                 point-of-sale system and flexible access business funding&mdash;
                 all in one place. <br />
                 <span className="font-semibold text-primary">
-                  Kesho Yako Ni Kubwa.
+                  Kesho yako ni kubwa.
                 </span>
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3">
                 <Link
-                  href="/register"
+                  href="#pricing"
+                  onClick={scrollToPricing}
                   className="inline-flex items-center justify-center px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 shadow-sm hover:shadow-md transition-all duration-200"
                 >
                   Start Free Trial

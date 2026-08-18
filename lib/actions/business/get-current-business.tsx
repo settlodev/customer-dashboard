@@ -155,9 +155,7 @@ export const getBusinessDropDown = async (): Promise<Business[]> => {
 // silently treating an outage as "no businesses".
 const _getAllBusinesses = cache(async (): Promise<Business[]> => {
   const apiClient = new ApiClient();
-  const data = await apiClient.get<Business[] | null>(
-    `/api/v1/me/all-businesses`,
-  );
+  const data = await apiClient.get<Business[] | null>(`/api/v1/me/all-businesses`);
   return parseStringify(data ?? []);
 });
 

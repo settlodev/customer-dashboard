@@ -73,9 +73,7 @@ async function BusinessPageContent() {
   // Pass all businesses (owned-first, as returned by the endpoint) to the
   // client component. Auto-selection and cross-account switching are handled
   // client-side where server actions can set cookies.
-  return (
-    <BusinessSelector businesses={data} currentAccountId={currentAccountId} />
-  );
+  return <BusinessSelector businesses={data} currentAccountId={currentAccountId} />;
 }
 
 export default async function SelectBusinessPage() {

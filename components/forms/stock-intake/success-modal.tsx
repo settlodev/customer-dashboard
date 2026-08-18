@@ -16,7 +16,6 @@ interface StockIntakeSuccessModalProps {
   receiptId: string | undefined;
   onViewGRN: () => void;
   onViewAll: () => void;
-  onClose?: () => void; // Add optional onClose handler
 }
 
 export function StockIntakeSuccessModal({
@@ -25,17 +24,13 @@ export function StockIntakeSuccessModal({
   receiptId,
   onViewGRN,
   onViewAll,
-  onClose,
 }: StockIntakeSuccessModalProps) {
-  const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen && onClose) {
-      onClose();
-    }
-  };
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={() => {}}>
+      <DialogContent
+        className="sm:max-w-md"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader className="items-center text-center gap-2">
           <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-100">
             <CheckCircle2 className="w-6 h-6 text-green-600" />

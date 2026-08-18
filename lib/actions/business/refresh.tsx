@@ -3,26 +3,23 @@
 import { revalidatePath } from "next/cache";
 import { Business, MinimalBusiness } from "@/types/business/type";
 import { cookies } from "next/headers";
-import { Location } from "@/types/location/type";
-import { redirect } from "next/navigation";
 import { activeBusiness } from "@/types/types";
-import { deleteActiveWarehouseCookie } from "../warehouse/current-warehouse-action";
-import { Warehouses } from "@/types/warehouse/warehouse/type";
+import { clearDestination } from "@/lib/actions/destination";
+
+// Business-level cookie helpers. Destination (location/store/warehouse)
+// switching lives in `@/lib/actions/destination`.
 
 const createMinimalBusiness = (business: Business): MinimalBusiness => {
   return {
-    isArchived: business.isArchived,
-    totalLocations: business.totalLocations,
-    user: business.user,
     id: business.id,
+    identifier: business.identifier,
     name: business.name,
-    slug: business.slug,
-    prefix: business.prefix,
-    businessType: business.businessType,
-    logo: business.logo || null,
-    country: business.country,
-    countryName: business.countryName,
-    status: business.status,
+    businessTypeId: business.businessTypeId,
+    businessTypeName: business.businessTypeName,
+    logoUrl: business.logoUrl || null,
+    active: business.active,
+    accountId: business.accountId,
+    countryId: business.countryId,
   };
 };
 
@@ -30,7 +27,7 @@ export const clearBusiness = async (): Promise<void> => {
   const cookieStore = await cookies();
   cookieStore.delete("currentBusiness");
   cookieStore.delete("activeBusiness");
-  cookieStore.delete("currentLocation");
+  await clearDestination();
   revalidatePath("/", "layout");
 };
 
@@ -40,69 +37,31 @@ export const refreshBusiness = async (data: Business): Promise<void> => {
 
   const minimalBusiness = createMinimalBusiness(data);
   const cookieStore = await cookies();
+  const isProduction = process.env.NODE_ENV === "production";
 
-  // Delete the existing cookie first
   cookieStore.delete("currentBusiness");
-
   cookieStore.set({
     name: "currentBusiness",
     value: JSON.stringify(minimalBusiness),
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    secure: isProduction,
+    sameSite: isProduction ? "strict" : "lax",
   });
 
   cookieStore.delete("activeBusiness");
   const businessActive: activeBusiness = {
-    businessId: data.id,
+    businessId: data.id as `${string}-${string}-${string}-${string}-${string}`,
   };
-
   cookieStore.set({
     name: "activeBusiness",
     value: JSON.stringify(businessActive),
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    secure: isProduction,
+    sameSite: isProduction ? "strict" : "lax",
   });
+
+  // A new business means any previously-active destination no longer applies.
+  await clearDestination();
 
   revalidatePath("/", "layout");
-};
-
-export const switchLocation = async (data: Location): Promise<void> => {
-  if (!data)
-    throw new Error("Location data is required to perform this request");
-
-  const cookieStore = await cookies();
-
-  // Delete existing cookie first
-  cookieStore.delete("currentLocation");
-
-  cookieStore.set({
-    name: "currentLocation",
-    value: JSON.stringify(data),
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-  });
-
-  revalidatePath("/dashboard");
-  redirect("/dashboard");
-};
-
-export const refreshLocation = async (
-  data: Location | Warehouses,
-): Promise<void> => {
-  if (!data)
-    throw new Error("Location data is required to perform this request");
-
-  await deleteActiveWarehouseCookie();
-
-  const cookieStore = await cookies();
-  cookieStore.set({
-    name: "currentLocation",
-    value: JSON.stringify(data),
-    sameSite: "strict",
-  });
-
-  revalidatePath("/dashboard");
 };

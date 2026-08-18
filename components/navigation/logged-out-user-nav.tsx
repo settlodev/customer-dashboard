@@ -3,8 +3,10 @@ import Image from "next/image";
 import { MenuIcon, ShieldQuestion, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserDropdown } from "@/components/navigation/user-menu-button";
+import { ThemeToggleButton } from "@/components/navigation/theme-toggle-button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { auth } from "@/auth";
+import { getAuthToken } from "@/lib/auth-utils";
+import { ExtendedUser } from "@/types/types";
 
 const navigationLinks = [
   { title: "Features", href: "/#features" },
@@ -19,7 +21,28 @@ interface LoggedOutNavbarProps {
 }
 
 export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
-  const session = await auth();
+  const authToken = await getAuthToken();
+
+  const user: ExtendedUser | null = authToken
+    ? ({
+        id: authToken.userId,
+        name: `${authToken.firstName} ${authToken.lastName}`.trim(),
+        email: authToken.email,
+        firstName: authToken.firstName,
+        lastName: authToken.lastName,
+        avatar: authToken.pictureUrl,
+        phoneNumber: authToken.phoneNumber,
+        emailVerified: authToken.emailVerified ? new Date() : null,
+        isBusinessRegistrationComplete:
+          authToken.isBusinessRegistrationComplete,
+        isLocationRegistrationComplete:
+          authToken.isLocationRegistrationComplete,
+        accountId: authToken.accountId,
+        countryId: authToken.countryId,
+        countryCode: authToken.countryCode,
+        theme: authToken.theme,
+      } as ExtendedUser)
+    : null;
 
   const MobileNav = () => (
     <SheetContent side="left" className="w-72 p-0">
@@ -30,7 +53,7 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
             alt="Settlo"
             width={100}
             height={32}
-            className="h-8 w-auto object-contain"
+            className="h-8 w-auto object-contain dark:brightness-0 dark:invert"
           />
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
@@ -54,7 +77,12 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
             <span>Help & Support</span>
           </Link>
 
-          {!hideLogin && (
+          <div className="flex items-center justify-between gap-2 px-3 py-2.5 text-sm text-gray-600 dark:text-gray-400">
+            <span>Theme</span>
+            <ThemeToggleButton />
+          </div>
+
+          {!hideLogin && !user && (
             <Button
               className="w-full bg-primary hover:bg-primary/90 text-white rounded-lg"
               asChild
@@ -72,7 +100,7 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full">
-      <div className="bg-white/60 dark:bg-gray-950/60 backdrop-blur-lg">
+      <div className="bg-background/60 backdrop-blur-lg">
         <div className="w-full px-4 md:px-6 lg:container lg:mx-auto">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-2">
@@ -92,7 +120,7 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
                   alt="Settlo"
                   width={120}
                   height={40}
-                  className="h-10 w-auto object-contain"
+                  className="h-10 w-auto object-contain dark:brightness-0 dark:invert"
                   priority
                 />
               </Link>
@@ -121,30 +149,21 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
                 <span className="font-medium">Help</span>
               </Link>
 
-              {!session?.user && !hideLogin && (
+              <ThemeToggleButton />
+
+              {!user && !hideLogin && (
                 <>
                   <Button
+                    variant="ghost"
                     asChild
-                    className="sm:inline-flex text-sm font-medium bg-primary hover:bg-primary/90 text-white rounded-lg shadow-sm transition-all duration-200"
+                    className="hidden sm:inline-flex text-sm font-medium"
                   >
                     <Link href="/login">Login</Link>
-                  </Button>
-                  <Button
-                    asChild
-                    className="hidden bg-primary hover:bg-primary/90 text-white rounded-lg shadow-sm transition-all duration-200"
-                  >
-                    <Link
-                      href="/register"
-                      className="flex items-center text-sm"
-                    >
-                      Get Started
-                      <ChevronRight className="ml-1 h-4 w-4" />
-                    </Link>
                   </Button>
                 </>
               )}
 
-              {session && <UserDropdown user={session.user} />}
+              {user && <UserDropdown user={user} />}
             </div>
           </div>
         </div>

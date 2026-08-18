@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import ApiClient from "../settlo-api-client";
 import { getCurrentLocation } from "./business/get-current-business";
+import { inventoryUrl } from "@/lib/actions/inventory-client";
+import ApiClient from "@/lib/settlo-api-client";
 
 interface ArchiveEntityProps {
   ids: string[];
@@ -22,6 +23,8 @@ export async function archiveEntity({
   entityType,
   locationId,
 }: ArchiveEntityProps): Promise<{ success: boolean; message: string }> {
+  console.log("Archive entity type", entityType);
+  console.log("Archiving ids are", ids);
   try {
     if (!ids || ids.length === 0) {
       return { success: false, message: "No items selected for archiving" };
@@ -44,29 +47,26 @@ export async function archiveEntity({
     try {
       switch (entityType) {
         case "product":
-          await apiClient.put(`/api/products/${actualLocationId}/archive`, ids);
+          await apiClient.put(
+            inventoryUrl(`/api/v1/products/archive-multiple`),
+            {
+              ids,
+            },
+          );
 
           break;
         case "stock":
-          await apiClient.put(
-            `/api/stock-variants/${actualLocationId}/archive`,
+          await apiClient.put(inventoryUrl(`/api/v1/stocks/archive-multiple`), {
             ids,
-          );
+          });
           break;
         case "staff":
           await apiClient.put(`/api/staff/${actualLocationId}/archive`, ids);
-
           break;
 
         case "stock-intake":
           await apiClient.put(
             `/api/stock-intakes/${actualLocationId}/all/archive`,
-            ids,
-          );
-          break;
-        case "category":
-          await apiClient.put(
-            `/api/categories/${actualLocationId}/archive`,
             ids,
           );
           break;
@@ -94,7 +94,6 @@ export async function archiveEntity({
       supplier: "/suppliers",
       customer: "/customers",
       stockIntake: "/stock-intakes",
-      category: "/category",
     };
 
     if (paths[entityType]) {

@@ -5,16 +5,16 @@ const StockItemSchema = object({
   quantity: preprocess(
     (val) =>
       typeof val === "string" && val.trim() !== "" ? parseFloat(val) : val,
-    number({ message: "Quantity is required" }).gte(0, {
-      message: "Quantity cannot be less than 0",
-    }),
+    number({ message: "Quantity is required" })
+      .nonnegative()
+      .gt(0, { message: "Quantity cannot be zero" }),
   ),
   value: preprocess(
     (val) =>
       typeof val === "string" && val.trim() !== "" ? parseFloat(val) : val,
-    number({ message: "Quantity is required" }).gte(0, {
-      message: "Quantity cannot be less than 0",
-    }),
+    number({ message: "Value is required" })
+      .nonnegative()
+      .gt(0, { message: "Value cannot be zero" }),
   ),
   batchExpiryDate: string().optional(),
   orderDate: string({ required_error: "Order date is required" }),
@@ -32,7 +32,6 @@ export const StockIntakeSchema = object({
 });
 
 export type StockIntakePayload = z.infer<typeof StockIntakeSchema>;
-
 export const MultiStockIntakeSchema = object({
   stockIntakes: array(StockIntakeSchema).min(1, {
     message: "At least one stock intake must be added",
