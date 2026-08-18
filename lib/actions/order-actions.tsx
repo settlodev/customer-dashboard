@@ -30,8 +30,9 @@ import { orderRequestSchema } from "@/types/orders/schema";
 import { getCurrentLocation } from "./business/get-current-business";
 
 // ─── Service clients ────────────────────────────────────────────────
-// Orders + their detail/timeline live on the OMS. Receipts, EFD, cart
-// submission, and reports each still target their own legacy services.
+// Orders + their detail/timeline live on the OMS — VFD fiscal printing
+// included (see getVfdReceipt below). Receipts, cart submission, and
+// reports each still target their own legacy services.
 
 const oms = () => new ApiClient("orders");
 const ordersBase = "/api/v1/orders";
@@ -438,9 +439,22 @@ export const getPublicReceiptSnapshot = async (
   }
 };
 
-// ─── VFD print (OMS — currently stubbed; backed by Accounting later) ─
+// ─── VFD print (OMS → Accounting → TRA fiscal device, real) ──────────
 
-export const printOrderVfd = async (
+/**
+ * Fiscalises a CLOSED order via the on-site VFD (TRA fiscal device) and
+ * returns the signed receipt. Idempotent — a reprint returns the stored
+ * receipt without re-signing. Requires `printing:tax_receipt`; the OMS
+ * 409s with `VFD_INVALID_STATE` (not closed), `VFD_SIGNING_FAILED`, or
+ * `VFD_UNAVAILABLE`, all surfaced via `error.message` below.
+ *
+ * No `revalidatePath` here — this is called during the RSC render of the
+ * `(printables)/orders/[id]/vfd` printable route, where `revalidatePath`
+ * is illegal (Next 15 forbids it mid-render). The mutation is idempotent
+ * server-side, so skipping the cache bust just means the order-detail page
+ * revalidates on its next natural visit rather than instantly.
+ */
+export const getVfdReceipt = async (
   id: UUID,
 ): Promise<{ vfd: VfdPrintResponse } | { error: string }> => {
   try {
@@ -448,7 +462,6 @@ export const printOrderVfd = async (
       `${ordersBase}/${id}/prints/vfd`,
       {},
     );
-    revalidatePath(`/orders/${id}`);
     return parseStringify({ vfd: data });
   } catch (error: unknown) {
     return {
