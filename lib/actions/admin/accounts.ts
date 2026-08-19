@@ -34,8 +34,10 @@ function staffClient() {
 function buildFilterQuery(params: ListAccountsParams): URLSearchParams {
   const qs = new URLSearchParams();
   if (params.search) qs.set("search", params.search);
-  if (typeof params.active === "boolean") qs.set("active", String(params.active));
-  if (typeof params.deleted === "boolean") qs.set("deleted", String(params.deleted));
+  if (typeof params.active === "boolean")
+    qs.set("active", String(params.active));
+  if (typeof params.deleted === "boolean")
+    qs.set("deleted", String(params.deleted));
   if (params.onboardingState) qs.set("onboardingState", params.onboardingState);
   if (params.createdFrom) qs.set("createdFrom", params.createdFrom);
   if (params.createdTo) qs.set("createdTo", params.createdTo);
@@ -61,7 +63,10 @@ export async function listAccounts(
 }
 
 export async function getAccountOnboardingCounts(
-  params: Omit<ListAccountsParams, "page" | "size" | "sort" | "onboardingState"> = {},
+  params: Omit<
+    ListAccountsParams,
+    "page" | "size" | "sort" | "onboardingState"
+  > = {},
 ): Promise<AccountOnboardingCounts> {
   const qs = buildFilterQuery({ ...params, onboardingState: undefined });
   const queryString = qs.toString();
@@ -79,6 +84,7 @@ export async function getAccountDetail(
   const data = await staffClient().get<AdminAccountDetail>(
     `/api/v1/admin/accounts/${accountId}`,
   );
+  console.log("Account detail", data);
   return parseStringify(data);
 }
 
@@ -150,7 +156,9 @@ export async function setAccountInternal(
       responseType: "success",
       message:
         result?.message ??
-        (internal ? "Account marked as internal" : "Account marked as customer"),
+        (internal
+          ? "Account marked as internal"
+          : "Account marked as customer"),
       data: result,
     });
   } catch (error: any) {
@@ -187,9 +195,7 @@ export async function resendVerificationEmail(
   }
 }
 
-export async function republishAccountEvents(
-  accountId: string,
-): Promise<
+export async function republishAccountEvents(accountId: string): Promise<
   FormResponse<{
     accountId: string;
     accountEventEmitted: boolean;
@@ -285,7 +291,9 @@ export async function purgeAccount(
   accountId: string,
 ): Promise<FormResponse<void>> {
   try {
-    await staffClient().delete<void>(`/api/v1/admin/accounts/${accountId}/purge`);
+    await staffClient().delete<void>(
+      `/api/v1/admin/accounts/${accountId}/purge`,
+    );
     revalidatePath("/admin/accounts");
     return parseStringify({
       responseType: "success",
@@ -383,9 +391,10 @@ async function patchStaffAssignment(
     revalidatePath(`/admin/accounts/${accountId}`);
     return parseStringify({
       responseType: "success",
-      message: segment === "sales-person"
-        ? "Sales person assigned"
-        : "Support staff assigned",
+      message:
+        segment === "sales-person"
+          ? "Sales person assigned"
+          : "Support staff assigned",
       data: result,
     });
   } catch (error: any) {
@@ -409,9 +418,10 @@ async function deleteStaffAssignment(
     revalidatePath(`/admin/accounts/${accountId}`);
     return parseStringify({
       responseType: "success",
-      message: segment === "sales-person"
-        ? "Sales person removed"
-        : "Support staff removed",
+      message:
+        segment === "sales-person"
+          ? "Sales person removed"
+          : "Support staff removed",
     });
   } catch (error: any) {
     return parseStringify({
@@ -468,10 +478,10 @@ export async function sendAccountEmail(
   body: string,
 ): Promise<FormResponse<{ message: string }>> {
   try {
-    const result = await staffClient().post<{ message: string }, { subject: string; body: string }>(
-      `/api/v1/admin/accounts/${accountId}/send-email`,
-      { subject, body },
-    );
+    const result = await staffClient().post<
+      { message: string },
+      { subject: string; body: string }
+    >(`/api/v1/admin/accounts/${accountId}/send-email`, { subject, body });
     return parseStringify({
       responseType: "success",
       message: result?.message ?? "Email queued",

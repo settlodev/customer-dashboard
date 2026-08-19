@@ -45,4 +45,4 @@ next-env.d.ts
 .env.sentry-build-plugin
 
 # claude skills
-./.claude
+.claude

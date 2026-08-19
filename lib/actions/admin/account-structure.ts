@@ -17,7 +17,13 @@ import type {
 
 function nodeFrom(
   entityType: AccountEntityType,
-  raw: { id: string; name: string; identifier: string; code?: string | null; region?: string | null },
+  raw: {
+    id: string;
+    name: string;
+    identifier: string;
+    code?: string | null;
+    region?: string | null;
+  },
   item: SubscriptionItemResponse | null,
 ): AccountEntityNode {
   const planLabel = item?.packageInfo?.name ?? null;
@@ -25,7 +31,9 @@ function nodeFrom(
     id: raw.id,
     entityType,
     name: raw.name,
-    meta: [raw.code ?? raw.identifier, raw.region ?? null].filter(Boolean).join(" · "),
+    meta: [raw.code ?? raw.identifier, raw.region ?? null]
+      .filter(Boolean)
+      .join(" · "),
     planLabel,
     planTier: planLabel ? planTier(planLabel) : null,
     status: item?.status ?? null,
@@ -64,13 +72,30 @@ export async function getAccountStructure(
       const business: AccountStructureBusiness = {
         businessId,
         locations: locs.map((l) =>
-          nodeFrom("LOCATION", { id: l.id, name: l.name, identifier: l.identifier, region: l.region }, byEntity.get(l.id) ?? null),
+          nodeFrom(
+            "LOCATION",
+            {
+              id: l.id,
+              name: l.name,
+              identifier: l.identifier,
+              region: l.region,
+            },
+            byEntity.get(l.id) ?? null,
+          ),
         ),
         warehouses: whs.map((w) =>
-          nodeFrom("WAREHOUSE", { id: w.id, name: w.name, identifier: w.identifier, code: w.code }, byEntity.get(w.id) ?? null),
+          nodeFrom(
+            "WAREHOUSE",
+            { id: w.id, name: w.name, identifier: w.identifier, code: w.code },
+            byEntity.get(w.id) ?? null,
+          ),
         ),
         stores: sts.map((s) =>
-          nodeFrom("STORE", { id: s.id, name: s.name, identifier: s.identifier, code: s.code }, byEntity.get(s.id) ?? null),
+          nodeFrom(
+            "STORE",
+            { id: s.id, name: s.name, identifier: s.identifier, code: s.code },
+            byEntity.get(s.id) ?? null,
+          ),
         ),
       };
       return [businessId, business] as const;
