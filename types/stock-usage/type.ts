@@ -18,7 +18,10 @@ export type UsageGrouping = "CATEGORY" | "DEPARTMENT" | "RECIPIENT";
 export interface StockUsageItem {
   id: string;
   stockVariantId: string;
+  /** Raw variant name (e.g. "300ml") — render {@link displayName} instead. */
   variantName: string | null;
+  /** Composed "Stock Variant" label, computed live server-side. */
+  displayName: string | null;
   previousQuantity: number;
   /** Always positive — amount consumed. Movement records the negative deduction. */
   quantity: number;

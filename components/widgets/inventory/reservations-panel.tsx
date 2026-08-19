@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { itemDisplayName } from "@/lib/display-name";
 import {
   Table,
   TableBody,
@@ -96,7 +97,10 @@ export function ReservationsPanel({ reservations }: Props) {
                     return (
                       <TableRow key={r.id}>
                         <TableCell className="font-medium">
-                          {r.stockVariantName ?? r.stockVariantId.slice(0, 8)}
+                          {itemDisplayName({
+                            parentName: r.stockName,
+                            variantName: r.stockVariantName,
+                          }) || r.stockVariantId.slice(0, 8)}
                           {r.stockVariantSku && (
                             <span className="block text-[10px] text-muted-foreground">
                               SKU: {r.stockVariantSku}

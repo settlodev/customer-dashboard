@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { itemDisplayName } from "@/lib/display-name";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -131,7 +132,10 @@ export function SupplierPricingPanel({ supplierId, defaultCurrency, pricing }: P
                 {pricing.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell className="font-medium">
-                      {row.stockVariantName || row.stockName || row.stockVariantId}
+                      {itemDisplayName({
+                        parentName: row.stockName,
+                        variantName: row.stockVariantName,
+                      }) || row.stockVariantId}
                     </TableCell>
                     <TableCell className="text-right">
                       <Money amount={row.unitPrice} currency={row.currency} />
@@ -193,7 +197,12 @@ export function SupplierPricingPanel({ supplierId, defaultCurrency, pricing }: P
             <DialogDescription>
               Deletes the negotiated price for{" "}
               <strong>
-                {confirmDelete?.stockVariantName || confirmDelete?.stockVariantId}
+                {(confirmDelete &&
+                  itemDisplayName({
+                    parentName: confirmDelete.stockName,
+                    variantName: confirmDelete.stockVariantName,
+                  })) ||
+                  confirmDelete?.stockVariantId}
               </strong>{" "}
               with this supplier. Future auto-reorders will fall back to the
               stock average cost.

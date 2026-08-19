@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Pencil, Plus, Star, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { itemDisplayName } from "@/lib/display-name";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -123,7 +124,10 @@ export function SupplierSourceListPanel({ supplierId, entries }: Props) {
                 {entries.map((e) => (
                   <TableRow key={e.id}>
                     <TableCell className="font-medium">
-                      {e.stockVariantName || e.stockName || e.stockVariantId}
+                      {itemDisplayName({
+                        parentName: e.stockName,
+                        variantName: e.stockVariantName,
+                      }) || e.stockVariantId}
                     </TableCell>
                     <TableCell className="text-right">
                       <span
@@ -196,7 +200,12 @@ export function SupplierSourceListPanel({ supplierId, entries }: Props) {
             <DialogDescription>
               This supplier will no longer be a valid source for{" "}
               <strong>
-                {confirmDelete?.stockVariantName || confirmDelete?.stockVariantId}
+                {(confirmDelete &&
+                  itemDisplayName({
+                    parentName: confirmDelete.stockName,
+                    variantName: confirmDelete.stockVariantName,
+                  })) ||
+                  confirmDelete?.stockVariantId}
               </strong>
               .
             </DialogDescription>

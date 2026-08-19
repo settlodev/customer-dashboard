@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { itemDisplayName } from "@/lib/display-name";
 import { FieldErrors, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -206,7 +207,12 @@ export default function RecipeForm({
         (p.variants ?? [])
           .filter((v) => !v.archivedAt)
           .map((v) => ({
-            label: `${p.name} · ${v.name}`,
+            label: itemDisplayName({
+              parentName: p.name,
+              variantName: v.name,
+              displayName: v.displayName,
+              collapseDefault: (p.variants ?? []).length === 1,
+            }),
             value: v.id,
           })),
       ),

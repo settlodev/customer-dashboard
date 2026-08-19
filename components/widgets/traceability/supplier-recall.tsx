@@ -243,7 +243,7 @@ export function SupplierRecall() {
                 {preview.slice(0, 10).map((b) => (
                   <li key={b.id} className="py-1 flex justify-between gap-2">
                     <span className="font-mono truncate">{b.batchNumber}</span>
-                    <span>{b.stockVariantDisplayName}</span>
+                    <span>{b.stockVariantDisplayName || "—"}</span>
                     <span>
                       {b.status} · {Number(b.quantityOnHand).toLocaleString()}
                     </span>

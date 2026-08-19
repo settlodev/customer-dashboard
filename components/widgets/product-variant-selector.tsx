@@ -4,6 +4,7 @@
 import React, { useEffect, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { itemDisplayName } from "@/lib/display-name";
 import { Button } from "@/components/ui/button";
 import { controlComboboxTriggerClass } from "@/components/ui/field";
 import {
@@ -47,7 +48,12 @@ const ProductVariantSelector: React.FC<Props> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const getDisplayName = (product: Product, variant: Variant) => {
-    return `${product.name} - ${variant.name}`;
+    return itemDisplayName({
+      parentName: product.name,
+      variantName: variant.name,
+      displayName: variant.displayName,
+      collapseDefault: product.variants.length === 1,
+    });
   };
 
   useEffect(() => {

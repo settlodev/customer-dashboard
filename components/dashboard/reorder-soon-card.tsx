@@ -3,6 +3,7 @@ import { PackagePlus } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { splitItemName } from "@/lib/display-name";
 import type { ReorderSuggestion } from "@/types/inventory-analytics/type";
 
 /**
@@ -63,10 +64,10 @@ export function ReorderSoonCard({ items }: { items: ReorderSuggestion[] }) {
         <ul className="flex flex-col">
           {rows.map((item) => {
             const tag = TAG[urgencyOf(item)];
-            const showVariant =
-              !!item.variantName &&
-              item.variantName.trim().toLowerCase() !==
-                item.stockName.trim().toLowerCase();
+            const { primary, secondary } = splitItemName({
+              parentName: item.stockName,
+              variantName: item.variantName,
+            });
             const weekly = Math.round((item.avgDailyConsumption ?? 0) * 7);
             const daysLeft = Math.max(
               0,
@@ -83,10 +84,10 @@ export function ReorderSoonCard({ items }: { items: ReorderSuggestion[] }) {
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-semibold tracking-[-0.01em] text-ink">
-                    {item.stockName}
-                    {showVariant && (
+                    {primary}
+                    {secondary && (
                       <span className="ml-1.5 font-normal text-muted-foreground">
-                        {item.variantName}
+                        {secondary}
                       </span>
                     )}
                   </p>

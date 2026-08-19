@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { itemDisplayName } from "@/lib/display-name";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -49,7 +50,12 @@ async function searchByEntityType(
     return (res?.content ?? []).flatMap((p) =>
       (p.variants ?? []).map((v) => ({
         id: v.id,
-        label: `${p.name} — ${v.name}`,
+        label: itemDisplayName({
+          parentName: p.name,
+          variantName: v.name,
+          displayName: v.displayName,
+          collapseDefault: (p.variants ?? []).length === 1,
+        }),
         sublabel: v.sku ?? undefined,
       })),
     );
