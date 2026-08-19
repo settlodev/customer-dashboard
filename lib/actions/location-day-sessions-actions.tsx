@@ -9,6 +9,12 @@ import {
   getDaySessionCookie,
   setDaySessionCookie,
 } from "@/lib/actions/day-session-cookie-actions";
+import {
+  DAY_SESSION_ALREADY_OPEN,
+  DAY_SESSION_NOT_OPEN,
+  isAlreadyOpenConflict,
+  isNotOpenConflict,
+} from "@/lib/day-sessions/conflicts";
 
 /**
  * Shared Settlo day-session UUIDv5 namespace — byte-for-byte identical to
@@ -41,6 +47,7 @@ const computeDaySessionId = (locationId: string, timezone?: string | null): stri
   }).format(new Date());
   return uuidv5(`${locationId}:${businessDate}`, DAY_SESSION_NAMESPACE);
 };
+
 
 export interface DaySession {
   id: string;
@@ -121,9 +128,24 @@ export const openDaySession = async (
   } catch (error) {
     const err = error as { code?: string; message?: string };
     // Already-open is functionally a success for callers that just need a
-    // session — they can retry their original action immediately.
-    if (err?.code === "DAY_SESSION_ALREADY_OPEN") {
-      return { responseType: "success", message: "A business day is already open." };
+    // session — they can retry their original action immediately. Read the
+    // session back so the caller gets the same shape a fresh open returns
+    // (and the cookie gets written), instead of a bare success it then has
+    // to go find the state for.
+    if (isAlreadyOpenConflict(err?.code, err?.message)) {
+      let existing: DaySession | null = null;
+      try {
+        existing = await getCurrentDaySession(locationId);
+      } catch {
+        // Accounts answered the POST but not the read — the day is still
+        // open, which is all the caller asked about.
+      }
+      return {
+        responseType: "success",
+        message: "A business day is already open.",
+        data: existing ?? undefined,
+        errorCode: DAY_SESSION_ALREADY_OPEN,
+      };
     }
     return {
       responseType: "error",
@@ -155,6 +177,20 @@ export const closeDaySession = async (
     return { responseType: "success", message: "Day session closed", data: parseStringify(data) };
   } catch (error) {
     const err = error as { code?: string; message?: string };
+    // Nothing was open to close. Still an error for the caller — no
+    // cash-up happened and no report was produced, so this must never
+    // read as "closed" — but it's a state mismatch, not a failure to
+    // reach the server, and the UI says so differently. Drop the cookie:
+    // whatever it points at, the location has no open day.
+    if (isNotOpenConflict(err?.code, err?.message)) {
+      await clearDaySessionCookie();
+      return {
+        responseType: "error",
+        message: "The business day is already closed.",
+        error: error instanceof Error ? error : new Error(String(error)),
+        errorCode: DAY_SESSION_NOT_OPEN,
+      };
+    }
     return {
       responseType: "error",
       message: err?.message ?? "Failed to close day session",

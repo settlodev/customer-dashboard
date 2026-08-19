@@ -18,7 +18,6 @@
  * sidebar uses overflow:hidden and would otherwise clip a tall menu.
  */
 
-import * as Sentry from "@sentry/nextjs";
 import {
   ArrowRight,
   Check,
@@ -448,7 +447,7 @@ export function SidebarAccountMenu({
         window.location.href = "/select-location";
       }
     } catch (error) {
-      Sentry.captureException(error);
+      console.error(error);
       setSwitching(false);
       setConfirmBiz(null);
     }
@@ -480,7 +479,7 @@ export function SidebarAccountMenu({
         return;
       }
       // Surface the real reason instead of silently closing.
-      Sentry.captureException(
+      console.error(
         new Error(res.message || "Account switch failed"),
       );
       setSwitchingAccount(false);
@@ -491,7 +490,7 @@ export function SidebarAccountMenu({
         description: res.message || "Please try again in a moment.",
       });
     } catch (error) {
-      Sentry.captureException(error);
+      console.error(error);
       setSwitchingAccount(false);
       setConfirmAccount(null);
       toast({

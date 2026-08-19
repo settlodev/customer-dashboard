@@ -1,6 +1,5 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   MapPin,
@@ -155,7 +154,7 @@ const LocationList = ({
           : `/subscription?location=${item.id}`;
       }
     } catch (error) {
-      Sentry.captureException(error);
+      console.error(error);
       setIsRedirecting(false);
       setPendingIndex(null);
       toast({

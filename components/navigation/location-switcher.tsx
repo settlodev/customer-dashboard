@@ -1,6 +1,5 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import {
   ChevronDown,
   MapPin,
@@ -153,7 +152,7 @@ export const LocationSwitcher = ({
           : `/subscription?location=${loc.id}`;
       }
     } catch (error) {
-      Sentry.captureException(error);
+      console.error(error);
       setLoadingId(null);
       setConfirm(null);
     }

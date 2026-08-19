@@ -1,6 +1,5 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import { useEffect, useState } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -77,7 +76,7 @@ export function AccountSwitcher({ onPick }: AccountSwitcherProps) {
           // sessionStorage unavailable — fine, just won't cache
         }
       })
-      .catch((error) => Sentry.captureException(error));
+      .catch((error) => console.error(error));
     return () => {
       active = false;
     };
