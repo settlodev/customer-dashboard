@@ -19,6 +19,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { getCachedProducts } from "@/lib/cache/reference-data";
+import { composeItemName } from "@/lib/display-name";
 import type { Product, ProductVariant } from "@/types/product/type";
 
 /**
@@ -53,25 +54,6 @@ interface Props {
   onLoadingChange?: (loading: boolean) => void;
 }
 
-/**
- * Collapses the awkward product/variant name combinations the same way the
- * products list does — "Coca-Cola" rather than "Coca-Cola - Default", and no
- * "Coca-Cola Coca-Cola 300ml".
- */
-function variantDisplayName(
-  productName: string,
-  variantName: string,
-  isOnlyVariant: boolean,
-): string {
-  const p = (productName ?? "").trim();
-  const v = (variantName ?? "").trim();
-  if (!v) return p;
-  if (v.toLowerCase() === p.toLowerCase()) return p;
-  if (isOnlyVariant && v.toLowerCase() === "default") return p;
-  if (v.toLowerCase().includes(p.toLowerCase())) return v;
-  return `${p} ${v}`;
-}
-
 interface Option extends ProductItemMeta {
   searchString: string;
 }
@@ -84,7 +66,7 @@ function toOption(
   return {
     productId: product.id,
     variantId: variant.id,
-    displayName: variantDisplayName(product.name, variant.name, isOnlyVariant),
+    displayName: composeItemName(product.name, variant.name, isOnlyVariant),
     price: Number(variant.price ?? 0),
     currency: variant.nativeCurrency || product.nativeCurrency || "",
     stockVariantId: variant.stockVariantId ?? null,

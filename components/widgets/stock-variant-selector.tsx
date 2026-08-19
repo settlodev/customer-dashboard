@@ -19,6 +19,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { getCachedStocks } from "@/lib/cache/reference-data";
+import { itemDisplayName } from "@/lib/display-name";
 import type { Stock, StockVariant } from "@/types/stock/type";
 
 export interface VariantMeta {
@@ -123,7 +124,12 @@ const StockVariantSelector: React.FC<Props> = ({
             .filter((v) => !v.archived)
             .map((variant) => ({
               id: variant.id,
-              displayName: variant.displayName || `${stock.name} - ${variant.name}`,
+              displayName: itemDisplayName({
+                parentName: stock.name,
+                variantName: variant.name,
+                displayName: variant.displayName,
+                collapseDefault: stock.variants.length === 1,
+              }),
               serialTracked: variant.serialTracked ?? false,
               unitId: variant.unitId,
               stockTaxTypeId: stock.taxTypeId ?? null,

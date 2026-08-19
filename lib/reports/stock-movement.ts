@@ -8,6 +8,7 @@
  * into the drawer's breakdown bars.
  */
 
+import { composeItemName } from "@/lib/display-name";
 import type { StockMovementBreakdown } from "@/types/stock-movement-report/type";
 
 export type StockLens = "all" | "movers" | "low" | "out" | "dead" | "reserved";
@@ -84,18 +85,12 @@ export function buildBreakdownEntries(
 
 /**
  * One-line item label: "Product Variant" (e.g. "Coca-Cola 300ml"), guarding
- * against duplication and bare "Default" variants.
+ * against duplication and bare "Default" variants. Delegates to the shared
+ * composer; movement rows can't know sibling counts, so a literal "Default"
+ * is always treated as the auto-created placeholder it is in practice.
  */
 export function buildItemLabel(stockName: string, variantName: string): string {
-  const stock = (stockName ?? "").trim();
-  const variant = (variantName ?? "").trim();
-  if (!stock) return variant || "Unknown item";
-  if (!variant) return stock;
-  const s = stock.toLowerCase();
-  const v = variant.toLowerCase();
-  if (v === s || v === "default") return stock;
-  if (v.startsWith(s)) return variant;
-  return `${stock} ${variant}`;
+  return composeItemName(stockName, variantName, true) || "Unknown item";
 }
 
 const QTY_FMT = new Intl.NumberFormat("en", { maximumFractionDigits: 0 });

@@ -1,6 +1,7 @@
 "use server";
 
 import ApiClient from "@/lib/settlo-api-client";
+import { itemDisplayName } from "@/lib/display-name";
 import { parseStringify } from "@/lib/utils";
 import { inventoryUrl } from "./inventory-client";
 import type {
@@ -15,15 +16,26 @@ import type {
 } from "@/types/inventory-analytics/type";
 import { type PackagingReport, EMPTY_PACKAGING_REPORT } from "@/types/packaging-report/type";
 
-// Maps server field names (variantId/displayName) to client names (stockVariantId/variantName)
+// Maps server field names (variantId/displayName) to client names
+// (stockVariantId/variantName). `variantName` becomes the full composed item
+// label ("Coca-Cola 300ml") — re-composed against `stockName` so migrated
+// rows whose stored displayName is bare still read correctly — while
+// `stockName` stays the parent name only (previously it fell back to the
+// composed displayName, which made parent+variant pairings render the
+// composed name twice).
 function mapVariantFields<T extends Record<string, unknown>>(
   item: T,
 ): T & { stockVariantId: string; variantName: string; stockName: string } {
+  const stockName = (item.stockName as string) ?? "";
   return {
     ...item,
     stockVariantId: (item.variantId as string) ?? (item.stockVariantId as string),
-    variantName: (item.displayName as string) ?? (item.variantName as string) ?? "",
-    stockName: (item.stockName as string) ?? (item.displayName as string) ?? "",
+    variantName: itemDisplayName({
+      parentName: stockName,
+      variantName: item.variantName as string | undefined,
+      displayName: item.displayName as string | undefined,
+    }),
+    stockName,
   };
 }
 

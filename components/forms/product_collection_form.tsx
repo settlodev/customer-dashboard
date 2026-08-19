@@ -7,6 +7,7 @@ import React, {
   useState,
   useTransition,
 } from "react";
+import { itemDisplayName } from "@/lib/display-name";
 import { FieldErrors, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -522,7 +523,13 @@ function ProductCollectionForm({
                           lookup?.variant.nativeCurrency?.toUpperCase();
                         const cur = variantCcy ?? watchedNativeCurrency;
                         const label = lookup
-                          ? `${lookup.product.name} — ${lookup.variant.name}`
+                          ? itemDisplayName({
+                              parentName: lookup.product.name,
+                              variantName: lookup.variant.name,
+                              displayName: lookup.variant.displayName,
+                              collapseDefault:
+                                lookup.product.variants.length === 1,
+                            })
                           : (item?.items?.find(
                               (i) => i.variantId === lineValue?.variantId,
                             )?.variantDisplayName ?? "Variant");

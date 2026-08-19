@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import { Money } from "@/components/widgets/money";
 import { cn } from "@/lib/utils";
+import { itemDisplayName } from "@/lib/display-name";
 import {
   dateLabel,
   dayLabel,
@@ -371,7 +372,11 @@ function lifecycleEvents({ stock, auditEntries }: BuildInput): ActivityEvent[] {
       lane: "admin",
       tone: "info",
       icon: Boxes,
-      title: `Variant added — ${v.displayName}`,
+      title: `Variant added — ${itemDisplayName({
+        parentName: stock.name,
+        variantName: v.name,
+        displayName: v.displayName,
+      })}`,
       note: [
         v.sku ? `SKU ${v.sku}` : null,
         v.barcode ? `barcode ${v.barcode}` : null,

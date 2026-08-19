@@ -51,6 +51,7 @@ import {
 import { Money } from "@/components/widgets/money";
 import { BarcodeManager } from "@/components/widgets/barcode-manager";
 import { assignProductBarcode } from "@/lib/actions/product-barcode-actions";
+import { itemDisplayName } from "@/lib/display-name";
 import {
   QtyOnHandChart,
   StockValueChart,
@@ -102,13 +103,12 @@ type TabKey = (typeof TABS)[number]["key"];
 // row, mirroring the products-list dedup so the detail view reads the same
 // way the list did.
 function variantDisplay(product: Product, variant: ProductVariant): string {
-  const p = product.name.trim();
-  const v = (variant.displayName || variant.name || "").trim();
-  if (!v) return p;
-  if (v.toLowerCase() === p.toLowerCase()) return p;
-  if (product.variants.length === 1 && v.toLowerCase() === "default") return p;
-  if (v.toLowerCase().includes(p.toLowerCase())) return v;
-  return `${p} ${v}`;
+  return itemDisplayName({
+    parentName: product.name,
+    variantName: variant.name,
+    displayName: variant.displayName,
+    collapseDefault: product.variants.length === 1,
+  });
 }
 
 function sellabilityLabel(v: ProductVariant): {
@@ -893,7 +893,7 @@ function InventoryTab({
       )}
 
       {recipeVariants.length > 0 && (
-        <RecipeVariantsCard variants={recipeVariants} />
+        <RecipeVariantsCard variants={recipeVariants} productName={product.name} />
       )}
 
       {trackedVariants.length > 0 && (
@@ -1023,8 +1023,10 @@ function InventoryTab({
 
 function RecipeVariantsCard({
   variants,
+  productName,
 }: {
   variants: VariantRecipeSummary[];
+  productName: string;
 }) {
   return (
     <Card>
@@ -1040,7 +1042,11 @@ function RecipeVariantsCard({
         </div>
         <div className="space-y-4">
           {variants.map((v) => (
-            <RecipeVariantRow key={v.variantId} variant={v} />
+            <RecipeVariantRow
+              key={v.variantId}
+              variant={v}
+              productName={productName}
+            />
           ))}
         </div>
       </CardContent>
@@ -1048,12 +1054,22 @@ function RecipeVariantsCard({
   );
 }
 
-function RecipeVariantRow({ variant }: { variant: VariantRecipeSummary }) {
+function RecipeVariantRow({
+  variant,
+  productName,
+}: {
+  variant: VariantRecipeSummary;
+  productName: string;
+}) {
+  const variantLabel = itemDisplayName({
+    parentName: productName,
+    variantName: variant.variantName,
+  });
   if (variant.ruleId == null) {
     return (
       <div className="rounded-md border border-amber-200/60 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20 p-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">{variant.variantName}</span>
+          <span className="text-sm font-medium">{variantLabel}</span>
           <Badge variant="outline" className="text-amber-700 dark:text-amber-300">
             No recipe attached
           </Badge>
@@ -1078,7 +1094,7 @@ function RecipeVariantRow({ variant }: { variant: VariantRecipeSummary }) {
     <div className="rounded-md border p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-sm font-medium truncate">{variant.variantName}</div>
+          <div className="text-sm font-medium truncate">{variantLabel}</div>
           <Link
             href={`/bom-rules/${variant.ruleId}`}
             className="text-xs text-primary hover:underline inline-flex items-center gap-1"

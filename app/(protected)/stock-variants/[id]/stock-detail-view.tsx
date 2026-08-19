@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDivisibleQuantity } from "@/lib/format-divisible-quantity";
+import { itemDisplayName } from "@/lib/display-name";
 import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import {
   Table,
@@ -432,6 +433,12 @@ function OverviewTab({
                 const qty = bal?.quantityOnHand ?? 0;
                 const cost = bal?.averageCost ?? 0;
                 const value = qty * cost;
+                const label = itemDisplayName({
+                  parentName: stock.name,
+                  variantName: v.name,
+                  displayName: v.displayName,
+                  collapseDefault: stock.variants.length === 1,
+                });
 
                 return (
                   <TableRow
@@ -440,7 +447,7 @@ function OverviewTab({
                   >
                     <TableCell>
                       <div>
-                        <span className="font-medium">{v.displayName}</span>
+                        <span className="font-medium">{label}</span>
                         {v.isDefault && (
                           <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 font-medium">
                             Default
@@ -464,7 +471,7 @@ function OverviewTab({
                     <TableCell>
                       <BarcodeManager
                         variantId={v.id}
-                        variantName={v.displayName}
+                        variantName={label}
                         barcode={v.barcode}
                         sku={v.sku}
                         disabled={v.archived}
@@ -523,7 +530,7 @@ function OverviewTab({
                           <ReorderConfigDialog
                             locationId={locationId}
                             variantId={v.id}
-                            variantName={v.displayName}
+                            variantName={label}
                             unitAbbreviation={v.unitAbbreviation}
                             balance={bal ?? null}
                             autoReorderEnabled={autoReorderEnabled}
@@ -598,13 +605,21 @@ function BatchesTab({
         onChange={setActiveVariantId}
         options={activeVariants.map((v) => ({
           id: v.id,
-          label: v.displayName ?? v.name,
+          label: itemDisplayName({
+            parentName: stock.name,
+            variantName: v.name,
+            displayName: v.displayName,
+          }),
           count: batchCountByVariant[v.id],
         }))}
       />
       <BatchPanel
         variantId={activeVariant.id}
-        variantLabel={activeVariant.displayName ?? activeVariant.name}
+        variantLabel={itemDisplayName({
+          parentName: stock.name,
+          variantName: activeVariant.name,
+          displayName: activeVariant.displayName,
+        })}
         initialPage={initialBatchPage}
         initialConsumptionOrder={initialConsumptionOrder}
         stock={stock}
@@ -639,8 +654,13 @@ function MovementsTab({
   );
   const activeVariant =
     activeVariants.find((v) => v.id === activeVariantId) ?? activeVariants[0];
-  const variantLabel =
-    activeVariant?.displayName ?? activeVariant?.name ?? "variant";
+  const variantLabel = activeVariant
+    ? itemDisplayName({
+        parentName: stock.name,
+        variantName: activeVariant.name,
+        displayName: activeVariant.displayName,
+      })
+    : "variant";
 
   if (!activeVariant || !locationId || !initialLedgerPage) {
     return (
@@ -666,7 +686,11 @@ function MovementsTab({
         onChange={setActiveVariantId}
         options={activeVariants.map((v) => ({
           id: v.id,
-          label: v.displayName ?? v.name,
+          label: itemDisplayName({
+            parentName: stock.name,
+            variantName: v.name,
+            displayName: v.displayName,
+          }),
           count: variantSummaryMap[v.id]?.totalMovements,
         }))}
       />
@@ -814,7 +838,11 @@ function AnalyticsTab({
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {v.displayName}
+                {itemDisplayName({
+                  parentName: stock.name,
+                  variantName: v.name,
+                  displayName: v.displayName,
+                })}
               </button>
             ))}
           </div>
