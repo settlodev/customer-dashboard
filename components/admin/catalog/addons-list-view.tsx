@@ -151,6 +151,14 @@ export function AddonsListView({ addons, features }: AddonsListViewProps) {
                   </TableCell>
                   <TableCell className="text-right tabular-nums font-medium">
                     {formatMoney(addon.price)}
+                    {/* Addon prices are always monthly rates — unlike packages,
+                        there is no billing interval on the row. */}
+                    <span
+                      className="ml-1 font-mono text-[10.5px] font-normal text-muted-foreground"
+                      title="Priced per month"
+                    >
+                      /mo
+                    </span>
                   </TableCell>
                   <TableCell>
                     {addon.isActive ? (

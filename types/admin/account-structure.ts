@@ -12,7 +12,7 @@ export interface AccountEntityNode {
   planTier: PlanTier | null;
   status: SubscriptionItemStatus | null;
   trialEndDate: string | null;
-  href: string | null; // /locations/[id] for LOCATION; null for WAREHOUSE/STORE (Phase 4)
+  href: string | null; // /locations|warehouses|stores/[id]
 }
 
 export interface AccountStructureBusiness {
