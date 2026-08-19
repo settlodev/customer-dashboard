@@ -6,6 +6,7 @@ import {
   PageBody,
 } from "@/components/layouts/page-shell";
 import { getStockUsage } from "@/lib/actions/stock-usage-actions";
+import { itemDisplayName } from "@/lib/display-name";
 import StockUsageForm from "@/components/forms/stock_usage_form";
 import ReverseStockUsageDialog from "@/components/widgets/stock-usage/reverse-dialog";
 import { Card, CardContent } from "@/components/ui/card";
@@ -196,7 +197,10 @@ export default async function StockUsagePage({ params }: { params: Params }) {
                         return (
                           <tr key={line.id} className="hover:bg-gray-50/50">
                             <td className="px-4 py-3 font-medium text-gray-900">
-                              {line.variantName}
+                              {itemDisplayName({
+                                displayName: line.displayName,
+                                variantName: line.variantName,
+                              })}
                               {line.batchNumber && (
                                 <span className="ml-2 text-[11px] text-muted-foreground font-mono">
                                   {line.batchNumber}

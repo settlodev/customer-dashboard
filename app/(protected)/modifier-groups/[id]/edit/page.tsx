@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { itemDisplayName } from "@/lib/display-name";
 import {
   PageShell,
   PageHeader,
@@ -29,7 +30,12 @@ export default async function Page({ params }: { params: Params }) {
       if (v.archived) continue;
       stockVariants.push({
         id: v.id,
-        label: `${stock.name} — ${v.name}`,
+        label: itemDisplayName({
+          parentName: stock.name,
+          variantName: v.name,
+          displayName: v.displayName,
+          collapseDefault: (stock.variants ?? []).length === 1,
+        }),
         unitId: v.unitId,
       });
     }

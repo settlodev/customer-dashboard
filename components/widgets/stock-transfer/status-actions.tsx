@@ -42,6 +42,7 @@ import {
   getCachedStocks,
   invalidateStocksCache,
 } from "@/lib/cache/reference-data";
+import { itemDisplayName } from "@/lib/display-name";
 import {
   acceptTransfer,
   cancelTransfer,
@@ -726,7 +727,12 @@ function MapItemsButton({ transfer }: { transfer: StockTransfer }) {
           .filter((v) => !v.archived)
           .map((v) => ({
             id: v.id,
-            label: v.displayName || `${s.name} - ${v.name}`,
+            label: itemDisplayName({
+              parentName: s.name,
+              variantName: v.name,
+              displayName: v.displayName,
+              collapseDefault: (s.variants ?? []).length === 1,
+            }),
             sku: v.sku,
             barcode: v.barcode,
             unitId: v.unitId,

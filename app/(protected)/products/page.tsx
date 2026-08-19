@@ -17,6 +17,7 @@ import {
   ProductVariant,
   ProductVariantRow,
 } from "@/types/product/type";
+import { composeItemName } from "@/lib/display-name";
 import { searchProducts, getProductCounts } from "@/lib/actions/product-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getProductsKpi } from "@/lib/actions/reports-analytics-actions";
@@ -34,34 +35,6 @@ type Params = {
     status?: string;
   }>;
 };
-
-/**
- * Compose a customer-facing variant name from the parent product + variant.
- * Mirrors the stock-variant naming pattern (e.g. "Coca-Cola 300ml") while
- * collapsing the awkward cases:
- *
- * <ul>
- *   <li>variant name equals product name → just the product name</li>
- *   <li>single-variant product with the conventional "Default" name →
- *       just the product name</li>
- *   <li>variant name already contains the product name → use it as-is
- *       (avoids "Coca-Cola Coca-Cola 300ml")</li>
- *   <li>otherwise → "{product} {variant}"</li>
- * </ul>
- */
-function variantDisplayName(
-  productName: string,
-  variantName: string,
-  isOnlyVariant: boolean,
-): string {
-  const p = productName.trim();
-  const v = variantName.trim();
-  if (!v) return p;
-  if (v.toLowerCase() === p.toLowerCase()) return p;
-  if (isOnlyVariant && v.toLowerCase() === "default") return p;
-  if (v.toLowerCase().includes(p.toLowerCase())) return v;
-  return `${p} ${v}`;
-}
 
 /**
  * Build one {@link ProductVariantRow} from a (product, variant) pair.
@@ -92,7 +65,7 @@ function enrichVariant(
     id: product.id,
     productId: product.id,
     variantId: variant.id,
-    name: variantDisplayName(product.name, variant.name, isOnlyVariant),
+    name: composeItemName(product.name, variant.name, isOnlyVariant),
     imageUrl: variant.imageUrl ?? product.imageUrl,
     product,
     sku: variant.sku,

@@ -4,6 +4,7 @@ import {
   PageBreadcrumbs,
   PageBody,
 } from "@/components/layouts/page-shell";
+import { itemDisplayName } from "@/lib/display-name";
 import {
   AddonGroupForm,
   type ProductVariantOption,
@@ -18,7 +19,12 @@ export default async function NewAddonGroupPage() {
       if (v.archivedAt) continue;
       productVariants.push({
         id: v.id,
-        label: `${product.name} — ${v.name}`,
+        label: itemDisplayName({
+          parentName: product.name,
+          variantName: v.name,
+          displayName: v.displayName,
+          collapseDefault: (product.variants ?? []).length === 1,
+        }),
         price: v.price ?? null,
         costPrice: v.costPrice ?? null,
       });

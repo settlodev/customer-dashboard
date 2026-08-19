@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { NumericFormat } from "react-number-format";
 import { cn } from "@/lib/utils";
+import { itemDisplayName } from "@/lib/display-name";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -376,7 +377,12 @@ export default function ProductForm({ item }: ProductFormProps) {
             if (v.archived) continue;
             sv.push({
               id: v.id,
-              label: `${stock.name} — ${v.name}`,
+              label: itemDisplayName({
+                parentName: stock.name,
+                variantName: v.name,
+                displayName: v.displayName,
+                collapseDefault: (stock.variants ?? []).length === 1,
+              }),
               unitAbbreviation: v.unitAbbreviation,
               unitId: v.unitId,
             });
@@ -1328,6 +1334,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                   {isEditMode && item!.variants.length > 0 ? (
                     <PriceOverridesSection
                       productId={item!.id}
+                      productName={item!.name}
                       variants={item!.variants}
                     />
                   ) : (
@@ -3429,7 +3436,16 @@ function CreateLibraryGroupButton({
         for (const s of stocks ?? []) {
           for (const v of s.variants ?? []) {
             if (v.archived) continue;
-            opts.push({ id: v.id, label: `${s.name} — ${v.name}`, unitId: v.unitId });
+            opts.push({
+              id: v.id,
+              label: itemDisplayName({
+                parentName: s.name,
+                variantName: v.name,
+                displayName: v.displayName,
+                collapseDefault: (s.variants ?? []).length === 1,
+              }),
+              unitId: v.unitId,
+            });
           }
         }
         setStockVariants(opts);
@@ -3442,7 +3458,12 @@ function CreateLibraryGroupButton({
             if (v.archivedAt) continue;
             opts.push({
               id: v.id,
-              label: `${p.name} — ${v.name}`,
+              label: itemDisplayName({
+                parentName: p.name,
+                variantName: v.name,
+                displayName: v.displayName,
+                collapseDefault: (p.variants ?? []).length === 1,
+              }),
               price: v.price ?? null,
               costPrice: v.costPrice ?? null,
             });
@@ -4688,9 +4709,11 @@ function SellabilityScheduleEditor({
 
 function PriceOverridesSection({
   productId,
+  productName,
   variants,
 }: {
   productId: string;
+  productName: string;
   variants: ProductVariant[];
 }) {
   const [selectedVariantId, setSelectedVariantId] = useState(
@@ -4826,7 +4849,12 @@ function PriceOverridesSection({
             <Combobox
               options={uniqueVariants.map((v) => ({
                 value: v.id,
-                label: v.displayName || v.name,
+                label: itemDisplayName({
+                  parentName: productName,
+                  variantName: v.name,
+                  displayName: v.displayName,
+                  collapseDefault: uniqueVariants.length === 1,
+                }),
               }))}
               value={selectedVariantId}
               onChange={(v) => v && setSelectedVariantId(v)}
@@ -4880,7 +4908,12 @@ function PriceOverridesSection({
           <p className="mt-1.5 text-[11px] text-muted-foreground">
             Native price for{" "}
             <span className="font-medium text-foreground">
-              {variant.displayName || variant.name}
+              {itemDisplayName({
+                parentName: productName,
+                variantName: variant.name,
+                displayName: variant.displayName,
+                collapseDefault: uniqueVariants.length === 1,
+              })}
             </span>
             : {variant.price.toLocaleString()} {variant.nativeCurrency}
           </p>

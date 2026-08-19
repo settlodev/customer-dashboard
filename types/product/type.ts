@@ -304,8 +304,8 @@ export interface AddonGroupItem {
  * {@code displayName} (e.g. "Coca-Cola 300ml") plus the inventory-derived
  * cost and sellable quantity for that specific variant.
  *
- * <p>Display name rules (handled in the page's {@code variantDisplayName}
- * helper):
+ * <p>Display name rules (handled by the shared {@code composeItemName}
+ * helper in {@code lib/display-name.ts}):
  * <ul>
  *   <li>If the variant name equals the product name (case-insensitive) →
  *       just the product name, no repetition.</li>

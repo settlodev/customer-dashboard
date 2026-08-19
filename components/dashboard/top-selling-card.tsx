@@ -3,6 +3,7 @@ import { BarChart3 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { splitItemName } from "@/lib/display-name";
 import type { TopSellingReport } from "@/types/reports/top-selling";
 
 /**
@@ -64,13 +65,12 @@ export function TopSellingCard({
         <ul className="flex flex-col">
           {items.map((item, i) => {
             const share = Math.round((item.revenue / maxRevenue) * 100);
-            // Variant sits inline after the product name — but only when it
-            // actually differs (simple products echo the product name as their
-            // variant, which would just be noise).
-            const showVariant =
-              !!item.variantName &&
-              item.variantName.trim().toLowerCase() !==
-                item.productName.trim().toLowerCase();
+            // Variant sits inline after the product name — collapsed away
+            // when it would only echo the product name.
+            const { primary, secondary } = splitItemName({
+              parentName: item.productName,
+              variantName: item.variantName,
+            });
             const sub = [item.categoryName, `${fmt(item.quantitySold)} sold`]
               .filter(Boolean)
               .join(" · ");
@@ -84,10 +84,10 @@ export function TopSellingCard({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-semibold tracking-[-0.01em] text-ink">
-                    {item.productName}
-                    {showVariant && (
+                    {primary}
+                    {secondary && (
                       <span className="ml-1.5 font-normal text-muted-foreground">
-                        {item.variantName}
+                        {secondary}
                       </span>
                     )}
                   </p>
