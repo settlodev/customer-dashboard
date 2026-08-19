@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import {
   AlertCircle,
   ChevronDown,
@@ -26,8 +33,47 @@ import {
   extendDaySession,
   openDaySession,
 } from "@/lib/actions/location-day-sessions-actions";
+import { useRealtimeChannel } from "@/hooks/use-realtime-channel";
+import { useRealtimeReconnect } from "@/hooks/use-realtime-reconnect";
+import { useRealtimeStatus } from "@/hooks/use-realtime-status";
+import type { WsMessage } from "@/lib/realtime/types";
 
-const REFRESH_INTERVAL_MS = 60_000;
+/**
+ * Refresh model — the socket leads, the timer is only a safety net.
+ *
+ * <p>Every poll costs TWO upstream calls (Accounts {@code /current} +
+ * Reports {@code /current}, see {@code getDaySessionSummary}), and this
+ * widget is mounted in the protected layout, so it polls on every page,
+ * in every open tab, for as long as the tab lives. At the old flat 60s
+ * that was the single loudest caller of {@code day-sessions/current} in
+ * the whole product — including tabs left open overnight on a closed
+ * day.
+ *
+ * <p>So:
+ * <ul>
+ *   <li><b>Lifecycle rides the gateway</b> — {@code DAY_SESSION_*} on
+ *       {@code location:{id}:day-sessions} reloads immediately, so
+ *       open / close / extend from a till still lands in about a
+ *       second, faster than any poll was.</li>
+ *   <li><b>Totals ride the gateway too, throttled</b> —
+ *       {@code DAILY_LOCATION_METRICS_UPDATED} on
+ *       {@code location:{id}:reports} is debounced 4s server-side, so
+ *       a busy till can emit it ~15×/min. It's only worth a refetch
+ *       when the expanded card is actually showing totals, and never
+ *       more than once per {@link TOTALS_MIN_INTERVAL_MS}.</li>
+ *   <li><b>The timer is the backstop</b> at {@link REFRESH_INTERVAL_MS},
+ *       covering a missed event, and drops to
+ *       {@link DEGRADED_REFRESH_INTERVAL_MS} when the socket has given
+ *       up (mirrors {@code DashboardRealtimeBridge}).</li>
+ *   <li><b>A hidden tab costs nothing</b> — the timer stops and events
+ *       set a flag instead of fetching; becoming visible flushes it.</li>
+ * </ul>
+ */
+const REFRESH_INTERVAL_MS = 5 * 60_000;
+const DEGRADED_REFRESH_INTERVAL_MS = 60_000;
+const TOTALS_MIN_INTERVAL_MS = 60_000;
+/** Coalesce a lifecycle burst (e.g. OPENED then MERGED) into one reload. */
+const EVENT_COALESCE_MS = 400;
 const EXPANDED_STORAGE_KEY = "daySessionWidget.expanded";
 const MINIMIZED_STORAGE_KEY = "daySessionWidget.minimized";
 export const DAY_SESSION_CHANGED_EVENT = "settlo:day-session-changed";
@@ -132,6 +178,10 @@ export function DaySessionWidget({ locationId }: DaySessionWidgetProps) {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(EXPANDED_STORAGE_KEY, String(value));
     }
+    // Opening the card is the one moment the totals are actually being
+    // read, and they only refresh on metrics events while it's open —
+    // so pull once here rather than show up to a poll-interval stale.
+    if (value) void loadRef.current();
   };
 
   const persistMinimized = (value: boolean) => {
@@ -141,58 +191,255 @@ export function DaySessionWidget({ locationId }: DaySessionWidgetProps) {
     }
   };
 
+  // When the last summary landed — drives the "is it stale?" decision on
+  // becoming visible and the totals throttle. Stamped on entry so two
+  // triggers firing together can't both slip past the throttle.
+  const lastLoadAtRef = useRef(0);
+  // An event (or a poll) that fell in a hidden window. Flushed on show.
+  const missedWhileHiddenRef = useRef(false);
+  const coalesceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * The server's view of the day, into state and back to the caller.
+   *
+   * <p>Returns {@code null} when the READ failed — distinct from a clean
+   * {@code {session: null}}, which is the server positively saying the day
+   * is closed. The open / close handlers depend on that difference: they
+   * must never treat "couldn't ask" as "it's closed".
+   */
+  const fetchSummary =
+    useCallback(async (): Promise<DaySessionSummary | null> => {
+      if (!locationId) {
+        setSummary(null);
+        return null;
+      }
+      lastLoadAtRef.current = Date.now();
+      setLoading(true);
+      try {
+        // Route Handler instead of server action — a server action call
+        // from a client component triggers a full RSC re-render of the
+        // layout on every poll, which in turn refires the layout's
+        // reference-data fan-out and tips the gateway into 429s.
+        const res = await fetch(
+          `/api/day-session/summary?locationId=${encodeURIComponent(locationId)}`,
+          { cache: "no-store" },
+        );
+        if (!res.ok) return null;
+        const data = (await res.json()) as DaySessionSummary;
+        setSummary(data);
+        return data;
+      } catch {
+        // Network blip — keep whatever we last had rather than flash closed.
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    }, [locationId]);
+
   const load = useCallback(async () => {
-    if (!locationId) {
-      setSummary(null);
+    await fetchSummary();
+  }, [fetchSummary]);
+
+  // Latest `load` reachable from listeners without re-subscribing them.
+  const loadRef = useRef(load);
+  loadRef.current = load;
+
+  /** Reload now, or remember to once the tab comes back. */
+  const requestLoad = useCallback(() => {
+    if (typeof document !== "undefined" && document.hidden) {
+      missedWhileHiddenRef.current = true;
       return;
     }
-    setLoading(true);
-    try {
-      // Route Handler instead of server action — a server action call
-      // from a client component triggers a full RSC re-render of the
-      // layout on every poll, which in turn refires the layout's
-      // reference-data fan-out and tips the gateway into 429s.
-      const res = await fetch(
-        `/api/day-session/summary?locationId=${encodeURIComponent(locationId)}`,
-        { cache: "no-store" },
-      );
-      if (!res.ok) return;
-      const data = (await res.json()) as DaySessionSummary;
-      setSummary(data);
-    } catch {
-      // Network blip — keep whatever we last had rather than flash closed.
-    } finally {
-      setLoading(false);
-    }
-  }, [locationId]);
+    void loadRef.current();
+  }, []);
 
+  const status = useRealtimeStatus();
+  const socketDown = status === "fallback" || status === "disconnected";
+  const pollIntervalMs = socketDown
+    ? DEGRADED_REFRESH_INTERVAL_MS
+    : REFRESH_INTERVAL_MS;
+
+  // ── First load + in-app mutations (open / close / extend elsewhere) ──
   useEffect(() => {
-    load();
+    // `requestLoad`, not `load` — a session restored with twenty
+    // background tabs shouldn't fire twenty summary fetches nobody is
+    // looking at. Each flushes when its tab is actually shown.
+    requestLoad();
     if (!locationId) return;
-    const id = setInterval(load, REFRESH_INTERVAL_MS);
-    const onChange = () => { load(); };
+    // Every surface that changes the day fires this — including our own
+    // handlers, which have just read the server twice. Skip the echo.
+    const onChange = () => {
+      if (Date.now() - lastLoadAtRef.current < 2_000) return;
+      void load();
+    };
     window.addEventListener(DAY_SESSION_CHANGED_EVENT, onChange);
     return () => {
-      clearInterval(id);
       window.removeEventListener(DAY_SESSION_CHANGED_EVENT, onChange);
     };
-  }, [load, locationId]);
+  }, [load, locationId, requestLoad]);
 
+  // ── Backstop poll, paused while the tab is hidden ────────────────────
+  useEffect(() => {
+    if (!locationId || typeof document === "undefined") return;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const start = () => {
+      if (timer) return;
+      timer = setInterval(() => { void loadRef.current(); }, pollIntervalMs);
+    };
+    const stop = () => {
+      if (!timer) return;
+      clearInterval(timer);
+      timer = null;
+    };
+
+    const onVisibility = () => {
+      if (document.hidden) {
+        // A hidden tab makes no requests at all — not the poll, not an
+        // event-driven reload. Whatever happened is caught up on show.
+        missedWhileHiddenRef.current = true;
+        stop();
+        return;
+      }
+      const stale = Date.now() - lastLoadAtRef.current >= pollIntervalMs;
+      if (missedWhileHiddenRef.current || stale) {
+        missedWhileHiddenRef.current = false;
+        void loadRef.current();
+      }
+      start();
+    };
+
+    if (!document.hidden) start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [locationId, pollIntervalMs]);
+
+  // ── Gateway events ───────────────────────────────────────────────────
+  // Totals only matter while the expanded card is on screen; the pill and
+  // the dot render lifecycle alone, so a metrics event is worth nothing
+  // to them.
+  const showsTotals = expanded && !minimized;
+  const showsTotalsRef = useRef(showsTotals);
+  showsTotalsRef.current = showsTotals;
+
+  const handleRealtimeEvent = useCallback(
+    (msg: WsMessage) => {
+      const type = msg.type ?? "";
+      // The gateway fans the unified LOCATION_DAY_SESSION topic out into
+      // DAY_SESSION_OPENED / CLOSED / EXTENDED / DELETED / MERGED.
+      if (type.startsWith("DAY_SESSION_")) {
+        if (coalesceRef.current) clearTimeout(coalesceRef.current);
+        coalesceRef.current = setTimeout(() => {
+          coalesceRef.current = null;
+          requestLoad();
+        }, EVENT_COALESCE_MS);
+        return;
+      }
+      if (type !== "DAILY_LOCATION_METRICS_UPDATED") return;
+      if (!showsTotalsRef.current) return;
+      if (Date.now() - lastLoadAtRef.current < TOTALS_MIN_INTERVAL_MS) return;
+      requestLoad();
+    },
+    [requestLoad],
+  );
+
+  useRealtimeChannel(
+    useMemo(
+      () =>
+        locationId
+          ? [
+              `location:${locationId}:day-sessions`,
+              `location:${locationId}:reports`,
+            ]
+          : [],
+      [locationId],
+    ),
+    handleRealtimeEvent,
+  );
+
+  // USER sessions get no server-side replay, so anything that changed
+  // while the socket was down is invisible until something else happens.
+  useRealtimeReconnect(requestLoad);
+
+  useEffect(() => {
+    return () => {
+      if (coalesceRef.current) clearTimeout(coalesceRef.current);
+    };
+  }, []);
+
+  const announceChange = () => {
+    window.dispatchEvent(new CustomEvent(DAY_SESSION_CHANGED_EVENT));
+  };
+
+  const unreachableToast = (action: "start" | "close") =>
+    toast({
+      variant: "destructive",
+      title: `Could not ${action} the day`,
+      description:
+        "The business day couldn't be read, so nothing was changed. Check the connection and try again.",
+    });
+
+  const unverifiedToast = (action: "started" | "closed") =>
+    toast({
+      variant: "warning",
+      title: "Couldn't confirm the business day",
+      description: `The day may have ${action} — the widget will update as soon as the server answers.`,
+    });
+
+  /**
+   * Read → act → read. Never optimistic, in either direction.
+   *
+   * <p>The widget's own state can be minutes old and the tills act on the
+   * same location, so the pre-read decides whether the action is even
+   * applicable: "start" on a day a till already opened is not a failure,
+   * it's a stale screen, and it used to surface as a red error because
+   * Accounts reports the conflict as a generic {@code INVALID_STATE}
+   * (see {@code lib/day-sessions/conflicts}). The post-read is what
+   * decides the message — the mutation's own "success" is never enough
+   * to claim the day started, which is how the widget came to flash
+   * started and then fall back to closed.
+   */
   const handleStart = () => {
     if (!locationId) return;
     startTransition(async () => {
-      const result = await openDaySession(locationId);
-      if (result.responseType === "success") {
-        toast({ variant: "success", title: "Business day started" });
-        await load();
-        window.dispatchEvent(new CustomEvent(DAY_SESSION_CHANGED_EVENT));
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Could not start the day",
-          description: result.message,
-        });
+      const before = await fetchSummary();
+      if (!before) {
+        unreachableToast("start");
+        return;
       }
+      if (before.session) {
+        toast({
+          variant: "info",
+          title: "A business day is already open",
+          description: "The widget is now showing the open session.",
+        });
+        announceChange();
+        return;
+      }
+
+      const result = await openDaySession(locationId);
+      const after = await fetchSummary();
+      if (!after) {
+        unverifiedToast("started");
+        announceChange();
+        return;
+      }
+      if (after.session) {
+        toast({ variant: "success", title: "Business day started" });
+        announceChange();
+        return;
+      }
+      toast({
+        variant: "destructive",
+        title: "Could not start the day",
+        description:
+          result.responseType === "error"
+            ? result.message
+            : "The server still reports no open business day.",
+      });
     });
   };
 
@@ -202,20 +449,44 @@ export function DaySessionWidget({ locationId }: DaySessionWidgetProps) {
       "Close the business day? Trailing payments will still settle on this session."
     )) return;
     startTransition(async () => {
-      const result = await closeDaySession(locationId);
-      if (result.responseType === "success") {
-        toast({ variant: "success", title: "Business day closed" });
-        await load();
-        window.dispatchEvent(new CustomEvent(DAY_SESSION_CHANGED_EVENT));
-      } else {
-        // Most likely error: open orders still in flight. Surface so the
-        // operator can settle them or force-close from the close-day page.
-        toast({
-          variant: "destructive",
-          title: "Could not close the day",
-          description: result.message,
-        });
+      const before = await fetchSummary();
+      if (!before) {
+        unreachableToast("close");
+        return;
       }
+      if (!before.session) {
+        toast({
+          variant: "info",
+          title: "The business day is already closed",
+          description: "Nothing to close — the widget is now up to date.",
+        });
+        announceChange();
+        return;
+      }
+
+      const result = await closeDaySession(locationId);
+      const after = await fetchSummary();
+      if (!after) {
+        unverifiedToast("closed");
+        announceChange();
+        return;
+      }
+      if (!after.session) {
+        toast({ variant: "success", title: "Business day closed" });
+        announceChange();
+        return;
+      }
+      // Still open. Most likely: open orders in flight — surface the
+      // server's reason so the operator can settle them or force-close
+      // from the close-day page.
+      toast({
+        variant: "destructive",
+        title: "Could not close the day",
+        description:
+          result.responseType === "error"
+            ? result.message
+            : "The server still reports the business day as open.",
+      });
     });
   };
 
@@ -230,7 +501,7 @@ export function DaySessionWidget({ locationId }: DaySessionWidgetProps) {
       if (result.responseType === "success") {
         toast({ variant: "success", title: `Session extended by ${minutes} minutes` });
         await load();
-        window.dispatchEvent(new CustomEvent(DAY_SESSION_CHANGED_EVENT));
+        announceChange();
       } else {
         toast({
           variant: "destructive",

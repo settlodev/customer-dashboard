@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/nextjs";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
@@ -40,7 +39,7 @@ async function BusinessPageContent() {
       throw error;
     }
 
-    Sentry.captureException(error);
+    console.error(error);
 
     return (
       <div className="w-full max-w-md mx-auto">

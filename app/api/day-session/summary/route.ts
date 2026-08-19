@@ -32,8 +32,10 @@ import { getDaySessionSummary } from "@/lib/actions/day-session-summary-actions"
  * HTTP-only cookie, so the identity these checks key on cannot be
  * spoofed by the caller. No extra ownership check is added here:
  * downstream already enforces it, and an extra /me/locations round-trip
- * on this 60s-polled hot path is exactly the fan-out load this route
- * was created to avoid. (Residual backend hardening, tracked
+ * on this polled path is exactly the fan-out load this route was
+ * created to avoid. (The widget now leads on gateway events and keeps
+ * only a 5-minute backstop poll, but the round-trip would still ride
+ * every event-driven reload.) (Residual backend hardening, tracked
  * separately: Reports falls back to the client X-Business-Id header
  * only when the JWT lacks a business_id claim; Accounts stays
  * hard-scoped to the JWT account_id regardless.)

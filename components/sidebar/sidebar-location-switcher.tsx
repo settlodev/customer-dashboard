@@ -5,8 +5,7 @@
 //  *
 //  */
 //
-// import * as Sentry from "@sentry/nextjs";
-// import {
+// // import {
 //   ArrowRight,
 //   Check,
 //   ChevronDown,
@@ -217,7 +216,7 @@
 //           : `/subscription?location=${loc.id}`;
 //       }
 //     } catch (error) {
-//       Sentry.captureException(error);
+//       console.error(error);
 //       setLoadingId(null);
 //       setConfirm(null);
 //     }
@@ -506,7 +505,6 @@
  *
  */
 
-import * as Sentry from "@sentry/nextjs";
 import {
   ArrowRight,
   Check,
@@ -731,7 +729,6 @@ export function SidebarLocationSwitcher({
       // Surface the failure — a switch that closes the modal without
       // navigating is otherwise invisible to debug.
       console.error("Destination switch failed:", error);
-      Sentry.captureException(error);
       setLoadingId(null);
       setConfirm(null);
     }

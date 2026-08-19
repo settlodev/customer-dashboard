@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/nextjs";
 
 import { ChevronDown, Plus, Loader2, Undo2 } from "lucide-react";
 import Image from "next/image";
@@ -62,7 +61,6 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
           setWarehouseList(warehouseLists || []);
         } catch (error) {
           console.error("Failed to fetch warehouses:", error);
-          Sentry.captureException(error);
           setWarehouseList([]);
         } finally {
           setLoadingWarehouses(false);
@@ -103,7 +101,6 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
     try {
       setLoadingLocationId(location.id);
       await switchToLocation(location);
-      Sentry.captureMessage(`Location switched: ${location.id}`);
       setConfirmationOpen(false);
       setSelectedLocation(null);
       setLoadingLocationId(null);
@@ -114,7 +111,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
         window.location.href = "/dashboard";
       }
     } catch (error) {
-      Sentry.captureException(error);
+      console.error(error);
       setConfirmationOpen(false);
       setSelectedLocation(null);
       setLoadingLocationId(null);
@@ -125,7 +122,6 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
     try {
       setLoadingLocationId(warehouse.id);
       await switchToWarehouse(warehouse);
-      Sentry.captureMessage(`Warehouse switched: ${warehouse.id}`);
       setConfirmationOpen(false);
       setSelectedLocation(null);
       setLoadingLocationId(null);
@@ -136,7 +132,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
         window.location.href = "/warehouse";
       }
     } catch (error) {
-      Sentry.captureException(error);
+      console.error(error);
       setConfirmationOpen(false);
       setSelectedWarehouse(null);
       setLoadingLocationId(null);

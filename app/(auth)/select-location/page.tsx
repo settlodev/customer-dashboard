@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/nextjs";
 import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { AlertTriangle } from "lucide-react";
@@ -55,7 +54,7 @@ export default async function SelectLocationPage({ searchParams }: Params) {
       throw error;
     }
 
-    Sentry.captureException(error);
+    console.error(error);
     return <SelectLocationErrorState />;
   }
 
@@ -88,7 +87,7 @@ export default async function SelectLocationPage({ searchParams }: Params) {
       throw reason;
     }
 
-    Sentry.captureException(reason);
+    console.error(reason);
     return <SelectLocationErrorState />;
   }
 
