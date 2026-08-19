@@ -786,6 +786,16 @@ function OverviewPanel({ order }: { order: OrderDetail }) {
   const closed = formatDateTime(order.closedDate);
 
   const orderFacts: Fact[] = [
+    // Same ranking as the orders list: the name the cashier gave the order
+    // leads, then where it is sitting, then the number the system gave it.
+    // Only the ones this order actually has are rendered — `fact` would
+    // otherwise print an em dash for every unnamed, table-less order.
+    ...(order.orderName?.trim()
+      ? [fact("Order name", order.orderName.trim(), <ClipboardList className="h-3 w-3" />)]
+      : []),
+    ...(order.tableName
+      ? [fact("Table", order.tableName, <MapPin className="h-3 w-3" />)]
+      : []),
     fact("Order #", order.orderNumber, <ClipboardList className="h-3 w-3" />, {
       mono: true,
     }),

@@ -150,9 +150,15 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
     });
     return map;
   });
-  // Variant tracking unit per row — anchors the purchase-pack picker so it
-  // only surfaces units convertible to the variant's stock unit.
-  const [variantUnitMap, setVariantUnitMap] = useState<Record<number, string | undefined>>({});
+  // Per-row unit facts about the picked variant: the tracking unit (anchors
+  // the purchase-pack picker so it only surfaces convertible units) and the
+  // parent stock's divisible sub-unit, if any. Keyed by the field array's
+  // stable `field.id`, not the index — `remove()` shifts indices without
+  // re-keying, and a stale anchor here would both offer the wrong
+  // compatibility set and mis-judge the required-unit check below.
+  const [variantUnitMetaMap, setVariantUnitMetaMap] = useState<
+    Record<string, { unitId?: string; unitName?: string; divisibleUnitId?: string | null; divisibleUnitName?: string | null }>
+  >({});
   // The stock item's own default purchase tax type per row, resolved from
   // `StockVariantSelector`'s catalogue metadata (`VariantMeta.stockTaxTypeId`).
   // Keyed by the field array's own stable `field.id` — unlike
@@ -359,7 +365,15 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
 
   const handleVariantMeta = useCallback((index: number, fieldId: string, meta: VariantMeta | null) => {
     setSerialTrackedMap((prev) => ({ ...prev, [index]: meta?.serialTracked ?? false }));
-    setVariantUnitMap((prev) => ({ ...prev, [index]: meta?.unitId }));
+    setVariantUnitMetaMap((prev) => ({
+      ...prev,
+      [fieldId]: {
+        unitId: meta?.unitId,
+        unitName: meta?.unitName,
+        divisibleUnitId: meta?.divisibleUnitId ?? null,
+        divisibleUnitName: meta?.divisibleUnitName ?? null,
+      },
+    }));
     setStockTaxTypeIdMap((prev) => ({ ...prev, [fieldId]: meta?.stockTaxTypeId ?? null }));
     setStockPurchaseTaxInclusiveMap((prev) => ({ ...prev, [fieldId]: meta?.stockPurchaseTaxInclusive }));
     if (!meta?.serialTracked) {
@@ -372,9 +386,21 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
     // Variant change can invalidate any picked purchase pack — clear so the
     // operator re-picks against the new anchor.
     if (meta?.unitId) {
+      const packTracked = !!meta.divisibleUnitId;
       const current = form.getValues(`items.${index}.purchaseUnitId`);
-      if (current && current === meta.unitId) {
+      if (packTracked && meta.serialTracked) {
+        // Serial-tracked stock must be entered one-by-one in its own
+        // tracking unit, so the picker below stays disabled — but the
+        // backend still demands the unit be stated for a pack-tracked
+        // item. Assert the only unit this row can legally be in.
+        if (current !== meta.unitId) {
+          form.setValue(`items.${index}.purchaseUnitId`, meta.unitId, { shouldDirty: false });
+        }
+      } else if (!packTracked && current && current === meta.unitId) {
         // Picking the variant's own unit is equivalent to "no pack" — normalize.
+        // NOT for pack-tracked stock: there, the tracking unit is a real
+        // answer ("yes, cartons") and blanking it is what IntakeUnitGuard
+        // rejects on save.
         form.setValue(`items.${index}.purchaseUnitId`, undefined, { shouldDirty: false });
       }
     }
@@ -382,6 +408,24 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
 
   const submitData = (values: z.infer<typeof StockIntakeRecordSchema>) => {
     for (let i = 0; i < values.items.length; i++) {
+      // Pack-tracked stock: the backend's IntakeUnitGuard refuses a bare
+      // quantity, because "20" against a stock tracked in cartons and also
+      // counted in pieces could mean either. Catch it here so the operator
+      // is pointed at the Purchase unit field instead of reading it off a
+      // failed save.
+      const unitMeta = variantUnitMetaMap[fields[i]?.id ?? ""];
+      if (values.items[i].stockVariantId && unitMeta?.divisibleUnitId && !values.items[i].purchaseUnitId) {
+        form.setError(`items.${i}.purchaseUnitId`, {
+          type: "manual",
+          message: `Say which unit this quantity is in — ${unitMeta.unitName ?? "the tracking unit"} or ${unitMeta.divisibleUnitName ?? "the sub-unit"}.`,
+        });
+        toast({
+          variant: "destructive",
+          title: "Purchase unit required",
+          description: `Item ${i + 1} is tracked in ${unitMeta.unitName ?? "one unit"} and also counted in ${unitMeta.divisibleUnitName ?? "another"} — choose the unit you entered the quantity in.`,
+        });
+        return;
+      }
       if (serialTrackedMap[i]) {
         const serials = (serialInputs[i] || []).filter((s) => s.trim() !== "");
         const qty = values.items[i].quantity;
@@ -746,9 +790,9 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                                 delete next[index];
                                 return next;
                               });
-                              setVariantUnitMap((prev) => {
+                              setVariantUnitMetaMap((prev) => {
                                 const next = { ...prev };
-                                delete next[index];
+                                delete next[field.id];
                                 return next;
                               });
                               setStockTaxTypeIdMap((prev) => {
@@ -934,34 +978,55 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                         control={form.control}
                         name={`items.${index}.purchaseUnitId`}
                         render={({ field: f }) => {
-                          const anchor = variantUnitMap[index];
+                          const unitMeta = variantUnitMetaMap[field.id];
+                          const anchor = unitMeta?.unitId;
                           const isSerial = !!serialTrackedMap[index];
+                          // Tracked in one unit and also counted in another:
+                          // a bare number is ambiguous and the backend
+                          // refuses it, so the unit is a required answer
+                          // here, not an optional refinement.
+                          const packTracked = !!unitMeta?.divisibleUnitId;
                           const usingPack = !!f.value && f.value !== anchor;
                           return (
                             <FormItem className="space-y-[7px]">
-                              <FieldLabel optional>Purchase unit</FieldLabel>
+                              <FieldLabel
+                                required={packTracked && !isSerial}
+                                optional={!packTracked}
+                              >
+                                Purchase unit
+                              </FieldLabel>
                               <FormControl>
                                 <CompatibleUnitSelector
                                   anchorUnitId={anchor}
                                   value={f.value ?? ""}
-                                  onChange={(v) => f.onChange(v || undefined)}
+                                  onChange={(v) => {
+                                    f.onChange(v || undefined);
+                                    if (v) form.clearErrors(`items.${index}.purchaseUnitId`);
+                                  }}
                                   isDisabled={isPending || !anchor || isSerial}
                                   placeholder={
                                     isSerial
                                       ? "Not available for serial-tracked items"
-                                      : anchor
-                                        ? "Same as stock unit"
-                                        : "Pick a stock item first"
+                                      : !anchor
+                                        ? "Pick a stock item first"
+                                        : packTracked
+                                          ? `Choose ${unitMeta?.unitName ?? "unit"} or ${unitMeta?.divisibleUnitName ?? "sub-unit"}`
+                                          : "Same as stock unit"
                                   }
                                 />
                               </FormControl>
                               <FieldHint>
                                 {isSerial
                                   ? "Serial-tracked items must be entered one-by-one in the variant's stock unit."
-                                  : usingPack
-                                    ? "Quantity & unit cost above are interpreted in this pack — converted to stock units on save."
-                                    : "Leave blank to enter qty & cost directly in the variant's tracking unit."}
+                                  : packTracked && !f.value
+                                    ? `Tracked in ${unitMeta?.unitName ?? "one unit"} and also counted in ${unitMeta?.divisibleUnitName ?? "another"} — say which one the quantity above is in.`
+                                    : usingPack
+                                      ? "Quantity & unit cost above are interpreted in this pack — converted to stock units on save."
+                                      : packTracked
+                                        ? `Quantity & unit cost above are in ${unitMeta?.unitName ?? "the tracking unit"}.`
+                                        : "Leave blank to enter qty & cost directly in the variant's tracking unit."}
                               </FieldHint>
+                              <FormMessage />
                             </FormItem>
                           );
                         }}

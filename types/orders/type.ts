@@ -118,6 +118,13 @@ export interface Order {
   id: UUID;
   slug: string | null;
   orderNumber: string;
+  /**
+   * Free-text label the cashier gave the order at the till ("John's table",
+   * "Birthday party"). Null for the many orders nobody named. It outranks
+   * both the table name and the order number as the order's handle — it is
+   * the one the staff who took the order recognise.
+   */
+  orderName: string | null;
   locationId: UUID;
   businessId: UUID;
   settlementCurrency: string | null;
@@ -534,6 +541,10 @@ export interface OrderDetail {
   id: UUID;
   slug: string | null;
   orderNumber: string;
+  /** Cashier's own label for the order — see `Order.orderName`. */
+  orderName: string | null;
+  /** Table this order sits on, resolved server-side. Null when none. */
+  tableName: string | null;
   orderStatus: string;
   paymentStatus: string | null;
   orderType: string | null;

@@ -3,6 +3,8 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 
+import { cn } from "@/lib/utils";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,9 +26,10 @@ const formatMoney = (value: number | null | undefined) => {
 export interface OrdersColumnOptions {
   /**
    * Location runs a table-based ordering system (orderingMode ===
-   * "TABLE_MANAGEMENT"). When true the primary column leads with the
-   * table name and tucks the order number underneath; when false the
-   * pairing is inverted (order number leads, table underneath).
+   * "TABLE_MANAGEMENT"). When true the table name outranks the order
+   * number in the primary column; when false the pairing is inverted
+   * (order number leads, table underneath). An order the cashier named
+   * outranks both either way — see {@link buildPrimaryColumn}.
    */
   tableMode: boolean;
   /** staffId → display name, scoped to the IDs on the visible page. */
@@ -48,12 +51,26 @@ export const StaffCell = ({
 };
 
 /**
- * The lead column shared by the Orders and Abandoned tables. In table
- * mode the table name reads as the primary handle with the order number
- * tucked underneath; standard mode inverts that (order number leads,
- * table name — or docket # — underneath). Keeps the accessorKey as
- * orderNumber so the DataTable search box (searchKey="orderNumber") and
- * order-number sorting keep working regardless of what the cell renders.
+ * The lead column shared by the Orders and Abandoned tables.
+ *
+ * <p>Three handles can identify an order and the operator may know it by
+ * any of them, so all three render — the ranking decides which one is the
+ * heading and which are the fine print underneath:
+ *
+ * <pre>
+ *   order name  →  table name  →  order number      (table mode)
+ *   order name  →  order number  →  table name      (standard mode)
+ * </pre>
+ *
+ * The name leads whenever the cashier gave one, because a name is chosen
+ * to be recognised and neither of the others is. Below it, the existing
+ * table-mode swap is untouched: a location running tables knows an order
+ * by where it is sitting, everyone else by its number. Docket # stands in
+ * for the table when there is no table.
+ *
+ * Keeps the accessorKey as orderNumber so the DataTable search box
+ * (searchKey="orderNumber") and order-number sorting keep working
+ * regardless of what the cell renders.
  */
 export function buildPrimaryColumn({
   tableMode,
@@ -80,33 +97,45 @@ export function buildPrimaryColumn({
       const number = order.orderNumber;
       const docket = order.docketNumber;
       const tableName = order.tableId ? tableNames[order.tableId] : null;
+      const orderName = order.orderName?.trim() || null;
 
+      // Everything that identifies this order, most-recognisable first.
+      // Whichever survives to the front becomes the heading; the rest
+      // stay on as the sub-line, so nothing the operator might be
+      // searching by disappears.
+      const handles: string[] = [];
+      if (orderName) handles.push(orderName);
       if (tableMode) {
-        return (
-          <div className="flex flex-col">
-            <span className="font-medium">
-              {tableName ?? (
-                <span className="text-muted-foreground">No table</span>
-              )}
-            </span>
-            <span className="text-[11px] text-muted-foreground tabular-nums">
-              #{number}
-            </span>
-          </div>
-        );
+        if (tableName) handles.push(tableName);
+        handles.push(`#${number}`);
+      } else {
+        handles.push(`#${number}`);
+        if (tableName) handles.push(tableName);
+        else if (docket) handles.push(`Docket #${docket}`);
       }
 
-      const secondary = tableName
-        ? tableName
-        : docket
-          ? `Docket #${docket}`
-          : null;
+      const [lead, ...rest] = handles;
+      // Table mode with no table and no name: the old cell said "No table"
+      // rather than silently leading with the number, and that absence is
+      // worth seeing on a floor that works by table.
+      const missingTable = tableMode && !tableName && !orderName;
+
       return (
         <div className="flex flex-col">
-          <span className="font-medium tabular-nums">{number}</span>
-          {secondary ? (
-            <span className="text-[11px] text-muted-foreground">
-              {secondary}
+          <span
+            className={cn(
+              "font-medium",
+              lead.startsWith("#") && "tabular-nums",
+            )}
+          >
+            {lead}
+          </span>
+          {missingTable ? (
+            <span className="text-[11px] text-muted-foreground">No table</span>
+          ) : null}
+          {rest.length > 0 ? (
+            <span className="text-[11px] text-muted-foreground tabular-nums">
+              {rest.join(" · ")}
             </span>
           ) : null}
         </div>
