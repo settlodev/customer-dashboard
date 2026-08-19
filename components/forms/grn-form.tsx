@@ -101,6 +101,16 @@ interface ItemMeta {
   serialTracked: boolean;
   /** Variant's tracking unit — anchors the purchase-pack picker. */
   unitId?: string;
+  /** Name of that tracking unit, for "tracked in Egg Carton" copy. */
+  unitName?: string;
+  /**
+   * The stock item's divisible sub-unit, when configured. Non-null means a
+   * bare received quantity is ambiguous and GrnService's IntakeUnitGuard
+   * rejects the receive — so the purchase unit becomes a required answer
+   * on this line. See `VariantMeta.divisibleUnitId`.
+   */
+  divisibleUnitId?: string | null;
+  divisibleUnitName?: string | null;
   /** The stock item's own default purchase tax type, if any — see `VariantMeta.stockTaxTypeId`. */
   stockTaxTypeId?: string | null;
   /** The stock item's own `purchaseTaxInclusive` default — see `VariantMeta.stockPurchaseTaxInclusive`. */
@@ -276,7 +286,13 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
   );
 
   const handleVariantMeta = useCallback(
-    (fieldId: string, meta: VariantMeta | null) => {
+    (fieldId: string, meta: VariantMeta | null, index?: number) => {
+      // Serial-tracked stock is received one-by-one in its own tracking
+      // unit and the picker below is disabled for it — but a pack-tracked
+      // item still has to state a unit, so assert the tracking unit.
+      if (meta?.divisibleUnitId && meta.serialTracked && meta.unitId && index !== undefined) {
+        form.setValue(`items.${index}.purchaseUnitId`, meta.unitId, { shouldDirty: false });
+      }
       setItemMeta((prev) => {
         if (!meta) {
           const next = { ...prev };
@@ -289,13 +305,16 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
             displayName: meta.displayName,
             serialTracked: meta.serialTracked,
             unitId: meta.unitId,
+            unitName: meta.unitName,
+            divisibleUnitId: meta.divisibleUnitId ?? null,
+            divisibleUnitName: meta.divisibleUnitName ?? null,
             stockTaxTypeId: meta.stockTaxTypeId ?? null,
             stockPurchaseTaxInclusive: meta.stockPurchaseTaxInclusive,
           },
         };
       });
     },
-    [],
+    [form],
   );
 
   const removeItem = useCallback(
@@ -397,7 +416,24 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
     for (let i = 0; i < values.items.length; i++) {
       const item = values.items[i];
       const fieldId = fields[i]?.id;
-      const tracked = fieldId ? itemMeta[fieldId]?.serialTracked : false;
+      const meta = fieldId ? itemMeta[fieldId] : undefined;
+      // Pack-tracked stock: IntakeUnitGuard refuses a bare quantity, since
+      // "20" against an item tracked in cartons and also counted in pieces
+      // could mean either. Caught here so the operator is pointed at the
+      // Purchase unit field rather than at a failed receive.
+      if (item.stockVariantId && meta?.divisibleUnitId && !item.purchaseUnitId) {
+        form.setError(`items.${i}.purchaseUnitId`, {
+          type: "manual",
+          message: `Say which unit this quantity is in — ${meta.unitName ?? "the tracking unit"} or ${meta.divisibleUnitName ?? "the sub-unit"}.`,
+        });
+        toast({
+          variant: "destructive",
+          title: "Purchase unit required",
+          description: `Item ${i + 1} is tracked in ${meta.unitName ?? "one unit"} and also counted in ${meta.divisibleUnitName ?? "another"} — choose the unit you received in.`,
+        });
+        return;
+      }
+      const tracked = meta?.serialTracked ?? false;
       if (!tracked) continue;
       const count = item.serialNumbers?.length ?? 0;
       const qty = Math.trunc(Number(item.receivedQuantity || 0));
@@ -772,7 +808,7 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                             <StockVariantSelector
                               value={f.value}
                               onChange={(v) => handleVariantChange(field.id, index, v)}
-                              onVariantMeta={(m) => handleVariantMeta(field.id, m)}
+                              onVariantMeta={(m) => handleVariantMeta(field.id, m, index)}
                               onLoadingChange={(loading) =>
                                 handleItemLoadingChange(field.id, loading)
                               }
@@ -913,32 +949,51 @@ export default function GrnForm({ initialLpo = null }: GrnFormProps = {}) {
                     render={({ field: f }) => {
                       const anchor = meta?.unitId;
                       const isSerial = !!meta?.serialTracked;
+                      // Tracked in one unit and also counted in another: a
+                      // bare number is ambiguous and the receive is refused,
+                      // so the unit is a required answer, not a refinement.
+                      const packTracked = !!meta?.divisibleUnitId;
                       const usingPack = !!f.value && f.value !== anchor;
                       return (
                         <FormItem className="space-y-[7px]">
-                          <FieldLabel optional>Purchase unit</FieldLabel>
+                          <FieldLabel
+                            required={packTracked && !isSerial}
+                            optional={!packTracked}
+                          >
+                            Purchase unit
+                          </FieldLabel>
                           <FormControl>
                             <CompatibleUnitSelector
                               anchorUnitId={anchor}
                               value={f.value ?? ""}
-                              onChange={(v) => f.onChange(v || undefined)}
+                              onChange={(v) => {
+                                f.onChange(v || undefined);
+                                if (v) form.clearErrors(`items.${index}.purchaseUnitId`);
+                              }}
                               isDisabled={isPending || !anchor || isSerial}
                               placeholder={
                                 isSerial
                                   ? "Not available for serial-tracked items"
-                                  : anchor
-                                    ? "Same as stock unit"
-                                    : "Pick a stock item first"
+                                  : !anchor
+                                    ? "Pick a stock item first"
+                                    : packTracked
+                                      ? `Choose ${meta?.unitName ?? "unit"} or ${meta?.divisibleUnitName ?? "sub-unit"}`
+                                      : "Same as stock unit"
                               }
                             />
                           </FormControl>
                           <FieldHint>
                             {isSerial
                               ? "Serial-tracked items must be entered one-by-one in the variant's stock unit."
-                              : usingPack
-                                ? "Quantity & unit cost above are interpreted in this pack — converted to stock units on receive."
-                                : "Leave blank to enter qty & cost directly in the variant's tracking unit."}
+                              : packTracked && !f.value
+                                ? `Tracked in ${meta?.unitName ?? "one unit"} and also counted in ${meta?.divisibleUnitName ?? "another"} — say which one the quantity above is in.`
+                                : usingPack
+                                  ? "Quantity & unit cost above are interpreted in this pack — converted to stock units on receive."
+                                  : packTracked
+                                    ? `Quantity & unit cost above are in ${meta?.unitName ?? "the tracking unit"}.`
+                                    : "Leave blank to enter qty & cost directly in the variant's tracking unit."}
                           </FieldHint>
+                          <FormMessage />
                         </FormItem>
                       );
                     }}

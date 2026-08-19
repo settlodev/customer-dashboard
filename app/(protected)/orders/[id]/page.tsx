@@ -55,16 +55,25 @@ export default async function OrderPage({ params }: { params: Params }) {
   const statusClass = ORDER_STATUS_PILL[status] ?? "bg-gray-100 text-gray-600";
   const statusLabel = ORDER_STATUS_LABELS[status] ?? String(status);
 
-  // Title: order #, then customer/staff label so the page is scannable.
+  // Title: the cashier's own label for the order when they gave it one —
+  // it outranks every other handle, same as in the orders list — then the
+  // existing customer/staff label. The table and the order number ride in
+  // the subtitle either way, so nothing an operator might have arrived
+  // with is missing from the page.
   const customerName = detail.customer?.name;
-  const headerName = customerName
-    ? `${customerName}`
-    : detail.assignedTo?.name
-      ? `Assigned to ${detail.assignedTo.name}`
-      : "Walk-in order";
+  const orderName = detail.orderName?.trim() || null;
+  const headerName =
+    orderName ??
+    (customerName
+      ? `${customerName}`
+      : detail.assignedTo?.name
+        ? `Assigned to ${detail.assignedTo.name}`
+        : "Walk-in order");
 
   const opened = new Date(detail.openedDate);
   const subtitleParts: string[] = [`#${detail.orderNumber}`];
+  if (detail.tableName) subtitleParts.push(detail.tableName);
+  if (orderName && customerName) subtitleParts.push(customerName);
   if (!Number.isNaN(opened.getTime())) {
     subtitleParts.push(
       new Intl.DateTimeFormat("en", {

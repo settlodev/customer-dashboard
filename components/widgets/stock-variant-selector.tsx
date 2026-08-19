@@ -28,6 +28,18 @@ export interface VariantMeta {
   serialTracked: boolean;
   /** The variant's tracking unit — anchor for compatible-unit lookups. */
   unitId: string;
+  /** Name of that tracking unit, for "tracked in Egg Carton" copy. */
+  unitName: string;
+  /**
+   * The parent stock's divisible sub-unit, when one is configured (e.g.
+   * "Piece" against a stock tracked in "Egg Carton"). Non-null means a bare
+   * quantity is ambiguous, and the backend's IntakeUnitGuard rejects any
+   * intake/GRN line for this item that does not say which unit the number
+   * is in — so purchase forms must make the purchase unit a required
+   * choice for these items rather than an optional one.
+   */
+  divisibleUnitId: string | null;
+  divisibleUnitName: string | null;
   /**
    * The parent stock item's default purchase tax type (`Stock.taxTypeId`).
    * `null` when the item has none configured. Purchase forms use this to
@@ -132,6 +144,10 @@ const StockVariantSelector: React.FC<Props> = ({
               }),
               serialTracked: variant.serialTracked ?? false,
               unitId: variant.unitId,
+              unitName: variant.unitName ?? stock.baseUnitName,
+              divisibleUnitId: variant.divisibleUnitId ?? stock.divisibleUnitId ?? null,
+              divisibleUnitName:
+                variant.divisibleUnitName ?? stock.divisibleUnitName ?? null,
               stockTaxTypeId: stock.taxTypeId ?? null,
               stockPurchaseTaxInclusive: stock.purchaseTaxInclusive ?? false,
               disabled: disabledValues.includes(variant.id),
@@ -161,6 +177,9 @@ const StockVariantSelector: React.FC<Props> = ({
       displayName: string;
       serialTracked: boolean;
       unitId: string;
+      unitName: string;
+      divisibleUnitId: string | null;
+      divisibleUnitName: string | null;
       stockTaxTypeId: string | null;
       stockPurchaseTaxInclusive: boolean;
     }) => {
@@ -174,6 +193,9 @@ const StockVariantSelector: React.FC<Props> = ({
               displayName: option.displayName,
               serialTracked: option.serialTracked,
               unitId: option.unitId,
+              unitName: option.unitName,
+              divisibleUnitId: option.divisibleUnitId,
+              divisibleUnitName: option.divisibleUnitName,
               stockTaxTypeId: option.stockTaxTypeId,
               stockPurchaseTaxInclusive: option.stockPurchaseTaxInclusive,
             },
@@ -202,6 +224,9 @@ const StockVariantSelector: React.FC<Props> = ({
       displayName: opt.displayName,
       serialTracked: opt.serialTracked,
       unitId: opt.unitId,
+      unitName: opt.unitName,
+      divisibleUnitId: opt.divisibleUnitId,
+      divisibleUnitName: opt.divisibleUnitName,
       stockTaxTypeId: opt.stockTaxTypeId,
       stockPurchaseTaxInclusive: opt.stockPurchaseTaxInclusive,
     });
