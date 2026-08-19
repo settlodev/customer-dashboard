@@ -116,7 +116,9 @@ export function AddonFormDialog({
           <DialogTitle>{isEdit ? "Edit addon" : "New addon"}</DialogTitle>
           <DialogDescription>
             Addons attach to subscription items for an extra recurring
-            charge. Editing the price updates future invoices only.
+            charge. Price is always per month, regardless of the
+            package&apos;s billing interval. Editing the price updates
+            future invoices only.
           </DialogDescription>
         </DialogHeader>
 
@@ -175,7 +177,7 @@ export function AddonFormDialog({
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price</FormLabel>
+                    <FormLabel>Price (TZS / month)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"

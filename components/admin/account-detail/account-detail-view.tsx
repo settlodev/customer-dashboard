@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  ChevronRight,
   Clock,
   MonitorCheck,
   Store,
@@ -19,7 +20,7 @@ import { KpiStrip } from "@/components/layouts/kpi-strip";
 import { AccountStaffCard } from "@/components/admin/account-staff-card";
 import { AccountDetailActions } from "@/components/admin/account-detail-actions";
 import { LifecycleCard } from "@/components/admin/account-detail/lifecycle-card";
-import { BusinessesLocationsCard } from "@/components/admin/account-detail/businesses-locations-card";
+import { EntityRow } from "@/components/admin/account-detail/businesses-locations-card";
 import { AccountNotesCard } from "@/components/admin/account-detail/account-notes-card";
 import { LogInAsButton } from "@/components/admin/account-detail/log-in-as-button";
 import { AccountEmailButton } from "@/components/admin/account-detail/send-email-dialog";
@@ -32,9 +33,13 @@ import { formatDateTime, timeSince } from "@/components/admin/shared/format";
 import { AdminAccountDetail } from "@/types/admin/account";
 import {
   AccountBillingRollup,
+  AccountBusinessNode,
   AccountInsights,
 } from "@/types/admin/account-insights";
-import type { AccountStructure } from "@/types/admin/account-structure";
+import type {
+  AccountEntityNode,
+  AccountStructure,
+} from "@/types/admin/account-structure";
 
 interface AccountDetailViewProps {
   account: AdminAccountDetail;
@@ -54,7 +59,8 @@ function accountAge(createdAt: string): { value: string; note: string } {
   const mins = diff / 60_000;
   const hours = diff / 3_600_000;
   const days = diff / 86_400_000;
-  if (hours < 1) return { value: `${Math.max(1, Math.floor(mins))}m`, note: "today" };
+  if (hours < 1)
+    return { value: `${Math.max(1, Math.floor(mins))}m`, note: "today" };
   if (hours < 24) return { value: `${Math.floor(hours)}h`, note: "today" };
   if (days < 7) return { value: `${Math.floor(days)}d`, note: "this week" };
   if (days < 30) return { value: `${Math.floor(days)}d`, note: "this month" };
@@ -100,7 +106,9 @@ export function AccountDetailView({
                 <span className="text-ink-3"> · {account.accountNumber}</span>
               )}
               <span> · {whitelabel}</span>
-              {account.createdAt && <span> · joined {timeSince(account.createdAt)}</span>}
+              {account.createdAt && (
+                <span> · joined {timeSince(account.createdAt)}</span>
+              )}
             </p>
           </div>
         </div>
@@ -159,7 +167,6 @@ export function AccountDetailView({
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="structure">Structure</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
@@ -169,7 +176,10 @@ export function AccountDetailView({
           {insights.attentionBanner && (
             <div className="flex flex-wrap items-center gap-3 rounded-[14px] border border-[hsl(var(--warn)_/_0.25)] bg-[hsl(var(--warn)_/_0.06)] px-4 py-3">
               <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-[9px] bg-warn-tint text-warn">
-                <AlertTriangle className="h-[17px] w-[17px]" strokeWidth={1.6} />
+                <AlertTriangle
+                  className="h-[17px] w-[17px]"
+                  strokeWidth={1.6}
+                />
               </span>
               <p className="flex-1 text-[13px] text-ink-2">
                 <b className="font-semibold text-ink">
@@ -210,7 +220,11 @@ export function AccountDetailView({
               sub={kpis.gmv.note}
               small
             />
-            <KCell label="Open trials" value={String(insights.billing.openTrials)} small />
+            <KCell
+              label="Open trials"
+              value={String(insights.billing.openTrials)}
+              small
+            />
             <KCell label="Account age" value={age.value} sub={age.note} small />
           </KpiStrip>
 
@@ -232,6 +246,13 @@ export function AccountDetailView({
             />
             <LifecycleCard lifecycle={insights.lifecycle} />
           </div>
+
+          {/* ── Businesses at a glance ─────────────────────────── */}
+          <BusinessGlanceCard
+            businesses={insights.businesses}
+            structure={structure}
+            stub={stub}
+          />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <SectionCard title="Engagement & health" stub={stub}>
@@ -300,7 +321,10 @@ export function AccountDetailView({
 
             <SectionCard title="Support & success" stub={stub}>
               <DefList>
-                <DefRow label="Open tickets" value={insights.support.openTickets} />
+                <DefRow
+                  label="Open tickets"
+                  value={insights.support.openTickets}
+                />
                 <DefRow
                   label="Last contact"
                   value={insights.support.lastContact.value}
@@ -323,14 +347,6 @@ export function AccountDetailView({
               />
             </SectionCard>
           </div>
-        </TabsContent>
-
-        <TabsContent value="structure" className="space-y-4">
-          <BusinessesLocationsCard
-            businesses={insights.businesses}
-            structure={structure}
-            stub={stub}
-          />
         </TabsContent>
 
         <TabsContent value="billing" className="space-y-4">
@@ -383,7 +399,10 @@ export function AccountDetailView({
 
           <SectionCard title="Timestamps">
             <DefList>
-              <DefRow label="Created" value={formatDateTime(account.createdAt)} />
+              <DefRow
+                label="Created"
+                value={formatDateTime(account.createdAt)}
+              />
               <DefRow
                 label="Email verified"
                 value={account.emailVerified ? "Yes" : "No"}
@@ -406,7 +425,10 @@ export function AccountDetailView({
                       : undefined
                 }
               />
-              <DefRow label="Updated" value={formatDateTime(account.updatedAt)} />
+              <DefRow
+                label="Updated"
+                value={formatDateTime(account.updatedAt)}
+              />
             </DefList>
           </SectionCard>
         </TabsContent>
@@ -430,7 +452,13 @@ function InternalBadge() {
 // ── Header status badge ──────────────────────────────────────────────
 // Deleted takes precedence over active/suspended — a soft-deleted account is
 // also inactive, but "Deleted" is the state that matters here.
-function StatusBadge({ active, deleted }: { active: boolean; deleted?: boolean }) {
+function StatusBadge({
+  active,
+  deleted,
+}: {
+  active: boolean;
+  deleted?: boolean;
+}) {
   const label = deleted ? "Deleted" : active ? "Active" : "Suspended";
   return (
     <span
@@ -517,16 +545,115 @@ function Field({
   );
 }
 
+// ── Businesses at a glance ───────────────────────────────────────────
+// Every business plus its locations/warehouses/stores, surfaced directly on
+// Overview so staff can see (and click into) the account's full footprint
+// without switching to the Structure tab. Business header and every unit row
+// are independently clickable — the header goes to the business's own detail
+// page, each unit row goes to its location/warehouse/store detail page.
+function BusinessGlanceCard({
+  businesses,
+  structure,
+  stub,
+}: {
+  businesses: AccountInsights["businesses"];
+  structure: AccountStructure;
+  stub?: boolean;
+}) {
+  if (businesses.items.length === 0) {
+    return (
+      <SectionCard
+        title="Businesses at a glance"
+        subtitle="0 businesses"
+        stub={stub}
+      >
+        <p className="text-[12.5px] text-muted-2">
+          No businesses on this account.
+        </p>
+      </SectionCard>
+    );
+  }
+
+  return (
+    <SectionCard
+      title="Businesses at a glance"
+      subtitle={`${businesses.count} business${businesses.count === 1 ? "" : "es"} · locations, warehouses & stores per business`}
+      stub={stub}
+    >
+      <div className="space-y-3">
+        {businesses.items.map((biz) => {
+          const s = structure[biz.id];
+          const nodes: AccountEntityNode[] = s
+            ? [...s.locations, ...s.warehouses, ...s.stores]
+            : [];
+          return (
+            <div
+              key={biz.id}
+              className="overflow-hidden rounded-[14px] border border-line"
+            >
+              <Link
+                href={`/businesses/${biz.id}`}
+                className="flex items-center gap-3 bg-surface px-4 py-3.5 transition-colors hover:bg-black/[0.015] dark:hover:bg-white/[0.02]"
+              >
+                <Monogram name={biz.name} color={biz.avatarColor} size="lg" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[14.5px] font-semibold tracking-[-0.01em] text-ink">
+                    {biz.name}
+                  </div>
+                  <div className="truncate font-mono text-[11px] text-muted-foreground">
+                    {[
+                      biz.code,
+                      biz.industry,
+                      `${nodes.length} unit${nodes.length === 1 ? "" : "s"}`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </div>
+                </div>
+                <span
+                  className={cn(
+                    "inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold",
+                    STATUS_TONE[biz.statusTone],
+                  )}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  {biz.statusLabel}
+                </span>
+                <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-2" />
+              </Link>
+
+              {nodes.length === 0 ? (
+                <div className="border-t border-line py-3 pl-5 pr-4 text-[12.5px] text-muted-2">
+                  No billable units.
+                </div>
+              ) : (
+                nodes.map((node) => <EntityRow key={node.id} node={node} />)
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </SectionCard>
+  );
+}
+
+const STATUS_TONE: Record<AccountBusinessNode["statusTone"], string> = {
+  pos: "bg-pos-tint text-pos",
+  warn: "bg-warn-tint text-warn",
+  neg: "bg-neg-tint text-neg",
+};
+
 // ── Billing status badge (per-entity best-of rollup) ────────────────
 function BillingStatusBadge({ status }: { status: string }) {
   const s = status.toUpperCase();
-  const cfg = s === "ACTIVE"
-    ? { bg: "bg-pos-tint", text: "text-pos" }
-    : s === "TRIAL"
-      ? { bg: "bg-[hsl(var(--warn)_/_0.1)]", text: "text-warn" }
-      : s === "PAST_DUE"
+  const cfg =
+    s === "ACTIVE"
+      ? { bg: "bg-pos-tint", text: "text-pos" }
+      : s === "TRIAL"
         ? { bg: "bg-[hsl(var(--warn)_/_0.1)]", text: "text-warn" }
-        : { bg: "bg-neg-tint", text: "text-neg" };
+        : s === "PAST_DUE"
+          ? { bg: "bg-[hsl(var(--warn)_/_0.1)]", text: "text-warn" }
+          : { bg: "bg-neg-tint", text: "text-neg" };
   const label = s.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
   return (
     <span
@@ -608,7 +735,9 @@ function BillingRollupCard({
             rawValue
             value={
               <span className="font-mono text-[12px] text-ink">
-                {billing.planMix.map((p) => `${p.label} ×${p.count}`).join(" · ")}
+                {billing.planMix
+                  .map((p) => `${p.label} ×${p.count}`)
+                  .join(" · ")}
               </span>
             }
           />

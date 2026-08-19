@@ -1,6 +1,5 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import { ChevronDown, Building2, Loader2, Check } from "lucide-react";
 import Image from "next/image";
 import { useState, useCallback } from "react";
@@ -64,7 +63,7 @@ export const BusinessSwitcher = ({
         window.location.href = "/select-location";
       }
     } catch (error) {
-      Sentry.captureException(error);
+      console.error(error);
       setIsLoading(false);
       setConfirmBusiness(null);
     }

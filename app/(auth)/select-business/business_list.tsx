@@ -1,6 +1,5 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Loader2Icon, ChevronRight, Globe2 } from "lucide-react";
@@ -54,7 +53,7 @@ const BusinessList = ({ businesses, currentAccountId }: BusinessListProps) => {
         ) {
           const switchResult = await switchAccount(selectedBusiness.accountId);
           if (switchResult.responseType !== "success") {
-            Sentry.captureException(
+            console.error(
               new Error(switchResult.message || "Account switch failed"),
             );
             toast({
@@ -99,7 +98,7 @@ const BusinessList = ({ businesses, currentAccountId }: BusinessListProps) => {
           throw error;
         }
 
-        Sentry.captureException(error);
+        console.error(error);
         setIsRedirecting(false);
         setIsLoading(false);
         setPendingIndex(null);
