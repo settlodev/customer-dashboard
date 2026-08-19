@@ -85,6 +85,8 @@ const DATE_FMT = new Intl.DateTimeFormat("en", {
 const TIME_FMT = new Intl.DateTimeFormat("en", {
   hour: "2-digit",
   minute: "2-digit",
+  second: "2-digit",
+  timeZone: "UTC",
   hour12: false,
 });
 
@@ -232,7 +234,11 @@ function MoneyHero({
     : hasDue
       ? "Balance due"
       : "Net total";
-  const big = cancelled ? "0" : hasDue ? formatNumber(unpaid) : formatNumber(net);
+  const big = cancelled
+    ? "0"
+    : hasDue
+      ? formatNumber(unpaid)
+      : formatNumber(net);
   const payLabel = paymentLabelOf(order);
   const payTone = paymentToneForOrder(order);
 
@@ -344,8 +350,7 @@ function LegendItem({
         className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
         style={{ background: color }}
       />
-      {label}{" "}
-      <b className="font-semibold tabular-nums text-ink">{value}</b>
+      {label} <b className="font-semibold tabular-nums text-ink">{value}</b>
     </div>
   );
 }
@@ -375,7 +380,11 @@ function LRow({
       <span
         className={cn(
           "flex items-center gap-2",
-          dim ? "text-muted-2" : strong ? "font-semibold text-ink" : "text-ink-3",
+          dim
+            ? "text-muted-2"
+            : strong
+              ? "font-semibold text-ink"
+              : "text-ink-3",
         )}
       >
         {label}
@@ -416,7 +425,11 @@ function Ledger({ order }: { order: OrderDetail }) {
         value={discount > 0 ? `−${formatNumber(discount)}` : "—"}
         dim={discount === 0}
       />
-      <LRow label="Tax" value={tax > 0 ? formatNumber(tax) : "—"} dim={tax === 0} />
+      <LRow
+        label="Tax"
+        value={tax > 0 ? formatNumber(tax) : "—"}
+        dim={tax === 0}
+      />
       {charges > 0 && (
         <LRow label="Customer charges" value={formatNumber(charges)} />
       )}
@@ -435,7 +448,11 @@ function Ledger({ order }: { order: OrderDetail }) {
         dim={unpaid === 0}
       />
       {refunded > 0 && (
-        <LRow label="Refunded" value={`−${formatNumber(refunded)}`} tone="neg" />
+        <LRow
+          label="Refunded"
+          value={`−${formatNumber(refunded)}`}
+          tone="neg"
+        />
       )}
       {refunded > 0 && (
         <LRow
@@ -450,7 +467,13 @@ function Ledger({ order }: { order: OrderDetail }) {
 
 // ─── tables ──────────────────────────────────────────────────────────
 
-function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
+function Th({
+  children,
+  right,
+}: {
+  children: React.ReactNode;
+  right?: boolean;
+}) {
   return (
     <th
       className={cn(
@@ -504,7 +527,10 @@ function ItemsTable({
               .filter(Boolean)
               .join(" · ");
             return (
-              <tr key={it.id as string} className={cn(muted && "text-muted-foreground")}>
+              <tr
+                key={it.id as string}
+                className={cn(muted && "text-muted-foreground")}
+              >
                 <td className="px-3.5 py-3.5 align-top">
                   <div
                     className={cn(
@@ -536,7 +562,9 @@ function ItemsTable({
                 <td
                   className={cn(
                     "px-3.5 py-3.5 text-right align-top tabular-nums",
-                    hasDiscount ? "font-semibold text-ink" : "font-medium text-muted-2",
+                    hasDiscount
+                      ? "font-semibold text-ink"
+                      : "font-medium text-muted-2",
                   )}
                 >
                   {hasDiscount ? `−${formatNumber(it.discountAmount)}` : "—"}
@@ -618,11 +646,15 @@ function TxnTable({ order }: { order: OrderDetail }) {
                     : formatNumber(tx.amount)}
                 </td>
                 <td className="px-3.5 py-3.5 text-right font-medium tabular-nums text-muted-2">
-                  {tx.tipAmount && tx.tipAmount > 0 ? formatNumber(tx.tipAmount) : "—"}
+                  {tx.tipAmount && tx.tipAmount > 0
+                    ? formatNumber(tx.tipAmount)
+                    : "—"}
                 </td>
                 <td className="px-3.5 py-3.5">
                   {tx.status ? (
-                    <StatusTag tone={txnToneOf(tx.status)}>{tx.status}</StatusTag>
+                    <StatusTag tone={txnToneOf(tx.status)}>
+                      {tx.status}
+                    </StatusTag>
                   ) : (
                     <span className="text-muted-2">—</span>
                   )}
@@ -664,9 +696,14 @@ function RefundsList({
             r.quantity != null ? formatNumber(r.quantity) : null,
             <Hash className="h-3 w-3" />,
           ),
-          fact("When", formatDateTime(r.createdAt), <Clock className="h-3 w-3" />, {
-            mono: true,
-          }),
+          fact(
+            "When",
+            formatDateTime(r.createdAt),
+            <Clock className="h-3 w-3" />,
+            {
+              mono: true,
+            },
+          ),
           fact("Reason", r.reason, <Info className="h-3 w-3" />),
         ];
         return (
@@ -765,10 +802,19 @@ function OverviewPanel({ order }: { order: OrderDetail }) {
           ),
         }
       : fact("Fulfillment", null, <Activity className="h-3 w-3" />),
-    fact("Business date", formatDate(order.businessDate), <CalendarDays className="h-3 w-3" />),
-    fact("Opened", formatDateTime(order.openedDate), <Clock className="h-3 w-3" />, {
-      mono: true,
-    }),
+    fact(
+      "Business date",
+      formatDate(order.businessDate),
+      <CalendarDays className="h-3 w-3" />,
+    ),
+    fact(
+      "Opened",
+      formatDateTime(order.openedDate),
+      <Clock className="h-3 w-3" />,
+      {
+        mono: true,
+      },
+    ),
     {
       label: "Duration",
       icon: <Timer className="h-3 w-3" />,
@@ -778,14 +824,23 @@ function OverviewPanel({ order }: { order: OrderDetail }) {
     },
     closed
       ? fact("Closed", closed, <Clock className="h-3 w-3" />, { mono: true })
-      : { label: "Closed", icon: <Clock className="h-3 w-3" />, value: "Not closed", empty: true },
+      : {
+          label: "Closed",
+          icon: <Clock className="h-3 w-3" />,
+          value: "Not closed",
+          empty: true,
+        },
   ];
 
   const peopleFacts: Fact[] = [
     fact("Started by", order.startedBy?.name, <User className="h-3 w-3" />),
     fact("Assigned to", order.assignedTo?.name, <User className="h-3 w-3" />),
     fact("Closed by", order.finishedBy?.name, <User className="h-3 w-3" />),
-    fact("Customer", order.customer?.name ?? "Walk-in", <Users className="h-3 w-3" />),
+    fact(
+      "Customer",
+      order.customer?.name ?? "Walk-in",
+      <Users className="h-3 w-3" />,
+    ),
     fact("Phone", order.customer?.phone, <Phone className="h-3 w-3" />, {
       mono: true,
     }),
@@ -796,7 +851,10 @@ function OverviewPanel({ order }: { order: OrderDetail }) {
 
   return (
     <div className="space-y-3.5">
-      <PanelCard icon={<Receipt className="h-3.5 w-3.5" />} title="Order details">
+      <PanelCard
+        icon={<Receipt className="h-3.5 w-3.5" />}
+        title="Order details"
+      >
         <FactGrid rows={orderFacts} cols={2} />
         {order.slug && (
           <div className="mt-3 flex items-center gap-2 font-mono text-[10.5px] text-muted-2">
@@ -806,7 +864,10 @@ function OverviewPanel({ order }: { order: OrderDetail }) {
         )}
       </PanelCard>
 
-      <PanelCard icon={<Users className="h-3.5 w-3.5" />} title="People & customer">
+      <PanelCard
+        icon={<Users className="h-3.5 w-3.5" />}
+        title="People & customer"
+      >
         <FactGrid rows={peopleFacts} cols={2} />
       </PanelCard>
 
@@ -968,10 +1029,16 @@ export function OrderDetailView({
     <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
       <aside className="flex flex-col gap-3.5 lg:sticky lg:top-4">
         <MoneyHero order={order} currency={currency} />
-        <RailCard icon={<Sparkles className="h-3.5 w-3.5" />} title="Profitability">
+        <RailCard
+          icon={<Sparkles className="h-3.5 w-3.5" />}
+          title="Profitability"
+        >
           <ProfitSplit order={order} />
         </RailCard>
-        <RailCard icon={<Coins className="h-3.5 w-3.5" />} title="Money breakdown">
+        <RailCard
+          icon={<Coins className="h-3.5 w-3.5" />}
+          title="Money breakdown"
+        >
           <Ledger order={order} />
         </RailCard>
       </aside>
