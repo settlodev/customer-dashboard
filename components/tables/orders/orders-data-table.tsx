@@ -57,7 +57,7 @@ export function OrdersDataTable({
       pageCount={pageCount}
       pageNo={pageNo}
       searchKey="orderNumber"
-      searchPlaceholder="Search order #, table, staff…"
+      searchPlaceholder="Search name, order #, table, staff…"
       total={total}
       filterKey="status"
       filterOptions={ORDERS_TAB_FILTER_OPTIONS}

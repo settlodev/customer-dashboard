@@ -1770,8 +1770,22 @@ function VariantEditorImpl({
         </div>
       )}
 
-      {showHeader && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Identifiers. Only the variant NAME is multi-variant-specific — a
+          single-variant product carries a hidden "Default" variant — but SKU
+          and barcode identify the sellable item either way, so the row renders
+          in both modes with just the name field gated.
+
+          Breakpoints follow the rest of this form: one column on phones, two
+          from sm, and three only at xl. Between 1024px and 1280px the shell
+          puts the 360px preview column back beside the form, so the field
+          column is ~660px there — too narrow for three inputs even though the
+          viewport is "desktop". */}
+      <div
+        className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${
+          showHeader ? "xl:grid-cols-3" : ""
+        }`}
+      >
+        {showHeader && (
           <FormField
             control={form.control}
             name={`variants.${index}.name`}
@@ -1789,51 +1803,54 @@ function VariantEditorImpl({
               </FormItem>
             )}
           />
+        )}
 
-          <FormField
-            control={form.control}
-            name={`variants.${index}.sku`}
-            render={({ field }) => (
-              <FormItem className="space-y-[7px]">
-                <FieldLabel>SKU</FieldLabel>
-                <FormControl>
-                  <ControlInput
-                    placeholder="Auto-generated if blank"
-                    {...field}
-                    value={field.value ?? ""}
-                    disabled={disabled}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <FormField
+          control={form.control}
+          name={`variants.${index}.sku`}
+          render={({ field }) => (
+            <FormItem className="space-y-[7px]">
+              <FieldLabel>SKU</FieldLabel>
+              <FormControl>
+                <ControlInput
+                  placeholder="Auto-generated if blank"
+                  {...field}
+                  value={field.value ?? ""}
+                  disabled={disabled}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-          <FormField
-            control={form.control}
-            name={`variants.${index}.barcode`}
-            render={({ field }) => (
-              <FormItem className="space-y-[7px]">
-                <FieldLabel>Barcode</FieldLabel>
-                <FormControl>
-                  <ControlInput
-                    placeholder="Optional · scan or enter, or generate later"
-                    {...field}
-                    value={field.value ?? ""}
-                    maxLength={50}
-                    disabled={disabled}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-      )}
+        <FormField
+          control={form.control}
+          name={`variants.${index}.barcode`}
+          render={({ field }) => (
+            <FormItem className="space-y-[7px]">
+              <FieldLabel>Barcode</FieldLabel>
+              <FormControl>
+                <ControlInput
+                  placeholder="Optional · scan or enter, or generate later"
+                  {...field}
+                  value={field.value ?? ""}
+                  maxLength={50}
+                  disabled={disabled}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
 
+      {/* Money row — same breakpoint ladder as the identifiers row above:
+          two across from sm, the full three/four only at xl where the field
+          column is finally wide enough for a currency chip per input. */}
       <div
-        className={`grid grid-cols-1 gap-4 ${
-          isMarkupMode ? "md:grid-cols-4" : "md:grid-cols-3"
+        className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${
+          isMarkupMode ? "xl:grid-cols-4" : "xl:grid-cols-3"
         }`}
       >
         <FormField
@@ -2156,7 +2173,7 @@ function VariantEditorImpl({
           />
 
           {mode === "DIRECT" && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <FormField
                 control={form.control}
                 name={`variants.${index}.stockVariantId`}
