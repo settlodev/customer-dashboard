@@ -8,6 +8,8 @@ import {
   type CustomerArBalance,
 } from "@/types/customer-ar/type";
 
+import { DebtorCellAction } from "./cell-action";
+
 const fmt = (n: number) =>
   n.toLocaleString(undefined, { maximumFractionDigits: 0 });
 
@@ -65,5 +67,9 @@ export const columns: ColumnDef<CustomerArBalance>[] = [
         {AGING_BUCKET_LABELS[row.original.agingBucket]}
       </span>
     ),
+  },
+  {
+    id: "actions",
+    cell: ({ row }) => <DebtorCellAction data={row.original} />,
   },
 ];

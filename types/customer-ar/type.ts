@@ -34,6 +34,43 @@ export interface ArSettlementResponse {
   settledAt: string;
 }
 
+/** OMS customer-level settlement result (order-backed portion). */
+export interface OmsCustomerArSettlementResponse {
+  customerId: string;
+  locationId: string;
+  totalApplied: number;
+  orders: Array<{
+    orderId: string;
+    orderNumber: string;
+    amountApplied: number;
+    outstandingAfter: number;
+  }>;
+}
+
+/** OMS customer-level write-off result. */
+export interface OmsCustomerArWriteOffResponse {
+  customerId: string;
+  locationId: string;
+  totalWrittenOff: number;
+  orders: Array<{
+    orderId: string;
+    orderNumber: string;
+    amountWrittenOff: number;
+  }>;
+}
+
+/** Combined result of the split settlement routing. */
+export interface CustomerArSettlementResult {
+  oms: OmsCustomerArSettlementResponse | null;
+  accounting: ArSettlementResponse | null;
+}
+
+/** Combined result of the write-off routing (mutually exclusive legs). */
+export interface CustomerArWriteOffResult {
+  oms: OmsCustomerArWriteOffResponse | null;
+  accounting: unknown | null;
+}
+
 export const AGING_BUCKET_LABELS: Record<AgingBucket, string> = {
   CURRENT: "Current",
   DAYS_30: "1–30 days",

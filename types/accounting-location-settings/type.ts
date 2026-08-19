@@ -5,6 +5,7 @@
  * Accounts Service), so the dashboard can read merchant config
  * without going through the Accounts Service every time.
  *
+ *
  * For the full Accounts-Service location settings shape (200+ fields)
  * see `types/location-settings/type.ts`.
  */

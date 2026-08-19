@@ -35,6 +35,7 @@ export interface GatewayRequestRow {
   createdAt: string;
 }
 
+/** Gateway. */
 export interface GatewayRequestPage {
   content: GatewayRequestRow[];
   totalElements: number;
@@ -63,6 +64,7 @@ export const EMPTY_GATEWAY_REQUEST_FILTERS: GatewayRequestFilterValues =
 export interface ListGatewayRequestsParams {
   /** Zero-based page index. */
   page?: number;
+
   size?: number;
   upstreamServerName?: string;
   httpMethod?: string;
