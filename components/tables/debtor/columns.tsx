@@ -1,6 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 
 import {
   AGING_BUCKET_LABELS,
@@ -18,10 +19,13 @@ export const columns: ColumnDef<CustomerArBalance>[] = [
     accessorKey: "customerName",
     header: "Customer",
     cell: ({ row }) => (
-      <span className="font-mono text-xs">
+      <Link
+        href={`/customers/${row.original.customerId}`}
+        className="font-mono text-xs hover:underline"
+      >
         {row.original.customerName ??
           row.original.customerId.slice(0, 8) + "…"}
-      </span>
+      </Link>
     ),
   },
   {

@@ -10,10 +10,12 @@ import {
 } from "@/components/layouts/page-shell";
 import { Button } from "@/components/ui/button";
 import { Customer, CustomerPreference } from "@/types/customer/type";
+import { CustomerArBalance } from "@/types/customer-ar/type";
 import {
   fetchCustomerPreferences,
   getCustomerById,
 } from "@/lib/actions/customer-actions";
+import { getCustomerArBalance } from "@/lib/actions/customer-ar-actions";
 import { CustomerDetailView } from "./customer-detail-view";
 
 type Params = Promise<{ id: string }>;
@@ -39,6 +41,11 @@ export default async function CustomerPage({ params }: { params: Params }) {
   }
 
   if (!customer) notFound();
+
+  const arBalance: CustomerArBalance | null = await getCustomerArBalance(
+    customer.id,
+    customer.locationId,
+  );
 
   const fullName = `${customer.firstName} ${customer.lastName}`;
 
@@ -94,7 +101,11 @@ export default async function CustomerPage({ params }: { params: Params }) {
       />
 
       <PageBody>
-        <CustomerDetailView customer={customer} preferences={preferences} />
+        <CustomerDetailView
+          customer={customer}
+          preferences={preferences}
+          arBalance={arBalance}
+        />
       </PageBody>
     </PageShell>
   );

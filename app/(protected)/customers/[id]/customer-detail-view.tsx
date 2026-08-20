@@ -7,12 +7,15 @@ import {
   BellOff,
   Calendar as CalendarIcon,
   CalendarDays,
+  Clock,
   CreditCard,
   FileText,
   IdCard,
   Mail,
   MapPin,
   Phone,
+  Receipt,
+  ShoppingBag,
   Star,
   Tag,
   User,
@@ -23,6 +26,12 @@ import { Badge } from "@/components/ui/badge";
 import { TableAvatar } from "@/components/tables/shared/table-avatar";
 import { usePermissions } from "@/context/permissionsContext";
 import { CustomerPrepaidAccountTab } from "@/components/customer/customer-prepaid-account-tab";
+import { DebtorCellAction } from "@/components/tables/debtor/cell-action";
+import {
+  AGING_BUCKET_LABELS,
+  AGING_BUCKET_TONES,
+  type CustomerArBalance,
+} from "@/types/customer-ar/type";
 import {
   Customer,
   CustomerPreference,
@@ -34,11 +43,13 @@ import {
 interface Props {
   customer: Customer;
   preferences: CustomerPreference[];
+  arBalance: CustomerArBalance | null;
 }
 
 const TABS = [
   { key: "overview", label: "Overview", icon: User },
   { key: "loyalty", label: "Loyalty & Credit", icon: Star },
+  { key: "debt", label: "Outstanding balance", icon: Receipt },
   { key: "prepayments", label: "Prepaid account", icon: Wallet },
   { key: "addresses", label: "Addresses", icon: MapPin },
   { key: "preferences", label: "Preferences", icon: Tag },
@@ -46,7 +57,7 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"];
 
-export function CustomerDetailView({ customer, preferences }: Props) {
+export function CustomerDetailView({ customer, preferences, arBalance }: Props) {
   const [tab, setTab] = useState<TabKey>("overview");
   const { hasPermission } = usePermissions();
 
@@ -124,6 +135,9 @@ export function CustomerDetailView({ customer, preferences }: Props) {
             if (t.key === "preferences" && preferences.length > 0) {
               badge = String(preferences.length);
             }
+            if (t.key === "debt" && (arBalance?.outstandingBalance ?? 0) > 0) {
+              badge = String(arBalance!.outstandingOrderCount);
+            }
             return (
               <button
                 key={t.key}
@@ -162,6 +176,7 @@ export function CustomerDetailView({ customer, preferences }: Props) {
       {/* ── Tab content ───────────────────────────────────────── */}
       {tab === "overview" && <OverviewTab customer={customer} />}
       {tab === "loyalty" && <LoyaltyTab customer={customer} />}
+      {tab === "debt" && <DebtTab arBalance={arBalance} />}
       {tab === "prepayments" && (
         <CustomerPrepaidAccountTab
           customerId={customer.id}
@@ -402,6 +417,115 @@ function LoyaltyTab({ customer }: { customer: Customer }) {
                 </Badge>
               }
             />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── Outstanding balance (AR / debt) ────────────────────────────────
+
+function DebtTab({ arBalance }: { arBalance: CustomerArBalance | null }) {
+  if (!arBalance || arBalance.outstandingBalance <= 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <Receipt className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            No outstanding balance. Credit-sale orders and unsettled charges
+            for this customer will show up here.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const formatDate = (iso?: string | null) =>
+    iso ? new Date(iso).toLocaleDateString() : null;
+
+  return (
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <Card className="lg:col-span-2">
+        <CardContent className="space-y-4 pt-6">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+              <Receipt className="h-4 w-4 text-muted-foreground" />
+              Outstanding balance
+            </h3>
+            <div className="flex items-center gap-2">
+              <span
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                  AGING_BUCKET_TONES[arBalance.agingBucket]
+                }`}
+              >
+                {AGING_BUCKET_LABELS[arBalance.agingBucket]}
+              </span>
+              <DebtorCellAction data={arBalance} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[28px] font-semibold leading-none tracking-[-0.025em] text-neg tabular-nums">
+              {arBalance.outstandingBalance.toLocaleString()}
+            </span>
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {arBalance.currency}
+            </span>
+          </div>
+          <p className="text-[12px] text-muted-foreground">
+            Owed across {arBalance.outstandingOrderCount}{" "}
+            {arBalance.outstandingOrderCount === 1 ? "order" : "orders"} · {arBalance.daysOutstanding}{" "}
+            {arBalance.daysOutstanding === 1 ? "day" : "days"} outstanding
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-3 pt-6">
+          <h3 className="flex items-center gap-2 text-sm font-semibold">
+            <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+            Charges
+          </h3>
+          <div className="overflow-hidden rounded-lg border border-line bg-line">
+            <dl className="grid grid-cols-1 gap-px bg-line">
+              <DetailRow
+                label="Total charged"
+                value={`${arBalance.totalCharged.toLocaleString()} ${arBalance.currency}`}
+              />
+              <DetailRow
+                label="Total settled"
+                value={`${arBalance.totalSettled.toLocaleString()} ${arBalance.currency}`}
+              />
+              <DetailRow
+                label="Open orders"
+                value={arBalance.outstandingOrderCount.toString()}
+              />
+            </dl>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-3 pt-6">
+          <h3 className="flex items-center gap-2 text-sm font-semibold">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            Timeline
+          </h3>
+          <div className="overflow-hidden rounded-lg border border-line bg-line">
+            <dl className="grid grid-cols-1 gap-px bg-line">
+              <DetailRow
+                label="Oldest unsettled"
+                value={formatDate(arBalance.oldestUnsettledAt)}
+              />
+              <DetailRow
+                label="Last charge"
+                value={formatDate(arBalance.lastChargeAt)}
+              />
+              <DetailRow
+                label="Last settlement"
+                value={formatDate(arBalance.lastSettlementAt)}
+              />
+            </dl>
           </div>
         </CardContent>
       </Card>
