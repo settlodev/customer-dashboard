@@ -52,6 +52,13 @@ export declare interface Customer {
    * balance map — NOT part of the Accounts customer payload.
    */
   prepaidBalance?: number;
+  /**
+   * Outstanding A/R — what this customer owes on unsettled signed bills.
+   * Client-enriched on the customers list from the location's debtor
+   * balances, same as {@link prepaidBalance}; not part of the Accounts
+   * customer payload.
+   */
+  totalDue?: number;
   allowNotifications: boolean;
   notes: string | null;
   loyaltyPoints: number;

@@ -29,7 +29,11 @@ import DataLoadError from "@/components/layouts/data-load-error";
 import { softFetch } from "@/lib/list-fallback";
 import { CustomerStatusTabs } from "@/components/tables/customer/status-tabs";
 import { Customer } from "@/types/customer/type";
-import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
+import {
+  getCurrentBusiness,
+  getCurrentLocation,
+} from "@/lib/actions/business/get-current-business";
+import { listArBalances } from "@/lib/actions/customer-ar-actions";
 import {
   getOutstandingPrepaidLiability,
   getTopCustomerPrepaidBalances,
@@ -63,8 +67,11 @@ export default async function CustomersPage({ searchParams }: Params) {
   // current page is showing. Folded into the same Promise.all as the
   // paged search so all three fetches happen in parallel instead of
   // counts+stats finishing before the search even starts.
-  const business = await getCurrentBusiness();
-  const [counts, stats, responseData, prepaid, topBalances] =
+  const [business, location] = await Promise.all([
+    getCurrentBusiness(),
+    getCurrentLocation().catch(() => null),
+  ]);
+  const [counts, stats, responseData, prepaid, topBalances, arBalances] =
     await Promise.all([
       getCustomerCount().catch(() => ({ total: 0, active: 0, inactive: 0 })),
       getCustomerSummaryStats().catch(() => ({
@@ -80,6 +87,13 @@ export default async function CustomersPage({ searchParams }: Params) {
       business?.id
         ? getTopCustomerPrepaidBalances(business.id, 500)
         : Promise.resolve([]),
+      // Debtors at this location, in one page — same shape as the prepaid
+      // map below, so the Total due column costs one fetch rather than a
+      // per-row lookup. minOutstanding=0 means "owes something", so only
+      // actual debtors come back.
+      location?.id
+        ? listArBalances(location.id, 0, 0, 500)
+        : Promise.resolve(null),
     ]);
 
   // Per-customer prepaid balance map (business-wide) → enrich the visible rows
@@ -87,9 +101,16 @@ export default async function CustomersPage({ searchParams }: Params) {
   const prepaidByCustomer = new Map(
     topBalances.map((b) => [b.customerId, b.outstandingBalance]),
   );
+  const dueByCustomer = new Map(
+    (arBalances?.content ?? []).map((b) => [
+      b.customerId,
+      b.outstandingBalance,
+    ]),
+  );
   const data: Customer[] = (responseData?.content ?? []).map((c) => ({
     ...c,
     prepaidBalance: prepaidByCustomer.get(c.id),
+    totalDue: dueByCustomer.get(c.id),
   }));
   const total = responseData?.totalElements ?? 0;
   const pageCount = responseData?.totalPages ?? 0;
@@ -143,9 +164,7 @@ export default async function CustomersPage({ searchParams }: Params) {
                     ? stats.loyaltyPointsTotal.toLocaleString()
                     : "—"
                 }
-                delta={
-                  stats.loyaltyPointsTotal > 0 ? "Across all" : undefined
-                }
+                delta={stats.loyaltyPointsTotal > 0 ? "Across all" : undefined}
                 deltaTone="neutral"
               />
               <KpiCard
@@ -174,11 +193,15 @@ export default async function CustomersPage({ searchParams }: Params) {
                     : "—"
                 }
                 unit={
-                  prepaid && prepaid.outstandingLiability > 0 ? "TZS" : undefined
+                  prepaid && prepaid.outstandingLiability > 0
+                    ? "TZS"
+                    : undefined
                 }
                 delta="Business-wide"
                 deltaTone={
-                  prepaid && prepaid.outstandingLiability > 0 ? "neg" : "neutral"
+                  prepaid && prepaid.outstandingLiability > 0
+                    ? "neg"
+                    : "neutral"
                 }
               />
             </KpiStrip>

@@ -11,11 +11,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Customer, CustomerPreference } from "@/types/customer/type";
 import { CustomerArBalance } from "@/types/customer-ar/type";
+import type {
+  CustomerArInvoiceSummary,
+  CustomerSignedBill,
+} from "@/types/customer-ar-invoice/type";
 import {
   fetchCustomerPreferences,
   getCustomerById,
 } from "@/lib/actions/customer-actions";
 import { getCustomerArBalance } from "@/lib/actions/customer-ar-actions";
+import {
+  listCustomerArInvoices,
+  listCustomerSignedBills,
+} from "@/lib/actions/customer-ar-invoice-actions";
 import { CustomerDetailView } from "./customer-detail-view";
 
 type Params = Promise<{ id: string }>;
@@ -42,10 +50,18 @@ export default async function CustomerPage({ params }: { params: Params }) {
 
   if (!customer) notFound();
 
-  const arBalance: CustomerArBalance | null = await getCustomerArBalance(
-    customer.id,
-    customer.locationId,
-  );
+  // The A/R balance, the bills behind it, and any invoices already raised
+  // over them all feed the Outstanding-balance tab — fetched together so the
+  // tab renders in one pass. All three fail soft to an empty state.
+  const [arBalance, signedBills, arInvoices]: [
+    CustomerArBalance | null,
+    CustomerSignedBill[],
+    CustomerArInvoiceSummary[],
+  ] = await Promise.all([
+    getCustomerArBalance(customer.id, customer.locationId),
+    listCustomerSignedBills(customer.id, customer.locationId),
+    listCustomerArInvoices(customer.id),
+  ]);
 
   const fullName = `${customer.firstName} ${customer.lastName}`;
 
@@ -105,6 +121,8 @@ export default async function CustomerPage({ params }: { params: Params }) {
           customer={customer}
           preferences={preferences}
           arBalance={arBalance}
+          signedBills={signedBills}
+          arInvoices={arInvoices}
         />
       </PageBody>
     </PageShell>

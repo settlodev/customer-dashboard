@@ -7,6 +7,7 @@ import { SettloApiError } from "@/lib/settlo-api-error-handler";
 import { parseStringify } from "@/lib/utils";
 import type { ApiResponse, FormResponse } from "@/types/types";
 import type {
+  ArBalanceSummary,
   ArSettlementResponse,
   CustomerArBalance,
   CustomerArSettlementResult,
@@ -18,15 +19,36 @@ import type {
 import { accountingUrl } from "./accounting-client";
 import { rethrowIfBoundary } from "@/lib/list-fallback";
 
+/**
+ * Date range for the debtors screen, scoped to when the debt ORIGINATED
+ * (the `oldestUnsettledAt` anchor the aging buckets are measured from).
+ * Both ends are optional — omitting them lists every outstanding balance.
+ */
+export interface ArBalanceRange {
+  /** Inclusive start, `yyyy-MM-dd`. */
+  from?: string;
+  /** Inclusive end, `yyyy-MM-dd`. */
+  to?: string;
+}
+
+/** Shared query string for the listing and its summary — they must agree. */
+function arBalanceParams(minOutstanding: number, range?: ArBalanceRange) {
+  const params = new URLSearchParams();
+  params.set("minOutstanding", String(minOutstanding));
+  if (range?.from) params.set("from", range.from);
+  if (range?.to) params.set("to", range.to);
+  return params;
+}
+
 export async function listArBalances(
   locationId: string,
   minOutstanding = 0,
   page = 0,
   size = 20,
+  range?: ArBalanceRange,
 ): Promise<ApiResponse<CustomerArBalance>> {
   try {
-    const params = new URLSearchParams();
-    params.set("minOutstanding", String(minOutstanding));
+    const params = arBalanceParams(minOutstanding, range);
     params.set("page", String(page));
     params.set("size", String(size));
     const apiClient = new ApiClient();
@@ -46,6 +68,32 @@ export async function listArBalances(
       pageable: { pageNumber: page, pageSize: size },
       last: true,
     } as unknown as ApiResponse<CustomerArBalance>;
+  }
+}
+
+/**
+ * Totals across every debtor matching the filter — what the KPI strip shows.
+ * Summing the current page instead would understate every figure the moment
+ * a location has more debtors than fit on one page.
+ */
+export async function getArBalanceSummary(
+  locationId: string,
+  minOutstanding = 0,
+  range?: ArBalanceRange,
+): Promise<ArBalanceSummary | null> {
+  try {
+    const params = arBalanceParams(minOutstanding, range);
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(
+      accountingUrl(
+        `/api/v1/locations/${locationId}/ar-balances/summary?${params.toString()}`,
+      ),
+    );
+    return parseStringify(data);
+  } catch (error) {
+    rethrowIfBoundary(error);
+    console.error("getArBalanceSummary failed", error);
+    return null;
   }
 }
 

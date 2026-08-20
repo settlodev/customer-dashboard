@@ -21,6 +21,19 @@ export interface CustomerArBalance {
   agingBucket: AgingBucket;
 }
 
+/**
+ * Whole-set totals behind the debtors KPI strip. Computed server-side over
+ * the same filter the listing uses, so the strip describes every matching
+ * debtor rather than the rows on the current page.
+ */
+export interface ArBalanceSummary {
+  totalOutstanding: number;
+  customerCount: number;
+  overdueCount: number;
+  overdueOutstanding: number;
+  currency?: string | null;
+}
+
 export interface ArSettlementResponse {
   settlementId: string;
   customerId: string;

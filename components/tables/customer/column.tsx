@@ -5,10 +5,7 @@ import { ArrowUpDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Customer,
-  CUSTOMER_SOURCE_LABELS,
-} from "@/types/customer/type";
+import { Customer, CUSTOMER_SOURCE_LABELS } from "@/types/customer/type";
 import { CellAction } from "@/components/tables/customer/cell-action";
 import { TableAvatar } from "@/components/tables/shared/table-avatar";
 
@@ -173,6 +170,28 @@ export const columns: ColumnDef<Customer>[] = [
           <span className="font-mono text-[12px] tabular-nums text-ink">
             {bal.toLocaleString()}
           </span>
+        </div>
+      );
+    },
+  },
+  {
+    id: "totalDue",
+    enableHiding: true,
+    header: () => <span className="block text-right">Total due</span>,
+    cell: ({ row }) => {
+      const due = row.original.totalDue ?? 0;
+      // Only debtors get a figure. A 0 for everyone else would turn the
+      // column into noise and bury the customers actually worth chasing.
+      if (due <= 0) {
+        return (
+          <div className="text-right font-mono text-[12px] text-muted-foreground">
+            —
+          </div>
+        );
+      }
+      return (
+        <div className="text-right font-mono text-[12px] font-medium tabular-nums text-neg">
+          {due.toLocaleString(undefined, { maximumFractionDigits: 0 })}
         </div>
       );
     },
