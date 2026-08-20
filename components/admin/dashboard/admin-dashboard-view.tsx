@@ -38,6 +38,13 @@ const HEADLINE_ICON: Record<string, LucideIcon> = {
   nrr: Repeat,
 };
 
+const HEADLINE_TOOLTIP: Record<string, string> = {
+  mrr: "Monthly Recurring Revenue — the predictable subscription revenue normalized to a monthly amount across all active businesses.",
+  arr: "Annual Recurring Revenue — MRR annualised (× 12), a projection of yearly subscription revenue at the current run rate.",
+  gmv: "Gross Merchandise Value — the total value of transactions processed through the platform over the period, before fees.",
+  nrr: "Net Revenue Retention — revenue from existing customers this period vs. the same period prior, including upgrades, downgrades and churn. Above 100% means expansion outpaces churn.",
+};
+
 export function AdminDashboardView({ data }: { data: DashboardOverview }) {
   const failed = (key: DashboardSectionKey) => data.errored.includes(key);
   const anyFailed = data.errored.length > 0;
@@ -72,6 +79,7 @@ export function AdminDashboardView({ data }: { data: DashboardOverview }) {
                 delta={m.delta}
                 spark={m.spark}
                 footNote={m.footNote}
+                tooltip={HEADLINE_TOOLTIP[m.key]}
               />
             );
           })}
@@ -363,7 +371,11 @@ function MrrByEntityTypeCard({
 }) {
   const total = items.reduce((s, r) => s + r.value, 0);
   return (
-    <SectionCard title="MRR by entity type" subtitle="Breakdown by subscription entity">
+    <SectionCard
+      title="MRR by entity type"
+      subtitle="Breakdown by subscription entity"
+      tooltip="How current Monthly Recurring Revenue splits across subscription entity types (e.g. business vs. location plans)."
+    >
       <BarList>
         {items.map((r) => (
           <BarRow

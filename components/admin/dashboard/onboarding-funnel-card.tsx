@@ -1,5 +1,12 @@
+import { Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SectionCard, CardLink } from "@/components/admin/shared/section-card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { OnboardingFunnel } from "@/types/admin/dashboard";
 
 /**
@@ -14,6 +21,13 @@ const NOTE_TONE = {
   dim: "text-muted-2",
 } as const;
 
+const STAGE_TOOLTIP: Record<string, string> = {
+  account: "Every account that has signed up, regardless of onboarding progress. The 100% baseline for this funnel.",
+  email: "Accounts that confirmed their email address — the first activation step after signup.",
+  business: "Accounts that created at least one business profile after verifying their email.",
+  location: "Accounts with a live, billable location — the point at which they become a paying/active customer.",
+};
+
 export function OnboardingFunnelCard({
   funnel,
   href = "/accounts",
@@ -27,6 +41,7 @@ export function OnboardingFunnelCard({
     <SectionCard
       title="Onboarding funnel"
       subtitle="Account → business → location · activation path"
+      tooltip="Tracks how newly signed-up accounts progress through activation, from account creation to a live billable location. Each stage shows the share and drop-off from the stage before it."
       linkLabel="Triage accounts"
       linkHref={href}
       stub={stub}
@@ -42,12 +57,30 @@ export function OnboardingFunnelCard({
                 className="h-2.5 w-2.5 flex-shrink-0 rounded-[3px]"
                 style={{ backgroundColor: stage.color }}
               />
-              <span>
+              <span className="inline-flex items-center gap-1">
                 {stage.label}
                 {stage.qualifier && (
-                  <span className="ml-1 font-mono text-[10.5px] font-normal text-muted-2">
+                  <span className="font-mono text-[10.5px] font-normal text-muted-2">
                     {stage.qualifier}
                   </span>
+                )}
+                {STAGE_TOOLTIP[stage.key] && (
+                  <TooltipProvider delayDuration={150}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="inline-flex flex-shrink-0 text-muted-foreground/70 hover:text-muted-foreground focus:outline-none"
+                          aria-label={`About ${stage.label}`}
+                        >
+                          <Info className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" align="start" className="max-w-[240px] text-xs font-normal">
+                        {STAGE_TOOLTIP[stage.key]}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
               </span>
             </div>

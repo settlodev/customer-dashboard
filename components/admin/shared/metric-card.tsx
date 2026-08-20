@@ -1,5 +1,12 @@
 import React from "react";
+import { Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /**
  * MetricCard — a headline KPI tile for the dashboard's top row (MRR, ARR,
@@ -36,6 +43,8 @@ interface MetricCardProps {
   /** Series for the inline footer sparkline (skip to show footNote instead). */
   spark?: number[];
   footNote?: string;
+  /** Explanatory text shown in a hover tooltip next to the label. */
+  tooltip?: string;
 }
 
 export function MetricCard({
@@ -47,6 +56,7 @@ export function MetricCard({
   delta,
   spark,
   footNote,
+  tooltip,
 }: MetricCardProps) {
   return (
     <div className="flex flex-col rounded-2xl border border-line bg-card p-[18px]">
@@ -55,6 +65,24 @@ export function MetricCard({
         <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.09em]">
           {label}
         </span>
+        {tooltip && (
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex text-muted-foreground/70 hover:text-muted-foreground focus:outline-none"
+                  aria-label={`About ${label}`}
+                >
+                  <Info className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" align="start" className="max-w-[240px] text-xs">
+                {tooltip}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
 
       <div className="mt-3 flex items-baseline text-[30px] font-bold leading-none tracking-[-0.03em] text-ink tabular-nums">

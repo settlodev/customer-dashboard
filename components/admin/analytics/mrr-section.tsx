@@ -119,6 +119,7 @@ export function MrrSection({
           label="Ending MRR"
           value={formatCurrency(latest?.ending_mrr)}
           unit="TZS"
+          tooltip="Monthly Recurring Revenue at the end of the selected period — the normalized monthly value of all active subscriptions."
         />
         <KpiCard
           icon={<TrendingUp className="h-3.5 w-3.5" />}
@@ -127,6 +128,7 @@ export function MrrSection({
           unit="TZS"
           delta={`× ${latest?.mrr_arr_ratio?.toFixed(1) ?? "12.0"} ratio`}
           deltaTone="neutral"
+          tooltip="Ending MRR projected to a yearly figure using the current MRR-to-ARR ratio (typically ×12)."
         />
         <KpiCard
           icon={
@@ -145,11 +147,13 @@ export function MrrSection({
               ? `${latest.new_customer_count + latest.reactivation_customer_count} added · ${latest.churn_customer_count} churned`
               : undefined
           }
+          tooltip="New + expansion + reactivation MRR, minus contraction and churned MRR, for the period — the net change in recurring revenue."
         />
         <KpiCard
           icon={<Users className="h-3.5 w-3.5" />}
           label="Paying customers"
           value={latest?.paying_customers?.toLocaleString() ?? "—"}
+          tooltip="Count of businesses with an active paid subscription as of the latest metric date."
         />
       </KpiStrip>
 

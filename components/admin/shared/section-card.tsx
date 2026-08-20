@@ -1,9 +1,15 @@
 import React from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Info } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { StubBadge } from "@/components/admin/catalog/package-detail/stub-badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /**
  * SectionCard — the white rounded card with a title / mono-subtitle header
@@ -49,6 +55,8 @@ export function CardLink({
 
 interface SectionCardProps {
   title?: React.ReactNode;
+  /** Explanatory text shown in a hover tooltip next to the title. */
+  tooltip?: string;
   subtitle?: React.ReactNode;
   /** Right-aligned accent link rendered as "label →". */
   linkLabel?: string;
@@ -68,6 +76,7 @@ interface SectionCardProps {
 
 export function SectionCard({
   title,
+  tooltip,
   subtitle,
   linkLabel,
   linkHref,
@@ -98,8 +107,26 @@ export function SectionCard({
         >
           <div className="min-w-0">
             {title && (
-              <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-ink">
+              <h2 className="flex items-center gap-1.5 text-[15px] font-semibold tracking-[-0.01em] text-ink">
                 {title}
+                {tooltip && (
+                  <TooltipProvider delayDuration={150}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="inline-flex flex-shrink-0 text-muted-foreground/70 hover:text-muted-foreground focus:outline-none"
+                          aria-label={`About ${typeof title === "string" ? title : "this section"}`}
+                        >
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" align="start" className="max-w-[260px] text-xs font-normal">
+                        {tooltip}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </h2>
             )}
             {subtitle && (

@@ -126,16 +126,19 @@ export function EngagementSection({
             icon={<Activity className="h-3.5 w-3.5" />}
             label="Daily active"
             value={num(latest.dau)}
+            tooltip="DAU — number of distinct businesses with recorded activity on the latest day."
           />
           <KpiCard
             icon={<Users className="h-3.5 w-3.5" />}
             label="Weekly active"
             value={num(latest.wau)}
+            tooltip="WAU — number of distinct businesses with recorded activity in the trailing 7 days."
           />
           <KpiCard
             icon={<Calendar className="h-3.5 w-3.5" />}
             label="Monthly active"
             value={num(latest.mau)}
+            tooltip="MAU — number of distinct businesses with recorded activity in the trailing 30 days."
           />
         </KpiStrip>
       )}

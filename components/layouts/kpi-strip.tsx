@@ -25,8 +25,14 @@
  */
 
 import React from "react";
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // ─────────────────────────────────────────────────────────────────────
 // KpiStrip — outer grid wrapper. Children should be <KpiCard>s.
@@ -106,6 +112,8 @@ export interface KpiCardProps {
   spark?: number[];
   /** CSS color string for the sparkline stroke. */
   sparkColor?: string;
+  /** Explanatory text shown in a hover tooltip next to the label. */
+  tooltip?: string;
   className?: string;
 }
 
@@ -124,6 +132,7 @@ export function KpiCard({
   deltaTone = "neutral",
   spark,
   sparkColor,
+  tooltip,
   className,
 }: KpiCardProps) {
   return (
@@ -136,6 +145,24 @@ export function KpiCard({
       <div className="mb-2 flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
         {icon && <span className="opacity-70">{icon}</span>}
         <span className="truncate">{label}</span>
+        {tooltip && (
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex flex-shrink-0 text-muted-foreground/70 hover:text-muted-foreground focus:outline-none"
+                  aria-label={`About ${typeof label === "string" ? label : "this metric"}`}
+                >
+                  <Info className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" align="start" className="max-w-[240px] text-xs normal-case">
+                {tooltip}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
 
       <div className="flex items-baseline gap-1.5 text-[22px] font-semibold leading-none tracking-[-0.025em] text-ink tabular-nums">

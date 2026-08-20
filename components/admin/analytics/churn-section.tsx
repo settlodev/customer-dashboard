@@ -112,6 +112,7 @@ export function ChurnSection({
             icon={<ShieldCheck className="h-3.5 w-3.5" />}
             label="Total scored"
             value={summary.total_scored.toLocaleString()}
+            tooltip="Number of businesses the churn model has produced a risk score for."
           />
           <KpiCard
             icon={<AlertTriangle className="h-3.5 w-3.5" />}
@@ -119,15 +120,18 @@ export function ChurnSection({
             value={summary.high_risk.toLocaleString()}
             deltaTone="neg"
             delta={`${summary.total_scored ? ((summary.high_risk / summary.total_scored) * 100).toFixed(1) : 0}% of base`}
+            tooltip="Businesses the model flags as high risk of churning, based on predicted churn probability."
           />
           <KpiCard
             icon={<Clock className="h-3.5 w-3.5" />}
             label="Medium risk"
             value={summary.medium_risk.toLocaleString()}
+            tooltip="Businesses the model flags as medium risk of churning."
           />
           <KpiCard
             label="Avg 30d churn prob."
             value={`${(summary.avg_churn_prob_30d * 100).toFixed(1)}%`}
+            tooltip="Average predicted probability of churning within the next 30 days, across all scored businesses."
           />
         </KpiStrip>
       )}
