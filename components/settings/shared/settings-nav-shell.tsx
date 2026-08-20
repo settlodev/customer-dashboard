@@ -84,7 +84,7 @@ export function SettingsNavShell({
 
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
         <nav className="hidden lg:block lg:w-64 flex-shrink-0">
-          <div className="bg-card border rounded-xl p-2 space-y-1 sticky top-24 shadow-sm">
+          <div className="bg-card border rounded-xl p-2 space-y-1 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto shadow-sm">
             {items.map((item) => {
               const Icon = item.icon;
               const isActive = activeId === item.id;
