@@ -3,6 +3,7 @@
 import { revalidateTag, unstable_cache } from "next/cache";
 import ApiClient from "@/lib/settlo-api-client";
 import { LAYOUT_TAGS } from "@/lib/cache-tags";
+import { invalidateEntitlementSnapshot } from "@/lib/entitlements/snapshot";
 import type {
   Package,
   PackageBreakdown,
@@ -30,6 +31,24 @@ const BILLING_SERVICE_URL = process.env.BILLING_SERVICE_URL || "";
 
 function billingUrl(path: string): string {
   return `${BILLING_SERVICE_URL}${path}`;
+}
+
+/**
+ * Called after any mutation that can change what the business is entitled to.
+ *
+ * Replaces `revalidateTag(LAYOUT_TAGS.entitlements)`, which had quietly become a no-op: that
+ * tag only ever mattered while entitlements were wrapped in `unstable_cache`, and they no
+ * longer are (see lib/entitlements/snapshot.ts for why — the Data Cache has no stale-on-error
+ * path, which a gate needs). The snapshot store keeps its own fresh window, and this is what
+ * ends it, so a plan change or cancellation shows up on the very next render instead of
+ * whenever that window happened to lapse.
+ *
+ * The other LAYOUT_TAGS (businesses/locations/stores/warehouses) are still genuinely cached
+ * and still revalidated by their own mutation sites.
+ */
+async function entitlementsChanged(): Promise<void> {
+  revalidateTag(LAYOUT_TAGS.entitlements);
+  await invalidateEntitlementSnapshot();
 }
 
 // ── Packages ────────────────────────────────────────────────────────
@@ -131,7 +150,7 @@ export async function cancelSubscription(
   await apiClient.delete<void>(
     billingUrl(`/api/v1/subscriptions/${subscriptionId}`),
   );
-  revalidateTag(LAYOUT_TAGS.entitlements);
+  await entitlementsChanged();
 }
 
 // ── Subscription item management ────────────────────────────────────
@@ -148,7 +167,7 @@ export async function changeItemPlan(
     ),
     undefined,
   );
-  revalidateTag(LAYOUT_TAGS.entitlements);
+  await entitlementsChanged();
   return result;
 }
 
@@ -201,7 +220,7 @@ export async function adjustRenewalKeepItems(
   >(billingUrl(`/api/v1/subscriptions/${subscriptionId}/renewal/adjust`), {
     keepItemIds,
   });
-  revalidateTag(LAYOUT_TAGS.entitlements);
+  await entitlementsChanged();
   // A 204 comes back as an empty body through axios — normalise to null.
   return result && typeof result === "object" ? result : null;
 }
@@ -223,7 +242,7 @@ export async function removeSubscriptionItem(
   await apiClient.delete<void>(
     billingUrl(`/api/v1/subscriptions/${subscriptionId}/items/${itemId}`),
   );
-  revalidateTag(LAYOUT_TAGS.entitlements);
+  await entitlementsChanged();
 }
 
 export async function addItemAddon(
@@ -238,7 +257,7 @@ export async function addItemAddon(
     ),
     undefined,
   );
-  revalidateTag(LAYOUT_TAGS.entitlements);
+  await entitlementsChanged();
 }
 
 export async function removeItemAddon(
@@ -252,7 +271,7 @@ export async function removeItemAddon(
       `/api/v1/subscriptions/${subscriptionId}/items/${itemId}/addons/${addonId}`,
     ),
   );
-  revalidateTag(LAYOUT_TAGS.entitlements);
+  await entitlementsChanged();
 }
 
 // ── Prepayments ─────────────────────────────────────────────────────

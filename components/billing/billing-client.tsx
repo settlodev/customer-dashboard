@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -74,6 +74,34 @@ export function BillingClient({
   const [payTarget, setPayTarget] = useState<BillingInvoice | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [viewInvoiceId, setViewInvoiceId] = useState<string | null>(null);
+
+  // `router.refresh()` re-runs the whole route — the (protected) layout AND this page — so
+  // each one costs two Billing Service requests (entitlements + the billing overview). A
+  // single payment used to fire several: once when the invoice was generated, then again on
+  // success, where PaymentOptionsDialog calls `onOpenChange(false)` and `onPaid()` back to
+  // back in the same tick. Coalescing on a short timer collapses any burst into one render
+  // regardless of what order the callbacks arrive in, which is what makes this robust —
+  // the success path genuinely closes before it reports success.
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleRefresh = useCallback(() => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(() => {
+      refreshTimerRef.current = null;
+      router.refresh();
+    }, 50);
+  }, [router]);
+  useEffect(
+    () => () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    },
+    [],
+  );
+
+  // Set when generating/re-issuing an invoice changes the data behind the payment dialog.
+  // NOT refreshed on the spot: the payment dialog is already open over that data, so the
+  // user cannot see the result — and if they go on to pay, that refresh covers it anyway.
+  // Redeemed on whichever exit the flow actually takes.
+  const staleBehindDialogRef = useRef(false);
 
   const pendingInvoice = useMemo(
     () =>
@@ -230,9 +258,11 @@ export function BillingClient({
 
         setPayMode(null);
         setPayTarget(invoice);
-        // Packages and/or the open invoice changed — refresh the page data
-        // behind the payment dialog so the entities table and KPIs catch up.
-        router.refresh();
+        // Packages and/or the open invoice changed, so the entities table and KPIs behind
+        // the dialog are stale — but they're behind the dialog. Deferred to whichever exit
+        // the flow takes (paid, or dismissed) rather than fired now, which would make every
+        // payment cost two full route renders instead of one.
+        staleBehindDialogRef.current = true;
       } catch (error) {
         toast({
           variant: "destructive",
@@ -243,7 +273,7 @@ export function BillingClient({
         setSubmitting(false);
       }
     },
-    [payMode, pendingInvoice, payLines, subscription.id, termMonths, toast, router],
+    [payMode, pendingInvoice, payLines, subscription.id, termMonths, toast],
   );
 
   return (
@@ -327,7 +357,17 @@ export function BillingClient({
       {payTarget && (
         <PaymentOptionsDialog
           open
-          onOpenChange={(open) => !open && setPayTarget(null)}
+          onOpenChange={(open) => {
+            if (open) return;
+            setPayTarget(null);
+            // Closing reveals whatever the invoice generation changed, so redeem the
+            // deferred refresh. On the success path `onPaid` schedules one in the same
+            // tick and the two coalesce into a single render.
+            if (staleBehindDialogRef.current) {
+              staleBehindDialogRef.current = false;
+              scheduleRefresh();
+            }
+          }}
           invoice={{
             id: payTarget.id,
             invoiceNumber: payTarget.invoiceNumber,
@@ -339,7 +379,8 @@ export function BillingClient({
           defaultPhone={contactDefaults?.phone}
           onPaid={() => {
             setPayTarget(null);
-            router.refresh();
+            staleBehindDialogRef.current = false;
+            scheduleRefresh();
           }}
         />
       )}
@@ -353,11 +394,11 @@ export function BillingClient({
         defaultPhone={contactDefaults?.phone}
         onPaid={() => {
           setViewInvoiceId(null);
-          router.refresh();
+          scheduleRefresh();
         }}
         onCancelled={() => {
           setViewInvoiceId(null);
-          router.refresh();
+          scheduleRefresh();
         }}
       />
     </>

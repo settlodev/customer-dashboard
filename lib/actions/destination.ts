@@ -8,6 +8,7 @@ import type { Warehouses } from "@/types/warehouse/warehouse/type";
 import { getAuthToken, updateAuthToken } from "@/lib/auth-utils";
 import { extractSubscriptionStatus } from "@/lib/jwt-utils";
 import { getCurrentDestination } from "@/lib/actions/context";
+import { invalidateEntitlementSnapshot } from "@/lib/entitlements/snapshot";
 import { clearDaySessionCookie } from "./day-session-cookie-actions";
 
 // ── Unified destination switcher ────────────────────────────────────
@@ -116,6 +117,11 @@ async function mintTokenForCurrentDestination(): Promise<void> {
  */
 export async function refreshSubscriptionToken(): Promise<void> {
   await mintTokenForCurrentDestination();
+  // The token is only half the gate. The per-destination lock reads live entitlements
+  // (lib/entitlements/gate.ts), and those are served from a short fresh window — so without
+  // this, a customer who just paid could stay locked until that window lapsed. This is the
+  // single choke point every payment/activation already funnels through.
+  await invalidateEntitlementSnapshot();
   revalidatePath("/", "layout");
 }
 
