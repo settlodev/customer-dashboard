@@ -263,6 +263,58 @@ export async function republishAllAccounts(): Promise<
   }
 }
 
+/**
+ * Shared driver for the entity-level bulk backfills (businesses, locations,
+ * staff, auth users) added alongside the original accounts one. Each POSTs the
+ * matching Accounts-admin republish endpoint: the backend re-emits *_UPDATED
+ * (or USER_CREATED + held verifications, for users) for every non-deleted row
+ * so event-sourced analytics pick up entities that predate the consumers or
+ * arrived via the legacy data migration. All idempotent; none send email.
+ */
+async function republishAll(
+  path: string,
+  noun: string,
+): Promise<FormResponse<{ accountsReemitted: number; pagesProcessed: number }>> {
+  try {
+    const result = await staffClient().post<
+      { accountsReemitted: number; pagesProcessed: number },
+      Record<string, never>
+    >(path, {});
+
+    const n = result?.accountsReemitted ?? 0;
+    revalidatePath("/admin/accounts");
+    revalidatePath("/admin/dashboard");
+    return parseStringify({
+      responseType: "success",
+      message: `Re-emitted events for ${n} ${noun}. Analytics will catch up once events drain.`,
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || `Failed to republish ${noun}`,
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function republishAllBusinesses() {
+  return republishAll(`/api/v1/admin/businesses/republish-all`, "businesses");
+}
+
+export async function republishAllLocations() {
+  return republishAll(`/api/v1/admin/locations/republish-all`, "locations");
+}
+
+export async function republishAllStaff() {
+  return republishAll(`/api/v1/admin/staff/republish-all`, "staff");
+}
+
+/** Proxied by Accounts to Auth: USER_CREATED + held verification signals. */
+export async function republishAllUsers() {
+  return republishAll(`/api/v1/admin/users/republish-all`, "auth users");
+}
+
 export async function deleteAccount(
   accountId: string,
 ): Promise<FormResponse<void>> {
