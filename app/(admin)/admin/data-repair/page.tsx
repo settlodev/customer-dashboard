@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/layouts/admin-shell";
 import { PageBody, PageHeader, PageShell } from "@/components/layouts/page-shell";
 import { ArchivedStockBackfillView } from "@/components/admin/data-repair/archived-stock-backfill-view";
+import { EventBackfillView } from "@/components/admin/data-repair/event-backfill-view";
 import { DeductionReconciliationView } from "@/components/admin/data-repair/deduction-reconciliation-view";
 import { MigratedPaymentsView } from "@/components/admin/data-repair/migrated-payments-view";
 import { ReparentedDuplicatesView } from "@/components/admin/data-repair/reparented-duplicates-view";
@@ -54,6 +55,9 @@ export default async function DataRepairPage() {
         />
         <PageBody>
           <div className="space-y-8">
+            {/* Event backfills first: the entity republishes are the
+                prerequisite for everything below that re-ingests facts. */}
+            <EventBackfillView canExecute={canExecute} />
             <ReparentedDuplicatesView locations={locations} canExecute={canExecute} />
             <ArchivedStockBackfillView canExecute={canExecute} />
             {/* canExecute gates the per-line corrections; the comparison itself

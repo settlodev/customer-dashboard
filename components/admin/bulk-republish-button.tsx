@@ -57,7 +57,7 @@ import type { FormResponse } from "@/types/types";
  * internal:accounts:manage, the permission the backend endpoints require.
  */
 
-type Backfill = {
+export type Backfill = {
   key: string;
   label: string;
   title: string;
@@ -65,7 +65,7 @@ type Backfill = {
   action: () => Promise<FormResponse<unknown>>;
 };
 
-const BACKFILLS: Backfill[] = [
+export const BACKFILLS: Backfill[] = [
   {
     key: "accounts",
     label: "Accounts",
