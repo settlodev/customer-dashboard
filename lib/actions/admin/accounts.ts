@@ -310,6 +310,19 @@ export async function republishAllStaff() {
   return republishAll(`/api/v1/admin/staff/republish-all`, "staff");
 }
 
+export async function republishAllCustomers() {
+  return republishAll(`/api/v1/admin/customers/republish-all`, "customers");
+}
+
+export async function republishAllDepartments() {
+  return republishAll(`/api/v1/admin/departments/republish-all`, "departments");
+}
+
+/** From Accounts' device projection — the fleet's richest device record. */
+export async function republishAllDevices() {
+  return republishAll(`/api/v1/admin/devices/republish-all`, "devices");
+}
+
 /** Proxied by Accounts to Auth: USER_CREATED + held verification signals. */
 export async function republishAllUsers() {
   return republishAll(`/api/v1/admin/users/republish-all`, "auth users");

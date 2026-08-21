@@ -29,10 +29,18 @@ import { useToast } from "@/hooks/use-toast";
 import {
   republishAllAccounts,
   republishAllBusinesses,
+  republishAllCustomers,
+  republishAllDepartments,
+  republishAllDevices,
   republishAllLocations,
   republishAllStaff,
   republishAllUsers,
 } from "@/lib/actions/admin/accounts";
+import {
+  republishAllBalances,
+  republishAllProducts,
+  republishAllStock,
+} from "@/lib/actions/admin/inventory-backfill";
 import type { FormResponse } from "@/types/types";
 
 /**
@@ -109,6 +117,85 @@ const BACKFILLS: Backfill[] = [
       </>
     ),
     action: republishAllStaff,
+  },
+  {
+    key: "customers",
+    label: "Customers",
+    title: "Backfill all customers?",
+    description: (
+      <>
+        Re-emits <strong>CUSTOMER_UPDATED</strong> for every non-deleted
+        customer so customer analytics include customers analytics never saw.
+        Businesses with a connected accounting integration will have their
+        customers re-pushed there (an upsert). Safe to repeat.
+      </>
+    ),
+    action: republishAllCustomers,
+  },
+  {
+    key: "departments",
+    label: "Departments",
+    title: "Backfill all departments?",
+    description: (
+      <>
+        Re-emits <strong>DEPARTMENT_UPDATED</strong> for every non-deleted
+        department so sold-items reports group by real departments instead of
+        Unknown. Safe to repeat.
+      </>
+    ),
+    action: republishAllDepartments,
+  },
+  {
+    key: "devices",
+    label: "Devices",
+    title: "Backfill all devices?",
+    description: (
+      <>
+        Re-emits <strong>LOCATION_DEVICE_CREATED</strong> for every live device
+        so the dashboard&apos;s terminal counts converge. Safe to repeat.
+      </>
+    ),
+    action: republishAllDevices,
+  },
+  {
+    key: "products",
+    label: "Products",
+    title: "Backfill the product catalogue?",
+    description: (
+      <>
+        Re-publishes every location&apos;s products on{" "}
+        <strong>PRODUCT_RESYNC</strong> so item reports recover names, images
+        and categories for products analytics never saw. Safe to repeat.
+      </>
+    ),
+    action: republishAllProducts,
+  },
+  {
+    key: "stock",
+    label: "Stock items",
+    title: "Backfill the stock catalogue?",
+    description: (
+      <>
+        Re-emits <strong>STOCK_ITEM_UPDATED</strong> (with nested variants) for
+        every live stock item so SKU counts and stock reports recover items
+        analytics never saw. Safe to repeat.
+      </>
+    ),
+    action: republishAllStock,
+  },
+  {
+    key: "balances",
+    label: "Inventory balances",
+    title: "Backfill inventory balances?",
+    description: (
+      <>
+        Re-broadcasts every live balance&apos;s current state so total
+        inventory value and units converge on the Inventory Service&apos;s
+        numbers. Run the Reports stale-row sweep ~15 minutes afterwards to
+        retire phantom rows. Safe to repeat.
+      </>
+    ),
+    action: republishAllBalances,
   },
   {
     key: "users",
