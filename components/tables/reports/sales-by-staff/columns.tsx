@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
+import { isDisplayableImageUrl } from "@/lib/image-url";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, ArrowUpRight, ArrowDownRight } from "lucide-react";
 
@@ -21,12 +22,6 @@ const initials = (name: string) =>
     .slice(0, 2)
     .join("")
     .toUpperCase();
-
-const isValidImage = (url: string | null | undefined) =>
-  !!url &&
-  (url.startsWith("http://") ||
-    url.startsWith("https://") ||
-    url.startsWith("/"));
 
 interface BuildColumnsOptions {
   currency: string;
@@ -57,21 +52,25 @@ export function buildSalesByStaffColumns({
         // placeholder rather than an empty cell, and skip the broken avatar.
         const resolved = item.name.trim();
         const displayName = resolved || "Unknown staff";
+        const initialsBadge = (
+          <span className="font-mono text-[11px] font-medium text-muted-foreground">
+            {resolved ? initials(resolved) : "—"}
+          </span>
+        );
         return (
           <div className="flex min-w-0 items-center gap-3">
             <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-canvas">
-              {isValidImage(item.image) ? (
-                <Image
+              {isDisplayableImageUrl(item.image) ? (
+                <SafeImage
                   src={item.image}
                   alt={displayName}
                   fill
                   sizes="36px"
                   className="object-cover"
+                  fallback={initialsBadge}
                 />
               ) : (
-                <span className="font-mono text-[11px] font-medium text-muted-foreground">
-                  {resolved ? initials(resolved) : "—"}
-                </span>
+                initialsBadge
               )}
             </div>
             <span

@@ -1,5 +1,6 @@
 "use client";
 
+import { isDisplayableImageUrl } from "@/lib/image-url";
 import React, { useState, useEffect } from "react";
 import {
   MenuProduct,
@@ -154,7 +155,7 @@ export function MenuProductDetail({
         </button>
 
         {/* Image */}
-        {product.image ? (
+        {isDisplayableImageUrl(product.image) ? (
           <div className="h-52 w-full sm:h-64">
             <img
               src={product.image}

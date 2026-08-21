@@ -9,6 +9,7 @@ import {
   Loader2,
   PackagePlus,
   Plus,
+  ReceiptText,
   RefreshCw,
   Sparkles,
 } from "lucide-react";
@@ -26,7 +27,11 @@ import { GrantFreeSubscriptionDialog } from "@/components/admin/billing/grant-fr
 import { InvoiceActionsDialog } from "@/components/admin/billing/invoice-actions-dialog";
 import { buildInvoiceColumns } from "@/components/tables/admin-invoices/column";
 import { UpgradePlanDialog } from "@/components/admin/billing/upgrade-plan-dialog";
-import { republishSubscriptions, revokeDiscount } from "@/lib/actions/admin/billing";
+import {
+  reconcileMigratedPayments,
+  republishSubscriptions,
+  revokeDiscount,
+} from "@/lib/actions/admin/billing";
 import {
   DiscountResponse,
   InvoicePage,
@@ -160,6 +165,83 @@ export function BillingView({
     });
   }, [businessId, router, toast]);
 
+  /**
+   * Grant the access this business has already paid for. Invoices imported at
+   * the monolith cutover were written straight into the database as PAID, so no
+   * payment handler ever ran for them and the subscription never learned it had
+   * been paid — it reads Expired, then Suspended once the daily scheduler moves
+   * it on.
+   *
+   * Previews first and puts the concrete projection in the confirm, so nobody
+   * applies this blind. A held-back CANCELLED subscription is called out by
+   * name: reviving one is a human decision (support cancels subscriptions by
+   * hand, but so does a genuine churn), never a silent side effect.
+   */
+  const handleReconcile = useCallback(() => {
+    startTransition(async () => {
+      const dry = await reconcileMigratedPayments({
+        businessId,
+        dryRun: true,
+        includeCancelled: false,
+      });
+      if (dry.responseType === "error") {
+        toast({
+          title: "Preview failed",
+          description: dry.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const row = dry.data?.subscriptions?.[0];
+      if (!row) {
+        toast({
+          title: "Nothing to reconcile",
+          description:
+            "Every paid invoice for this business is already reflected in the subscription.",
+        });
+        return;
+      }
+
+      const held = row.action === "SKIPPED_CANCELLED";
+      const unmatched = row.itemsUnmatched
+        ? `\n\n${row.itemsUnmatched} entity(ies) could not be matched to any paid invoice and will be left alone — check those by hand.`
+        : "";
+      const revive = held
+        ? "\n\nThis subscription is CANCELLED. Reviving it sets it ACTIVE and turns auto-renew back on."
+        : "";
+      if (
+        !confirm(
+          `Reconcile this business against its paid invoices?\n\n` +
+            `Paid through ${row.oldPaidThrough?.slice(0, 10) ?? "—"} → ${
+              row.newPaidThrough?.slice(0, 10) ?? "—"
+            } (invoice ${row.anchorInvoiceNumber ?? "—"})\n` +
+            `Status ${row.oldStatus} → ACTIVE · ${row.itemsStamped} entity(ies) reactivated` +
+            revive +
+            unmatched,
+        )
+      ) {
+        return;
+      }
+
+      const result = await reconcileMigratedPayments({
+        businessId,
+        dryRun: false,
+        includeCancelled: held,
+      });
+      if (result.responseType === "error") {
+        toast({
+          title: "Reconcile failed",
+          description: result.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: result.message });
+      router.refresh();
+    });
+  }, [businessId, router, toast]);
+
   const handleRevoke = useCallback(
     (discount: SubscriptionDiscountResponse) => {
       if (!confirm(`Revoke "${discount.discountName}" discount?`)) return;
@@ -245,9 +327,26 @@ export function BillingView({
           <Button
             size="sm"
             variant="outline"
-            onClick={handleRepublish}
+            onClick={handleReconcile}
             disabled={isPending || !subscription}
             className="ml-auto text-muted-foreground hover:text-ink"
+            title="Re-derive coverage from this business's paid invoices"
+          >
+            {isPending ? (
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <ReceiptText className="mr-1.5 h-4 w-4" />
+            )}
+            Reconcile migrated payments
+          </Button>
+        )}
+        {canGrantFree && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRepublish}
+            disabled={isPending || !subscription}
+            className="text-muted-foreground hover:text-ink"
             title="Republish SUBSCRIPTION_UPDATED events"
           >
             {isPending ? (

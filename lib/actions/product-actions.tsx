@@ -768,6 +768,39 @@ export async function bulkPriceUpdate(
   });
 }
 
+// ── Bulk tax-inclusive switch ───────────────────────────────────────
+
+export type BulkTaxInclusiveResult = {
+  totalProcessed: number;
+  successCount: number;
+  failureCount: number;
+};
+
+/**
+ * Set every product at the active location tax-inclusive (or exclusive).
+ *
+ * <p>The location-level "Prices include tax" setting lives in Accounts, but
+ * since per-line tax modes it is the *product's* flag that decides whether an
+ * order line has tax backed out or added on top — so persisting the setting
+ * alone changes nothing at the till. This applies it to the catalog, which
+ * broadcasts PRODUCT_UPDATED and refreshes the Order service's per-variant
+ * mirror.
+ *
+ * <p>Only products that diverge from the target are touched, so calling this
+ * when everything already agrees is a cheap no-op that reports zero.
+ */
+export async function bulkSetTaxInclusive(
+  taxInclusive: boolean,
+): Promise<BulkTaxInclusiveResult> {
+  const apiClient = new ApiClient();
+  const result = (await apiClient.put(
+    inventoryUrl("/api/v1/products/bulk-tax-inclusive"),
+    { taxInclusive },
+  )) as BulkTaxInclusiveResult;
+  revalidatePath("/products");
+  return result;
+}
+
 // Modifier and addon helpers moved to dedicated server-action modules:
 //   @/lib/actions/modifier-actions  (library + per-product attach)
 //   @/lib/actions/addon-actions     (library + per-product attach)

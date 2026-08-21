@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
+import { isDisplayableImageUrl } from "@/lib/image-url";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -400,11 +401,13 @@ export function ProductDetailView({
 // ── Overview tab ────────────────────────────────────────────────────
 
 function OverviewTab({ product }: { product: Product }) {
-  const validImage =
-    product.imageUrl &&
-    (product.imageUrl.startsWith("http://") ||
-      product.imageUrl.startsWith("https://") ||
-      product.imageUrl.startsWith("/"));
+  const validImage = isDisplayableImageUrl(product.imageUrl);
+
+  const imagePlaceholder = (
+    <div className="flex h-full items-center justify-center text-muted-foreground">
+      <Package className="h-10 w-10" />
+    </div>
+  );
 
   const taxClassLabel =
     TAX_CLASS_OPTIONS.find((o) => o.value === product.taxClass)?.label ??
@@ -432,18 +435,17 @@ function OverviewTab({ product }: { product: Product }) {
       <Card className="lg:col-span-1 overflow-hidden">
         <div className="relative aspect-square w-full bg-canvas">
           {validImage ? (
-            <Image
+            <SafeImage
               src={product.imageUrl as string}
               alt={product.name}
               fill
               className="object-cover"
               sizes="(max-width: 1024px) 100vw, 33vw"
               unoptimized
+              fallback={imagePlaceholder}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-              <Package className="h-10 w-10" />
-            </div>
+            imagePlaceholder
           )}
         </div>
         <CardContent className="space-y-2 pt-4">

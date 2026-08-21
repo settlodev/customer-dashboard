@@ -1,5 +1,6 @@
 import { ImageIcon } from "lucide-react";
 import Image from "next/image";
+import { isDisplayableImageUrl } from "@/lib/image-url";
 import React, { useState } from "react";
 
 import { toast } from "@/hooks/use-toast";
@@ -68,12 +69,6 @@ function UploadImageWidget({
   const [imageUrl, setImageUrl] = useState<string>(image || "");
   const { upload, isUploading, progress } = useUpload();
 
-  const isValidImageUrl = (value: string) =>
-    !!value &&
-    (value.startsWith("http://") ||
-      value.startsWith("https://") ||
-      value.startsWith("/"));
-
   const uploadMyImage = async (file: File) => {
     const resolvedPurpose = purpose ?? purposeFromImagePath(imagePath);
     if (!resolvedPurpose) {
@@ -133,7 +128,7 @@ function UploadImageWidget({
         </div>
       )}
 
-      {isValidImageUrl(imageUrl) && displayImage ? (
+      {isDisplayableImageUrl(imageUrl) && displayImage ? (
         <div className="w-full h-full relative">
           <Image alt={label} src={imageUrl} fill className="object-cover" />
         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { isDisplayableImageUrl } from "@/lib/image-url";
 import React from "react";
 import { MenuBusiness, MenuCategory } from "@/types/online-menu/type";
 import { Clock, XCircle, Ban } from "lucide-react";
@@ -54,7 +55,7 @@ export function MenuStatusBanner({
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4">
-          {logo && (
+          {isDisplayableImageUrl(logo) && (
             <img
               src={logo}
               alt={business.businessName}

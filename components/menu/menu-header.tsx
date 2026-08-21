@@ -1,5 +1,6 @@
 "use client";
 
+import { isDisplayableImageUrl } from "@/lib/image-url";
 import React, { useState } from "react";
 import { MenuBusiness } from "@/types/online-menu/type";
 import { Search, Clock, MapPin, Phone, X, ShoppingBag } from "lucide-react";
@@ -59,7 +60,7 @@ export function MenuHeader({
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         {/* Logo & name */}
         <div className="flex items-center gap-3">
-          {logo && (
+          {isDisplayableImageUrl(logo) && (
             <img
               src={logo}
               alt={business.businessName}

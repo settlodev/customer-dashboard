@@ -1,5 +1,6 @@
 "use client";
 
+import { isDisplayableImageUrl } from "@/lib/image-url";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -131,7 +132,7 @@ export const UserDropdown = ({ user }: UserDropdownProps) => {
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
 
-              {user?.avatar ? (
+              {isDisplayableImageUrl(user?.avatar) ? (
                 <UserAvatar
                   src={user.avatar}
                   alt={fullName}

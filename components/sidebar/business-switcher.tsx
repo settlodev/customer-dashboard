@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, Building2, Loader2, Check } from "lucide-react";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
 import { useState, useCallback } from "react";
 import { Business } from "@/types/business/type";
 import { refreshBusiness } from "@/lib/actions/business/refresh";
@@ -76,18 +76,17 @@ export const BusinessSwitcher = ({
   const businessDisplay = (
     <div className="flex items-center gap-3 w-full">
       <div className="relative h-8 w-8 shrink-0">
-        {currentBusiness.logoUrl ? (
-          <Image
-            src={currentBusiness.logoUrl}
-            alt={currentBusiness.name}
-            fill
-            className="rounded-lg object-cover"
-          />
-        ) : (
-          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Building2 className="h-4 w-4 text-primary" />
-          </div>
-        )}
+        <SafeImage
+          src={currentBusiness.logoUrl ?? ""}
+          alt={currentBusiness.name}
+          fill
+          className="rounded-lg object-cover"
+          fallback={
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Building2 className="h-4 w-4 text-primary" />
+            </div>
+          }
+        />
       </div>
       <div className="flex flex-col items-start flex-1 min-w-0">
         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate w-full text-left">
@@ -147,18 +146,17 @@ export const BusinessSwitcher = ({
                   disabled={isActive}
                 >
                   <div className="relative h-8 w-8 shrink-0">
-                    {business.logoUrl ? (
-                      <Image
-                        src={business.logoUrl}
-                        alt={business.name}
-                        fill
-                        className="rounded-lg object-cover bg-primary/20 p-0.5"
-                      />
-                    ) : (
-                      <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center">
-                        <Building2 className="h-4 w-4 text-primary" />
-                      </div>
-                    )}
+                    <SafeImage
+                      src={business.logoUrl ?? ""}
+                      alt={business.name}
+                      fill
+                      className="rounded-lg object-cover bg-primary/20 p-0.5"
+                      fallback={
+                        <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                          <Building2 className="h-4 w-4 text-primary" />
+                        </div>
+                      }
+                    />
                   </div>
                   <div className="flex flex-col flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">

@@ -31,7 +31,7 @@ import {
   Sun,
   User,
 } from "lucide-react";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
 import Link from "next/link";
 import {
   useCallback,
@@ -533,17 +533,14 @@ export function SidebarAccountMenu({
       {/* identity header */}
       <div className="flex items-center gap-3 rounded-xl bg-canvas p-3">
         <div className="grid h-10 w-10 flex-shrink-0 place-items-center overflow-hidden rounded-xl bg-primary text-[13.5px] font-semibold text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18),0_1px_2px_rgba(20,17,12,0.10)]">
-          {user?.avatar ? (
-            <Image
-              src={user.avatar}
-              alt={fullName}
-              width={40}
-              height={40}
-              className="h-10 w-10 rounded-xl object-cover"
-            />
-          ) : (
-            userInitials
-          )}
+          <SafeImage
+            src={user?.avatar ?? ""}
+            alt={fullName}
+            width={40}
+            height={40}
+            className="h-10 w-10 rounded-xl object-cover"
+            fallback={userInitials}
+          />
         </div>
         <div className="min-w-0 flex-1">
           <div className="truncate text-[14px] font-semibold tracking-tight text-ink">
@@ -631,17 +628,14 @@ export function SidebarAccountMenu({
                           : "border-line bg-canvas text-ink",
                       )}
                     >
-                      {b.logoUrl ? (
-                        <Image
-                          src={b.logoUrl}
-                          alt={b.name}
-                          width={28}
-                          height={28}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        businessInitials(b.name)
-                      )}
+                      <SafeImage
+                        src={b.logoUrl ?? ""}
+                        alt={b.name}
+                        width={28}
+                        height={28}
+                        className="h-full w-full object-cover"
+                        fallback={businessInitials(b.name)}
+                      />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[13px] font-medium leading-tight tracking-tight text-ink">
@@ -768,17 +762,14 @@ export function SidebarAccountMenu({
         >
           <div className="relative h-8 w-8 flex-shrink-0">
             <div className="grid h-8 w-8 place-items-center overflow-hidden rounded-[9px] bg-primary text-[11.5px] font-semibold tracking-wide text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18),0_1px_2px_rgba(20,17,12,0.10)]">
-              {user?.avatar ? (
-                <Image
-                  src={user.avatar}
-                  alt={fullName}
-                  width={32}
-                  height={32}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                userInitials
-              )}
+              <SafeImage
+                src={user?.avatar ?? ""}
+                alt={fullName}
+                width={32}
+                height={32}
+                className="h-full w-full object-cover"
+                fallback={userInitials}
+              />
             </div>
             <span
               aria-label="Online"

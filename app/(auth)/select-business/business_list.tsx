@@ -6,7 +6,7 @@ import { Building2, Loader2Icon, ChevronRight, Globe2 } from "lucide-react";
 import { Business } from "@/types/business/type";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
 import { refreshBusiness } from "@/lib/actions/business/refresh";
 import { switchToLocation } from "@/lib/actions/destination";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
@@ -158,17 +158,14 @@ const BusinessList = ({ businesses, currentAccountId }: BusinessListProps) => {
               )}
             >
               <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                {bus.logoUrl ? (
-                  <Image
-                    src={bus.logoUrl}
-                    alt={bus.name}
-                    width={44}
-                    height={44}
-                    className="rounded-xl object-cover"
-                  />
-                ) : (
-                  <Building2 className="w-5 h-5 text-primary" />
-                )}
+                <SafeImage
+                  src={bus.logoUrl ?? ""}
+                  alt={bus.name}
+                  width={44}
+                  height={44}
+                  className="rounded-xl object-cover"
+                  fallback={<Building2 className="w-5 h-5 text-primary" />}
+                />
               </div>
               <div className="flex-grow min-w-0">
                 <div className="flex items-center gap-2">

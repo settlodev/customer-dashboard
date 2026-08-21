@@ -1,5 +1,6 @@
 "use client";
 
+import { SafeImage } from "@/components/ui/safe-image";
 import React, {
   useCallback,
   useMemo,
@@ -1210,17 +1211,14 @@ function LivePreviewCard({
                 }
           }
         >
-          {pictureUrl ? (
-            <Image
-              src={pictureUrl}
-              alt={fullName || "Staff photo"}
-              fill
-              sizes="72px"
-              className="object-cover"
-            />
-          ) : (
-            initials
-          )}
+          <SafeImage
+            src={pictureUrl ?? ""}
+            alt={fullName || "Staff photo"}
+            fill
+            sizes="72px"
+            className="object-cover"
+            fallback={initials}
+          />
         </div>
         <div className={styles.previewName}>{fullName}</div>
         <div className={styles.previewMeta}>

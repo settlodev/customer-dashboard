@@ -1,6 +1,7 @@
 
 import { ChevronDown, Plus, Loader2, Undo2 } from "lucide-react";
 import Image from "next/image";
+import { isDisplayableImageUrl } from "@/lib/image-url";
 import { useEffect, useState } from "react";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { Location } from "@/types/location/type";
@@ -26,6 +27,10 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
+
+/** Migrated logos on the retired uploads host are gone — show the Settlo mark. */
+const logoSrc = (logoUrl?: string | null) =>
+  isDisplayableImageUrl(logoUrl) ? logoUrl : "/images/logo.png";
 
 export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
   const { business, currentLocation, locationList, warehouse } = data;
@@ -158,7 +163,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
         >
           <div className="relative h-8 w-8 shrink-0">
             <Image
-              src={business?.logoUrl || "/images/logo.png"}
+              src={logoSrc(business?.logoUrl)}
               alt={location.name}
               fill
               className="rounded-full object-cover bg-primary/20 p-1"
@@ -226,7 +231,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
         >
           <div className="relative h-8 w-8 shrink-0">
             <Image
-              src={business?.logoUrl || "/images/logo.png"}
+              src={logoSrc(business?.logoUrl)}
               alt={warehouse.name || "Warehouse"}
               fill
               className="rounded-full object-cover bg-primary/20 p-1"
@@ -267,7 +272,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
             <div className="flex items-center gap-3 w-full">
               <div className="relative h-8 w-8 shrink-0">
                 <Image
-                  src={business?.logoUrl || "/images/logo.png"}
+                  src={logoSrc(business?.logoUrl)}
                   alt={business?.name || "Business logo"}
                   fill
                   className="rounded-full object-cover bg-primary/20 p-1"

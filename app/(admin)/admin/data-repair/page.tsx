@@ -4,6 +4,7 @@ import { AdminShell } from "@/components/layouts/admin-shell";
 import { PageBody, PageHeader, PageShell } from "@/components/layouts/page-shell";
 import { ArchivedStockBackfillView } from "@/components/admin/data-repair/archived-stock-backfill-view";
 import { DeductionReconciliationView } from "@/components/admin/data-repair/deduction-reconciliation-view";
+import { MigratedPaymentsView } from "@/components/admin/data-repair/migrated-payments-view";
 import { ReparentedDuplicatesView } from "@/components/admin/data-repair/reparented-duplicates-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
@@ -49,7 +50,7 @@ export default async function DataRepairPage() {
       <PageShell>
         <PageHeader
           title="Data Repair"
-          subtitle="Settlo-internal backfills that repair analytics facts in place."
+          subtitle="Settlo-internal repairs that correct analytics facts and billing state in place."
         />
         <PageBody>
           <div className="space-y-8">
@@ -61,6 +62,10 @@ export default async function DataRepairPage() {
               locations={locations}
               canExecute={canExecute}
             />
+            {/* Billing state, not analytics: invoices imported at the monolith
+                cutover were written straight in as PAID, so no payment handler
+                ever ran for them. Same read-only-preview / gated-apply shape. */}
+            <MigratedPaymentsView canExecute={canExecute} />
           </div>
         </PageBody>
       </PageShell>

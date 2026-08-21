@@ -1,3 +1,4 @@
+import { isDisplayableImageUrl } from "@/lib/image-url";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
@@ -354,7 +355,7 @@ function StaffAvatar({ staff }: { staff: Staff }) {
   const initials =
     `${staff.firstName?.[0] ?? ""}${staff.lastName?.[0] ?? ""}`.toUpperCase() ||
     "?";
-  if (staff.pictureUrl) {
+  if (isDisplayableImageUrl(staff.pictureUrl)) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img

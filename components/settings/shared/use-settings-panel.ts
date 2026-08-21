@@ -15,12 +15,14 @@ export function useSettingsPanel<K extends keyof LocationSettings>(
   keys: readonly K[],
   initial: LocationSettings | null,
   onSaved?: (next: LocationSettings) => void,
+  onAfterSave?: (patch: Partial<LocationSettings>) => void | Promise<void>,
 ) {
   return useEntitySettingsPanel<LocationSettings, K>(
     keys,
     initial,
     (patch) => updateLocationSettings(patch as LocationSettingsUpdate),
     onSaved,
+    onAfterSave,
   );
 }
 

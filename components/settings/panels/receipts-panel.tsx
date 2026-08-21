@@ -1,10 +1,14 @@
 "use client";
 
+import { useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
+import { useToast } from "@/hooks/use-toast";
+import { bulkSetTaxInclusive } from "@/lib/actions/product-actions";
 import type { LocationSettings } from "@/types/location-settings/type";
 
 const KEYS = [
@@ -45,7 +49,49 @@ export function ReceiptsInvoicingPanel({
   settings: LocationSettings;
   onSaved: (next: LocationSettings) => void;
 }) {
-  const p = useSettingsPanel(KEYS, settings, onSaved);
+  const { toast } = useToast();
+  const [isApplying, startApply] = useTransition();
+
+  // Persisting "prices include tax" in Accounts is only half the job: since
+  // per-line tax modes it is each PRODUCT's own flag that decides whether a
+  // sale has tax backed out or added on top. Push the setting into the
+  // catalog so the till actually follows it.
+  const applyToCatalog = (taxInclusive: boolean) => {
+    startApply(async () => {
+      try {
+        const res = await bulkSetTaxInclusive(taxInclusive);
+        const mode = taxInclusive ? "tax-inclusive" : "tax-exclusive";
+        toast({
+          title: res.successCount
+            ? `${res.successCount} product${res.successCount === 1 ? "" : "s"} updated`
+            : "Products already up to date",
+          description: res.successCount
+            ? `Every product at this location is now priced ${mode}.` +
+              (res.failureCount ? ` ${res.failureCount} could not be updated.` : "")
+            : `All products were already priced ${mode}.`,
+          variant: res.failureCount ? "destructive" : undefined,
+        });
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Couldn't apply to products",
+          description:
+            error instanceof Error
+              ? error.message
+              : "The setting was saved, but the product catalog was not updated.",
+        });
+      }
+    });
+  };
+
+  const p = useSettingsPanel(KEYS, settings, onSaved, (patch) => {
+    // Only when the merchant actually moved this switch — the patch carries
+    // just the changed fields, so saving an unrelated receipt field never
+    // rewrites the catalog.
+    if ("pricesIncludeTax" in patch) {
+      applyToCatalog(!!patch.pricesIncludeTax);
+    }
+  });
   const v = p.values;
 
   return (
@@ -339,11 +385,38 @@ export function ReceiptsInvoicingPanel({
         </div>
         <SettingsSwitchRow
           label="Prices include tax"
-          description="When on, listed prices already contain tax. When off, tax is added on top at POS."
+          description="When on, listed prices already contain tax. When off, tax is added on top at POS. Saving applies this to every product at this location."
           checked={!!v.pricesIncludeTax}
           onChange={(x) => p.setField("pricesIncludeTax", x)}
-          disabled={p.isPending}
+          disabled={p.isPending || isApplying}
         />
+        {/*
+          Re-apply without touching the switch. Needed because the setting and
+          the catalog can disagree while the switch sits still — a migration
+          from the old monolith carries each product's legacy tax_included
+          value through verbatim, so a location can read "prices include tax"
+          here while its products are all priced exclusive underneath.
+        */}
+        <div className="flex items-start justify-between gap-4 py-1.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium leading-tight">
+              Apply to existing products
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Brings every product at this location in line with the switch
+              above. Products already set are left alone.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={p.isPending || isApplying}
+            onClick={() => applyToCatalog(!!v.pricesIncludeTax)}
+          >
+            {isApplying ? "Applying…" : "Apply to all"}
+          </Button>
+        </div>
       </SettingsSection>
     </div>
   );

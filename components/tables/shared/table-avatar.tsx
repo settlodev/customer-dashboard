@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
+import { isDisplayableImageUrl } from "@/lib/image-url";
 
 const THUMB_PALETTE = [
   "#EB7F44",
@@ -33,15 +34,6 @@ export function initialsFor(name: string) {
   );
 }
 
-function isValidImageUrl(image?: string | null): image is string {
-  return (
-    !!image &&
-    (image.startsWith("http://") ||
-      image.startsWith("https://") ||
-      image.startsWith("/"))
-  );
-}
-
 interface TableAvatarProps {
   name: string;
   imageUrl?: string | null;
@@ -54,7 +46,8 @@ interface TableAvatarProps {
 /**
  * Shared name-cell avatar for inventory tables. Mirrors the products list:
  * a 36px rounded thumb that shows the image when present, falling back to
- * deterministic-coloured initials with a subtle highlight gradient.
+ * deterministic-coloured initials with a subtle highlight gradient — both
+ * when there is no image and when the stored URL fails to load.
  */
 export function TableAvatar({
   name,
@@ -62,23 +55,10 @@ export function TableAvatar({
   seed,
   overrideInitials,
 }: TableAvatarProps) {
-  if (isValidImageUrl(imageUrl)) {
-    return (
-      <Image
-        src={imageUrl}
-        alt={name}
-        className="h-9 w-9 flex-shrink-0 rounded-lg object-cover"
-        width={36}
-        height={36}
-        loading="lazy"
-      />
-    );
-  }
-
   const initials = overrideInitials || initialsFor(name);
   const bg = thumbColor(seed ?? name);
 
-  return (
+  const initialsThumb = (
     <div
       className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg text-[14px] font-semibold tracking-tight text-white"
       style={{ backgroundColor: bg }}
@@ -94,4 +74,20 @@ export function TableAvatar({
       />
     </div>
   );
+
+  if (isDisplayableImageUrl(imageUrl)) {
+    return (
+      <SafeImage
+        src={imageUrl}
+        alt={name}
+        className="h-9 w-9 flex-shrink-0 rounded-lg object-cover"
+        width={36}
+        height={36}
+        loading="lazy"
+        fallback={initialsThumb}
+      />
+    );
+  }
+
+  return initialsThumb;
 }

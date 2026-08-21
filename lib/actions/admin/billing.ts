@@ -39,6 +39,7 @@ import {
   RefundPage,
   RefundRequestDto,
   RefundResponse,
+  ReconcileMigratedPaymentsResult,
   RepublishSubscriptionsResult,
   RevokeDiscountRequest,
   SetPackageFeatureRequest,
@@ -1663,6 +1664,61 @@ export async function republishSubscriptions(
     return parseStringify({
       responseType: "error",
       message: error?.message || "Failed to republish events",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+/**
+ * Re-derive subscription coverage from the money already collected.
+ *
+ * An invoice imported at the monolith cutover is written straight into the
+ * database as PAID, so it never passes through the payment handler — the only
+ * code that advances paid_through and revives lapsed entities. Merchants who
+ * paid a year in the old system therefore read Expired here, and the daily
+ * scheduler walks them on to Suspended.
+ *
+ * `dryRun` (the default at the service) returns the projection and changes
+ * nothing. `includeCancelled` is required to revive a CANCELLED subscription:
+ * cancelling is only reachable from the API, so it may be a deliberate churn
+ * rather than repair damage — that call belongs to a human, not the sweep.
+ */
+export async function reconcileMigratedPayments(params: {
+  businessId?: string;
+  dryRun: boolean;
+  includeCancelled: boolean;
+}): Promise<FormResponse<ReconcileMigratedPaymentsResult>> {
+  try {
+    const query = new URLSearchParams({
+      dryRun: String(params.dryRun),
+      includeCancelled: String(params.includeCancelled),
+    });
+    if (params.businessId) query.set("businessId", params.businessId);
+
+    const result = await staffBilling().post<
+      ReconcileMigratedPaymentsResult,
+      Record<string, never>
+    >(`/api/v1/support/billing/reconcile-migrated-payments?${query}`, {});
+
+    // A dry run mutates nothing, so there is no cache to bust.
+    if (!params.dryRun && params.businessId) revalidateBusiness(params.businessId);
+
+    const held = result.subscriptionsSkipped
+      ? ` · ${result.subscriptionsSkipped} cancelled, held back`
+      : "";
+    return parseStringify({
+      responseType: "success",
+      message: params.dryRun
+        ? `${result.subscriptionsReconciled} of ${result.subscriptionsScanned} would reconcile${held}`
+        : `Reconciled ${result.subscriptionsReconciled} subscription${
+            result.subscriptionsReconciled === 1 ? "" : "s"
+          }${held}`,
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to reconcile migrated payments",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }

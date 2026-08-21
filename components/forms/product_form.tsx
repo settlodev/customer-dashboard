@@ -43,6 +43,7 @@ import { NumericFormat } from "react-number-format";
 import { cn } from "@/lib/utils";
 import { itemDisplayName } from "@/lib/display-name";
 
+import { useImageFallback } from "@/components/ui/safe-image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +63,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useVatRegistrationStatus } from "@/hooks/use-vat-registration-status";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
@@ -269,6 +271,10 @@ function variantToInput(
 export default function ProductForm({ item }: ProductFormProps) {
   const router = useRouter();
   const { toast } = useToast();
+  // Defaults to true (and falls back to true on error), so the note beside the
+  // tax-type field only ever appears when we are confident the business is
+  // unregistered — it cannot false-alarm a registered merchant.
+  const vatRegistered = useVatRegistrationStatus();
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse>();
   const [removedVariantIds, setRemovedVariantIds] = useState<string[]>([]);
@@ -890,6 +896,21 @@ export default function ProductForm({ item }: ProductFormProps) {
                             ariaLabel="Tax type"
                           />
                         </FormControl>
+                        {/*
+                          The tax type is still recorded — it is the item's
+                          classification, and it starts applying the moment the
+                          business registers, with no re-tagging. But sales will
+                          not carry it until then, and without saying so the
+                          product screen reads "VAT 18%" while every receipt
+                          shows none.
+                        */}
+                        {!vatRegistered && (
+                          <p className="text-xs text-muted-foreground">
+                            This business is not VAT-registered, so tax types
+                            are recorded but not charged at sale. Change this in
+                            Settings → Business.
+                          </p>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -2564,6 +2585,8 @@ function LivePreviewCard({
     return out || "PR";
   }, [name]);
 
+  const previewImage = useImageFallback(primaryImageUrl);
+
   const categoryLine = categoryNames.length
     ? categoryNames.join(" · ").toUpperCase()
     : "NO CATEGORY";
@@ -2576,9 +2599,9 @@ function LivePreviewCard({
       </div>
       <div className={styles.previewBody}>
         <div className={styles.previewThumb}>
-          {primaryImageUrl ? (
+          {primaryImageUrl && !previewImage.failed ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={primaryImageUrl} alt="" />
+            <img src={primaryImageUrl} alt="" onError={previewImage.onError} />
           ) : (
             initials
           )}

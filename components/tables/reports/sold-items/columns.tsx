@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
+import { isDisplayableImageUrl } from "@/lib/image-url";
 import Link from "next/link";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, MessageSquare, Package, Sparkles } from "lucide-react";
@@ -149,23 +150,27 @@ export function buildSoldItemsColumns({
       header: "Product",
       cell: ({ row }) => {
         const item = row.original;
+        const placeholder = (
+          <Package
+            className="h-4 w-4 text-muted-2"
+            aria-hidden
+            strokeWidth={1.5}
+          />
+        );
         return (
           <div className="flex min-w-0 items-center gap-3">
             <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-canvas">
-              {item.imageUrl ? (
-                <Image
+              {isDisplayableImageUrl(item.imageUrl) ? (
+                <SafeImage
                   src={item.imageUrl}
                   alt={item.productName}
                   fill
                   sizes="36px"
                   className="object-cover"
+                  fallback={placeholder}
                 />
               ) : (
-                <Package
-                  className="h-4 w-4 text-muted-2"
-                  aria-hidden
-                  strokeWidth={1.5}
-                />
+                placeholder
               )}
             </div>
             <div className="flex min-w-0 flex-col">

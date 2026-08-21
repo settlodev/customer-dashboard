@@ -22,6 +22,15 @@ export function useEntitySettingsPanel<T extends object, K extends keyof T>(
   initial: T | null,
   persist: (patch: Partial<T>) => Promise<FormResponse<T>>,
   onSaved?: (next: T) => void,
+  /**
+   * Fired after a successful save with the fields that actually changed.
+   * A section uses this when persisting a setting is only half the job and
+   * the other half lives in another service — e.g. flipping "prices include
+   * tax" has to reach the product catalog in Inventory, not just the
+   * settings row in Accounts. Receives the patch so the caller can act only
+   * on the keys it cares about.
+   */
+  onAfterSave?: (patch: Partial<T>) => void | Promise<void>,
 ) {
   type PartialValues = { [P in K]?: T[P] | null };
 
@@ -75,6 +84,7 @@ export function useEntitySettingsPanel<T extends object, K extends keyof T>(
         return;
       }
       toast({ title: "Saved", description: res.message });
+      await onAfterSave?.(payload);
       if (res.data) {
         const refreshed: PartialValues = {} as PartialValues;
         for (const k of keys) refreshed[k] = res.data[k] as T[K];

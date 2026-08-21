@@ -1,6 +1,7 @@
 "use client";
 import React, { useCallback, useState, useTransition } from "react";
 import Image from "next/image";
+import { useImageFallback } from "@/components/ui/safe-image";
 import {
   Loader2Icon,
   PhoneCallIcon,
@@ -116,6 +117,9 @@ export default function UpdateProfileForm({
   };
 
   const currentAvatar = imageUrl || pictureUrl || null;
+  // Keep the ring's fill in step with what actually renders: a dead avatar URL
+  // falls back to initials, which need the solid brand background behind them.
+  const avatar = useImageFallback(currentAvatar);
 
   const initials = [firstName?.[0], lastName?.[0]]
     .filter(Boolean)
@@ -167,21 +171,22 @@ export default function UpdateProfileForm({
                           className="h-24 w-24 rounded-full overflow-hidden flex items-center justify-center text-2xl font-bold text-white"
                           style={{
                             border: `3px solid ${PRIMARY}`,
-                            backgroundColor: currentAvatar
-                              ? "transparent"
-                              : PRIMARY,
+                            backgroundColor: avatar.failed
+                              ? PRIMARY
+                              : "transparent",
                           }}
                         >
-                          {currentAvatar ? (
+                          {avatar.failed ? (
+                            initials || <UserIcon size={32} />
+                          ) : (
                             <Image
-                              src={currentAvatar}
+                              src={currentAvatar as string}
                               width={96}
                               height={96}
                               alt="Profile"
                               className="object-cover w-full h-full"
+                              onError={avatar.onError}
                             />
-                          ) : (
-                            initials || <UserIcon size={32} />
                           )}
                         </div>
                         <div

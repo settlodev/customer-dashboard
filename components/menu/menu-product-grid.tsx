@@ -1,5 +1,6 @@
 "use client";
 
+import { isDisplayableImageUrl } from "@/lib/image-url";
 import React, { useState } from "react";
 import { MenuCategory, MenuProduct, MenuPublicSettings } from "@/types/online-menu/type";
 import { Plus } from "lucide-react";
@@ -79,7 +80,7 @@ function ProductCard({
       className="group flex gap-3 rounded-xl border border-gray-100 bg-white p-3 text-left shadow-sm transition-all hover:shadow-md"
     >
       {/* Image */}
-      {product.image ? (
+      {isDisplayableImageUrl(product.image) ? (
         <div className="h-24 w-24 shrink-0 overflow-hidden rounded-lg">
           <img
             src={product.image}

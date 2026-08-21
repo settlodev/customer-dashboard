@@ -1,5 +1,6 @@
 "use client";
 
+import { isDisplayableImageUrl } from "@/lib/image-url";
 import React, { useState } from "react";
 import {
   MenuPublicSettings,
@@ -234,7 +235,7 @@ export function MenuCartSidebar({
               className="rounded-lg border border-gray-100 bg-gray-50/50 p-3"
             >
               <div className="flex gap-3">
-                {item.productImage ? (
+                {isDisplayableImageUrl(item.productImage) ? (
                   <img
                     src={item.productImage}
                     alt={item.productName}

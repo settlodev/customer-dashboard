@@ -40,6 +40,7 @@ import {
   AlertTriangle,
   Percent,
 } from "lucide-react";
+import { useImageFallback } from "@/components/ui/safe-image";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -1267,6 +1268,8 @@ function StockPreviewCard({
     return out || "ST";
   }, [name]);
 
+  const previewImage = useImageFallback(primaryImageUrl);
+
   const metaLine = [
     materialTypeLabel?.toUpperCase() || "MATERIAL",
     baseUnitAbbr ? `BASE ${baseUnitAbbr.toUpperCase()}` : "NO BASE UNIT",
@@ -1280,9 +1283,9 @@ function StockPreviewCard({
       </div>
       <div className={styles.previewBody}>
         <div className={styles.previewThumb}>
-          {primaryImageUrl ? (
+          {primaryImageUrl && !previewImage.failed ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={primaryImageUrl} alt="" />
+            <img src={primaryImageUrl} alt="" onError={previewImage.onError} />
           ) : (
             initials
           )}

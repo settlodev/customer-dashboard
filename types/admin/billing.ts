@@ -454,6 +454,41 @@ export interface RepublishSubscriptionsResult {
   businessId?: string;
 }
 
+// ── Ops: reconcile migrated payments ────────────────────────────────
+
+/**
+ * One subscription the migrated-payment sweep advanced — or reported and held
+ * back. Invoices imported at the monolith cutover were written straight into
+ * the database as PAID, so no payment handler ever ran for them and the
+ * subscription never learned it had been paid.
+ */
+export interface ReconcileMigratedPaymentsRow {
+  businessId: string;
+  subscriptionId: string;
+  oldStatus: string;
+  newStatus: string;
+  oldPaidThrough: string | null;
+  newPaidThrough: string | null;
+  /** Invoice whose period end became the new coverage anchor. */
+  anchorInvoiceNumber: string | null;
+  itemsStamped: number;
+  /** Entities no paid invoice could be attributed to — these need a human. */
+  itemsUnmatched: number;
+  action: "RECONCILED" | "WOULD_RECONCILE" | "SKIPPED_CANCELLED";
+}
+
+export interface ReconcileMigratedPaymentsResult {
+  /** true = projection only, nothing was changed. */
+  dryRun: boolean;
+  includeCancelled: boolean;
+  subscriptionsScanned: number;
+  subscriptionsReconciled: number;
+  subscriptionsSkipped: number;
+  itemsStamped: number;
+  itemsUnmatched: number;
+  subscriptions: ReconcileMigratedPaymentsRow[];
+}
+
 // ── Whitelabel pricing ──────────────────────────────────────────────
 
 export interface WhitelabelSummary {
