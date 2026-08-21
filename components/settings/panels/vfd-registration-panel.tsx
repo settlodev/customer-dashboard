@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -9,7 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { SettingsSection, SettingsField } from "../shared/settings-section";
+import {
+  SettingsSection,
+  SettingsField,
+  SettingsSwitchRow,
+} from "../shared/settings-section";
 import { PanelHeader } from "../shared/panel-header";
 import {
   getLocationVfdRegistration,
@@ -17,20 +21,59 @@ import {
   checkLocationVfdStatus,
   type VfdRegistration,
 } from "@/lib/actions/location-vfd-actions";
-import type { Business, BusinessSettings } from "@/types/business/type";
+import { updateBusinessSettings } from "@/lib/actions/business-settings-actions";
+import type {
+  Business,
+  BusinessSettings,
+  EfdStatus,
+} from "@/types/business/type";
 
 // Mirrors the server-side rule (settlo-common TinNumberValidator): exactly
 // 9 digits, and not all the same digit repeated.
 const isValidTin = (tin: string) => /^\d{9}$/.test(tin) && !/^(\d)\1{8}$/.test(tin);
 
+type EfdDraft = { enableVirtualEfd?: boolean; efdSerialNumber?: string };
+
+const EfdStatusPill = ({ status }: { status: EfdStatus | null }) => {
+  if (!status) {
+    return (
+      <Badge variant="outline" className="text-muted-foreground">
+        Not requested
+      </Badge>
+    );
+  }
+  const map: Record<EfdStatus, { label: string; className: string }> = {
+    REQUESTED: {
+      label: "Requested",
+      className: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    },
+    AWAITING_CONFIRMATION: {
+      label: "Awaiting confirmation",
+      className: "bg-blue-100 text-blue-800 border-blue-200",
+    },
+    ACTIVE: {
+      label: "Active",
+      className: "bg-green-100 text-green-800 border-green-200",
+    },
+  };
+  const { label, className } = map[status];
+  return (
+    <Badge variant="outline" className={className}>
+      {label}
+    </Badge>
+  );
+};
+
 export function VfdRegistrationPanel({
   locationId,
   business,
   businessSettings,
+  onBusinessSettingsSaved,
 }: {
   locationId: string;
   business: Business | null;
   businessSettings: BusinessSettings | null;
+  onBusinessSettingsSaved: (next: BusinessSettings) => void;
 }) {
   const { toast } = useToast();
   const [registration, setRegistration] = useState<VfdRegistration | null>(null);
@@ -44,6 +87,44 @@ export function VfdRegistrationPanel({
     email: "",
     phone: "",
   });
+
+  // Business-wide EFD flags, edited here (draft + one Save) rather than on
+  // Business settings — same idiom as the other settings panels.
+  const [isSavingEfd, startSaveEfd] = useTransition();
+  const [efdDraft, setEfdDraft] = useState<EfdDraft>({});
+  // One heal attempt per mount — a failing PATCH must not become a loop.
+  const healedRef = useRef(false);
+
+  const enableVirtualEfd =
+    efdDraft.enableVirtualEfd ?? Boolean(businessSettings?.enableVirtualEfd);
+  const efdSerial =
+    efdDraft.efdSerialNumber ?? businessSettings?.efdSerialNumber ?? "";
+  const efdDirty = Object.keys(efdDraft).length > 0;
+
+  const saveBusinessSettings = useCallback(
+    async (patch: EfdDraft) => {
+      if (!business?.id) return false;
+      const res = await updateBusinessSettings(business.id, {
+        ...patch,
+        efdSerialNumber:
+          patch.efdSerialNumber === undefined
+            ? undefined
+            : patch.efdSerialNumber.trim() || null,
+      });
+      if (res.responseType === "success") {
+        onBusinessSettingsSaved(res.data);
+        return true;
+      }
+      toast({
+        variant: "destructive",
+        title: "Couldn't save EFD settings",
+        description: res.message,
+      });
+      return false;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [business?.id],
+  );
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -76,6 +157,22 @@ export function VfdRegistrationPanel({
       phone: prev.phone || business?.phoneNumber || "",
     }));
   }, [business, businessSettings]);
+
+  // A location registered with TRA IS the business-level "virtual EFD"
+  // request — the flag predates per-location registration and nothing reads
+  // it, so it drifted off while a location was live and fiscalising. Heal
+  // it here rather than asking the merchant to notice and flip a switch
+  // whose "on" path would offer to register them a second time. The
+  // Accounts service does the same reconcile off the registration event
+  // (covering the POS app and any other reader); this is the copy that
+  // makes it visible immediately, without waiting on Kafka.
+  useEffect(() => {
+    if (healedRef.current) return;
+    if (!registration || !businessSettings || !business?.id) return;
+    if (businessSettings.enableVirtualEfd) return;
+    healedRef.current = true;
+    void saveBusinessSettings({ enableVirtualEfd: true });
+  }, [registration, businessSettings, business?.id, saveBusinessSettings]);
 
   const setField = (key: keyof typeof form, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -271,6 +368,77 @@ export function VfdRegistrationPanel({
             <p className="text-xs text-muted-foreground italic">
               {registration.externalStatusMessage}
             </p>
+          )}
+        </SettingsSection>
+      )}
+
+      {/* Business-wide EFD flags — moved here from Business settings so the
+          toggle sits beside the registration that determines it, instead of
+          reading "disabled" two screens away from a location that is
+          already fiscalising. */}
+      {!loading && (
+        <SettingsSection
+          title="Virtual EFD"
+          description="Business-wide fiscal-device flags shared by every location."
+          onSave={() =>
+            startSaveEfd(async () => {
+              const ok = await saveBusinessSettings(efdDraft);
+              if (ok) {
+                setEfdDraft({});
+                toast({ variant: "success", title: "EFD settings updated." });
+              }
+            })
+          }
+          isPending={isSavingEfd}
+          isDirty={efdDirty}
+        >
+          {!businessSettings ? (
+            <p className="text-xs text-muted-foreground">
+              Business settings unavailable.
+            </p>
+          ) : (
+            <>
+              <SettingsSwitchRow
+                label="Enable Virtual EFD"
+                description={
+                  registration
+                    ? "On — this location is registered with TRA."
+                    : "Request virtual EFD registration for this business."
+                }
+                checked={enableVirtualEfd}
+                // Once a registration exists the flag is derived from it,
+                // not chosen — leaving it editable is what let the two
+                // disagree in the first place.
+                disabled={isSavingEfd || Boolean(registration)}
+                onChange={(v) =>
+                  setEfdDraft((prev) => ({ ...prev, enableVirtualEfd: v }))
+                }
+              />
+
+              <div className="max-w-sm pt-2">
+                <SettingsField
+                  label="EFD serial number"
+                  hint="Physical EFD serial, where one is in use alongside the virtual device."
+                >
+                  <Input
+                    value={efdSerial}
+                    onChange={(e) =>
+                      setEfdDraft((prev) => ({
+                        ...prev,
+                        efdSerialNumber: e.target.value,
+                      }))
+                    }
+                    placeholder="EFD serial"
+                    disabled={isSavingEfd}
+                  />
+                </SettingsField>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium">EFD status:</span>
+                <EfdStatusPill status={businessSettings.efdStatus} />
+              </div>
+            </>
           )}
         </SettingsSection>
       )}

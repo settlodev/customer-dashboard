@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -26,7 +25,6 @@ import {
 import type { Business } from "@/types/business/type";
 import type {
   BusinessSettings,
-  EfdStatus,
   VatRegistrationMode,
 } from "@/types/business/type";
 import CurrencySelector from "@/components/widgets/currency-selector";
@@ -199,36 +197,6 @@ const TextAreaField = ({
   </div>
 );
 
-const EfdStatusPill = ({ status }: { status: EfdStatus | null }) => {
-  if (!status) {
-    return (
-      <Badge variant="outline" className="text-muted-foreground">
-        Not requested
-      </Badge>
-    );
-  }
-  const map: Record<EfdStatus, { label: string; className: string }> = {
-    REQUESTED: {
-      label: "Requested",
-      className: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    },
-    AWAITING_CONFIRMATION: {
-      label: "Awaiting confirmation",
-      className: "bg-blue-100 text-blue-800 border-blue-200",
-    },
-    ACTIVE: {
-      label: "Active",
-      className: "bg-green-100 text-green-800 border-green-200",
-    },
-  };
-  const { label, className } = map[status];
-  return (
-    <Badge variant="outline" className={className}>
-      {label}
-    </Badge>
-  );
-};
-
 // ──────────────────────────────────────────────────────────────────────
 // Main panel
 // ──────────────────────────────────────────────────────────────────────
@@ -321,7 +289,6 @@ const BusinessSettingsPanel = ({
 
   const s = displayed;
   const d = isPending;
-  const enableVirtualEfd = Boolean(s.enableVirtualEfd);
 
   return (
     <div className="space-y-6">
@@ -340,8 +307,8 @@ const BusinessSettingsPanel = ({
 
       {/* 1 — Legal, fiscal & EFD */}
       <SectionCard
-        title="Legal, fiscal & EFD"
-        description="Registration numbers, identifiers and Virtual Fiscal Device for the legal entity."
+        title="Legal & tax registration"
+        description="Registration numbers and tax identifiers for the legal entity. Fiscal-device (VFD/EFD) registration lives under VFD / EFD registration."
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <TextField
@@ -386,11 +353,11 @@ const BusinessSettingsPanel = ({
         </div>
 
         {/* Tax registration identifiers — always visible. VAT registration
-            governs purchase-tax reclaim, which has nothing to do with the
-            Virtual EFD fiscal-device toggle below; gating it behind that
-            toggle made purchase tax permanently unreachable for any
-            merchant who never turns EFD on. Grouped here with
-            taxIdentificationNumber (in the grid above) so the tax
+            governs purchase-tax reclaim, which has nothing to do with
+            fiscal-device registration; these were once gated behind the
+            Virtual EFD toggle, which made purchase tax permanently
+            unreachable for any merchant who never turned EFD on. Grouped
+            here with taxIdentificationNumber (in the grid above) so the tax
             identifiers — TIN, VRN, UIN — read as one set. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <TextField
@@ -434,34 +401,10 @@ const BusinessSettingsPanel = ({
           </p>
         </div>
 
-        <div className="space-y-0.5 pt-2">
-          <SwitchRow
-            label="Enable Virtual EFD"
-            description="Request virtual EFD registration for this business"
-            checked={enableVirtualEfd}
-            onCheckedChange={(v) => setField("enableVirtualEfd", v)}
-            disabled={d}
-          />
-        </div>
-
-        {enableVirtualEfd && (
-          <>
-            <div className="max-w-sm">
-              <TextField
-                label="EFD serial number"
-                value={s.efdSerialNumber ?? ""}
-                onChange={(v) => setField("efdSerialNumber", v || null)}
-                placeholder="EFD serial"
-                disabled={d}
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium">EFD status:</span>
-              <EfdStatusPill status={s.efdStatus} />
-            </div>
-          </>
-        )}
+        {/* Virtual EFD lives on Settings → VFD / EFD registration, next to
+            the TRA registration it actually reflects. Keeping the toggle
+            here let a business read "disabled" while one of its locations
+            was registered and fiscalising. */}
       </SectionCard>
 
       {/* 2 — Social media */}

@@ -346,6 +346,7 @@ function SettingsLayout({
             locationId={location.id}
             business={business}
             businessSettings={businessSettings}
+            onBusinessSettingsSaved={onBusinessSettingsSaved}
           />
         );
       case "notifications":
