@@ -30,6 +30,7 @@ import {
 } from "@/components/admin/bulk-republish-button";
 import {
   recomputeSignupCohorts,
+  refreshAnalyticsSnapshots,
   resyncOrders,
   sweepStaleInventoryCurrent,
 } from "@/lib/actions/admin/data-repair-backfill";
@@ -76,7 +77,7 @@ export function EventBackfillView({ canExecute }: Props) {
 
   // which parameterized op the confirm dialog is for (null = none)
   const [confirmOp, setConfirmOp] = useState<
-    "resync" | "sweep" | "cohorts" | null
+    "resync" | "sweep" | "cohorts" | "snapshots" | null
   >(null);
 
   const finish = (label: string, result: FormResponse<unknown>) => {
@@ -110,11 +111,13 @@ export function EventBackfillView({ canExecute }: Props) {
           "Inventory swept",
           await runSafely(() => sweepStaleInventoryCurrent(Number(sweepMinutes) || 30)),
         );
-      } else {
+      } else if (confirmOp === "cohorts") {
         finish(
           "Cohorts recomputed",
           await runSafely(() => recomputeSignupCohorts(cohortFrom, cohortTo)),
         );
+      } else {
+        finish("Snapshots refreshed", await runSafely(refreshAnalyticsSnapshots));
       }
     });
   };
@@ -143,6 +146,18 @@ export function EventBackfillView({ canExecute }: Props) {
           has drained (~15 minutes). Rows the republish did not refresh are no
           longer live in the Inventory Service and get archived; a later
           balance event revives a row if it was swept by mistake.
+        </>
+      ),
+    },
+    snapshots: {
+      title: "Re-publish the dashboard snapshots now?",
+      body: (
+        <>
+          The dashboard&apos;s business counts and GMV cards read nightly
+          snapshots (02:05 / 02:15) — after a backfill the underlying data is
+          already correct while the headlines still show last night&apos;s
+          publish. This re-publishes both immediately. Takes up to a minute;
+          safe to repeat.
         </>
       ),
     },
@@ -306,7 +321,28 @@ export function EventBackfillView({ canExecute }: Props) {
           </div>
         </div>
 
-        {!canExecute && (
+        {/* ── snapshot refresh ── */}
+        <div className="rounded-lg border p-4">
+          <div className="mb-1 flex items-center gap-2 font-medium">
+            <RadioTower className="h-4 w-4" />
+            Refresh dashboard snapshots
+          </div>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Business counts and GMV are served from nightly snapshots — run
+            this after backfills or an order resync to see the new numbers
+            immediately instead of after 02:15.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            disabled={!canExecute || isPending}
+            onClick={() => setConfirmOp("snapshots")}
+          >
+            Refresh snapshots
+          </Button>
+        </div>
+
+                {!canExecute && (
           <p className="text-sm text-muted-foreground">
             You need the repair-execute permission to run these.
           </p>

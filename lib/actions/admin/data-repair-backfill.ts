@@ -92,3 +92,24 @@ export async function recomputeSignupCohorts(
     });
   }
 }
+
+export async function refreshAnalyticsSnapshots(): Promise<
+  FormResponse<{ tookMs: number }>
+> {
+  try {
+    const result = await reportsInternalPost<{ tookMs: number }>(
+      `/api/v2/internal/maintenance/refresh-snapshots`,
+    );
+    return parseStringify({
+      responseType: "success",
+      message: `Snapshots re-published in ${Math.round((result?.tookMs ?? 0) / 1000)}s — the dashboard headline numbers now reflect the backfilled data.`,
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to refresh snapshots",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
