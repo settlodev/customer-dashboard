@@ -32,7 +32,7 @@ export async function resyncOrders(
     const n = result?.ordersReemitted ?? 0;
     return parseStringify({
       responseType: "success",
-      message: `Re-broadcast ${n} order${n === 1 ? "" : "s"} (${from} – ${to}). Sales facts converge as the events drain.`,
+      message: `Queued ${n} order${n === 1 ? "" : "s"} for resync (${from} – ${to}) — sales facts converge as the events drain.`,
       data: result,
     });
   } catch (error: any) {

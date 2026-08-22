@@ -286,7 +286,7 @@ async function republishAll(
     revalidatePath("/admin/dashboard");
     return parseStringify({
       responseType: "success",
-      message: `Re-emitted events for ${n} ${noun}. Analytics will catch up once events drain.`,
+      message: `Queued ${n} ${noun} for re-emit — analytics catch up as the events drain (completion is logged server-side).`,
       data: result,
     });
   } catch (error: any) {
