@@ -73,6 +73,12 @@ const EMPTY_FORM = {
   appIcon: "",
   message: "",
   messageIcon: "",
+  // No form input authors this — the dashboard deliberately doesn't expose a
+  // CTA editor yet. It's carried as an opaque pass-through purely so editing
+  // any other field on a row doesn't silently wipe a `cta` set via the admin
+  // API (apply() on the server is a full replace). Do NOT remove this as
+  // "unused" — that reintroduces the wipe.
+  cta: "",
   minAppVersionCode: "",
 };
 
@@ -94,6 +100,17 @@ const toLocalInput = (iso: string): string => {
   )}:${pad(d.getMinutes())}`;
 };
 
+// row.appIcon is a free VARCHAR server-side (AppCampaignRow.appIcon is
+// `string | null`, wider than this dashboard's closed AppIconName enum) — a
+// value the dashboard doesn't recognise must fall back to "no icon change"
+// rather than get force-fed into the <Select>, which would render blank and
+// then fail z.enum on save with a raw Zod message.
+const normaliseAppIcon = (appIcon: string | null): string =>
+  appIcon != null &&
+  (APP_ICON_OPTIONS as readonly string[]).includes(appIcon)
+    ? appIcon
+    : "";
+
 const toForm = (row: AppCampaignRow): FormState => ({
   name: row.name,
   appType: row.appType,
@@ -102,9 +119,11 @@ const toForm = (row: AppCampaignRow): FormState => ({
   endsAt: toLocalInput(row.endsAt),
   priority: row.priority,
   enabled: row.enabled,
-  appIcon: row.appIcon ?? "",
+  appIcon: normaliseAppIcon(row.appIcon),
   message: row.message ?? "",
   messageIcon: row.messageIcon ?? "",
+  // Opaque pass-through — see the comment on EMPTY_FORM.cta.
+  cta: row.cta ?? "",
   minAppVersionCode:
     row.minAppVersionCode == null ? "" : String(row.minAppVersionCode),
 });
@@ -140,16 +159,35 @@ export function AppCampaignsView({ campaigns }: { campaigns: AppCampaignRow[] })
     setFormOpen(true);
   };
 
+  // `new Date(v).toISOString()` throws a RangeError on a blank/unparseable
+  // input, synchronously inside the click handler — before Zod's `min(1)`
+  // ever gets a chance to produce a readable message. Guard it here so a
+  // blank date surfaces the same `error` state as any other validation
+  // failure instead of silently doing nothing.
+  const toIsoOrNull = (localDateTime: string): string | null => {
+    if (!localDateTime) return null;
+    const d = new Date(localDateTime);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  };
+
   const submit = () => {
     setError(null);
+    const startsAtIso = toIsoOrNull(form.startsAt);
+    const endsAtIso = toIsoOrNull(form.endsAt);
+    if (!startsAtIso || !endsAtIso) {
+      setError("Set both a start and end date/time.");
+      return;
+    }
     const payload = {
       ...form,
       appIcon: form.appIcon || null,
       message: form.message || null,
       messageIcon: form.messageIcon || null,
+      // Opaque pass-through — see the comment on EMPTY_FORM.cta.
+      cta: form.cta || null,
       minAppVersionCode: form.minAppVersionCode || null,
-      startsAt: new Date(form.startsAt).toISOString(),
-      endsAt: new Date(form.endsAt).toISOString(),
+      startsAt: startsAtIso,
+      endsAt: endsAtIso,
     };
 
     startTransition(async () => {

@@ -16,11 +16,20 @@ export interface AppCampaignRow {
   endsAt: string;
   priority: number;
   enabled: boolean;
-  appIcon: AppIconName | null;
+  // The server column is a free VARCHAR(40), not this dashboard's closed
+  // enum — a row authored via the API (or by a future app version with more
+  // icons) can hold a value outside AppIconName. Widen the row type rather
+  // than narrow it; `toForm` normalises unknown values to "no icon change".
+  appIcon: string | null;
   message: string | null;
   messageIcon: string | null;
   cta: string | null;
   minAppVersionCode: number | null;
 }
 
-export type UpsertAppCampaignRequest = Omit<AppCampaignRow, "id">;
+// The request stays closed to the known enum: this dashboard only ever
+// *authors* one of APP_ICON_OPTIONS, even though the row it reads back can
+// hold more than that (see AppCampaignRow.appIcon).
+export type UpsertAppCampaignRequest = Omit<AppCampaignRow, "id" | "appIcon"> & {
+  appIcon: AppIconName | null;
+};

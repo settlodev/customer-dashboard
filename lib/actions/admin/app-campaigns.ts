@@ -43,7 +43,22 @@ const UpsertSchema = z
     path: ["message"],
     message:
       "A campaign that changes no icon and shows no message does nothing — set at least one.",
-  });
+  })
+  .refine(
+    (v) => {
+      if (v.cta == null || v.cta === "") return true;
+      try {
+        JSON.parse(v.cta);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    {
+      path: ["cta"],
+      message: "cta must be valid JSON (or left blank).",
+    },
+  );
 
 export async function listAppCampaigns(): Promise<AppCampaignRow[]> {
   await requireOperatorPermission(PERM.APP_CAMPAIGN_MANAGE);
