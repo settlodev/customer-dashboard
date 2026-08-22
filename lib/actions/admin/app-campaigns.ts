@@ -32,7 +32,7 @@ const UpsertSchema = z
     appIcon: z.enum(APP_ICON_OPTIONS).nullish(),
     message: z.string().max(280).nullish(),
     messageIcon: z.string().max(60).nullish(),
-    cta: z.string().nullish(),
+    cta: z.string().max(4000).nullish(),
     minAppVersionCode: z.coerce.number().int().positive().nullish(),
   })
   .refine((v) => new Date(v.endsAt) > new Date(v.startsAt), {
