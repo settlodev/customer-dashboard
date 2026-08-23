@@ -5,7 +5,7 @@ import {
   getCloseOfDayExtras,
   getDaySessionDetail,
 } from "@/lib/actions/day-session-list-actions";
-import { listPaymentMethodReconciliations } from "@/lib/actions/payment-method-reconciliation-actions";
+import { getSessionCashUp } from "@/lib/actions/payment-method-reconciliation-actions";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import { getLetterhead } from "@/lib/actions/letterhead-actions";
 import type { Staff } from "@/types/staff";
@@ -34,10 +34,10 @@ export default async function CloseOfDayReportPage({
   if (!destination || destination.type !== "LOCATION") notFound();
   const locationId = destination.id;
 
-  const [detail, reconciliations, extras, staffList, letterhead] =
+  const [detail, cashUp, extras, staffList, letterhead] =
     await Promise.all([
       getDaySessionDetail(locationId, id),
-      listPaymentMethodReconciliations(id),
+      getSessionCashUp(id),
       getCloseOfDayExtras(locationId, id),
       fetchAllStaff().catch(() => [] as Staff[]),
       getLetterhead().catch(() => null),
@@ -49,7 +49,7 @@ export default async function CloseOfDayReportPage({
   const roster = new Map(staffList.map((s): [string, Staff] => [s.id, s]));
 
   const currency = resolveCurrency(
-    reconciliations.find((r) => r.currency)?.currency,
+    cashUp.currency,
     extras.expenses?.items[0]?.currencyCode,
     extras.prepayments?.items[0]?.currency,
     extras.refunds?.refunds[0]?.refundCurrency,
@@ -62,7 +62,8 @@ export default async function CloseOfDayReportPage({
       <CloseOfDayReportSheet
         session={session}
         report={report}
-        reconciliations={reconciliations}
+        reconciliations={cashUp.methods}
+        cashUpTotals={cashUp.totals}
         extras={extras}
         letterhead={letterhead}
         roster={roster}

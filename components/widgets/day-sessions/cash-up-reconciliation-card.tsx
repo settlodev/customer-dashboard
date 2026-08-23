@@ -3,11 +3,23 @@
 /**
  * Cash-up & reconciliation — the Close-of-Day centrepiece.
  *
- * Merges the old "Payments" + "Reconciliation" tabs into one table per
- * the design: Method · Txns · Expected · Counted · Variance · Status ·
- * Approve. Transaction counts are joined in from the Reports X/Z-report
- * (`paymentsByMethod`) because the reconciliation rows themselves don't
- * carry a count. Approving a row (or "Approve all") calls the existing
+ * Merges the old "Payments" + "Reconciliation" tabs into one table:
+ * Method · Collected · Expenses · Expected · Counted · Variance ·
+ * Approve.
+ *
+ * Every figure is struck by Accounting — nothing is added up here.
+ * `expectedAmount` on a row is what was COLLECTED on that method and
+ * takes no account of money paid back out, so the server nets the
+ * session's expense payments off it (`expectedNet`) and restrikes the
+ * variance (`adjustedVariance`) — the same numbers its over/short journal
+ * posts, which is why the table can never disagree with the ledger. The
+ * Expenses column is dropped when `totals.hasExpenses` is false.
+ *
+ * Row status has no column of its own: the Approve button is the
+ * pending state and the approver check-mark is the approved one. Only a
+ * REJECTED row still needs a chip.
+ *
+ * Approving a row (or "Approve all") calls the existing
  * `approvePaymentMethodReconciliation` action, then refreshes the
  * server data so the authoritative status/approver comes back.
  */
@@ -30,7 +42,10 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { fmt, fmtVariance, initialsOf } from "@/lib/day-sessions/cod-format";
 import { approvePaymentMethodReconciliation } from "@/lib/actions/payment-method-reconciliation-actions";
-import type { PaymentMethodReconciliation } from "@/types/payment-method-reconciliation/type";
+import type {
+  PaymentMethodReconciliation,
+  SessionCashUp,
+} from "@/types/payment-method-reconciliation/type";
 
 const varianceClass = (n: number) =>
   n === 0 ? "text-muted-2" : n > 0 ? "text-warn" : "text-neg";
@@ -46,35 +61,24 @@ function tipPrepaymentBreakdown(r: PaymentMethodReconciliation): string | null {
 }
 
 export function CashUpReconciliationCard({
-  reconciliations,
+  cashUp,
   sessionId,
   currency,
-  txnsByMethodId,
   staffInitialsById,
 }: {
-  reconciliations: PaymentMethodReconciliation[];
+  /** Rows + totals, exactly as Accounting struck them. */
+  cashUp: SessionCashUp;
   sessionId: string;
   currency: string;
-  /** paymentMethodId → transaction count, from the Reports X/Z-report. */
-  txnsByMethodId: Record<string, number>;
   /** staff id → initials, for the approver badge on approved rows. */
   staffInitialsById: Record<string, string>;
 }) {
+  const reconciliations = cashUp.methods;
+  const totals = cashUp.totals;
   const pending = reconciliations.filter((r) => r.status === "SUBMITTED");
-
-  const expectedTotal = reconciliations.reduce(
-    (s, r) => s + (r.expectedAmount ?? 0),
-    0,
-  );
-  const countedTotal = reconciliations.reduce(
-    (s, r) => s + (r.countedAmount ?? 0),
-    0,
-  );
-  const varianceTotal = countedTotal - expectedTotal;
-  const txnsTotal = reconciliations.reduce(
-    (s, r) => s + (r.paymentMethodId ? (txnsByMethodId[r.paymentMethodId] ?? 0) : 0),
-    0,
-  );
+  // Nothing paid out on any counted method — the column would be a
+  // stripe of zeroes, so it doesn't render at all.
+  const showExpenses = totals.hasExpenses;
 
   return (
     <section
@@ -105,7 +109,7 @@ export function CashUpReconciliationCard({
               <BulkApprove
                 pending={pending}
                 sessionId={sessionId}
-                varianceTotal={varianceTotal}
+                varianceTotal={totals.variance}
               />
             </PermissionGuard>
           ) : null}
@@ -123,20 +127,20 @@ export function CashUpReconciliationCard({
               <thead>
                 <tr className="[&>th]:whitespace-nowrap [&>th]:border-b [&>th]:border-line [&>th]:px-3 [&>th]:pb-2.5 [&>th]:text-right [&>th]:font-mono [&>th]:text-[9.5px] [&>th]:font-semibold [&>th]:uppercase [&>th]:tracking-[0.06em] [&>th]:text-muted-foreground [&>th:first-child]:pl-0 [&>th:first-child]:text-left">
                   <th>Method</th>
-                  <th>Txns</th>
+                  <th>Collected</th>
+                  {showExpenses ? <th>Expenses</th> : null}
                   <th>Expected</th>
                   <th>Counted</th>
                   <th>Variance</th>
-                  <th className="!text-left">Status</th>
                   <th aria-label="Approve" />
                 </tr>
               </thead>
               <tbody>
                 {reconciliations.map((r) => {
-                  const variance = r.variance ?? 0;
-                  const txns = r.paymentMethodId
-                    ? txnsByMethodId[r.paymentMethodId]
-                    : undefined;
+                  const collected = r.expectedAmount ?? 0;
+                  const expense = r.expensePaidAmount ?? 0;
+                  const expected = r.expectedNet ?? collected;
+                  const variance = r.adjustedVariance ?? r.variance ?? 0;
                   const subtitle =
                     r.paymentMethodCode &&
                     r.paymentMethodCode !== r.paymentMethodName
@@ -163,14 +167,16 @@ export function CashUpReconciliationCard({
                           </div>
                         ) : null}
                       </td>
-                      <td>{txns != null ? fmt(txns) : "—"}</td>
-                      <td>{fmt(r.expectedAmount)}</td>
+                      <td>{fmt(collected)}</td>
+                      {showExpenses ? (
+                        <td className={expense > 0 ? "text-warn" : undefined}>
+                          {expense > 0 ? `−${fmt(expense)}` : "—"}
+                        </td>
+                      ) : null}
+                      <td>{fmt(expected)}</td>
                       <td>{fmt(r.countedAmount)}</td>
                       <td className={varianceClass(variance)}>
                         {fmtVariance(variance)}
-                      </td>
-                      <td className="!text-left">
-                        <StatusChip status={r.status} />
                       </td>
                       <td>
                         {r.status === "APPROVED" ? (
@@ -185,10 +191,20 @@ export function CashUpReconciliationCard({
                             }
                           />
                         ) : r.status === "SUBMITTED" ? (
-                          <PermissionGuard permission="till_reconciliation:approve">
-                            <RowApprove recon={r} sessionId={sessionId} />
+                          <PermissionGuard
+                            permission="till_reconciliation:approve"
+                            fallback={<PendingChip />}
+                          >
+                            <RowApprove
+                              recon={r}
+                              sessionId={sessionId}
+                              variance={variance}
+                              expense={expense}
+                            />
                           </PermissionGuard>
-                        ) : null}
+                        ) : (
+                          <RejectedChip />
+                        )}
                       </td>
                     </tr>
                   );
@@ -199,18 +215,24 @@ export function CashUpReconciliationCard({
                   <td className="!font-mono !text-[10px] uppercase tracking-[0.06em] !text-ink-3">
                     Total · {currency}
                   </td>
-                  <td>{fmt(txnsTotal)}</td>
-                  <td>{fmt(expectedTotal)}</td>
-                  <td>{fmt(countedTotal)}</td>
-                  <td className={varianceClass(varianceTotal)}>
-                    {fmtVariance(varianceTotal)}
+                  <td>{fmt(totals.collected)}</td>
+                  {showExpenses ? (
+                    <td className="text-warn">−{fmt(totals.expensePaid)}</td>
+                  ) : null}
+                  <td>{fmt(totals.expected)}</td>
+                  <td>{fmt(totals.counted)}</td>
+                  <td className={varianceClass(totals.variance)}>
+                    {fmtVariance(totals.variance)}
                   </td>
-                  <td colSpan={2} className="!bg-canvas" />
+                  <td className="!bg-canvas" />
                 </tr>
               </tfoot>
             </table>
           </div>
           <p className="mt-3 font-mono text-[10.5px] leading-relaxed text-muted-foreground">
+            {showExpenses
+              ? "Expected is what was collected less the expenses paid out of that method. "
+              : ""}
             Approving records the manager review. Mobile-money variances post a
             Mobile Money Over/Short entry to the ledger; cash reconciles via the
             till and card / provider methods via settlement.
@@ -221,28 +243,30 @@ export function CashUpReconciliationCard({
   );
 }
 
-function StatusChip({ status }: { status: PaymentMethodReconciliation["status"] }) {
-  const tone =
-    status === "APPROVED"
-      ? "bg-pos-tint text-pos"
-      : status === "REJECTED"
-        ? "bg-neg-tint text-neg"
-        : "bg-warn-tint text-warn";
-  const label =
-    status === "APPROVED"
-      ? "Approved"
-      : status === "REJECTED"
-        ? "Rejected"
-        : "Submitted";
+/**
+ * The Approve button IS the pending state — but a viewer without the
+ * approve permission sees no button, so they get this chip instead and
+ * the row still reads as awaiting review.
+ */
+function PendingChip() {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.02em]",
-        tone,
-      )}
-    >
+    <span className="inline-flex items-center gap-1.5 rounded-md bg-warn-tint px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.02em] text-warn">
       <span className="h-[5px] w-[5px] rounded-full bg-current" />
-      {label}
+      Awaiting
+    </span>
+  );
+}
+
+/**
+ * Approve/approved cover SUBMITTED and APPROVED between them, so the
+ * status column is gone — but a REJECTED row shows neither and would
+ * otherwise read as an ordinary line.
+ */
+function RejectedChip() {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-md bg-neg-tint px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.02em] text-neg">
+      <span className="h-[5px] w-[5px] rounded-full bg-current" />
+      Rejected
     </span>
   );
 }
@@ -262,9 +286,15 @@ function ApprovedMark({ initials }: { initials?: string }) {
 function RowApprove({
   recon,
   sessionId,
+  variance,
+  expense,
 }: {
   recon: PaymentMethodReconciliation;
   sessionId: string;
+  /** Counted − (collected − expenses); differs from `recon.variance`. */
+  variance: number;
+  /** Expenses netted off this method, if any. */
+  expense: number;
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -272,7 +302,6 @@ function RowApprove({
   const router = useRouter();
 
   const label = recon.paymentMethodName ?? recon.paymentMethodCode ?? "method";
-  const variance = recon.variance ?? 0;
 
   const onConfirm = () => {
     startTransition(() => {
@@ -313,6 +342,13 @@ function RowApprove({
               {variance === 0
                 ? "No variance — this records your review with no ledger impact."
                 : `Variance of ${fmtVariance(variance)}. For mobile money this posts a Mobile Money Over/Short entry to the ledger.`}
+              {expense > 0 ? (
+                <>
+                  {" "}
+                  {fmt(expense)} of expenses paid out of this method is already
+                  netted off.
+                </>
+              ) : null}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

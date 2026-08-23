@@ -17,6 +17,17 @@ function reportsClient() {
 }
 
 const ANALYTICS_PREFIX = "/api/v2/analytics/business";
+/**
+ * Location-grained twin of ANALYTICS_PREFIX. A location — not a business — is
+ * what holds a subscription and rings up sales, so it gets the same scorecard;
+ * the business figure is the sum of its locations. Rows come back in the same
+ * shape, so `BusinessOverviewSnapshot` serves both grains.
+ *
+ * Note this is NOT `/api/v2/analytics/overview?locationId=` — that one is the
+ * merchant-facing endpoint, gated on the merchant `reports:read_all` permission
+ * an internal staff token doesn't carry, and it omits staff/customer counts.
+ */
+const LOCATION_ANALYTICS_PREFIX = "/api/v2/analytics/location";
 
 function isoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -56,6 +67,46 @@ export async function getBusinessOverviewByFilter(
     `${ANALYTICS_PREFIX}/${businessId}/overview/by-filter?${qs.toString()}`,
   );
   return data ? parseStringify(data) : null;
+}
+
+export async function getLocationOverview(
+  locationId: string,
+  startDate: string,
+  endDate?: string,
+): Promise<BusinessOverviewSnapshot | null> {
+  const qs = new URLSearchParams();
+  qs.set("startDate", startDate);
+  if (endDate) qs.set("endDate", endDate);
+  const data = await reportsClient().get<BusinessOverviewSnapshot | null>(
+    `${LOCATION_ANALYTICS_PREFIX}/${locationId}/overview?${qs.toString()}`,
+  );
+  return data ? parseStringify(data) : null;
+}
+
+export async function getLocationOverviewByFilter(
+  locationId: string,
+  filter: DateRangeFilter,
+): Promise<BusinessOverviewSnapshot | null> {
+  const qs = new URLSearchParams();
+  qs.set("filter", filter);
+  const data = await reportsClient().get<BusinessOverviewSnapshot | null>(
+    `${LOCATION_ANALYTICS_PREFIX}/${locationId}/overview/by-filter?${qs.toString()}`,
+  );
+  return data ? parseStringify(data) : null;
+}
+
+export async function getLocationTrends(
+  locationId: string,
+  startDate: string,
+  endDate: string,
+): Promise<BusinessDailyTrendRow[]> {
+  const qs = new URLSearchParams();
+  qs.set("startDate", startDate);
+  qs.set("endDate", endDate);
+  const data = await reportsClient().get<BusinessDailyTrendRow[]>(
+    `${LOCATION_ANALYTICS_PREFIX}/${locationId}/trends?${qs.toString()}`,
+  );
+  return parseStringify(data);
 }
 
 export async function getBusinessLocationBreakdown(

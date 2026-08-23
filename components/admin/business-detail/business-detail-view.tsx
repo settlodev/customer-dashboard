@@ -17,6 +17,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { subscriptionItemMrr } from "@/lib/helpers";
+import { daysSinceLastOrder } from "@/lib/admin/lifecycle";
 import { Button } from "@/components/ui/button";
 import { KpiStrip } from "@/components/layouts/kpi-strip";
 import { SectionCard, CardLink } from "@/components/admin/shared/section-card";
@@ -238,6 +239,11 @@ export function BusinessDetailView({
           : { label: "Building", tone: "warn" as const };
   const completed30 = n(overview30d?.completed_orders);
 
+  // ── last order ───────────────────────────────────────────────────────
+  // null = never traded. The lifecycle rollup encodes that as 9999 days, which
+  // rendered as "27y ago" / "9999 days since" before it was decoded here.
+  const lastOrderDays = daysSinceLastOrder(lifecycle);
+
   // ── churn risk ───────────────────────────────────────────────────────
   const churnP = health?.churn_probability ?? null;
   const churn =
@@ -427,7 +433,7 @@ export function BusinessDetailView({
           sub={
             churnP == null
               ? "score pending"
-              : n(lifecycle?.days_since_last_order) <= 7
+              : lastOrderDays !== null && lastOrderDays <= 7
                 ? "recently active"
                 : "quiet"
           }
@@ -459,9 +465,15 @@ export function BusinessDetailView({
         )}
         <KCell
           label="Last order"
-          value={rel(lifecycle?.last_order_at)}
-          sub={`${n(lifecycle?.days_since_last_order)} days since`}
-          subTone={n(lifecycle?.days_since_last_order) === 0 ? "pos" : "muted"}
+          value={
+            lastOrderDays === null ? "Never" : rel(lifecycle?.last_order_at)
+          }
+          sub={
+            lastOrderDays === null
+              ? "no orders yet"
+              : `${lastOrderDays} days since`
+          }
+          subTone={lastOrderDays === 0 ? "pos" : "muted"}
         />
       </KpiStrip>
 

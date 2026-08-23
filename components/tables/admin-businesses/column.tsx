@@ -10,6 +10,11 @@ import { BusinessLifecycleSnapshot } from "@/types/admin/business-intel";
 import { BusinessRowActions } from "@/components/tables/admin-businesses/cell-action";
 import { Monogram } from "@/components/admin/shared/monogram";
 import { formatDate, timeSince } from "@/components/admin/shared/format";
+import {
+  daysSinceLastOrder,
+  formatLastOrder,
+  hasNeverOrdered,
+} from "@/lib/admin/lifecycle";
 
 function SortHeader({
   label,
@@ -49,10 +54,14 @@ function activityIndicator(lifecycle: BusinessLifecycleSnapshot | undefined): {
   if (!lifecycle)
     return { label: "No data", tone: "muted", hint: "No lifecycle rollup yet" };
   const stage = (lifecycle.lifecycle_stage ?? "").toUpperCase();
-  const days = lifecycle.days_since_last_order;
   if (lifecycle.is_churned === 1 || stage === "CHURNED")
     return { label: "Churned", tone: "neg", hint: "Marked churned" };
-  if (days === null || days === undefined) {
+  // Never-traded reads as the 9999 sentinel, not null — without decoding it
+  // a brand-new business scored "Dormant · last order 9999d ago".
+  if (hasNeverOrdered(lifecycle))
+    return { label: "No orders", tone: "warn", hint: "Created, no orders yet" };
+  const days = daysSinceLastOrder(lifecycle);
+  if (days === null) {
     if (stage === "BUSINESS_CREATED")
       return { label: "No orders", tone: "warn", hint: "Created, no orders yet" };
     return { label: "Unknown", tone: "muted", hint: "No last-order timestamp" };
@@ -61,14 +70,6 @@ function activityIndicator(lifecycle: BusinessLifecycleSnapshot | undefined): {
   if (days <= 30) return { label: "Slowing", tone: "blue", hint: `Last order ${days}d ago` };
   if (days <= 60) return { label: "Stale", tone: "warn", hint: `Last order ${days}d ago` };
   return { label: "Dormant", tone: "neg", hint: `Last order ${days}d ago` };
-}
-
-function relativeFromDays(days: number | null | undefined): string {
-  if (days === null || days === undefined) return "—";
-  if (days < 1) return "Today";
-  if (days < 30) return `${days}d ago`;
-  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
-  return `${Math.floor(days / 365)}y ago`;
 }
 
 interface ColumnDeps {
@@ -175,13 +176,16 @@ export function buildBusinessColumns({
       id: "lastOrder",
       header: "Last order",
       enableHiding: true,
-      cell: ({ row }) => (
-        <span className="font-mono text-[12px] text-muted-foreground">
-          {relativeFromDays(
-            lifecycleByBusinessId[row.original.id]?.days_since_last_order,
-          )}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const lifecycle = lifecycleByBusinessId[row.original.id];
+        return (
+          <span className="font-mono text-[12px] text-muted-foreground">
+            {lifecycle
+              ? formatLastOrder(daysSinceLastOrder(lifecycle))
+              : "—"}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "activeLocationCount",

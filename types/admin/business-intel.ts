@@ -42,16 +42,36 @@ export interface BusinessOverviewSnapshot {
   expenses_paid: number | null;
 }
 
+/**
+ * One location's trading inside a business's window. Mirrors the headline
+ * block of `BusinessOverviewSnapshot` so a location row here and that
+ * location's own detail page agree.
+ *
+ * `refunded_orders` is the order-level `is_refunded` flag — a count of orders
+ * touched by a refund, not of refund documents. For refund counts/amounts,
+ * transactions or expenses at this grain, read the location overview instead;
+ * those need their own scans and are deliberately not in the breakdown.
+ */
 export interface BusinessLocationBreakdownRow {
   location_id: string;
   location_name: string | null;
   total_orders: number | null;
   completed_orders: number | null;
+  cancelled_orders: number | null;
+  written_off_orders: number | null;
+  deferred_orders: number | null;
+  refunded_orders: number | null;
+  gross_sales: number | null;
   net_sales: number | null;
+  total_discount: number | null;
+  total_cost: number | null;
   gross_profit: number | null;
+  total_tips: number | null;
   avg_order_value: number | null;
   active_staff: number | null;
   unique_customers: number | null;
+  /** Latest business date with an order in the window — null if none. */
+  last_order_date: string | null;
 }
 
 export interface BusinessDailyTrendRow {

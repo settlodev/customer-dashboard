@@ -9,7 +9,10 @@ import type { Staff } from "@/types/staff";
 import type { LocationLetterhead } from "@/types/letterhead/type";
 import type { DaySession } from "@/lib/actions/location-day-sessions-actions";
 import type { DaySessionReport } from "@/lib/actions/day-session-list-actions";
-import type { PaymentMethodReconciliation } from "@/types/payment-method-reconciliation/type";
+import type {
+  CashUpTotals,
+  PaymentMethodReconciliation,
+} from "@/types/payment-method-reconciliation/type";
 import type { DaySessionPrepaymentsSummary } from "@/types/customer-prepayments/type";
 import type {
   DaySessionRefundsResponse,
@@ -55,6 +58,13 @@ export interface PublicCloseOfDay {
   session: DaySession;
   report: DaySessionReport | null;
   reconciliations: PaymentMethodReconciliation[];
+  /**
+   * Cash-up totals as Accounting struck them — the figures the shared
+   * Z-report foots to. Absent on links minted before the snapshot carried
+   * them; the page falls back to summing the rows' own server-computed
+   * fields (`cashUpTotalsFrom`).
+   */
+  reconciliationTotals?: CashUpTotals | null;
   prepayments: DaySessionPrepaymentsSummary | null;
   refunds: DaySessionRefundsResponse | null;
   voids: DaySessionVoidsResponse | null;
@@ -157,7 +167,7 @@ export async function getPublicCloseOfDay(
     // when a session has no cash-up or references no staff, but the
     // interface — and every consumer (the share page + the report sheet)
     // — treats them as arrays. Normalise here so the declared type holds,
-    // mirroring `listPaymentMethodReconciliations`'s `?? []` guarantee on
+    // mirroring the cash-up reader's `?? []` guarantee on
     // the authenticated report route.
     return {
       ...dto,

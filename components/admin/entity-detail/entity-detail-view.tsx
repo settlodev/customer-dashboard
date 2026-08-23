@@ -19,7 +19,10 @@ import { SubscriptionItemStatusBadge } from "@/components/admin/shared/subscript
 import { extendEntityTrial } from "@/lib/actions/admin/billing";
 
 import type { SubscriptionItemResponse } from "@/types/admin/billing";
-import type { BusinessLocationBreakdownRow } from "@/types/admin/business-intel";
+import type {
+  BusinessLocationBreakdownRow,
+  BusinessOverviewSnapshot,
+} from "@/types/admin/business-intel";
 import type { EntityStockSummary } from "@/types/admin/inventory";
 
 // ── Props ────────────────────────────────────────────────────────────────────
@@ -38,6 +41,16 @@ export interface EntityDetailViewProps {
   /** SYSTEM_ADMIN (billing's super admin) — may override-extend a paid/used entity's trial. */
   isSuperAdmin: boolean;
   stock: EntityStockSummary | null;
+  /**
+   * Location-grained trading, same three windows the business detail shows.
+   * LOCATION only — stores and warehouses don't ring up sales of their own.
+   * Null when the pull failed or the location has never traded.
+   */
+  overviewToday?: BusinessOverviewSnapshot | null;
+  overview7d?: BusinessOverviewSnapshot | null;
+  overview30d?: BusinessOverviewSnapshot | null;
+  /** Owning business's base currency, for the money labels. */
+  currency?: string;
 }
 
 // ── Currency helper (no dedicated export in format.ts) ───────────────────────
@@ -45,6 +58,18 @@ export interface EntityDetailViewProps {
 function formatMoney(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+/** ClickHouse sends Decimal columns as strings; coerce, treating nullish as 0. */
+function num(value: unknown): number {
+  if (value === null || value === undefined) return 0;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function plural(count: number, singular: string, pluralWord?: string): string {
+  const word = count === 1 ? singular : (pluralWord ?? `${singular}s`);
+  return `${count.toLocaleString()} ${word}`;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -60,6 +85,10 @@ export function EntityDetailView({
   canBilling,
   isSuperAdmin,
   stock,
+  overviewToday = null,
+  overview7d = null,
+  overview30d = null,
+  currency = "TZS",
 }: EntityDetailViewProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -68,6 +97,14 @@ export function EntityDetailView({
   const [addonOpen, setAddonOpen] = useState(false);
 
   const entityLabel = entityType.toLowerCase();
+  // A location that has never traded has an overview of all zeros rather than a
+  // null body, so "has data" is a real question about the numbers — not just
+  // whether the fetch returned. `ordersRow` keeps the older breakdown path
+  // working if the overview pull is the one that failed.
+  const hasTrading =
+    num(overview30d?.total_orders) > 0 ||
+    num(overviewToday?.total_orders) > 0 ||
+    num(ordersRow?.total_orders) > 0;
   const isTrialActive =
     item?.status === "ACTIVE" &&
     !!item.trialEndDate &&
@@ -231,47 +268,106 @@ export function EntityDetailView({
         {/* ── Tab 2: Orders ─────────────────────────────────────────────── */}
         {entityType === "LOCATION" && (
           <TabsContent value="orders" className="space-y-4">
-            {ordersRow == null ? (
-              <SectionCard title="Orders" subtitle={rangeLabel}>
+            {!hasTrading ? (
+              <SectionCard title="Revenue &amp; orders" subtitle={rangeLabel}>
                 <p className="text-sm text-muted-foreground">
                   No order data for this location in {rangeLabel}.
                 </p>
               </SectionCard>
             ) : (
-              <SectionCard title="Orders" subtitle={rangeLabel}>
-                <MetricGrid cols={4}>
-                  <MetricCell
-                    label="Total orders"
-                    value={formatMoney(ordersRow.total_orders ?? 0)}
-                  />
-                  <MetricCell
-                    label="Completed"
-                    value={formatMoney(ordersRow.completed_orders ?? 0)}
-                  />
-                  <MetricCell
-                    label="Net sales"
-                    value={compactNumber(ordersRow.net_sales ?? 0)}
-                  />
-                  <MetricCell
-                    label="Gross profit"
-                    value={compactNumber(ordersRow.gross_profit ?? 0)}
-                  />
-                  <MetricCell
-                    label="Avg order value"
-                    value={formatMoney(ordersRow.avg_order_value ?? 0)}
-                  />
-                  <MetricCell
-                    label="Active staff"
-                    value={formatMoney(ordersRow.active_staff ?? 0)}
-                    small
-                  />
-                  <MetricCell
-                    label="Unique customers"
-                    value={formatMoney(ordersRow.unique_customers ?? 0)}
-                    small
-                  />
-                </MetricGrid>
-              </SectionCard>
+              <>
+                {/*
+                  Deliberately the same card the business detail shows, one grain
+                  down: a location is what actually trades, so it gets the same
+                  scorecard rather than a reduced one.
+                */}
+                <SectionCard
+                  title="Revenue &amp; orders"
+                  subtitle={`${rangeLabel} · ${currency}`}
+                >
+                  <MetricGrid cols={4}>
+                    <MetricCell
+                      label="Today net sales"
+                      value={compactNumber(num(overviewToday?.net_sales))}
+                      sub={plural(num(overviewToday?.total_orders), "order")}
+                    />
+                    <MetricCell
+                      label="7-day net sales"
+                      value={compactNumber(num(overview7d?.net_sales))}
+                      sub={`AOV ${compactNumber(num(overview7d?.avg_order_value))}`}
+                    />
+                    <MetricCell
+                      label="30-day net sales"
+                      value={compactNumber(num(overview30d?.net_sales))}
+                      sub={plural(num(overview30d?.total_orders), "order")}
+                    />
+                    <MetricCell
+                      label="30-day gross profit"
+                      value={compactNumber(num(overview30d?.gross_profit))}
+                      sub={`cost ${compactNumber(num(overview30d?.total_cost))}`}
+                    />
+                  </MetricGrid>
+                  <div className="mt-2.5">
+                    <MetricGrid cols={4}>
+                      <MetricCell
+                        small
+                        label="30-day customers"
+                        value={formatMoney(num(overview30d?.unique_customers))}
+                        sub={plural(num(overview30d?.active_staff), "active staff", "active staff")}
+                      />
+                      <MetricCell
+                        small
+                        label="Cancelled 30d"
+                        value={formatMoney(num(overview30d?.cancelled_orders))}
+                      />
+                      <MetricCell
+                        small
+                        label="Refunded 30d"
+                        value={formatMoney(num(overview30d?.total_refund_count))}
+                        sub={`${compactNumber(num(overview30d?.total_refunded_amount))} refunded`}
+                      />
+                      <MetricCell
+                        small
+                        label="Tips 30d"
+                        value={compactNumber(num(overview30d?.total_tips))}
+                      />
+                    </MetricGrid>
+                  </div>
+                </SectionCard>
+
+                {/*
+                  Money in and out at this location — the overview's closing-balance
+                  components. The business detail sources these from Accounting,
+                  which has no location cut yet; these come straight off the
+                  location's own transaction/expense facts.
+                */}
+                <SectionCard
+                  title="Money in &amp; out"
+                  subtitle={`${rangeLabel} · ${currency}`}
+                >
+                  <MetricGrid cols={4}>
+                    <MetricCell
+                      label="Transactions taken"
+                      value={compactNumber(num(overview30d?.transactions_amount))}
+                      sub="incl. tips & prepayment top-ups"
+                    />
+                    <MetricCell
+                      label="Expenses paid"
+                      value={compactNumber(num(overview30d?.expenses_paid))}
+                    />
+                    <MetricCell
+                      small
+                      label="Complimentary"
+                      value={compactNumber(num(overview30d?.complimentary_amount))}
+                    />
+                    <MetricCell
+                      small
+                      label="Signed bills"
+                      value={compactNumber(num(overview30d?.signed_bill_amount))}
+                    />
+                  </MetricGrid>
+                </SectionCard>
+              </>
             )}
           </TabsContent>
         )}

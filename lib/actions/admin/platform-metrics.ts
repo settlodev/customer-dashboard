@@ -1,7 +1,7 @@
 "use server";
 
 import { reportsInternalGet } from "@/lib/reports-internal-client";
-import type { SubscriptionStatus } from "@/types/admin/billing";
+import type { SubscriptionItemStatus } from "@/types/admin/billing";
 import type {
   PlatformAccounts,
   PlatformLocationsPage,
@@ -149,9 +149,17 @@ export async function getPlatformLocations(
       businessId: String(row.business_id ?? ""),
       businessName: str(row.business_name),
       region: str(row.region),
-      status: str(row.status) as SubscriptionStatus | null,
+      subscriptionId: str(row.subscription_id),
+      // Per-location SubscriptionItemStatus — NOT the business's status.
+      status: str(row.status) as SubscriptionItemStatus | null,
+      // Billing has no TRIAL status; Reports derives it (ACTIVE + never paid +
+      // a live trial window) and returns it as a 0/1 flag.
+      isTrial: num(row.is_trial) === 1,
       packageName: str(row.package_name),
       trialEndDate: str(row.trial_end_date),
+      paidThrough: str(row.paid_through),
+      monthlyAmount: num(row.monthly_amount),
+      isBundled: num(row.is_bundled) === 1,
     })),
     page: num(r.page),
     size: num(r.size) || (query.size ?? 20),
