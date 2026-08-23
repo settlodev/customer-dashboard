@@ -104,6 +104,29 @@ export const PAYMENT_STATUS_TONES: Record<PaymentStatus, string> = {
 // dashboard's Close-of-Day report — expenses recorded against a single
 // day session, with the cash/mobile/other payment-method split.
 
+/**
+ * One posted payment against a session expense. Optional on the parent
+ * item: a backend older than the payment-detail change omits the field
+ * entirely, and the dashboard falls back to `paymentMethodCodes`.
+ */
+export interface DaySessionExpensePayment {
+  paymentId: string;
+  amount: number;
+  currencyCode?: string | null;
+  /** Free-text label captured at create time ("CASH · Cash on Hand"). */
+  paymentMethod?: string | null;
+  /** Preseeded Payments-Service code (CASH / MPESA / BANK_TRANSFER / …). */
+  paymentMethodCode?: string | null;
+  paymentMethodId?: string | null;
+  /** Asset account the money actually left. */
+  sourceAccountId?: string | null;
+  sourceAccountName?: string | null;
+  paymentDate?: string | null;
+  reference?: string | null;
+  notes?: string | null;
+  recordedAt?: string | null;
+}
+
 export interface DaySessionExpenseItem {
   expenseId: string;
   expenseNumber: string;
@@ -113,13 +136,22 @@ export interface DaySessionExpenseItem {
   payeeId?: string | null;
   payeeName?: string | null;
   payeeType?: string | null;
-  status: ExpenseStatus;
+  /**
+   * Backend badge string — UNPAID / PARTIALLY_PAID / PAID·CASH /
+   * PAID·MOBILE / PAID·OTHER. NOT an `ExpenseStatus`; gate UI on
+   * `paymentStatus` instead.
+   */
+  status: string;
   paymentStatus: PaymentStatus;
   paymentMethodCodes: string[];
+  payments?: DaySessionExpensePayment[] | null;
   amount: number;
   paidAmount: number;
   balanceDue: number;
   currencyCode: string;
+  reference?: string | null;
+  expenseDate?: string | null;
+  recordedAt?: string | null;
 }
 
 export interface DaySessionExpenseTotals {

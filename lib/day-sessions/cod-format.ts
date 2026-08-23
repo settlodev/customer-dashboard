@@ -106,6 +106,19 @@ export const fmtBusinessDate = (ymd?: string | null): string => {
   });
 };
 
+/**
+ * "Aug 20" from a bare date string ("2026-08-20"), for the compact
+ * payment lines. Parsed at local noon so a negative UTC offset can't
+ * roll it back a day.
+ */
+export const fmtShortDay = (ymd?: string | null): string => {
+  if (!ymd) return "—";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd);
+  if (!m) return "—";
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12);
+  return d.toLocaleDateString(undefined, { month: "short", day: "2-digit" });
+};
+
 /** "Jul 10, 2026 · 23:14" — the report's "generated at" stamp. */
 export const fmtDateTimeShort = (iso?: string | null): string => {
   if (!iso) return "—";
@@ -267,6 +280,54 @@ export const methodNameIndex = (...rows: MethodRef[][]): Map<string, string> => 
     }
   }
   return map;
+};
+
+/**
+ * Display labels for the preseeded Payments-Service codes that reach the
+ * dashboard on expense payments. Anything not listed falls through to a
+ * sentence-cased form of the raw code ("CRYPTO_WALLET" → "Crypto wallet"),
+ * because Payments issues codes as free-form strings, not a fixed enum.
+ */
+const METHOD_LABELS: Record<string, string> = {
+  CASH: "Cash",
+  MPESA: "M-Pesa",
+  TIGO_PESA: "Tigo Pesa",
+  AIRTEL_MONEY: "Airtel Money",
+  HALOPESA: "HaloPesa",
+  TTCL_PESA: "TTCL Pesa",
+  AZAMPESA: "AzamPesa",
+  BANK: "Bank",
+  BANK_TRANSFER: "Bank transfer",
+  CARD: "Card",
+  VISA: "Visa",
+  MASTERCARD: "Mastercard",
+  SELCOM: "Selcom",
+  PESAPAL: "PesaPal",
+  TEMBO: "Tembo",
+};
+
+/**
+ * Human label for a payment-method code. `fallback` is the free-text
+ * method string some rows carry ("CASH · Cash on Hand") — used only when
+ * there's no code at all, with the redundant code prefix stripped.
+ */
+export const paymentMethodLabel = (
+  code?: string | null,
+  fallback?: string | null,
+): string => {
+  const raw = code?.trim();
+  if (raw) {
+    const key = raw.toUpperCase();
+    return (
+      METHOD_LABELS[key] ??
+      key.replace(/_/g, " ").toLowerCase().replace(/^./, (c) => c.toUpperCase())
+    );
+  }
+  const text = fallback?.trim();
+  if (!text) return "Payment";
+  // "CASH · Cash on Hand" → "Cash on Hand"; a bare label passes through.
+  const [, after] = text.split(/\s*·\s*/, 2);
+  return after || text;
 };
 
 /** True when a code/name looks like physical cash. */

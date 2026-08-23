@@ -424,6 +424,8 @@ export default async function DaySessionDetailPage({
             roster={staffById}
             currency={currency}
           />
+
+          <ExpensesList expenses={extras.expenses} currency={currency} />
         </div>
 
         {/* RIGHT */}
@@ -455,8 +457,6 @@ export default async function DaySessionDetailPage({
             roster={staffById}
             currency={currency}
           />
-
-          <ExpensesList expenses={extras.expenses} currency={currency} />
 
           {report?.physicalTill ? (
             <CashDrawer
