@@ -24,6 +24,7 @@ import { SectionCard, CardLink } from "@/components/admin/shared/section-card";
 import { DefList, DefRow } from "@/components/admin/shared/def-list";
 import { MetricGrid, MetricCell } from "@/components/admin/shared/metric-cell";
 import { PlanBadge, planTier } from "@/components/admin/shared/plan-badge";
+import { HealthScoreBars } from "@/components/admin/shared/score-bar";
 import { SubscriptionItemStatusBadge } from "@/components/admin/shared/subscription-item-status-badge";
 import { LogInAsButton } from "@/components/admin/account-detail/log-in-as-button";
 import { EditBusinessButton } from "@/components/admin/business-detail/edit-business-dialog";
@@ -45,6 +46,7 @@ import type {
   BusinessHealthSnapshot,
   BusinessLifecycleSnapshot,
   BusinessLocationBreakdownRow,
+  LocationHealthRow,
   BusinessOverviewSnapshot,
 } from "@/types/admin/business-intel";
 import type {
@@ -72,6 +74,12 @@ interface BusinessDetailViewProps {
   health: BusinessHealthSnapshot | null;
   lifecycle: BusinessLifecycleSnapshot | null;
   locationBreakdown: BusinessLocationBreakdownRow[];
+  /**
+   * Each location scored on its own (V081), worst first. The business-level
+   * health score averages these together, which is exactly how a failing branch
+   * stays invisible — so the per-location table shows them individually.
+   */
+  locationHealth: LocationHealthRow[];
   customerSegments: BusinessCustomerSegmentRow[];
   inventory: AdminBusinessInventorySummary | null;
   financials: AdminBusinessFinancialsSummary | null;
@@ -120,6 +128,7 @@ export function BusinessDetailView({
   health,
   lifecycle,
   locationBreakdown,
+  locationHealth,
   customerSegments,
   inventory,
   financials,
@@ -238,6 +247,27 @@ export function BusinessDetailView({
           ? { label: "Eligible", tone: "pos" as const }
           : { label: "Building", tone: "warn" as const };
   const completed30 = n(overview30d?.completed_orders);
+
+  // ── per-location health ──────────────────────────────────────────────
+  // Plain computation, not useMemo: this is a server component (no "use client"
+  // above), so hooks would throw at render and memoising a single render buys
+  // nothing regardless.
+  const healthByLocation: Record<string, LocationHealthRow> = {};
+  for (const row of locationHealth) healthByLocation[row.location_id] = row;
+
+  // The worst-scoring location, but only worth calling out when it is
+  // materially below the business's own score — that gap IS the finding. With
+  // one location, or with every branch tracking the business, there is nothing
+  // the business number was hiding and the callout would just be noise.
+  const worstLocation = (() => {
+    if (healthScore == null || locationHealth.length < 2) return null;
+    const scored = locationHealth.filter((r) => r.health_score != null);
+    if (scored.length === 0) return null;
+    const worst = scored.reduce((a, b) =>
+      (a.health_score ?? 0) <= (b.health_score ?? 0) ? a : b,
+    );
+    return (worst.health_score ?? 0) < healthScore - 15 ? worst : null;
+  })();
 
   // ── last order ───────────────────────────────────────────────────────
   // null = never traded. The lifecycle rollup encodes that as 9999 days, which
@@ -519,7 +549,7 @@ export function BusinessDetailView({
           >
             <MetricGrid cols={4}>
               <MetricCell label="Revenue (period)" currency={currency} value={amt(financials?.revenuePeriod)} sub={`${n(financials?.postedJournalEntriesPeriod)} journal entries`} />
-              <MetricCell label="Expenses paid" currency={currency} value={amt(financials?.expensesPaidPeriod)} sub={`${n(financials?.postedExpensesPeriod)} expenses`} />
+              <MetricCell label="Expenses paid" currency={currency} value={amt(financials?.expensesPaidPeriod)} sub={`${n(financials?.approvedExpensesPeriod)} expenses`} />
               <MetricCell label="Net cash flow" currency={currency} value={amt(financials?.netCashFlowPeriod)} sub={n(financials?.netCashFlowPeriod) === 0 ? "neutral" : n(financials?.netCashFlowPeriod) > 0 ? "positive" : "negative"} />
               <MetricCell label="A/P outstanding" currency={currency} value={amt(financials?.apOutstanding)} sub={n(financials?.apOutstanding) === 0 ? "current" : `${amt(financials?.apDays90Plus)} 90d+`} subTone={n(financials?.apOutstanding) === 0 ? "pos" : "muted"} />
             </MetricGrid>
@@ -533,6 +563,15 @@ export function BusinessDetailView({
             title={<CardTitle icon={<MapPin className="h-[17px] w-[17px]" />}>Per-location performance</CardTitle>}
             action={<span className="font-mono text-[11px] text-muted-foreground">30 days · by net sales</span>}
           >
+            {worstLocation && (
+              <p className="mb-3 rounded-md border border-warn/25 bg-warn-tint px-3 py-2 text-[12.5px] text-ink-2">
+                <b className="font-semibold text-ink">{worstLocation.location_name ?? "One location"}</b>{" "}
+                scores {Math.round(worstLocation.health_score ?? 0)}/100 on its own —
+                well below this business&apos;s {healthScore ?? "—"}. A business score
+                averages its locations together, so a branch in trouble does not
+                show up in it.
+              </p>
+            )}
             {locationBreakdown.length === 0 ? (
               <Empty>No per-location sales in this window yet.</Empty>
             ) : (
@@ -540,13 +579,14 @@ export function BusinessDetailView({
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="[&>th]:border-b [&>th]:border-line [&>th]:px-3.5 [&>th]:pb-2.5 [&>th]:text-right [&>th]:font-mono [&>th]:text-[10px] [&>th]:font-semibold [&>th]:uppercase [&>th]:tracking-[0.06em] [&>th]:text-muted-foreground [&>th:first-child]:text-left">
-                      <th>Location</th><th>Orders</th><th>Completed</th><th>Net sales</th><th>Gross profit</th><th>AOV</th><th>Staff</th><th>Customers</th>
+                      <th>Location</th><th>Health</th><th>Orders</th><th>Completed</th><th>Net sales</th><th>Gross profit</th><th>AOV</th><th>Staff</th><th>Customers</th>
                     </tr>
                   </thead>
                   <tbody className="[&>tr>td]:border-b [&>tr>td]:border-line [&>tr:last-child>td]:border-b-0 [&>tr>td]:px-3.5 [&>tr>td]:py-3 [&>tr>td]:text-right [&>tr>td]:font-mono [&>tr>td]:text-[13px] [&>tr>td]:text-ink [&>tr>td:first-child]:text-left">
                     {locationBreakdown.map((r) => (
                       <tr key={r.location_id}>
                         <td className="!font-sans !font-semibold tracking-[-0.01em]">{r.location_name ?? "—"}</td>
+                        <td><LocationHealthCell score={healthByLocation[r.location_id]?.health_score ?? null} /></td>
                         <td>{n(r.total_orders)}</td>
                         <td className={n(r.completed_orders) === 0 ? "text-muted-2" : ""}>{n(r.completed_orders)}</td>
                         <td>{amt(r.net_sales)}</td>
@@ -591,13 +631,7 @@ export function BusinessDetailView({
                 business yet.
               </p>
             )}
-            <div className="flex flex-col">
-              <ScoreBar name="Revenue" score={health?.revenue_score ?? null} />
-              <ScoreBar name="Engagement" score={health?.engagement_score ?? null} />
-              <ScoreBar name="Growth" score={health?.growth_score ?? null} />
-              <ScoreBar name="Retention" score={health?.retention_score ?? null} />
-              <ScoreBar name="Operational" score={health?.operational_score ?? null} />
-            </div>
+            <HealthScoreBars health={health} />
             <DefList className="mt-2">
               <DefRow label="Lifetime orders" value={n(lifecycle?.total_orders).toLocaleString()} />
               <DefRow label="Lifetime revenue" value={`${currency} ${amt(lifecycle?.total_revenue)}`} />
@@ -776,27 +810,18 @@ function SubBadge({ status }: { status: string }) {
   );
 }
 
-function ScoreBar({ name, score }: { name: string; score: number | null }) {
-  const v = score == null ? null : Math.round(score);
+/**
+ * A location's own health score in the per-location table. Coloured on the same
+ * thresholds as the sub-score bars, so a red cell here and a red bar in the
+ * business's own card mean the same thing.
+ */
+function LocationHealthCell({ score }: { score: number | null }) {
+  if (score == null)
+    return <span className="text-muted-2">—</span>;
+  const v = Math.round(score);
   const color =
-    v == null
-      ? "transparent"
-      : v < 30
-        ? "hsl(var(--neg))"
-        : v < 60
-          ? "hsl(var(--warn))"
-          : "hsl(var(--pos))";
-  return (
-    <div className="grid grid-cols-[80px_1fr_32px] items-center gap-3 py-2 sm:grid-cols-[96px_1fr_34px]">
-      <div className="text-[13px] text-ink-2">{name}</div>
-      <div className="h-2 overflow-hidden rounded-full bg-canvas">
-        <div className="h-full rounded-full" style={{ width: `${v ?? 0}%`, backgroundColor: color }} />
-      </div>
-      <div className={cn("text-right font-mono text-[12px] font-semibold tabular-nums", v == null && "font-medium text-muted-2")}>
-        {v == null ? "—" : v}
-      </div>
-    </div>
-  );
+    v < 30 ? "text-neg" : v < 60 ? "text-warn" : "text-pos";
+  return <span className={cn("font-semibold", color)}>{v}</span>;
 }
 
 function Field({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {

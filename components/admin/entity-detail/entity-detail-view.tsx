@@ -16,14 +16,25 @@ import { MetricGrid, MetricCell } from "@/components/admin/shared/metric-cell";
 import { PlanBadge, planTier } from "@/components/admin/shared/plan-badge";
 import { formatDate, compactNumber } from "@/components/admin/shared/format";
 import { SubscriptionItemStatusBadge } from "@/components/admin/shared/subscription-item-status-badge";
+import { HealthScoreBars, churnBand } from "@/components/admin/shared/score-bar";
 import { extendEntityTrial } from "@/lib/actions/admin/billing";
 
 import type { SubscriptionItemResponse } from "@/types/admin/billing";
+import {
+  ACTIVITY_TONE,
+  activityBadge,
+  daysSinceLastOrder,
+  formatLastOrder,
+} from "@/lib/admin/lifecycle";
+import { cn } from "@/lib/utils";
 import type {
+  BusinessHealthSnapshot,
   BusinessLocationBreakdownRow,
   BusinessOverviewSnapshot,
+  LocationLifecycleSnapshot,
 } from "@/types/admin/business-intel";
 import type { EntityStockSummary } from "@/types/admin/inventory";
+import type { AdminBusinessFinancialsSummary } from "@/types/admin/business-operations";
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
@@ -51,6 +62,22 @@ export interface EntityDetailViewProps {
   overview30d?: BusinessOverviewSnapshot | null;
   /** Owning business's base currency, for the money labels. */
   currency?: string;
+  /**
+   * This location's own lifecycle row — stage, churn, recency, lifetime totals.
+   * LOCATION only. Null until the nightly rollup has a row for it.
+   */
+  lifecycle?: LocationLifecycleSnapshot | null;
+  /**
+   * This location's own health score (V081) — same five sub-scores and weights
+   * the business model runs, so the two numbers are directly comparable.
+   * LOCATION only; null until the nightly model has covered it.
+   */
+  health?: BusinessHealthSnapshot | null;
+  /**
+   * The books for this location — revenue posted, expenses paid, what it owes.
+   * LOCATION only; null when the pull failed.
+   */
+  financials?: AdminBusinessFinancialsSummary | null;
 }
 
 // ── Currency helper (no dedicated export in format.ts) ───────────────────────
@@ -72,6 +99,24 @@ function plural(count: number, singular: string, pluralWord?: string): string {
   return `${count.toLocaleString()} ${word}`;
 }
 
+/**
+ * The health model stores its recommendations as a JSON array in a String
+ * column. Parse defensively — a malformed value is a reason to show no advice,
+ * never a reason to blank the page.
+ */
+function parseRecommendations(
+  health: BusinessHealthSnapshot | null,
+): string[] {
+  const raw = health?.recommendations;
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((r) => typeof r === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function EntityDetailView({
@@ -89,6 +134,9 @@ export function EntityDetailView({
   overview7d = null,
   overview30d = null,
   currency = "TZS",
+  lifecycle = null,
+  health = null,
+  financials = null,
 }: EntityDetailViewProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -152,13 +200,141 @@ export function EntityDetailView({
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  const activity = activityBadge(lifecycle, "Location");
+  const lastOrderDays = daysSinceLastOrder(lifecycle);
+  const healthScore =
+    health?.health_score != null ? Math.round(health.health_score) : null;
+  const churn = churnBand(health?.churn_probability);
+  // Recommendations are stored as a JSON array string by the nightly model.
+  const recommendations = parseRecommendations(health);
+
   return (
     <div className="space-y-4">
+      {/*
+        This location's own standing, above the tabs. The business detail shows
+        the equivalent for a business; the point of showing it here is that the
+        two can legitimately disagree — a branch can be dormant under a merchant
+        that is trading fine through its other locations.
+      */}
+      {entityType === "LOCATION" && lifecycle && (
+        <SectionCard title="Trading standing" subtitle="this location, not its business">
+          <MetricGrid cols={4}>
+            <MetricCell
+              label="Activity"
+              value={
+                <span
+                  title={activity.hint}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[12.5px] font-semibold",
+                    ACTIVITY_TONE[activity.tone],
+                  )}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  {activity.label}
+                </span>
+              }
+              sub={(lifecycle.lifecycle_stage ?? "").toLowerCase() || undefined}
+            />
+            <MetricCell
+              label="Last order"
+              value={formatLastOrder(lastOrderDays)}
+              sub={
+                lastOrderDays === null
+                  ? "no orders yet"
+                  : `${lastOrderDays} days since`
+              }
+            />
+            <MetricCell
+              label="Lifetime sales"
+              value={compactNumber(num(lifecycle.total_revenue))}
+              sub={plural(num(lifecycle.total_orders), "order")}
+            />
+            <MetricCell
+              label="MRR"
+              value={compactNumber(num(lifecycle.billing_mrr))}
+              sub={
+                lifecycle.is_bundled === 1
+                  ? "bundled — billed via parent"
+                  : (lifecycle.current_package_name ?? "no plan")
+              }
+            />
+          </MetricGrid>
+        </SectionCard>
+      )}
+
+      {/*
+        Health, scored for THIS location. Same five components and weights the
+        business model runs (V081), so the number sits directly alongside the
+        business's — and can legitimately be much worse than it.
+      */}
+      {entityType === "LOCATION" && (
+        <SectionCard
+          title="Health"
+          subtitle="scored per location, on the same model as the business"
+          action={
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {healthScore ?? "—"} / 100
+            </span>
+          }
+        >
+          {healthScore == null ? (
+            <p className="font-mono text-[11px] text-muted-2">
+              Health is scored by a nightly model — no score computed for this
+              location yet.
+            </p>
+          ) : (
+            <>
+              <MetricGrid cols={2}>
+                <MetricCell
+                  label="Health score"
+                  value={String(healthScore)}
+                  sub={
+                    healthScore < 40
+                      ? "at risk"
+                      : healthScore < 70
+                        ? "developing"
+                        : "healthy"
+                  }
+                />
+                <MetricCell
+                  label="Churn risk"
+                  value={
+                    <span style={{ color: churn.color }}>{churn.label}</span>
+                  }
+                  sub={
+                    (health?.growth_trajectory ?? "").toLowerCase() || undefined
+                  }
+                />
+              </MetricGrid>
+              <div className="mt-1.5">
+                <HealthScoreBars health={health} />
+              </div>
+              {recommendations.length > 0 && (
+                <ul className="mt-3 space-y-1.5 border-t border-line pt-3">
+                  {recommendations.map((rec) => (
+                    <li
+                      key={rec}
+                      className="flex gap-2 text-[12.5px] leading-relaxed text-ink-2"
+                    >
+                      <span className="mt-[7px] h-1 w-1 flex-shrink-0 rounded-full bg-muted-2" />
+                      {rec}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </SectionCard>
+      )}
+
       <Tabs defaultValue="subscription">
         <TabsList>
           <TabsTrigger value="subscription">Subscription</TabsTrigger>
           {entityType === "LOCATION" && <TabsTrigger value="orders">Orders</TabsTrigger>}
           <TabsTrigger value="stock">Stock &amp; Products</TabsTrigger>
+          {entityType === "LOCATION" && (
+            <TabsTrigger value="financials">Financials</TabsTrigger>
+          )}
         </TabsList>
 
         {/* ── Tab 1: Subscription ──────────────────────────────────────── */}
@@ -337,9 +513,9 @@ export function EntityDetailView({
 
                 {/*
                   Money in and out at this location — the overview's closing-balance
-                  components. The business detail sources these from Accounting,
-                  which has no location cut yet; these come straight off the
-                  location's own transaction/expense facts.
+                  components, straight off the location's own transaction and
+                  expense facts. Distinct from the Financials card below, which is
+                  the posted books from Accounting.
                 */}
                 <SectionCard
                   title="Money in &amp; out"
@@ -373,6 +549,119 @@ export function EntityDetailView({
         )}
 
         {/* ── Tab 3: Stock & Products ───────────────────────────────────── */}
+        {/* ── Tab 4: Financials ─────────────────────────────────────────── */}
+        {entityType === "LOCATION" && (
+          <TabsContent value="financials" className="space-y-4">
+            {financials == null ? (
+              <SectionCard title="Financials &amp; payables" subtitle={rangeLabel}>
+                <p className="text-sm text-muted-foreground">
+                  Couldn&apos;t load this location&apos;s books.
+                </p>
+              </SectionCard>
+            ) : (
+              <>
+                {/*
+                  The posted books for THIS location. Accounting takes an optional
+                  locationId, so these are the same figures the business detail
+                  shows, narrowed rather than re-derived.
+                */}
+                <SectionCard
+                  title="Financials &amp; payables"
+                  subtitle={`${rangeLabel} · ${currency}`}
+                >
+                  <MetricGrid cols={4}>
+                    <MetricCell
+                      label="Revenue (period)"
+                      value={compactNumber(financials.revenuePeriod)}
+                      sub={plural(
+                        financials.postedJournalEntriesPeriod,
+                        "journal entry",
+                        "journal entries",
+                      )}
+                    />
+                    <MetricCell
+                      label="Expenses paid"
+                      value={compactNumber(financials.expensesPaidPeriod)}
+                      sub={plural(financials.approvedExpensesPeriod, "expense")}
+                    />
+                    <MetricCell
+                      label="Net cash flow"
+                      value={compactNumber(financials.netCashFlowPeriod)}
+                      sub={
+                        financials.netCashFlowPeriod === 0
+                          ? "neutral"
+                          : financials.netCashFlowPeriod > 0
+                            ? "positive"
+                            : "negative"
+                      }
+                    />
+                    <MetricCell
+                      label="A/P outstanding"
+                      value={compactNumber(financials.apOutstanding)}
+                      sub={
+                        financials.apOutstanding === 0
+                          ? "current"
+                          : `${compactNumber(financials.apDays90Plus)} 90d+`
+                      }
+                    />
+                  </MetricGrid>
+                  <DefList className="mt-1.5">
+                    <DefRow
+                      label="Last journal entry"
+                      value={
+                        financials.lastJournalEntryAt
+                          ? formatDate(financials.lastJournalEntryAt)
+                          : "Never"
+                      }
+                      tone={financials.lastJournalEntryAt ? "default" : "dim"}
+                    />
+                    <DefRow
+                      label="Last expense"
+                      value={
+                        financials.lastExpenseAt
+                          ? formatDate(financials.lastExpenseAt)
+                          : "Never"
+                      }
+                      tone={financials.lastExpenseAt ? "default" : "dim"}
+                    />
+                  </DefList>
+                </SectionCard>
+
+                {financials.apOutstanding > 0 && (
+                  <SectionCard
+                    title="Payables ageing"
+                    subtitle={`as of today · ${currency}`}
+                  >
+                    {/*
+                      Deliberately not period-bounded: an unsettled bill is
+                      outstanding now, not "outstanding during the window".
+                    */}
+                    <MetricGrid cols={4}>
+                      <MetricCell small label="Current" value={compactNumber(financials.apCurrent)} />
+                      <MetricCell small label="1-30 days" value={compactNumber(financials.apDays30)} />
+                      <MetricCell small label="31-60 days" value={compactNumber(financials.apDays60)} />
+                      <MetricCell small label="61-90 days" value={compactNumber(financials.apDays90)} />
+                    </MetricGrid>
+                    <div className="mt-2.5">
+                      <MetricGrid cols={2}>
+                        <MetricCell
+                          label="90+ days"
+                          value={compactNumber(financials.apDays90Plus)}
+                          sub={financials.apDays90Plus > 0 ? "overdue" : "none"}
+                        />
+                        <MetricCell
+                          label="Total owed"
+                          value={compactNumber(financials.apOutstanding)}
+                        />
+                      </MetricGrid>
+                    </div>
+                  </SectionCard>
+                )}
+              </>
+            )}
+          </TabsContent>
+        )}
+
         <TabsContent value="stock" className="space-y-4">
           {!stock ||
           (stock.productCount === 0 &&

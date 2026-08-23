@@ -19,10 +19,20 @@ import { getBusinessSubscription } from "@/lib/actions/admin/billing";
 import {
   getBusinessLocationBreakdown,
   getDefaultIntelRange,
+  getLocationHealth,
+  getLocationLifecycle,
   getLocationOverviewByFilter,
 } from "@/lib/actions/admin/business-intel";
-import { getEntityStockSummary } from "@/lib/actions/admin/business-operations";
-import type { BusinessOverviewSnapshot } from "@/types/admin/business-intel";
+import {
+  getEntityStockSummary,
+  getLocationFinancialsSummary,
+} from "@/lib/actions/admin/business-operations";
+import type { AdminBusinessFinancialsSummary } from "@/types/admin/business-operations";
+import type {
+  BusinessHealthSnapshot,
+  BusinessOverviewSnapshot,
+  LocationLifecycleSnapshot,
+} from "@/types/admin/business-intel";
 
 export const metadata = {
   title: "Location detail",
@@ -107,6 +117,11 @@ export default async function LocationDetailPage({
     getLocationOverviewByFilter(id, "LAST_7_DAYS"),
     getLocationOverviewByFilter(id, "LAST_30_DAYS"),
     getAdminBusinessDetail(businessId),
+    getLocationLifecycle(id),
+    getLocationHealth(id),
+    // Accounting now takes an optional locationId, so the books can be read at
+    // the grain that actually trades rather than only rolled up per business.
+    getLocationFinancialsSummary(businessId, id, startDate, endDate),
   ]);
 
   const value = <T,>(r: PromiseSettledResult<T>): T | null =>
@@ -118,6 +133,9 @@ export default async function LocationDetailPage({
   const overview7d = value(results[3]) as BusinessOverviewSnapshot | null;
   const overview30d = value(results[4]) as BusinessOverviewSnapshot | null;
   const business = value(results[5]);
+  const lifecycle = value(results[6]) as LocationLifecycleSnapshot | null;
+  const health = value(results[7]) as BusinessHealthSnapshot | null;
+  const financials = value(results[8]) as AdminBusinessFinancialsSummary | null;
   const item =
     (subscription?.manageableItems ?? subscription?.items)?.find((i) => i.entityId === id) ?? null;
   const ordersRow = breakdown.find((r) => r.location_id === id) ?? null;
@@ -158,6 +176,9 @@ export default async function LocationDetailPage({
             overview7d={overview7d}
             overview30d={overview30d}
             currency={business?.baseCurrency ?? undefined}
+            lifecycle={lifecycle}
+            health={health}
+            financials={financials}
           />
         </PageBody>
       </PageShell>

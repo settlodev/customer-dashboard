@@ -4,10 +4,17 @@ import { ColumnDef } from "@tanstack/react-table";
 import { MapPin } from "lucide-react";
 import Link from "next/link";
 
+import { cn } from "@/lib/utils";
 import { Monogram } from "@/components/admin/shared/monogram";
-import { formatDate } from "@/components/admin/shared/format";
+import { formatDate, compactNumber } from "@/components/admin/shared/format";
 import { LocationRowActions } from "@/components/admin/locations/location-row-actions";
 import { SubscriptionItemStatusBadge } from "@/components/admin/shared/subscription-item-status-badge";
+import {
+  ACTIVITY_TONE,
+  activityBadge,
+  daysSinceLastOrder,
+  formatLastOrder,
+} from "@/lib/admin/lifecycle";
 import type { PlatformLocationRow } from "@/types/admin/platform-metrics";
 
 /**
@@ -76,6 +83,62 @@ export function buildLocationColumns(): ColumnDef<PlatformLocationRow>[] {
       accessorKey: "status",
       header: "Subscription",
       cell: ({ row }) => <LocationSubscriptionBadge row={row.original} />,
+    },
+    {
+      id: "activity",
+      header: "Activity",
+      enableHiding: true,
+      cell: ({ row }) => {
+        // Scored at THIS location's grain. A branch that stopped selling reads
+        // Dormant even when its business — and its sibling locations — are fine.
+        const { label, tone, hint } = activityBadge(
+          row.original.lifecycle,
+          "Location",
+        );
+        return (
+          <span
+            title={hint}
+            className={cn(
+              "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[12.5px] font-semibold",
+              ACTIVITY_TONE[tone],
+            )}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            {label}
+          </span>
+        );
+      },
+    },
+    {
+      id: "lastOrder",
+      header: "Last order",
+      enableHiding: true,
+      cell: ({ row }) => {
+        const lifecycle = row.original.lifecycle;
+        return (
+          <span className="font-mono text-[12px] text-muted-foreground">
+            {lifecycle ? formatLastOrder(daysSinceLastOrder(lifecycle)) : "—"}
+          </span>
+        );
+      },
+    },
+    {
+      id: "revenue",
+      header: "Lifetime sales",
+      enableHiding: true,
+      cell: ({ row }) => {
+        const lifecycle = row.original.lifecycle;
+        if (!lifecycle || !lifecycle.total_orders)
+          return <span className="text-[12.5px] text-muted-2">—</span>;
+        return (
+          <span className="font-mono text-[12.5px] tabular-nums text-ink">
+            {compactNumber(lifecycle.total_revenue ?? 0)}
+            <span className="ml-1.5 text-muted-foreground">
+              · {lifecycle.total_orders.toLocaleString()} ord
+            </span>
+          </span>
+        );
+      },
     },
     {
       id: "plan",

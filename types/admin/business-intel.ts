@@ -117,6 +117,71 @@ export interface BusinessLifecycleSnapshot {
   current_package_name: string | null;
 }
 
+/**
+ * One location's health score inside a business, from
+ * `ml_location_health_score` (V081). The per-location cut of
+ * {@link BusinessHealthSnapshot} — same model, same weights, so the two grains
+ * compare directly.
+ */
+export interface LocationHealthRow {
+  location_id: string;
+  location_name: string | null;
+  score_date: string | null;
+  health_score: number | null;
+  revenue_score: number | null;
+  engagement_score: number | null;
+  growth_score: number | null;
+  retention_score: number | null;
+  operational_score: number | null;
+  churn_probability: number | null;
+  growth_trajectory: string | null;
+}
+
+/**
+ * A location's own lifecycle row, from the nightly `saas_location_lifecycle`
+ * rollup (V080).
+ *
+ * The location-grained counterpart of {@link BusinessLifecycleSnapshot}, and the
+ * point of it: a business is the sum of its locations, so a merchant whose
+ * flagship is thriving reads as healthy even when its branches went quiet months
+ * ago. Churn, recency and stage are only meaningful at this grain.
+ *
+ * Note `days_since_last_order` is genuinely nullable here — NULL means the
+ * location has never taken an order. Unlike the business rollup there is no 9999
+ * sentinel; read it through `daysSinceLastOrder()` in `lib/admin/lifecycle`,
+ * which handles both.
+ */
+export interface LocationLifecycleSnapshot {
+  location_id: string;
+  business_id: string;
+  account_id: string | null;
+  location_name: string | null;
+  business_name: string | null;
+  region: string | null;
+  lifecycle_stage: string | null;
+  is_churned: number | null;
+  total_orders: number | null;
+  paid_orders: number | null;
+  total_revenue: number | null;
+  last_order_at: string | null;
+  last_order_date: string | null;
+  days_since_last_order: number | null;
+  first_order_at: string | null;
+  first_paid_order_at: string | null;
+  first_product_at: string | null;
+  first_subscription_at: string | null;
+  location_created_at: string | null;
+  /** This location's own SubscriptionItemStatus; "" when it has no item. */
+  subscription_status: string | null;
+  /** Derived: ACTIVE + never charged + an open trial window. */
+  is_trial: number | null;
+  current_package_name: string | null;
+  trial_end_date: string | null;
+  paid_through: string | null;
+  is_bundled: number | null;
+  billing_mrr: number | null;
+}
+
 export interface BusinessCustomerSegmentRow {
   rfm_segment: string;
   customer_count: number | null;
