@@ -7,7 +7,7 @@ import {
   PageHeader,
   PageShell,
 } from "@/components/layouts/page-shell";
-import { EntityDetailView } from "@/components/admin/entity-detail/entity-detail-view";
+import { LocationDetailView } from "@/components/admin/location-detail/location-detail-view";
 import { EditLocationButton } from "@/components/admin/entity-detail/edit-location-dialog";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
@@ -17,11 +17,11 @@ import {
 } from "@/lib/actions/admin/businesses";
 import { getBusinessSubscription } from "@/lib/actions/admin/billing";
 import {
-  getBusinessLocationBreakdown,
   getDefaultIntelRange,
   getLocationHealth,
   getLocationLifecycle,
   getLocationOverviewByFilter,
+  getLocationStaffLeaderboard,
 } from "@/lib/actions/admin/business-intel";
 import {
   getEntityStockSummary,
@@ -32,7 +32,10 @@ import type {
   BusinessHealthSnapshot,
   BusinessOverviewSnapshot,
   LocationLifecycleSnapshot,
+  LocationStaffRow,
 } from "@/types/admin/business-intel";
+import type { EntityStockSummary } from "@/types/admin/inventory";
+import type { SubscriptionResponse } from "@/types/admin/billing";
 
 export const metadata = {
   title: "Location detail",
@@ -107,40 +110,45 @@ export default async function LocationDetailPage({
   const businessId = location.businessId;
   const { startDate, endDate } = await getDefaultIntelRange(30);
 
-  // A location is what actually trades, so it gets the same three-window
-  // scorecard the business detail shows. Each pull settles independently — a
-  // failing analytics call renders an empty card, never a blank page.
+  // A location is what actually trades — it holds the subscription, rings up the
+  // orders, carries the stock and posts the books — so it gets the same full
+  // scorecard the business detail shows, at its own grain. Each pull settles
+  // independently so one failing section renders an empty card, never a blank
+  // page.
   const results = await Promise.allSettled([
     canBilling ? getBusinessSubscription(businessId) : Promise.resolve(null),
-    getBusinessLocationBreakdown(businessId, startDate, endDate),
     getLocationOverviewByFilter(id, "TODAY"),
     getLocationOverviewByFilter(id, "LAST_7_DAYS"),
     getLocationOverviewByFilter(id, "LAST_30_DAYS"),
     getAdminBusinessDetail(businessId),
     getLocationLifecycle(id),
     getLocationHealth(id),
-    // Accounting now takes an optional locationId, so the books can be read at
-    // the grain that actually trades rather than only rolled up per business.
     getLocationFinancialsSummary(businessId, id, startDate, endDate),
+    getEntityStockSummary("LOCATION", id),
+    getLocationStaffLeaderboard(businessId, id, startDate, endDate),
   ]);
 
   const value = <T,>(r: PromiseSettledResult<T>): T | null =>
     r.status === "fulfilled" ? r.value : null;
 
-  const subscription = value(results[0]);
-  const breakdown = value(results[1]) ?? [];
-  const overviewToday = value(results[2]) as BusinessOverviewSnapshot | null;
-  const overview7d = value(results[3]) as BusinessOverviewSnapshot | null;
-  const overview30d = value(results[4]) as BusinessOverviewSnapshot | null;
-  const business = value(results[5]);
-  const lifecycle = value(results[6]) as LocationLifecycleSnapshot | null;
-  const health = value(results[7]) as BusinessHealthSnapshot | null;
-  const financials = value(results[8]) as AdminBusinessFinancialsSummary | null;
+  const subscription = value(results[0]) as SubscriptionResponse | null;
+  const overviewToday = value(results[1]) as BusinessOverviewSnapshot | null;
+  const overview7d = value(results[2]) as BusinessOverviewSnapshot | null;
+  const overview30d = value(results[3]) as BusinessOverviewSnapshot | null;
+  const business = value(results[4]);
+  const lifecycle = value(results[5]) as LocationLifecycleSnapshot | null;
+  const health = value(results[6]) as BusinessHealthSnapshot | null;
+  const financials = value(results[7]) as AdminBusinessFinancialsSummary | null;
+  const stock = value(results[8]) as EntityStockSummary | null;
+  const staff = (value(results[9]) ?? []) as LocationStaffRow[];
+
+  // `manageableItems` excludes what this staff member may not act on; fall back
+  // to the full list so a read-only viewer still sees the plan.
   const item =
-    (subscription?.manageableItems ?? subscription?.items)?.find((i) => i.entityId === id) ?? null;
-  const ordersRow = breakdown.find((r) => r.location_id === id) ?? null;
+    (subscription?.manageableItems ?? subscription?.items)?.find(
+      (i) => i.entityId === id,
+    ) ?? null;
   const rangeLabel = `${shortDay(startDate)} → ${shortDay(endDate)}`;
-  const stock = await getEntityStockSummary("LOCATION", id).catch(() => null);
 
   return (
     <AdminShell token={token}>
@@ -148,7 +156,10 @@ export default async function LocationDetailPage({
         <PageBreadcrumbs
           items={[
             { title: "Locations", href: "/locations" },
-            { title: location.businessName ?? "Business", href: `/businesses/${businessId}` },
+            {
+              title: location.businessName ?? "Business",
+              href: `/businesses/${businessId}`,
+            },
             { title: location.name },
           ]}
         />
@@ -161,24 +172,24 @@ export default async function LocationDetailPage({
           actions={canEdit ? <EditLocationButton location={location} /> : undefined}
         />
         <PageBody>
-          <EntityDetailView
-            entityType="LOCATION"
+          <LocationDetailView
+            location={location}
             businessId={businessId}
-            subscriptionId={subscription?.id ?? null}
-            billingExempt={subscription?.billingExempt === true}
+            businessName={location.businessName ?? business?.name ?? null}
+            currency={business?.baseCurrency ?? "TZS"}
+            subscription={subscription}
             item={item}
-            ordersRow={ordersRow}
-            rangeLabel={rangeLabel}
-            canBilling={canBilling}
-            isSuperAdmin={isSuperAdmin}
-            stock={stock}
             overviewToday={overviewToday}
             overview7d={overview7d}
             overview30d={overview30d}
-            currency={business?.baseCurrency ?? undefined}
             lifecycle={lifecycle}
             health={health}
             financials={financials}
+            stock={stock}
+            staff={staff}
+            rangeLabel={rangeLabel}
+            canBilling={canBilling}
+            isSuperAdmin={isSuperAdmin}
           />
         </PageBody>
       </PageShell>

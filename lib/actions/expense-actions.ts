@@ -22,6 +22,10 @@ interface ListExpensesOpts {
   status?: ExpenseStatus;
   paymentStatus?: PaymentStatus;
   vendorId?: string;
+  /** Inclusive lower bound on `expenseDate` (yyyy-MM-dd). */
+  startDate?: string;
+  /** Inclusive upper bound on `expenseDate` (yyyy-MM-dd). */
+  endDate?: string;
   page?: number;
   size?: number;
   sortBy?: string;
@@ -36,6 +40,11 @@ export async function listExpenses(
     if (opts.status) params.set("status", opts.status);
     if (opts.paymentStatus) params.set("paymentStatus", opts.paymentStatus);
     if (opts.vendorId) params.set("vendorId", opts.vendorId);
+    // The Accounting Service filters on expenseDate (the document date the
+    // list renders), not createdAt — a bill back-dated to last month lands in
+    // the month it belongs to.
+    if (opts.startDate) params.set("startDate", opts.startDate);
+    if (opts.endDate) params.set("endDate", opts.endDate);
     params.set("page", String(opts.page ?? 0));
     params.set("size", String(opts.size ?? 20));
     params.set("sortBy", opts.sortBy ?? "createdAt");

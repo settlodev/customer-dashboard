@@ -12,6 +12,7 @@ import {
   DateRangeFilter,
   LocationHealthRow,
   LocationLifecycleSnapshot,
+  LocationStaffRow,
 } from "@/types/admin/business-intel";
 
 function reportsClient() {
@@ -126,6 +127,27 @@ export async function getLocationHealthByBusiness(
 ): Promise<LocationHealthRow[]> {
   const data = await reportsClient().get<LocationHealthRow[]>(
     `${LOCATION_ANALYTICS_PREFIX}/health/by-business/${businessId}`,
+  );
+  return parseStringify(data);
+}
+
+/**
+ * Who sold what at this location over the window. The leaderboard endpoint is
+ * business-scoped with an optional locationId — staff are attributed per order,
+ * and an order belongs to a location, so the location cut is the meaningful one.
+ */
+export async function getLocationStaffLeaderboard(
+  businessId: string,
+  locationId: string,
+  startDate: string,
+  endDate: string,
+): Promise<LocationStaffRow[]> {
+  const qs = new URLSearchParams();
+  qs.set("locationId", locationId);
+  qs.set("startDate", startDate);
+  qs.set("endDate", endDate);
+  const data = await reportsClient().get<LocationStaffRow[]>(
+    `${ANALYTICS_PREFIX}/${businessId}/staff-leaderboard?${qs.toString()}`,
   );
   return parseStringify(data);
 }

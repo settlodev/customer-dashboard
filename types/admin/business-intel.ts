@@ -118,6 +118,24 @@ export interface BusinessLifecycleSnapshot {
 }
 
 /**
+ * One staff member's sales at a location over a window, from
+ * `/business/{id}/staff-leaderboard?locationId=`.
+ *
+ * `staff_id` is `fact_orders.started_by` — a staff id, not the JWT subject id.
+ */
+export interface LocationStaffRow {
+  staff_id: string;
+  staff_name: string | null;
+  total_orders: number | null;
+  total_revenue: number | null;
+  total_profit: number | null;
+  avg_order_value: number | null;
+  avg_items_per_order: number | null;
+  refund_count: number | null;
+  refund_rate: number | null;
+}
+
+/**
  * One location's health score inside a business, from
  * `ml_location_health_score` (V081). The per-location cut of
  * {@link BusinessHealthSnapshot} — same model, same weights, so the two grains

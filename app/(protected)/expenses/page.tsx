@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { format } from "date-fns";
 import { CalendarCheck, CircleDollarSign, Hourglass, Plus, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,8 +14,10 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
+import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { columns } from "@/components/tables/expense/columns";
 import { listExpenses } from "@/lib/actions/expense-actions";
+import { thisMonthRange } from "@/lib/date-range";
 import {
   EXPENSE_STATUS_LABELS,
   type ExpenseStatus,
@@ -30,6 +33,8 @@ interface SearchParams {
   limit?: string;
   status?: ExpenseStatus;
   paymentStatus?: PaymentStatus;
+  from?: string;
+  to?: string;
 }
 
 export default async function ExpensesPage({
@@ -45,11 +50,21 @@ export default async function ExpensesPage({
   const apiPage = pageParam - 1;
   const size = Number(params.limit) || DEFAULT_PAGE_SIZE;
 
+  // Default to the calendar month so the operator lands on "this month's
+  // bills" without picking a range, and the first load stays bounded instead
+  // of pulling every expense the business has ever recorded. The filter
+  // writes the chosen range back as ?from=&to= (and drops ?page).
+  const defaultRange = thisMonthRange();
+  const from = params.from ?? defaultRange.from;
+  const to = params.to ?? defaultRange.to;
+
   const response = await listExpenses({
     page: apiPage,
     size,
     status: params.status,
     paymentStatus: params.paymentStatus,
+    startDate: from,
+    endDate: to,
   });
 
   const data = response.content ?? [];
@@ -66,12 +81,24 @@ export default async function ExpensesPage({
   const fmt = (n: number) =>
     n.toLocaleString(undefined, { maximumFractionDigits: 0 });
 
+  // The default month isn't a "user filter" — a business with no expenses at
+  // all should land on the create-your-first empty state, not on "nothing
+  // matched". An explicit range (or a status cut) does count.
+  const isDefaultRange = !params.from && !params.to;
+  const hasFilters =
+    !!params.status || !!params.paymentStatus || !isDefaultRange;
+
+  const rangeLabel =
+    from === to
+      ? `Bills dated ${format(new Date(from), "MMM d, yyyy")}`
+      : `Bills dated ${format(new Date(from), "MMM d")} – ${format(new Date(to), "MMM d, yyyy")}`;
+
   return (
     <PageShell>
       <PageBreadcrumbs items={[{ title: "Expenses" }]} />
       <PageHeader
         title="Expenses"
-        subtitle="Track vendor bills through draft → approval → payment."
+        subtitle={rangeLabel}
         actions={
           <Button asChild size="sm">
             <Link href="/expenses/new">
@@ -82,7 +109,14 @@ export default async function ExpensesPage({
         }
       />
       <PageBody>
-        {total > 0 || params.status ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <OrdersDateFilter from={from} to={to} />
+          <span className="text-xs text-gray-500">
+            Showing {from} → {to}
+          </span>
+        </div>
+
+        {total > 0 ? (
           <>
             <KpiStrip cols={4}>
               <KpiCard
@@ -135,7 +169,10 @@ export default async function ExpensesPage({
             </Card>
           </>
         ) : (
-          <NoItems itemName="expenses" newItemUrl="/expenses/new" />
+          <NoItems
+            itemName="expenses"
+            newItemUrl={hasFilters ? undefined : "/expenses/new"}
+          />
         )}
       </PageBody>
     </PageShell>
