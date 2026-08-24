@@ -9,6 +9,7 @@ import type { ApiResponse, FormResponse } from "@/types/types";
 import type {
   DaySessionExpensesSummary,
   Expense,
+  ExpenseListSummary,
   ExpenseStatus,
   ExpenseTimelineEvent,
   PaymentStatus,
@@ -26,6 +27,12 @@ interface ListExpensesOpts {
   startDate?: string;
   /** Inclusive upper bound on `expenseDate` (yyyy-MM-dd). */
   endDate?: string;
+  /**
+   * Free-text contains-match over expense number, description and reference —
+   * the three fields the list renders. Matched case-insensitively; the service
+   * escapes LIKE metacharacters, so `50%` searches for a literal "50%".
+   */
+  search?: string;
   page?: number;
   size?: number;
   sortBy?: string;
@@ -45,6 +52,7 @@ export async function listExpenses(
     // the month it belongs to.
     if (opts.startDate) params.set("startDate", opts.startDate);
     if (opts.endDate) params.set("endDate", opts.endDate);
+    if (opts.search) params.set("search", opts.search);
     params.set("page", String(opts.page ?? 0));
     params.set("size", String(opts.size ?? 20));
     params.set("sortBy", opts.sortBy ?? "createdAt");
@@ -65,6 +73,50 @@ export async function listExpenses(
       pageable: { pageNumber: 0, pageSize: 20 },
       last: true,
     } as unknown as ApiResponse<Expense>;
+  }
+}
+
+/**
+ * Whole-window totals for the list's KPI strip.
+ *
+ * <p>Takes the same filters as {@link listExpenses} so the strip and the table
+ * describe the same slice. Kept as a separate round trip rather than folded
+ * into the page response: it's one aggregate query, and the list stays
+ * cacheable/pageable on its own.
+ *
+ * Returns zeros on failure — a summary that can't load shouldn't take the
+ * whole list page down with it.
+ */
+export async function getExpensesSummary(
+  opts: Omit<ListExpensesOpts, "page" | "size" | "sortBy" | "sortDirection"> = {},
+): Promise<ExpenseListSummary> {
+  try {
+    const params = new URLSearchParams();
+    if (opts.status) params.set("status", opts.status);
+    if (opts.paymentStatus) params.set("paymentStatus", opts.paymentStatus);
+    if (opts.vendorId) params.set("vendorId", opts.vendorId);
+    if (opts.startDate) params.set("startDate", opts.startDate);
+    if (opts.endDate) params.set("endDate", opts.endDate);
+    if (opts.search) params.set("search", opts.search);
+
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(
+      accountingUrl(`/api/v1/expenses/summary?${params.toString()}`),
+    );
+    return parseStringify(data);
+  } catch (error) {
+    rethrowIfBoundary(error);
+    console.error("getExpensesSummary failed", error);
+    return {
+      count: 0,
+      totalAmount: 0,
+      paidAmount: 0,
+      creditedAmount: 0,
+      outstandingAmount: 0,
+      pendingCount: 0,
+      approvedCount: 0,
+      currencyCode: null,
+    };
   }
 }
 
