@@ -199,153 +199,238 @@ export function AccountDetailView({
             </div>
           )}
 
-          {/* ── KPI strip ──────────────────────────────────────── */}
-          <KpiStrip cols={6}>
-            <KCell label="Businesses" value={String(account.businessCount)} />
-            <KCell
-              label="Billable units"
-              value={String(insights.billing.billableUnits)}
-              sub={`${insights.billing.activeSubscriptions} active`}
-            />
-            <KCell
-              label="MRR"
-              cur={insights.billing.mrr.currency}
-              value={insights.billing.mrr.value}
-              small
-            />
-            <KCell
-              label="GMV processed"
-              cur={kpis.gmv.currency}
-              value={kpis.gmv.value}
-              sub={kpis.gmv.note}
-              small
-            />
-            <KCell
-              label="Open trials"
-              value={String(insights.billing.openTrials)}
-              small
-            />
-            <KCell label="Account age" value={age.value} sub={age.note} small />
-          </KpiStrip>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+            {/* ── Main column ──────────────────────────────────── */}
+            <div className="min-w-0 space-y-4">
+              {/* ── KPI strip ────────────────────────────────── */}
+              <KpiStrip cols={6}>
+                <KCell
+                  label="Businesses"
+                  value={String(account.businessCount)}
+                />
+                <KCell
+                  label="Billable units"
+                  value={String(insights.billing.billableUnits)}
+                  sub={`${insights.billing.activeSubscriptions} active`}
+                />
+                <KCell
+                  label="MRR"
+                  cur={insights.billing.mrr.currency}
+                  value={insights.billing.mrr.value}
+                  small
+                />
+                <KCell
+                  label="GMV processed"
+                  cur={kpis.gmv.currency}
+                  value={kpis.gmv.value}
+                  sub={kpis.gmv.note}
+                  small
+                />
+                <KCell
+                  label="Open trials"
+                  value={String(insights.billing.openTrials)}
+                  small
+                />
+                <KCell
+                  label="Account age"
+                  value={age.value}
+                  sub={age.note}
+                  small
+                />
+              </KpiStrip>
 
-          {/* ── Ownership row ──────────────────────────────────── */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <AccountStaffCard
-              accountId={account.id}
-              kind="sales"
-              title="Sales person"
-              staff={account.salesPerson}
-              canEdit={canAssignStaff}
-            />
-            <AccountStaffCard
-              accountId={account.id}
-              kind="support"
-              title="Support staff"
-              staff={account.supportStaff}
-              canEdit={canAssignStaff}
-            />
-            <LifecycleCard lifecycle={insights.lifecycle} />
-          </div>
+              {/* ── Ownership row ────────────────────────────── */}
+              <div className="grid gap-4 md:grid-cols-3">
+                <AccountStaffCard
+                  accountId={account.id}
+                  kind="sales"
+                  title="Sales person"
+                  staff={account.salesPerson}
+                  canEdit={canAssignStaff}
+                />
+                <AccountStaffCard
+                  accountId={account.id}
+                  kind="support"
+                  title="Support staff"
+                  staff={account.supportStaff}
+                  canEdit={canAssignStaff}
+                />
+                <LifecycleCard lifecycle={insights.lifecycle} />
+              </div>
 
-          {/* ── Businesses at a glance ─────────────────────────── */}
-          <BusinessGlanceCard
-            businesses={insights.businesses}
-            structure={structure}
-            stub={stub}
-          />
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <SectionCard title="Engagement & health" stub={stub}>
-              <DefList>
-                <DefRow
-                  label="Onboarding"
-                  icon={
-                    <DefIcon tone="pos">
-                      <MonitorCheck className="h-3.5 w-3.5" />
-                    </DefIcon>
-                  }
-                  value={insights.engagement.onboarding.value}
-                  tone={insights.engagement.onboarding.tone}
-                />
-                <DefRow
-                  label="Last active"
-                  icon={
-                    <DefIcon tone="blue">
-                      <Clock className="h-3.5 w-3.5" />
-                    </DefIcon>
-                  }
-                  value={insights.engagement.lastActive}
-                />
-                <DefRow
-                  label="First sale"
-                  icon={
-                    <DefIcon tone="warn">
-                      <TrendingUp className="h-3.5 w-3.5" />
-                    </DefIcon>
-                  }
-                  value={insights.engagement.firstSale.value}
-                  tone={insights.engagement.firstSale.tone}
-                />
-                <DefRow
-                  label="Active terminals"
-                  icon={
-                    <DefIcon tone="neutral">
-                      <MonitorCheck className="h-3.5 w-3.5" />
-                    </DefIcon>
-                  }
-                  value={insights.engagement.terminals}
-                />
-                <DefRow
-                  label="Staff users"
-                  icon={
-                    <DefIcon tone="neutral">
-                      <User className="h-3.5 w-3.5" />
-                    </DefIcon>
-                  }
-                  value={insights.engagement.staffUsers}
-                />
-                <DefRow
-                  label="Health score"
-                  value={
-                    <>
-                      {insights.engagement.healthScore.value}{" "}
-                      <span className="font-normal text-muted-2">
-                        / {insights.engagement.healthScore.max} ·{" "}
-                        {insights.engagement.healthScore.note}
-                      </span>
-                    </>
-                  }
-                />
-              </DefList>
-            </SectionCard>
-
-            <SectionCard title="Support & success" stub={stub}>
-              <DefList>
-                <DefRow
-                  label="Open tickets"
-                  value={insights.support.openTickets}
-                />
-                <DefRow
-                  label="Last contact"
-                  value={insights.support.lastContact.value}
-                  tone={insights.support.lastContact.tone}
-                />
-                <DefRow
-                  label="CSAT"
-                  value={insights.support.csat.value}
-                  tone={insights.support.csat.tone}
-                />
-                <DefRow
-                  label="Welcome call"
-                  value={insights.support.welcomeCall.value}
-                  tone={insights.support.welcomeCall.tone}
-                />
-              </DefList>
-              <AccountNotesCard
-                accountId={account.id}
-                notes={insights.support.notes}
+              {/* ── Businesses at a glance ───────────────────── */}
+              <BusinessGlanceCard
+                businesses={insights.businesses}
+                structure={structure}
+                stub={stub}
               />
-            </SectionCard>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <SectionCard title="Engagement & health" stub={stub}>
+                  <DefList>
+                    <DefRow
+                      label="Onboarding"
+                      icon={
+                        <DefIcon tone="pos">
+                          <MonitorCheck className="h-3.5 w-3.5" />
+                        </DefIcon>
+                      }
+                      value={insights.engagement.onboarding.value}
+                      tone={insights.engagement.onboarding.tone}
+                    />
+                    <DefRow
+                      label="Last active"
+                      icon={
+                        <DefIcon tone="blue">
+                          <Clock className="h-3.5 w-3.5" />
+                        </DefIcon>
+                      }
+                      value={insights.engagement.lastActive}
+                    />
+                    <DefRow
+                      label="First sale"
+                      icon={
+                        <DefIcon tone="warn">
+                          <TrendingUp className="h-3.5 w-3.5" />
+                        </DefIcon>
+                      }
+                      value={insights.engagement.firstSale.value}
+                      tone={insights.engagement.firstSale.tone}
+                    />
+                    <DefRow
+                      label="Active terminals"
+                      icon={
+                        <DefIcon tone="neutral">
+                          <MonitorCheck className="h-3.5 w-3.5" />
+                        </DefIcon>
+                      }
+                      value={insights.engagement.terminals}
+                    />
+                    <DefRow
+                      label="Staff users"
+                      icon={
+                        <DefIcon tone="neutral">
+                          <User className="h-3.5 w-3.5" />
+                        </DefIcon>
+                      }
+                      value={insights.engagement.staffUsers}
+                    />
+                    <DefRow
+                      label="Health score"
+                      value={
+                        <>
+                          {insights.engagement.healthScore.value}{" "}
+                          <span className="font-normal text-muted-2">
+                            / {insights.engagement.healthScore.max} ·{" "}
+                            {insights.engagement.healthScore.note}
+                          </span>
+                        </>
+                      }
+                    />
+                  </DefList>
+                </SectionCard>
+
+                <SectionCard title="Support & success" stub={stub}>
+                  <DefList>
+                    <DefRow
+                      label="Open tickets"
+                      value={insights.support.openTickets}
+                    />
+                    <DefRow
+                      label="Last contact"
+                      value={insights.support.lastContact.value}
+                      tone={insights.support.lastContact.tone}
+                    />
+                    <DefRow
+                      label="CSAT"
+                      value={insights.support.csat.value}
+                      tone={insights.support.csat.tone}
+                    />
+                    <DefRow
+                      label="Welcome call"
+                      value={insights.support.welcomeCall.value}
+                      tone={insights.support.welcomeCall.tone}
+                    />
+                  </DefList>
+                  <AccountNotesCard
+                    accountId={account.id}
+                    notes={insights.support.notes}
+                  />
+                </SectionCard>
+              </div>
+            </div>
+
+            {/* ── Sidebar: profile, geography, timestamps ─────── */}
+            <div className="space-y-4">
+              <SectionCard title="Profile & geography">
+                <p className="mb-3.5 text-[13px] font-semibold text-ink">
+                  Profile
+                </p>
+                <div className="grid grid-cols-1 gap-x-7 gap-y-4">
+                  <Field label="First name" value={account.firstName} />
+                  <Field label="Last name" value={account.lastName} />
+                  <Field label="Phone" value={account.phoneNumber} mono />
+                  <Field label="Email" value={account.email} mono />
+                  <Field
+                    label="Account #"
+                    value={account.accountNumber}
+                    mono
+                  />
+                  <Field label="Whitelabel" value={whitelabel} mono />
+                  <Field label="Identifier" value={account.identifier} mono />
+                  <Field label="Slug" value={account.slug} mono />
+                </div>
+
+                <p className="mb-3.5 mt-6 text-[13px] font-semibold text-ink">
+                  Geography
+                </p>
+                <div className="grid grid-cols-1 gap-x-7 gap-y-4">
+                  <Field
+                    label="Country"
+                    value={account.countryName ?? account.countryCode}
+                  />
+                  <Field label="Region" value={account.region} />
+                  <Field label="District" value={account.district} />
+                  <Field label="Ward" value={account.ward} />
+                  <Field label="Area code" value={account.areaCode} mono />
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Timestamps">
+                <DefList>
+                  <DefRow
+                    label="Created"
+                    value={formatDateTime(account.createdAt)}
+                  />
+                  <DefRow
+                    label="Email verified"
+                    value={account.emailVerified ? "Yes" : "No"}
+                    tone={account.emailVerified ? "pos" : "warn"}
+                  />
+                  <DefRow
+                    label="Phone verified"
+                    value={
+                      account.phoneNumber
+                        ? account.phoneVerified
+                          ? "Yes"
+                          : "No"
+                        : "—"
+                    }
+                    tone={
+                      account.phoneVerified
+                        ? "pos"
+                        : account.phoneNumber
+                          ? "warn"
+                          : undefined
+                    }
+                  />
+                  <DefRow
+                    label="Updated"
+                    value={formatDateTime(account.updatedAt)}
+                  />
+                </DefList>
+              </SectionCard>
+            </div>
           </div>
         </TabsContent>
 
@@ -367,69 +452,6 @@ export function AccountDetailView({
                 dotColor: t.dotColor,
               }))}
             />
-          </SectionCard>
-
-          <SectionCard title="Profile & geography">
-            <p className="mb-3.5 text-[13px] font-semibold text-ink">Profile</p>
-            <div className="grid grid-cols-1 gap-x-7 gap-y-4 sm:grid-cols-2">
-              <Field label="First name" value={account.firstName} />
-              <Field label="Last name" value={account.lastName} />
-              <Field label="Phone" value={account.phoneNumber} mono />
-              <Field label="Email" value={account.email} mono />
-              <Field label="Account #" value={account.accountNumber} mono />
-              <Field label="Whitelabel" value={whitelabel} mono />
-              <Field label="Identifier" value={account.identifier} mono />
-              <Field label="Slug" value={account.slug} mono />
-            </div>
-
-            <p className="mb-3.5 mt-6 text-[13px] font-semibold text-ink">
-              Geography
-            </p>
-            <div className="grid grid-cols-1 gap-x-7 gap-y-4 sm:grid-cols-2">
-              <Field
-                label="Country"
-                value={account.countryName ?? account.countryCode}
-              />
-              <Field label="Region" value={account.region} />
-              <Field label="District" value={account.district} />
-              <Field label="Ward" value={account.ward} />
-              <Field label="Area code" value={account.areaCode} mono />
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Timestamps">
-            <DefList>
-              <DefRow
-                label="Created"
-                value={formatDateTime(account.createdAt)}
-              />
-              <DefRow
-                label="Email verified"
-                value={account.emailVerified ? "Yes" : "No"}
-                tone={account.emailVerified ? "pos" : "warn"}
-              />
-              <DefRow
-                label="Phone verified"
-                value={
-                  account.phoneNumber
-                    ? account.phoneVerified
-                      ? "Yes"
-                      : "No"
-                    : "—"
-                }
-                tone={
-                  account.phoneVerified
-                    ? "pos"
-                    : account.phoneNumber
-                      ? "warn"
-                      : undefined
-                }
-              />
-              <DefRow
-                label="Updated"
-                value={formatDateTime(account.updatedAt)}
-              />
-            </DefList>
           </SectionCard>
         </TabsContent>
       </Tabs>
