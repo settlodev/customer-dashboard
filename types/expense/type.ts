@@ -47,6 +47,25 @@ export interface Expense {
   updatedAt: string;
 }
 
+/**
+ * Whole-window totals behind the expenses list KPI strip
+ * (GET /api/v1/expenses/summary). Computed over the same filters the list is
+ * showing, so the headline figures describe the visible slice rather than
+ * whichever rows landed on the current page.
+ */
+export interface ExpenseListSummary {
+  count: number;
+  totalAmount: number;
+  paidAmount: number;
+  creditedAmount: number;
+  /** total − paid − credited: the same formula as a row's `balanceDue`. */
+  outstandingAmount: number;
+  pendingCount: number;
+  approvedCount: number;
+  /** Null when the window mixes currencies — the totals then carry no unit. */
+  currencyCode?: string | null;
+}
+
 export interface ExpenseTimelineEvent {
   id: string;
   expenseId: string;
