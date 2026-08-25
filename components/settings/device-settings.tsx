@@ -699,6 +699,16 @@ function DeviceRow({
               >
                 {name}
               </button>
+              {/* Custom name replaces the device name as the title, but venues
+                  with several identical-model tablets need BOTH to tell units
+                  apart — so keep the hardware name visible beside it. */}
+              {device.customName &&
+                (device.name || device.model) &&
+                (device.name || device.model) !== device.customName && (
+                  <span className="truncate text-sm text-muted-foreground">
+                    {device.name || device.model}
+                  </span>
+                )}
               {status && (
                 <Badge
                   variant="outline"
