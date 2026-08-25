@@ -6,7 +6,7 @@ import {
   PageHeader,
   PageShell,
 } from "@/components/layouts/page-shell";
-import { requireReportsReadAll } from "@/lib/auth-utils";
+import { requireReportAccess } from "@/lib/auth-utils";
 import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { ExpenseReportExportButton } from "@/components/reports/expenses/expense-report-export-button";
 import {
@@ -29,7 +29,7 @@ type Params = {
 
 export default async function ExpenseReportPage({ searchParams }: Params) {
   const resolved = await searchParams;
-  await requireReportsReadAll();
+  await requireReportAccess("/report/expense");
 
   const tab: ExpenseTab = TABS.includes(resolved.tab as ExpenseTab)
     ? (resolved.tab as ExpenseTab)

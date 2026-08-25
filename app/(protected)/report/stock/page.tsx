@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { PackageOpen } from "lucide-react";
 
-import { requireReportsReadAll } from "@/lib/auth-utils";
+import { requireReportAccess } from "@/lib/auth-utils";
 import {
   PageBody,
   PageBreadcrumbs,
@@ -41,7 +41,7 @@ type Params = {
  */
 export default async function StockReportPage({ searchParams }: Params) {
   const resolved = await searchParams;
-  await requireReportsReadAll();
+  await requireReportAccess("/report/stock");
 
   const now = new Date();
   const today = format(now, "yyyy-MM-dd");

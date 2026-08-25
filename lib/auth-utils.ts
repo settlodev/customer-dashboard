@@ -85,7 +85,8 @@ import {
   extractSubscriptionStatus,
   isAccessTokenExpired,
 } from "@/lib/jwt-utils";
-import { hasReportsReadAll } from "@/lib/permissions/me";
+import { hasAnyPermissionOf } from "@/lib/permissions/me";
+import { reportPagePermissions } from "@/lib/reports-access";
 
 function getCookieOptions() {
   const isProduction = process.env.NODE_ENV === "production";
@@ -480,12 +481,18 @@ export const clearPendingVerification = async () => {
 };
 
 /**
- * Server guard for a location-wide report page: redirects a user without
- * `reports:read_all` back to /dashboard (they must not land on an all-staff
- * report). Call as the first statement of each location-wide report page.
+ * Server guard for a report page: redirects a user who holds neither
+ * `dashboard_reports:read_all` nor the page's own per-report key (nor, for
+ * Sold items, `dashboard_reports:read_own`) back to /dashboard. Pass the
+ * page's route (e.g. "/report/sales") — the permitted key set comes from
+ * `reportPagePermissions`, the same source the sidebar tags use, so the nav
+ * and the guard can never disagree. The POS-only `reports:read_own` /
+ * `reports:read_all` keys deliberately do not pass. Fails open when /me is
+ * down (matches the nav's fail-open). Call as the first statement of each
+ * report page.
  */
-export const requireReportsReadAll = async (): Promise<void> => {
-  if (!(await hasReportsReadAll())) {
+export const requireReportAccess = async (link: string): Promise<void> => {
+  if (!(await hasAnyPermissionOf(reportPagePermissions(link)))) {
     redirect("/dashboard");
   }
 };

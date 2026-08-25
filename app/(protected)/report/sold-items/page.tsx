@@ -26,6 +26,7 @@ import { getLocationSettings } from "@/lib/actions/location-settings-actions";
 import { listSoldItems } from "@/lib/actions/product-actions";
 import { fetchAllTables } from "@/lib/actions/space-actions";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
+import { requireReportAccess } from "@/lib/auth-utils";
 import { rethrowIfBoundary } from "@/lib/list-fallback";
 import {
   type SoldItemLine,
@@ -81,6 +82,7 @@ const matchesSearch = (
 };
 
 export default async function Page({ searchParams }: Params) {
+  await requireReportAccess("/report/sold-items");
   const resolved = await searchParams;
   const q = resolved.search ?? "";
   const page = Number(resolved.page) || 1;

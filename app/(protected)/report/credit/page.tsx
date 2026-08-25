@@ -6,7 +6,7 @@ import {
   PageHeader,
   PageShell,
 } from "@/components/layouts/page-shell";
-import { requireReportsReadAll } from "@/lib/auth-utils";
+import { requireReportAccess } from "@/lib/auth-utils";
 import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,7 +31,7 @@ const fmt = (v: number) =>
 
 export default async function CreditReportPage({ searchParams }: Params) {
   const resolved = await searchParams;
-  await requireReportsReadAll();
+  await requireReportAccess("/report/credit");
 
   const today = format(new Date(), "yyyy-MM-dd");
   const thirtyDaysAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");

@@ -1,6 +1,6 @@
 import { endOfMonth, format, startOfMonth } from "date-fns";
 import { Ban, CircleDollarSign, ListX } from "lucide-react";
-import { requireReportsReadAll } from "@/lib/auth-utils";
+import { requireReportAccess } from "@/lib/auth-utils";
 
 import {
   PageBody,
@@ -46,7 +46,7 @@ const formatMoney = (value: number) =>
 
 export default async function Page({ searchParams }: Params) {
   const resolved = await searchParams;
-  await requireReportsReadAll();
+  await requireReportAccess("/report/voids");
   const q = resolved.search ?? "";
   const page = Number(resolved.page) || 1;
   const limit = Number(resolved.limit) || 10;

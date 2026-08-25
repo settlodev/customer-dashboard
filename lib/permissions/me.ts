@@ -1,6 +1,7 @@
 import { cache } from "react";
 
 import { getMyPermissions } from "@/lib/actions/permissions-actions";
+import { DASHBOARD_REPORTS_READ_ALL } from "@/lib/reports-access";
 
 /**
  * Per-request memoized `/me` permission keys (`GET /api/v1/permissions/me`) —
@@ -23,13 +24,24 @@ export const getMyPermissionsCached = cache(
 );
 
 /**
- * Whether the caller holds `reports:read_all` (location-wide reports), resolved
- * from `/me`. Fails OPEN when `/me` is unavailable — matches the prior
- * cookie-derived default and avoids zeroing an owner's reports on a transient
- * blip (an owner short a permission is the bug we must not reintroduce).
+ * Whether the caller holds the dashboard all-reports tier
+ * (`dashboard_reports:read_all`), resolved from `/me`. Gates the report-backed
+ * cards on the home dashboard. Fails OPEN (via hasAnyPermissionOf) when `/me`
+ * is unavailable.
  */
 export const hasReportsReadAll = cache(async (): Promise<boolean> => {
+  return hasAnyPermissionOf([DASHBOARD_REPORTS_READ_ALL]);
+});
+
+/**
+ * Whether the caller holds ANY of the given permission keys, resolved from
+ * `/me`. Fails OPEN when `/me` is unavailable — matches the prior
+ * cookie-derived default and avoids zeroing an owner's reports on a transient
+ * blip (an owner short a permission is the bug we must not reintroduce). The
+ * backend gates remain the real enforcement.
+ */
+export const hasAnyPermissionOf = async (keys: string[]): Promise<boolean> => {
   const perms = await getMyPermissionsCached();
   if (perms === null) return true;
-  return perms.includes("reports:read_all");
-});
+  return keys.some((key) => perms.includes(key));
+};

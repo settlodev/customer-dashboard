@@ -17,7 +17,7 @@ import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { hasPackagingStock } from "@/lib/actions/stock-actions";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { getAuthToken } from "@/lib/auth-utils";
-import { getMyPermissionsCached, hasReportsReadAll } from "@/lib/permissions/me";
+import { getMyPermissionsCached } from "@/lib/permissions/me";
 import { getMyDisplayIdentity } from "@/lib/identity/me-profile";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -244,9 +244,9 @@ export default async function RootLayout({
   const permissionsUnavailable = !!authToken?.accessToken && mePermissions === null;
   const permissions = mePermissions ?? [];
 
-  // Location-wide reports gate — resolved from /me (shares the call above),
-  // not the retired JWT permissions claim.
-  const reportsReadAll = await hasReportsReadAll();
+  // Report nav links are permission-tagged per item (dashboard_reports:* via
+  // reportNavItem in types/menu_items.ts) and filtered by the sidebar's
+  // fail-open canSee — no separate reports gate is passed from here.
 
   // ── Active subscription: full dashboard layout ────────────────────
   // The redesigned shell drops the topbar entirely. The floating
@@ -268,7 +268,6 @@ export default async function RootLayout({
                 <DashboardSidebarShell
                   data={businessData}
                   user={user}
-                  reportsReadAll={reportsReadAll}
                   hasPackaging={hasPackaging}
                 />
 
