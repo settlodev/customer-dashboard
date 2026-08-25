@@ -859,26 +859,34 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                         <FormField
                           control={form.control}
                           name={`items.${index}.unitCost`}
-                          render={({ field: f }) => (
-                            <FormItem className="space-y-[7px]">
-                              <FieldLabel required>Unit cost</FieldLabel>
-                              <FormControl>
-                                <ControlBox>
-                                  <NumericFormat
-                                    className={cn(controlInputClass, "tabular-nums")}
-                                    value={f.value}
-                                    onValueChange={(v) =>
-                                      f.onChange(v.value ? Number(v.value) : 0)
-                                    }
-                                    thousandSeparator
-                                    placeholder="0"
-                                    disabled={isPending}
-                                  />
-                                </ControlBox>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
+                          render={({ field: f }) => {
+                            const unitMeta = variantUnitMetaMap[field.id];
+                            return (
+                              <FormItem className="space-y-[7px]">
+                                <FieldLabel required>Unit cost</FieldLabel>
+                                <FormControl>
+                                  <ControlBox>
+                                    <NumericFormat
+                                      className={cn(controlInputClass, "tabular-nums")}
+                                      value={f.value}
+                                      onValueChange={(v) =>
+                                        f.onChange(v.value ? Number(v.value) : 0)
+                                      }
+                                      thousandSeparator
+                                      placeholder="0"
+                                      disabled={isPending}
+                                    />
+                                  </ControlBox>
+                                </FormControl>
+                                <FieldHint>
+                                  {unitMeta?.unitName
+                                    ? `Cost per ${unitMeta.unitName}`
+                                    : "Pick a stock item to see its unit"}
+                                </FieldHint>
+                                <FormMessage />
+                              </FormItem>
+                            );
+                          }}
                         />
                         <FormField
                           control={form.control}
