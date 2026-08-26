@@ -38,7 +38,6 @@ import {
   generateItemInvoice,
   listPackages,
 } from "@/lib/actions/admin/billing";
-import { GenerateItemInvoiceSchema } from "@/types/admin/schemas";
 import {
   GenerateItemInvoiceRequest,
   PackageResponse,
@@ -53,11 +52,31 @@ interface GenerateItemInvoiceDialogProps {
   onCreated: () => void;
 }
 
-// The form models "keep current package" as an empty string (a Select can't
-// carry `null`); mapped to `null` in onSubmit before it reaches the schema/API.
-const KEEP_CURRENT = "";
+// Radix's <Select.Item> forbids an empty-string value (it reserves "" to mean
+// "cleared, show placeholder"), so "keep current package" needs a real
+// sentinel — mapped back to `null` in onSubmit before it reaches the API.
+const KEEP_CURRENT = "__keep_current_package__";
 
-type FormValues = z.infer<typeof GenerateItemInvoiceSchema>;
+// The form's own shape, distinct from GenerateItemInvoiceRequest: a Select
+// can't carry `null`, so packageId here is always a non-empty string (the
+// sentinel or a real package id) until onSubmit translates it.
+const ItemInvoiceFormSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        subscriptionItemId: z.string().uuid("Pick a subscription item"),
+        packageId: z.string().min(1),
+        months: z
+          .number()
+          .int("Months must be a whole number")
+          .min(1, "Minimum 1 month")
+          .max(36, "Maximum 36 months"),
+      }),
+    )
+    .min(1, "Add at least one item"),
+});
+
+type FormValues = z.infer<typeof ItemInvoiceFormSchema>;
 
 function formatMoney(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
@@ -96,7 +115,7 @@ export function GenerateItemInvoiceDialog({
   );
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(GenerateItemInvoiceSchema),
+    resolver: zodResolver(ItemInvoiceFormSchema),
     defaultValues: { items: [emptyRow()] },
   });
 
@@ -138,7 +157,7 @@ export function GenerateItemInvoiceDialog({
     const body: GenerateItemInvoiceRequest = {
       items: values.items.map((row) => ({
         subscriptionItemId: row.subscriptionItemId,
-        packageId: row.packageId || null,
+        packageId: row.packageId === KEEP_CURRENT ? null : row.packageId,
         months: row.months,
       })),
     };
@@ -261,7 +280,7 @@ export function GenerateItemInvoiceDialog({
                             <FormLabel>Package</FormLabel>
                             <Select
                               onValueChange={f.onChange}
-                              value={f.value ?? KEEP_CURRENT}
+                              value={f.value}
                               disabled={isPending || loadingPackages || !packages || !rowItem}
                             >
                               <FormControl>
