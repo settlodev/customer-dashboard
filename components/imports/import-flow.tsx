@@ -84,6 +84,7 @@ export function ImportFlow({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [commitError, setCommitError] = useState<string | null>(null);
   const [commitPending, setCommitPending] = useState<string | null>(null);
+  const [commitBlocked, setCommitBlocked] = useState<string | null>(null);
   const [creatingLookups, setCreatingLookups] = useState(false);
 
   const downloadTemplate = useCallback(() => {
@@ -139,10 +140,22 @@ export function ImportFlow({
     setCommitting(true);
     setCommitError(null);
     setCommitPending(null);
+    setCommitBlocked(null);
     try {
       const list = Array.from(decisions.values());
       const res = await commitImport(type, preview.previewId, list);
       if (!res.ok) {
+        if (res.blocked) {
+          // Whole batch refused on a plan cap — nothing was written, the
+          // preview is still valid. Stay here so the operator can skip rows.
+          setCommitBlocked(res.message);
+          toast({
+            variant: "destructive",
+            title: "Plan limit exceeded",
+            description: "Nothing was imported — see the details above the table.",
+          });
+          return;
+        }
         if (res.pending) {
           // Reached the server but no result came back (gateway timeout /
           // 5xx). The import may have completed — warn instead of inviting a
@@ -391,10 +404,12 @@ export function ImportFlow({
               setDecisions(new Map());
               setCommitError(null);
               setCommitPending(null);
+              setCommitBlocked(null);
             }}
             type={type}
             error={commitError}
             pending={commitPending}
+            blocked={commitBlocked}
             missingLookups={missingLookups}
             creatingLookups={creatingLookups}
             onCreateMissingLookups={onCreateMissingLookups}
@@ -413,6 +428,7 @@ export function ImportFlow({
               setPreviewError(null);
               setCommitError(null);
               setCommitPending(null);
+              setCommitBlocked(null);
             }}
           />
         )}
@@ -695,6 +711,7 @@ function PreviewStep({
   type,
   error,
   pending,
+  blocked,
   missingLookups,
   creatingLookups,
   onCreateMissingLookups,
@@ -714,6 +731,7 @@ function PreviewStep({
   type: ImportType;
   error: string | null;
   pending: string | null;
+  blocked: string | null;
   missingLookups: { categories: string[]; brands: string[] };
   creatingLookups: boolean;
   onCreateMissingLookups: () => void;
@@ -753,6 +771,25 @@ function PreviewStep({
           onApply={applyPreset}
           disabled={committing}
         />
+      )}
+      {blocked && (
+        <Alert tone="danger">
+          <AlertIcon>
+            <AlertTriangle className="h-3.5 w-3.5" />
+          </AlertIcon>
+          <AlertBody>
+            <AlertTitle>Plan limit exceeded — nothing was imported</AlertTitle>
+            <AlertDescription className="space-y-2">
+              {blocked.split("\n\n").map((paragraph, i) => (
+                <p key={i}>{paragraph}</p>
+              ))}
+              <p>
+                Skip rows below (or reduce the file) and press import again —
+                nothing from this attempt was saved.
+              </p>
+            </AlertDescription>
+          </AlertBody>
+        </Alert>
       )}
       {error && (
         <Alert tone="danger">
