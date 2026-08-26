@@ -173,11 +173,13 @@ export async function commitImport(
     // nothing written) — distinct from a per-row validation failure. Checked
     // before the `pending` heuristic below: a 400 never satisfies it anyway,
     // but this also short-circuits before that generic classification runs.
+    // Only `.code` is checked, not `.digest`: the constructor sets
+    // `digest = code` on the very same object, so the two can never
+    // disagree here — `.digest` only matters once an Error has crossed a
+    // Server Component → Client boundary and lost every property but
+    // `message`/`digest`, which hasn't happened yet inside this try/catch.
     const blocked =
-      error instanceof SettloApiError &&
-      (error.code === "BILLING_ERROR" ||
-        // digest is set to the code and survives the server→client boundary.
-        error.digest === "BILLING_ERROR");
+      error instanceof SettloApiError && error.code === "BILLING_ERROR";
     if (blocked) {
       return { ok: false, blocked: true, message };
     }

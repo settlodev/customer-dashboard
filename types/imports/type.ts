@@ -54,7 +54,12 @@ export interface PreviewSummary {
   parentCount: number;
 }
 
-/** One evaluated plan cap — present even when it fits, so the UI can warn on "barely fits". */
+/**
+ * One evaluated plan cap — present even when it fits, so the UI can warn on
+ * "barely fits". Source of truth: {@code co.tz.settlo.inventory.imports.capacity.CapacityCheck}
+ * — the `capacity` package, not the `imports.domain` package this file's
+ * header points to.
+ */
 export interface CapacityCheck {
   limitKey: string;
   /** Merchant-facing noun, e.g. "products", "items held in stock". */
@@ -67,7 +72,12 @@ export interface CapacityCheck {
   exceeded: boolean;
 }
 
-/** Capacity pre-flight verdict. Absent = not evaluated (older backend, billing unreachable). */
+/**
+ * Capacity pre-flight verdict. Absent = not evaluated (older backend,
+ * billing unreachable). Source of truth: {@code co.tz.settlo.inventory.imports.capacity.CapacityAssessment}
+ * — the `capacity` package, not the `imports.domain` package this file's
+ * header points to.
+ */
 export interface CapacityAssessment {
   /** true → the commit WILL be refused as-is. */
   blocked: boolean;

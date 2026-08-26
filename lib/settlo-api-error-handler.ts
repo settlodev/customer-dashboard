@@ -109,6 +109,10 @@ const UI_ERROR_MESSAGES: Record<string, string> = {
     // ("Your invitation to join X hasn't been accepted yet…"), and an entry in
     // this table would replace that context with fixed copy. getUIErrorMessage
     // falls through to the server message for unmapped codes — that's the point.
+    // BILLING_ERROR is deliberately NOT mapped here either: the import
+    // capacity flow (components/imports/import-flow.tsx) renders the
+    // server's multi-paragraph plan-limit copy verbatim. An entry in this
+    // table would silently collapse that copy down to one generic line.
     ACCOUNT_LOCKED: "Your account has been locked due to too many failed login attempts. Please try again in 30 minutes.",
     ACCOUNT_DISABLED: "Your account has been disabled. Please contact support for assistance.",
     ACCOUNT_NOT_VERIFIED: "Your email address has not been verified. Please check your inbox for a verification code.",

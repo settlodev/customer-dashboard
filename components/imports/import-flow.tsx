@@ -11,7 +11,7 @@ import {
   Upload,
   XCircle,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import {
   Alert,
@@ -86,6 +86,11 @@ export function ImportFlow({
   const [commitPending, setCommitPending] = useState<string | null>(null);
   const [commitBlocked, setCommitBlocked] = useState<string | null>(null);
   const [creatingLookups, setCreatingLookups] = useState(false);
+  // Snapshot of the decisions map as seeded right after preview, captured at
+  // preview time rather than re-derived from `defaultDecision` — so
+  // decisionsTouched compares against exactly what onUpload seeded
+  // (action AND targetId), not just the server's default action.
+  const seededDecisionsRef = useRef<Map<number, RowDecision>>(new Map());
 
   const downloadTemplate = useCallback(() => {
     const lines = [templateColumns.join(",")];
@@ -103,6 +108,12 @@ export function ImportFlow({
     if (!file) return;
     setPreviewing(true);
     setPreviewError(null);
+    // A fresh upload starts a fresh commit lifecycle — stale error/pending/
+    // blocked state from a previous preview's commit attempt must not leak
+    // into this one.
+    setCommitError(null);
+    setCommitPending(null);
+    setCommitBlocked(null);
     try {
       const res = await previewImport(type, file);
       if (!res.ok) {
@@ -129,6 +140,7 @@ export function ImportFlow({
         });
       }
       setDecisions(seeded);
+      seededDecisionsRef.current = seeded;
       setStage("preview");
     } finally {
       setPreviewing(false);
@@ -396,6 +408,7 @@ export function ImportFlow({
           <PreviewStep
             preview={preview}
             decisions={decisions}
+            seededDecisions={seededDecisionsRef.current}
             setDecision={setDecision}
             applyPreset={applyPreset}
             applyToGroup={applyToGroup}
@@ -619,7 +632,13 @@ function MissingLookupsAlert({
  * server — this component only lays them out.
  */
 function CapacityAlert({ capacity }: { capacity: CapacityAssessment }) {
-  const nearLimit = capacity.checks.filter(
+  const checks = capacity.checks ?? [];
+  // A count breach (some check over its limit) can be worked around by
+  // skipping rows. A subscription block (blocked with no check over its
+  // limit — inactive/suspended plan) can't; every check comes back within
+  // range but billing still refuses the batch.
+  const countBlock = checks.some((c) => c.exceeded);
+  const nearLimit = checks.filter(
     (c) => !c.exceeded && c.requested > 0 && c.requested > 0.8 * c.headroom,
   );
   if (capacity.blocked) {
@@ -629,17 +648,21 @@ function CapacityAlert({ capacity }: { capacity: CapacityAssessment }) {
           <AlertTriangle className="h-3.5 w-3.5" />
         </AlertIcon>
         <AlertBody>
-          <AlertTitle>Plan limit exceeded</AlertTitle>
+          <AlertTitle>
+            {countBlock ? "Plan limit exceeded" : "Subscription not active"}
+          </AlertTitle>
           <AlertDescription className="space-y-2">
             {(capacity.message ?? "This file exceeds your plan's limits.")
               .split("\n\n")
               .map((paragraph, i) => (
                 <p key={i}>{paragraph}</p>
               ))}
-            <p>
-              You can skip rows below to shrink the import — the limit is
-              re-checked when you press import.
-            </p>
+            {countBlock && (
+              <p>
+                You can skip rows below to shrink the import — the limit is
+                re-checked when you press import.
+              </p>
+            )}
           </AlertDescription>
         </AlertBody>
       </Alert>
@@ -706,6 +729,7 @@ function parseMissingColumns(message: string): string[] {
 function PreviewStep({
   preview,
   decisions,
+  seededDecisions,
   setDecision,
   applyPreset,
   applyToGroup,
@@ -724,6 +748,7 @@ function PreviewStep({
 }: {
   preview: PreviewResponse;
   decisions: Map<number, RowDecision>;
+  seededDecisions: Map<number, RowDecision>;
   setDecision: (rowIndex: number, patch: Partial<RowDecision>) => void;
   applyPreset: (
     preset: "update-existing-create-new" | "skip-existing-create-new",
@@ -746,20 +771,38 @@ function PreviewStep({
     missingLookups.categories.length > 0 || missingLookups.brands.length > 0;
   const groups = useMemo(() => groupRows(preview.rows), [preview.rows]);
   const capacityBlocked = preview.capacity?.blocked === true;
-  // Any operator edit away from the seeded defaults re-enables the button —
-  // the server re-checks capacity at commit, so the club stays server-side.
+  // Whether the block is a count breach (skippable) vs a subscription block
+  // (no check is over its limit — skipping rows can't fix it). Mirrors the
+  // same computation inside CapacityAlert.
+  const capacityCountBlock = (preview.capacity?.checks ?? []).some(
+    (c) => c.exceeded,
+  );
+  // Any operator edit away from what onUpload actually seeded (action AND
+  // targetId, not just the default action) re-enables the button — the
+  // server re-checks capacity at commit, so the club stays server-side.
   const decisionsTouched = useMemo(
     () =>
-      preview.rows.some(
-        (r) => decisions.get(r.rowIndex)?.action !== r.defaultDecision,
-      ),
-    [preview.rows, decisions],
+      preview.rows.some((r) => {
+        const current = decisions.get(r.rowIndex);
+        const seed = seededDecisions.get(r.rowIndex);
+        return (
+          current?.action !== seed?.action ||
+          (current?.targetId ?? null) !== (seed?.targetId ?? null)
+        );
+      }),
+    [preview.rows, decisions, seededDecisions],
   );
   const isCatalogue = type !== "STOCK_INTAKE";
   return (
     <div className="space-y-4">
       <SummaryBar summary={preview.summary} type={type} groups={groups} />
-      {preview.capacity && <CapacityAlert capacity={preview.capacity} />}
+      {/* Once a commit attempt has actually been refused, the danger alert
+          below (`blocked`) carries the authoritative, freshly-checked
+          reason — showing this preview-time banner alongside it is
+          redundant and can read as stale. */}
+      {preview.capacity && !blocked && (
+        <CapacityAlert capacity={preview.capacity} />
+      )}
       {hasMissingLookups && (
         <MissingLookupsAlert
           categories={missingLookups.categories}
@@ -784,6 +827,11 @@ function PreviewStep({
             <AlertTriangle className="h-3.5 w-3.5" />
           </AlertIcon>
           <AlertBody>
+            {/* Not mirroring CapacityAlert's countBlock/subscription title
+                split here: `blocked` is only the message string returned by
+                commitImport (see CommitResult in import-actions.ts), with no
+                checks[] alongside it to tell a count breach from a
+                subscription block. Left as a single generic title. */}
             <AlertTitle>Plan limit exceeded — nothing was imported</AlertTitle>
             <AlertDescription className="space-y-2">
               {blocked.split("\n\n").map((paragraph, i) => (
@@ -941,7 +989,12 @@ function PreviewStep({
           disabled={
             committing ||
             importableCount === 0 ||
-            (capacityBlocked && !decisionsTouched)
+            (capacityBlocked && (!decisionsTouched || !capacityCountBlock))
+          }
+          title={
+            capacityBlocked && (!decisionsTouched || !capacityCountBlock)
+              ? "Blocked by your plan's limits — see the banner above"
+              : undefined
           }
         >
           {committing ? (
@@ -1525,17 +1578,27 @@ function ResultStep({
               <AlertTitle>Your plan&apos;s limit stopped this import partway</AlertTitle>
               <AlertDescription className="space-y-1">
                 <p>{result.stoppedBy}</p>
-                <p>
-                  {imported} row{imported === 1 ? " was" : "s were"} imported
-                  before the limit was reached; the remaining rows were not
-                  attempted. Remove what was already imported from your file,
-                  then re-upload the rest — or upgrade your plan.
-                </p>
+                {failed > 0 ? (
+                  <p>
+                    {imported} row{imported === 1 ? " was" : "s were"} imported
+                    before the limit was reached; the remaining rows were not
+                    attempted. Remove what was already imported from your file,
+                    then re-upload the rest — or upgrade your plan.
+                  </p>
+                ) : (
+                  // Every group committed — the breach only stopped a
+                  // trailing post-commit step (e.g. opening-quantity
+                  // posting), so there are no unattempted rows to describe.
+                  <p>
+                    Every row was imported, but the plan limit stopped part
+                    of the posting — see the notices below.
+                  </p>
+                )}
               </AlertDescription>
             </AlertBody>
           </Alert>
         )}
-        {state === "partial" && (
+        {state === "partial" && !result.stoppedBy && (
           <Alert tone="warning">
             <AlertIcon>
               <AlertTriangle className="h-3.5 w-3.5" />
