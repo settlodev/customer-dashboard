@@ -34,7 +34,7 @@ import {
   getRefundDashboard,
   GetRefundReport,
 } from "@/lib/actions/refund-actions";
-import { requireReportsReadAll } from "@/lib/auth-utils";
+import { requireReportAccess } from "@/lib/auth-utils";
 import { rethrowIfBoundary } from "@/lib/list-fallback";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import {
@@ -56,7 +56,7 @@ type Params = {
 
 export default async function RefundReportPage({ searchParams }: Params) {
   const resolved = await searchParams;
-  await requireReportsReadAll();
+  await requireReportAccess("/report/refunds");
 
   // Current month by default — the standard window on every report screen.
   const now = new Date();

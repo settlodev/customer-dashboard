@@ -35,14 +35,19 @@ import {
   type DaySessionRefundsResponse,
   type DaySessionVoidsResponse,
 } from "@/types/orders/type";
-import type { DaySessionExpensesSummary } from "@/types/expense/type";
+import type {
+  DaySessionExpensePayment,
+  DaySessionExpensesSummary,
+} from "@/types/expense/type";
 import type { DaySessionPrepaymentsSummary } from "@/types/customer-prepayments/type";
 import {
   fmt,
   isCashMethod,
+  paymentMethodLabel,
   pmColor,
   shortId,
   staffName,
+  fmtShortDay,
   fmtTime,
 } from "@/lib/day-sessions/cod-format";
 
@@ -161,12 +166,17 @@ export function Tag({
   );
 }
 
-/** A single record row: title + tag, optional reason, meta line, amount. */
+/**
+ * A single record row: title + tag, optional reason, meta line, an
+ * optional `details` block (a nested breakdown — e.g. the payments that
+ * settled an expense), and the amount.
+ */
 function RecordRow({
   title,
   tag,
   reason,
   meta,
+  details,
   amount,
   currency,
 }: {
@@ -174,6 +184,7 @@ function RecordRow({
   tag?: React.ReactNode;
   reason?: React.ReactNode;
   meta?: React.ReactNode;
+  details?: React.ReactNode;
   amount: number;
   currency: string;
 }) {
@@ -188,6 +199,7 @@ function RecordRow({
         {meta ? (
           <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-[3px]">{meta}</div>
         ) : null}
+        {details}
       </div>
       <div className="shrink-0 text-right font-mono text-[13px] font-semibold tabular-nums text-ink">
         {fmt(amount)}
@@ -600,14 +612,22 @@ export function CancellationsVoids({
       ? `${report.voids.voidedItemCount} voided · ${cancelledCount} cancelled`
       : `${items.length} item${items.length === 1 ? "" : "s"}`;
 
+  // A clean session — nothing voided, nothing cancelled, by either the
+  // detail rows or the report's own counters — hides the card. `voids ==
+  // null` (the read failed) still renders its message.
+  const nothingRecorded =
+    items.length === 0 &&
+    cancelledOrders.length === 0 &&
+    cancelledAmount === 0 &&
+    voidedTotal === 0 &&
+    cancelledCount === 0 &&
+    (report?.voids?.voidedItemCount ?? 0) === 0;
+  if (voids && nothingRecorded) return null;
+
   return (
     <CodCard title="Cancellations & voids" icon={<XCircle />} sub={sub}>
       {voids == null ? (
         <EmptyRow>Void detail is unavailable for this session.</EmptyRow>
-      ) : items.length === 0 &&
-        cancelledOrders.length === 0 &&
-        cancelledAmount === 0 ? (
-        <EmptyRow>No voids or cancellations recorded this session.</EmptyRow>
       ) : (
         <>
           {items.length > 0 ? (
@@ -653,16 +673,17 @@ export function CancellationsVoids({
           ) : null}
 
           {/* Cancelled orders — full tickets cancelled outright, distinct
-              from a single voided line item above. */}
-          <div
-            className={cn(items.length > 0 && "mt-1 border-t border-line pt-3.5")}
-          >
-            <div className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-3">
-              Cancellations
-            </div>
-            {cancelledOrders.length === 0 ? (
-              <EmptyRow>No cancelled orders this session.</EmptyRow>
-            ) : (
+              from a single voided line item above. Only labelled when
+              voided items sit above it and need separating. */}
+          {cancelledOrders.length > 0 ? (
+            <div
+              className={cn(items.length > 0 && "mt-1 border-t border-line pt-3.5")}
+            >
+              {items.length > 0 ? (
+                <div className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-3">
+                  Cancellations
+                </div>
+              ) : null}
               <div className="flex flex-col">
                 {cancelledOrders.map((c) => (
                   <RecordRow
@@ -692,8 +713,8 @@ export function CancellationsVoids({
                   />
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          ) : null}
 
           <RecFoot
             split={`Voids ${fmt(voidedTotal)} · Cancelled ${fmt(cancelledAmount)}`}
@@ -721,12 +742,14 @@ export function Prepayments({
   const items = prepayments?.items ?? [];
   const totals = prepayments?.totals;
 
+  // No prepayments taken — hide the card entirely. A null summary means
+  // the read failed, which is worth saying out loud, so that still renders.
+  if (prepayments && items.length === 0) return null;
+
   return (
     <CodCard title="Customer prepayments" icon={<HandCoins />}>
       {prepayments == null ? (
         <EmptyRow>Prepayments data is unavailable for this session.</EmptyRow>
-      ) : items.length === 0 ? (
-        <EmptyRow>No prepayments recorded this session.</EmptyRow>
       ) : (
         <>
           <div className="flex flex-col">
@@ -795,6 +818,10 @@ export function RefundsList({
 }) {
   const items = refunds?.refunds ?? [];
 
+  // Nothing refunded — hide the card. A null response (read failed) still
+  // renders, so an outage never reads as a clean session.
+  if (refunds && items.length === 0) return null;
+
   // Footer split by payment method code ("Cash 13,200 · M-Pesa 68,000").
   const byMethod = new Map<string, number>();
   for (const r of items) {
@@ -809,8 +836,6 @@ export function RefundsList({
     <CodCard title="Refunds" icon={<Undo2 />}>
       {refunds == null ? (
         <EmptyRow>Refunds data is unavailable for this session.</EmptyRow>
-      ) : items.length === 0 ? (
-        <EmptyRow>No refunds recorded this session.</EmptyRow>
       ) : (
         <>
           <div className="flex flex-col">
@@ -855,6 +880,48 @@ export function RefundsList({
 // Expenses
 // ─────────────────────────────────────────────────────────────────────
 
+/** One posted payment under an expense: method, where from, when, how much. */
+function ExpensePaymentLine({
+  payment,
+  currency,
+}: {
+  payment: DaySessionExpensePayment;
+  currency: string;
+}) {
+  const method = paymentMethodLabel(
+    payment.paymentMethodCode,
+    payment.paymentMethod,
+  );
+  // The free-text label is "CODE · Account name", so the account name is
+  // already implied there; only show it when it adds something.
+  const account =
+    payment.sourceAccountName && payment.sourceAccountName !== method
+      ? payment.sourceAccountName
+      : null;
+  const when = payment.paymentDate
+    ? fmtShortDay(payment.paymentDate)
+    : payment.recordedAt
+      ? fmtTime(payment.recordedAt)
+      : null;
+
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-[3px]">
+      <span className={cn(META, "min-w-0 truncate")}>
+        <b className={METAB}>{method}</b>
+        {account ? ` · ${account}` : ""}
+        {when ? ` · ${when}` : ""}
+        {payment.reference ? ` · ${payment.reference}` : ""}
+      </span>
+      <span className="shrink-0 font-mono text-[11px] font-semibold tabular-nums text-ink-3">
+        {fmt(payment.amount)}
+        <span className="ml-1 font-normal text-muted-foreground">
+          {payment.currencyCode ?? currency}
+        </span>
+      </span>
+    </div>
+  );
+}
+
 export function ExpensesList({
   expenses,
   currency,
@@ -864,22 +931,61 @@ export function ExpensesList({
 }) {
   const items = expenses?.items ?? [];
   const totals = expenses?.totals;
+
+  // Nothing spent this session — drop the card rather than showing an
+  // empty shell. A null summary is a different thing (the read failed)
+  // and still renders, so a service outage isn't mistaken for a quiet day.
+  if (expenses && items.length === 0) return null;
+
   const paid = totals
     ? totals.paidByCash + totals.paidByMobile + totals.paidByOther
     : 0;
 
+  // Footer split by actual tender ("Cash 45,000 · Bank transfer 20,000").
+  // Falls back to the backend's cash/mobile/other buckets when the rows
+  // carry no itemized payments (older Accounting build).
+  const byMethod = new Map<string, number>();
+  for (const e of items) {
+    for (const p of e.payments ?? []) {
+      const label = paymentMethodLabel(p.paymentMethodCode, p.paymentMethod);
+      byMethod.set(label, (byMethod.get(label) ?? 0) + (p.amount ?? 0));
+    }
+  }
+  if (byMethod.size === 0 && totals) {
+    if (totals.paidByCash) byMethod.set("Cash", totals.paidByCash);
+    if (totals.paidByMobile) byMethod.set("Mobile", totals.paidByMobile);
+    if (totals.paidByOther) byMethod.set("Other", totals.paidByOther);
+  }
+  const split = [
+    ...[...byMethod.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, amount]) => `${label} ${fmt(amount)}`),
+    ...(totals && totals.unpaidTotal > 0
+      ? [`Unpaid ${fmt(totals.unpaidTotal)}`]
+      : []),
+  ].join(" · ");
+
   return (
-    <CodCard title="Expenses" icon={<Receipt />}>
+    <CodCard
+      title="Expenses"
+      icon={<Receipt />}
+      sub={
+        items.length > 0
+          ? `${items.length} expense${items.length === 1 ? "" : "s"} · ${fmt(paid)} paid`
+          : undefined
+      }
+    >
       {expenses == null ? (
         <EmptyRow>Expenses data is unavailable for this session.</EmptyRow>
-      ) : items.length === 0 ? (
-        <EmptyRow>No expenses recorded this session.</EmptyRow>
       ) : (
         <>
           <div className="flex flex-col">
             {items.map((e) => {
-              const methods = e.paymentMethodCodes?.length
-                ? e.paymentMethodCodes.join(" + ")
+              const payments = e.payments ?? [];
+              const codes = e.paymentMethodCodes?.length
+                ? e.paymentMethodCodes
+                    .map((c) => paymentMethodLabel(c))
+                    .join(" + ")
                 : null;
               const tone =
                 e.paymentStatus === "PAID"
@@ -889,22 +995,65 @@ export function ExpensesList({
                     : "cancel";
               const label =
                 e.paymentStatus === "PAID"
-                  ? methods
-                    ? `Paid · ${methods}`
-                    : "Paid"
+                  ? "Paid"
                   : e.paymentStatus === "UNPAID"
                     ? "Unpaid"
                     : "Part-paid";
+              // A wholly unpaid expense needs no balance line — the tag
+              // says Unpaid and the balance equals the row amount.
+              const showBalance =
+                e.balanceDue > 0 && e.paymentStatus !== "UNPAID";
               return (
                 <RecordRow
                   key={e.expenseId}
                   title={e.description ?? e.expenseNumber}
                   tag={<Tag tone={tone}>{label}</Tag>}
                   meta={
-                    <span className={META}>
-                      {[e.categoryName, e.payeeName].filter(Boolean).join(" · ") ||
-                        "Uncategorised"}
-                    </span>
+                    <>
+                      <span className={META}>{e.expenseNumber}</span>
+                      <span className={META}>
+                        {e.categoryName ?? "Uncategorised"}
+                      </span>
+                      {e.payeeName ? (
+                        <span className={META}>
+                          To <b className={METAB}>{e.payeeName}</b>
+                        </span>
+                      ) : null}
+                      {/* Method on the meta line only when there are no
+                          itemized payments to carry it below. */}
+                      {payments.length === 0 && codes ? (
+                        <span className={META}>
+                          Via <b className={METAB}>{codes}</b>
+                        </span>
+                      ) : null}
+                      {e.reference ? (
+                        <span className={META}>Ref {e.reference}</span>
+                      ) : null}
+                      {e.recordedAt ? (
+                        <span className={META}>{fmtTime(e.recordedAt)}</span>
+                      ) : null}
+                    </>
+                  }
+                  details={
+                    payments.length > 0 || showBalance ? (
+                      <div className="mt-2 rounded-lg bg-canvas px-2.5 py-1.5">
+                        {payments.map((p, idx) => (
+                          <ExpensePaymentLine
+                            key={p.paymentId ?? `${e.expenseId}-${idx}`}
+                            payment={p}
+                            currency={e.currencyCode ?? currency}
+                          />
+                        ))}
+                        {showBalance ? (
+                          <div className="flex items-baseline justify-between gap-3 py-[3px]">
+                            <span className={META}>Balance due</span>
+                            <span className="shrink-0 font-mono text-[11px] font-semibold tabular-nums text-warn">
+                              {fmt(e.balanceDue)}
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null
                   }
                   amount={e.amount}
                   currency={e.currencyCode ?? currency}
@@ -914,7 +1063,7 @@ export function ExpensesList({
           </div>
           {totals ? (
             <RecFoot
-              split={`Paid ${fmt(paid)} · Unpaid ${fmt(totals.unpaidTotal)}`}
+              split={split || `${items.length} expenses`}
               total={totals.totalAmount}
             />
           ) : null}

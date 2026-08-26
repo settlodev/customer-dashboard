@@ -5,7 +5,7 @@ import {
   Package,
   TrendingUp,
 } from "lucide-react";
-import { requireReportsReadAll } from "@/lib/auth-utils";
+import { requireReportAccess } from "@/lib/auth-utils";
 
 import {
   PageBody,
@@ -55,7 +55,7 @@ const matchesSearch = (item: TopSellingItem, q: string): boolean => {
 
 export default async function Page({ searchParams }: Params) {
   const resolved = await searchParams;
-  await requireReportsReadAll();
+  await requireReportAccess("/report/top-selling");
   const q = resolved.search ?? "";
   const page = Number(resolved.page) || 1;
   const limit = Number(resolved.limit) || 10;

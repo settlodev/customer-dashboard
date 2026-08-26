@@ -27,6 +27,7 @@ import {
   getBusinessLocationBreakdown,
   getBusinessOverviewByFilter,
   getDefaultIntelRange,
+  getLocationHealthByBusiness,
 } from "@/lib/actions/admin/business-intel";
 import {
   getBusinessFinancialsSummary,
@@ -49,6 +50,7 @@ import type {
   BusinessLifecycleSnapshot,
   BusinessLocationBreakdownRow,
   BusinessOverviewSnapshot,
+  LocationHealthRow,
 } from "@/types/admin/business-intel";
 import type {
   AdminBusinessFinancialsSummary,
@@ -143,6 +145,9 @@ export default async function AdminBusinessDetailPage({
     listBusinessNotes(id, 0, 50),
     listAdminBusinessWarehouses(id),
     listAdminBusinessStores(id),
+    // Per-location health (V081) — the column the business-level score can't
+    // give you: which branch is failing under an otherwise healthy merchant.
+    getLocationHealthByBusiness(id),
   ]);
 
   const value = <T,>(r: PromiseSettledResult<T>): T | null =>
@@ -165,6 +170,7 @@ export default async function AdminBusinessDetailPage({
   const notesPage = value(results[12]) as BusinessNotePage | null;
   const warehouses = (value(results[13]) ?? []) as AdminWarehouseListItem[];
   const stores = (value(results[14]) ?? []) as AdminStoreListItem[];
+  const locationHealth = (value(results[15]) ?? []) as LocationHealthRow[];
 
   return (
     <AdminShell token={token}>
@@ -188,6 +194,7 @@ export default async function AdminBusinessDetailPage({
           health={health}
           lifecycle={lifecycle}
           locationBreakdown={locationBreakdown}
+          locationHealth={locationHealth}
           customerSegments={customerSegments}
           inventory={inventory}
           financials={financials}

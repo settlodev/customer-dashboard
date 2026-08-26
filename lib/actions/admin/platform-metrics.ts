@@ -1,8 +1,9 @@
 "use server";
 
 import { reportsInternalGet } from "@/lib/reports-internal-client";
-import type { SubscriptionStatus } from "@/types/admin/billing";
+import type { SubscriptionItemStatus } from "@/types/admin/billing";
 import type {
+  LocationLifecycleSummary,
   PlatformAccounts,
   PlatformLocationsPage,
   PlatformLocationsQuery,
@@ -125,6 +126,38 @@ export async function getPlatformStockMovement(
   };
 }
 
+/**
+ * Pull the lifecycle half out of a location row, or null when the nightly
+ * snapshot has nothing for it — a location created since the last refresh, or a
+ * fresh environment whose first generation hasn't published. `lifecycle_stage`
+ * is the marker: the join produces it for every row that has a snapshot and for
+ * none that doesn't.
+ *
+ * `days_since_last_order` is left nullable on purpose. NULL means never traded;
+ * V080 deliberately does not carry the business rollup's 9999 sentinel.
+ */
+function lifecycleOf(
+  row: Record<string, unknown>,
+): LocationLifecycleSummary | null {
+  const stage = str(row.lifecycle_stage);
+  if (!stage) return null;
+  return {
+    lifecycle_stage: stage,
+    is_churned: nullableNum(row.is_churned),
+    days_since_last_order: nullableNum(row.days_since_last_order),
+    last_order_at: str(row.last_order_at),
+    total_orders: nullableNum(row.total_orders),
+    total_revenue: nullableNum(row.total_revenue),
+  };
+}
+
+/** Like `num`, but preserves null rather than collapsing it to 0. */
+function nullableNum(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function getPlatformLocations(
   query: PlatformLocationsQuery = {},
   scope?: StaffScope,
@@ -149,9 +182,18 @@ export async function getPlatformLocations(
       businessId: String(row.business_id ?? ""),
       businessName: str(row.business_name),
       region: str(row.region),
-      status: str(row.status) as SubscriptionStatus | null,
+      subscriptionId: str(row.subscription_id),
+      // Per-location SubscriptionItemStatus — NOT the business's status.
+      status: str(row.status) as SubscriptionItemStatus | null,
+      // Billing has no TRIAL status; Reports derives it (ACTIVE + never paid +
+      // a live trial window) and returns it as a 0/1 flag.
+      isTrial: num(row.is_trial) === 1,
       packageName: str(row.package_name),
       trialEndDate: str(row.trial_end_date),
+      paidThrough: str(row.paid_through),
+      monthlyAmount: num(row.monthly_amount),
+      isBundled: num(row.is_bundled) === 1,
+      lifecycle: lifecycleOf(row),
     })),
     page: num(r.page),
     size: num(r.size) || (query.size ?? 20),

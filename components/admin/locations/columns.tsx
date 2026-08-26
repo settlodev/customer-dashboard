@@ -6,53 +6,33 @@ import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import { Monogram } from "@/components/admin/shared/monogram";
-import { formatDate } from "@/components/admin/shared/format";
+import { formatDate, compactNumber } from "@/components/admin/shared/format";
 import { LocationRowActions } from "@/components/admin/locations/location-row-actions";
-import type { SubscriptionStatus } from "@/types/admin/billing";
+import { SubscriptionItemStatusBadge } from "@/components/admin/shared/subscription-item-status-badge";
+import {
+  ACTIVITY_TONE,
+  activityBadge,
+  daysSinceLastOrder,
+  formatLastOrder,
+} from "@/lib/admin/lifecycle";
 import type { PlatformLocationRow } from "@/types/admin/platform-metrics";
 
-// ── Subscription status badge ────────────────────────────────────────
-type StatusTone = "pos" | "blue" | "warn" | "neg" | "muted";
-
-const STATUS_TONE: Record<StatusTone, string> = {
-  pos: "bg-pos-tint text-pos",
-  blue: "bg-[#2563EB]/10 text-[#2563EB]",
-  warn: "bg-warn-tint text-warn",
-  neg: "bg-neg-tint text-neg",
-  muted: "bg-black/[0.05] text-ink-3 dark:bg-white/[0.06]",
-};
-
-const STATUS_META: Record<
-  SubscriptionStatus,
-  { label: string; tone: StatusTone }
-> = {
-  ACTIVE: { label: "Active", tone: "pos" },
-  TRIAL: { label: "Trial", tone: "blue" },
-  PAST_DUE: { label: "Past due", tone: "warn" },
-  EXPIRED: { label: "Expired", tone: "neg" },
-  SUSPENDED: { label: "Suspended", tone: "neg" },
-  CANCELLED: { label: "Cancelled", tone: "muted" },
-};
-
-function SubscriptionStatusBadge({
-  status,
-}: {
-  status: SubscriptionStatus | null;
-}) {
-  const meta = status
-    ? STATUS_META[status] ?? { label: status, tone: "muted" as StatusTone }
-    : { label: "No subscription", tone: "muted" as StatusTone };
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[12.5px] font-semibold",
-        STATUS_TONE[meta.tone],
-      )}
-    >
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-      {meta.label}
-    </span>
-  );
+/**
+ * Per-location subscription badge. `status` is the location's own
+ * SubscriptionItemStatus — Billing has no TRIAL member, so a live trial is a
+ * derived state (Reports sends it as `isTrial`) and gets its own badge rather
+ * than being folded into the status enum.
+ */
+function LocationSubscriptionBadge({ row }: { row: PlatformLocationRow }) {
+  if (row.isTrial) {
+    return (
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[#2563EB]/10 px-2.5 py-1 text-[12.5px] font-semibold text-[#2563EB]">
+        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+        Trial
+      </span>
+    );
+  }
+  return <SubscriptionItemStatusBadge status={row.status} />;
 }
 
 export function buildLocationColumns(): ColumnDef<PlatformLocationRow>[] {
@@ -102,17 +82,101 @@ export function buildLocationColumns(): ColumnDef<PlatformLocationRow>[] {
     {
       accessorKey: "status",
       header: "Subscription",
-      cell: ({ row }) => <SubscriptionStatusBadge status={row.original.status} />,
+      cell: ({ row }) => <LocationSubscriptionBadge row={row.original} />,
+    },
+    {
+      id: "activity",
+      header: "Activity",
+      enableHiding: true,
+      cell: ({ row }) => {
+        // Scored at THIS location's grain. A branch that stopped selling reads
+        // Dormant even when its business — and its sibling locations — are fine.
+        const { label, tone, hint } = activityBadge(
+          row.original.lifecycle,
+          "Location",
+        );
+        return (
+          <span
+            title={hint}
+            className={cn(
+              "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[12.5px] font-semibold",
+              ACTIVITY_TONE[tone],
+            )}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            {label}
+          </span>
+        );
+      },
+    },
+    {
+      id: "lastOrder",
+      header: "Last order",
+      enableHiding: true,
+      cell: ({ row }) => {
+        const lifecycle = row.original.lifecycle;
+        return (
+          <span className="font-mono text-[12px] text-muted-foreground">
+            {lifecycle ? formatLastOrder(daysSinceLastOrder(lifecycle)) : "—"}
+          </span>
+        );
+      },
+    },
+    {
+      id: "revenue",
+      header: "Lifetime sales",
+      enableHiding: true,
+      cell: ({ row }) => {
+        const lifecycle = row.original.lifecycle;
+        if (!lifecycle || !lifecycle.total_orders)
+          return <span className="text-[12.5px] text-muted-2">—</span>;
+        return (
+          <span className="font-mono text-[12.5px] tabular-nums text-ink">
+            {compactNumber(lifecycle.total_revenue ?? 0)}
+            <span className="ml-1.5 text-muted-foreground">
+              · {lifecycle.total_orders.toLocaleString()} ord
+            </span>
+          </span>
+        );
+      },
     },
     {
       id: "plan",
       header: "Plan",
       cell: ({ row }) => {
-        const p = row.original.packageName;
-        if (!p) return <span className="text-[12.5px] text-muted-2">—</span>;
+        const l = row.original;
+        if (!l.packageName)
+          return <span className="text-[12.5px] text-muted-2">—</span>;
         return (
-          <span className="inline-flex rounded-md border border-line bg-canvas px-2 py-0.5 font-mono text-[11px] font-medium tracking-[0.02em] text-ink-3">
-            {p}
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="inline-flex rounded-md border border-line bg-canvas px-2 py-0.5 font-mono text-[11px] font-medium tracking-[0.02em] text-ink-3">
+              {l.packageName}
+            </span>
+            {l.isBundled && (
+              <span
+                title="Bundled — inherits the parent location's plan, not billed separately"
+                className="font-mono text-[10px] uppercase tracking-[0.06em] text-muted-2"
+              >
+                bundled
+              </span>
+            )}
+          </span>
+        );
+      },
+    },
+    {
+      id: "mrr",
+      header: "MRR",
+      cell: ({ row }) => {
+        const l = row.original;
+        // Bundled units carry no charge of their own — the parent's item does.
+        if (l.isBundled || !l.monthlyAmount)
+          return <span className="text-[12.5px] text-muted-2">—</span>;
+        return (
+          <span className="font-mono text-[12.5px] tabular-nums text-ink">
+            {l.monthlyAmount.toLocaleString(undefined, {
+              maximumFractionDigits: 0,
+            })}
           </span>
         );
       },
@@ -126,6 +190,19 @@ export function buildLocationColumns(): ColumnDef<PlatformLocationRow>[] {
         return (
           <span className="font-mono text-[12px] text-muted-foreground">
             {formatDate(t)}
+          </span>
+        );
+      },
+    },
+    {
+      id: "paidThrough",
+      header: "Paid through",
+      cell: ({ row }) => {
+        const p = row.original.paidThrough;
+        if (!p) return <span className="text-[12.5px] text-muted-2">Never</span>;
+        return (
+          <span className="font-mono text-[12px] text-muted-foreground">
+            {formatDate(p)}
           </span>
         );
       },

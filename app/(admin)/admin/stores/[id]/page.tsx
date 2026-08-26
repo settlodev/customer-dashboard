@@ -103,8 +103,6 @@ export default async function StoreDetailPage({
             subscriptionId={subscription?.id ?? null}
             billingExempt={subscription?.billingExempt === true}
             item={item}
-            ordersRow={null}
-            rangeLabel=""
             canBilling={canBilling}
             isSuperAdmin={isSuperAdmin}
             stock={stock}

@@ -8,7 +8,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
-import { requireReportsReadAll } from "@/lib/auth-utils";
+import { requireReportAccess } from "@/lib/auth-utils";
 import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { TaxReportPeriodToggle } from "@/components/reports/tax/tax-report-period-toggle";
 import { TaxReportBreakdownToggle } from "@/components/reports/tax/tax-report-breakdown-toggle";
@@ -30,7 +30,7 @@ const formatMoney = (value: number) =>
 
 export default async function TaxReportPage({ searchParams }: Params) {
   const resolved = await searchParams;
-  await requireReportsReadAll();
+  await requireReportAccess("/report/tax");
 
   const now = new Date();
   const from = resolved.from ?? format(startOfMonth(now), "yyyy-MM-dd");

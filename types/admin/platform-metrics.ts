@@ -1,4 +1,4 @@
-import type { SubscriptionStatus } from "@/types/admin/billing";
+import type { SubscriptionItemStatus } from "@/types/admin/billing";
 
 /**
  * Platform-wide admin operations metrics, sourced from the Reports Service
@@ -60,16 +60,61 @@ export interface PlatformStockMovement {
   byType: StockMovementTypeRow[];
 }
 
-/** One location with its business's latest subscription status. */
+/**
+ * One location with **its own** subscription state.
+ *
+ * Subscriptions are per-entity: Billing bills a business, but the thing that
+ * carries a plan, a trial and an MRR is the SubscriptionItem — one per
+ * location / store / warehouse. `status` is therefore the location's own
+ * `SubscriptionItemStatus`, not the owning business's rollup.
+ */
 export interface PlatformLocationRow {
   locationId: string;
   locationName: string;
   businessId: string;
   businessName: string | null;
   region: string | null;
-  status: SubscriptionStatus | null;
+  /** The Billing subscription this location's item hangs off. */
+  subscriptionId: string | null;
+  status: SubscriptionItemStatus | null;
+  /**
+   * Derived, not stored: `SubscriptionItemStatus` has no TRIAL member. True
+   * when the item is ACTIVE, has never been charged, and its trial window
+   * hasn't elapsed.
+   */
+  isTrial: boolean;
   packageName: string | null;
   trialEndDate: string | null;
+  paidThrough: string | null;
+  /** This location's own contribution to MRR, in the business's currency. */
+  monthlyAmount: number;
+  /** Bundled units inherit the parent location's plan and aren't billed apart. */
+  isBundled: boolean;
+  /**
+   * This location's own trading signals, from the nightly
+   * `saas_location_lifecycle` rollup. All null until the snapshot has published
+   * its first generation, and for a location created since the last refresh.
+   */
+  lifecycle: LocationLifecycleSummary | null;
+}
+
+/**
+ * The trading half of a location row — what a business-level rollup cannot tell
+ * you, because a merchant whose flagship is thriving reads as healthy even when
+ * its branches went quiet months ago.
+ */
+export interface LocationLifecycleSummary {
+  /** CHURNED | ACTIVE | PAYING | FIRST_ORDER | PRODUCTS_ADDED | STAFF_ADDED | LOCATION_CREATED */
+  lifecycle_stage: string | null;
+  is_churned: number | null;
+  /**
+   * Null means this location has never taken an order — an absence, not a large
+   * number. Unlike the business rollup, there is no 9999 sentinel here.
+   */
+  days_since_last_order: number | null;
+  last_order_at: string | null;
+  total_orders: number | null;
+  total_revenue: number | null;
 }
 
 export interface PlatformLocationsPage {

@@ -1,7 +1,22 @@
 // types/menu_items.ts
 import { MenuItemArgType } from "@/types/menu-item-type";
-import { LOCATION_WIDE_REPORT_LINKS } from "@/lib/reports-access";
+import { reportPagePermissions } from "@/lib/reports-access";
 import { LOANS_ENABLED } from "@/lib/loans/config";
+
+/**
+ * A report nav entry, permission-tagged with the any-of key set that unlocks
+ * its page (`dashboard_reports:read_all` or the page's per-report key —
+ * lib/reports-access.ts is the single source, shared with the page guards).
+ * The sidebar's fail-open `canSee` does the filtering, like every other
+ * tagged nav item.
+ */
+const reportNavItem = (title: string, link: string, args?: MenuItemArgType) => ({
+  title,
+  link,
+  current: args?.isCurrentItem,
+  icon: "cart",
+  permissions: reportPagePermissions(link),
+});
 
 export const menuItems = (args?: MenuItemArgType) => {
   // Default to normal menu if not specified
@@ -23,7 +38,6 @@ const getNormalMenuItems = (args?: MenuItemArgType) => {
   // until entitlements are known. The page-level UpgradeGate is the
   // backstop when a user clicks through with an underprivileged plan.
   const hasDepartmentsModule = args?.hasDepartmentsModule !== false;
-  const reportsReadAll = args?.reportsReadAll !== false; // default true
   const hasPackaging = args?.hasPackaging === true; // default false (hidden)
   return [
     // Top-level link — appears as its own row in the sidebar (no submenu).
@@ -51,91 +65,36 @@ const getNormalMenuItems = (args?: MenuItemArgType) => {
       current: args?.isCurrentItem,
       icon: "dashboard",
       items: [
+        // Safe landing — deliberately untagged so every dashboard user keeps
+        // a home. The report-backed cards on it are gated separately
+        // (dashboard_reports:read_all, see hasReportsReadAll).
         {
           title: "Dashboard",
           link: "/dashboard",
           current: args?.isCurrentItem,
           icon: "cart",
         },
-        {
-          title: "Sales report",
-          link: "/report/sales",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
-        {
-          title: "Cashflow report",
-          link: "/report/cashflow",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
-        {
-          title: "Top selling report",
-          link: "/report/top-selling",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
-        {
-          title: "Sold items report",
-          link: "/report/sold-items",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
-        // {
-        //   title: "Credit report",
-        //   link: "/report/credit",
-        //   current: args?.isCurrentItem,
-        //   icon: "cart",
-        // },
-        {
-          title: "Refund report",
-          link: "/report/refunds",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
-        {
-          title: "Voids report",
-          link: "/report/voids",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
-        {
-          title: "Tax report",
-          link: "/report/tax",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
-        {
-          title: "Stock report",
-          link: "/report/stock",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
+        // Each report link is tagged any-of(dashboard_reports:read_all, its
+        // per-report key) via reportNavItem, so reports are individually
+        // grantable (e.g. Sales but not Stock). Same key source as the page
+        // guards. The POS-only reports:read_own/read_all unlock none of them.
+        reportNavItem("Sales report", "/report/sales", args),
+        reportNavItem("Cashflow report", "/report/cashflow", args),
+        reportNavItem("Top selling report", "/report/top-selling", args),
+        // Sold items additionally accepts dashboard_reports:read_own (shown
+        // own-scoped by the backend for staff without an all-tier).
+        reportNavItem("Sold items report", "/report/sold-items", args),
+        // reportNavItem("Credit report", "/report/credit", args),
+        reportNavItem("Refund report", "/report/refunds", args),
+        reportNavItem("Voids report", "/report/voids", args),
+        reportNavItem("Tax report", "/report/tax", args),
+        reportNavItem("Stock report", "/report/stock", args),
         ...(hasPackaging
-          ? [
-              {
-                title: "Packaging report",
-                link: "/report/packaging",
-                current: args?.isCurrentItem,
-                icon: "cart",
-              },
-            ]
+          ? [reportNavItem("Packaging report", "/report/packaging", args)]
           : []),
-        {
-          title: "Staff report",
-          link: "/report/staff",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
-        {
-          title: "Expense report",
-          link: "/report/expense",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
-      ].filter(
-        (it) => reportsReadAll || !LOCATION_WIDE_REPORT_LINKS.includes(it.link),
-      ),
+        reportNavItem("Staff report", "/report/staff", args),
+        reportNavItem("Expense report", "/report/expense", args),
+      ],
     },
 
     // Inventory Management
@@ -714,7 +673,6 @@ const getNormalMenuItems = (args?: MenuItemArgType) => {
 // pattern as Stock intake), so a store can requisition, RFQ, order, and
 // receive goods directly just like a location.
 const getStoreMenuItems = (args?: MenuItemArgType) => {
-  const reportsReadAll = args?.reportsReadAll !== false; // default true
   const hasPackaging = args?.hasPackaging === true; // default false (hidden)
   const storeId = args?.currentStoreId;
   return [
@@ -745,25 +703,11 @@ const getStoreMenuItems = (args?: MenuItemArgType) => {
       current: args?.isCurrentItem,
       icon: "dashboard",
       items: [
-        {
-          title: "Stock report",
-          link: "/report/stock",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
+        reportNavItem("Stock report", "/report/stock", args),
         ...(hasPackaging
-          ? [
-              {
-                title: "Packaging report",
-                link: "/report/packaging",
-                current: args?.isCurrentItem,
-                icon: "cart",
-              },
-            ]
+          ? [reportNavItem("Packaging report", "/report/packaging", args)]
           : []),
-      ].filter(
-        (it) => reportsReadAll || !LOCATION_WIDE_REPORT_LINKS.includes(it.link),
-      ),
+      ],
     },
 
     // Stock management — the core store workspace. Consumption Rules /

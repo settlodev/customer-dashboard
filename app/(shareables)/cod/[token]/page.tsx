@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Clock } from "lucide-react";
 
 import type { Staff } from "@/types/staff";
+import { cashUpTotalsFrom } from "@/types/payment-method-reconciliation/type";
 import { getPublicCloseOfDay } from "@/lib/actions/day-session-share-actions";
 import { resolveCurrency } from "@/lib/day-sessions/cod-format";
 import { PrintableDocument } from "@/components/documents/PrintableDocument";
@@ -89,6 +90,13 @@ export default async function SharedCloseOfDayPage({
         session={dto.session}
         report={dto.report}
         reconciliations={dto.reconciliations}
+        // Struck by Accounting at mint time. Links minted before the
+        // snapshot carried them fall back to summing the rows' own
+        // server-computed fields — those documents predate the expense
+        // netting entirely, so they foot exactly as they did when issued.
+        cashUpTotals={
+          dto.reconciliationTotals ?? cashUpTotalsFrom(dto.reconciliations)
+        }
         extras={{
           prepayments: dto.prepayments,
           refunds: dto.refunds,

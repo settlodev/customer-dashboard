@@ -19,11 +19,20 @@ import { SubscriptionItemStatusBadge } from "@/components/admin/shared/subscript
 import { extendEntityTrial } from "@/lib/actions/admin/billing";
 
 import type { SubscriptionItemResponse } from "@/types/admin/billing";
-import type { BusinessLocationBreakdownRow } from "@/types/admin/business-intel";
 import type { EntityStockSummary } from "@/types/admin/inventory";
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
+/**
+ * Detail view for a STORE or WAREHOUSE.
+ *
+ * Locations used to share this component but now have their own full-page view
+ * ({@code LocationDetailView}), laid out like the business detail — a location
+ * trades, so it earns the same scorecard rather than a tabbed subset. The
+ * LOCATION-only Orders tab that lived here went with them; stores and
+ * warehouses are stock-holding destinations and ring up no sales of their own,
+ * so nothing here needs a sales pane.
+ */
 export interface EntityDetailViewProps {
   entityType: "LOCATION" | "WAREHOUSE" | "STORE";
   businessId: string;
@@ -32,8 +41,6 @@ export interface EntityDetailViewProps {
    *  true, usually past, value, so it must not be presented as a live expiry. */
   billingExempt?: boolean;
   item: SubscriptionItemResponse | null;
-  ordersRow: BusinessLocationBreakdownRow | null;
-  rangeLabel: string;
   canBilling: boolean;
   /** SYSTEM_ADMIN (billing's super admin) — may override-extend a paid/used entity's trial. */
   isSuperAdmin: boolean;
@@ -55,8 +62,6 @@ export function EntityDetailView({
   subscriptionId,
   billingExempt = false,
   item,
-  ordersRow,
-  rangeLabel,
   canBilling,
   isSuperAdmin,
   stock,
@@ -120,7 +125,6 @@ export function EntityDetailView({
       <Tabs defaultValue="subscription">
         <TabsList>
           <TabsTrigger value="subscription">Subscription</TabsTrigger>
-          {entityType === "LOCATION" && <TabsTrigger value="orders">Orders</TabsTrigger>}
           <TabsTrigger value="stock">Stock &amp; Products</TabsTrigger>
         </TabsList>
 
@@ -228,55 +232,7 @@ export function EntityDetailView({
           )}
         </TabsContent>
 
-        {/* ── Tab 2: Orders ─────────────────────────────────────────────── */}
-        {entityType === "LOCATION" && (
-          <TabsContent value="orders" className="space-y-4">
-            {ordersRow == null ? (
-              <SectionCard title="Orders" subtitle={rangeLabel}>
-                <p className="text-sm text-muted-foreground">
-                  No order data for this location in {rangeLabel}.
-                </p>
-              </SectionCard>
-            ) : (
-              <SectionCard title="Orders" subtitle={rangeLabel}>
-                <MetricGrid cols={4}>
-                  <MetricCell
-                    label="Total orders"
-                    value={formatMoney(ordersRow.total_orders ?? 0)}
-                  />
-                  <MetricCell
-                    label="Completed"
-                    value={formatMoney(ordersRow.completed_orders ?? 0)}
-                  />
-                  <MetricCell
-                    label="Net sales"
-                    value={compactNumber(ordersRow.net_sales ?? 0)}
-                  />
-                  <MetricCell
-                    label="Gross profit"
-                    value={compactNumber(ordersRow.gross_profit ?? 0)}
-                  />
-                  <MetricCell
-                    label="Avg order value"
-                    value={formatMoney(ordersRow.avg_order_value ?? 0)}
-                  />
-                  <MetricCell
-                    label="Active staff"
-                    value={formatMoney(ordersRow.active_staff ?? 0)}
-                    small
-                  />
-                  <MetricCell
-                    label="Unique customers"
-                    value={formatMoney(ordersRow.unique_customers ?? 0)}
-                    small
-                  />
-                </MetricGrid>
-              </SectionCard>
-            )}
-          </TabsContent>
-        )}
-
-        {/* ── Tab 3: Stock & Products ───────────────────────────────────── */}
+        {/* ── Tab 2: Stock & Products ───────────────────────────────────── */}
         <TabsContent value="stock" className="space-y-4">
           {!stock ||
           (stock.productCount === 0 &&

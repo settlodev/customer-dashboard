@@ -6,7 +6,7 @@ import {
   RefreshCcw,
   Wallet,
 } from "lucide-react";
-import { requireReportsReadAll } from "@/lib/auth-utils";
+import { requireReportAccess } from "@/lib/auth-utils";
 
 import { SectionCard } from "@/components/admin/shared/section-card";
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
@@ -75,7 +75,7 @@ const pluralize = (n: number, word: string) =>
 
 export default async function CashflowReportPage({ searchParams }: Params) {
   const resolved = await searchParams;
-  await requireReportsReadAll();
+  await requireReportAccess("/report/cashflow");
 
   // Default to the current month — keeps the first paint scoped, matching
   // every other reporting screen.

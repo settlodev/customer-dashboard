@@ -10,6 +10,12 @@ import { BusinessLifecycleSnapshot } from "@/types/admin/business-intel";
 import { BusinessRowActions } from "@/components/tables/admin-businesses/cell-action";
 import { Monogram } from "@/components/admin/shared/monogram";
 import { formatDate, timeSince } from "@/components/admin/shared/format";
+import {
+  ACTIVITY_TONE,
+  activityBadge,
+  daysSinceLastOrder,
+  formatLastOrder,
+} from "@/lib/admin/lifecycle";
 
 function SortHeader({
   label,
@@ -31,45 +37,9 @@ function SortHeader({
 }
 
 // ── Activity (lifecycle) badge ───────────────────────────────────────
-type ActivityTone = "pos" | "blue" | "warn" | "neg" | "muted";
-
-const ACTIVITY_TONE: Record<ActivityTone, string> = {
-  pos: "bg-pos-tint text-pos",
-  blue: "bg-[#2563EB]/10 text-[#2563EB]",
-  warn: "bg-warn-tint text-warn",
-  neg: "bg-neg-tint text-neg",
-  muted: "bg-black/[0.05] text-ink-3 dark:bg-white/[0.06]",
-};
-
-function activityIndicator(lifecycle: BusinessLifecycleSnapshot | undefined): {
-  label: string;
-  tone: ActivityTone;
-  hint: string;
-} {
-  if (!lifecycle)
-    return { label: "No data", tone: "muted", hint: "No lifecycle rollup yet" };
-  const stage = (lifecycle.lifecycle_stage ?? "").toUpperCase();
-  const days = lifecycle.days_since_last_order;
-  if (lifecycle.is_churned === 1 || stage === "CHURNED")
-    return { label: "Churned", tone: "neg", hint: "Marked churned" };
-  if (days === null || days === undefined) {
-    if (stage === "BUSINESS_CREATED")
-      return { label: "No orders", tone: "warn", hint: "Created, no orders yet" };
-    return { label: "Unknown", tone: "muted", hint: "No last-order timestamp" };
-  }
-  if (days <= 7) return { label: "Active", tone: "pos", hint: `Last order ${days}d ago` };
-  if (days <= 30) return { label: "Slowing", tone: "blue", hint: `Last order ${days}d ago` };
-  if (days <= 60) return { label: "Stale", tone: "warn", hint: `Last order ${days}d ago` };
-  return { label: "Dormant", tone: "neg", hint: `Last order ${days}d ago` };
-}
-
-function relativeFromDays(days: number | null | undefined): string {
-  if (days === null || days === undefined) return "—";
-  if (days < 1) return "Today";
-  if (days < 30) return `${days}d ago`;
-  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
-  return `${Math.floor(days / 365)}y ago`;
-}
+// Scoring lives in lib/admin/lifecycle so the locations list scores identically
+// — the two rollups encode "never ordered" differently and callers shouldn't
+// have to know which is which.
 
 interface ColumnDeps {
   lifecycleByBusinessId: Record<string, BusinessLifecycleSnapshot>;
@@ -154,8 +124,9 @@ export function buildBusinessColumns({
       header: "Activity",
       enableHiding: true,
       cell: ({ row }) => {
-        const { label, tone, hint } = activityIndicator(
+        const { label, tone, hint } = activityBadge(
           lifecycleByBusinessId[row.original.id],
+          "Business",
         );
         return (
           <span
@@ -175,13 +146,16 @@ export function buildBusinessColumns({
       id: "lastOrder",
       header: "Last order",
       enableHiding: true,
-      cell: ({ row }) => (
-        <span className="font-mono text-[12px] text-muted-foreground">
-          {relativeFromDays(
-            lifecycleByBusinessId[row.original.id]?.days_since_last_order,
-          )}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const lifecycle = lifecycleByBusinessId[row.original.id];
+        return (
+          <span className="font-mono text-[12px] text-muted-foreground">
+            {lifecycle
+              ? formatLastOrder(daysSinceLastOrder(lifecycle))
+              : "—"}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "activeLocationCount",

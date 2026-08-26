@@ -23,7 +23,7 @@ import {
   getCloseOfDayExtras,
   getDaySessionDetail,
 } from "@/lib/actions/day-session-list-actions";
-import { listPaymentMethodReconciliations } from "@/lib/actions/payment-method-reconciliation-actions";
+import { getSessionCashUp } from "@/lib/actions/payment-method-reconciliation-actions";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import type { Staff } from "@/types/staff";
 
@@ -81,12 +81,13 @@ export default async function DaySessionDetailPage({
   // per-method cash-up, the four Close-of-Day extras, and the staff
   // roster for name/avatar resolution. One slow service never blocks the
   // others from rendering.
-  const [detail, reconciliations, extras, staffList] = await Promise.all([
+  const [detail, cashUp, extras, staffList] = await Promise.all([
     getDaySessionDetail(locationId, id),
-    listPaymentMethodReconciliations(id),
+    getSessionCashUp(id),
     getCloseOfDayExtras(locationId, id),
     fetchAllStaff().catch(() => [] as Staff[]),
   ]);
+  const reconciliations = cashUp.methods;
 
   // session=null → Accounts couldn't find it for this location (stale URL
   // or wrong location). report=null → Reports unavailable or no activity
@@ -105,12 +106,8 @@ export default async function DaySessionDetailPage({
     report?.paymentsByMethod ?? [],
     reconciliations,
   );
-  const txnsByMethodId = Object.fromEntries(
-    (report?.paymentsByMethod ?? []).map((p) => [p.paymentMethodId, p.count]),
-  );
-
   const currency = resolveCurrency(
-    reconciliations.find((r) => r.currency)?.currency,
+    cashUp.currency,
     extras.expenses?.items[0]?.currencyCode,
     extras.prepayments?.items[0]?.currency,
     extras.refunds?.refunds[0]?.refundCurrency,
@@ -126,13 +123,11 @@ export default async function DaySessionDetailPage({
         new Date(b.approvedAt as string).getTime() -
         new Date(a.approvedAt as string).getTime(),
     );
-  const pendingCount = reconciliations.filter(
-    (r) => r.status === "SUBMITTED",
-  ).length;
+  const pendingCount = cashUp.totals.pendingCount;
   const verified =
     session.status === "CLOSED" &&
-    reconciliations.length > 0 &&
-    reconciliations.every((r) => r.status === "APPROVED");
+    cashUp.totals.methodCount > 0 &&
+    cashUp.totals.approvedCount === cashUp.totals.methodCount;
   const lastApproval = approvedRecons[0];
   const verifierChip =
     verified && lastApproval?.approvedBy
@@ -152,15 +147,10 @@ export default async function DaySessionDetailPage({
   const margin = marginPct(grossProfit, net);
   const refundAmt = report?.refunds.amount ?? 0;
   const refundCount = report?.refunds.count ?? 0;
-  const expectedTotal = reconciliations.reduce(
-    (s, r) => s + (r.expectedAmount ?? 0),
-    0,
-  );
-  const countedTotal = reconciliations.reduce(
-    (s, r) => s + (r.countedAmount ?? 0),
-    0,
-  );
-  const netVariance = countedTotal - expectedTotal;
+  // Accounting strikes the cash-up totals — expected is already net of
+  // the expenses paid out of each tender, and this KPI shows the same
+  // variance the table below it foots to and the over/short journal posts.
+  const netVariance = cashUp.totals.variance;
 
   const headerLabel = session.identifier ?? `Session ${session.id.slice(0, 8)}`;
   const reportIsLive = session.status === "OPEN" && report?.preliminary;
@@ -402,10 +392,9 @@ export default async function DaySessionDetailPage({
         {/* LEFT */}
         <div className="min-w-0 lg:col-span-2">
           <CashUpReconciliationCard
-            reconciliations={reconciliations}
+            cashUp={cashUp}
             sessionId={id}
             currency={currency}
-            txnsByMethodId={txnsByMethodId}
             staffInitialsById={staffInitialsById}
           />
 
@@ -424,6 +413,8 @@ export default async function DaySessionDetailPage({
             roster={staffById}
             currency={currency}
           />
+
+          <ExpensesList expenses={extras.expenses} currency={currency} />
         </div>
 
         {/* RIGHT */}
@@ -455,8 +446,6 @@ export default async function DaySessionDetailPage({
             roster={staffById}
             currency={currency}
           />
-
-          <ExpensesList expenses={extras.expenses} currency={currency} />
 
           {report?.physicalTill ? (
             <CashDrawer

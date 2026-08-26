@@ -11,8 +11,6 @@ export declare interface MenuItemArgType {
      * still hit the upgrade gate if they navigate directly.
      */
     hasDepartmentsModule?: boolean;
-    /** When false, location-wide report nav items are filtered out (read_own users). Default true. */
-    reportsReadAll?: boolean;
     /**
      * Whether the account has at least one PACKAGING-material stock variant.
      * Surfaces the "Packaging report" nav link when true. Unlike the other

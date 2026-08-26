@@ -6,7 +6,7 @@ import {
   PageHeader,
   PageShell,
 } from "@/components/layouts/page-shell";
-import { requireReportsReadAll } from "@/lib/auth-utils";
+import { requireReportAccess } from "@/lib/auth-utils";
 import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import {
   StaffTabNav,
@@ -31,7 +31,7 @@ type Params = {
 
 export default async function StaffReportPage({ searchParams }: Params) {
   const resolved = await searchParams;
-  await requireReportsReadAll();
+  await requireReportAccess("/report/staff");
 
   const tab: StaffTab = TABS.includes(resolved.tab as StaffTab)
     ? (resolved.tab as StaffTab)

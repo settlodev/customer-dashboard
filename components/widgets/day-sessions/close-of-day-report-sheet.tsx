@@ -24,7 +24,10 @@ import type {
   CloseOfDayExtras,
   DaySessionReport,
 } from "@/lib/actions/day-session-list-actions";
-import type { PaymentMethodReconciliation } from "@/types/payment-method-reconciliation/type";
+import type {
+  CashUpTotals,
+  PaymentMethodReconciliation,
+} from "@/types/payment-method-reconciliation/type";
 import { VOID_REASON_LABELS } from "@/types/orders/type";
 import {
   fmt2,
@@ -82,6 +85,7 @@ export function CloseOfDayReportSheet({
   session,
   report,
   reconciliations,
+  cashUpTotals,
   extras,
   letterhead,
   roster,
@@ -91,6 +95,13 @@ export function CloseOfDayReportSheet({
   session: DaySession;
   report: DaySessionReport | null;
   reconciliations: PaymentMethodReconciliation[];
+  /**
+   * Session cash-up totals as Accounting struck them — the same figures
+   * the dashboard table foots to and the over/short journal posts. The
+   * public share route derives them from the snapshot's rows, which is
+   * the one path that doesn't carry a server-struck total.
+   */
+  cashUpTotals: CashUpTotals;
   extras: CloseOfDayExtras;
   letterhead: LocationLetterhead | null;
   roster: Map<string, Staff>;
@@ -125,9 +136,6 @@ export function CloseOfDayReportSheet({
     report?.paymentsByMethod ?? [],
     reconciliations,
   );
-  const txnsByMethodId = new Map(
-    (report?.paymentsByMethod ?? []).map((p) => [p.paymentMethodId, p.count]),
-  );
 
   // Verification (derived — no session-level sign-off field exists).
   const approved = reconciliations
@@ -152,19 +160,11 @@ export function CloseOfDayReportSheet({
     ? staffName(session.openedBy, roster, session.openedByName)
     : (session.openedByLabel ?? null);
 
-  const expectedTotal = reconciliations.reduce(
-    (s, r) => s + (r.expectedAmount ?? 0),
-    0,
-  );
-  const countedTotal = reconciliations.reduce(
-    (s, r) => s + (r.countedAmount ?? 0),
-    0,
-  );
-  const txnsTotal = reconciliations.reduce(
-    (s, r) => s + (r.paymentMethodId ? (txnsByMethodId.get(r.paymentMethodId) ?? 0) : 0),
-    0,
-  );
-  const netVariance = countedTotal - expectedTotal;
+  // Expenses paid out of a tender are netted off before the variance is
+  // struck (`expected = collected − expenses`), so this document reports
+  // exactly what the dashboard shows and what the ledger was posted on.
+  const showExpenses = cashUpTotals.hasExpenses;
+  const netVariance = cashUpTotals.variance;
 
   const sales = report?.sales;
   const till = report?.physicalTill ?? null;
@@ -394,7 +394,11 @@ export function CloseOfDayReportSheet({
       <Section
         title="Cash-up by payment method"
         count={`${reconciliations.length} method${reconciliations.length === 1 ? "" : "s"}`}
-        note="Expected vs counted"
+        note={
+          showExpenses
+            ? "Collected less expenses vs counted"
+            : "Expected vs counted"
+        }
       >
         {reconciliations.length === 0 ? (
           <EmptyBox>No cash-up was recorded for this session.</EmptyBox>
@@ -407,8 +411,13 @@ export function CloseOfDayReportSheet({
                     Payment method
                   </th>
                   <th className={cn(HERO_TH, "text-right")} style={heroStyle}>
-                    Txns
+                    Collected
                   </th>
+                  {showExpenses ? (
+                    <th className={cn(HERO_TH, "text-right")} style={heroStyle}>
+                      Expenses
+                    </th>
+                  ) : null}
                   <th className={cn(HERO_TH, "text-right")} style={heroStyle}>
                     Expected
                   </th>
@@ -422,10 +431,10 @@ export function CloseOfDayReportSheet({
               </thead>
               <tbody>
                 {reconciliations.map((r) => {
-                  const variance = r.variance ?? 0;
-                  const txns = r.paymentMethodId
-                    ? txnsByMethodId.get(r.paymentMethodId)
-                    : undefined;
+                  const collected = r.expectedAmount ?? 0;
+                  const expense = r.expensePaidAmount ?? 0;
+                  const expected = r.expectedNet ?? collected;
+                  const variance = r.adjustedVariance ?? r.variance ?? 0;
                   const subtitle =
                     r.paymentMethodCode &&
                     r.paymentMethodCode !== r.paymentMethodName
@@ -441,8 +450,13 @@ export function CloseOfDayReportSheet({
                         {subtitle && <div className={SUB}>{subtitle}</div>}
                         {breakdown && <div className={SUB}>{breakdown}</div>}
                       </td>
-                      <td className={cn(TD, NUM)}>{txns != null ? txns : "—"}</td>
-                      <td className={cn(TD, NUM)}>{fmt2(r.expectedAmount)}</td>
+                      <td className={cn(TD, NUM)}>{fmt2(collected)}</td>
+                      {showExpenses ? (
+                        <td className={cn(TD, NUM, expense > 0 && WARN)}>
+                          {expense > 0 ? `−${fmt2(expense)}` : "—"}
+                        </td>
+                      ) : null}
+                      <td className={cn(TD, NUM)}>{fmt2(expected)}</td>
                       <td className={cn(TD, NUM)}>{fmt2(r.countedAmount)}</td>
                       <td className={cn(TD, NUM, varTone(variance))}>
                         {fmtVariance2(variance)}
@@ -453,10 +467,13 @@ export function CloseOfDayReportSheet({
               </tbody>
               <tfoot>
                 <tr>
-                  <TFootLabel>Total collected</TFootLabel>
-                  <TFootNum>{txnsTotal.toLocaleString()}</TFootNum>
-                  <TFootNum>{fmt2(expectedTotal)}</TFootNum>
-                  <TFootNum>{fmt2(countedTotal)}</TFootNum>
+                  <TFootLabel>Total</TFootLabel>
+                  <TFootNum>{fmt2(cashUpTotals.collected)}</TFootNum>
+                  {showExpenses ? (
+                    <TFootNum>−{fmt2(cashUpTotals.expensePaid)}</TFootNum>
+                  ) : null}
+                  <TFootNum>{fmt2(cashUpTotals.expected)}</TFootNum>
+                  <TFootNum>{fmt2(cashUpTotals.counted)}</TFootNum>
                   <td
                     className={cn(
                       "border-t-2 border-slate-300 bg-slate-50 px-[15px] py-3 text-right font-mono font-bold tabular-nums",

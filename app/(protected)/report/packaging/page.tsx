@@ -1,5 +1,5 @@
 import { format, subDays } from "date-fns";
-import { requireReportsReadAll } from "@/lib/auth-utils";
+import { requireReportAccess } from "@/lib/auth-utils";
 
 import {
   PageBody,
@@ -25,7 +25,7 @@ type Params = {
 
 export default async function PackagingReportPage({ searchParams }: Params) {
   const resolved = await searchParams;
-  await requireReportsReadAll();
+  await requireReportAccess("/report/packaging");
   const tab: PackagingTab = resolved.tab === "flow" ? "flow" : "deposit";
 
   // Single from/to range (last 30 days by default) — see
