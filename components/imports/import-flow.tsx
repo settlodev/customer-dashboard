@@ -44,6 +44,7 @@ import {
   previewImport,
 } from "@/lib/actions/import-actions";
 import type {
+  CapacityAssessment,
   CommitResponse,
   Decision,
   ImportType,
@@ -589,6 +590,61 @@ function MissingLookupsAlert({
   );
 }
 
+/**
+ * Plan-capacity verdict for this file. Danger + reasons when the commit
+ * would be refused; a soft warning when it fits but consumes most of the
+ * remaining headroom (>80% of any cap). Numbers come rendered from the
+ * server — this component only lays them out.
+ */
+function CapacityAlert({ capacity }: { capacity: CapacityAssessment }) {
+  const nearLimit = capacity.checks.filter(
+    (c) => !c.exceeded && c.requested > 0 && c.requested > 0.8 * c.headroom,
+  );
+  if (capacity.blocked) {
+    return (
+      <Alert tone="danger">
+        <AlertIcon>
+          <AlertTriangle className="h-3.5 w-3.5" />
+        </AlertIcon>
+        <AlertBody>
+          <AlertTitle>Plan limit exceeded</AlertTitle>
+          <AlertDescription className="space-y-2">
+            {(capacity.message ?? "This file exceeds your plan's limits.")
+              .split("\n\n")
+              .map((paragraph, i) => (
+                <p key={i}>{paragraph}</p>
+              ))}
+            <p>
+              You can skip rows below to shrink the import — the limit is
+              re-checked when you press import.
+            </p>
+          </AlertDescription>
+        </AlertBody>
+      </Alert>
+    );
+  }
+  if (nearLimit.length === 0) return null;
+  return (
+    <Alert tone="warning">
+      <AlertIcon>
+        <AlertTriangle className="h-3.5 w-3.5" />
+      </AlertIcon>
+      <AlertBody>
+        <AlertTitle>Approaching your plan&apos;s limits</AlertTitle>
+        <AlertDescription className="space-y-1">
+          {nearLimit.map((c) => (
+            <p key={c.limitKey}>
+              This file uses {c.requested} of the {c.headroom} remaining{" "}
+              {c.noun} on your plan ({c.currentUsage} of {c.limit} already in
+              use).
+            </p>
+          ))}
+        </AlertDescription>
+      </AlertBody>
+    </Alert>
+  );
+}
+
 function collectMissingLookups(
   rows: PreviewRow[],
   type: ImportType,
@@ -665,10 +721,21 @@ function PreviewStep({
   const hasMissingLookups =
     missingLookups.categories.length > 0 || missingLookups.brands.length > 0;
   const groups = useMemo(() => groupRows(preview.rows), [preview.rows]);
+  const capacityBlocked = preview.capacity?.blocked === true;
+  // Any operator edit away from the seeded defaults re-enables the button —
+  // the server re-checks capacity at commit, so the club stays server-side.
+  const decisionsTouched = useMemo(
+    () =>
+      preview.rows.some(
+        (r) => decisions.get(r.rowIndex)?.action !== r.defaultDecision,
+      ),
+    [preview.rows, decisions],
+  );
   const isCatalogue = type !== "STOCK_INTAKE";
   return (
     <div className="space-y-4">
       <SummaryBar summary={preview.summary} type={type} groups={groups} />
+      {preview.capacity && <CapacityAlert capacity={preview.capacity} />}
       {hasMissingLookups && (
         <MissingLookupsAlert
           categories={missingLookups.categories}
@@ -828,7 +895,11 @@ function PreviewStep({
         </Button>
         <Button
           onClick={onCommit}
-          disabled={committing || importableCount === 0}
+          disabled={
+            committing ||
+            importableCount === 0 ||
+            (capacityBlocked && !decisionsTouched)
+          }
         >
           {committing ? (
             <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
