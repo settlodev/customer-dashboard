@@ -49,6 +49,8 @@ interface BillingViewProps {
   invoicePage: InvoicePage | null;
   activeDiscounts: SubscriptionDiscountResponse[];
   availableDiscounts: DiscountResponse[];
+  /** entityId -> location/warehouse/store name (billing doesn't own these). */
+  entityNames: Record<string, string>;
   canGrantFree: boolean;
   errors: {
     subscription: string | null;
@@ -118,6 +120,7 @@ export function BillingView({
   invoicePage,
   activeDiscounts,
   availableDiscounts,
+  entityNames,
   canGrantFree,
   errors,
 }: BillingViewProps) {
@@ -578,6 +581,7 @@ export function BillingView({
         <GenerateItemInvoiceDialog
           businessId={businessId}
           items={manageableItems}
+          entityNames={entityNames}
           open={generateItemsOpen}
           onOpenChange={setGenerateItemsOpen}
           onCreated={refresh}

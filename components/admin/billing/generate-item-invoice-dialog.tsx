@@ -47,9 +47,17 @@ import {
 interface GenerateItemInvoiceDialogProps {
   businessId: string;
   items: SubscriptionItemResponse[];
+  /** entityId -> location/warehouse/store name (billing doesn't own these). */
+  entityNames: Record<string, string>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
+}
+
+function itemLabel(item: SubscriptionItemResponse, entityNames: Record<string, string>): string {
+  const name = entityNames[item.entityId];
+  const plan = item.packageInfo?.name ?? item.entityType;
+  return name ? `${name} · ${plan}` : plan;
 }
 
 // Radix's <Select.Item> forbids an empty-string value (it reserves "" to mean
@@ -90,6 +98,7 @@ function emptyRow() {
 export function GenerateItemInvoiceDialog({
   businessId,
   items,
+  entityNames,
   open,
   onOpenChange,
   onCreated,
@@ -222,7 +231,9 @@ export function GenerateItemInvoiceDialog({
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-muted-foreground">
-                        Item {index + 1}
+                        {rowItem
+                          ? (entityNames[rowItem.entityId] ?? `Item ${index + 1}`)
+                          : `Item ${index + 1}`}
                       </span>
                       {fields.length > 1 && (
                         <button
@@ -261,8 +272,7 @@ export function GenerateItemInvoiceDialog({
                               <SelectContent>
                                 {itemOptions.map((item) => (
                                   <SelectItem key={item.id} value={item.id}>
-                                    {item.packageInfo?.name ?? item.entityType} ·{" "}
-                                    {item.status}
+                                    {itemLabel(item, entityNames)} · {item.status}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
