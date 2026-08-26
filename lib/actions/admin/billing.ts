@@ -29,6 +29,7 @@ import {
   GrantFreeSubscriptionRequest,
   InvoicePage,
   InvoiceResponse,
+  ManualPaymentPage,
   ManualPaymentResponse,
   PackageBreakdownResponse,
   PackageFeatureMappingResponse,
@@ -91,6 +92,9 @@ function revalidateBusiness(businessId: string) {
   // bust it alongside the business view so the queue's status counts
   // refresh after an action.
   revalidatePath("/admin/refunds");
+  // Same reasoning for the pending-payments queue: recording or approving a
+  // manual payment changes its status, which the queue's counts reflect.
+  revalidatePath("/admin/manual-payments");
 }
 
 // ── Subscription & invoices ─────────────────────────────────────────
@@ -380,6 +384,50 @@ export async function rejectRefund(
     return parseStringify({
       responseType: "error",
       message: error?.message || "Failed to reject refund",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+/**
+ * Admin manual-payment queue. Optional status filter is one of PENDING,
+ * APPROVED — any other value (or omitted) returns every manual payment
+ * regardless of status.
+ */
+export async function listManualPayments(params: {
+  status?: "PENDING" | "APPROVED";
+  page?: number;
+  size?: number;
+} = {}): Promise<ManualPaymentPage> {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set("status", params.status);
+  qs.set("page", String(Math.max(0, params.page ?? 0)));
+  qs.set("size", String(params.size ?? 20));
+  const data = await staffBilling().get<ManualPaymentPage>(
+    `/api/v1/support/billing/manual-payments?${qs.toString()}`,
+  );
+  return parseStringify(data);
+}
+
+export async function approveManualPayment(
+  businessId: string,
+  paymentId: string,
+): Promise<FormResponse<ManualPaymentResponse>> {
+  try {
+    const result = await staffBilling().post<
+      ManualPaymentResponse,
+      Record<string, never>
+    >(`/api/v1/support/billing/manual-payments/${paymentId}/approve`, {});
+    revalidateBusiness(businessId);
+    return parseStringify({
+      responseType: "success",
+      message: "Payment approved",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to approve payment",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }

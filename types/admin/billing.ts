@@ -196,11 +196,20 @@ export interface GenerateItemInvoiceRequest {
 
 // ── Manual payment ──────────────────────────────────────────────────
 
+/**
+ * PENDING: recorded by someone without billing:invoices:approve — nothing is
+ * fulfilled yet. APPROVED: invoice marked paid and subscription fulfilled,
+ * either immediately (approver recorded it) or via the approve endpoint.
+ */
+export type ManualPaymentStatus = "PENDING" | "APPROVED";
+
 export interface ManualPaymentResponse {
   id: string;
   invoiceId: string;
-  invoiceNumber: string;
+  invoiceNumber: string | null;
   subscriptionId: string | null;
+  /** Owning business of the subscription. Null when it can't be resolved. */
+  businessId: string | null;
   recordedBy: string | null;
   paymentMethod: PaymentMethod;
   referenceNumber: string;
@@ -209,7 +218,12 @@ export interface ManualPaymentResponse {
   proofStoragePath: string | null;
   notes: string | null;
   recordedAt: string;
+  status: ManualPaymentStatus;
+  approvedBy: string | null;
+  approvedAt: string | null;
 }
+
+export type ManualPaymentPage = ApiResponse<ManualPaymentResponse>;
 
 // ── Refunds ─────────────────────────────────────────────────────────
 
