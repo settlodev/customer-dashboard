@@ -184,7 +184,13 @@ export function ImportFlow({
       setStage("result");
       const imported = data.created + data.updated;
       const failed = data.errors?.length ?? 0;
-      if (failed === 0) {
+      if (data.stoppedBy) {
+        toast({
+          variant: "warning",
+          title: "Import stopped by your plan limit",
+          description: `${imported} imported before the limit was reached — see the summary below`,
+        });
+      } else if (failed === 0) {
         toast({
           variant: "success",
           title: "Import complete",
@@ -1465,7 +1471,15 @@ function ResultStep({
   const failed = result.errors?.length ?? 0;
   const notices = result.warnings?.length ?? 0;
   const state: "ok" | "partial" | "failed" =
-    failed === 0 ? "ok" : imported > 0 ? "partial" : "failed";
+    result.stoppedBy
+      ? imported > 0
+        ? "partial"
+        : "failed"
+      : failed === 0
+        ? "ok"
+        : imported > 0
+          ? "partial"
+          : "failed";
 
   const Icon =
     state === "ok"
@@ -1480,11 +1494,13 @@ function ResultStep({
         ? "text-amber-600"
         : "text-red-600";
   const heading =
-    state === "ok"
-      ? "Import complete"
-      : state === "partial"
-        ? "Imported with some errors"
-        : "Nothing imported";
+    result.stoppedBy && imported === 0
+      ? "Import stopped by your plan limit"
+      : state === "ok"
+        ? "Import complete"
+        : state === "partial"
+          ? "Imported with some errors"
+          : "Nothing imported";
 
   return (
     <Card>
@@ -1500,6 +1516,25 @@ function ResultStep({
             </p>
           </div>
         </div>
+        {result.stoppedBy && (
+          <Alert tone="danger">
+            <AlertIcon>
+              <AlertTriangle className="h-3.5 w-3.5" />
+            </AlertIcon>
+            <AlertBody>
+              <AlertTitle>Your plan&apos;s limit stopped this import partway</AlertTitle>
+              <AlertDescription className="space-y-1">
+                <p>{result.stoppedBy}</p>
+                <p>
+                  {imported} row{imported === 1 ? " was" : "s were"} imported
+                  before the limit was reached; the remaining rows were not
+                  attempted. Remove what was already imported from your file,
+                  then re-upload the rest — or upgrade your plan.
+                </p>
+              </AlertDescription>
+            </AlertBody>
+          </Alert>
+        )}
         {state === "partial" && (
           <Alert tone="warning">
             <AlertIcon>
