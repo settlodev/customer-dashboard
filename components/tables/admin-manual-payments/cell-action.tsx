@@ -1,13 +1,14 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Eye, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { approveManualPayment } from "@/lib/actions/admin/billing";
+import { ProofPreviewDialog } from "@/components/tables/admin-manual-payments/proof-preview-dialog";
 import { ManualPaymentResponse } from "@/types/admin/billing";
 
 function formatMoney(value: number | null | undefined): string {
@@ -19,6 +20,20 @@ export function ManualPaymentRowActions({ payment }: { payment: ManualPaymentRes
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const hasProof = Boolean(payment.proofStoragePath);
+  const viewProofButton = hasProof && (
+    <Button
+      type="button"
+      size="sm"
+      variant="ghost"
+      onClick={() => setPreviewOpen(true)}
+      title="View proof"
+    >
+      <Eye className="h-3.5 w-3.5" />
+    </Button>
+  );
 
   const handleApprove = () => {
     // Approving marks the invoice paid and activates the subscription
@@ -48,45 +63,45 @@ export function ManualPaymentRowActions({ payment }: { payment: ManualPaymentRes
     });
   };
 
-  if (payment.status === "PENDING") {
-    return (
+  return (
+    <>
       <div className="flex items-center justify-end gap-1">
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          disabled={isPending}
-          onClick={handleApprove}
-          className="text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
-        >
-          {isPending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-          )}
-          Approve
-        </Button>
+        {viewProofButton}
+        {payment.status === "PENDING" ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={isPending}
+            onClick={handleApprove}
+            className="text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+          >
+            {isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+            )}
+            Approve
+          </Button>
+        ) : (
+          payment.businessId && (
+            <Button
+              asChild
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="text-muted-foreground hover:text-ink"
+            >
+              <Link href={`/businesses/${payment.businessId}/billing`}>
+                View business billing
+              </Link>
+            </Button>
+          )
+        )}
       </div>
-    );
-  }
-
-  if (payment.businessId) {
-    return (
-      <div className="flex justify-end">
-        <Button
-          asChild
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="text-muted-foreground hover:text-ink"
-        >
-          <Link href={`/businesses/${payment.businessId}/billing`}>
-            View business billing
-          </Link>
-        </Button>
-      </div>
-    );
-  }
-
-  return null;
+      {previewOpen && (
+        <ProofPreviewDialog payment={payment} onClose={() => setPreviewOpen(false)} />
+      )}
+    </>
+  );
 }

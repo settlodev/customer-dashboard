@@ -433,6 +433,27 @@ export async function approveManualPayment(
   }
 }
 
+/**
+ * Compose the URL used by <img>, <iframe>, and window.open for inline proof
+ * preview. Prefers the server-supplied CDN URL (R2) when present, otherwise
+ * routes through our same-origin Next.js proxy so the browser doesn't need
+ * to send auth headers it doesn't have. Mirrors getAttachmentDownloadHref.
+ */
+export async function getManualPaymentProofHref(
+  payment: ManualPaymentResponse,
+): Promise<string> {
+  if (payment.proofUrl) return payment.proofUrl;
+  return `/api/staff/manual-payments/${payment.id}/proof`;
+}
+
+/** Same as getManualPaymentProofHref but forces a file-save disposition. */
+export async function getManualPaymentProofSaveHref(
+  payment: ManualPaymentResponse,
+): Promise<string> {
+  if (payment.proofUrl) return payment.proofUrl;
+  return `/api/staff/manual-payments/${payment.id}/proof?disposition=attachment`;
+}
+
 // ── Discounts ───────────────────────────────────────────────────────
 
 export async function listAvailableDiscounts(): Promise<DiscountResponse[]> {
