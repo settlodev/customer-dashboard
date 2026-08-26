@@ -40,6 +40,11 @@ export const PERM = {
   LOANS_FUNDING_MANAGE: "loans:funding_manage",
   LOANS_PRODUCT_MANAGE: "loans:product_manage",
   LOANS_WRITE_OFF: "loans:write_off",
+  // Billing operator — approves manual payments / activates subscriptions on
+  // someone else's behalf. Deliberately unprefixed, same reasoning as LOANS_*:
+  // matches the Billing Service's own PERMISSION_billing:invoices:approve
+  // @PreAuthorize exactly (see Auth InternalPermissions).
+  BILLING_INVOICES_APPROVE: "billing:invoices:approve",
 } as const;
 
 export type InternalPermission = (typeof PERM)[keyof typeof PERM];

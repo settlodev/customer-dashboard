@@ -25,9 +25,11 @@ import {
   DiscountResponse,
   FeatureResponse,
   GenerateInvoiceRequest,
+  GenerateItemInvoiceRequest,
   GrantFreeSubscriptionRequest,
   InvoicePage,
   InvoiceResponse,
+  ManualPaymentPage,
   ManualPaymentResponse,
   PackageBreakdownResponse,
   PackageFeatureMappingResponse,
@@ -65,6 +67,7 @@ import {
   CreatePackageSchema,
   CreateRefundSchema,
   GenerateInvoiceSchema,
+  GenerateItemInvoiceSchema,
   GrantFreeSubscriptionSchema,
   RecordManualPaymentSchema,
   SetPackageFeatureSchema,
@@ -89,6 +92,9 @@ function revalidateBusiness(businessId: string) {
   // bust it alongside the business view so the queue's status counts
   // refresh after an action.
   revalidatePath("/admin/refunds");
+  // Same reasoning for the pending-payments queue: recording or approving a
+  // manual payment changes its status, which the queue's counts reflect.
+  revalidatePath("/admin/manual-payments");
 }
 
 // ── Subscription & invoices ─────────────────────────────────────────
@@ -134,6 +140,39 @@ export async function generateInvoice(
       InvoiceResponse,
       GenerateInvoiceRequest
     >(`/api/v1/support/billing/${businessId}/invoices`, body);
+    revalidateBusiness(businessId);
+    return parseStringify({
+      responseType: "success",
+      message: `Invoice ${result.invoiceNumber} created`,
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to generate invoice",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function generateItemInvoice(
+  businessId: string,
+  payload: z.infer<typeof GenerateItemInvoiceSchema>,
+): Promise<FormResponse<InvoiceResponse>> {
+  const validated = GenerateItemInvoiceSchema.safeParse(payload);
+  if (!validated.success) {
+    return parseStringify({
+      responseType: "error",
+      message: validated.error.errors[0]?.message ?? "Invalid item selection",
+      error: new Error(validated.error.message),
+    });
+  }
+  try {
+    const body: GenerateItemInvoiceRequest = validated.data;
+    const result = await staffBilling().post<
+      InvoiceResponse,
+      GenerateItemInvoiceRequest
+    >(`/api/v1/support/billing/${businessId}/invoices/items`, body);
     revalidateBusiness(businessId);
     return parseStringify({
       responseType: "success",
@@ -348,6 +387,71 @@ export async function rejectRefund(
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
+}
+
+/**
+ * Admin manual-payment queue. Optional status filter is one of PENDING,
+ * APPROVED — any other value (or omitted) returns every manual payment
+ * regardless of status.
+ */
+export async function listManualPayments(params: {
+  status?: "PENDING" | "APPROVED";
+  page?: number;
+  size?: number;
+} = {}): Promise<ManualPaymentPage> {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set("status", params.status);
+  qs.set("page", String(Math.max(0, params.page ?? 0)));
+  qs.set("size", String(params.size ?? 20));
+  const data = await staffBilling().get<ManualPaymentPage>(
+    `/api/v1/support/billing/manual-payments?${qs.toString()}`,
+  );
+  return parseStringify(data);
+}
+
+export async function approveManualPayment(
+  businessId: string,
+  paymentId: string,
+): Promise<FormResponse<ManualPaymentResponse>> {
+  try {
+    const result = await staffBilling().post<
+      ManualPaymentResponse,
+      Record<string, never>
+    >(`/api/v1/support/billing/manual-payments/${paymentId}/approve`, {});
+    revalidateBusiness(businessId);
+    return parseStringify({
+      responseType: "success",
+      message: "Payment approved",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to approve payment",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+/**
+ * Compose the URL used by <img>, <iframe>, and window.open for inline proof
+ * preview. Prefers the server-supplied CDN URL (R2) when present, otherwise
+ * routes through our same-origin Next.js proxy so the browser doesn't need
+ * to send auth headers it doesn't have. Mirrors getAttachmentDownloadHref.
+ */
+export async function getManualPaymentProofHref(
+  payment: ManualPaymentResponse,
+): Promise<string> {
+  if (payment.proofUrl) return payment.proofUrl;
+  return `/api/staff/manual-payments/${payment.id}/proof`;
+}
+
+/** Same as getManualPaymentProofHref but forces a file-save disposition. */
+export async function getManualPaymentProofSaveHref(
+  payment: ManualPaymentResponse,
+): Promise<string> {
+  if (payment.proofUrl) return payment.proofUrl;
+  return `/api/staff/manual-payments/${payment.id}/proof?disposition=attachment`;
 }
 
 // ── Discounts ───────────────────────────────────────────────────────

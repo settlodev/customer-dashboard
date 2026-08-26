@@ -14,7 +14,12 @@ import { Button } from "@/components/ui/button";
 import { BillingView } from "@/components/admin/billing/billing-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
-import { getAdminBusinessDetail } from "@/lib/actions/admin/businesses";
+import {
+  getAdminBusinessDetail,
+  listAdminBusinessLocations,
+  listAdminBusinessStores,
+  listAdminBusinessWarehouses,
+} from "@/lib/actions/admin/businesses";
 import {
   getBusinessSubscription,
   listAvailableDiscounts,
@@ -27,7 +32,12 @@ import type {
   SubscriptionDiscountResponse,
   SubscriptionResponse,
 } from "@/types/admin/billing";
-import type { AdminBusinessDetail } from "@/types/admin/business";
+import type {
+  AdminBusinessDetail,
+  AdminLocationListItem,
+  AdminStoreListItem,
+  AdminWarehouseListItem,
+} from "@/types/admin/business";
 
 export const metadata = {
   title: "Business billing",
@@ -104,6 +114,12 @@ export default async function AdminBusinessBillingPage({
     listBusinessInvoices(id, backendPage, size),
     listBusinessActiveDiscounts(id),
     listAvailableDiscounts(),
+    // Subscription items only carry entityId/entityType (billing doesn't own
+    // location/store/warehouse names — Accounts does), so resolve names here
+    // the same way the business-detail page's "Billable units" list does.
+    listAdminBusinessLocations(id),
+    listAdminBusinessWarehouses(id),
+    listAdminBusinessStores(id),
   ]);
   const value = <T,>(r: PromiseSettledResult<T>): T | null =>
     r.status === "fulfilled" ? r.value : null;
@@ -119,6 +135,13 @@ export default async function AdminBusinessBillingPage({
   const activeDiscounts = (value(results[2]) ?? []) as SubscriptionDiscountResponse[];
   const availableDiscounts = (value(results[3]) ?? []) as DiscountResponse[];
   const subscriptionError = errorMessage(results[0]);
+  const locations = (value(results[4]) ?? []) as AdminLocationListItem[];
+  const warehouses = (value(results[5]) ?? []) as AdminWarehouseListItem[];
+  const stores = (value(results[6]) ?? []) as AdminStoreListItem[];
+  const entityNames: Record<string, string> = {};
+  for (const l of locations) entityNames[l.id] = l.name;
+  for (const w of warehouses) entityNames[w.id] = w.name;
+  for (const s of stores) entityNames[s.id] = s.name;
 
   return (
     <AdminShell token={token}>
@@ -178,6 +201,7 @@ export default async function AdminBusinessBillingPage({
               invoicePage={invoices}
               activeDiscounts={activeDiscounts}
               availableDiscounts={availableDiscounts}
+              entityNames={entityNames}
               canGrantFree={canGrantFree}
               errors={{
                 subscription: subscriptionError,

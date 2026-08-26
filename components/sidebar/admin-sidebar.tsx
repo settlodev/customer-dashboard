@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import {
   ArrowUpCircle,
   BarChart3,
+  Banknote,
   Briefcase,
   Building2,
   ClipboardCheck,
@@ -106,6 +107,12 @@ const NAV_GROUPS: NavGroup[] = [
         href: "/refunds",
         icon: RotateCcw,
         permissions: [PERM.SUPPORT_TICKETS_MANAGE],
+      },
+      {
+        title: "Pending Payments",
+        href: "/manual-payments",
+        icon: Banknote,
+        permissions: [PERM.BILLING_INVOICES_APPROVE],
       },
     ],
   },
