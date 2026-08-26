@@ -77,6 +77,22 @@ export const GenerateInvoiceSchema = z.object({
     .max(36, "Maximum 36 months"),
 });
 
+export const GenerateItemInvoiceSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        subscriptionItemId: z.string().uuid("Pick a subscription item"),
+        packageId: z.string().uuid().nullable(),
+        months: z
+          .number()
+          .int("Months must be a whole number")
+          .min(1, "Minimum 1 month")
+          .max(36, "Maximum 36 months"),
+      }),
+    )
+    .min(1, "Add at least one item"),
+});
+
 export const RecordManualPaymentSchema = z.object({
   paymentMethod: z.enum([
     "MOBILE_MONEY",

@@ -25,6 +25,7 @@ import {
   DiscountResponse,
   FeatureResponse,
   GenerateInvoiceRequest,
+  GenerateItemInvoiceRequest,
   GrantFreeSubscriptionRequest,
   InvoicePage,
   InvoiceResponse,
@@ -65,6 +66,7 @@ import {
   CreatePackageSchema,
   CreateRefundSchema,
   GenerateInvoiceSchema,
+  GenerateItemInvoiceSchema,
   GrantFreeSubscriptionSchema,
   RecordManualPaymentSchema,
   SetPackageFeatureSchema,
@@ -134,6 +136,39 @@ export async function generateInvoice(
       InvoiceResponse,
       GenerateInvoiceRequest
     >(`/api/v1/support/billing/${businessId}/invoices`, body);
+    revalidateBusiness(businessId);
+    return parseStringify({
+      responseType: "success",
+      message: `Invoice ${result.invoiceNumber} created`,
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to generate invoice",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function generateItemInvoice(
+  businessId: string,
+  payload: z.infer<typeof GenerateItemInvoiceSchema>,
+): Promise<FormResponse<InvoiceResponse>> {
+  const validated = GenerateItemInvoiceSchema.safeParse(payload);
+  if (!validated.success) {
+    return parseStringify({
+      responseType: "error",
+      message: validated.error.errors[0]?.message ?? "Invalid item selection",
+      error: new Error(validated.error.message),
+    });
+  }
+  try {
+    const body: GenerateItemInvoiceRequest = validated.data;
+    const result = await staffBilling().post<
+      InvoiceResponse,
+      GenerateItemInvoiceRequest
+    >(`/api/v1/support/billing/${businessId}/invoices/items`, body);
     revalidateBusiness(businessId);
     return parseStringify({
       responseType: "success",

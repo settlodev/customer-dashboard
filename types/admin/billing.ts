@@ -183,6 +183,16 @@ export interface GenerateInvoiceRequest {
   months: number;
 }
 
+export interface GenerateItemInvoiceItemSelection {
+  subscriptionItemId: string;
+  packageId: string | null; // null = keep the item's current package
+  months: number;
+}
+
+export interface GenerateItemInvoiceRequest {
+  items: GenerateItemInvoiceItemSelection[];
+}
+
 // ── Manual payment ──────────────────────────────────────────────────
 
 export interface ManualPaymentResponse {

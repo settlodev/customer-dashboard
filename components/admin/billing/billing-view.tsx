@@ -6,6 +6,7 @@ import {
   ArrowUpCircle,
   Gift,
   Link2,
+  ListChecks,
   Loader2,
   PackagePlus,
   Plus,
@@ -23,6 +24,7 @@ import { AddAddonDialog } from "@/components/admin/billing/add-addon-dialog";
 import { ApplyDiscountDialog } from "@/components/admin/billing/apply-discount-dialog";
 import { AttachInvoiceDialog } from "@/components/admin/billing/attach-invoice-dialog";
 import { GenerateInvoiceDialog } from "@/components/admin/billing/generate-invoice-dialog";
+import { GenerateItemInvoiceDialog } from "@/components/admin/billing/generate-item-invoice-dialog";
 import { GrantFreeSubscriptionDialog } from "@/components/admin/billing/grant-free-subscription-dialog";
 import { InvoiceActionsDialog } from "@/components/admin/billing/invoice-actions-dialog";
 import { buildInvoiceColumns } from "@/components/tables/admin-invoices/column";
@@ -123,6 +125,7 @@ export function BillingView({
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [generateItemsOpen, setGenerateItemsOpen] = useState(false);
   const [applyDiscountOpen, setApplyDiscountOpen] = useState(false);
   const [grantFreeOpen, setGrantFreeOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -275,6 +278,15 @@ export function BillingView({
         >
           <Plus className="mr-1.5 h-4 w-4" />
           Generate invoice
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setGenerateItemsOpen(true)}
+          disabled={!subscription || manageableItems.length === 0}
+        >
+          <ListChecks className="mr-1.5 h-4 w-4" />
+          Build custom invoice
         </Button>
         <Button
           size="sm"
@@ -559,6 +571,15 @@ export function BillingView({
           businessId={businessId}
           open={generateOpen}
           onOpenChange={setGenerateOpen}
+          onCreated={refresh}
+        />
+      )}
+      {subscription && (
+        <GenerateItemInvoiceDialog
+          businessId={businessId}
+          items={manageableItems}
+          open={generateItemsOpen}
+          onOpenChange={setGenerateItemsOpen}
           onCreated={refresh}
         />
       )}
