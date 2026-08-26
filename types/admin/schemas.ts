@@ -88,6 +88,7 @@ export const GenerateItemInvoiceSchema = z.object({
           .int("Months must be a whole number")
           .min(1, "Minimum 1 month")
           .max(36, "Maximum 36 months"),
+        addonId: z.string().uuid().nullable(),
       }),
     )
     .min(1, "Add at least one item"),

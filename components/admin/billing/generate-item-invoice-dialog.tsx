@@ -36,9 +36,11 @@ import { useToast } from "@/hooks/use-toast";
 
 import {
   generateItemInvoice,
+  listAddons,
   listPackages,
 } from "@/lib/actions/admin/billing";
 import {
+  AddonResponse,
   GenerateItemInvoiceRequest,
   PackageResponse,
   SubscriptionItemResponse,
@@ -64,10 +66,13 @@ function itemLabel(item: SubscriptionItemResponse, entityNames: Record<string, s
 // "cleared, show placeholder"), so "keep current package" needs a real
 // sentinel — mapped back to `null` in onSubmit before it reaches the API.
 const KEEP_CURRENT = "__keep_current_package__";
+// Same sentinel treatment for "no addon" — only one addon can be attached
+// per item, so this is a single Select, not a checkbox list.
+const NO_ADDON = "__no_addon__";
 
 // The form's own shape, distinct from GenerateItemInvoiceRequest: a Select
-// can't carry `null`, so packageId here is always a non-empty string (the
-// sentinel or a real package id) until onSubmit translates it.
+// can't carry `null`, so packageId/addonId here are always non-empty
+// strings (a sentinel or a real id) until onSubmit translates them.
 const ItemInvoiceFormSchema = z.object({
   items: z
     .array(
@@ -79,6 +84,7 @@ const ItemInvoiceFormSchema = z.object({
           .int("Months must be a whole number")
           .min(1, "Minimum 1 month")
           .max(36, "Maximum 36 months"),
+        addonId: z.string().min(1),
       }),
     )
     .min(1, "Add at least one item"),
@@ -92,7 +98,12 @@ function formatMoney(value: number | null | undefined): string {
 }
 
 function emptyRow() {
-  return { subscriptionItemId: "", packageId: KEEP_CURRENT, months: 1 };
+  return {
+    subscriptionItemId: "",
+    packageId: KEEP_CURRENT,
+    months: 1,
+    addonId: NO_ADDON,
+  };
 }
 
 export function GenerateItemInvoiceDialog({
@@ -108,6 +119,9 @@ export function GenerateItemInvoiceDialog({
   const [packages, setPackages] = useState<PackageResponse[] | null>(null);
   const [loadingPackages, setLoadingPackages] = useState(false);
   const [packagesError, setPackagesError] = useState<string | null>(null);
+  const [addons, setAddons] = useState<AddonResponse[] | null>(null);
+  const [loadingAddons, setLoadingAddons] = useState(false);
+  const [addonsError, setAddonsError] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Mirrors the backend's own reject rules (cancelled / still-in-trial) so a
@@ -156,6 +170,20 @@ export function GenerateItemInvoiceDialog({
       .finally(() => {
         if (!cancelled) setLoadingPackages(false);
       });
+    setLoadingAddons(true);
+    setAddonsError(null);
+    listAddons()
+      .then((list) => {
+        if (cancelled) return;
+        setAddons(list.filter((a) => a.isActive));
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        setAddonsError(err?.message ?? "Failed to load addons.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingAddons(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -168,6 +196,7 @@ export function GenerateItemInvoiceDialog({
         subscriptionItemId: row.subscriptionItemId,
         packageId: row.packageId === KEEP_CURRENT ? null : row.packageId,
         months: row.months,
+        addonId: row.addonId === NO_ADDON ? null : row.addonId,
       })),
     };
     startTransition(async () => {
@@ -201,6 +230,7 @@ export function GenerateItemInvoiceDialog({
 
         {error && <FormError message={error} />}
         {packagesError && <FormError message={packagesError} />}
+        {addonsError && <FormError message={addonsError} />}
 
         <Form {...form}>
           <form
@@ -222,6 +252,9 @@ export function GenerateItemInvoiceDialog({
                   eligiblePackages.find((p) => p.id === watchedItems[index]?.packageId) ?? null;
                 const itemOptions = selectableItems.filter(
                   (i) => i.id === rowItemId || !usedItemIds.has(i.id),
+                );
+                const eligibleAddons = (addons ?? []).filter(
+                  (a) => !rowItem || a.entityType === rowItem.entityType,
                 );
 
                 return (
@@ -248,7 +281,7 @@ export function GenerateItemInvoiceDialog({
                       )}
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-[2fr_2fr_1fr]">
+                    <div className="grid gap-3 md:grid-cols-2">
                       <FormField
                         control={form.control}
                         name={`items.${index}.subscriptionItemId`}
@@ -258,8 +291,9 @@ export function GenerateItemInvoiceDialog({
                             <Select
                               onValueChange={(value) => {
                                 f.onChange(value);
-                                // Eligible packages are entity-type-specific to the item.
+                                // Eligible packages/addons are entity-type-specific to the item.
                                 form.setValue(`items.${index}.packageId`, KEEP_CURRENT);
+                                form.setValue(`items.${index}.addonId`, NO_ADDON);
                               }}
                               value={f.value}
                               disabled={isPending || itemOptions.length === 0}
@@ -309,6 +343,40 @@ export function GenerateItemInvoiceDialog({
                                 {eligiblePackages.map((pkg) => (
                                   <SelectItem key={pkg.id} value={pkg.id}>
                                     {pkg.name} · {formatMoney(pkg.basePrice)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.addonId`}
+                        render={({ field: f }) => (
+                          <FormItem>
+                            <FormLabel>Addon</FormLabel>
+                            <Select
+                              onValueChange={f.onChange}
+                              value={f.value}
+                              disabled={isPending || loadingAddons || !addons || !rowItem}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue
+                                    placeholder={
+                                      loadingAddons ? "Loading…" : "No addon"
+                                    }
+                                  />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value={NO_ADDON}>No addon</SelectItem>
+                                {eligibleAddons.map((addon) => (
+                                  <SelectItem key={addon.id} value={addon.id}>
+                                    {addon.name} · {formatMoney(addon.price)}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
