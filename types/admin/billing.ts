@@ -201,7 +201,7 @@ export interface GenerateItemInvoiceRequest {
  * fulfilled yet. APPROVED: invoice marked paid and subscription fulfilled,
  * either immediately (approver recorded it) or via the approve endpoint.
  */
-export type ManualPaymentStatus = "PENDING" | "APPROVED";
+export type ManualPaymentStatus = "PENDING" | "APPROVED" | "CANCELLED";
 
 export interface ManualPaymentResponse {
   id: string;

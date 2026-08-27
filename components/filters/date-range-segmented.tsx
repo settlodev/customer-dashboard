@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
-import { CalendarRange } from "lucide-react";
+import { CalendarRange, Loader2 } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
 import { Button } from "@/components/ui/button";
@@ -71,6 +71,7 @@ export function DateRangeSegmented({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
   const today = useMemo(() => {
     const d = new Date();
@@ -93,8 +94,15 @@ export function DateRangeSegmented({
         }
       : undefined,
   );
+  // While a transition is in flight, `from`/`to` (and thus `activePreset`)
+  // still reflect the OLD url — React only swaps them in once the new RSC
+  // payload commits. Track which segment was actually clicked so the spinner
+  // lands on it instead of on the previously-active one.
+  const [pendingKey, setPendingKey] = useState<RangePreset | "all" | null>(
+    null,
+  );
 
-  const apply = (next: { from: string; to: string }) => {
+  const apply = (next: { from: string; to: string }, key: RangePreset) => {
     if (onChange) {
       onChange(next);
       return;
@@ -104,7 +112,10 @@ export function DateRangeSegmented({
     qs.set("to", next.to);
     // Switching the range invalidates the current page.
     qs.delete("page");
-    router.replace(`${pathname}?${qs.toString()}`, { scroll: false });
+    setPendingKey(key);
+    startTransition(() => {
+      router.replace(`${pathname}?${qs.toString()}`, { scroll: false });
+    });
   };
 
   const clear = () => {
@@ -116,12 +127,18 @@ export function DateRangeSegmented({
     qs.delete("from");
     qs.delete("to");
     qs.delete("page");
-    router.replace(`${pathname}?${qs.toString()}`, { scroll: false });
+    setPendingKey("all");
+    startTransition(() => {
+      router.replace(`${pathname}?${qs.toString()}`, { scroll: false });
+    });
   };
 
   const onApplyCustom = () => {
     if (!draft?.from) return;
-    apply({ from: fmt(draft.from), to: fmt(draft.to ?? draft.from) });
+    apply(
+      { from: fmt(draft.from), to: fmt(draft.to ?? draft.from) },
+      "custom",
+    );
     setCustomOpen(false);
   };
 
@@ -134,13 +151,22 @@ export function DateRangeSegmented({
           {label}
         </span>
       )}
-      <div className="inline-flex items-center gap-0.5 rounded-[10px] border border-line-2 bg-card p-[3px]">
+      <div
+        className={cn(
+          "inline-flex items-center gap-0.5 rounded-[10px] border border-line-2 bg-card p-[3px] transition-opacity",
+          isPending && "opacity-60",
+        )}
+      >
         {allowClear && (
           <button
             type="button"
             onClick={clear}
+            disabled={isPending}
             className={cn(segButton, isAll ? segActive : segIdle)}
           >
+            {isPending && pendingKey === "all" && (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            )}
             {allLabel}
           </button>
         )}
@@ -148,9 +174,13 @@ export function DateRangeSegmented({
           <button
             key={key}
             type="button"
-            onClick={() => apply(getPresetRange(key))}
+            onClick={() => apply(getPresetRange(key), key)}
+            disabled={isPending}
             className={cn(segButton, activePreset === key ? segActive : segIdle)}
           >
+            {isPending && pendingKey === key && (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            )}
             {presetLabel}
           </button>
         ))}
@@ -174,9 +204,14 @@ export function DateRangeSegmented({
           <PopoverTrigger asChild>
             <button
               type="button"
+              disabled={isPending}
               className={cn(segButton, isCustom ? segActive : segIdle)}
             >
-              <CalendarRange className="h-3.5 w-3.5" />
+              {isPending && pendingKey === "custom" ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <CalendarRange className="h-3.5 w-3.5" />
+              )}
               {isCustom ? formatRangeLabel(from, to) : "Custom"}
             </button>
           </PopoverTrigger>

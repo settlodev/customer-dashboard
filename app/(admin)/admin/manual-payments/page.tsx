@@ -25,7 +25,7 @@ interface ManualPaymentsPageProps {
 }
 
 function parseStatus(value: string | undefined): ManualPaymentStatus | "ALL" {
-  if (value === "PENDING" || value === "APPROVED") {
+  if (value === "PENDING" || value === "APPROVED" || value === "CANCELLED") {
     return value;
   }
   return "ALL";
@@ -64,23 +64,26 @@ export default async function AdminManualPaymentsPage({
   let queue: ManualPaymentPage | null = null;
   let pendingCount = 0;
   let approvedCount = 0;
+  let cancelledCount = 0;
   let allCount = 0;
   let loadError: string | null = null;
   try {
-    // Run the visible-page query and both status counts in parallel. Counts
-    // query only the first page (size=1) and read totalElements — cheap and
-    // means the tab badges are always accurate without a dedicated counts
-    // endpoint on the backend.
+    // Run the visible-page query and all three status counts in parallel.
+    // Counts query only the first page (size=1) and read totalElements —
+    // cheap and means the tab badges are always accurate without a
+    // dedicated counts endpoint on the backend.
     const listStatus = status === "ALL" ? undefined : status;
-    const [pageData, pendingPage, approvedPage, allPage] = await Promise.all([
+    const [pageData, pendingPage, approvedPage, cancelledPage, allPage] = await Promise.all([
       listManualPayments({ status: listStatus, page: backendPage, size }),
       listManualPayments({ status: "PENDING", size: 1 }),
       listManualPayments({ status: "APPROVED", size: 1 }),
+      listManualPayments({ status: "CANCELLED", size: 1 }),
       listManualPayments({ size: 1 }),
     ]);
     queue = pageData;
     pendingCount = pendingPage.totalElements;
     approvedCount = approvedPage.totalElements;
+    cancelledCount = cancelledPage.totalElements;
     allCount = allPage.totalElements;
   } catch (err: any) {
     loadError = err?.message ?? "Failed to load manual payments.";
@@ -89,6 +92,7 @@ export default async function AdminManualPaymentsPage({
   const counts: Record<ManualPaymentStatus | "ALL", number> = {
     PENDING: pendingCount,
     APPROVED: approvedCount,
+    CANCELLED: cancelledCount,
     ALL: allCount,
   };
 

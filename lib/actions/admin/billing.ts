@@ -391,11 +391,11 @@ export async function rejectRefund(
 
 /**
  * Admin manual-payment queue. Optional status filter is one of PENDING,
- * APPROVED — any other value (or omitted) returns every manual payment
- * regardless of status.
+ * APPROVED, CANCELLED — any other value (or omitted) returns every manual
+ * payment regardless of status.
  */
 export async function listManualPayments(params: {
-  status?: "PENDING" | "APPROVED";
+  status?: "PENDING" | "APPROVED" | "CANCELLED";
   page?: number;
   size?: number;
 } = {}): Promise<ManualPaymentPage> {

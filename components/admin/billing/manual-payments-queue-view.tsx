@@ -17,6 +17,7 @@ interface ManualPaymentsQueueViewProps {
 const TABS: { key: ManualPaymentStatus | "ALL"; label: string }[] = [
   { key: "PENDING", label: "Pending" },
   { key: "APPROVED", label: "Approved" },
+  { key: "CANCELLED", label: "Cancelled" },
   { key: "ALL", label: "All" },
 ];
 

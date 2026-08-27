@@ -20,6 +20,11 @@ const STATUS_BADGE: Record<ManualPaymentStatus, { label: string; className: stri
       className:
         "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20",
     },
+    CANCELLED: {
+      label: "Cancelled",
+      className:
+        "border-rose-200 bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20",
+    },
   };
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {

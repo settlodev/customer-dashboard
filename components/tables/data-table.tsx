@@ -18,11 +18,13 @@ import {
   ChevronRightIcon,
   FileUp,
   ListFilter,
+  Loader2,
   MoreHorizontal,
   Search,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -501,6 +503,15 @@ export function DataTable<TData, TValue>({
   // never rendered.
   const searchColumn = hideSearch ? undefined : table.getColumn(searchKey);
   const searchValue = searchColumn?.getFilterValue() as string;
+  // True from the moment the typed value diverges from `?search=` until the
+  // debounced navigation below lands and the URL catches up — spans both the
+  // debounce wait and the server round-trip, so it tracks a real in-flight
+  // search rather than just the local timer.
+  const searchPending =
+    !hideSearch &&
+    !clientMode &&
+    isInitialized &&
+    (searchParams?.get("search") ?? "") !== (searchValue ?? "").toString();
 
   // Push the typed search value to the URL after a 300 ms debounce.
   // No-op when the input already matches `?search=` — without this guard
@@ -612,7 +623,11 @@ export function DataTable<TData, TValue>({
             inside a hairline border on the card surface. */}
         {!hideSearch && (
         <div className="relative flex-1 md:max-w-[320px]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          {searchPending ? (
+            <Loader2 className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
+          ) : (
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          )}
           <Input
             className="h-9 pl-9 text-[12.5px]"
             placeholder={searchPlaceholder}
@@ -796,7 +811,15 @@ export function DataTable<TData, TValue>({
           <Loading />
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-line bg-card">
+        <div
+          className={cn(
+            "overflow-hidden rounded-xl border border-line bg-card transition-opacity duration-150",
+            // Keep the current rows on screen and just dim them while a
+            // search is in flight — swapping to a blank spinner on every
+            // keystroke pause reads as more disruptive than reassuring.
+            searchPending && "pointer-events-none opacity-50",
+          )}
+        >
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
