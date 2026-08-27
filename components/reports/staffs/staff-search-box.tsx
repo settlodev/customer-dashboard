@@ -1,6 +1,6 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -13,7 +13,7 @@ export function StaffSearchBox({ defaultValue }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
 
   const handleChange = (next: string) => {
     setValue(next);
@@ -30,7 +30,11 @@ export function StaffSearchBox({ defaultValue }: Props) {
 
   return (
     <div className="relative w-full sm:w-56">
-      <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      {isPending ? (
+        <Loader2 className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
+      ) : (
+        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      )}
       <input
         type="text"
         placeholder="Search by name…"
