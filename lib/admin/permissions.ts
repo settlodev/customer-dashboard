@@ -45,6 +45,11 @@ export const PERM = {
   // matches the Billing Service's own PERMISSION_billing:invoices:approve
   // @PreAuthorize exactly (see Auth InternalPermissions).
   BILLING_INVOICES_APPROVE: "billing:invoices:approve",
+  // Same reasoning — matches the Billing Service's own
+  // PERMISSION_billing:invoices:create @PreAuthorize, which gates the whole
+  // "manage billing for a customer" surface (generate invoices, upgrade,
+  // addons, cancel, extend trial, attach prospect invoice), not just creation.
+  BILLING_INVOICES_CREATE: "billing:invoices:create",
 } as const;
 
 export type InternalPermission = (typeof PERM)[keyof typeof PERM];
