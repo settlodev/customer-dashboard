@@ -136,9 +136,12 @@ export function RecordPaymentDialog({
         setError(result.message);
         return;
       }
+      const approved = result.data?.status === "APPROVED";
       toast({
-        title: "Payment recorded",
-        description: `Invoice ${invoice.invoiceNumber} marked paid.`,
+        title: approved ? "Payment recorded" : "Payment recorded — pending approval",
+        description: approved
+          ? `Invoice ${invoice.invoiceNumber} marked paid.`
+          : `Waiting on a billing approver to finalize invoice ${invoice.invoiceNumber}.`,
       });
       onRecorded();
       onOpenChange(false);
@@ -154,8 +157,10 @@ export function RecordPaymentDialog({
         <DialogHeader>
           <DialogTitle>Record manual payment</DialogTitle>
           <DialogDescription>
-            Marks invoice {invoice.invoiceNumber} as paid and activates the
-            subscription. Proof of payment (receipt or screenshot) is required.
+            If you hold billing approval, this marks invoice{" "}
+            {invoice.invoiceNumber} as paid and activates the subscription
+            immediately. Otherwise it&apos;s recorded pending approval. Proof of
+            payment (receipt or screenshot) is required either way.
           </DialogDescription>
         </DialogHeader>
 
