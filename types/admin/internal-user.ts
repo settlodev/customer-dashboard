@@ -19,6 +19,12 @@ export interface InternalUserResponse {
   status: InternalUserStatus;
   createdAt: string;
   lastLoginAt: string | null;
+  /**
+   * Only set on the create-internal-user response: true if this email already belonged to a
+   * user (e.g. signed up through the normal customer-facing flow) and was promoted in place
+   * rather than created fresh. Undefined/null on every other response using this shape.
+   */
+  promoted?: boolean | null;
 }
 
 export interface CreateInternalUserRequest {

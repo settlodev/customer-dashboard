@@ -84,10 +84,17 @@ export function CreateInternalUserDialog({
           setError(result.message);
           return;
         }
-        toast({
-          title: "Internal user created",
-          description: `${values.firstName} ${values.lastName} (${values.email}) can now sign in to the staff portal.`,
-        });
+        if (result.data?.promoted) {
+          toast({
+            title: "Existing user promoted",
+            description: `${values.email} already had a Settlo account — it now also has staff access to the portal.`,
+          });
+        } else {
+          toast({
+            title: "Internal user created",
+            description: `${values.firstName} ${values.lastName} (${values.email}) can now sign in to the staff portal.`,
+          });
+        }
         onCreated();
         onOpenChange(false);
       });
