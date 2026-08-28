@@ -39,6 +39,7 @@ import {
   InvoicePage,
   InvoiceResponse,
   SubscriptionDiscountResponse,
+  SubscriptionItemResponse,
   SubscriptionResponse,
   SubscriptionStatus,
 } from "@/types/admin/billing";
@@ -112,6 +113,17 @@ function formatDate(value: string | null | undefined): string {
 function formatMoney(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+/**
+ * A still-active item has no `removedAt`, but it isn't open-ended: it lapses
+ * at `paidThrough` (or `trialEndDate` while still trialing) unless renewed.
+ */
+function itemEndDate(item: SubscriptionItemResponse): string {
+  if (item.removedAt) return formatDate(item.removedAt);
+  if (item.paidThrough) return `${formatDate(item.paidThrough)} (paid through)`;
+  if (item.trialEndDate) return `${formatDate(item.trialEndDate)} (trial ends)`;
+  return "Ongoing";
 }
 
 export function BillingView({
@@ -472,17 +484,25 @@ export function BillingView({
               {manageableItems.map((item) => (
                 <li
                   key={item.id}
-                  className="flex items-center justify-between text-[13px]"
+                  className="flex items-center justify-between gap-3 rounded-md border border-line/60 bg-canvas/40 px-3 py-2 text-[13px]"
                 >
-                  <span className="font-medium text-ink">
-                    {item.packageInfo?.name ?? item.entityType}
-                  </span>
-                  <span className="font-mono text-[12px] text-muted-foreground">
-                    {item.entityType} · {item.status}
-                    {item.packageInfo?.basePrice != null
-                      ? ` · ${formatMoney(item.packageInfo.basePrice)}`
-                      : ""}
-                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-ink">
+                      {entityNames[item.entityId] ?? `${item.entityType} · ${item.entityId}`}
+                    </p>
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      {item.entityType} · {item.packageInfo?.name ?? "No package"}
+                      {item.packageInfo?.basePrice != null
+                        ? ` · ${formatMoney(item.packageInfo.basePrice)}`
+                        : ""}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="font-medium text-ink">{item.status}</p>
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      {formatDate(item.addedAt)} → {itemEndDate(item)}
+                    </p>
+                  </div>
                 </li>
               ))}
             </ul>

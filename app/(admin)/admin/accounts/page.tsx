@@ -50,7 +50,20 @@ interface AccountsPageProps {
     from?: string;
     to?: string;
     sort?: string;
+    assignment?: string;
   }>;
+}
+
+/**
+ * Staff-assignment axis, separate from onboarding state — a tab for accounts
+ * not yet handed to a sales/support agent. Mutually exclusive with `state` in
+ * the UI (picking one clears the other), so it's its own param.
+ */
+type AssignmentFilter = "unassigned_sales" | "unassigned_support" | undefined;
+
+function parseAssignment(value: string | undefined): AssignmentFilter {
+  if (value === "unassigned_sales" || value === "unassigned_support") return value;
+  return undefined;
 }
 
 // Whitelist the columns the UI exposes as sortable — keeps an arbitrary
@@ -139,7 +152,12 @@ export default async function AdminAccountsPage({
   // default list). When selected we show ONLY deleted accounts and ignore the
   // active/suspended axis (every deleted account is inactive anyway).
   const deleted = params.status === "deleted" ? true : undefined;
-  const onboardingState = parseOnboardingState(params.state);
+  const assignment = parseAssignment(params.assignment);
+  // Assignment and onboarding-state tabs are mutually exclusive in the UI —
+  // an explicit `assignment` wins over a stale `state` still in the URL.
+  const onboardingState = assignment ? undefined : parseOnboardingState(params.state);
+  const unassignedSales = assignment === "unassigned_sales" ? true : undefined;
+  const unassignedSupport = assignment === "unassigned_support" ? true : undefined;
   const sort = parseSort(params.sort);
   const { fromIso, toIso } = dayBounds(params.from, params.to);
 
@@ -150,6 +168,8 @@ export default async function AdminAccountsPage({
     businessIncomplete: 0,
     locationIncomplete: 0,
     complete: 0,
+    unassignedSales: 0,
+    unassignedSupport: 0,
   };
   let loadError: string | null = null;
   try {
@@ -164,6 +184,8 @@ export default async function AdminAccountsPage({
         onboardingState,
         createdFrom: fromIso,
         createdTo: toIso,
+        unassignedSales,
+        unassignedSupport,
       }),
       getAccountOnboardingCounts({
         search,
@@ -205,6 +227,7 @@ export default async function AdminAccountsPage({
                       : "inactive"
               }
               initialOnboardingState={onboardingState ?? "all"}
+              initialAssignment={assignment ?? null}
               initialFrom={params.from ?? null}
               initialTo={params.to ?? null}
               canSuspend={canSuspend}
