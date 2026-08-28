@@ -9,6 +9,7 @@ import { getCurrentDestination } from "@/lib/actions/context";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import { getInventoryDashboardSummary } from "@/lib/actions/reports-analytics-actions";
 import type { StockWithBalance } from "@/types/stock/type";
+import { rollUpBalances } from "@/lib/stock-balance";
 import type { RsInventoryDashboardSummary } from "@/types/reports-analytics/type";
 import {
   PageShell,
@@ -71,28 +72,9 @@ export default async function Page({ searchParams }: Props) {
   const balanceMap = new Map(balances.map((b) => [b.stockVariantId, b]));
 
   // Enrich the current page's stocks with aggregated balance data
-  const enrich = (
-    stock: (typeof responseData.content)[number],
-  ): StockWithBalance => {
-    let totalQuantity = 0;
-    let totalValue = 0;
-    let lowStock = false;
-    let outOfStock = false;
-
-    for (const variant of stock.variants) {
-      const bal = balanceMap.get(variant.id);
-      if (bal) {
-        totalQuantity += bal.quantityOnHand;
-        totalValue += bal.quantityOnHand * (bal.averageCost ?? 0);
-        if (bal.lowStock) lowStock = true;
-        if (bal.outOfStock) outOfStock = true;
-      }
-    }
-
-    return { ...stock, totalQuantity, totalValue, lowStock, outOfStock };
-  };
-
-  const filtered: StockWithBalance[] = responseData.content.map(enrich);
+  const filtered: StockWithBalance[] = responseData.content.map((stock) =>
+    rollUpBalances(stock, balanceMap),
+  );
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;
 

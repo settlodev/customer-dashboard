@@ -53,6 +53,7 @@ import { Money } from "@/components/widgets/money";
 import { BarcodeManager } from "@/components/widgets/barcode-manager";
 import { assignProductBarcode } from "@/lib/actions/product-barcode-actions";
 import { itemDisplayName } from "@/lib/display-name";
+import { isOutOfStock } from "@/lib/stock-balance";
 import {
   QtyOnHandChart,
   StockValueChart,
@@ -964,7 +965,7 @@ function InventoryTab({
                       </TableCell>
                       <TableCell
                         className={`text-right font-medium ${
-                          bal?.outOfStock
+                          isOutOfStock(bal)
                             ? "text-red-600 dark:text-red-400"
                             : bal?.lowStock
                               ? "text-amber-600 dark:text-amber-400"
