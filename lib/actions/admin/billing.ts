@@ -28,6 +28,7 @@ import {
   GenerateItemInvoiceRequest,
   GrantFreeSubscriptionRequest,
   InvoicePage,
+  InvoicePaymentHistory,
   InvoiceResponse,
   ManualPaymentPage,
   ManualPaymentResponse,
@@ -317,6 +318,20 @@ export async function listInvoiceRefunds(
 ): Promise<RefundResponse[]> {
   const data = await staffBilling().get<RefundResponse[]>(
     `/api/v1/refunds/invoice/${invoiceId}`,
+  );
+  return parseStringify(data);
+}
+
+/**
+ * How an invoice was actually paid — Selcom gateway attempts plus any manual
+ * payment recorded against it. Drives the "Payment" section of the admin
+ * invoice detail dialog.
+ */
+export async function getInvoicePaymentHistory(
+  invoiceId: string,
+): Promise<InvoicePaymentHistory> {
+  const data = await staffBilling().get<InvoicePaymentHistory>(
+    `/api/v1/support/billing/invoices/${invoiceId}/payments`,
   );
   return parseStringify(data);
 }
