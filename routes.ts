@@ -4,6 +4,8 @@ export const publicRoutes = [
   "/terms",
   "/contact-us",
   "/careers",
+  "/robots.txt",
+  "/sitemap.xml",
   "/menu/[id]",
   "/email-verification",
   "/reset-password",

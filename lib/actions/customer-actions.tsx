@@ -158,27 +158,29 @@ export const getCustomerCount = async (): Promise<{
 
 /**
  * Aggregate stats used by the list-page KPI strip — loyalty totals,
- * credit-line coverage, and no-show counts. Derived from the full
+ * credit-line coverage, and contact/region coverage. Derived from the full
  * customer list so the figures remain stable across pages and tabs.
  */
 export const getCustomerSummaryStats = async (): Promise<{
   loyaltyPointsTotal: number;
   creditLimitCount: number;
   withEmail: number;
-  noShowCustomers: number;
+  withRegion: number;
 }> => {
   const customers = await fetchAllCustomers({ includeInactive: true });
   let loyaltyPointsTotal = 0;
   let creditLimitCount = 0;
   let withEmail = 0;
-  let noShowCustomers = 0;
+  let withRegion = 0;
   for (const c of customers) {
     loyaltyPointsTotal += c.loyaltyPoints ?? 0;
     if ((c.creditLimit ?? 0) > 0) creditLimitCount += 1;
     if (c.email) withEmail += 1;
-    if ((c.noShowCount ?? 0) > 0) noShowCustomers += 1;
+    // Drives whether the list shows a Region column at all — it is optional,
+    // and a column of dashes helps nobody.
+    if (c.region?.trim()) withRegion += 1;
   }
-  return { loyaltyPointsTotal, creditLimitCount, withEmail, noShowCustomers };
+  return { loyaltyPointsTotal, creditLimitCount, withEmail, withRegion };
 };
 
 export const getCustomer = async (id: UUID): Promise<Customer> => {

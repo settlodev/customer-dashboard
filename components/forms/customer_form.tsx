@@ -20,6 +20,7 @@ import {
   FileText,
   IdCard,
   Mail,
+  MapPin,
   Phone as PhoneIcon,
   Sparkles,
   Star,
@@ -148,6 +149,9 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
       idNumber: item?.idNumber ?? undefined,
       tinNumber: item?.tinNumber ?? undefined,
       vrn: item?.vrn ?? undefined,
+      // Empty string rather than undefined so clearing the field sends "" and
+      // the backend unsets the region — an omitted key would leave it as-is.
+      region: item?.region ?? "",
       creditLimit: item?.creditLimit ?? undefined,
       source: item?.source ?? undefined,
       createdFrom: item?.createdFrom ?? undefined,
@@ -569,6 +573,30 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                             </FormItem>
                           );
                         }}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="region"
+                        render={({ field }) => (
+                          <FormItem className="space-y-[7px]">
+                            <FieldLabel optional>Region</FieldLabel>
+                            <FormControl>
+                              <ControlInput
+                                prefix={<MapPin className="h-3.5 w-3.5" />}
+                                placeholder="e.g. Dar es Salaam"
+                                disabled={isPending}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FieldHint>
+                              Where they are based. Shown on the customers list
+                              once any customer has one.
+                            </FieldHint>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
 
                       <FormField

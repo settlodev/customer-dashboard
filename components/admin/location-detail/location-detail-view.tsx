@@ -38,6 +38,7 @@ import type {
   SubscriptionResponse,
 } from "@/types/admin/billing";
 import type {
+  BusinessCustomerSegmentRow,
   BusinessHealthSnapshot,
   BusinessOverviewSnapshot,
   LocationLifecycleSnapshot,
@@ -78,6 +79,12 @@ interface LocationDetailViewProps {
   financials: AdminBusinessFinancialsSummary | null;
   stock: EntityStockSummary | null;
   staff: LocationStaffRow[];
+  /**
+   * RFM mix for this location's own customers. Recomputed from this location's
+   * orders, so a customer who visits two branches appears at both — these
+   * counts are NOT a slice of the business's, and do not sum to it.
+   */
+  customerSegments: BusinessCustomerSegmentRow[];
   rangeLabel: string;
   canBilling: boolean;
   /** SYSTEM_ADMIN — may override-extend a paid/used entity's trial. */
@@ -133,6 +140,7 @@ export function LocationDetailView({
   financials,
   stock,
   staff,
+  customerSegments,
   rangeLabel,
   canBilling,
   isSuperAdmin,
@@ -159,6 +167,13 @@ export function LocationDetailView({
     canBilling && !!subscription?.id && !!item && !item.isBundled;
 
   const hasTraded = n(lifecycle?.total_orders) > 0 || n(overview30d?.total_orders) > 0;
+  // Sum of this location's segments. Deliberately not compared against the
+  // business's customer count anywhere: a customer shared with another branch is
+  // counted at both, so the two figures are not meant to reconcile.
+  const totalSegmentCustomers = customerSegments.reduce(
+    (t, seg) => t + n(seg.customer_count),
+    0,
+  );
 
   return (
     // space-y-4, matching BusinessDetailView's root: PageBody's default space-y-6
@@ -630,6 +645,51 @@ export function LocationDetailView({
                   </tbody>
                 </table>
               </div>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            title={
+              <CardTitle icon={<Users className="h-[17px] w-[17px]" />}>
+                Customer segments (RFM)
+              </CardTitle>
+            }
+            subtitle="customers of this location — a customer who also visits another branch is counted there too"
+            action={
+              <span className="font-mono text-[11px] text-muted-foreground">
+                {totalSegmentCustomers.toLocaleString()} customers
+              </span>
+            }
+          >
+            {customerSegments.length === 0 ? (
+              <Empty>
+                No customer segmentation yet — appears after the first completed
+                sales at this location.
+              </Empty>
+            ) : (
+              <DefList>
+                {customerSegments.map((seg) => (
+                  <DefRow
+                    key={seg.rfm_segment}
+                    label={`${seg.rfm_segment} · ${n(seg.customer_count)} ${
+                      n(seg.customer_count) === 1 ? "customer" : "customers"
+                    }`}
+                    rawValue
+                    value={
+                      <span className="flex items-center gap-2">
+                        {n(seg.at_risk_count) > 0 && (
+                          <span className="font-mono text-[10.5px] text-warn">
+                            {n(seg.at_risk_count)} at risk
+                          </span>
+                        )}
+                        <span className="font-mono text-[12px] text-ink">
+                          {currency} {amt(seg.segment_revenue)}
+                        </span>
+                      </span>
+                    }
+                  />
+                ))}
+              </DefList>
             )}
           </SectionCard>
         </div>

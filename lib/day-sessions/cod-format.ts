@@ -330,6 +330,37 @@ export const paymentMethodLabel = (
   return after || text;
 };
 
+/**
+ * Cash paid OUT of the drawer this session, for the drawer waterfall.
+ *
+ * Taken from the cash-up's cash row, which Accounting strikes on the
+ * PAYMENT's session — money that actually left the till today. The
+ * expenses summary answers a different question (what this session's
+ * expenses cost, whenever they were paid), so using it here left the
+ * waterfall short by every earlier invoice settled today.
+ *
+ * `fallback` is that summary figure, used only when the session counted
+ * no cash tender at all, or when the rows predate the server-computed
+ * `expensePaidAmount`.
+ */
+export const cashPaidOutFrom = (
+  rows: {
+    paymentMethodName?: string | null;
+    paymentMethodCode?: string | null;
+    expensePaidAmount?: number | null;
+  }[],
+  fallback: number,
+): number => {
+  const cashRows = rows.filter((r) =>
+    isCashMethod(r.paymentMethodName ?? r.paymentMethodCode),
+  );
+  if (cashRows.length === 0) return fallback;
+  // A row carrying 0 is a real answer; a row carrying nothing is an older
+  // backend that never computed it.
+  if (cashRows.every((r) => r.expensePaidAmount == null)) return fallback;
+  return cashRows.reduce((sum, r) => sum + (r.expensePaidAmount ?? 0), 0);
+};
+
 /** True when a code/name looks like physical cash. */
 export const isCashMethod = (label?: string | null): boolean =>
   !!label && /\bcash\b/i.test(label);
