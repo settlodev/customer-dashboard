@@ -131,3 +131,20 @@ export interface PlatformLocationsQuery {
   page?: number;
   size?: number;
 }
+
+/**
+ * Per-status counts for the locations tab badges. Buckets are NOT mutually
+ * exclusive: a location on an active trial counts toward both `active` and
+ * `trial` — trial is a derived flag on top of ACTIVE, not a distinct
+ * SubscriptionItemStatus. `total` is every non-internal, non-archived
+ * location regardless of status.
+ */
+export interface PlatformLocationStatusCounts {
+  total: number;
+  trial: number;
+  active: number;
+  pastDue: number;
+  expired: number;
+  suspended: number;
+  cancelled: number;
+}
