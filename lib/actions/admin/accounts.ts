@@ -41,6 +41,8 @@ function buildFilterQuery(params: ListAccountsParams): URLSearchParams {
   if (params.onboardingState) qs.set("onboardingState", params.onboardingState);
   if (params.createdFrom) qs.set("createdFrom", params.createdFrom);
   if (params.createdTo) qs.set("createdTo", params.createdTo);
+  if (params.unassignedSales) qs.set("unassignedSales", "true");
+  if (params.unassignedSupport) qs.set("unassignedSupport", "true");
   return qs;
 }
 
@@ -65,7 +67,12 @@ export async function listAccounts(
 export async function getAccountOnboardingCounts(
   params: Omit<
     ListAccountsParams,
-    "page" | "size" | "sort" | "onboardingState"
+    | "page"
+    | "size"
+    | "sort"
+    | "onboardingState"
+    | "unassignedSales"
+    | "unassignedSupport"
   > = {},
 ): Promise<AccountOnboardingCounts> {
   const qs = buildFilterQuery({ ...params, onboardingState: undefined });
