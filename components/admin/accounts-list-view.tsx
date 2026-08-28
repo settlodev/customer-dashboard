@@ -29,11 +29,15 @@ import {
   OnboardingState,
 } from "@/types/admin/account";
 
+type AssignmentFilter = "unassigned_sales" | "unassigned_support";
+
 interface AccountsListViewProps {
   initialPage: AdminAccountListPage;
   counts: AccountOnboardingCounts;
   initialStatus: string;
   initialOnboardingState: string;
+  /** Staff-assignment axis — mutually exclusive with onboarding state in the UI. */
+  initialAssignment: AssignmentFilter | null;
   initialFrom: string | null;
   initialTo: string | null;
   canSuspend: boolean;
@@ -41,7 +45,7 @@ interface AccountsListViewProps {
 }
 
 interface TabConfig {
-  key: "all" | OnboardingState;
+  key: "all" | OnboardingState | AssignmentFilter;
   label: string;
   count: number;
   /** Colour of the leading status dot (omitted for the "All" tab). */
@@ -59,6 +63,7 @@ export function AccountsListView({
   counts,
   initialStatus,
   initialOnboardingState,
+  initialAssignment,
   initialFrom,
   initialTo,
   canSuspend,
@@ -126,11 +131,27 @@ export function AccountsListView({
       count: counts.complete,
       dotColor: "hsl(var(--pos))",
     },
+    {
+      key: "unassigned_sales",
+      label: "Unassigned to sales agent",
+      count: counts.unassignedSales,
+      dotColor: "#7C3AED",
+    },
+    {
+      key: "unassigned_support",
+      label: "Unassigned to support agent",
+      count: counts.unassignedSupport,
+      dotColor: "#0891B2",
+    },
   ];
 
   const onTabClick = (key: TabConfig["key"]) => {
+    const isAssignment = key === "unassigned_sales" || key === "unassigned_support";
     updateParams({
-      state: key === "all" ? null : key,
+      // Onboarding state and staff assignment are separate axes rendered in
+      // one tab row — picking one clears the other.
+      state: !isAssignment && key !== "all" ? key : null,
+      assignment: isAssignment ? key : null,
       page: "1",
     });
   };
@@ -176,9 +197,10 @@ export function AccountsListView({
       ? initialStatus
       : "all";
   const activeTabKey: TabConfig["key"] =
-    (tabs.find((t) => t.key === initialOnboardingState)?.key as
+    initialAssignment ??
+    ((tabs.find((t) => t.key === initialOnboardingState)?.key as
       | TabConfig["key"]
-      | undefined) ?? "all";
+      | undefined) ?? "all");
 
   const { content, totalElements, totalPages, number } = initialPage;
   const today = new Date();

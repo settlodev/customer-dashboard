@@ -7,6 +7,7 @@ import { searchStocks } from "@/lib/actions/stock-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import type { StockWithBalance } from "@/types/stock/type";
+import { rollUpBalances } from "@/lib/stock-balance";
 
 const breadcrumbItems = [{ title: "Stock Items", link: "/warehouse-stock-variants" }];
 
@@ -34,22 +35,9 @@ export default async function Page({ searchParams }: Props) {
 
   const balanceMap = new Map(balances.map((b) => [b.stockVariantId, b]));
 
-  const active: StockWithBalance[] = responseData.content.map((s) => {
-    let totalQuantity = 0;
-    let totalValue = 0;
-    let lowStock = false;
-    let outOfStock = false;
-    for (const v of s.variants) {
-      const bal = balanceMap.get(v.id);
-      if (bal) {
-        totalQuantity += bal.quantityOnHand;
-        totalValue += bal.quantityOnHand * (bal.averageCost ?? 0);
-        if (bal.lowStock) lowStock = true;
-        if (bal.outOfStock) outOfStock = true;
-      }
-    }
-    return { ...s, totalQuantity, totalValue, lowStock, outOfStock };
-  });
+  const active: StockWithBalance[] = responseData.content.map((s) =>
+    rollUpBalances(s, balanceMap),
+  );
 
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;

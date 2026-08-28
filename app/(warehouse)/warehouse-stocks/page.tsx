@@ -7,6 +7,7 @@ import { getStocks } from "@/lib/actions/stock-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import type { StockWithBalance } from "@/types/stock/type";
+import { rollUpBalances } from "@/lib/stock-balance";
 
 export default async function Page() {
   const [stocks, location] = await Promise.all([
@@ -22,22 +23,7 @@ export default async function Page() {
 
   const active: StockWithBalance[] = stocks
     .filter((s) => !s.archived)
-    .map((s) => {
-      let totalQuantity = 0;
-      let totalValue = 0;
-      let lowStock = false;
-      let outOfStock = false;
-      for (const v of s.variants) {
-        const bal = balanceMap.get(v.id);
-        if (bal) {
-          totalQuantity += bal.quantityOnHand;
-          totalValue += bal.quantityOnHand * (bal.averageCost ?? 0);
-          if (bal.lowStock) lowStock = true;
-          if (bal.outOfStock) outOfStock = true;
-        }
-      }
-      return { ...s, totalQuantity, totalValue, lowStock, outOfStock };
-    });
+    .map((s) => rollUpBalances(s, balanceMap));
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">

@@ -68,6 +68,7 @@ import {
 import { BatchPanel } from "@/components/widgets/inventory/batch-panel";
 import { VariantTabs } from "@/components/widgets/inventory/variant-tabs";
 import { StockActivityTimeline } from "@/components/widgets/inventory/stock-activity-timeline";
+import { isOutOfStock } from "@/lib/stock-balance";
 
 interface Props {
   stock: Stock;
@@ -479,7 +480,7 @@ function OverviewTab({
                     </TableCell>
                     <TableCell
                       className={`text-right font-medium ${
-                        bal?.outOfStock
+                        isOutOfStock(bal)
                           ? "text-red-600 dark:text-red-400"
                           : bal?.lowStock
                             ? "text-amber-600 dark:text-amber-400"

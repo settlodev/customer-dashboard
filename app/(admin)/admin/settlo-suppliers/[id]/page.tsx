@@ -31,7 +31,7 @@ export default async function AdminSettloSupplierDetailPage({
   const token = await getStaffAuthToken();
   if (!token?.accessToken) redirect("/login");
 
-  if (!hasInternalPermission(token, PERM.ACCOUNTS_READ)) {
+  if (!hasInternalPermission(token, PERM.ACCOUNTS_READ_ALL)) {
     return (
       <AdminShell token={token}>
         <PageShell>

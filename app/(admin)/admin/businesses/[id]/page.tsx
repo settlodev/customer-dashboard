@@ -85,7 +85,7 @@ export default async function AdminBusinessDetailPage({
     redirect("/login");
   }
 
-  const canRead = hasInternalPermission(token, PERM.ACCOUNTS_READ);
+  const canRead = hasInternalPermission(token, PERM.ACCOUNTS_READ_ALL, PERM.ACCOUNTS_READ_ASSIGNED);
   if (!canRead) {
     return (
       <AdminShell token={token}>
