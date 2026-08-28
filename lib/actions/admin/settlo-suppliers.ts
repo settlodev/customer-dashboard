@@ -23,7 +23,7 @@ import {
  * Admin (internal-ops) Settlo Supplier directory — calls the Inventory
  * Service's `settlo-suppliers` admin API with the internal staff token.
  * Authorization is the Inventory Service's server-side check on
- * `internal:accounts:read` / `internal:accounts:manage`, satisfied by the
+ * `internal:accounts:read:all` / `internal:accounts:manage`, satisfied by the
  * caller's `internalPermissions` claim — see lib/admin/permissions.ts.
  */
 function suppliersClient() {
@@ -52,7 +52,7 @@ function sharedSupplierFields(v: SupplierFormInput) {
   };
 }
 
-/** Directory listing, optionally filtered by verification status. Requires `internal:accounts:read`. */
+/** Directory listing, optionally filtered by verification status. Requires `internal:accounts:read:all`. */
 export async function listSettloSuppliers(
   status?: SettloSupplierVerificationStatus,
 ): Promise<AdminSettloSupplier[]> {
@@ -65,7 +65,7 @@ export async function listSettloSuppliers(
   return parseStringify(data);
 }
 
-/** A single supplier, or `null` if it doesn't exist. Requires `internal:accounts:read`. */
+/** A single supplier, or `null` if it doesn't exist. Requires `internal:accounts:read:all`. */
 export async function getSettloSupplier(
   id: string,
 ): Promise<AdminSettloSupplier | null> {

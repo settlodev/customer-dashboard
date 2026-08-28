@@ -39,7 +39,12 @@ export default async function AdminLocationsPage({
   }
 
   const isSuperAdmin = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
-  const canRead = hasInternalPermission(token, PERM.BUSINESS_ANALYTICS_READ);
+  const canRead = hasInternalPermission(
+    token,
+    PERM.BUSINESS_ANALYTICS_READ,
+    PERM.ACCOUNTS_READ_ALL,
+    PERM.ACCOUNTS_READ_ASSIGNED,
+  );
   if (!canRead) {
     return (
       <AdminShell token={token}>
