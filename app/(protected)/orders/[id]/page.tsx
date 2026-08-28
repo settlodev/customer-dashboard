@@ -10,6 +10,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { OrdersRealtimeBridge } from "@/components/realtime/orders-realtime-bridge";
 import { OrderInvoiceShareButton } from "@/components/widgets/orders/invoice-share-dialog";
+import { MoveOrderDayButton } from "@/components/widgets/orders/move-order-day-dialog";
 import { OrderReceiptShareButton } from "@/components/widgets/orders/receipt-share-dialog";
 import { PrintVfdButton } from "@/components/widgets/orders/print-vfd-button";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
@@ -98,6 +99,7 @@ export default async function OrderPage({ params }: { params: Params }) {
     paymentStatus === PaymentStatus.NOT_PAID && status !== OrderStatus.CANCELLED;
   const canPrintVfd =
     status === OrderStatus.CLOSED && vfdRegistration?.verified === true;
+  const canMoveDay = status === OrderStatus.CLOSED;
 
   const orderId = detail.id as UUID;
 
@@ -121,7 +123,7 @@ export default async function OrderPage({ params }: { params: Params }) {
         }
         subtitle={subtitleParts.join(" · ")}
         actions={
-          canShareReceipt || canShareInvoice || canPrintVfd ? (
+          canShareReceipt || canShareInvoice || canPrintVfd || canMoveDay ? (
             <div className="flex flex-wrap gap-2">
               {canShareInvoice && (
                 <OrderInvoiceShareButton
@@ -140,6 +142,16 @@ export default async function OrderPage({ params }: { params: Params }) {
                   <PrintVfdButton
                     orderId={orderId}
                     orderNumber={detail.orderNumber}
+                  />
+                </PermissionGuard>
+              )}
+              {canMoveDay && (
+                <PermissionGuard permission="orders:approve_backdate">
+                  <MoveOrderDayButton
+                    orderId={orderId}
+                    orderNumber={detail.orderNumber}
+                    currentBusinessDate={detail.businessDate ?? null}
+                    version={detail.version ?? undefined}
                   />
                 </PermissionGuard>
               )}

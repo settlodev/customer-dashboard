@@ -11,7 +11,10 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
-import { buildCustomerColumns } from "@/components/tables/customer/column";
+import {
+  columns,
+  columnsWithRegion,
+} from "@/components/tables/customer/column";
 import {
   getCustomerCount,
   getCustomerSummaryStats,
@@ -138,9 +141,7 @@ export default async function CustomersPage({ searchParams }: Params) {
   // actually records one — otherwise it is a column of dashes. Derived from
   // the roster rather than the current page so the column does not appear and
   // disappear as the owner pages through.
-  const customerColumns = buildCustomerColumns({
-    showRegion: stats.withRegion > 0,
-  });
+  const customerColumns = stats.withRegion > 0 ? columnsWithRegion : columns;
 
   return (
     <PageShell>

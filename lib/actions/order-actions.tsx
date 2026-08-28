@@ -311,6 +311,39 @@ export const cancelOrder = async (
   }
 };
 
+/**
+ * Move a finished (CLOSED) order — tenders and refunds included — onto its
+ * true business day. The remedy for a sale that synced onto the wrong day
+ * after an offline outage; OMS recomputes both days' cash-ups. Gated
+ * server-side on orders:approve_backdate. When the order carries a
+ * processed VFD receipt the fiscal record keeps its original date — the
+ * response flags that so the dialog can warn.
+ */
+export const reattributeOrderDay = async (
+  id: UUID,
+  input: { businessDate: string; reason: string; expectedVersion?: number },
+): Promise<{ fiscalReceiptKeepsOriginalDate: boolean } | { error: string }> => {
+  try {
+    const result = await oms().post<
+      { fiscalReceiptKeepsOriginalDate?: boolean },
+      typeof input
+    >(`${ordersBase}/${id}/reattribute-day`, input);
+    revalidatePath(`/orders/${id}`);
+    revalidatePath("/orders");
+    return parseStringify({
+      fiscalReceiptKeepsOriginalDate:
+        result?.fiscalReceiptKeepsOriginalDate === true,
+    });
+  } catch (error: unknown) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to move the order to the selected day",
+    };
+  }
+};
+
 // ─── Live invoice share (OMS) ───────────────────────────────────────
 //
 // The OMS endpoint POST /api/v1/orders/{id}/share is idempotent —
