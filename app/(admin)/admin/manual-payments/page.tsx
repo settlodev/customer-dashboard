@@ -10,6 +10,11 @@ import { ManualPaymentsQueueView } from "@/components/admin/billing/manual-payme
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
 import { listManualPayments } from "@/lib/actions/admin/billing";
+import {
+  listInternalStaffProfiles,
+  listInternalUsers,
+} from "@/lib/actions/admin/internal-users";
+import { buildActorNameMap } from "@/lib/admin/actor-names";
 import type { ManualPaymentPage, ManualPaymentStatus } from "@/types/admin/billing";
 
 export const metadata = {
@@ -66,25 +71,32 @@ export default async function AdminManualPaymentsPage({
   let approvedCount = 0;
   let cancelledCount = 0;
   let allCount = 0;
+  let actorNames: Record<string, string> = {};
   let loadError: string | null = null;
   try {
     // Run the visible-page query and all three status counts in parallel.
     // Counts query only the first page (size=1) and read totalElements —
     // cheap and means the tab badges are always accurate without a
-    // dedicated counts endpoint on the backend.
+    // dedicated counts endpoint on the backend. Staff directories resolve
+    // `recordedBy` (an Auth user id) to a human name for the "Requested by"
+    // column — failures there shouldn't block the queue, so they're best-effort.
     const listStatus = status === "ALL" ? undefined : status;
-    const [pageData, pendingPage, approvedPage, cancelledPage, allPage] = await Promise.all([
-      listManualPayments({ status: listStatus, page: backendPage, size }),
-      listManualPayments({ status: "PENDING", size: 1 }),
-      listManualPayments({ status: "APPROVED", size: 1 }),
-      listManualPayments({ status: "CANCELLED", size: 1 }),
-      listManualPayments({ size: 1 }),
-    ]);
+    const [pageData, pendingPage, approvedPage, cancelledPage, allPage, internalUsers, staffProfiles] =
+      await Promise.all([
+        listManualPayments({ status: listStatus, page: backendPage, size }),
+        listManualPayments({ status: "PENDING", size: 1 }),
+        listManualPayments({ status: "APPROVED", size: 1 }),
+        listManualPayments({ status: "CANCELLED", size: 1 }),
+        listManualPayments({ size: 1 }),
+        listInternalUsers().catch(() => []),
+        listInternalStaffProfiles().catch(() => []),
+      ]);
     queue = pageData;
     pendingCount = pendingPage.totalElements;
     approvedCount = approvedPage.totalElements;
     cancelledCount = cancelledPage.totalElements;
     allCount = allPage.totalElements;
+    actorNames = buildActorNameMap(internalUsers, staffProfiles);
   } catch (err: any) {
     loadError = err?.message ?? "Failed to load manual payments.";
   }
@@ -113,6 +125,7 @@ export default async function AdminManualPaymentsPage({
               page={queue!}
               status={status}
               counts={counts}
+              actorNames={actorNames}
             />
           )}
         </PageBody>

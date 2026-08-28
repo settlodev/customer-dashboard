@@ -12,6 +12,7 @@ interface ManualPaymentsQueueViewProps {
   page: ManualPaymentPage;
   status: ManualPaymentStatus | "ALL";
   counts: Record<ManualPaymentStatus | "ALL", number>;
+  actorNames: Record<string, string>;
 }
 
 const TABS: { key: ManualPaymentStatus | "ALL"; label: string }[] = [
@@ -25,13 +26,17 @@ export function ManualPaymentsQueueView({
   page,
   status,
   counts,
+  actorNames,
 }: ManualPaymentsQueueViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
 
-  const columns = useMemo(() => buildManualPaymentColumns(), []);
+  const columns = useMemo(
+    () => buildManualPaymentColumns(actorNames),
+    [actorNames],
+  );
 
   const updateParams = useCallback(
     (changes: Record<string, string | null>) => {

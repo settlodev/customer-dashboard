@@ -35,6 +35,10 @@ export interface AccountOnboardingCounts {
   businessIncomplete: number;
   locationIncomplete: number;
   complete: number;
+  /** Accounts with no sales staff assigned — independent of onboarding state. */
+  unassignedSales: number;
+  /** Accounts with no support staff assigned — independent of onboarding state. */
+  unassignedSupport: number;
 }
 
 export type StaffAssigneeType = "INTERNAL_STAFF" | "EXTERNAL_AGENT";
@@ -134,6 +138,10 @@ export interface ListAccountsParams extends PageParams {
   onboardingState?: OnboardingState;
   createdFrom?: string;
   createdTo?: string;
+  /** true = only accounts with no sales staff assigned. Independent of onboardingState. */
+  unassignedSales?: boolean;
+  /** true = only accounts with no support staff assigned. Independent of onboardingState. */
+  unassignedSupport?: boolean;
 }
 
 export interface SearchCustomersParams extends PageParams {
