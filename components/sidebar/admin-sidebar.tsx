@@ -94,7 +94,11 @@ const NAV_GROUPS: NavGroup[] = [
         title: "Locations",
         href: "/locations",
         icon: MapPin,
-        permissions: [PERM.BUSINESS_ANALYTICS_READ],
+        permissions: [
+          PERM.BUSINESS_ANALYTICS_READ,
+          PERM.ACCOUNTS_READ_ALL,
+          PERM.ACCOUNTS_READ_ASSIGNED,
+        ],
       },
       {
         title: "Customers",
