@@ -65,7 +65,7 @@ export default async function LocationDetailPage({
   }
 
   const role = token.internalRole;
-  const canRead = hasInternalPermission(token, PERM.ACCOUNTS_READ);
+  const canRead = hasInternalPermission(token, PERM.ACCOUNTS_READ_ALL, PERM.ACCOUNTS_READ_ASSIGNED);
   if (!canRead) {
     return (
       <AdminShell token={token}>

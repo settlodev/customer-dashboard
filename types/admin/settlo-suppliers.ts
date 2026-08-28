@@ -7,7 +7,7 @@ import { z } from "zod";
  * `*At` timestamps are `OffsetDateTime` ISO strings.
  *
  * Powers the internal admin.localhost supplier directory (gated on the
- * internal `internal:accounts:read` / `internal:accounts:manage`
+ * internal `internal:accounts:read:all` / `internal:accounts:manage`
  * permissions — see lib/admin/permissions.ts).
  */
 

@@ -15,7 +15,7 @@ import type {
  * Inventory Service's `settlo-supplier-nominations` admin API with the
  * internal staff token. Tenant-agnostic (no `X-Business-Id`): staff triage
  * nominations across every business. Authorization is the Inventory
- * Service's server-side check on `internal:accounts:read` (reads) /
+ * Service's server-side check on `internal:accounts:read:all` (reads) /
  * `internal:accounts:manage` (approve/reject), satisfied by the caller's
  * `internalPermissions` claim — see lib/admin/permissions.ts.
  */
@@ -37,7 +37,7 @@ function revalidateNominationSurfaces(id?: string): void {
  * the caller (the admin nominations page) must catch and render a distinct
  * failure state, since a swallowed error here would otherwise render as an
  * indistinguishable "no nominations to review" and let a real outage hide
- * behind an empty queue. Requires `internal:accounts:read`.
+ * behind an empty queue. Requires `internal:accounts:read:all`.
  */
 export async function listNominations(
   status?: NominationStatus,
@@ -53,7 +53,7 @@ export async function listNominations(
 
 /**
  * A single nomination, with match candidates against the existing
- * directory, or `null` if it doesn't exist. Requires `internal:accounts:read`.
+ * directory, or `null` if it doesn't exist. Requires `internal:accounts:read:all`.
  */
 export async function getNomination(
   id: string,

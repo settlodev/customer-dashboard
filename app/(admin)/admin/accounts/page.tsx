@@ -105,7 +105,7 @@ export default async function AdminAccountsPage({
     redirect("/login");
   }
 
-  const canRead = hasInternalPermission(token, PERM.ACCOUNTS_READ);
+  const canRead = hasInternalPermission(token, PERM.ACCOUNTS_READ_ALL, PERM.ACCOUNTS_READ_ASSIGNED);
   const canManage = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
   const canSuspend = hasInternalPermission(token, PERM.ACCOUNTS_SUSPEND);
   const canDelete = hasInternalPermission(token, PERM.ACCOUNTS_DELETE);

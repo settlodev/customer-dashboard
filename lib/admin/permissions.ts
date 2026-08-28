@@ -8,7 +8,12 @@
  */
 
 export const PERM = {
-  ACCOUNTS_READ: "internal:accounts:read",
+  // Unrestricted read: every account. Assigned staff (SUPPORT_AGENT,
+  // SALES_TEAM) instead hold ACCOUNTS_READ_ASSIGNED and only see accounts
+  // assigned to them — Accounts Service enforces the split server-side, so
+  // every gate that used to check ACCOUNTS_READ alone must check both.
+  ACCOUNTS_READ_ALL: "internal:accounts:read:all",
+  ACCOUNTS_READ_ASSIGNED: "internal:accounts:read:assigned",
   ACCOUNTS_MANAGE: "internal:accounts:manage",
   ACCOUNTS_SUSPEND: "internal:accounts:suspend",
   ACCOUNTS_DELETE: "internal:accounts:delete",
