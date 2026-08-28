@@ -40,6 +40,16 @@ export const PERM = {
   LOANS_FUNDING_MANAGE: "loans:funding_manage",
   LOANS_PRODUCT_MANAGE: "loans:product_manage",
   LOANS_WRITE_OFF: "loans:write_off",
+  // Billing operator — approves manual payments / activates subscriptions on
+  // someone else's behalf. Deliberately unprefixed, same reasoning as LOANS_*:
+  // matches the Billing Service's own PERMISSION_billing:invoices:approve
+  // @PreAuthorize exactly (see Auth InternalPermissions).
+  BILLING_INVOICES_APPROVE: "billing:invoices:approve",
+  // Same reasoning — matches the Billing Service's own
+  // PERMISSION_billing:invoices:create @PreAuthorize, which gates the whole
+  // "manage billing for a customer" surface (generate invoices, upgrade,
+  // addons, cancel, extend trial, attach prospect invoice), not just creation.
+  BILLING_INVOICES_CREATE: "billing:invoices:create",
 } as const;
 
 export type InternalPermission = (typeof PERM)[keyof typeof PERM];

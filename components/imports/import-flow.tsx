@@ -12,6 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   Alert,
@@ -63,6 +64,17 @@ interface Props {
   previewColumns: { key: string; label: string }[];
 }
 
+// Where each import type's records show up once committed — used to send
+// the user there after a successful import instead of leaving them stranded
+// on the result summary.
+const RESULT_DESTINATIONS: Record<ImportType, { path: string; label: string }> = {
+  PRODUCT: { path: "/products", label: "View products" },
+  PRODUCT_WITH_STOCK: { path: "/products", label: "View products" },
+  STOCK_WITH_PRODUCT: { path: "/products", label: "View products" },
+  STOCK: { path: "/stock-variants", label: "View stock" },
+  STOCK_INTAKE: { path: "/stock-intakes", label: "View stock intakes" },
+};
+
 export function ImportFlow({
   type,
   title,
@@ -72,6 +84,7 @@ export function ImportFlow({
   previewColumns,
 }: Props) {
   const { toast } = useToast();
+  const router = useRouter();
   const [stage, setStage] = useState<"upload" | "preview" | "result">("upload");
   const [file, setFile] = useState<File | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -86,10 +99,6 @@ export function ImportFlow({
   const [commitPending, setCommitPending] = useState<string | null>(null);
   const [commitBlocked, setCommitBlocked] = useState<string | null>(null);
   const [creatingLookups, setCreatingLookups] = useState(false);
-  // Snapshot of the decisions map as seeded right after preview, captured at
-  // preview time rather than re-derived from `defaultDecision` — so
-  // decisionsTouched compares against exactly what onUpload seeded
-  // (action AND targetId), not just the server's default action.
   const seededDecisionsRef = useRef<Map<number, RowDecision>>(new Map());
 
   const downloadTemplate = useCallback(() => {
@@ -108,9 +117,6 @@ export function ImportFlow({
     if (!file) return;
     setPreviewing(true);
     setPreviewError(null);
-    // A fresh upload starts a fresh commit lifecycle — stale error/pending/
-    // blocked state from a previous preview's commit attempt must not leak
-    // into this one.
     setCommitError(null);
     setCommitPending(null);
     setCommitBlocked(null);
@@ -208,6 +214,9 @@ export function ImportFlow({
           title: "Import complete",
           description: `${data.created} created, ${data.updated} updated, ${data.skipped} skipped`,
         });
+        // Every row landed cleanly — take the user straight to their records
+        // instead of leaving them on the summary with nothing left to do.
+        router.push(RESULT_DESTINATIONS[type].path);
       } else if (imported > 0) {
         toast({
           variant: "warning",
@@ -437,6 +446,7 @@ export function ImportFlow({
 
         {stage === "result" && result && (
           <ResultStep
+            type={type}
             result={result}
             onReset={() => {
               setStage("upload");
@@ -1514,12 +1524,15 @@ function formatCell(value: unknown): string {
 // ── Result stage ─────────────────────────────────────────────────────
 
 function ResultStep({
+  type,
   result,
   onReset,
 }: {
+  type: ImportType;
   result: CommitResponse;
   onReset: () => void;
 }) {
+  const router = useRouter();
   const imported = result.created + result.updated;
   const failed = result.errors?.length ?? 0;
   const notices = result.warnings?.length ?? 0;
@@ -1637,11 +1650,16 @@ function ResultStep({
             ))}
           </div>
         )}
-        <div className="flex justify-end">
-          <Button onClick={onReset}>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onReset}>
             <Upload className="h-4 w-4 mr-1.5" />
             Import another
           </Button>
+          {imported > 0 && (
+            <Button onClick={() => router.push(RESULT_DESTINATIONS[type].path)}>
+              {RESULT_DESTINATIONS[type].label}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

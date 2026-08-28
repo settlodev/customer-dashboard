@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "../ui/button";
-import { Loader2Icon } from "lucide-react";
+import { Loader2Icon, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card, CardContent } from "../ui/card";
 import {
@@ -196,19 +196,29 @@ const BusinessForm = ({
                   className="cursor-pointer file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs"
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
-                    if (file) {
-                      const { uploadImage } = await import("@/lib/utils");
-                      uploadImage(file, "business/logos", (res) => {
-                        if (res.success) setLogoImage(res.data);
-                      });
-                    }
+                    if (!file) return;
+                    const { uploadImage } = await import("@/lib/utils");
+                    uploadImage(file, "business/logos", (res) => {
+                      if (res.success) setLogoImage(res.data);
+                    });
                   }}
                 />
               </FormControl>
               {logoImage && (
-                <p className="text-[11px] text-muted-foreground truncate">
-                  {logoImage}
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p className="flex-1 truncate text-[11px] text-muted-foreground">
+                    {logoImage}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setLogoImage("")}
+                    disabled={isPending}
+                    aria-label="Remove logo"
+                    className="flex-shrink-0 text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               )}
             </FormItem>
           </div>

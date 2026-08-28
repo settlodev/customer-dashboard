@@ -183,13 +183,33 @@ export interface GenerateInvoiceRequest {
   months: number;
 }
 
+export interface GenerateItemInvoiceItemSelection {
+  subscriptionItemId: string;
+  packageId: string | null; // null = keep the item's current package
+  months: number;
+  addonId: string | null; // null = attach no addon; only one addon per item
+}
+
+export interface GenerateItemInvoiceRequest {
+  items: GenerateItemInvoiceItemSelection[];
+}
+
 // ── Manual payment ──────────────────────────────────────────────────
+
+/**
+ * PENDING: recorded by someone without billing:invoices:approve — nothing is
+ * fulfilled yet. APPROVED: invoice marked paid and subscription fulfilled,
+ * either immediately (approver recorded it) or via the approve endpoint.
+ */
+export type ManualPaymentStatus = "PENDING" | "APPROVED" | "CANCELLED";
 
 export interface ManualPaymentResponse {
   id: string;
   invoiceId: string;
-  invoiceNumber: string;
+  invoiceNumber: string | null;
   subscriptionId: string | null;
+  /** Owning business of the subscription. Null when it can't be resolved. */
+  businessId: string | null;
   recordedBy: string | null;
   paymentMethod: PaymentMethod;
   referenceNumber: string;
@@ -198,7 +218,12 @@ export interface ManualPaymentResponse {
   proofStoragePath: string | null;
   notes: string | null;
   recordedAt: string;
+  status: ManualPaymentStatus;
+  approvedBy: string | null;
+  approvedAt: string | null;
 }
+
+export type ManualPaymentPage = ApiResponse<ManualPaymentResponse>;
 
 // ── Refunds ─────────────────────────────────────────────────────────
 

@@ -99,7 +99,11 @@ export default async function AdminBusinessDetailPage({
     );
   }
 
-  const canBilling = hasInternalPermission(token, PERM.SUPPORT_TICKETS_MANAGE);
+  const canBilling = hasInternalPermission(
+    token,
+    PERM.SUPPORT_TICKETS_MANAGE,
+    PERM.BILLING_INVOICES_CREATE,
+  );
   const { id } = await params;
 
   let business: AdminBusinessDetail;
