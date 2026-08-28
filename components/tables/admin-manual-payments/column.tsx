@@ -6,6 +6,7 @@ import { Banknote, ExternalLink } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { ManualPaymentRowActions } from "@/components/tables/admin-manual-payments/cell-action";
+import { resolveActorName } from "@/lib/admin/actor-names";
 import { ManualPaymentResponse, ManualPaymentStatus } from "@/types/admin/billing";
 
 const STATUS_BADGE: Record<ManualPaymentStatus, { label: string; className: string }> =
@@ -55,7 +56,9 @@ function formatDateTime(value: string | null | undefined): string {
   }
 }
 
-export function buildManualPaymentColumns(): ColumnDef<ManualPaymentResponse>[] {
+export function buildManualPaymentColumns(
+  actorNames: Record<string, string> = {},
+): ColumnDef<ManualPaymentResponse>[] {
   return [
     {
       accessorKey: "invoiceNumber",
@@ -110,6 +113,15 @@ export function buildManualPaymentColumns(): ColumnDef<ManualPaymentResponse>[] 
             {row.original.referenceNumber}
           </p>
         </div>
+      ),
+    },
+    {
+      accessorKey: "recordedBy",
+      header: "Requested by",
+      cell: ({ row }) => (
+        <span className="text-[13px]">
+          {resolveActorName(row.original.recordedBy, actorNames)}
+        </span>
       ),
     },
     {
