@@ -14,8 +14,12 @@ import { cn } from "@/lib/utils";
  * Region is optional and most accounts never fill it in, so the column is
  * built only when at least one customer at the location carries one — an
  * all-dashes column would just be noise.
+ *
+ * Deliberately NOT exported: this module is `"use client"`, so a server
+ * component importing a function from it gets a client reference it cannot
+ * call. The two ready-made arrays below are what the page picks between.
  */
-export function buildCustomerColumns({
+function buildCustomerColumns({
   showRegion = false,
 }: { showRegion?: boolean } = {}): ColumnDef<Customer>[] {
   const cols: ColumnDef<Customer>[] = [
@@ -279,3 +283,11 @@ export function buildCustomerColumns({
 
   return cols;
 }
+
+/** Default column set. */
+export const columns: ColumnDef<Customer>[] = buildCustomerColumns();
+
+/** Same set plus the Region column, for locations that record one. */
+export const columnsWithRegion: ColumnDef<Customer>[] = buildCustomerColumns({
+  showRegion: true,
+});
