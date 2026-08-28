@@ -472,17 +472,25 @@ export function BillingView({
               {manageableItems.map((item) => (
                 <li
                   key={item.id}
-                  className="flex items-center justify-between text-[13px]"
+                  className="flex items-center justify-between gap-3 rounded-md border border-line/60 bg-canvas/40 px-3 py-2 text-[13px]"
                 >
-                  <span className="font-medium text-ink">
-                    {item.packageInfo?.name ?? item.entityType}
-                  </span>
-                  <span className="font-mono text-[12px] text-muted-foreground">
-                    {item.entityType} · {item.status}
-                    {item.packageInfo?.basePrice != null
-                      ? ` · ${formatMoney(item.packageInfo.basePrice)}`
-                      : ""}
-                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-ink">
+                      {entityNames[item.entityId] ?? `${item.entityType} · ${item.entityId}`}
+                    </p>
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      {item.entityType} · {item.packageInfo?.name ?? "No package"}
+                      {item.packageInfo?.basePrice != null
+                        ? ` · ${formatMoney(item.packageInfo.basePrice)}`
+                        : ""}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="font-medium text-ink">{item.status}</p>
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      {formatDate(item.addedAt)} → {item.removedAt ? formatDate(item.removedAt) : "Present"}
+                    </p>
+                  </div>
                 </li>
               ))}
             </ul>
