@@ -39,6 +39,7 @@ import {
   InvoicePage,
   InvoiceResponse,
   SubscriptionDiscountResponse,
+  SubscriptionItemResponse,
   SubscriptionResponse,
   SubscriptionStatus,
 } from "@/types/admin/billing";
@@ -112,6 +113,17 @@ function formatDate(value: string | null | undefined): string {
 function formatMoney(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+/**
+ * A still-active item has no `removedAt`, but it isn't open-ended: it lapses
+ * at `paidThrough` (or `trialEndDate` while still trialing) unless renewed.
+ */
+function itemEndDate(item: SubscriptionItemResponse): string {
+  if (item.removedAt) return formatDate(item.removedAt);
+  if (item.paidThrough) return `${formatDate(item.paidThrough)} (paid through)`;
+  if (item.trialEndDate) return `${formatDate(item.trialEndDate)} (trial ends)`;
+  return "Ongoing";
 }
 
 export function BillingView({
@@ -488,7 +500,7 @@ export function BillingView({
                   <div className="shrink-0 text-right">
                     <p className="font-medium text-ink">{item.status}</p>
                     <p className="font-mono text-[11px] text-muted-foreground">
-                      {formatDate(item.addedAt)} → {item.removedAt ? formatDate(item.removedAt) : "Present"}
+                      {formatDate(item.addedAt)} → {itemEndDate(item)}
                     </p>
                   </div>
                 </li>
