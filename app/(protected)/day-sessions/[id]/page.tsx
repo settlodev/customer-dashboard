@@ -44,6 +44,7 @@ import {
   SessionMetaStrip,
 } from "@/components/widgets/day-sessions/cod-sections";
 import {
+  cashPaidOutFrom,
   fmt,
   fmtDateTimeDot,
   fmtDuration,
@@ -453,7 +454,10 @@ export default async function DaySessionDetailPage({
               payments={report.paymentsByMethod}
               refunds={extras.refunds?.refunds ?? []}
               prepayments={extras.prepayments?.items ?? []}
-              cashExpenses={extras.expenses?.totals.paidByCash ?? 0}
+              cashExpenses={cashPaidOutFrom(
+                cashUp.methods,
+                extras.expenses?.totals.paidByCash ?? 0,
+              )}
               methodNameById={methodNameById}
               currency={currency}
             />

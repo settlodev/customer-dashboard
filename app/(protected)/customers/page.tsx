@@ -11,7 +11,10 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/customer/column";
+import {
+  columns,
+  columnsWithRegion,
+} from "@/components/tables/customer/column";
 import {
   getCustomerCount,
   getCustomerSummaryStats,
@@ -38,6 +41,7 @@ import {
   getOutstandingPrepaidLiability,
   getTopCustomerPrepaidBalances,
 } from "@/lib/actions/prepayment-analytics-actions";
+import { getCustomerPurchaseSummaries } from "@/lib/actions/customer-analytics-actions";
 
 type Params = {
   searchParams: Promise<{
@@ -71,30 +75,42 @@ export default async function CustomersPage({ searchParams }: Params) {
     getCurrentBusiness(),
     getCurrentLocation().catch(() => null),
   ]);
-  const [counts, stats, responseData, prepaid, topBalances, arBalances] =
-    await Promise.all([
-      getCustomerCount().catch(() => ({ total: 0, active: 0, inactive: 0 })),
-      getCustomerSummaryStats().catch(() => ({
-        loyaltyPointsTotal: 0,
-        creditLimitCount: 0,
-        withEmail: 0,
-        noShowCustomers: 0,
-      })),
-      softFetch(searchCustomer(q, page, pageLimit, activeFilter)),
-      business?.id
-        ? getOutstandingPrepaidLiability(business.id)
-        : Promise.resolve(null),
-      business?.id
-        ? getTopCustomerPrepaidBalances(business.id, 500)
-        : Promise.resolve([]),
-      // Debtors at this location, in one page — same shape as the prepaid
-      // map below, so the Total due column costs one fetch rather than a
-      // per-row lookup. minOutstanding=0 means "owes something", so only
-      // actual debtors come back.
-      location?.id
-        ? listArBalances(location.id, 0, 0, 500)
-        : Promise.resolve(null),
-    ]);
+  const [
+    counts,
+    stats,
+    responseData,
+    prepaid,
+    topBalances,
+    arBalances,
+    purchaseSummaries,
+  ] = await Promise.all([
+    getCustomerCount().catch(() => ({ total: 0, active: 0, inactive: 0 })),
+    getCustomerSummaryStats().catch(() => ({
+      loyaltyPointsTotal: 0,
+      creditLimitCount: 0,
+      withEmail: 0,
+      withRegion: 0,
+    })),
+    softFetch(searchCustomer(q, page, pageLimit, activeFilter)),
+    business?.id
+      ? getOutstandingPrepaidLiability(business.id)
+      : Promise.resolve(null),
+    business?.id
+      ? getTopCustomerPrepaidBalances(business.id, 500)
+      : Promise.resolve([]),
+    // Debtors at this location, in one page — same shape as the prepaid
+    // map below, so the Total due column costs one fetch rather than a
+    // per-row lookup. minOutstanding=0 means "owes something", so only
+    // actual debtors come back.
+    location?.id
+      ? listArBalances(location.id, 0, 0, 500)
+      : Promise.resolve(null),
+    // Order count + lifetime value for every customer who has bought here —
+    // one grouped scan over fact_orders, joined onto the visible rows below.
+    location?.id
+      ? getCustomerPurchaseSummaries(location.id, 5000)
+      : Promise.resolve([]),
+  ]);
 
   // Per-customer prepaid balance map (business-wide) → enrich the visible rows
   // so the table can show a Prepaid column without an N+1 per-row fetch.
@@ -107,15 +123,25 @@ export default async function CustomersPage({ searchParams }: Params) {
       b.outstandingBalance,
     ]),
   );
+  const purchaseByCustomer = new Map(
+    purchaseSummaries.map((p) => [p.customerId, p]),
+  );
   const data: Customer[] = (responseData?.content ?? []).map((c) => ({
     ...c,
     prepaidBalance: prepaidByCustomer.get(c.id),
     totalDue: dueByCustomer.get(c.id),
+    orderCount: purchaseByCustomer.get(c.id)?.orderCount,
+    lifetimeValue: purchaseByCustomer.get(c.id)?.lifetimeValue,
   }));
   const total = responseData?.totalElements ?? 0;
   const pageCount = responseData?.totalPages ?? 0;
 
   const hasAnyCustomer = counts.total > 0;
+  // Region is optional. Show the column only when somebody at this location
+  // actually records one — otherwise it is a column of dashes. Derived from
+  // the roster rather than the current page so the column does not appear and
+  // disappear as the owner pages through.
+  const customerColumns = stats.withRegion > 0 ? columnsWithRegion : columns;
 
   return (
     <PageShell>
@@ -175,12 +201,7 @@ export default async function CustomersPage({ searchParams }: Params) {
                     ? stats.creditLimitCount.toLocaleString()
                     : "—"
                 }
-                delta={
-                  stats.noShowCustomers > 0
-                    ? `${stats.noShowCustomers} no-show`
-                    : undefined
-                }
-                deltaTone={stats.noShowCustomers > 0 ? "neg" : "neutral"}
+                deltaTone="neutral"
               />
               <KpiCard
                 icon={<Wallet className="h-3 w-3" />}
@@ -221,7 +242,7 @@ export default async function CustomersPage({ searchParams }: Params) {
               <Card>
                 <CardContent className="px-2 pt-6 sm:px-6">
                   <DataTable
-                    columns={columns}
+                    columns={customerColumns}
                     data={data}
                     pageCount={pageCount}
                     pageNo={page}

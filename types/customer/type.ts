@@ -48,8 +48,15 @@ export declare interface Customer {
   vrn: string | null;
   creditLimit: number | null;
   /**
+   * Optional catchment region — free text, same shape as the region on a
+   * business or location. Null for most customers; the customers list drops
+   * the column entirely when nobody at the location has one.
+   */
+  region: string | null;
+  /**
    * Client-enriched on the customers list from the prepayment analytics
-   * balance map — NOT part of the Accounts customer payload.
+   * balance map — NOT part of the Accounts customer payload. Surfaced as
+   * "Credit": prepaid money the business still owes this customer.
    */
   prepaidBalance?: number;
   /**
@@ -59,6 +66,17 @@ export declare interface Customer {
    * customer payload.
    */
   totalDue?: number;
+  /**
+   * Revenue-bearing orders this customer has placed. Client-enriched on the
+   * customers list from the Reports customer purchase summary, same as
+   * {@link prepaidBalance}; not part of the Accounts customer payload.
+   */
+  orderCount?: number;
+  /**
+   * Total net spend across those orders. Client-enriched alongside
+   * {@link orderCount}.
+   */
+  lifetimeValue?: number;
   allowNotifications: boolean;
   notes: string | null;
   loyaltyPoints: number;
@@ -74,6 +92,20 @@ export declare interface Customer {
   preferences: CustomerPreference[];
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Reports Service roll-up over `fact_orders` for one customer — how many
+ * revenue-bearing orders they have placed and what they spent in total.
+ * Cancelled / written-off / deferred / merged orders are excluded upstream.
+ */
+export declare interface CustomerPurchaseSummary {
+  customerId: UUID;
+  orderCount: number;
+  lifetimeValue: number;
+  averageOrderValue: number;
+  lastOrderDate: string | null;
+  firstOrderDate: string | null;
 }
 
 export declare interface CustomerGroup {

@@ -152,6 +152,24 @@ export async function getLocationStaffLeaderboard(
   return parseStringify(data);
 }
 
+/**
+ * RFM segment mix for this location's own customers (V083).
+ *
+ * Same row shape as the business-level segments, so one type serves both — but
+ * NOT a slice of them. Segments are recomputed from this location's orders, so a
+ * customer who visits two branches is scored at each and counts across a
+ * business's locations do not sum to its business-level count. Revenue does sum.
+ * Label it "customers of this location", never a share of the business total.
+ */
+export async function getLocationCustomerSegments(
+  locationId: string,
+): Promise<BusinessCustomerSegmentRow[]> {
+  const data = await reportsClient().get<BusinessCustomerSegmentRow[]>(
+    `${LOCATION_ANALYTICS_PREFIX}/${locationId}/customer-segments`,
+  );
+  return parseStringify(data);
+}
+
 export async function getLocationLifecycle(
   locationId: string,
 ): Promise<LocationLifecycleSnapshot | null> {

@@ -50,6 +50,8 @@ export const CustomerSchema = object({
   tinNumber: string().optional(),
   vrn: string().optional(),
 
+  region: string().max(100, "Region must not exceed 100 characters").optional(),
+
   creditLimit: optionalNumber,
 
   allowNotifications: boolean().optional(),

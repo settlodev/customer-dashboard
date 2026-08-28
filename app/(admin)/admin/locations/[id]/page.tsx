@@ -18,6 +18,7 @@ import {
 import { getBusinessSubscription } from "@/lib/actions/admin/billing";
 import {
   getDefaultIntelRange,
+  getLocationCustomerSegments,
   getLocationHealth,
   getLocationLifecycle,
   getLocationOverviewByFilter,
@@ -29,6 +30,7 @@ import {
 } from "@/lib/actions/admin/business-operations";
 import type { AdminBusinessFinancialsSummary } from "@/types/admin/business-operations";
 import type {
+  BusinessCustomerSegmentRow,
   BusinessHealthSnapshot,
   BusinessOverviewSnapshot,
   LocationLifecycleSnapshot,
@@ -126,6 +128,7 @@ export default async function LocationDetailPage({
     getLocationFinancialsSummary(businessId, id, startDate, endDate),
     getEntityStockSummary("LOCATION", id),
     getLocationStaffLeaderboard(businessId, id, startDate, endDate),
+    getLocationCustomerSegments(id),
   ]);
 
   const value = <T,>(r: PromiseSettledResult<T>): T | null =>
@@ -141,6 +144,8 @@ export default async function LocationDetailPage({
   const financials = value(results[7]) as AdminBusinessFinancialsSummary | null;
   const stock = value(results[8]) as EntityStockSummary | null;
   const staff = (value(results[9]) ?? []) as LocationStaffRow[];
+  const customerSegments = (value(results[10]) ??
+    []) as BusinessCustomerSegmentRow[];
 
   // `manageableItems` excludes what this staff member may not act on; fall back
   // to the full list so a read-only viewer still sees the plan.
@@ -187,6 +192,7 @@ export default async function LocationDetailPage({
             financials={financials}
             stock={stock}
             staff={staff}
+            customerSegments={customerSegments}
             rangeLabel={rangeLabel}
             canBilling={canBilling}
             isSuperAdmin={isSuperAdmin}

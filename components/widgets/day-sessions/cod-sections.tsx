@@ -36,6 +36,7 @@ import {
   type DaySessionVoidsResponse,
 } from "@/types/orders/type";
 import type {
+  DaySessionEarlierSettlement,
   DaySessionExpensePayment,
   DaySessionExpensesSummary,
 } from "@/types/expense/type";
@@ -931,11 +932,17 @@ export function ExpensesList({
 }) {
   const items = expenses?.items ?? [];
   const totals = expenses?.totals;
+  // Paid today against earlier days' expenses — absent from `items`, but
+  // money that left the tills all the same.
+  const earlier = expenses?.earlierSettlements ?? [];
+  const earlierTotal =
+    expenses?.earlierSettlementsTotal ??
+    earlier.reduce((sum, e) => sum + (e.amount ?? 0), 0);
 
   // Nothing spent this session — drop the card rather than showing an
   // empty shell. A null summary is a different thing (the read failed)
   // and still renders, so a service outage isn't mistaken for a quiet day.
-  if (expenses && items.length === 0) return null;
+  if (expenses && items.length === 0 && earlier.length === 0) return null;
 
   const paid = totals
     ? totals.paidByCash + totals.paidByMobile + totals.paidByOther
@@ -971,8 +978,12 @@ export function ExpensesList({
       icon={<Receipt />}
       sub={
         items.length > 0
-          ? `${items.length} expense${items.length === 1 ? "" : "s"} · ${fmt(paid)} paid`
-          : undefined
+          ? `${items.length} expense${items.length === 1 ? "" : "s"} · ${fmt(
+              paid + earlierTotal,
+            )} paid out`
+          : earlier.length > 0
+            ? `${fmt(earlierTotal)} paid out`
+            : undefined
       }
     >
       {expenses == null ? (
@@ -1061,15 +1072,90 @@ export function ExpensesList({
               );
             })}
           </div>
-          {totals ? (
+          {totals && items.length > 0 ? (
             <RecFoot
               split={split || `${items.length} expenses`}
               total={totals.totalAmount}
             />
           ) : null}
+
+          {earlier.length > 0 ? (
+            <EarlierSettlements
+              settlements={earlier}
+              total={earlierTotal}
+              hasItems={items.length > 0}
+              currency={currency}
+            />
+          ) : null}
         </>
       )}
     </CodCard>
+  );
+}
+
+/**
+ * Invoices raised on an earlier day but settled from today's tills.
+ *
+ * <p>They belong to no line above — this card lists what the session
+ * SPENT — yet the cash-up nets them off because the money left today.
+ * Without them on the page the two cards read as a contradiction, so they
+ * sit here under their own subtotal, deliberately outside the card's
+ * total, with the reconciliation spelled out.
+ */
+function EarlierSettlements({
+  settlements,
+  total,
+  hasItems,
+  currency,
+}: {
+  settlements: DaySessionEarlierSettlement[];
+  total: number;
+  hasItems: boolean;
+  currency: string;
+}) {
+  return (
+    <div className={cn(hasItems && "mt-3.5 border-t border-line pt-3.5")}>
+      <div className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-3">
+        Settled from earlier days
+      </div>
+      <div className="flex flex-col">
+        {settlements.map((e) => {
+          const method = paymentMethodLabel(e.paymentMethodCode, e.paymentMethod);
+          return (
+            <RecordRow
+              key={e.paymentId}
+              title={e.description ?? e.expenseNumber}
+              tag={<Tag tone="paid">Paid</Tag>}
+              meta={
+                <>
+                  <span className={META}>{e.expenseNumber}</span>
+                  <span className={META}>
+                    Raised{" "}
+                    <b className={METAB}>{fmtShortDay(e.expenseBusinessDate)}</b>
+                  </span>
+                  <span className={META}>{method}</span>
+                  {e.recordedAt ? (
+                    <span className={META}>{fmtTime(e.recordedAt)}</span>
+                  ) : null}
+                </>
+              }
+              amount={e.amount}
+              currency={e.currencyCode ?? currency}
+            />
+          );
+        })}
+      </div>
+      <RecFoot
+        split={`${settlements.length} earlier expense${
+          settlements.length === 1 ? "" : "s"
+        } settled today`}
+        total={total}
+      />
+      <p className="mt-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
+        Counted in the cash-up, not in the total above — that covers what
+        this session spent, whenever it was paid.
+      </p>
+    </div>
   );
 }
 

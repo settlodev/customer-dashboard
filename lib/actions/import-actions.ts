@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import ApiClient from "@/lib/settlo-api-client";
+import { SettloApiError } from "@/lib/settlo-api-error-handler";
 import { parseStringify } from "@/lib/utils";
 import type {
   CommitResponse,
@@ -28,7 +29,10 @@ export type CommitResult =
   // `pending` means the request reached the server but we never got a result
   // (gateway timeout / 5xx / dropped connection). The import may have already
   // completed — the UI must warn rather than invite a duplicate re-import.
-  | { ok: false; pending?: boolean; message: string };
+  // `blocked` means the server refused the WHOLE batch on a plan cap —
+  // nothing was written; the preview is still cached, so trimming rows and
+  // re-committing the same previewId is safe.
+  | { ok: false; pending?: boolean; blocked?: boolean; message: string };
 
 /**
  * Multipart preview. The file is forwarded as-is to the inventory
@@ -165,6 +169,20 @@ export async function commitImport(
   } catch (error: unknown) {
     console.error("commitImport failed", error);
     const message = error instanceof Error ? error.message : "Commit failed";
+    // The server refused the whole batch on a plan cap (whole-batch 400,
+    // nothing written) — distinct from a per-row validation failure. Checked
+    // before the `pending` heuristic below: a 400 never satisfies it anyway,
+    // but this also short-circuits before that generic classification runs.
+    // Only `.code` is checked, not `.digest`: the constructor sets
+    // `digest = code` on the very same object, so the two can never
+    // disagree here — `.digest` only matters once an Error has crossed a
+    // Server Component → Client boundary and lost every property but
+    // `message`/`digest`, which hasn't happened yet inside this try/catch.
+    const blocked =
+      error instanceof SettloApiError && error.code === "BILLING_ERROR";
+    if (blocked) {
+      return { ok: false, blocked: true, message };
+    }
     // The import is non-idempotent, so the failure mode matters. A clean 4xx
     // (expired preview, validation) means nothing ran — safe to fix and retry.
     // A gateway timeout / 5xx / network drop means the server may have

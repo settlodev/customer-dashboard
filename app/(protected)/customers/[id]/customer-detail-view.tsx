@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  AlertTriangle,
   Bell,
   BellOff,
   Calendar as CalendarIcon,
@@ -84,7 +83,7 @@ export function CustomerDetailView({
     <div className="space-y-6">
       {/* ── Summary KPIs ──────────────────────────────────────── */}
       <div className="overflow-hidden rounded-xl border border-line bg-line">
-        <div className="grid grid-cols-2 gap-px bg-line sm:grid-cols-3 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-px bg-line sm:grid-cols-2 md:grid-cols-4">
           <SummaryTile
             icon={<Star className="h-3 w-3" />}
             label="Loyalty"
@@ -106,12 +105,6 @@ export function CustomerDetailView({
                 : "—"
             }
             unit={customer.creditLimit != null ? "TZS" : undefined}
-          />
-          <SummaryTile
-            icon={<AlertTriangle className="h-3 w-3" />}
-            label="No-shows"
-            value={customer.noShowCount.toString()}
-            tone={customer.noShowCount > 2 ? "neg" : "neutral"}
           />
           <SummaryTile
             icon={
@@ -282,6 +275,7 @@ function OverviewTab({ customer }: { customer: Customer }) {
                     : null
                 }
               />
+              <DetailRow icon={MapPin} label="Region" value={customer.region} />
               <DetailRow
                 label="Source"
                 value={
@@ -406,44 +400,6 @@ function LoyaltyTab({ customer }: { customer: Customer }) {
             <p className="text-[12px] text-muted-foreground">
               Maximum balance allowed across credit-sale orders.
             </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="lg:col-span-2">
-        <CardContent className="space-y-3 pt-6">
-          <h3 className="flex items-center gap-2 text-sm font-semibold">
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-            Reservation reliability
-          </h3>
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2">
-            <DetailRow
-              label="No-show count"
-              value={
-                <span
-                  className={
-                    customer.noShowCount > 2
-                      ? "text-neg"
-                      : customer.noShowCount > 0
-                        ? "text-warn"
-                        : undefined
-                  }
-                >
-                  {customer.noShowCount}
-                </span>
-              }
-            />
-            <DetailRow
-              label="Status"
-              value={
-                <Badge
-                  variant={customer.active ? "pos" : "soft"}
-                  className="text-[10.5px]"
-                >
-                  {customer.active ? "Active" : "Inactive"}
-                </Badge>
-              }
-            />
           </div>
         </CardContent>
       </Card>

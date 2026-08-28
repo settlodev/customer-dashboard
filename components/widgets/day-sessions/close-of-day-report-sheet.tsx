@@ -30,6 +30,7 @@ import type {
 } from "@/types/payment-method-reconciliation/type";
 import { VOID_REASON_LABELS } from "@/types/orders/type";
 import {
+  cashPaidOutFrom,
   fmt2,
   fmtBusinessDate,
   fmtClock,
@@ -38,6 +39,7 @@ import {
   fmtVariance2,
   isCashMethod,
   methodNameIndex,
+  paymentMethodLabel,
   shortId,
   staffChip,
   staffName,
@@ -188,6 +190,14 @@ export function CloseOfDayReportSheet({
   const refundItems = extras.refunds?.refunds ?? [];
   const prepayItems = extras.prepayments?.items ?? [];
   const expenseItems = extras.expenses?.items ?? [];
+  // Earlier days' invoices settled from today's tills: absent from the
+  // list above (which is what this session SPENT) but netted off in the
+  // cash-up, so the document has to account for them or the two sections
+  // read as a contradiction.
+  const earlierSettlements = extras.expenses?.earlierSettlements ?? [];
+  const earlierSettlementsTotal =
+    extras.expenses?.earlierSettlementsTotal ??
+    earlierSettlements.reduce((sum, e) => sum + (e.amount ?? 0), 0);
 
   // Cash-drawer components (derived best-effort; see CoD data-gap notes).
   const cashSales = (report?.paymentsByMethod ?? [])
@@ -201,7 +211,13 @@ export function CloseOfDayReportSheet({
       (p) => p.paymentMethodId && isCashMethod(methodNameById.get(p.paymentMethodId)),
     )
     .reduce((s, p) => s + (p.amount ?? 0), 0);
-  const cashExpenses = extras.expenses?.totals.paidByCash ?? 0;
+  // From the cash-up's cash row: what actually left the till this session,
+  // including earlier days' invoices settled today. The expenses summary
+  // counts this session's expenses instead, whenever they were paid.
+  const cashExpenses = cashPaidOutFrom(
+    reconciliations,
+    extras.expenses?.totals.paidByCash ?? 0,
+  );
 
   const signatures = [
     {
@@ -794,7 +810,7 @@ export function CloseOfDayReportSheet({
         count={`${expenseItems.length} record${expenseItems.length === 1 ? "" : "s"}`}
         note="Paid & unpaid"
       >
-        {expenseItems.length === 0 ? (
+        {expenseItems.length === 0 && earlierSettlements.length === 0 ? (
           <EmptyBox>No expenses recorded this session.</EmptyBox>
         ) : (
           <TableBox>
@@ -855,6 +871,44 @@ export function CloseOfDayReportSheet({
                 </tr>
               </tfoot>
             )}
+          </TableBox>
+        )}
+        {earlierSettlements.length > 0 && (
+          <TableBox className="mt-3">
+            <thead>
+              <tr>
+                <th className={TH}>Settled from earlier days</th>
+                <th className={TH}>Raised</th>
+                <th className={TH}>Method</th>
+                <th className={cn(TH, "text-right")}>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {earlierSettlements.map((e) => (
+                <tr key={e.paymentId}>
+                  <td className={cn(TD, PRIM)}>
+                    {e.description ?? e.expenseNumber}
+                    <div className={SUB}>{e.expenseNumber}</div>
+                  </td>
+                  <td className={cn(TD, "text-[12.5px] text-slate-700")}>
+                    {fmtBusinessDate(e.expenseBusinessDate)}
+                  </td>
+                  <td className={cn(TD, "text-[12.5px] text-slate-700")}>
+                    {paymentMethodLabel(e.paymentMethodCode, e.paymentMethod)}
+                  </td>
+                  <td className={cn(TD, NUM)}>{fmt2(e.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <TFootLabel colSpan={3}>
+                  Paid today against earlier expenses — counted in the cash-up,
+                  outside the total above
+                </TFootLabel>
+                <TFootNum>{fmt2(earlierSettlementsTotal)}</TFootNum>
+              </tr>
+            </tfoot>
           </TableBox>
         )}
       </Section>
@@ -920,9 +974,20 @@ function Section({
   );
 }
 
-function TableBox({ children }: { children: React.ReactNode }) {
+function TableBox({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="overflow-hidden rounded-[10px] border border-slate-200">
+    <div
+      className={cn(
+        "overflow-hidden rounded-[10px] border border-slate-200",
+        className,
+      )}
+    >
       <table className="w-full border-collapse [&_tbody_tr:last-child>td]:border-b-0">
         {children}
       </table>

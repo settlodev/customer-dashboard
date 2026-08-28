@@ -54,12 +54,45 @@ export interface PreviewSummary {
   parentCount: number;
 }
 
+/**
+ * One evaluated plan cap — present even when it fits, so the UI can warn on
+ * "barely fits". Source of truth: {@code co.tz.settlo.inventory.imports.capacity.CapacityCheck}
+ * — the `capacity` package, not the `imports.domain` package this file's
+ * header points to.
+ */
+export interface CapacityCheck {
+  limitKey: string;
+  /** Merchant-facing noun, e.g. "products", "items held in stock". */
+  noun: string;
+  limit: number;
+  currentUsage: number;
+  headroom: number;
+  requested: number;
+  excess: number;
+  exceeded: boolean;
+}
+
+/**
+ * Capacity pre-flight verdict. Absent = not evaluated (older backend,
+ * billing unreachable). Source of truth: {@code co.tz.settlo.inventory.imports.capacity.CapacityAssessment}
+ * — the `capacity` package, not the `imports.domain` package this file's
+ * header points to.
+ */
+export interface CapacityAssessment {
+  /** true → the commit WILL be refused as-is. */
+  blocked: boolean;
+  /** Rendered multi-paragraph copy (blocks separated by \n\n); null unless blocked. */
+  message: string | null;
+  checks: CapacityCheck[];
+}
+
 export interface PreviewResponse {
   previewId: string;
   type: ImportType;
   expiresAt: string;
   summary: PreviewSummary;
   rows: PreviewRow[];
+  capacity?: CapacityAssessment | null;
 }
 
 export interface RowDecision {
@@ -86,4 +119,9 @@ export interface CommitResponse {
   skipped: number;
   errors: RowError[];
   warnings: string[];
+  /**
+   * Set when a plan cap tripped partway through the batch (a race beat the
+   * pre-flight): the counted rows are committed, the rest were not attempted.
+   */
+  stoppedBy?: string | null;
 }

@@ -182,9 +182,37 @@ export interface DaySessionExpenseTotals {
   unpaidTotal: number;
 }
 
+/**
+ * A payment made DURING this session against an expense raised on an
+ * earlier day — an unpaid invoice settled out of today's till. Absent
+ * from `items` (those are the expenses this session raised), but part of
+ * what left the tills today, which is why the cash-up nets it off.
+ */
+export interface DaySessionEarlierSettlement {
+  paymentId: string;
+  expenseId: string;
+  expenseNumber: string;
+  description?: string | null;
+  /** The day the expense itself was raised. */
+  expenseBusinessDate?: string | null;
+  amount: number;
+  currencyCode?: string | null;
+  paymentMethod?: string | null;
+  paymentMethodCode?: string | null;
+  paymentDate?: string | null;
+  recordedAt?: string | null;
+}
+
 export interface DaySessionExpensesSummary {
   daySessionId: string;
   businessId: string;
   items: DaySessionExpenseItem[];
+  /**
+   * Paid this session against earlier days' expenses. The cash-up's
+   * expense figure is `sum(items' payments) + this`, which is what makes
+   * the two cards reconcile. Absent on an older backend.
+   */
+  earlierSettlements?: DaySessionEarlierSettlement[] | null;
+  earlierSettlementsTotal?: number | null;
   totals: DaySessionExpenseTotals;
 }
