@@ -184,6 +184,14 @@ export interface Order {
     | "NOT_APPLICABLE"
     | null;
 
+  /**
+   * Settlement-currency total of every refund raised against this order.
+   * Present on the list projection (`GET /orders/search`) so the orders table
+   * can mark a refunded row without fetching each order's refunds; null when
+   * the order has none. See {@link orderRefundBadge}.
+   */
+  refundedAmount: number | null;
+
   ticketsCount: number | null;
   billCount: number | null;
   receiptCount: number | null;
@@ -642,6 +650,37 @@ export const PAYMENT_STATUS_PILL: Record<PaymentStatus, string> = {
     "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
   [PaymentStatus.NOT_PAID]:
     "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400",
+};
+
+/**
+ * The refund marker for an order row, or null when nothing was refunded.
+ *
+ * <p>Reads `refundedAmount` (the settlement-currency sum the OMS list
+ * projection carries) against the order's net amount, so a reversal of the
+ * whole sale reads differently from one line sent back. The comparison is
+ * deliberately tolerant by a cent: refunds are summed per item and can land
+ * fractionally short of the order total through rounding, and an order the
+ * customer got all their money back on should not read "Partly refunded".
+ */
+export const orderRefundBadge = (
+  order: Pick<Order, "refundedAmount" | "netAmount">,
+): { label: string; full: boolean } | null => {
+  const refunded = order.refundedAmount ?? 0;
+  if (refunded <= 0) return null;
+  const net = order.netAmount ?? 0;
+  const full = net > 0 && refunded >= net - 0.01;
+  return { label: full ? "Refunded" : "Part refunded", full };
+};
+
+/**
+ * Pill styling for {@link orderRefundBadge}. A sale reversed in full is money
+ * that left again — it reads in the same rose the unpaid figures use — while a
+ * partial return is amber, the shade the rest of the table gives to "attend to
+ * this" rather than "this is a loss".
+ */
+export const REFUND_PILL: Record<"full" | "partial", string> = {
+  full: "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400",
+  partial: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
 };
 
 export const ORDER_TYPE_LABELS: Record<OrderType, string> = {

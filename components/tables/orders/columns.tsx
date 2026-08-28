@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, RotateCcw } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -13,9 +13,11 @@ import {
   ORDER_STATUS_LABELS,
   ORDER_STATUS_PILL,
   OrderStatus,
+  orderRefundBadge,
   PAYMENT_STATUS_LABELS,
   PAYMENT_STATUS_PILL,
   PaymentStatus,
+  REFUND_PILL,
 } from "@/types/orders/type";
 
 const formatMoney = (value: number | null | undefined) => {
@@ -254,11 +256,29 @@ export function buildOrdersColumns({
       accessorKey: "orderStatus",
       header: "Status",
       cell: ({ row }) => {
-        const status = row.original.orderStatus as OrderStatus;
+        const order = row.original;
+        const status = order.orderStatus as OrderStatus;
+        // Money going back out is a different fact from how the order ended —
+        // a refunded order is still CLOSED — so it rides under the status pill
+        // as its own marker rather than replacing it or earning a column of
+        // its own, which would sit empty on almost every row.
+        const refund = orderRefundBadge(order);
         return (
-          <Badge variant="outline" className={ORDER_STATUS_PILL[status] ?? ""}>
-            {ORDER_STATUS_LABELS[status] ?? String(status)}
-          </Badge>
+          <div className="flex flex-col items-start gap-1">
+            <Badge variant="outline" className={ORDER_STATUS_PILL[status] ?? ""}>
+              {ORDER_STATUS_LABELS[status] ?? String(status)}
+            </Badge>
+            {refund ? (
+              <Badge
+                variant="outline"
+                className={REFUND_PILL[refund.full ? "full" : "partial"]}
+                title={`${refund.label}: ${formatMoney(order.refundedAmount)}`}
+              >
+                <RotateCcw className="mr-1 h-3 w-3" />
+                {refund.label}
+              </Badge>
+            ) : null}
+          </div>
         );
       },
     },
