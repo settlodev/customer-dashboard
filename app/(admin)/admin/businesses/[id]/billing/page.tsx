@@ -223,6 +223,7 @@ export default async function AdminBusinessBillingPage({
               entityNames={entityNames}
               actorNames={actorNames}
               canGrantFree={canGrantFree}
+              canOverrideBilling={canGrantFree}
               errors={{
                 subscription: subscriptionError,
                 invoices: errorMessage(results[1]),

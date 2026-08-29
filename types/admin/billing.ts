@@ -199,6 +199,13 @@ export interface GenerateItemInvoiceItemSelection {
 
 export interface GenerateItemInvoiceRequest {
   items: GenerateItemInvoiceItemSelection[];
+  /**
+   * Bill a cancelled or still-in-trial item anyway. System admin only —
+   * the backend 403s for anyone else. Paying the resulting invoice flips a
+   * cancelled item back to ACTIVE (that revival is the point of the
+   * override, not a side effect).
+   */
+  override?: boolean;
 }
 
 // ── Manual payment ──────────────────────────────────────────────────

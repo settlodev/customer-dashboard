@@ -55,6 +55,8 @@ interface BillingViewProps {
   /** Auth user id -> staff display name, for "recorded by"/"approved by" on manual payments. */
   actorNames: Record<string, string>;
   canGrantFree: boolean;
+  /** System admin only — lets the custom-invoice tool bill a cancelled/still-in-trial item. */
+  canOverrideBilling: boolean;
   errors: {
     subscription: string | null;
     invoices: string | null;
@@ -137,6 +139,7 @@ export function BillingView({
   entityNames,
   actorNames,
   canGrantFree,
+  canOverrideBilling,
   errors,
 }: BillingViewProps) {
   const router = useRouter();
@@ -605,6 +608,7 @@ export function BillingView({
           businessId={businessId}
           items={manageableItems}
           entityNames={entityNames}
+          canOverride={canOverrideBilling}
           open={generateItemsOpen}
           onOpenChange={setGenerateItemsOpen}
           onCreated={refresh}

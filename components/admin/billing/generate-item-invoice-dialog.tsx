@@ -7,6 +7,7 @@ import { Loader2, Plus, Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,8 @@ interface GenerateItemInvoiceDialogProps {
   items: SubscriptionItemResponse[];
   /** entityId -> location/warehouse/store name (billing doesn't own these). */
   entityNames: Record<string, string>;
+  /** System admin only — lets this tool bill a cancelled/still-in-trial item via the override flag. */
+  canOverride: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
@@ -60,6 +63,14 @@ function itemLabel(item: SubscriptionItemResponse, entityNames: Record<string, s
   const name = entityNames[item.entityId];
   const plan = item.packageInfo?.name ?? item.entityType;
   return name ? `${name} · ${plan}` : plan;
+}
+
+/** Cancelled, or still inside its own trial window — the two states the backend rejects unless overridden. */
+function isBlockedItem(item: SubscriptionItemResponse): boolean {
+  return (
+    item.status === "CANCELLED" ||
+    !!(item.trialEndDate && new Date(item.trialEndDate) > new Date())
+  );
 }
 
 // Radix's <Select.Item> forbids an empty-string value (it reserves "" to mean
@@ -88,6 +99,7 @@ const ItemInvoiceFormSchema = z.object({
       }),
     )
     .min(1, "Add at least one item"),
+  override: z.boolean(),
 });
 
 type FormValues = z.infer<typeof ItemInvoiceFormSchema>;
@@ -110,6 +122,7 @@ export function GenerateItemInvoiceDialog({
   businessId,
   items,
   entityNames,
+  canOverride,
   open,
   onOpenChange,
   onCreated,
@@ -124,23 +137,21 @@ export function GenerateItemInvoiceDialog({
   const [addonsError, setAddonsError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Mirrors the backend's own reject rules (cancelled / still-in-trial) so a
-  // doomed submission never leaves the client — the backend remains the
-  // source of truth either way; its error still surfaces via FormError.
-  const selectableItems = useMemo(
-    () =>
-      items.filter(
-        (i) =>
-          i.status !== "CANCELLED" &&
-          !(i.trialEndDate && new Date(i.trialEndDate) > new Date()),
-      ),
-    [items],
-  );
-
   const form = useForm<FormValues>({
     resolver: zodResolver(ItemInvoiceFormSchema),
-    defaultValues: { items: [emptyRow()] },
+    defaultValues: { items: [emptyRow()], override: false },
   });
+
+  const overrideChecked = canOverride && form.watch("override");
+
+  // Mirrors the backend's own reject rules (cancelled / still-in-trial) so a
+  // doomed submission never leaves the client unless the override is on —
+  // the backend remains the source of truth either way; its error still
+  // surfaces via FormError.
+  const selectableItems = useMemo(
+    () => (overrideChecked ? items : items.filter((i) => !isBlockedItem(i))),
+    [items, overrideChecked],
+  );
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -151,7 +162,7 @@ export function GenerateItemInvoiceDialog({
 
   useEffect(() => {
     if (!open) {
-      form.reset({ items: [emptyRow()] });
+      form.reset({ items: [emptyRow()], override: false });
       setError("");
       return;
     }
@@ -198,6 +209,7 @@ export function GenerateItemInvoiceDialog({
         months: row.months,
         addonId: row.addonId === NO_ADDON ? null : row.addonId,
       })),
+      override: canOverride && values.override,
     };
     startTransition(async () => {
       const result = await generateItemInvoice(businessId, body);
@@ -214,6 +226,7 @@ export function GenerateItemInvoiceDialog({
   // Every selectable item already picked in some other row can't be picked again.
   const usedItemIds = new Set(watchedItems.map((r) => r.subscriptionItemId).filter(Boolean));
   const allItemsUsed = selectableItems.every((i) => usedItemIds.has(i.id));
+  const blockedCount = items.filter(isBlockedItem).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -241,6 +254,37 @@ export function GenerateItemInvoiceDialog({
             }}
             noValidate
           >
+            {canOverride && (
+              <FormField
+                control={form.control}
+                name="override"
+                render={({ field: f }) => (
+                  <FormItem className="flex flex-row items-start gap-2 space-y-0 rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
+                    <FormControl>
+                      <Checkbox
+                        checked={f.value}
+                        onCheckedChange={f.onChange}
+                        disabled={isPending}
+                        className="mt-0.5"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="font-normal">
+                        Override — bill a cancelled or still-in-trial item anyway
+                      </FormLabel>
+                      <p className="text-[12px] text-muted-foreground">
+                        {blockedCount > 0
+                          ? `${blockedCount} item(s) are hidden below because they're cancelled or still in trial. `
+                          : ""}
+                        Paying the resulting invoice will flip a cancelled item back to
+                        ACTIVE — that's the point of this, not a bug.
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            )}
+
             <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
               {fields.map((field, index) => {
                 const rowItemId = watchedItems[index]?.subscriptionItemId;
@@ -304,11 +348,16 @@ export function GenerateItemInvoiceDialog({
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {itemOptions.map((item) => (
-                                  <SelectItem key={item.id} value={item.id}>
-                                    {itemLabel(item, entityNames)} · {item.status}
-                                  </SelectItem>
-                                ))}
+                                {itemOptions.map((item) => {
+                                  const inTrial =
+                                    item.status !== "CANCELLED" && isBlockedItem(item);
+                                  return (
+                                    <SelectItem key={item.id} value={item.id}>
+                                      {itemLabel(item, entityNames)} ·{" "}
+                                      {inTrial ? "TRIAL" : item.status}
+                                    </SelectItem>
+                                  );
+                                })}
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -408,6 +457,13 @@ export function GenerateItemInvoiceDialog({
                       />
                     </div>
 
+                    {rowItem && isBlockedItem(rowItem) && (
+                      <p className="text-[12px] font-medium text-amber-700 dark:text-amber-400">
+                        {rowItem.status === "CANCELLED"
+                          ? "Cancelled — invoicing (and paying) this will reactivate it."
+                          : "Still in trial — this starts real billing now, ahead of the trial's own end date."}
+                      </p>
+                    )}
                     {rowItem?.isBundled && watchedItems[index]?.packageId === KEEP_CURRENT && (
                       <p className="text-[12px] text-muted-foreground">
                         Included in its plan — pick a package to bill it independently.
