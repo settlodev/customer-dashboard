@@ -52,6 +52,8 @@ interface BillingViewProps {
   availableDiscounts: DiscountResponse[];
   /** entityId -> location/warehouse/store name (billing doesn't own these). */
   entityNames: Record<string, string>;
+  /** Auth user id -> staff display name, for "recorded by"/"approved by" on manual payments. */
+  actorNames: Record<string, string>;
   canGrantFree: boolean;
   errors: {
     subscription: string | null;
@@ -133,6 +135,7 @@ export function BillingView({
   activeDiscounts,
   availableDiscounts,
   entityNames,
+  actorNames,
   canGrantFree,
   errors,
 }: BillingViewProps) {
@@ -652,6 +655,8 @@ export function BillingView({
         <InvoiceActionsDialog
           businessId={businessId}
           invoice={invoiceTarget}
+          entityNames={entityNames}
+          actorNames={actorNames}
           open={!!invoiceTarget}
           onOpenChange={(open) => {
             if (!open) setInvoiceTarget(null);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { CheckCircle2, Loader2, RotateCcw, XCircle } from "lucide-react";
+import { Banknote, CheckCircle2, CreditCard, Loader2, RotateCcw, XCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,23 +25,30 @@ import { useToast } from "@/hooks/use-toast";
 
 import { IssueRefundDialog } from "@/components/admin/billing/issue-refund-dialog";
 import { RecordPaymentDialog } from "@/components/admin/billing/record-payment-dialog";
+import { resolveActorName } from "@/lib/admin/actor-names";
 
 import {
   cancelSupportInvoice,
+  getInvoicePaymentHistory,
   listInvoiceRefunds,
   processRefund,
   rejectRefund,
 } from "@/lib/actions/admin/billing";
 import {
+  InvoicePaymentHistory,
   InvoiceResponse,
   InvoiceStatus,
+  ManualPaymentStatus,
   RefundResponse,
   RefundStatus,
 } from "@/types/admin/billing";
-
 interface InvoiceActionsDialogProps {
   businessId: string;
   invoice: InvoiceResponse;
+  /** entityId -> location/warehouse/store name, for the line-item breakdown. */
+  entityNames: Record<string, string>;
+  /** Auth user id -> staff display name, for manual-payment requester/activator. */
+  actorNames: Record<string, string>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onChanged: () => void;
@@ -101,6 +108,57 @@ const REFUND_BADGE: Record<RefundStatus, { label: string; className: string }> =
   },
 };
 
+const MANUAL_PAYMENT_BADGE: Record<
+  ManualPaymentStatus,
+  { label: string; className: string }
+> = {
+  PENDING: {
+    label: "Pending approval",
+    className:
+      "border-sky-200 bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/20",
+  },
+  APPROVED: {
+    label: "Approved",
+    className:
+      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20",
+  },
+  CANCELLED: {
+    label: "Cancelled",
+    className: "border-muted bg-muted text-muted-foreground",
+  },
+};
+
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  MOBILE_MONEY: "Mobile money",
+  BANK_TRANSFER: "Bank transfer",
+  CASH: "Cash",
+  CHECK: "Cheque",
+  OTHER: "Other",
+};
+
+const SELCOM_STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  SUCCESS: {
+    label: "Success",
+    className:
+      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20",
+  },
+  PROCESSING: {
+    label: "Processing",
+    className:
+      "border-sky-200 bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/20",
+  },
+  ACCEPTED: {
+    label: "Accepted",
+    className:
+      "border-sky-200 bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/20",
+  },
+  FAILED: {
+    label: "Failed",
+    className:
+      "border-rose-200 bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20",
+  },
+};
+
 function formatMoney(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
@@ -124,6 +182,8 @@ function formatDate(value: string | null | undefined): string {
 export function InvoiceActionsDialog({
   businessId,
   invoice,
+  entityNames,
+  actorNames,
   open,
   onOpenChange,
   onChanged,
@@ -134,6 +194,9 @@ export function InvoiceActionsDialog({
   const [refunds, setRefunds] = useState<RefundResponse[]>([]);
   const [refundsLoading, setRefundsLoading] = useState(false);
   const [refundsError, setRefundsError] = useState<string | null>(null);
+  const [paymentHistory, setPaymentHistory] = useState<InvoicePaymentHistory | null>(null);
+  const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
+  const [paymentHistoryError, setPaymentHistoryError] = useState<string | null>(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
 
@@ -153,6 +216,28 @@ export function InvoiceActionsDialog({
       })
       .finally(() => {
         if (!cancelled) setRefundsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, invoice.id]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setPaymentHistoryLoading(true);
+    setPaymentHistoryError(null);
+    getInvoicePaymentHistory(invoice.id)
+      .then((history) => {
+        if (cancelled) return;
+        setPaymentHistory(history);
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        setPaymentHistoryError(err?.message ?? "Failed to load payment history.");
+      })
+      .finally(() => {
+        if (!cancelled) setPaymentHistoryLoading(false);
       });
     return () => {
       cancelled = true;
@@ -212,7 +297,7 @@ export function InvoiceActionsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[680px]">
+      <DialogContent className="sm:max-w-[760px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <span>Invoice {invoice.invoiceNumber}</span>
@@ -235,6 +320,7 @@ export function InvoiceActionsDialog({
             <TableHeader>
               <TableRow>
                 <TableHead>Description</TableHead>
+                <TableHead>Entity</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead className="text-right">Qty</TableHead>
                 <TableHead className="text-right">Unit</TableHead>
@@ -244,7 +330,7 @@ export function InvoiceActionsDialog({
             <TableBody>
               {invoice.lineItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
                     No line items.
                   </TableCell>
                 </TableRow>
@@ -254,8 +340,24 @@ export function InvoiceActionsDialog({
                     <TableCell className="text-[13px]">
                       {line.description}
                     </TableCell>
+                    <TableCell className="text-[12px]">
+                      {line.entityId ? (
+                        <>
+                          <p className="text-ink">
+                            {entityNames[line.entityId] ?? line.entityId}
+                          </p>
+                          {line.entityType && (
+                            <p className="font-mono text-[10.5px] text-muted-foreground">
+                              {line.entityType}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="font-mono text-[11px] text-muted-foreground">
-                      {line.type}
+                      {line.itemType}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {line.quantity}
@@ -264,7 +366,7 @@ export function InvoiceActionsDialog({
                       {formatMoney(line.unitPrice)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums font-medium">
-                      {formatMoney(line.amount)}
+                      {formatMoney(line.totalPrice)}
                     </TableCell>
                   </TableRow>
                 ))
@@ -291,6 +393,100 @@ export function InvoiceActionsDialog({
           <p className="text-[13px] font-semibold text-ink">
             Total: {formatMoney(invoice.totalAmount)}
           </p>
+        </div>
+
+        {/* Payment */}
+        <div className="space-y-2">
+          <h4 className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Payment
+          </h4>
+          {paymentHistoryError ? (
+            <p className="text-sm text-destructive">{paymentHistoryError}</p>
+          ) : paymentHistoryLoading ? (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Loading payment history…
+            </p>
+          ) : !paymentHistory ||
+            (!paymentHistory.manualPayment &&
+              paymentHistory.selcomAttempts.length === 0) ? (
+            <p className="text-sm text-muted-foreground">
+              No payment recorded for this invoice yet.
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              {paymentHistory.manualPayment && (
+                <li className="rounded-md border border-line/60 bg-canvas/40 px-3 py-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-[13px] font-medium text-ink">
+                      <Banknote className="h-3.5 w-3.5 text-amber-500" />
+                      Manual ·{" "}
+                      {PAYMENT_METHOD_LABEL[paymentHistory.manualPayment.paymentMethod] ??
+                        paymentHistory.manualPayment.paymentMethod}
+                      <Badge
+                        variant="outline"
+                        className={
+                          MANUAL_PAYMENT_BADGE[paymentHistory.manualPayment.status]?.className
+                        }
+                      >
+                        {MANUAL_PAYMENT_BADGE[paymentHistory.manualPayment.status]?.label ??
+                          paymentHistory.manualPayment.status}
+                      </Badge>
+                    </div>
+                    <span className="text-[13px] font-medium tabular-nums">
+                      {formatMoney(paymentHistory.manualPayment.amount)}
+                    </span>
+                  </div>
+                  <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                    Ref {paymentHistory.manualPayment.referenceNumber} · Requested by{" "}
+                    {resolveActorName(paymentHistory.manualPayment.recordedBy, actorNames)} on{" "}
+                    {formatDate(paymentHistory.manualPayment.recordedAt)}
+                    {paymentHistory.manualPayment.status === "APPROVED" && (
+                      <>
+                        {" "}
+                        · Activated by{" "}
+                        {resolveActorName(paymentHistory.manualPayment.approvedBy, actorNames)} on{" "}
+                        {formatDate(paymentHistory.manualPayment.approvedAt)}
+                      </>
+                    )}
+                  </p>
+                  {paymentHistory.manualPayment.notes && (
+                    <p className="mt-1 text-[12px] text-muted-foreground">
+                      {paymentHistory.manualPayment.notes}
+                    </p>
+                  )}
+                </li>
+              )}
+              {paymentHistory.selcomAttempts.map((p) => (
+                <li
+                  key={p.externalReferenceId}
+                  className="rounded-md border border-line/60 bg-canvas/40 px-3 py-2"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-[13px] font-medium text-ink">
+                      <CreditCard className="h-3.5 w-3.5 text-sky-500" />
+                      Selcom{p.channel ? ` · ${p.channel}` : ""}
+                      <Badge
+                        variant="outline"
+                        className={SELCOM_STATUS_BADGE[p.paymentStatus]?.className}
+                      >
+                        {SELCOM_STATUS_BADGE[p.paymentStatus]?.label ?? p.paymentStatus}
+                      </Badge>
+                    </div>
+                    <span className="text-[13px] font-medium tabular-nums">
+                      {formatMoney(p.processedAmount ?? p.requestedAmount)}
+                    </span>
+                  </div>
+                  <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                    {p.transactionId ? `Txn ${p.transactionId} · ` : ""}
+                    {p.paidAt
+                      ? `Paid ${formatDate(p.paidAt)}`
+                      : `Started ${formatDate(p.createdAt ?? null)}`}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* Refunds */}
