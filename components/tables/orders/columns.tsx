@@ -4,6 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, RotateCcw } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { formatDate, formatTime } from "@/lib/format-datetime";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -185,20 +186,14 @@ export function buildOrdersColumns({
         </Button>
       ),
       cell: ({ row }) => {
-        const opened = row.original.openedDate;
-        if (!opened) return <span className="text-muted-foreground">—</span>;
-        const date = new Date(opened);
-        const dateStr = new Intl.DateTimeFormat("en", {
-          dateStyle: "medium",
-        }).format(date);
-        const timeStr = new Intl.DateTimeFormat("en", {
-          timeStyle: "short",
-          hour12: false,
-        }).format(date);
+        const dateStr = formatDate(row.original.openedDate);
+        if (!dateStr) return <span className="text-muted-foreground">—</span>;
         return (
           <div className="flex flex-col">
             <span>{dateStr}</span>
-            <span className="text-[11px] text-muted-foreground">{timeStr}</span>
+            <span className="text-[11px] text-muted-foreground">
+              {formatTime(row.original.openedDate)}
+            </span>
           </div>
         );
       },
