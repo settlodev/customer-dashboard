@@ -9,6 +9,7 @@
 export interface GatewayRequestRow {
   userId: string | null;
   businessId: string | null;
+  businessName: string | null;
   upstreamServerName: string;
   incomingIpAddress: string;
   incomingUrl: string;
@@ -17,8 +18,13 @@ export interface GatewayRequestRow {
   userAgent: string;
   vercelId: string | null;
   locationId: string | null;
+  locationName: string | null;
   staffId: string | null;
+  staffName: string | null;
   accountId: string | null;
+  accountFullName: string | null;
+  accountEmail: string | null;
+  accountPhoneNumber: string | null;
   daySessionId: string | null;
   countryIsoCode: string | null;
   countryName: string | null;
