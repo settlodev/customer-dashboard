@@ -92,6 +92,7 @@ export const GenerateItemInvoiceSchema = z.object({
       }),
     )
     .min(1, "Add at least one item"),
+  override: z.boolean().optional(),
 });
 
 export const RecordManualPaymentSchema = z.object({

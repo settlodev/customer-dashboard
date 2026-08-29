@@ -26,6 +26,11 @@ import {
   listBusinessActiveDiscounts,
   listBusinessInvoices,
 } from "@/lib/actions/admin/billing";
+import {
+  listInternalStaffProfiles,
+  listInternalUsers,
+} from "@/lib/actions/admin/internal-users";
+import { buildActorNameMap } from "@/lib/admin/actor-names";
 import type {
   DiscountResponse,
   InvoicePage,
@@ -38,6 +43,8 @@ import type {
   AdminStoreListItem,
   AdminWarehouseListItem,
 } from "@/types/admin/business";
+import type { InternalUserResponse } from "@/types/admin/internal-user";
+import type { InternalStaffSummary } from "@/types/admin/internal-staff";
 
 export const metadata = {
   title: "Business billing",
@@ -124,6 +131,11 @@ export default async function AdminBusinessBillingPage({
     listAdminBusinessLocations(id),
     listAdminBusinessWarehouses(id),
     listAdminBusinessStores(id),
+    // Payment history (invoice dialog) shows who recorded/approved a manual
+    // payment — resolve those Auth user ids to names the same way the
+    // manual-payments queue and package history panel already do.
+    listInternalUsers(),
+    listInternalStaffProfiles(),
   ]);
   const value = <T,>(r: PromiseSettledResult<T>): T | null =>
     r.status === "fulfilled" ? r.value : null;
@@ -146,6 +158,9 @@ export default async function AdminBusinessBillingPage({
   for (const l of locations) entityNames[l.id] = l.name;
   for (const w of warehouses) entityNames[w.id] = w.name;
   for (const s of stores) entityNames[s.id] = s.name;
+  const internalUsers = (value(results[7]) ?? []) as InternalUserResponse[];
+  const staffProfiles = (value(results[8]) ?? []) as InternalStaffSummary[];
+  const actorNames = buildActorNameMap(internalUsers, staffProfiles);
 
   return (
     <AdminShell token={token}>
@@ -206,7 +221,9 @@ export default async function AdminBusinessBillingPage({
               activeDiscounts={activeDiscounts}
               availableDiscounts={availableDiscounts}
               entityNames={entityNames}
+              actorNames={actorNames}
               canGrantFree={canGrantFree}
+              canOverrideBilling={canGrantFree}
               errors={{
                 subscription: subscriptionError,
                 invoices: errorMessage(results[1]),

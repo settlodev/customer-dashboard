@@ -10,12 +10,16 @@ import { LocationsSubscriptionsView } from "@/components/admin/locations/locatio
 import { SyncAllCatalogsButton } from "@/components/admin/locations/sync-all-catalogs-button";
 import {
   getPlatformLocations,
+  getPlatformLocationStatusCounts,
   type StaffScope,
 } from "@/lib/actions/admin/platform-metrics";
 import { getMyInternalStaffProfile } from "@/lib/actions/admin/accounts";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
-import type { PlatformLocationsPage } from "@/types/admin/platform-metrics";
+import type {
+  PlatformLocationsPage,
+  PlatformLocationStatusCounts,
+} from "@/types/admin/platform-metrics";
 
 export const metadata = {
   title: "Locations & subscriptions",
@@ -79,17 +83,29 @@ export default async function AdminLocationsPage({
         : undefined;
 
   let pageData: PlatformLocationsPage | null = null;
+  let counts: PlatformLocationStatusCounts = {
+    total: 0,
+    trial: 0,
+    active: 0,
+    pastDue: 0,
+    expired: 0,
+    suspended: 0,
+    cancelled: 0,
+  };
   let loadError: string | null = null;
   try {
-    pageData = await getPlatformLocations(
-      {
-        page: backendPage,
-        size,
-        search,
-        status,
-      },
-      scope,
-    );
+    [pageData, counts] = await Promise.all([
+      getPlatformLocations(
+        {
+          page: backendPage,
+          size,
+          search,
+          status,
+        },
+        scope,
+      ),
+      getPlatformLocationStatusCounts(search, scope),
+    ]);
   } catch (error: any) {
     loadError = error?.message ?? "Failed to load locations.";
   }
@@ -114,7 +130,11 @@ export default async function AdminLocationsPage({
               {loadError}
             </p>
           ) : (
-            <LocationsSubscriptionsView page={pageData!} />
+            <LocationsSubscriptionsView
+              page={pageData!}
+              counts={counts}
+              initialStatus={status ?? "all"}
+            />
           )}
         </PageBody>
       </PageShell>

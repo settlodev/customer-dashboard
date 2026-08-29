@@ -1,4 +1,5 @@
 import { ApiResponse } from "@/types/types";
+import type { PaymentResponse } from "@/types/billing/types";
 
 // ── Enums ───────────────────────────────────────────────────────────
 
@@ -147,11 +148,17 @@ export interface SubscriptionResponse {
 
 export interface InvoiceLineItemResponse {
   id: string;
-  type: InvoiceLineItemType;
+  itemType: InvoiceLineItemType;
   description: string;
   quantity: number;
   unitPrice: number;
-  amount: number;
+  totalPrice: number;
+  periodStart: string | null;
+  periodEnd: string | null;
+  isProration: boolean | null;
+  /** Null for lines with no underlying subscription item (e.g. TAX, DISCOUNT). */
+  entityType: SubscribableEntityType | null;
+  entityId: string | null;
 }
 
 export interface InvoiceResponse {
@@ -192,6 +199,13 @@ export interface GenerateItemInvoiceItemSelection {
 
 export interface GenerateItemInvoiceRequest {
   items: GenerateItemInvoiceItemSelection[];
+  /**
+   * Bill a cancelled or still-in-trial item anyway. System admin only —
+   * the backend 403s for anyone else. Paying the resulting invoice flips a
+   * cancelled item back to ACTIVE (that revival is the point of the
+   * override, not a side effect).
+   */
+  override?: boolean;
 }
 
 // ── Manual payment ──────────────────────────────────────────────────
@@ -224,6 +238,19 @@ export interface ManualPaymentResponse {
 }
 
 export type ManualPaymentPage = ApiResponse<ManualPaymentResponse>;
+
+/**
+ * How an invoice was actually paid — Selcom gateway attempts plus any manual
+ * payment recorded against it. The two are independent: a prospect invoice
+ * attached to a business after the sale may carry a manual payment with no
+ * Selcom attempts, or vice versa.
+ */
+export interface InvoicePaymentHistory {
+  /** Every Selcom attempt against this invoice, newest first. */
+  selcomAttempts: PaymentResponse[];
+  /** Null if no manual payment was ever recorded for this invoice. */
+  manualPayment: ManualPaymentResponse | null;
+}
 
 // ── Refunds ─────────────────────────────────────────────────────────
 

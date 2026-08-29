@@ -45,7 +45,10 @@ import {
   gatewayRequestColumns,
   statusTone,
 } from "@/components/tables/admin-gateway-requests/column";
-import { listGatewayRequests } from "@/lib/actions/admin/gateway-requests";
+import {
+  listGatewayRequests,
+  listUpstreamServers,
+} from "@/lib/actions/admin/gateway-requests";
 import {
   EMPTY_GATEWAY_REQUEST_FILTERS,
   type GatewayRequestFilterKey,
@@ -82,58 +85,57 @@ const HTTP_METHOD_OPTIONS = [
   "OPTIONS",
 ].map((m) => ({ value: m, label: m }));
 
-const UPSTREAM_SERVER_OPTIONS = [
-  "activity",
-  "accounts",
-  "analytics",
-  "billing",
-  "inventory",
-  "orders",
-].map((s) => ({ value: s, label: s }));
-
-const FILTER_SECTIONS: { title: string; fields: FilterFieldConfig[] }[] = [
-  {
-    title: "Request",
-    fields: [
-      {
-        key: "httpMethod",
-        label: "Method",
-        type: "select",
-        options: HTTP_METHOD_OPTIONS,
-      },
-      {
-        key: "upstreamServerName",
-        label: "Upstream server",
-        type: "select",
-        options: UPSTREAM_SERVER_OPTIONS,
-      },
-    ],
-  },
-  {
-    title: "Response",
-    fields: [
-      {
-        key: "upstreamStatusCode",
-        label: "Status code",
-        type: "number",
-        placeholder: "e.g. 404",
-      },
-      {
-        key: "hasUpstreamError",
-        label: "Has error",
-        type: "select",
-        options: [
-          { value: "true", label: "Yes" },
-          { value: "false", label: "No" },
-        ],
-      },
-    ],
-  },
-];
+/** Built with the live upstream-server list once fetched; called with `[]`
+ * up front too, just to derive {@link FILTER_FIELD_LABELS} statically. */
+function buildFilterSections(
+  upstreamServerOptions: { value: string; label: string }[],
+): { title: string; fields: FilterFieldConfig[] }[] {
+  return [
+    {
+      title: "Request",
+      fields: [
+        {
+          key: "httpMethod",
+          label: "Method",
+          type: "select",
+          options: HTTP_METHOD_OPTIONS,
+        },
+        {
+          key: "upstreamServerName",
+          label: "Upstream server",
+          type: "select",
+          options: upstreamServerOptions,
+        },
+      ],
+    },
+    {
+      title: "Response",
+      fields: [
+        {
+          key: "upstreamStatusCode",
+          label: "Status code",
+          type: "number",
+          placeholder: "e.g. 404",
+        },
+        {
+          key: "hasUpstreamError",
+          label: "Has error",
+          type: "select",
+          options: [
+            { value: "true", label: "Yes" },
+            { value: "false", label: "No" },
+          ],
+        },
+      ],
+    },
+  ];
+}
 
 const FILTER_FIELD_LABELS: Record<GatewayRequestFilterKey, string> =
   Object.fromEntries(
-    FILTER_SECTIONS.flatMap((s) => s.fields).map((f) => [f.key, f.label]),
+    buildFilterSections([])
+      .flatMap((s) => s.fields)
+      .map((f) => [f.key, f.label]),
   ) as Record<GatewayRequestFilterKey, string>;
 
 /** Trim a long opaque id for a compact chip. */
@@ -203,6 +205,24 @@ export function GatewayRequestsView({
   const [pendingFilters, setPendingFilters] =
     useState<GatewayRequestFilterValues>(initialFilters);
   useEffect(() => setPendingFilters(initialFilters), [initialFilters]);
+
+  const [upstreamServerOptions, setUpstreamServerOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
+  const hasFetchedUpstreamServers = useRef(false);
+  useEffect(() => {
+    if (hasFetchedUpstreamServers.current) return;
+    hasFetchedUpstreamServers.current = true;
+    listUpstreamServers()
+      .then((names) =>
+        setUpstreamServerOptions(names.map((n) => ({ value: n, label: n }))),
+      )
+      .catch(() => setUpstreamServerOptions([]));
+  }, []);
+  const filterSections = useMemo(
+    () => buildFilterSections(upstreamServerOptions),
+    [upstreamServerOptions],
+  );
 
   const updateParams = useCallback(
     (changes: Record<string, string | null>) => {
@@ -368,7 +388,7 @@ export function GatewayRequestsView({
               align="end"
             >
               <div className="space-y-4">
-                {FILTER_SECTIONS.map((section) => (
+                {filterSections.map((section) => (
                   <div key={section.title}>
                     <h5 className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                       {section.title}

@@ -33,3 +33,16 @@ export async function listGatewayRequests(
   );
   return parseStringify(data);
 }
+
+/**
+ * Distinct upstream server names seen in gateway_requests, for populating
+ * the "Upstream server" filter — replaces a hardcoded list that drifted out
+ * of sync with the actual upstreams in traffic.
+ */
+export async function listUpstreamServers(): Promise<string[]> {
+  await requireOperatorPermission(PERM.ACTIVITY_LOG_READ);
+  const data = await activitiesInternalGet<string[]>(
+    "/api/v1/upstream-servers",
+  );
+  return parseStringify(data);
+}

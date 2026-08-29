@@ -27,6 +27,10 @@ import {
 
 import { cn } from "@/lib/utils";
 import {
+  formatDate,
+  formatDateTime as sharedFormatDateTime,
+} from "@/lib/format-datetime";
+import {
   EmptyState,
   FactGrid,
   fact,
@@ -73,36 +77,12 @@ const formatNumber = (value: number | null | undefined, fractionDigits = 0) => {
   }).format(value);
 };
 
-// `dateStyle` + `timeStyle` together insert a locale connector ("at") whose
-// wording differs between the Node (SSR) and browser ICU builds, which trips
-// React hydration. Format the date and time parts explicitly and join them
-// ourselves so the server and client always emit the same string.
-const DATE_FMT = new Intl.DateTimeFormat("en", {
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-});
-const TIME_FMT = new Intl.DateTimeFormat("en", {
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  timeZone: "UTC",
-  hour12: false,
-});
-
-const formatDateTime = (value: string | null | undefined) => {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return `${DATE_FMT.format(date)}, ${TIME_FMT.format(date)}`;
-};
-
-const formatDate = (value: string | null | undefined) => {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return DATE_FMT.format(date);
-};
+// Shared formatters pin the business timezone, so the server and client
+// always emit the same string (no hydration mismatch, no UTC leaking out of
+// the Vercel SSR pass — the old TIME_FMT here pinned UTC and showed every
+// timeline entry 3 hours early).
+const formatDateTime = (value: string | null | undefined) =>
+  sharedFormatDateTime(value, { seconds: true });
 
 const titleCase = (s?: string | null) =>
   s

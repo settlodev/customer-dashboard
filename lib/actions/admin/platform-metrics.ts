@@ -7,6 +7,7 @@ import type {
   PlatformAccounts,
   PlatformLocationsPage,
   PlatformLocationsQuery,
+  PlatformLocationStatusCounts,
   PlatformOrders,
   PlatformStockMovement,
 } from "@/types/admin/platform-metrics";
@@ -199,5 +200,29 @@ export async function getPlatformLocations(
     size: num(r.size) || (query.size ?? 20),
     totalElements: num(r.totalElements),
     totalPages: num(r.totalPages),
+  };
+}
+
+/**
+ * Status-bucket counts backing the locations tab badges. Mirrors the
+ * search/scope filters {@link getPlatformLocations} uses but omits `status`
+ * itself so every bucket comes back in one round trip.
+ */
+export async function getPlatformLocationStatusCounts(
+  search?: string,
+  scope?: StaffScope,
+): Promise<PlatformLocationStatusCounts> {
+  const r = await reportsInternalGet<Record<string, unknown>>(
+    `${PREFIX}/locations/status-counts`,
+    { search, ...scope },
+  );
+  return {
+    total: num(r.total),
+    trial: num(r.trial),
+    active: num(r.active),
+    pastDue: num(r.past_due),
+    expired: num(r.expired),
+    suspended: num(r.suspended),
+    cancelled: num(r.cancelled),
   };
 }
