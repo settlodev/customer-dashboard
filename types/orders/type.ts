@@ -487,9 +487,7 @@ export interface VfdReceiptDetail {
   orderId: UUID;
   accountingId: UUID;
   data: {
-    /** "yyyy-MM-dd HH:mm:ss" */
     dateTime: string | null;
-    /** DIRM rctNum */
     rctNum: number | null;
     zNum: number | null;
     receiptStatus: string | null;
@@ -680,7 +678,8 @@ export const orderRefundBadge = (
  */
 export const REFUND_PILL: Record<"full" | "partial", string> = {
   full: "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400",
-  partial: "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  partial:
+    "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
 };
 
 export const ORDER_TYPE_LABELS: Record<OrderType, string> = {

@@ -18,6 +18,8 @@ interface StockMovementQuery {
   page: number;
   size: number;
   search?: string;
+  /** Stock category id — the inventory taxonomy, not product categories. */
+  categoryId?: string;
   lens?: string;
   /** "<column>,<asc|desc>". */
   sort?: string;
@@ -77,6 +79,7 @@ export async function getStockMovementReport(
       lens: q.lens ?? "all",
     });
     if (q.search) params.set("search", q.search);
+    if (q.categoryId) params.set("categoryId", q.categoryId);
     if (q.sort) params.set("sort", q.sort);
 
     const apiClient = new ApiClient();

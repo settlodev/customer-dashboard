@@ -49,6 +49,12 @@ import {
   staffName,
   type StaffChip,
 } from "@/lib/day-sessions/cod-format";
+import {
+  ReportKv as Kv,
+  ReportSection as Section,
+  ReportSumCard as SumCard,
+  ReportTableBox as TableBox,
+} from "@/components/documents/sections/report-blocks";
 
 // Default Settlo brand (matches lib/grn-document.ts) when the tenant
 // letterhead carries no brand colour.
@@ -986,61 +992,9 @@ export function CloseOfDayReportSheet({
 }
 
 // ── Local presentational helpers (shared-document slate palette) ─────
-
-function Section({
-  title,
-  count,
-  note,
-  children,
-}: {
-  title: string;
-  count?: string;
-  note?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="px-10 pt-[30px]">
-      <div className="mb-3 flex items-baseline gap-2.5">
-        <h3 className="m-0 font-mono text-[12px] font-semibold uppercase tracking-[0.13em] text-slate-700">
-          {title}
-        </h3>
-        {count && <span className="font-mono text-[11px] text-slate-400">{count}</span>}
-        {note && <span className="ml-auto text-[12px] text-slate-400">{note}</span>}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function TableBox({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-[10px] border border-slate-200",
-        className,
-      )}
-    >
-      <table className="w-full border-collapse [&_tbody_tr:last-child>td]:border-b-0">
-        {children}
-      </table>
-    </div>
-  );
-}
-
-function Kv({ k, v }: { k: string; v: React.ReactNode }) {
-  return (
-    <div className="flex justify-between gap-4 py-[5px] text-[14px]">
-      <span className="text-slate-600">{k}</span>
-      <span className="text-right font-semibold text-slate-900">{v}</span>
-    </div>
-  );
-}
+// Section / TableBox / Kv / SumCard now live in
+// components/documents/sections/report-blocks.tsx, shared with the combined
+// daily Z-report sheet.
 
 function SessCell({
   label,
@@ -1100,37 +1054,6 @@ function SessWho({
   );
 }
 
-function SumCard({
-  label,
-  value,
-  unit,
-  sub,
-  valueClass,
-}: {
-  label: string;
-  value: string;
-  unit: string;
-  sub?: string;
-  valueClass?: string;
-}) {
-  return (
-    <div className="rounded-[10px] border border-slate-200 px-4 py-3.5">
-      <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-        {label}
-      </div>
-      <div
-        className={cn(
-          "mt-2 font-mono text-[22px] font-bold tabular-nums tracking-[-0.02em]",
-          valueClass ?? "text-slate-900",
-        )}
-      >
-        {value}
-        <span className="ml-1 text-[11px] font-medium text-slate-400">{unit}</span>
-      </div>
-      {sub && <div className="mt-1.5 text-[11.5px] text-slate-600">{sub}</div>}
-    </div>
-  );
-}
 
 const CHIP_TONE: Record<string, string> = {
   paid: "bg-[#0A6B49]/10 text-[#0A6B49]",
