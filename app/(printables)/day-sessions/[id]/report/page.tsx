@@ -9,7 +9,7 @@ import { getSessionCashUp } from "@/lib/actions/payment-method-reconciliation-ac
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import { getLetterhead } from "@/lib/actions/letterhead-actions";
 import type { Staff } from "@/types/staff";
-import { resolveCurrency } from "@/lib/day-sessions/cod-format";
+import { resolveCurrency, rosterIndex } from "@/lib/day-sessions/cod-format";
 import { PrintableDocument } from "@/components/documents/PrintableDocument";
 import { CloseOfDayReportSheet } from "@/components/widgets/day-sessions/close-of-day-report-sheet";
 
@@ -46,7 +46,9 @@ export default async function CloseOfDayReportPage({
   if (!detail.session) notFound();
   const { session, report } = detail;
 
-  const roster = new Map(staffList.map((s): [string, Staff] => [s.id, s]));
+  // Keyed by staff id AND auth subject id — actor ids carry whichever
+  // the person authenticated with.
+  const roster = rosterIndex(staffList);
 
   const currency = resolveCurrency(
     cashUp.currency,

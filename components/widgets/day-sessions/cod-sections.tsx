@@ -41,6 +41,7 @@ import type {
   DaySessionExpensesSummary,
 } from "@/types/expense/type";
 import type { DaySessionPrepaymentsSummary } from "@/types/customer-prepayments/type";
+import { PaginatedRows } from "@/components/widgets/day-sessions/paginated-rows";
 import {
   fmt,
   isCashMethod,
@@ -170,7 +171,8 @@ export function Tag({
 /**
  * A single record row: title + tag, optional reason, meta line, an
  * optional `details` block (a nested breakdown — e.g. the payments that
- * settled an expense), and the amount.
+ * settled an expense), and an optional amount (rows that deliberately
+ * carry no money figure — cancellations, voids — omit it).
  */
 function RecordRow({
   title,
@@ -186,8 +188,8 @@ function RecordRow({
   reason?: React.ReactNode;
   meta?: React.ReactNode;
   details?: React.ReactNode;
-  amount: number;
-  currency: string;
+  amount?: number | null;
+  currency?: string;
 }) {
   return (
     <div className="flex items-start gap-3 border-b border-line py-3 last:border-0">
@@ -202,12 +204,14 @@ function RecordRow({
         ) : null}
         {details}
       </div>
-      <div className="shrink-0 text-right font-mono text-[13px] font-semibold tabular-nums text-ink">
-        {fmt(amount)}
-        <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
-          {currency}
-        </span>
-      </div>
+      {amount != null ? (
+        <div className="shrink-0 text-right font-mono text-[13px] font-semibold tabular-nums text-ink">
+          {fmt(amount)}
+          <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
+            {currency}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -596,18 +600,14 @@ export function CancellationsVoids({
   voids,
   report,
   roster,
-  currency,
 }: {
   voids: DaySessionVoidsResponse | null;
   report: DaySessionReport | null;
   roster: Map<string, Staff>;
-  currency: string;
 }) {
   const items = voids?.items ?? [];
   const cancelledOrders = voids?.cancelledOrders ?? [];
-  const cancelledAmount = report?.voids?.cancelledAmount ?? 0;
   const cancelledCount = report?.voids?.cancelledOrderCount ?? 0;
-  const voidedTotal = voids?.totalVoidedAmount ?? 0;
   const sub =
     report?.voids != null
       ? `${report.voids.voidedItemCount} voided · ${cancelledCount} cancelled`
@@ -619,8 +619,6 @@ export function CancellationsVoids({
   const nothingRecorded =
     items.length === 0 &&
     cancelledOrders.length === 0 &&
-    cancelledAmount === 0 &&
-    voidedTotal === 0 &&
     cancelledCount === 0 &&
     (report?.voids?.voidedItemCount ?? 0) === 0;
   if (voids && nothingRecorded) return null;
@@ -654,20 +652,16 @@ export function CancellationsVoids({
                         Waiter <b className={METAB}>{staffName(v.staffId, roster)}</b>
                       </span>
                       <span className={META}>
-                        Cashier{" "}
-                        <b className={METAB}>{staffName(v.removedBy, roster)}</b>
-                      </span>
-                      <span className={META}>
-                        Approved{" "}
-                        <b className={METAB}>{staffName(v.approvedBy, roster)}</b>
+                        Approved by{" "}
+                        <b className={METAB}>
+                          {staffName(v.approvedBy ?? v.removedBy, roster)}
+                        </b>
                       </span>
                       {v.removedAt ? (
                         <span className={META}>{fmtTime(v.removedAt)}</span>
                       ) : null}
                     </>
                   }
-                  amount={v.netAmount}
-                  currency={currency}
                 />
               ))}
             </div>
@@ -701,7 +695,7 @@ export function CancellationsVoids({
                     meta={
                       <>
                         <span className={META}>
-                          Cancelled by{" "}
+                          Approved by{" "}
                           <b className={METAB}>{staffName(c.cancelledBy, roster)}</b>
                         </span>
                         {c.cancelledAt ? (
@@ -709,18 +703,11 @@ export function CancellationsVoids({
                         ) : null}
                       </>
                     }
-                    amount={c.netAmount}
-                    currency={currency}
                   />
                 ))}
               </div>
             </div>
           ) : null}
-
-          <RecFoot
-            split={`Voids ${fmt(voidedTotal)} · Cancelled ${fmt(cancelledAmount)}`}
-            total={voidedTotal + cancelledAmount}
-          />
         </>
       )}
     </CodCard>
@@ -741,11 +728,16 @@ export function Prepayments({
   currency: string;
 }) {
   const items = prepayments?.items ?? [];
+  const usages = prepayments?.usages ?? [];
   const totals = prepayments?.totals;
 
-  // No prepayments taken — hide the card entirely. A null summary means
-  // the read failed, which is worth saying out loud, so that still renders.
-  if (prepayments && items.length === 0) return null;
+  // Nothing taken AND nothing drawn down — hide the card entirely. A null
+  // summary means the read failed, which is worth saying out loud, so that
+  // still renders.
+  if (prepayments && items.length === 0 && usages.length === 0) return null;
+
+  const usedTotal =
+    totals?.usedTotal ?? usages.reduce((sum, u) => sum + (u.amountUsed ?? 0), 0);
 
   return (
     <CodCard title="Customer prepayments" icon={<HandCoins />}>
@@ -753,50 +745,95 @@ export function Prepayments({
         <EmptyRow>Prepayments data is unavailable for this session.</EmptyRow>
       ) : (
         <>
-          <div className="flex flex-col">
-            {items.map((p, idx) => {
-              const method = p.paymentMethodId
-                ? (methodNameById.get(p.paymentMethodId) ?? null)
-                : null;
-              const held = p.status === "HELD";
-              return (
-                <RecordRow
-                  key={`${p.instrumentId}-${idx}`}
-                  title={p.customerName ?? "Walk-in customer"}
-                  tag={
-                    <Tag tone={held ? "held" : "applied"}>
-                      {held ? "Held" : "Applied"}
-                    </Tag>
-                  }
-                  reason={
-                    [p.reference, p.description].filter(Boolean).join(" · ") ||
-                    undefined
-                  }
-                  meta={
-                    <>
-                      {method ? <span className={META}>{method}</span> : null}
-                      <span className={META}>
-                        {held ? (
-                          <>
-                            Taken <b className={METAB}>{fmtTime(p.receivedAt)}</b>
-                          </>
-                        ) : (
-                          "Applied to order"
-                        )}
-                      </span>
-                    </>
-                  }
-                  amount={p.amount}
-                  currency={p.currency ?? currency}
+          {items.length > 0 ? (
+            <>
+              <div className="flex flex-col">
+                {items.map((p, idx) => {
+                  const method = p.paymentMethodId
+                    ? (methodNameById.get(p.paymentMethodId) ?? null)
+                    : null;
+                  const held = p.status === "HELD";
+                  return (
+                    <RecordRow
+                      key={`${p.instrumentId}-${idx}`}
+                      title={p.customerName ?? "Walk-in customer"}
+                      tag={
+                        <Tag tone={held ? "held" : "applied"}>
+                          {held ? "Held" : "Applied"}
+                        </Tag>
+                      }
+                      reason={
+                        [p.reference, p.description].filter(Boolean).join(" · ") ||
+                        undefined
+                      }
+                      meta={
+                        <>
+                          {method ? <span className={META}>{method}</span> : null}
+                          <span className={META}>
+                            {held ? (
+                              <>
+                                Taken <b className={METAB}>{fmtTime(p.receivedAt)}</b>
+                              </>
+                            ) : (
+                              "Applied to order"
+                            )}
+                          </span>
+                        </>
+                      }
+                      amount={p.amount}
+                      currency={p.currency ?? currency}
+                    />
+                  );
+                })}
+              </div>
+              {totals ? (
+                <RecFoot
+                  split={`Held ${fmt(totals.heldTotal)} · Applied ${fmt(totals.appliedTotal)}`}
+                  total={totals.totalReceived}
                 />
-              );
-            })}
-          </div>
-          {totals ? (
-            <RecFoot
-              split={`Held ${fmt(totals.heldTotal)} · Applied ${fmt(totals.appliedTotal)}`}
-              total={totals.totalReceived}
-            />
+              ) : null}
+            </>
+          ) : null}
+
+          {/* Balances drawn down during this session — whenever the money
+              was originally taken — with what each customer had left after
+              their last draw. */}
+          {usages.length > 0 ? (
+            <div className={cn(items.length > 0 && "mt-3.5 border-t border-line pt-3.5")}>
+              <div className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-3">
+                Used this session
+              </div>
+              <div className="flex flex-col">
+                {usages.map((u) => (
+                  <RecordRow
+                    key={u.instrumentId}
+                    title={u.customerName ?? "Walk-in customer"}
+                    tag={<Tag tone="applied">Used</Tag>}
+                    reason={u.reference ?? undefined}
+                    meta={
+                      <>
+                        <span className={META}>
+                          Balance left{" "}
+                          <b className={METAB}>{fmt(u.balanceAfter)}</b>
+                        </span>
+                        {u.redemptionCount > 1 ? (
+                          <span className={META}>{u.redemptionCount} draws</span>
+                        ) : null}
+                        {u.lastUsedAt ? (
+                          <span className={META}>{fmtTime(u.lastUsedAt)}</span>
+                        ) : null}
+                      </>
+                    }
+                    amount={u.amountUsed}
+                    currency={u.currency ?? currency}
+                  />
+                ))}
+              </div>
+              <RecFoot
+                split={`${usages.length} customer${usages.length === 1 ? "" : "s"} paid from prepayments`}
+                total={usedTotal}
+              />
+            </div>
           ) : null}
         </>
       )}
@@ -990,7 +1027,7 @@ export function ExpensesList({
         <EmptyRow>Expenses data is unavailable for this session.</EmptyRow>
       ) : (
         <>
-          <div className="flex flex-col">
+          <PaginatedRows pageSize={6}>
             {items.map((e) => {
               const payments = e.payments ?? [];
               const codes = e.paymentMethodCodes?.length
@@ -1071,7 +1108,7 @@ export function ExpensesList({
                 />
               );
             })}
-          </div>
+          </PaginatedRows>
           {totals && items.length > 0 ? (
             <RecFoot
               split={split || `${items.length} expenses`}

@@ -18,6 +18,7 @@ import { KpiStrip, KpiCard } from "@/components/layouts/kpi-strip";
 import { BillingClient } from "@/components/billing/billing-client";
 import { StatusPill, toPillTone } from "@/components/billing/pill";
 import { getBillingOverview } from "@/lib/actions/billing-overview-actions";
+import { logout } from "@/lib/actions/auth-actions";
 import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { getWarehouses } from "@/lib/actions/warehouse/list-warehouse";
@@ -42,7 +43,9 @@ export const dynamic = "force-dynamic";
  * copy — rather than positive on today's other known value ("no-entitlement-data"), so an
  * unrecognized future reason falls into the neutral copy instead of silently reading as
  * "you didn't pay". Reused across all three `getBillingOverview()` outcomes (see the three
- * branches below), since a redirect can land on any of them.
+ * branches below), since a redirect can land on any of them. `business-mismatch` never
+ * reaches this banner — it gets its own full-page branch before the overview is even
+ * fetched, because the overview would be about the wrong business (see below).
  */
 function LockBanner({
   lockedEntity,
@@ -89,6 +92,53 @@ export default async function BillingPage({
   const params = await searchParams;
   const lockedEntity = params?.expired;
   const lockReason = params?.reason;
+
+  // business-mismatch gets its own screen INSTEAD of the billing dashboard, and the
+  // overview is deliberately not fetched: `getBillingOverview()` resolves the business
+  // from the JWT claim — the very thing the gate just said disagrees with the business
+  // in scope — so rendering it here would show another business's invoices and plan
+  // under this one's sidebar. The fix for the skew is re-selecting the business (the
+  // switch flow re-derives the JWT claim from the destination being switched to), so
+  // that is the primary CTA; sign-out is the manual fallback, never automatic — if the
+  // claim-stamping bug ever regresses, a forced logout would re-stamp the same wrong
+  // business on re-login and lock a paying customer out in a loop.
+  if (lockReason === "business-mismatch") {
+    return (
+      <PageShell>
+        <PageBreadcrumbs items={[{ title: "Billing" }]} />
+        <PageHeader title="Billing" subtitle="Manage your subscription, invoices, and credits." />
+        <PageBody>
+          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-line bg-card py-16 text-center">
+            <div className="grid h-12 w-12 place-items-center rounded-full bg-canvas">
+              <AlertCircle className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-ink">
+                This business doesn&apos;t match your sign-in session
+              </p>
+              <p className="mt-1 max-w-md text-xs text-muted-foreground">
+                The business you selected isn&apos;t the one your session is signed in
+                for, so billing here would show the wrong business&apos;s details.
+                Re-select your business to fix this — if it keeps happening, sign out
+                and back in.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button asChild size="sm">
+                <Link href="/select-business">Switch business</Link>
+              </Button>
+              <form action={logout}>
+                <Button type="submit" size="sm" variant="outline">
+                  Sign out
+                </Button>
+              </form>
+            </div>
+          </div>
+        </PageBody>
+      </PageShell>
+    );
+  }
+
   const result = await getBillingOverview();
 
   if (result.status === "no-subscription") {

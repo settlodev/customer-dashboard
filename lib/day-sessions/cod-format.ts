@@ -247,6 +247,23 @@ export const staffChip = (
 };
 
 /**
+ * Roster lookup keyed by BOTH the staff record id and the staff's auth
+ * subject id. An actor id stamped on a day-session record is whatever the
+ * authenticated subject was at action time — a staff PK from a POS login,
+ * or an Auth subject id from a dashboard/staff-token login — so one map
+ * has to answer for both or a manual close renders as a shortened UUID.
+ */
+export const rosterIndex = (staffList: Staff[]): Map<string, Staff> => {
+  const map = new Map<string, Staff>();
+  for (const s of staffList) {
+    if (!map.has(s.id)) map.set(s.id, s);
+    // authId is absent on the share snapshot's structural staff subset.
+    if (s.authId && !map.has(s.authId)) map.set(s.authId, s);
+  }
+  return map;
+};
+
+/**
  * Plain display name for a raw staff id, or an em-dash. Falls back to a
  * server-resolved name when the id isn't in the (location-scoped) roster,
  * then to a shortened id.
