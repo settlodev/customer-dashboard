@@ -9,7 +9,8 @@ export type SubscriptionStatus =
   | "PAST_DUE"
   | "EXPIRED"
   | "SUSPENDED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "VOIDED";
 
 export type InvoiceStatus =
   | "DRAFT"
@@ -18,7 +19,8 @@ export type InvoiceStatus =
   | "PAID"
   | "FAILED"
   | "CANCELLED"
-  | "REFUNDED";
+  | "REFUNDED"
+  | "VOIDED";
 
 export type InvoiceLineItemType =
   | "PLAN"

@@ -99,6 +99,11 @@ const SUBSCRIPTION_STATUS_BADGE: Record<
     className:
       "border-muted bg-muted text-muted-foreground",
   },
+  VOIDED: {
+    label: "Voided",
+    className:
+      "border-rose-200 bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20",
+  },
 };
 
 function formatDate(value: string | null | undefined): string {
@@ -661,6 +666,7 @@ export function BillingView({
           invoice={invoiceTarget}
           entityNames={entityNames}
           actorNames={actorNames}
+          isSystemAdmin={canOverrideBilling}
           open={!!invoiceTarget}
           onOpenChange={(open) => {
             if (!open) setInvoiceTarget(null);

@@ -76,6 +76,7 @@ import {
   SetWhitelabelAddonPriceSchema,
   SetWhitelabelPackagePriceSchema,
   UpgradePlanSchema,
+  VoidInvoiceSchema,
 } from "@/types/admin/schemas";
 
 function staffBilling() {
@@ -207,6 +208,44 @@ export async function cancelSupportInvoice(
     return parseStringify({
       responseType: "error",
       message: error?.message || "Failed to cancel invoice",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+/**
+ * System admin only. Voids the ONE subscription this invoice is linked to (an
+ * internal provisioning mistake, not a real cancellation) — cascades back down
+ * to void every invoice under that subscription, including this one.
+ */
+export async function voidSubscriptionForInvoice(
+  businessId: string,
+  invoiceId: string,
+  reason: string,
+): Promise<FormResponse<void>> {
+  const parsed = VoidInvoiceSchema.safeParse({ reason });
+  if (!parsed.success) {
+    return parseStringify({
+      responseType: "error",
+      message: parsed.error.errors[0]?.message ?? "Invalid reason",
+      error: new Error(parsed.error.message),
+    });
+  }
+
+  try {
+    await staffBilling().post<void, typeof parsed.data>(
+      `/api/v1/support/billing/invoices/${invoiceId}/void`,
+      parsed.data,
+    );
+    revalidateBusiness(businessId);
+    return parseStringify({
+      responseType: "success",
+      message: "Subscription voided",
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to void subscription",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Banknote, CheckCircle2, CreditCard, Loader2, RotateCcw, XCircle } from "lucide-react";
+import { Ban, Banknote, CheckCircle2, CreditCard, Loader2, RotateCcw, XCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 
 import { IssueRefundDialog } from "@/components/admin/billing/issue-refund-dialog";
 import { RecordPaymentDialog } from "@/components/admin/billing/record-payment-dialog";
+import { VoidInvoiceDialog } from "@/components/admin/billing/void-invoice-dialog";
 import { resolveActorName } from "@/lib/admin/actor-names";
 
 import {
@@ -52,6 +53,8 @@ interface InvoiceActionsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onChanged: () => void;
+  /** SYSTEM_ADMIN — may void the subscription behind this invoice. */
+  isSystemAdmin: boolean;
 }
 
 const INVOICE_STATUS_BADGE: Record<
@@ -87,6 +90,11 @@ const INVOICE_STATUS_BADGE: Record<
     label: "Refunded",
     className:
       "border-violet-200 bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20",
+  },
+  VOIDED: {
+    label: "Voided",
+    className:
+      "border-rose-200 bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20",
   },
 };
 
@@ -192,6 +200,7 @@ export function InvoiceActionsDialog({
   open,
   onOpenChange,
   onChanged,
+  isSystemAdmin,
 }: InvoiceActionsDialogProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -204,6 +213,7 @@ export function InvoiceActionsDialog({
   const [paymentHistoryError, setPaymentHistoryError] = useState<string | null>(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
+  const [voidOpen, setVoidOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -618,6 +628,18 @@ export function InvoiceActionsDialog({
               Issue refund
             </Button>
           )}
+          {isSystemAdmin && invoice.subscriptionId && invoice.status !== "VOIDED" && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setVoidOpen(true)}
+              disabled={isPending}
+              className="text-destructive hover:bg-destructive/10"
+            >
+              <Ban className="mr-1.5 h-4 w-4" />
+              Void subscription
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -653,6 +675,18 @@ export function InvoiceActionsDialog({
             onChanged();
           }}
         />
+        {isSystemAdmin && (
+          <VoidInvoiceDialog
+            businessId={businessId}
+            invoice={invoice}
+            open={voidOpen}
+            onOpenChange={setVoidOpen}
+            onVoided={() => {
+              onChanged();
+              onOpenChange(false);
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
