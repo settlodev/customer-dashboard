@@ -24,6 +24,8 @@ import { InventoryKpiStrip } from "@/components/widgets/inventory/inventory-kpi-
 import { StockVariantsHeaderActions } from "@/components/widgets/inventory/stock-variants-header-actions";
 import { StockCategoryFilter } from "@/components/widgets/inventory/stock-category-filter";
 import { fetchAllStockCategories } from "@/lib/actions/stock-category-actions";
+import { SectionTutorialDialog } from "@/components/widgets/help/section-tutorial-dialog";
+import { TutorialSection } from "@/lib/tutorials";
 
 type Props = {
   searchParams: Promise<{
@@ -103,6 +105,7 @@ export default async function Page({ searchParams }: Props) {
         subtitle="Inventory across this location · last sync moments ago"
         actions={
           <div className="flex items-center gap-2">
+            <SectionTutorialDialog section={TutorialSection.STOCK_ITEM} />
             <StockVariantsHeaderActions />
           </div>
         }
