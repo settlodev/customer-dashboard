@@ -76,6 +76,12 @@ export default async function RootLayout({children}: {
     // everyone out when BILLING_SERVICE_URL is simply unset (local dev / misconfigured deploy)
     // rather than a real outage.
     if (gate.outcome === "lock" && pathname && isEntitlementGatingConfigured()) {
+        if (gate.reason === "business-mismatch") {
+            // Same Auth business_id-claim regression tripwire as app/(protected)/layout.tsx.
+            console.error(
+                `[entitlement-gate] business-mismatch: entitlement answer is not about business ${currentBusiness?.id} (warehouse ${activeWarehouseId}) — possible Auth business_id claim regression`,
+            );
+        }
         redirect(`/billing?expired=warehouse&reason=${gate.reason}`);
     }
 

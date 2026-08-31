@@ -113,11 +113,32 @@ export interface DaySessionPrepaymentItem {
   receivedAt: string;
 }
 
+/**
+ * A prepaid balance DRAWN DOWN during the session (REDEEMED ledger rows
+ * stamped with the session id), whenever the money was originally taken.
+ * One row per instrument used; `balanceAfter` is what the customer had
+ * left after the session's last draw.
+ */
+export interface DaySessionPrepaymentUsageItem {
+  instrumentId: UUID;
+  reference: string | null;
+  customerId: UUID;
+  customerName: string | null;
+  amountUsed: number;
+  balanceAfter: number;
+  currency: string | null;
+  redemptionCount: number;
+  lastUsedAt: string | null;
+}
+
 export interface DaySessionPrepaymentTotals {
   count: number;
   totalReceived: number;
   heldTotal: number;
   appliedTotal: number;
+  /** Absent on share snapshots minted before usage tracking existed. */
+  usedTotal?: number;
+  usageCount?: number;
 }
 
 export interface DaySessionPrepaymentsSummary {
@@ -125,6 +146,8 @@ export interface DaySessionPrepaymentsSummary {
   daySessionId: UUID;
   businessDate: string;
   items: DaySessionPrepaymentItem[];
+  /** Absent on share snapshots minted before usage tracking existed. */
+  usages?: DaySessionPrepaymentUsageItem[] | null;
   totals: DaySessionPrepaymentTotals;
 }
 
