@@ -14,6 +14,7 @@ export type SubscriptionStatus =
 export type InvoiceStatus =
   | "DRAFT"
   | "PENDING"
+  | "PARTIALLY_PAID"
   | "PAID"
   | "FAILED"
   | "CANCELLED"
@@ -176,6 +177,10 @@ export interface InvoiceResponse {
   discountAmount: number;
   taxAmount: number;
   totalAmount: number;
+  /** Sum of every payment (gateway + approved manual) applied so far. */
+  paidAmount: number;
+  /** `totalAmount - paidAmount`. Zero once the invoice is fully PAID. */
+  unpaidAmount: number;
   couponCode: string | null;
   discountDescription: string | null;
   createdAt: string;
@@ -240,16 +245,17 @@ export interface ManualPaymentResponse {
 export type ManualPaymentPage = ApiResponse<ManualPaymentResponse>;
 
 /**
- * How an invoice was actually paid — Selcom gateway attempts plus any manual
+ * How an invoice was actually paid — Selcom gateway attempts plus every manual
  * payment recorded against it. The two are independent: a prospect invoice
  * attached to a business after the sale may carry a manual payment with no
- * Selcom attempts, or vice versa.
+ * Selcom attempts, or vice versa. An invoice can collect more than one manual
+ * payment over time (a partial payment followed by a top-up that completes it).
  */
 export interface InvoicePaymentHistory {
   /** Every Selcom attempt against this invoice, newest first. */
   selcomAttempts: PaymentResponse[];
-  /** Null if no manual payment was ever recorded for this invoice. */
-  manualPayment: ManualPaymentResponse | null;
+  /** Every manual payment recorded against this invoice, oldest first. Empty if none. */
+  manualPayments: ManualPaymentResponse[];
 }
 
 // ── Refunds ─────────────────────────────────────────────────────────
