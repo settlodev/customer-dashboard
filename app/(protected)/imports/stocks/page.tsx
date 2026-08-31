@@ -1,9 +1,11 @@
 import { ImportFlow } from "@/components/imports/import-flow";
+import { TutorialSection } from "@/lib/tutorials";
 
 export default function StockImportPage() {
   return (
     <ImportFlow
       type="STOCK"
+      tutorialSection={TutorialSection.STOCK_ITEM_CSV_IMPORT}
       title="Import stock items"
       description="Bulk-create stock items and their variants from a CSV. One row per variant; rows sharing a stock_name collapse into one stock item. Supports material type, returnable-crate deposits, and opening-stock quantities."
       templateColumns={[

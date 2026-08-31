@@ -161,6 +161,13 @@ export default async function RootLayout({
     // `reason` distinguishes "this entity's subscription lapsed" from "we could not reach
     // billing and have no trustworthy answer", so the billing page can explain which it is
     // rather than telling a paying customer their subscription expired.
+    if (gate.reason === "business-mismatch") {
+      // The tripwire for the Auth business_id-claim regression (see decideDestinationAccess).
+      // A spike here means Auth is stamping the wrong business again — treat as an incident.
+      console.error(
+        `[entitlement-gate] business-mismatch: entitlement answer is not about business ${currentBusiness?.id} (destination ${activeDestinationId}) — possible Auth business_id claim regression`,
+      );
+    }
     redirect(`/billing?expired=${lockedType}&reason=${gate.reason}`);
   }
 

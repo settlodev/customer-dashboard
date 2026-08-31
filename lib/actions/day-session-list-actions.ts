@@ -397,41 +397,57 @@ export async function getDaySessionDetail(
     session = null;
   }
 
-  // X-report (OPEN) vs Z-report (CLOSED). The Accounts lifecycle status
-  // drives the first choice, but Accounts and Reports can disagree — a
-  // stale, merged, or superseded session — and the Reports Service rejects
-  // an X-report for a session IT considers CLOSED (and a Z-report for one it
-  // considers OPEN). So try the status-implied report first, then fall back
-  // to the other type, so the user gets whichever report Reports actually
-  // has instead of an empty panel.
-  let report: DaySessionReport | null = null;
-  if (session) {
-    const apiClient = new ApiClient("reports");
-    const params = new URLSearchParams({ locationId }).toString();
-
-    const fetchReport = async (
-      kind: "x-report" | "z-report",
-    ): Promise<DaySessionReport | null> => {
-      try {
-        const data = (await apiClient.get(
-          `/api/v2/analytics/day-sessions/${sessionId}/${kind}?${params}`,
-        )) as DaySessionReport;
-        return parseStringify(data) as DaySessionReport;
-      } catch {
-        return null;
-      }
-    };
-
-    // Only the second call runs when the first fails, so a matching status
-    // costs nothing extra.
-    const [primary, fallback] =
-      session.status === "OPEN"
-        ? (["x-report", "z-report"] as const)
-        : (["z-report", "x-report"] as const);
-    report = (await fetchReport(primary)) ?? (await fetchReport(fallback));
-  }
+  const report = session
+    ? await getDaySessionReport(locationId, sessionId, session.status)
+    : null;
 
   return { session, report };
+}
+
+/**
+ * The Reports Service report for one session, on its own — the same payload
+ * {@link getDaySessionDetail} carries, without the Accounts lifecycle
+ * round-trip. Used by the combined daily Z-report, which already holds the
+ * lifecycle rows for every session of a date and only needs the figures.
+ *
+ * <p>X-report (OPEN) vs Z-report (CLOSED): the Accounts lifecycle status
+ * drives the first choice, but Accounts and Reports can disagree — a stale,
+ * merged, or superseded session — and the Reports Service rejects an X-report
+ * for a session IT considers CLOSED (and a Z-report for one it considers
+ * OPEN). So try the status-implied report first, then fall back to the other
+ * type, so the user gets whichever report Reports actually has instead of an
+ * empty panel. Only the second call runs when the first fails, so a matching
+ * status costs nothing extra.
+ *
+ * <p>Resolves to null rather than throwing when Reports has nothing for the
+ * session — both callers render that as a gap, not a failure.
+ */
+export async function getDaySessionReport(
+  locationId: string,
+  sessionId: string,
+  status?: string | null,
+): Promise<DaySessionReport | null> {
+  const apiClient = new ApiClient("reports");
+  const params = new URLSearchParams({ locationId }).toString();
+
+  const fetchReport = async (
+    kind: "x-report" | "z-report",
+  ): Promise<DaySessionReport | null> => {
+    try {
+      const data = (await apiClient.get(
+        `/api/v2/analytics/day-sessions/${sessionId}/${kind}?${params}`,
+      )) as DaySessionReport;
+      return parseStringify(data) as DaySessionReport;
+    } catch {
+      return null;
+    }
+  };
+
+  const [primary, fallback] =
+    status === "OPEN"
+      ? (["x-report", "z-report"] as const)
+      : (["z-report", "x-report"] as const);
+  return (await fetchReport(primary)) ?? (await fetchReport(fallback));
 }
 
 /**

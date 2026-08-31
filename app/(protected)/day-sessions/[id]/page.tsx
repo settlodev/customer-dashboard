@@ -54,6 +54,7 @@ import {
   marginPct,
   methodNameIndex,
   resolveCurrency,
+  rosterIndex,
   staffChip,
   staffName,
 } from "@/lib/day-sessions/cod-format";
@@ -96,7 +97,9 @@ export default async function DaySessionDetailPage({
   if (!detail.session) notFound();
   const { session, report } = detail;
 
-  const staffById = new Map(staffList.map((s): [string, Staff] => [s.id, s]));
+  // Keyed by staff id AND auth subject id — closedBy/approvedBy carry
+  // whichever the actor authenticated with.
+  const staffById = rosterIndex(staffList);
   const staffInitialsById = Object.fromEntries(
     staffList.map((s) => [s.id, initialsOf(s.fullName)]),
   );
@@ -412,7 +415,6 @@ export default async function DaySessionDetailPage({
             voids={extras.voids}
             report={report}
             roster={staffById}
-            currency={currency}
           />
 
           <ExpensesList expenses={extras.expenses} currency={currency} />

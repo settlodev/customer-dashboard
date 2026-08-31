@@ -277,7 +277,7 @@ export function GenerateItemInvoiceDialog({
                           ? `${blockedCount} item(s) are hidden below because they're cancelled or still in trial. `
                           : ""}
                         Paying the resulting invoice will flip a cancelled item back to
-                        ACTIVE — that's the point of this, not a bug.
+                        ACTIVE — that&apos;s the point of this, not a bug.
                       </p>
                     </div>
                   </FormItem>

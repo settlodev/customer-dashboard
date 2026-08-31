@@ -12,6 +12,7 @@ import { StockReportDateFilter } from "@/components/reports/stock/stock-report-d
 import { StockMovementReport } from "@/components/reports/stock/stock-movement-report";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import { getStockMovementReport } from "@/lib/actions/stock-movement-report-actions";
+import { fetchAllStockCategories } from "@/lib/actions/stock-category-actions";
 import { thisMonthRange } from "@/lib/date-range";
 import { STOCK_LENS_KEYS, type StockLens } from "@/lib/reports/stock-movement";
 
@@ -26,6 +27,7 @@ type Params = {
     page?: string;
     limit?: string;
     search?: string;
+    category?: string;
     lens?: string;
     sort?: string;
   }>;
@@ -55,13 +57,15 @@ export default async function StockReportPage({ searchParams }: Params) {
     ? Number(resolved.limit)
     : DEFAULT_LIMIT;
   const search = resolved.search ?? "";
+  const categoryId = resolved.category || undefined;
   const lens: StockLens = STOCK_LENS_KEYS.includes(resolved.lens as StockLens)
     ? (resolved.lens as StockLens)
     : "all";
   const sort = resolved.sort ?? "closing,desc";
 
-  const [currency, report] = await Promise.all([
+  const [currency, categories, report] = await Promise.all([
     getLocationCurrency(),
+    fetchAllStockCategories(),
     getStockMovementReport({
       from,
       to,
@@ -69,6 +73,7 @@ export default async function StockReportPage({ searchParams }: Params) {
       page: page - 1,
       size: limit,
       search: search || undefined,
+      categoryId,
       lens,
       sort,
     }),
@@ -84,8 +89,9 @@ export default async function StockReportPage({ searchParams }: Params) {
       ? "on hand now"
       : `as of ${format(new Date(asOf), "MMM d, yyyy")}`;
 
-  // Genuinely empty (no data at all), not just a filtered-out search/lens.
-  const noData = report.totalElements === 0 && !search && lens === "all";
+  // Genuinely empty (no data at all), not just a filtered-out search/category/lens.
+  const noData =
+    report.totalElements === 0 && !search && !categoryId && lens === "all";
 
   return (
     <PageShell>
@@ -111,6 +117,8 @@ export default async function StockReportPage({ searchParams }: Params) {
             to={to}
             asOf={asOf}
             search={search}
+            categoryId={categoryId ?? ""}
+            categories={categories}
             lens={lens}
             sort={sort}
             page={page}

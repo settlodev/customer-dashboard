@@ -11,6 +11,7 @@ import {
   ORDER_TYPE_LABELS,
   OrderType,
 } from "@/types/orders/type";
+import { formatDate, formatTime } from "@/lib/format-datetime";
 import { StaffCell, buildPrimaryColumn } from "./columns";
 
 export interface AbandonedColumnOptions {
@@ -23,16 +24,9 @@ export interface AbandonedColumnOptions {
 }
 
 const formatDateTime = (value: string | null | undefined) => {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return {
-    date: new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(date),
-    time: new Intl.DateTimeFormat("en", {
-      timeStyle: "short",
-      hour12: false,
-    }).format(date),
-  };
+  const date = formatDate(value);
+  if (!date) return null;
+  return { date, time: formatTime(value) };
 };
 
 const REASON_TYPE_LABEL: Record<string, string> = {

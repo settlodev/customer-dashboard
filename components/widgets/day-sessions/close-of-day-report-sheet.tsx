@@ -28,7 +28,11 @@ import type {
   CashUpTotals,
   PaymentMethodReconciliation,
 } from "@/types/payment-method-reconciliation/type";
-import { VOID_REASON_LABELS } from "@/types/orders/type";
+import {
+  CANCELLATION_REASON_LABELS,
+  type CancellationReason,
+  VOID_REASON_LABELS,
+} from "@/types/orders/type";
 import {
   cashPaidOutFrom,
   fmt2,
@@ -45,6 +49,12 @@ import {
   staffName,
   type StaffChip,
 } from "@/lib/day-sessions/cod-format";
+import {
+  ReportKv as Kv,
+  ReportSection as Section,
+  ReportSumCard as SumCard,
+  ReportTableBox as TableBox,
+} from "@/components/documents/sections/report-blocks";
 
 // Default Settlo brand (matches lib/grn-document.ts) when the tenant
 // letterhead carries no brand colour.
@@ -173,8 +183,6 @@ export function CloseOfDayReportSheet({
 
   const voidItems = extras.voids?.items ?? [];
   const cancelledOrders = extras.voids?.cancelledOrders ?? [];
-  const cancelledTotal =
-    extras.voids?.totalCancelledAmount ?? report?.voids?.cancelledAmount ?? 0;
 
   // Department rollup (item-level snapshot) + comp'd-order detail.
   const departments = report?.salesByDepartment ?? [];
@@ -189,6 +197,11 @@ export function CloseOfDayReportSheet({
   const netCollected = sales?.netCollected ?? sales?.net;
   const refundItems = extras.refunds?.refunds ?? [];
   const prepayItems = extras.prepayments?.items ?? [];
+  // Absent on share snapshots minted before usage tracking existed.
+  const prepayUsages = extras.prepayments?.usages ?? [];
+  const prepayUsedTotal =
+    extras.prepayments?.totals?.usedTotal ??
+    prepayUsages.reduce((sum, u) => sum + (u.amountUsed ?? 0), 0);
   const expenseItems = extras.expenses?.items ?? [];
   // Earlier days' invoices settled from today's tills: absent from the
   // list above (which is what this session SPENT) but netted off in the
@@ -407,18 +420,16 @@ export function CloseOfDayReportSheet({
       )}
 
       {/* ── Cash-up by payment method (brand-themed, like GRN items) ── */}
-      <Section
-        title="Cash-up by payment method"
-        count={`${reconciliations.length} method${reconciliations.length === 1 ? "" : "s"}`}
-        note={
-          showExpenses
-            ? "Collected less expenses vs counted"
-            : "Expected vs counted"
-        }
-      >
-        {reconciliations.length === 0 ? (
-          <EmptyBox>No cash-up was recorded for this session.</EmptyBox>
-        ) : (
+      {reconciliations.length > 0 && (
+        <Section
+          title="Cash-up by payment method"
+          count={`${reconciliations.length} method${reconciliations.length === 1 ? "" : "s"}`}
+          note={
+            showExpenses
+              ? "Collected less expenses vs counted"
+              : "Expected vs counted"
+          }
+        >
           <div className="overflow-hidden rounded-[10px] border border-slate-200">
             <table className="w-full border-collapse [&_tbody_tr:last-child>td]:border-b-0">
               <thead>
@@ -502,8 +513,8 @@ export function CloseOfDayReportSheet({
               </tfoot>
             </table>
           </div>
-        )}
-      </Section>
+        </Section>
+      )}
 
       {/* ── Opening balance & discounts ────────────────────────────── */}
       {(till?.opening != null || (sales?.discounts ?? 0) > 0) && (
@@ -545,24 +556,21 @@ export function CloseOfDayReportSheet({
         </Section>
       )}
 
-      {/* ── Cancellations & voids ──────────────────────────────────── */}
-      <Section
-        title="Cancellations & voids"
-        count={`${voidItems.length + cancelledOrders.length} record${
-          voidItems.length + cancelledOrders.length === 1 ? "" : "s"
-        }`}
-        note="With reason & approval"
-      >
-        {voidItems.length === 0 && cancelledOrders.length === 0 ? (
-          <EmptyBox>No voids or cancellations recorded this session.</EmptyBox>
-        ) : (
+      {/* ── Cancellations & voids — detail only, no amounts ────────── */}
+      {voidItems.length + cancelledOrders.length > 0 && (
+        <Section
+          title="Cancellations & voids"
+          count={`${voidItems.length + cancelledOrders.length} record${
+            voidItems.length + cancelledOrders.length === 1 ? "" : "s"
+          }`}
+          note="With reason & approval"
+        >
           <TableBox>
             <thead>
               <tr>
                 <th className={TH}>Ticket · item</th>
                 <th className={TH}>Reason & staff</th>
                 <th className={cn(TH, "text-right")}>Time</th>
-                <th className={cn(TH, "text-right")}>Amount ({currency})</th>
               </tr>
             </thead>
             <tbody>
@@ -583,14 +591,15 @@ export function CloseOfDayReportSheet({
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1">
                       <Appr label="Waiter" value={staffName(v.staffId, roster)} />
-                      <Appr label="Cashier" value={staffName(v.removedBy, roster)} />
-                      <Appr label="Approved" value={staffName(v.approvedBy, roster)} />
+                      <Appr
+                        label="Approved by"
+                        value={staffName(v.approvedBy ?? v.removedBy, roster)}
+                      />
                     </div>
                   </td>
                   <td className={cn(TD, NUM)}>
                     {v.removedAt ? fmtClock(v.removedAt).slice(0, 5) : "—"}
                   </td>
-                  <td className={cn(TD, NUM)}>{fmt2(v.netAmount)}</td>
                 </tr>
               ))}
               {cancelledOrders.map((c) => (
@@ -601,11 +610,15 @@ export function CloseOfDayReportSheet({
                   </td>
                   <td className={TD}>
                     <div className="text-[12.5px] text-slate-700">
-                      {c.cancellationReason ?? "—"}
+                      {c.cancellationReason
+                        ? (CANCELLATION_REASON_LABELS[
+                            c.cancellationReason as CancellationReason
+                          ] ?? c.cancellationReason)
+                        : "—"}
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1">
                       <Appr
-                        label="Cancelled by"
+                        label="Approved by"
                         value={staffName(c.cancelledBy, roster)}
                       />
                     </div>
@@ -613,31 +626,20 @@ export function CloseOfDayReportSheet({
                   <td className={cn(TD, NUM)}>
                     {c.cancelledAt ? fmtClock(c.cancelledAt).slice(0, 5) : "—"}
                   </td>
-                  <td className={cn(TD, NUM)}>{fmt2(c.netAmount)}</td>
                 </tr>
               ))}
             </tbody>
-            <tfoot>
-              <tr>
-                <TFootLabel colSpan={3}>Total voided / cancelled</TFootLabel>
-                <TFootNum>
-                  {fmt2((extras.voids?.totalVoidedAmount ?? 0) + cancelledTotal)}
-                </TFootNum>
-              </tr>
-            </tfoot>
           </TableBox>
-        )}
-      </Section>
+        </Section>
+      )}
 
       {/* ── Complimentary (on the house) ───────────────────────────── */}
-      <Section
-        title="Complimentary (on the house)"
-        count={`${compOrders.length} order${compOrders.length === 1 ? "" : "s"}`}
-        note="Excluded from net sales & cash-up"
-      >
-        {compOrders.length === 0 ? (
-          <EmptyBox>No complimentary orders recorded this session.</EmptyBox>
-        ) : (
+      {compOrders.length > 0 && (
+        <Section
+          title="Complimentary (on the house)"
+          count={`${compOrders.length} order${compOrders.length === 1 ? "" : "s"}`}
+          note="Excluded from net sales & cash-up"
+        >
           <TableBox>
             <thead>
               <tr>
@@ -690,78 +692,120 @@ export function CloseOfDayReportSheet({
               </tr>
             </tfoot>
           </TableBox>
-        )}
-      </Section>
+        </Section>
+      )}
 
       {/* ── Customer prepayments ───────────────────────────────────── */}
-      <Section
-        title="Customer prepayments"
-        count={`${prepayItems.length} record${prepayItems.length === 1 ? "" : "s"}`}
-      >
-        {prepayItems.length === 0 ? (
-          <EmptyBox>No prepayments recorded this session.</EmptyBox>
-        ) : (
-          <TableBox>
-            <thead>
-              <tr>
-                <th className={TH}>Customer · reference</th>
-                <th className={TH}>Method</th>
-                <th className={TH}>Status</th>
-                <th className={cn(TH, "text-right")}>Amount ({currency})</th>
-              </tr>
-            </thead>
-            <tbody>
-              {prepayItems.map((p, i) => {
-                const held = p.status === "HELD";
-                const method = p.paymentMethodId
-                  ? (methodNameById.get(p.paymentMethodId) ?? "—")
-                  : "—";
-                return (
-                  <tr key={`${p.instrumentId}-${i}`}>
-                    <td className={TD}>
-                      <div className={PRIM}>
-                        {p.customerName ?? "Walk-in customer"}
-                      </div>
-                      {(p.reference || p.description) && (
-                        <div className={SUB}>
-                          {[p.reference, p.description].filter(Boolean).join(" · ")}
+      {prepayItems.length + prepayUsages.length > 0 && (
+        <Section
+          title="Customer prepayments"
+          count={`${prepayItems.length + prepayUsages.length} record${
+            prepayItems.length + prepayUsages.length === 1 ? "" : "s"
+          }`}
+        >
+          {prepayItems.length > 0 && (
+            <TableBox>
+              <thead>
+                <tr>
+                  <th className={TH}>Customer · reference</th>
+                  <th className={TH}>Method</th>
+                  <th className={TH}>Status</th>
+                  <th className={cn(TH, "text-right")}>Amount ({currency})</th>
+                </tr>
+              </thead>
+              <tbody>
+                {prepayItems.map((p, i) => {
+                  const held = p.status === "HELD";
+                  const method = p.paymentMethodId
+                    ? (methodNameById.get(p.paymentMethodId) ?? "—")
+                    : "—";
+                  return (
+                    <tr key={`${p.instrumentId}-${i}`}>
+                      <td className={TD}>
+                        <div className={PRIM}>
+                          {p.customerName ?? "Walk-in customer"}
                         </div>
-                      )}
-                    </td>
-                    <td className={cn(TD, "text-[12.5px] text-slate-700")}>{method}</td>
-                    <td className={TD}>
-                      <Chip tone={held ? "held" : "applied"}>
-                        {held ? "HELD" : "APPLIED"}
-                      </Chip>
-                    </td>
-                    <td className={cn(TD, NUM)}>{fmt2(p.amount)}</td>
+                        {(p.reference || p.description) && (
+                          <div className={SUB}>
+                            {[p.reference, p.description].filter(Boolean).join(" · ")}
+                          </div>
+                        )}
+                      </td>
+                      <td className={cn(TD, "text-[12.5px] text-slate-700")}>{method}</td>
+                      <td className={TD}>
+                        <Chip tone={held ? "held" : "applied"}>
+                          {held ? "HELD" : "APPLIED"}
+                        </Chip>
+                      </td>
+                      <td className={cn(TD, NUM)}>{fmt2(p.amount)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              {extras.prepayments?.totals && (
+                <tfoot>
+                  <tr>
+                    <TFootLabel colSpan={3}>
+                      Total received · Held {fmt2(extras.prepayments.totals.heldTotal)} ·
+                      Applied {fmt2(extras.prepayments.totals.appliedTotal)}
+                    </TFootLabel>
+                    <TFootNum>{fmt2(extras.prepayments.totals.totalReceived)}</TFootNum>
                   </tr>
-                );
-              })}
-            </tbody>
-            {extras.prepayments?.totals && (
+                </tfoot>
+              )}
+            </TableBox>
+          )}
+
+          {/* Balances drawn down during this session — whenever the money
+              was originally taken — with what each customer had left after
+              their last draw. */}
+          {prepayUsages.length > 0 && (
+            <TableBox className={prepayItems.length > 0 ? "mt-3" : undefined}>
+              <thead>
+                <tr>
+                  <th className={TH}>Used this session</th>
+                  <th className={TH}>Draws</th>
+                  <th className={cn(TH, "text-right")}>Balance left</th>
+                  <th className={cn(TH, "text-right")}>Amount used ({currency})</th>
+                </tr>
+              </thead>
+              <tbody>
+                {prepayUsages.map((u) => (
+                  <tr key={u.instrumentId}>
+                    <td className={TD}>
+                      <div className={PRIM}>{u.customerName ?? "Walk-in customer"}</div>
+                      {u.reference && <div className={SUB}>{u.reference}</div>}
+                    </td>
+                    <td className={cn(TD, "text-[12.5px] text-slate-700")}>
+                      {u.redemptionCount}
+                      {u.lastUsedAt
+                        ? ` · last ${fmtClock(u.lastUsedAt).slice(0, 5)}`
+                        : ""}
+                    </td>
+                    <td className={cn(TD, NUM)}>{fmt2(u.balanceAfter)}</td>
+                    <td className={cn(TD, NUM)}>{fmt2(u.amountUsed)}</td>
+                  </tr>
+                ))}
+              </tbody>
               <tfoot>
                 <tr>
                   <TFootLabel colSpan={3}>
-                    Total received · Held {fmt2(extras.prepayments.totals.heldTotal)} ·
-                    Applied {fmt2(extras.prepayments.totals.appliedTotal)}
+                    Total paid from prepaid balances
                   </TFootLabel>
-                  <TFootNum>{fmt2(extras.prepayments.totals.totalReceived)}</TFootNum>
+                  <TFootNum>{fmt2(prepayUsedTotal)}</TFootNum>
                 </tr>
               </tfoot>
-            )}
-          </TableBox>
-        )}
-      </Section>
+            </TableBox>
+          )}
+        </Section>
+      )}
 
       {/* ── Refunds ────────────────────────────────────────────────── */}
-      <Section
-        title="Refunds"
-        count={`${refundItems.length} record${refundItems.length === 1 ? "" : "s"}`}
-      >
-        {refundItems.length === 0 ? (
-          <EmptyBox>No refunds recorded this session.</EmptyBox>
-        ) : (
+      {refundItems.length > 0 && (
+        <Section
+          title="Refunds"
+          count={`${refundItems.length} record${refundItems.length === 1 ? "" : "s"}`}
+        >
           <TableBox>
             <thead>
               <tr>
@@ -801,19 +845,18 @@ export function CloseOfDayReportSheet({
               </tr>
             </tfoot>
           </TableBox>
-        )}
-      </Section>
+        </Section>
+      )}
 
       {/* ── Expenses ───────────────────────────────────────────────── */}
-      <Section
-        title="Expenses"
-        count={`${expenseItems.length} record${expenseItems.length === 1 ? "" : "s"}`}
-        note="Paid & unpaid"
-      >
-        {expenseItems.length === 0 && earlierSettlements.length === 0 ? (
-          <EmptyBox>No expenses recorded this session.</EmptyBox>
-        ) : (
-          <TableBox>
+      {expenseItems.length + earlierSettlements.length > 0 && (
+        <Section
+          title="Expenses"
+          count={`${expenseItems.length} record${expenseItems.length === 1 ? "" : "s"}`}
+          note="Paid & unpaid"
+        >
+          {expenseItems.length > 0 && (
+            <TableBox>
             <thead>
               <tr>
                 <th className={TH}>Description</th>
@@ -911,7 +954,8 @@ export function CloseOfDayReportSheet({
             </tfoot>
           </TableBox>
         )}
-      </Section>
+        </Section>
+      )}
 
       {/* ── Cash drawer reconciliation ─────────────────────────────── */}
       {till && (
@@ -948,69 +992,9 @@ export function CloseOfDayReportSheet({
 }
 
 // ── Local presentational helpers (shared-document slate palette) ─────
-
-function Section({
-  title,
-  count,
-  note,
-  children,
-}: {
-  title: string;
-  count?: string;
-  note?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="px-10 pt-[30px]">
-      <div className="mb-3 flex items-baseline gap-2.5">
-        <h3 className="m-0 font-mono text-[12px] font-semibold uppercase tracking-[0.13em] text-slate-700">
-          {title}
-        </h3>
-        {count && <span className="font-mono text-[11px] text-slate-400">{count}</span>}
-        {note && <span className="ml-auto text-[12px] text-slate-400">{note}</span>}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function TableBox({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-[10px] border border-slate-200",
-        className,
-      )}
-    >
-      <table className="w-full border-collapse [&_tbody_tr:last-child>td]:border-b-0">
-        {children}
-      </table>
-    </div>
-  );
-}
-
-function EmptyBox({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-[10px] border border-slate-200 bg-slate-50 px-[15px] py-5 text-center text-[13px] text-slate-500">
-      {children}
-    </div>
-  );
-}
-
-function Kv({ k, v }: { k: string; v: React.ReactNode }) {
-  return (
-    <div className="flex justify-between gap-4 py-[5px] text-[14px]">
-      <span className="text-slate-600">{k}</span>
-      <span className="text-right font-semibold text-slate-900">{v}</span>
-    </div>
-  );
-}
+// Section / TableBox / Kv / SumCard now live in
+// components/documents/sections/report-blocks.tsx, shared with the combined
+// daily Z-report sheet.
 
 function SessCell({
   label,
@@ -1070,37 +1054,6 @@ function SessWho({
   );
 }
 
-function SumCard({
-  label,
-  value,
-  unit,
-  sub,
-  valueClass,
-}: {
-  label: string;
-  value: string;
-  unit: string;
-  sub?: string;
-  valueClass?: string;
-}) {
-  return (
-    <div className="rounded-[10px] border border-slate-200 px-4 py-3.5">
-      <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-        {label}
-      </div>
-      <div
-        className={cn(
-          "mt-2 font-mono text-[22px] font-bold tabular-nums tracking-[-0.02em]",
-          valueClass ?? "text-slate-900",
-        )}
-      >
-        {value}
-        <span className="ml-1 text-[11px] font-medium text-slate-400">{unit}</span>
-      </div>
-      {sub && <div className="mt-1.5 text-[11.5px] text-slate-600">{sub}</div>}
-    </div>
-  );
-}
 
 const CHIP_TONE: Record<string, string> = {
   paid: "bg-[#0A6B49]/10 text-[#0A6B49]",

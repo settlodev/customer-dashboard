@@ -142,8 +142,9 @@ export function AssignStaffDialog({
     return () => {
       cancelled = true;
     };
-    // currentValue derives from current.id/type; depend on the primitives.
-  }, [open, current?.id, current?.type, eligibleCapability, isSales]);
+    // currentValue is a string derived only from current.id/type, so it
+    // covers both without re-firing on object identity.
+  }, [open, currentValue, eligibleCapability, isSales]);
 
   const internalOptions = useMemo(
     () => options.filter((o) => o.type === "INTERNAL_STAFF"),

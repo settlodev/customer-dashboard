@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Clock, Copy, RefreshCw, Key, Shield } from "lucide-react";
 import { generateLocationCode } from "@/lib/actions/location-actions";
 import { useToast } from "@/hooks/use-toast";
+import { SectionTutorialDialog } from "@/components/widgets/help/section-tutorial-dialog";
+import { TutorialSection } from "@/lib/tutorials";
 
 interface LocationCodeData {
   code: string;
@@ -108,18 +110,21 @@ export function LocationCodeDisplay() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={generateCode}
-          disabled={isLoading}
-          size="lg"
-          variant="default"
-          className="shadow-sm hover:shadow-md transition-all duration-200"
-        >
-          <RefreshCw
-            className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
-          />
-          {isLoading ? "Generating..." : "Generate Code"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <SectionTutorialDialog section={TutorialSection.POS_ACCESS} />
+          <Button
+            onClick={generateCode}
+            disabled={isLoading}
+            size="lg"
+            variant="default"
+            className="shadow-sm hover:shadow-md transition-all duration-200"
+          >
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+            />
+            {isLoading ? "Generating..." : "Generate Code"}
+          </Button>
+        </div>
       </div>
 
       {/* Code Display Card */}

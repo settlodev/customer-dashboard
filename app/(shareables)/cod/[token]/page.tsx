@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Clock } from "lucide-react";
 
-import type { Staff } from "@/types/staff";
 import { cashUpTotalsFrom } from "@/types/payment-method-reconciliation/type";
 import { getPublicCloseOfDay } from "@/lib/actions/day-session-share-actions";
-import { resolveCurrency } from "@/lib/day-sessions/cod-format";
+import { resolveCurrency, rosterIndex } from "@/lib/day-sessions/cod-format";
 import { PrintableDocument } from "@/components/documents/PrintableDocument";
 import { CloseOfDayReportSheet } from "@/components/widgets/day-sessions/close-of-day-report-sheet";
 
@@ -72,7 +71,7 @@ export default async function SharedCloseOfDayPage({
     return <ExpiredNotice />;
   }
 
-  const roster = new Map(dto.staff.map((s): [string, Staff] => [s.id, s]));
+  const roster = rosterIndex(dto.staff);
   const currency =
     dto.currency ??
     resolveCurrency(
