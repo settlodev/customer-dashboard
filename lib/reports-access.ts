@@ -31,6 +31,7 @@ export const REPORT_PAGE_PERMISSIONS: Readonly<Record<string, string>> = {
   "/report/refunds": "dashboard_reports:refunds",
   "/report/voids": "dashboard_reports:voids",
   "/report/tax": "dashboard_reports:tax",
+  "/report/z-report": "dashboard_reports:z_report",
   "/report/stock": "dashboard_reports:stock",
   "/report/packaging": "dashboard_reports:packaging",
   "/report/staff": "dashboard_reports:staff",

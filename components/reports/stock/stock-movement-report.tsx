@@ -14,6 +14,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ChevronsUpDown,
+  Layers,
   Package,
   PackageSearch,
   Search,
@@ -35,9 +36,14 @@ import type {
   StockMovementReportSummary,
   StockStatus,
 } from "@/types/stock-movement-report/type";
+import type { StockCategory } from "@/types/stock-category/type";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { StockMovementExportButton } from "./stock-movement-export-button";
 
 type SortKey = "name" | "opening" | "in" | "out" | "net" | "closing" | "value";
+
+/** Combobox needs a non-empty value for the "no filter" row; ids are UUIDs. */
+const ALL_CATEGORIES = "all";
 
 const STATUS_PILL: Record<StockStatus, string> = {
   ok: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
@@ -93,6 +99,10 @@ interface Props {
   to: string;
   asOf: string;
   search: string;
+  /** Active stock-category id, or "" for every category. */
+  categoryId: string;
+  /** Every stock category at this destination, inactive ones included. */
+  categories: StockCategory[];
   lens: StockLens;
   sort: string; // "<col>,<dir>"
   page: number; // 1-based
@@ -116,6 +126,8 @@ export function StockMovementReport({
   to,
   asOf,
   search,
+  categoryId,
+  categories,
   lens,
   sort,
   page,
@@ -166,6 +178,24 @@ export function StockMovementReport({
   const onLens = (key: StockLens) => {
     setOpen(new Set());
     setParams({ lens: key === "all" ? null : key, page: null });
+  };
+
+  // Inactive categories stay listed — `active` gates assignment, not history,
+  // and items already carrying one still need to be reportable.
+  const categoryOptions: ComboboxOption[] = [
+    { value: ALL_CATEGORIES, label: "All categories" },
+    ...categories.map((c) => ({
+      value: c.id,
+      label: c.active ? c.name : `${c.name} (inactive)`,
+    })),
+  ];
+
+  const onCategory = (next: string | null) => {
+    setOpen(new Set());
+    setParams({
+      category: !next || next === ALL_CATEGORIES ? null : next,
+      page: null,
+    });
   };
 
   const onSort = (key: SortKey) => {
@@ -255,7 +285,20 @@ export function StockMovementReport({
               {fmtQty(totalElements)} items
             </span>
           </h2>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <Combobox
+              options={categoryOptions}
+              value={categoryId || ALL_CATEGORIES}
+              onChange={onCategory}
+              placeholder="All categories"
+              searchPlaceholder="Search categories…"
+              emptyText="No categories."
+              ariaLabel="Filter by stock category"
+              icon={<Layers className="h-4 w-4 shrink-0 text-muted-2" />}
+              className="h-9 w-auto min-w-[11rem] rounded-lg text-[13px]"
+              contentClassName="w-[15rem]"
+              align="end"
+            />
             <label className="flex h-9 w-full min-w-0 items-center gap-2 rounded-lg border border-line bg-card px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 sm:w-60">
               <Search className="h-4 w-4 flex-shrink-0 text-muted-2" />
               <input
@@ -270,6 +313,7 @@ export function StockMovementReport({
               to={to}
               asOf={asOf}
               search={search}
+              categoryId={categoryId}
               lens={lens}
               sort={sort}
               currency={currency}
@@ -341,7 +385,8 @@ export function StockMovementReport({
                       <PackageSearch className="h-9 w-9 text-muted-2" strokeWidth={1.4} />
                       <p className="text-[15px] font-medium text-ink">No items match</p>
                       <p className="text-[13px] text-muted-foreground">
-                        Try a different lens or clear your search.
+                        Try a different lens or category, or clear your
+                        search.
                       </p>
                     </div>
                   </td>

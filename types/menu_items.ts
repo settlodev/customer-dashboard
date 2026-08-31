@@ -88,6 +88,11 @@ const getNormalMenuItems = (args?: MenuItemArgType) => {
         reportNavItem("Refund report", "/report/refunds", args),
         reportNavItem("Voids report", "/report/voids", args),
         reportNavItem("Tax report", "/report/tax", args),
+        // Combined daily Z-report: the local close-of-day roll-up for a
+        // business date beside the TRA fiscal (VFD) Z for the same date.
+        // Shown to every location — the fiscal half simply reports "no VFD
+        // registration" where the location doesn't print fiscal receipts.
+        reportNavItem("Z-report", "/report/z-report", args),
         reportNavItem("Stock report", "/report/stock", args),
         ...(hasPackaging
           ? [reportNavItem("Packaging report", "/report/packaging", args)]

@@ -30,6 +30,8 @@ interface Props {
   to: string;
   asOf: string;
   search: string;
+  /** Active stock-category id, or "" for every category. */
+  categoryId: string;
   lens: string;
   sort: string;
   currency: string;
@@ -47,6 +49,7 @@ export function StockMovementExportButton({
   to,
   asOf,
   search,
+  categoryId,
   lens,
   sort,
   currency,
@@ -64,6 +67,7 @@ export function StockMovementExportButton({
           page: 0,
           size: 10000,
           search: search || undefined,
+          categoryId: categoryId || undefined,
           lens,
           sort: sort || undefined,
         });
