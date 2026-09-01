@@ -75,6 +75,7 @@ async function Page({ searchParams }: Params) {
                 total={total}
                 pageCount={1}
                 rowClickBasePath="/modifier-groups"
+                disableArchive
               />
             </CardContent>
           </Card>

@@ -59,6 +59,7 @@ export default async function Page() {
                 searchKey="name"
                 total={roles.length}
                 rowClickBasePath="/roles"
+                disableArchive
               />
             </CardContent>
           </Card>
