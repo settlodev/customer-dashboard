@@ -110,6 +110,37 @@ export async function getBusinessSubscription(
   return parseStringify(data);
 }
 
+/**
+ * Recovers a business stuck with no current subscription after a VOIDED one —
+ * voiding never touches the business's actual locations/warehouses/stores, so
+ * nothing automatically re-subscribes them. Clones the most recent voided
+ * generation's non-cancelled items onto a fresh subscription and generates its
+ * activation invoice. 422 if the business already has a current subscription,
+ * or has no voided one to repair from.
+ */
+export async function repairSubscription(
+  businessId: string,
+): Promise<FormResponse<SubscriptionResponse>> {
+  try {
+    const result = await staffBilling().post<SubscriptionResponse, Record<string, never>>(
+      `/api/v1/support/billing/${businessId}/repair-subscription`,
+      {},
+    );
+    revalidateBusiness(businessId);
+    return parseStringify({
+      responseType: "success",
+      message: "Subscription repaired",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to repair subscription",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
 export async function listBusinessInvoices(
   businessId: string,
   page = 0,
