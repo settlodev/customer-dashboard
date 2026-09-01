@@ -27,7 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FormError } from "@/components/widgets/form-error";
 import { useToast } from "@/hooks/use-toast";
 
-import { voidSubscriptionForInvoice } from "@/lib/actions/admin/billing";
+import { voidInvoice } from "@/lib/actions/admin/billing";
 import { VoidInvoiceSchema } from "@/types/admin/schemas";
 import { InvoiceResponse } from "@/types/admin/billing";
 
@@ -65,18 +65,14 @@ export function VoidInvoiceDialog({
   const onSubmit = (values: z.infer<typeof VoidInvoiceSchema>) => {
     setError("");
     startTransition(async () => {
-      const result = await voidSubscriptionForInvoice(
-        businessId,
-        invoice.id,
-        values.reason,
-      );
+      const result = await voidInvoice(businessId, invoice.id, values.reason);
       if (result.responseType === "error") {
         setError(result.message);
         return;
       }
       toast({
-        title: "Subscription voided",
-        description: `The subscription behind ${invoice.invoiceNumber} is gone — the business now looks unsubscribed.`,
+        title: "Invoice voided",
+        description: `${invoice.invoiceNumber} is voided and the entities it billed for have lost access. The rest of the subscription is untouched.`,
       });
       onVoided();
       onOpenChange(false);
@@ -89,14 +85,14 @@ export function VoidInvoiceDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Ban className="h-5 w-5 text-destructive" />
-            Void subscription
+            Void invoice
           </DialogTitle>
           <DialogDescription>
-            Voids the subscription behind {invoice.invoiceNumber} — for a
-            subscription that should never have existed (an internal
-            provisioning mistake), not a normal cancellation. The business
-            will look unsubscribed and its next payment starts a brand-new
-            subscription. No refund is issued and this cannot be undone.
+            Voids {invoice.invoiceNumber} — for an invoice that should never
+            have been billed (an internal provisioning mistake), not a normal
+            cancellation. The specific entities it billed for lose access;
+            everything else on this subscription is untouched. No refund is
+            issued and this cannot be undone.
           </DialogDescription>
         </DialogHeader>
 
@@ -121,7 +117,7 @@ export function VoidInvoiceDialog({
                     <Textarea
                       rows={3}
                       maxLength={500}
-                      placeholder="Why should this subscription never have existed?"
+                      placeholder="Why should this invoice never have been billed?"
                       disabled={isPending}
                       {...field}
                     />
@@ -147,7 +143,7 @@ export function VoidInvoiceDialog({
                     Voiding…
                   </span>
                 ) : (
-                  "Void subscription"
+                  "Void invoice"
                 )}
               </Button>
             </DialogFooter>

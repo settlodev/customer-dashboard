@@ -53,7 +53,7 @@ interface InvoiceActionsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onChanged: () => void;
-  /** SYSTEM_ADMIN — may void the subscription behind this invoice. */
+  /** SYSTEM_ADMIN — may void this invoice and the entities it billed for. */
   isSystemAdmin: boolean;
 }
 
@@ -637,7 +637,7 @@ export function InvoiceActionsDialog({
               className="text-destructive hover:bg-destructive/10"
             >
               <Ban className="mr-1.5 h-4 w-4" />
-              Void subscription
+              Void invoice
             </Button>
           )}
           <Button

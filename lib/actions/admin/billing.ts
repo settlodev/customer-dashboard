@@ -245,11 +245,12 @@ export async function cancelSupportInvoice(
 }
 
 /**
- * System admin only. Voids the ONE subscription this invoice is linked to (an
- * internal provisioning mistake, not a real cancellation) — cascades back down
- * to void every invoice under that subscription, including this one.
+ * System admin only. Voids this ONE invoice (an internal billing mistake, not
+ * a real cancellation) and revokes access for the specific entities its line
+ * items billed for — the subscription itself, and every other entity on it,
+ * is untouched.
  */
-export async function voidSubscriptionForInvoice(
+export async function voidInvoice(
   businessId: string,
   invoiceId: string,
   reason: string,
@@ -271,12 +272,12 @@ export async function voidSubscriptionForInvoice(
     revalidateBusiness(businessId);
     return parseStringify({
       responseType: "success",
-      message: "Subscription voided",
+      message: "Invoice voided",
     });
   } catch (error: any) {
     return parseStringify({
       responseType: "error",
-      message: error?.message || "Failed to void subscription",
+      message: error?.message || "Failed to void invoice",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
