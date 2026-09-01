@@ -76,6 +76,7 @@ import {
   SetWhitelabelAddonPriceSchema,
   SetWhitelabelPackagePriceSchema,
   UpgradePlanSchema,
+  VoidInvoiceSchema,
 } from "@/types/admin/schemas";
 
 function staffBilling() {
@@ -107,6 +108,37 @@ export async function getBusinessSubscription(
     `/api/v1/support/billing/${businessId}/subscription`,
   );
   return parseStringify(data);
+}
+
+/**
+ * Recovers a business stuck with no current subscription after a VOIDED one —
+ * voiding never touches the business's actual locations/warehouses/stores, so
+ * nothing automatically re-subscribes them. Clones the most recent voided
+ * generation's non-cancelled items onto a fresh subscription and generates its
+ * activation invoice. 422 if the business already has a current subscription,
+ * or has no voided one to repair from.
+ */
+export async function repairSubscription(
+  businessId: string,
+): Promise<FormResponse<SubscriptionResponse>> {
+  try {
+    const result = await staffBilling().post<SubscriptionResponse, Record<string, never>>(
+      `/api/v1/support/billing/${businessId}/repair-subscription`,
+      {},
+    );
+    revalidateBusiness(businessId);
+    return parseStringify({
+      responseType: "success",
+      message: "Subscription repaired",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to repair subscription",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
 }
 
 export async function listBusinessInvoices(
@@ -207,6 +239,44 @@ export async function cancelSupportInvoice(
     return parseStringify({
       responseType: "error",
       message: error?.message || "Failed to cancel invoice",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+/**
+ * System admin only. Voids the ONE subscription this invoice is linked to (an
+ * internal provisioning mistake, not a real cancellation) — cascades back down
+ * to void every invoice under that subscription, including this one.
+ */
+export async function voidSubscriptionForInvoice(
+  businessId: string,
+  invoiceId: string,
+  reason: string,
+): Promise<FormResponse<void>> {
+  const parsed = VoidInvoiceSchema.safeParse({ reason });
+  if (!parsed.success) {
+    return parseStringify({
+      responseType: "error",
+      message: parsed.error.errors[0]?.message ?? "Invalid reason",
+      error: new Error(parsed.error.message),
+    });
+  }
+
+  try {
+    await staffBilling().post<void, typeof parsed.data>(
+      `/api/v1/support/billing/invoices/${invoiceId}/void`,
+      parsed.data,
+    );
+    revalidateBusiness(businessId);
+    return parseStringify({
+      responseType: "success",
+      message: "Subscription voided",
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to void subscription",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }

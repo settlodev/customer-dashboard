@@ -151,6 +151,15 @@ export default async function AdminBusinessBillingPage({
   const activeDiscounts = (value(results[2]) ?? []) as SubscriptionDiscountResponse[];
   const availableDiscounts = (value(results[3]) ?? []) as DiscountResponse[];
   const subscriptionError = errorMessage(results[0]);
+  // A business genuinely has no CURRENT subscription — never subscribed, or
+  // its subscription was VOIDED (an internal-mistake row is excluded from
+  // every "current subscription" lookup) — is a normal state, not a page
+  // failure. BillingView already renders a "No subscription found" panel for
+  // a null subscription while still showing invoice history/actions; only a
+  // genuine fetch failure (network, 500, auth) should block the whole page.
+  const subscriptionNotFound =
+    results[0].status === "rejected" &&
+    (results[0].reason as { status?: number })?.status === 404;
   const locations = (value(results[4]) ?? []) as AdminLocationListItem[];
   const warehouses = (value(results[5]) ?? []) as AdminWarehouseListItem[];
   const stores = (value(results[6]) ?? []) as AdminStoreListItem[];
@@ -209,7 +218,7 @@ export default async function AdminBusinessBillingPage({
         />
 
         <PageBody>
-          {subscriptionError && !subscription ? (
+          {subscriptionError && !subscription && !subscriptionNotFound ? (
             <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               {subscriptionError}
             </p>
@@ -225,7 +234,7 @@ export default async function AdminBusinessBillingPage({
               canGrantFree={canGrantFree}
               canOverrideBilling={canGrantFree}
               errors={{
-                subscription: subscriptionError,
+                subscription: subscriptionNotFound ? null : subscriptionError,
                 invoices: errorMessage(results[1]),
                 activeDiscounts: errorMessage(results[2]),
                 availableDiscounts: errorMessage(results[3]),
