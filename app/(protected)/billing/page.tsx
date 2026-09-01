@@ -308,6 +308,33 @@ export default async function BillingPage({
         {lockedEntity && (
           <LockBanner lockedEntity={lockedEntity} lockReason={lockReason} />
         )}
+        {subscription.health && subscription.health.locationsTotal > 0 && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Building2 className="h-3.5 w-3.5" />
+            <span>
+              {subscription.health.locationsActive} of{" "}
+              {subscription.health.locationsTotal} location
+              {subscription.health.locationsTotal === 1 ? "" : "s"} active
+              {subscription.health.entitiesTotal >
+                subscription.health.locationsTotal && (
+                <>
+                  {" "}
+                  · {subscription.health.entitiesActive} of{" "}
+                  {subscription.health.entitiesTotal} entities
+                </>
+              )}
+              {subscription.health.expiringSoon > 0 && (
+                <>
+                  {" "}
+                  ·{" "}
+                  <span className="font-medium text-warn">
+                    {subscription.health.expiringSoon} expiring soon
+                  </span>
+                </>
+              )}
+            </span>
+          </div>
+        )}
         <KpiStrip cols={4}>
           <KpiCard
             icon={<Wallet className="h-3 w-3" />}
