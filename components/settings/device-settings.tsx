@@ -76,6 +76,8 @@ import {
   DEVICE_STATUS_DESCRIPTIONS,
   DEVICE_STATUS_LABELS,
 } from "@/types/device/type";
+import { SectionTutorialDialog } from "@/components/widgets/help/section-tutorial-dialog";
+import { TutorialSection } from "@/lib/tutorials";
 
 // ──────────────────────────────────────────────────────────────────────
 // Helpers
@@ -513,23 +515,26 @@ const DeviceSettings = () => {
               )}
             </p>
           </div>
-          {atCapacity ? (
-            <TooltipProvider delayDuration={150}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  {/* span wrapper so the disabled button still fires hover */}
-                  <span tabIndex={0}>{pairButton}</span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" align="end" className="max-w-xs">
-                  You&apos;re at the device cap for this location. Log out an
-                  active device to free a seat — its row stays in the list. Or
-                  upgrade the plan.
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : (
-            pairButton
-          )}
+          <div className="flex items-center gap-2">
+            <SectionTutorialDialog section={TutorialSection.POS_ACCESS} />
+            {atCapacity ? (
+              <TooltipProvider delayDuration={150}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {/* span wrapper so the disabled button still fires hover */}
+                    <span tabIndex={0}>{pairButton}</span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" align="end" className="max-w-xs">
+                    You&apos;re at the device cap for this location. Log out an
+                    active device to free a seat — its row stays in the list. Or
+                    upgrade the plan.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              pairButton
+            )}
+          </div>
         </div>
         {atCapacity && (
           <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200">

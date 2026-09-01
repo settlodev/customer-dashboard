@@ -21,6 +21,8 @@ import DataLoadError from "@/components/layouts/data-load-error";
 import { StaffStatusTabs } from "@/components/tables/staff/status-tabs";
 import { softFetch } from "@/lib/list-fallback";
 import type { StaffListEnriched } from "@/types/staff";
+import { SectionTutorialDialog } from "@/components/widgets/help/section-tutorial-dialog";
+import { TutorialSection } from "@/lib/tutorials";
 
 type Params = {
   searchParams: Promise<{
@@ -123,12 +125,15 @@ export default async function Page({ searchParams }: Params) {
         title="Staff"
         subtitle="People who can sell, manage, or access this location."
         actions={
-          <Button asChild size="sm">
-            <Link href="/staff/new">
-              <Plus className="mr-1.5 h-4 w-4" />
-              Add staff
-            </Link>
-          </Button>
+          <>
+            <SectionTutorialDialog section={TutorialSection.ROLES_AND_STAFF} />
+            <Button asChild size="sm">
+              <Link href="/staff/new">
+                <Plus className="mr-1.5 h-4 w-4" />
+                Add staff
+              </Link>
+            </Button>
+          </>
         }
       />
 

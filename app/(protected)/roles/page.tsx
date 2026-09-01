@@ -15,6 +15,8 @@ import { Role } from "@/types/roles/type";
 import NoItems from "@/components/layouts/no-items";
 import DataLoadError from "@/components/layouts/data-load-error";
 import { softFetch } from "@/lib/list-fallback";
+import { SectionTutorialDialog } from "@/components/widgets/help/section-tutorial-dialog";
+import { TutorialSection } from "@/lib/tutorials";
 
 export default async function Page() {
   // Scope to the active destination (location/store/warehouse) plus the
@@ -31,12 +33,15 @@ export default async function Page() {
         title="Roles"
         subtitle="Define permissions and access levels for staff."
         actions={
-          <Button asChild size="sm">
-            <Link href="/roles/new">
-              <Plus className="mr-1.5 h-4 w-4" />
-              Add Role
-            </Link>
-          </Button>
+          <>
+            <SectionTutorialDialog section={TutorialSection.ROLES_AND_STAFF} />
+            <Button asChild size="sm">
+              <Link href="/roles/new">
+                <Plus className="mr-1.5 h-4 w-4" />
+                Add Role
+              </Link>
+            </Button>
+          </>
         }
       />
       <PageBody>

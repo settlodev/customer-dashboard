@@ -54,6 +54,8 @@ import type {
   RowDecision,
   RowStatus,
 } from "@/types/imports/type";
+import { SectionTutorialDialog } from "@/components/widgets/help/section-tutorial-dialog";
+import type { TutorialSectionKey } from "@/lib/tutorials";
 
 interface Props {
   type: ImportType;
@@ -62,6 +64,8 @@ interface Props {
   templateColumns: string[];
   templateSample?: string[];
   previewColumns: { key: string; label: string }[];
+  /** Optional key into the tutorials registry (`lib/tutorials.ts`) for a "Watch tutorial" trigger. */
+  tutorialSection?: TutorialSectionKey;
 }
 
 // Where each import type's records show up once committed — used to send
@@ -82,6 +86,7 @@ export function ImportFlow({
   templateColumns,
   templateSample,
   previewColumns,
+  tutorialSection,
 }: Props) {
   const { toast } = useToast();
   const router = useRouter();
@@ -392,10 +397,15 @@ export function ImportFlow({
         title={title}
         subtitle={description}
         actions={
-          <Button variant="outline" onClick={downloadTemplate}>
-            <Download className="h-4 w-4 mr-1.5" />
-            Download CSV template
-          </Button>
+          <>
+            {tutorialSection && (
+              <SectionTutorialDialog section={tutorialSection} />
+            )}
+            <Button variant="outline" onClick={downloadTemplate}>
+              <Download className="h-4 w-4 mr-1.5" />
+              Download CSV template
+            </Button>
+          </>
         }
       />
       <PageBody>

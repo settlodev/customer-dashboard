@@ -26,6 +26,11 @@ const INVOICE_STATUS_BADGE: Record<
     className:
       "border-sky-200 bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/20",
   },
+  PARTIALLY_PAID: {
+    label: "Partially paid",
+    className:
+      "border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20",
+  },
   PAID: {
     label: "Paid",
     className:
