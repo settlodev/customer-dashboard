@@ -63,11 +63,16 @@ export function RecordPaymentDialog({
   const [isRecording, setIsRecording] = useState(false);
   // Drives every disabled state below: busy while the proof uploads or records.
   const isPending = isUploading || isRecording;
+  // Outstanding balance defaults to the full total for invoices from before
+  // paidAmount/unpaidAmount existed on the response.
+  const outstanding = invoice.unpaidAmount ?? invoice.totalAmount;
+  const isTopUp = invoice.status === "PARTIALLY_PAID";
+
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">(
     "MOBILE_MONEY",
   );
   const [referenceNumber, setReferenceNumber] = useState("");
-  const [amount, setAmount] = useState<string>(String(invoice.totalAmount));
+  const [amount, setAmount] = useState<string>(String(outstanding));
   const [notes, setNotes] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string>("");
@@ -77,15 +82,15 @@ export function RecordPaymentDialog({
     if (!open) {
       setPaymentMethod("MOBILE_MONEY");
       setReferenceNumber("");
-      setAmount(String(invoice.totalAmount));
+      setAmount(String(outstanding));
       setNotes("");
       setFile(null);
       setError("");
       if (fileInputRef.current) fileInputRef.current.value = "";
     } else {
-      setAmount(String(invoice.totalAmount));
+      setAmount(String(outstanding));
     }
-  }, [open, invoice.totalAmount]);
+  }, [open, outstanding]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +107,12 @@ export function RecordPaymentDialog({
     const amountNum = Number(amount);
     if (!Number.isFinite(amountNum) || amountNum <= 0) {
       setError("Enter a positive amount");
+      return;
+    }
+    if (amountNum > outstanding) {
+      setError(
+        `Amount exceeds the outstanding balance of ${outstanding.toLocaleString()}`,
+      );
       return;
     }
     if (!file) {
@@ -137,11 +148,21 @@ export function RecordPaymentDialog({
         return;
       }
       const approved = result.data?.status === "APPROVED";
+      // Amount is already capped at `outstanding` by validation above, so
+      // reaching it (not just exceeding) means this payment clears the balance.
+      const clearsBalance = amountNum >= outstanding;
+      const remaining = Math.max(outstanding - amountNum, 0);
       toast({
-        title: approved ? "Payment recorded" : "Payment recorded — pending approval",
-        description: approved
-          ? `Invoice ${invoice.invoiceNumber} marked paid.`
-          : `Waiting on a billing approver to finalize invoice ${invoice.invoiceNumber}.`,
+        title: !approved
+          ? "Payment recorded — pending approval"
+          : clearsBalance
+            ? "Payment recorded"
+            : "Partial payment recorded",
+        description: !approved
+          ? `Waiting on a billing approver to finalize invoice ${invoice.invoiceNumber}.`
+          : clearsBalance
+            ? `Invoice ${invoice.invoiceNumber} marked paid.`
+            : `Invoice ${invoice.invoiceNumber} is now partially paid — ${remaining.toLocaleString()} still outstanding.`,
       });
       onRecorded();
       onOpenChange(false);
@@ -155,12 +176,20 @@ export function RecordPaymentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Record manual payment</DialogTitle>
+          <DialogTitle>
+            {isTopUp ? "Record top-up payment" : "Record manual payment"}
+          </DialogTitle>
           <DialogDescription>
-            If you hold billing approval, this marks invoice{" "}
-            {invoice.invoiceNumber} as paid and activates the subscription
-            immediately. Otherwise it&apos;s recorded pending approval. Proof of
-            payment (receipt or screenshot) is required either way.
+            {isTopUp
+              ? `Invoice ${invoice.invoiceNumber} is partially paid. `
+              : ""}
+            If you hold billing approval and the amount clears the
+            outstanding balance, this marks invoice {invoice.invoiceNumber}{" "}
+            as paid and activates the subscription immediately. A smaller
+            amount is recorded as a partial payment instead — you (or another
+            approver) can record another payment later to finish it off.
+            Otherwise it&apos;s recorded pending approval. Proof of payment
+            (receipt or screenshot) is required either way.
           </DialogDescription>
         </DialogHeader>
 
@@ -210,13 +239,16 @@ export function RecordPaymentDialog({
               id="amount"
               type="number"
               min={0.01}
+              max={outstanding}
               step="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               disabled={isPending}
             />
             <p className="font-mono text-[10.5px] text-muted-foreground">
-              Invoice total: {invoice.totalAmount.toLocaleString()}
+              {isTopUp
+                ? `Invoice total: ${invoice.totalAmount.toLocaleString()} · Outstanding: ${outstanding.toLocaleString()}`
+                : `Invoice total: ${invoice.totalAmount.toLocaleString()}`}
             </p>
           </div>
 

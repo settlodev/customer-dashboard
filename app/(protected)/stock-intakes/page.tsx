@@ -16,6 +16,8 @@ import { softFetch } from "@/lib/list-fallback";
 import { getCurrentDestination } from "@/lib/actions/context";
 import { getStockIntakeKpi } from "@/lib/actions/reports-analytics-actions";
 import { StockIntakeKpiStrip } from "@/components/widgets/inventory/stock-intake-kpi-strip";
+import { SectionTutorialDialog } from "@/components/widgets/help/section-tutorial-dialog";
+import { TutorialSection } from "@/lib/tutorials";
 import {
   INTAKE_PAYMENT_TERMS_LABELS,
   IntakePaymentTerms,
@@ -58,6 +60,7 @@ export default async function Page({ searchParams }: Params) {
         subtitle="Record received goods and confirm batches into inventory."
         actions={
           <>
+            <SectionTutorialDialog section={TutorialSection.STOCK_INTAKE} />
             <Button asChild size="sm">
               <Link href="/stock-intakes/new">
                 <Plus className="mr-1.5 h-4 w-4" />

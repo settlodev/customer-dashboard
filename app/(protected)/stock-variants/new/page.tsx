@@ -5,6 +5,8 @@ import {
   PageBody,
 } from "@/components/layouts/page-shell";
 import StockForm from "@/components/forms/stock_form";
+import { SectionTutorialDialog } from "@/components/widgets/help/section-tutorial-dialog";
+import { TutorialSection } from "@/lib/tutorials";
 
 export default function NewStockPage() {
   return (
@@ -18,6 +20,7 @@ export default function NewStockPage() {
       <PageHeader
         title="Add Stock Item"
         subtitle="Add a new stock item to track inventory."
+        actions={<SectionTutorialDialog section={TutorialSection.STOCK_ITEM} />}
       />
       <PageBody>
         <StockForm item={null} />

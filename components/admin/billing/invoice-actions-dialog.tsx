@@ -64,6 +64,11 @@ const INVOICE_STATUS_BADGE: Record<
     className:
       "border-sky-200 bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/20",
   },
+  PARTIALLY_PAID: {
+    label: "Partially paid",
+    className:
+      "border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20",
+  },
   PAID: {
     label: "Paid",
     className:
@@ -393,6 +398,16 @@ export function InvoiceActionsDialog({
           <p className="text-[13px] font-semibold text-ink">
             Total: {formatMoney(invoice.totalAmount)}
           </p>
+          {invoice.status === "PARTIALLY_PAID" && (
+            <>
+              <p className="text-muted-foreground">
+                Paid so far: <span className="text-ink">{formatMoney(invoice.paidAmount)}</span>
+              </p>
+              <p className="font-semibold text-amber-600 dark:text-amber-400">
+                Outstanding: {formatMoney(invoice.unpaidAmount)}
+              </p>
+            </>
+          )}
         </div>
 
         {/* Payment */}
@@ -408,55 +423,53 @@ export function InvoiceActionsDialog({
               Loading payment history…
             </p>
           ) : !paymentHistory ||
-            (!paymentHistory.manualPayment &&
+            (paymentHistory.manualPayments.length === 0 &&
               paymentHistory.selcomAttempts.length === 0) ? (
             <p className="text-sm text-muted-foreground">
               No payment recorded for this invoice yet.
             </p>
           ) : (
             <ul className="space-y-1.5">
-              {paymentHistory.manualPayment && (
-                <li className="rounded-md border border-line/60 bg-canvas/40 px-3 py-2">
+              {paymentHistory.manualPayments.map((mp) => (
+                <li
+                  key={mp.id}
+                  className="rounded-md border border-line/60 bg-canvas/40 px-3 py-2"
+                >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-[13px] font-medium text-ink">
                       <Banknote className="h-3.5 w-3.5 text-amber-500" />
-                      Manual ·{" "}
-                      {PAYMENT_METHOD_LABEL[paymentHistory.manualPayment.paymentMethod] ??
-                        paymentHistory.manualPayment.paymentMethod}
+                      Manual · {PAYMENT_METHOD_LABEL[mp.paymentMethod] ?? mp.paymentMethod}
                       <Badge
                         variant="outline"
-                        className={
-                          MANUAL_PAYMENT_BADGE[paymentHistory.manualPayment.status]?.className
-                        }
+                        className={MANUAL_PAYMENT_BADGE[mp.status]?.className}
                       >
-                        {MANUAL_PAYMENT_BADGE[paymentHistory.manualPayment.status]?.label ??
-                          paymentHistory.manualPayment.status}
+                        {MANUAL_PAYMENT_BADGE[mp.status]?.label ?? mp.status}
                       </Badge>
                     </div>
                     <span className="text-[13px] font-medium tabular-nums">
-                      {formatMoney(paymentHistory.manualPayment.amount)}
+                      {formatMoney(mp.amount)}
                     </span>
                   </div>
                   <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                    Ref {paymentHistory.manualPayment.referenceNumber} · Requested by{" "}
-                    {resolveActorName(paymentHistory.manualPayment.recordedBy, actorNames)} on{" "}
-                    {formatDate(paymentHistory.manualPayment.recordedAt)}
-                    {paymentHistory.manualPayment.status === "APPROVED" && (
+                    Ref {mp.referenceNumber} · Requested by{" "}
+                    {resolveActorName(mp.recordedBy, actorNames)} on{" "}
+                    {formatDate(mp.recordedAt)}
+                    {mp.status === "APPROVED" && (
                       <>
                         {" "}
                         · Activated by{" "}
-                        {resolveActorName(paymentHistory.manualPayment.approvedBy, actorNames)} on{" "}
-                        {formatDate(paymentHistory.manualPayment.approvedAt)}
+                        {resolveActorName(mp.approvedBy, actorNames)} on{" "}
+                        {formatDate(mp.approvedAt)}
                       </>
                     )}
                   </p>
-                  {paymentHistory.manualPayment.notes && (
+                  {mp.notes && (
                     <p className="mt-1 text-[12px] text-muted-foreground">
-                      {paymentHistory.manualPayment.notes}
+                      {mp.notes}
                     </p>
                   )}
                 </li>
-              )}
+              ))}
               {paymentHistory.selcomAttempts.map((p) => (
                 <li
                   key={p.externalReferenceId}
@@ -565,7 +578,7 @@ export function InvoiceActionsDialog({
         </div>
 
         <DialogFooter className="flex-wrap gap-2">
-          {invoice.status === "PENDING" && (
+          {(invoice.status === "PENDING" || invoice.status === "PARTIALLY_PAID") && (
             <>
               <Button
                 type="button"
@@ -573,21 +586,25 @@ export function InvoiceActionsDialog({
                 onClick={() => setPaymentOpen(true)}
                 disabled={isPending}
               >
-                Record manual payment
+                {invoice.status === "PARTIALLY_PAID"
+                  ? "Record top-up payment"
+                  : "Record manual payment"}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCancel}
-                disabled={isPending}
-                className="text-destructive hover:bg-destructive/10"
-              >
-                {isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Cancel invoice"
-                )}
-              </Button>
+              {invoice.status === "PENDING" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={isPending}
+                  className="text-destructive hover:bg-destructive/10"
+                >
+                  {isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Cancel invoice"
+                  )}
+                </Button>
+              )}
             </>
           )}
           {invoice.status === "PAID" && (
