@@ -74,6 +74,7 @@ async function Page({ searchParams }: Params) {
                 pageNo={page}
                 total={total}
                 pageCount={pageCount}
+                disableArchive
               />
             </CardContent>
           </Card>

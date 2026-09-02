@@ -123,6 +123,13 @@ export const ApplyDiscountSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
+export const VoidInvoiceSchema = z.object({
+  reason: z
+    .string()
+    .min(1, "Reason is required")
+    .max(500, "Reason is too long"),
+});
+
 export const GrantFreeSubscriptionSchema = z.object({
   durationMonths: z
     .number()

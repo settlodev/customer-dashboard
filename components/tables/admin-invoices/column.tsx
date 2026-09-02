@@ -50,6 +50,11 @@ const INVOICE_STATUS_BADGE: Record<
     className:
       "border-violet-200 bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20",
   },
+  VOIDED: {
+    label: "Voided",
+    className:
+      "border-rose-200 bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20",
+  },
 };
 
 function formatDate(value: string | null | undefined): string {

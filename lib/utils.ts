@@ -23,6 +23,25 @@ export function safeRandomUUID(): string {
   return v4();
 }
 
+// A date picker (react-day-picker) returns the picked day as a Date at
+// local midnight. Serializing that with Date.prototype.toISOString()
+// converts it to UTC, which shifts the calendar day backwards in any
+// timezone ahead of UTC (e.g. EAT/UTC+3). Anchoring to UTC noon for the
+// picked Y/M/D keeps the intended calendar date intact.
+export function toDateOnlyIso(d: Date): string {
+  return new Date(
+    Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0),
+  ).toISOString();
+}
+
+// Same fix as toDateOnlyIso, for pickers that need an end-of-day timestamp
+// (e.g. a submission deadline) rather than a date-only value.
+export function toEndOfDayIso(d: Date): string {
+  return new Date(
+    Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999),
+  ).toISOString();
+}
+
 export function formatNumber(value: number): string {
   const formatter = new Intl.NumberFormat("en-US", {
     style: "decimal",

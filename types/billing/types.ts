@@ -92,6 +92,16 @@ export interface SubscriptionDiscount {
 /** Committed billing cycle length. Mirrors the service's BillingTerm enum. */
 export type BillingTerm = "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL";
 
+/** Derived business subscription health — "2 of 3 locations active, 1 expiring soon". */
+export interface SubscriptionHealth {
+  locationsTotal: number;
+  locationsActive: number;
+  entitiesTotal: number;
+  entitiesActive: number;
+  expiringSoon: number;
+  nextLapseAt: string | null;
+}
+
 export interface Subscription {
   id: string;
   businessId: string;
@@ -118,6 +128,8 @@ export interface Subscription {
    *  owner can re-pick a package on a lapsed entity before paying. `items` stays
    *  ACTIVE-only. Optional for responses that predate the field. */
   manageableItems?: SubscriptionItem[];
+  /** Absent until the billing service ships it — render nothing when missing. */
+  health?: SubscriptionHealth | null;
   activeDiscounts: SubscriptionDiscount[];
   createdAt: string;
   updatedAt: string;

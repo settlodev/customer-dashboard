@@ -13,6 +13,7 @@ import {
   ReceiptText,
   RefreshCw,
   Sparkles,
+  Wrench,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +32,8 @@ import { buildInvoiceColumns } from "@/components/tables/admin-invoices/column";
 import { UpgradePlanDialog } from "@/components/admin/billing/upgrade-plan-dialog";
 import {
   reconcileMigratedPayments,
-  republishSubscriptions,
+  refreshSubscriptions,
+  repairSubscription,
   revokeDiscount,
 } from "@/lib/actions/admin/billing";
 import {
@@ -98,6 +100,11 @@ const SUBSCRIPTION_STATUS_BADGE: Record<
     label: "Cancelled",
     className:
       "border-muted bg-muted text-muted-foreground",
+  },
+  VOIDED: {
+    label: "Voided",
+    className:
+      "border-rose-200 bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20",
   },
 };
 
@@ -166,19 +173,48 @@ export function BillingView({
   // responses that don't carry manageableItems yet.
   const manageableItems = subscription?.manageableItems ?? subscription?.items ?? [];
 
-  const handleRepublish = useCallback(() => {
+  const handleRefreshSubscriptions = useCallback(() => {
     if (
       !confirm(
-        "Republish SUBSCRIPTION_UPDATED events for this business? Use after a downstream consumer (entitlements, sidebar) has drifted out of sync.",
+        "Refresh this business's subscriptions? Re-derives the subscription status from its locations, then republishes SUBSCRIPTION_UPDATED so entitlements and login status catch up. Use when a location reads Suspended/Expired that billing says is paid.",
       )
     ) {
       return;
     }
     startTransition(async () => {
-      const result = await republishSubscriptions(businessId);
+      const result = await refreshSubscriptions(businessId);
       if (result.responseType === "error") {
         toast({
-          title: "Republish failed",
+          title: "Refresh failed",
+          description: result.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: "Subscriptions refreshed", description: result.message });
+      router.refresh();
+    });
+  }, [businessId, router, toast]);
+
+  /**
+   * A business's only history is a VOIDED subscription (an internal-mistake row) — voiding
+   * never touches its actual locations/warehouses/stores, so nothing automatically
+   * re-subscribes them. This clones the most recent voided generation's items onto a fresh
+   * subscription and generates its activation invoice.
+   */
+  const handleRepairSubscription = useCallback(() => {
+    if (
+      !confirm(
+        "Repair this business's subscription? Clones the most recently voided subscription's items onto a brand-new one and generates its activation invoice.",
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      const result = await repairSubscription(businessId);
+      if (result.responseType === "error") {
+        toast({
+          title: "Repair failed",
           description: result.message,
           variant: "destructive",
         });
@@ -377,17 +413,17 @@ export function BillingView({
           <Button
             size="sm"
             variant="outline"
-            onClick={handleRepublish}
+            onClick={handleRefreshSubscriptions}
             disabled={isPending || !subscription}
             className="text-muted-foreground hover:text-ink"
-            title="Republish SUBSCRIPTION_UPDATED events"
+            title="Re-derive the subscription status from its locations, then republish SUBSCRIPTION_UPDATED"
           >
             {isPending ? (
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="mr-1.5 h-4 w-4" />
             )}
-            Republish events
+            Refresh subscriptions
           </Button>
         )}
       </div>
@@ -416,9 +452,24 @@ export function BillingView({
           </div>
         </div>
         {!subscription ? (
-          <p className="text-sm text-muted-foreground">
-            No subscription found for this business.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              No subscription found for this business.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleRepairSubscription}
+              disabled={isPending}
+            >
+              {isPending ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <Wrench className="mr-1.5 h-4 w-4" />
+              )}
+              Repair subscription
+            </Button>
+          </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Info label="Subscription ID" value={subscription.id} mono />
@@ -661,6 +712,7 @@ export function BillingView({
           invoice={invoiceTarget}
           entityNames={entityNames}
           actorNames={actorNames}
+          isSystemAdmin={canOverrideBilling}
           open={!!invoiceTarget}
           onOpenChange={(open) => {
             if (!open) setInvoiceTarget(null);

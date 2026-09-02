@@ -42,6 +42,7 @@ export function SupplierTable({
       searchKey="name"
       total={total}
       rowClickBasePath="/suppliers"
+      disableArchive
     />
   );
 }

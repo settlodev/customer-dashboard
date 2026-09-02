@@ -43,6 +43,8 @@ import {
   RefundRequestDto,
   RefundResponse,
   ReconcileMigratedPaymentsResult,
+  RefreshRollupsResult,
+  RefreshSubscriptionsResult,
   RepublishSubscriptionsResult,
   RevokeDiscountRequest,
   SetPackageFeatureRequest,
@@ -76,6 +78,7 @@ import {
   SetWhitelabelAddonPriceSchema,
   SetWhitelabelPackagePriceSchema,
   UpgradePlanSchema,
+  VoidInvoiceSchema,
 } from "@/types/admin/schemas";
 
 function staffBilling() {
@@ -107,6 +110,37 @@ export async function getBusinessSubscription(
     `/api/v1/support/billing/${businessId}/subscription`,
   );
   return parseStringify(data);
+}
+
+/**
+ * Recovers a business stuck with no current subscription after a VOIDED one —
+ * voiding never touches the business's actual locations/warehouses/stores, so
+ * nothing automatically re-subscribes them. Clones the most recent voided
+ * generation's non-cancelled items onto a fresh subscription and generates its
+ * activation invoice. 422 if the business already has a current subscription,
+ * or has no voided one to repair from.
+ */
+export async function repairSubscription(
+  businessId: string,
+): Promise<FormResponse<SubscriptionResponse>> {
+  try {
+    const result = await staffBilling().post<SubscriptionResponse, Record<string, never>>(
+      `/api/v1/support/billing/${businessId}/repair-subscription`,
+      {},
+    );
+    revalidateBusiness(businessId);
+    return parseStringify({
+      responseType: "success",
+      message: "Subscription repaired",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to repair subscription",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
 }
 
 export async function listBusinessInvoices(
@@ -207,6 +241,45 @@ export async function cancelSupportInvoice(
     return parseStringify({
       responseType: "error",
       message: error?.message || "Failed to cancel invoice",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+/**
+ * System admin only. Voids this ONE invoice (an internal billing mistake, not
+ * a real cancellation) and revokes access for the specific entities its line
+ * items billed for — the subscription itself, and every other entity on it,
+ * is untouched.
+ */
+export async function voidInvoice(
+  businessId: string,
+  invoiceId: string,
+  reason: string,
+): Promise<FormResponse<void>> {
+  const parsed = VoidInvoiceSchema.safeParse({ reason });
+  if (!parsed.success) {
+    return parseStringify({
+      responseType: "error",
+      message: parsed.error.errors[0]?.message ?? "Invalid reason",
+      error: new Error(parsed.error.message),
+    });
+  }
+
+  try {
+    await staffBilling().post<void, typeof parsed.data>(
+      `/api/v1/support/billing/invoices/${invoiceId}/void`,
+      parsed.data,
+    );
+    revalidateBusiness(businessId);
+    return parseStringify({
+      responseType: "success",
+      message: "Invoice voided",
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to void invoice",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
@@ -1786,6 +1859,58 @@ export async function republishSubscriptions(
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
+}
+
+/**
+ * One-click repair for a subscription whose downstream projection has gone
+ * stale: re-derive the parent status/paid_through from its items, THEN re-emit
+ * SUBSCRIPTION_UPDATED so Accounts (per-location entitlement rows) and Auth
+ * (login-time status cache) rehydrate.
+ *
+ * The order is the whole point. Republishing alone re-emits whatever the parent
+ * row currently says — after the 2026-09-01 cascade that was SUSPENDED on a
+ * business with a location paid through 2027 — and Auth caches that top-level
+ * status for 24h and refuses the next login on it. So a rollup failure stops
+ * here; nothing is republished on top of a parent we could not re-derive.
+ *
+ * Both service endpoints are idempotent, so this is safe to run repeatedly.
+ */
+export async function refreshSubscriptions(
+  businessId?: string,
+): Promise<FormResponse<RefreshSubscriptionsResult>> {
+  let rollups: RefreshRollupsResult;
+  try {
+    const path = businessId
+      ? `/api/v1/admin/subscriptions/refresh-rollups?businessId=${businessId}`
+      : `/api/v1/admin/subscriptions/refresh-rollups`;
+    rollups = await staffBilling().post<
+      RefreshRollupsResult,
+      Record<string, never>
+    >(path, {});
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to refresh subscription rollups",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+
+  const rollupSummary = `Rollups ${rollups.changed}/${rollups.considered} changed${rollups.failed ? ` · ${rollups.failed} failed` : ""}`;
+
+  const republish = await republishSubscriptions(businessId);
+  if (republish.responseType !== "success" || !republish.data) {
+    return parseStringify({
+      responseType: "error",
+      message: `${rollupSummary}, but republish failed: ${republish.message}`,
+      error: republish.error ?? new Error(republish.message),
+    });
+  }
+
+  return parseStringify({
+    responseType: "success",
+    message: `${rollupSummary} · ${republish.message}`,
+    data: { rollups, republish: republish.data },
+  });
 }
 
 /**

@@ -66,7 +66,8 @@ export function CombinedZReportSheet({
   const lh = letterhead?.letterhead ?? null;
   const taxIds = letterhead?.taxIds ?? null;
   const businessName = lh?.businessName ?? locationName ?? "Business";
-  const primaryColor = letterhead?.brand?.primaryColor?.trim() || SETTLO_PRIMARY;
+  const primaryColor =
+    letterhead?.brand?.primaryColor?.trim() || SETTLO_PRIMARY;
 
   const issuer: BusinessIdentity = {
     name: businessName,
@@ -89,13 +90,15 @@ export function CombinedZReportSheet({
   const netCollected = aggregate?.sales.netCollected ?? local?.net ?? 0;
   const fiscalSales = vfd ? vfdSalesFigure(vfd) : null;
 
-  // The headline state of the document: reconciled, drifting, or simply not
-  // fiscalised. Printed as a pill next to the meta block so whoever files the
-  // page can see which of the three it is without reading the tables.
-  const state: { label: string; tone: "ok" | "warn" | "neutral" } = !vfd
+  // The headline fiscal state, printed as a pill next to the meta block so
+  // whoever files the page sees it without reading the tables. Null when the
+  // location has no fiscal device: the document is then a plain daily
+  // Z-report and says nothing about TRA at all. A registered location whose
+  // device issued no Z for the date is the one warning worth printing.
+  const state: { label: string; tone: "ok" | "warn" } | null = !vfd
     ? day.vfdAvailability === "available"
       ? { label: "No fiscal Z for this date", tone: "warn" }
-      : { label: "Local figures only", tone: "neutral" }
+      : null
     : variance && balanced(variance.sales) && variance.receipts === 0
       ? { label: "Reconciled with TRA", tone: "ok" }
       : { label: "Differs from TRA", tone: "warn" };
@@ -138,26 +141,23 @@ export function CombinedZReportSheet({
           </div>
           <div>
             <Kv k="Business date" v={fmtBusinessDate(day.date)} />
-            <Kv
-              k="Fiscal Z issued"
-              v={vfd ? (vfd.zrTime ?? "—") : "Not issued"}
-            />
+            {vfd && <Kv k="Fiscal Z issued" v={vfd.zrTime ?? "—"} />}
             <Kv k="Generated" v={fmtDateTimeShort(generatedAt)} />
-            <div className="sm:text-right">
-              <span
-                className={cn(
-                  "mt-2 inline-flex h-6 items-center gap-1.5 rounded-md px-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.06em]",
-                  state.tone === "ok"
-                    ? "bg-[#0A6B49]/10 text-[#0A6B49]"
-                    : state.tone === "warn"
-                      ? "bg-[#B9791F]/10 text-[#B9791F]"
-                      : "bg-slate-100 text-slate-600",
-                )}
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                {state.label}
-              </span>
-            </div>
+            {state && (
+              <div className="sm:text-right">
+                <span
+                  className={cn(
+                    "mt-2 inline-flex h-6 items-center gap-1.5 rounded-md px-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.06em]",
+                    state.tone === "ok"
+                      ? "bg-[#0A6B49]/10 text-[#0A6B49]"
+                      : "bg-[#B9791F]/10 text-[#B9791F]",
+                  )}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  {state.label}
+                </span>
+              </div>
+            )}
             {variance && (
               <div className="mt-4 flex items-center justify-between gap-4 rounded-[9px] bg-slate-100 px-4 py-3.5">
                 <span className="text-[14px] font-semibold text-slate-700">
@@ -227,64 +227,62 @@ export function CombinedZReportSheet({
         </div>
       </Section>
 
-      {/* ── Settlo vs TRA ──────────────────────────────────────────── */}
-      <Section
-        title="Settlo vs TRA"
-        note={
-          vfd
-            ? `Fiscal Z ${vfd.zrDate}${vfd.status ? ` · ${vfd.status}` : ""}`
-            : "No fiscal Z"
-        }
-      >
-        <TableBox>
-          <thead>
-            <tr className="bg-slate-50 text-left font-mono text-[10px] uppercase tracking-[0.08em] text-slate-500">
-              <th className="border-b border-slate-200 px-3 py-2 font-semibold">
-                Figure
-              </th>
-              <th className="border-b border-slate-200 px-3 py-2 text-right font-semibold">
-                Settlo
-              </th>
-              <th className="border-b border-slate-200 px-3 py-2 text-right font-semibold">
-                VFD
-              </th>
-              <th className="border-b border-slate-200 px-3 py-2 text-right font-semibold">
-                Difference
-              </th>
-            </tr>
-          </thead>
-          <tbody className="text-[13px]">
-            <CompareRow
-              label="Sales (VAT inclusive)"
-              settlo={local?.net ?? null}
-              fiscal={fiscalSales}
-              delta={variance?.sales ?? null}
-            />
-            <CompareRow
-              label="Tax"
-              settlo={local?.taxAmount ?? null}
-              fiscal={vfd?.totalTax ?? null}
-              delta={variance?.tax ?? null}
-            />
-            <CompareRow
-              label="Discounts"
-              settlo={local?.discounts ?? null}
-              fiscal={vfd?.totalDiscount ?? null}
-              delta={
-                local && vfd ? local.discounts - (vfd.totalDiscount ?? 0) : null
-              }
-            />
-            <CompareRow
-              label="Orders / fiscal receipts"
-              settlo={local?.orderCount ?? null}
-              fiscal={vfd?.totalReceipt ?? null}
-              delta={variance?.receipts ?? null}
-              integer
-            />
-          </tbody>
-        </TableBox>
+      {/* ── Settlo vs TRA — only when the device issued a Z ───────── */}
+      {vfd && (
+        <Section
+          title="Settlo vs TRA"
+          note={`Fiscal Z ${vfd.zrDate}${vfd.status ? ` · ${vfd.status}` : ""}`}
+        >
+          <TableBox>
+            <thead>
+              <tr className="bg-slate-50 text-left font-mono text-[10px] uppercase tracking-[0.08em] text-slate-500">
+                <th className="border-b border-slate-200 px-3 py-2 font-semibold">
+                  Figure
+                </th>
+                <th className="border-b border-slate-200 px-3 py-2 text-right font-semibold">
+                  Settlo
+                </th>
+                <th className="border-b border-slate-200 px-3 py-2 text-right font-semibold">
+                  VFD
+                </th>
+                <th className="border-b border-slate-200 px-3 py-2 text-right font-semibold">
+                  Difference
+                </th>
+              </tr>
+            </thead>
+            <tbody className="text-[13px]">
+              <CompareRow
+                label="Sales (VAT inclusive)"
+                settlo={local?.net ?? null}
+                fiscal={fiscalSales}
+                delta={variance?.sales ?? null}
+              />
+              <CompareRow
+                label="Tax"
+                settlo={local?.taxAmount ?? null}
+                fiscal={vfd?.totalTax ?? null}
+                delta={variance?.tax ?? null}
+              />
+              <CompareRow
+                label="Discounts"
+                settlo={local?.discounts ?? null}
+                fiscal={vfd?.totalDiscount ?? null}
+                delta={
+                  local && vfd
+                    ? local.discounts - (vfd.totalDiscount ?? 0)
+                    : null
+                }
+              />
+              <CompareRow
+                label="Orders / fiscal receipts"
+                settlo={local?.orderCount ?? null}
+                fiscal={vfd?.totalReceipt ?? null}
+                delta={variance?.receipts ?? null}
+                integer
+              />
+            </tbody>
+          </TableBox>
 
-        {vfd && (
           <>
             <div className="mt-3 grid grid-cols-3 gap-x-6 gap-y-1.5 rounded-[10px] border border-slate-200 px-4 py-3 text-[12px]">
               <Raw label="Total sales" value={vfd.totalSales} />
@@ -303,8 +301,8 @@ export function CombinedZReportSheet({
               its late receipts under the next fiscal date.
             </p>
           </>
-        )}
-      </Section>
+        </Section>
+      )}
 
       {/* ── Sessions ───────────────────────────────────────────────── */}
       {local && local.sessions.length > 0 && (
@@ -401,7 +399,10 @@ export function CombinedZReportSheet({
               <tr className="bg-slate-50">
                 <td className="px-3 py-2 font-semibold">Total</td>
                 <td className="px-3 py-2 text-right tabular-nums">
-                  {aggregate.paymentsByMethod.reduce((s, pm) => s + pm.count, 0)}
+                  {aggregate.paymentsByMethod.reduce(
+                    (s, pm) => s + pm.count,
+                    0,
+                  )}
                 </td>
                 <td className="px-3 py-2 text-right font-semibold tabular-nums">
                   {fmt2(paymentTotal)}

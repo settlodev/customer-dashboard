@@ -469,9 +469,18 @@ export function DataTable<TData, TValue>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Tables without a bulk action (disableArchive) have no use for the
+  // per-row "select" checkbox column — drop it here instead of relying on
+  // every columns.tsx to omit it, so a page can't end up with a selectable
+  // but functionally dead checkbox.
+  const effectiveColumns = React.useMemo(
+    () => (disableArchive ? columns.filter((c) => c.id !== "select") : columns),
+    [columns, disableArchive],
+  );
+
   const table = useReactTable({
     data: filteredData,
-    columns,
+    columns: effectiveColumns,
     // Client-side mode lets the table derive the page count from the data;
     // server-side mode trusts the caller's count.
     pageCount: clientMode ? undefined : (pageCount ?? -1),

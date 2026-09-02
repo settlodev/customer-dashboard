@@ -9,7 +9,8 @@ export type SubscriptionStatus =
   | "PAST_DUE"
   | "EXPIRED"
   | "SUSPENDED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "VOIDED";
 
 export type InvoiceStatus =
   | "DRAFT"
@@ -18,7 +19,8 @@ export type InvoiceStatus =
   | "PAID"
   | "FAILED"
   | "CANCELLED"
-  | "REFUNDED";
+  | "REFUNDED"
+  | "VOIDED";
 
 export type InvoiceLineItemType =
   | "PLAN"
@@ -226,6 +228,8 @@ export interface ManualPaymentResponse {
   id: string;
   invoiceId: string;
   invoiceNumber: string | null;
+  /** Lets the queue flag a pending payment whose invoice has since gone overdue. */
+  invoiceDueDate: string | null;
   subscriptionId: string | null;
   /** Owning business of the subscription. Null when it can't be resolved. */
   businessId: string | null;
@@ -510,6 +514,22 @@ export interface RepublishSubscriptionsResult {
   published: number;
   failed: number;
   businessId?: string;
+}
+
+// ── Ops: subscription rollup refresh ────────────────────────────────
+
+/** `POST /api/v1/admin/subscriptions/refresh-rollups` — parent status/paid_through re-derived from items. */
+export interface RefreshRollupsResult {
+  considered: number;
+  changed: number;
+  failed: number;
+  businessId?: string;
+}
+
+/** The one-click "Refresh subscriptions" repair: rollups first, then republish. */
+export interface RefreshSubscriptionsResult {
+  rollups: RefreshRollupsResult;
+  republish: RepublishSubscriptionsResult;
 }
 
 // ── Ops: reconcile migrated payments ────────────────────────────────

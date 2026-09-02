@@ -63,6 +63,7 @@ export function OrdersDataTable({
       filterOptions={ORDERS_TAB_FILTER_OPTIONS}
       manualFilter
       rowClickBasePath="/orders"
+      disableArchive
     />
   );
 }
