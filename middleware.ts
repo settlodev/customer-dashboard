@@ -87,16 +87,17 @@ function extractSubscriptionStatusFromJwt(accessToken: string): string | null {
   return valid.includes(status) ? status : null;
 }
 
-// Mirrors extractInternalRole in lib/jwt-utils.ts: return the claim's raw
-// value whenever present, not restricted to the known InternalRole literals.
+// Mirrors extractInternalRoles in lib/jwt-utils.ts: return the claim's raw
+// values whenever present, not restricted to the known InternalRole literals.
 // A custom (DB-backed) role code, e.g. "CALL_CENTER", has no enum mapping
 // and would never match a fixed list — presence of the claim is already a
 // reliable "is staff" signal on its own.
-function extractInternalRoleFromJwt(accessToken: string): InternalRole | null {
+function extractInternalRolesFromJwt(accessToken: string): InternalRole[] {
   const payload = decodeJwtPayload(accessToken);
-  if (!payload) return null;
-  const role = payload.internal_role as string | undefined;
-  return role ? (role as InternalRole) : null;
+  if (!payload) return [];
+  const roles = payload.internal_roles;
+  if (!Array.isArray(roles)) return [];
+  return roles.filter((r): r is string => typeof r === "string" && r.length > 0) as InternalRole[];
 }
 
 function extractInternalPermissionsFromJwt(accessToken: string): string[] {
@@ -289,7 +290,7 @@ async function handleAdminMiddleware(
   }
 
   const isStaffLoggedIn = !!(
-    staffToken?.accessToken && staffToken?.internalRole
+    staffToken?.accessToken && staffToken?.internalRoles?.length
   );
 
   // Strip the admin prefix when comparing paths to the login URL — pathname
@@ -315,7 +316,7 @@ async function handleAdminMiddleware(
 
   // ── Unrecoverable session: expired access token, no refresh token ───
   // Mirror of the customer branch's dead-session guard (see middleware()). An
-  // expired staffAuthToken still carries accessToken + internalRole, so
+  // expired staffAuthToken still carries accessToken + internalRoles, so
   // isStaffLoggedIn stays true; without this guard it sails through to a
   // rewrite and the admin page renders with a dead token. forceStaffLogout is
   // the only thing that can clear the cookie at the edge — the ApiClient's
@@ -342,7 +343,7 @@ async function handleAdminMiddleware(
         ...staffToken!,
         accessToken: refreshed.accessToken,
         refreshToken: refreshed.refreshToken,
-        internalRole: extractInternalRoleFromJwt(refreshed.accessToken),
+        internalRoles: extractInternalRolesFromJwt(refreshed.accessToken),
         internalPermissions: extractInternalPermissionsFromJwt(
           refreshed.accessToken,
         ),
@@ -428,11 +429,11 @@ export async function middleware(request: NextRequest) {
   const isLoggedIn = !!(authToken?.accessToken);
 
   // ── Cross-domain leak guard ───────────────────────────────────────
-  // A token carrying internalRole was issued for the admin dashboard.
+  // A token carrying internalRoles was issued for the admin dashboard.
   // If one shows up at the apex domain (bookmark, copy/paste, dev tools)
   // bounce it to the admin subdomain rather than dragging it through the
   // customer onboarding state machine.
-  if (isLoggedIn && authToken?.internalRole) {
+  if (isLoggedIn && authToken?.internalRoles?.length) {
     const adminHost =
       process.env.NEXT_PUBLIC_ADMIN_HOST ||
       (process.env.NODE_ENV === "production"

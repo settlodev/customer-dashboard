@@ -72,23 +72,25 @@ export function extractBusinessId(accessToken: string): string | null {
 const SUBJECT_TYPES: SubjectType[] = ["USER", "STAFF", "DEVICE"];
 
 /**
- * Extract the `internal_role` claim's raw value. Returns it whenever present,
- * NOT restricted to the known InternalRole literals — the Auth Service sets
- * this claim to the internal user's effective role CODE, which is an enum
- * name for system roles but an arbitrary string for a custom (DB-backed)
+ * Extract the `internal_roles` claim's raw values — every internal role this
+ * staff member currently holds. NOT restricted to the known InternalRole
+ * literals — the Auth Service sets each entry to a role CODE, which is an
+ * enum name for system roles but an arbitrary string for a custom (DB-backed)
  * role created via the internal-roles admin endpoint, e.g. "CALL_CENTER".
  * Validating against a fixed frontend list would silently treat every custom
  * role as "not staff", since custom codes are unbounded and can't be
- * enumerated here. The claim is only ever set on an internal user's token
- * (JwtTokenProvider gates it on internalRoleCode != null, which is only
- * populated in the internal-user login branch), so presence alone is already
- * a reliable signal — no allowlist needed.
+ * enumerated here. The claim is only ever set (non-empty) on an internal
+ * user's token (JwtTokenProvider gates it on internalRoleCodes being
+ * non-empty, which is only populated in the internal-user login branch), so
+ * presence alone is already a reliable "is staff" signal — no allowlist
+ * needed.
  */
-export function extractInternalRole(accessToken: string): InternalRole | null {
+export function extractInternalRoles(accessToken: string): InternalRole[] {
   const claims = decodeJwtClaims(accessToken);
-  if (!claims) return null;
-  const role = claims.internal_role;
-  return typeof role === "string" && role.length > 0 ? (role as InternalRole) : null;
+  if (!claims) return [];
+  const roles = claims.internal_roles;
+  if (!Array.isArray(roles)) return [];
+  return roles.filter((r): r is string => typeof r === "string" && r.length > 0) as InternalRole[];
 }
 
 export function extractInternalPermissions(accessToken: string): string[] {
@@ -134,14 +136,14 @@ export function extractSubjectType(accessToken: string): SubjectType | null {
 
 // NAMING: throughout the dashboard, "staff" (e.g. createStaffAuthToken,
 // getStaffAuthToken, the Staff Portal) means INTERNAL SETTLO OPERATORS, gated on
-// the `internal_role` claim — NOT customer business staff (those are regular
+// the `internal_roles` claim — NOT customer business staff (those are regular
 // `SubjectType.USER`s) and NOT `SubjectType.STAFF` POS/device tokens (bulk-minted,
 // X-Staff-Token, never in the browser). This guard is broader than that: it
 // returns true for an internal-role token OR a raw `SubjectType.STAFF` token,
 // so it's a "not an ordinary customer USER token" check rather than an
 // "internal operator" check — don't confuse the two.
 export function isStaffToken(accessToken: string): boolean {
-  return extractSubjectType(accessToken) === "STAFF" || extractInternalRole(accessToken) !== null;
+  return extractSubjectType(accessToken) === "STAFF" || extractInternalRoles(accessToken).length > 0;
 }
 
 /**

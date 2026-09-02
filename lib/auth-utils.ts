@@ -80,7 +80,7 @@ function authCookieMaxAgeFromLogin(refreshTokenExpiresAt?: string): number {
 import {
   extractBusinessId,
   extractInternalPermissions,
-  extractInternalRole,
+  extractInternalRoles,
   extractSubjectType,
   extractSubscriptionStatus,
   isAccessTokenExpired,
@@ -261,7 +261,7 @@ export const getStaffAuthToken = async (): Promise<AuthToken | null> => {
 export const updateStaffAuthToken = async (token: AuthToken) => {
   const synced: AuthToken = {
     ...token,
-    internalRole: token.accessToken ? extractInternalRole(token.accessToken) : null,
+    internalRoles: token.accessToken ? extractInternalRoles(token.accessToken) : [],
     internalPermissions: token.accessToken
       ? extractInternalPermissions(token.accessToken)
       : [],
@@ -280,11 +280,11 @@ export const deleteStaffAuthCookie = async () => {
   }
 };
 
-// "Staff" here = internal Settlo operator (Staff Portal, gated on `internal_role`),
+// "Staff" here = internal Settlo operator (Staff Portal, gated on `internal_roles`),
 // NOT customer business staff and NOT a `SubjectType.STAFF` POS token. See the
 // note on STAFF_AUTH_TOKEN_COOKIE above.
 export const createStaffAuthToken = async (loginResponse: LoginResponse) => {
-  const internalRole = extractInternalRole(loginResponse.accessToken);
+  const internalRoles = extractInternalRoles(loginResponse.accessToken);
   const internalPermissions = extractInternalPermissions(loginResponse.accessToken);
   const subjectType = extractSubjectType(loginResponse.accessToken) ?? "STAFF";
 
@@ -307,7 +307,7 @@ export const createStaffAuthToken = async (loginResponse: LoginResponse) => {
     countryId: "",
     countryCode: "",
     theme: null,
-    internalRole,
+    internalRoles,
     internalPermissions,
     subjectType,
   };

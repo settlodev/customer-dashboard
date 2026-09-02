@@ -23,18 +23,12 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { FormError } from "@/components/widgets/form-error";
 import { useToast } from "@/hooks/use-toast";
 
-import { updateInternalUserRole } from "@/lib/actions/admin/internal-users";
-import { UpdateInternalRoleSchema } from "@/types/admin/schemas";
+import { updateInternalUserRoles } from "@/lib/actions/admin/internal-users";
+import { UpdateInternalRolesSchema } from "@/types/admin/schemas";
 import {
   InternalUserResponse,
   RolePermissionsResponse,
@@ -54,6 +48,12 @@ function roleLabel(role: string): string {
   );
 }
 
+function sameRoles(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const sorted = [...b].sort();
+  return [...a].sort().every((v, i) => v === sorted[i]);
+}
+
 export function EditInternalUserDialog({
   user,
   roles,
@@ -65,52 +65,58 @@ export function EditInternalUserDialog({
   const [error, setError] = useState<string>("");
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof UpdateInternalRoleSchema>>({
-    resolver: zodResolver(UpdateInternalRoleSchema),
-    defaultValues: { role: user.roleCode ?? "" },
+  const currentRoleCodes = user.roles.map((r) => r.code);
+
+  const form = useForm<z.infer<typeof UpdateInternalRolesSchema>>({
+    resolver: zodResolver(UpdateInternalRolesSchema),
+    defaultValues: { roles: currentRoleCodes },
   });
 
   useEffect(() => {
     if (open) {
-      form.reset({ role: user.roleCode ?? "" });
+      form.reset({ roles: currentRoleCodes });
       setError("");
     }
-  }, [open, user.roleCode, form]);
+    // currentRoleCodes is derived fresh from user.roles every render; only
+    // re-seed the form when the dialog opens or the user identity changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, user.id, form]);
 
   const onSubmit = useCallback(
-    (values: z.infer<typeof UpdateInternalRoleSchema>) => {
-      if (values.role === user.roleCode) {
+    (values: z.infer<typeof UpdateInternalRolesSchema>) => {
+      if (sameRoles(values.roles, currentRoleCodes)) {
         onOpenChange(false);
         return;
       }
       setError("");
       startTransition(async () => {
-        const result = await updateInternalUserRole(user.id, values);
+        const result = await updateInternalUserRoles(user.id, values);
         if (result.responseType === "error") {
           setError(result.message);
           return;
         }
-        const newRoleName =
-          roles.find((r) => r.role === values.role)?.name ??
-          roleLabel(values.role);
+        const newRoleNames = values.roles
+          .map((code) => roles.find((r) => r.role === code)?.name ?? roleLabel(code))
+          .join(", ");
         toast({
-          title: "Role updated",
-          description: `${user.email} is now a ${newRoleName}.`,
+          title: "Roles updated",
+          description: `${user.email} now has: ${newRoleNames}.`,
         });
         onUpdated();
         onOpenChange(false);
       });
     },
-    [onOpenChange, onUpdated, toast, user.email, user.id, user.roleCode, roles],
+    [onOpenChange, onUpdated, toast, user.email, user.id, currentRoleCodes, roles],
   );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[460px]">
         <DialogHeader>
-          <DialogTitle>Change role</DialogTitle>
+          <DialogTitle>Manage roles</DialogTitle>
           <DialogDescription className="break-all">
-            Update the access level for <strong>{user.email}</strong>.
+            Update the access level for <strong>{user.email}</strong>. This
+            replaces their full set of roles.
           </DialogDescription>
         </DialogHeader>
 
@@ -127,38 +133,29 @@ export function EditInternalUserDialog({
           >
             <FormField
               control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={isPending}
-                  >
+              name="roles"
+              render={({ field }) => {
+                const selected = field.value ?? [];
+                return (
+                  <FormItem>
+                    <FormLabel>Roles</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a role" />
-                      </SelectTrigger>
+                      <MultiSelect
+                        key={selected.join(",")}
+                        options={roles.map((r) => ({
+                          label: r.name,
+                          value: r.role,
+                        }))}
+                        onValueChange={field.onChange}
+                        defaultValue={selected}
+                        placeholder="Choose one or more roles"
+                        disabled={isPending}
+                      />
                     </FormControl>
-                    <SelectContent>
-                      {roles.map((r) => (
-                        <SelectItem key={r.role} value={r.role}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{r.name}</span>
-                            {r.description && (
-                              <span className="text-xs text-muted-foreground">
-                                {r.description}
-                              </span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <DialogFooter className="gap-2">

@@ -106,11 +106,12 @@ export default async function AdminDashboardPage({
     redirect("/login");
   }
 
-  const role = token.internalRole;
+  const roles = token.internalRoles ?? [];
   const canViewStats = hasInternalPermission(token, PERM.SAAS_METRICS_READ);
 
+  const rolesLabel = roles.map((r) => r.replace(/_/g, " ")).join(", ");
   const subtitle = token?.email
-    ? `Signed in as ${token.email}${role ? ` · ${role.replace(/_/g, " ")}` : ""}`
+    ? `Signed in as ${token.email}${rolesLabel ? ` · ${rolesLabel}` : ""}`
     : "Settlo internal staff portal";
 
   if (!canViewStats) {
@@ -132,12 +133,11 @@ export default async function AdminDashboardPage({
   // Sales/support staff see metrics for only their assigned accounts. Admins /
   // board are unrestricted. (Only SALES reaches here; support isn't in STATS_ROLES.)
   const me = await getMyInternalStaffProfile();
-  const scope: StaffScope | undefined =
-    me?.assignableAs === "SALES"
-      ? { assignedSalesStaffId: me.id }
-      : me?.assignableAs === "SUPPORT"
-        ? { assignedSupportStaffId: me.id }
-        : undefined;
+  const scope: StaffScope | undefined = me?.assignableAsSales
+    ? { assignedSalesStaffId: me.id }
+    : me?.assignableAsSupport
+      ? { assignedSupportStaffId: me.id }
+      : undefined;
   const isScoped = scope !== undefined;
 
   const { from, to, compare } = await searchParams;

@@ -206,7 +206,7 @@ export default async function AdminBusinessDetailPage({
           rangeLabel={`${shortDay(startDate)} → ${shortDay(endDate)}`}
           canBilling={canBilling}
           currentUserId={token.userId ?? null}
-          currentUserRole={token.internalRole ?? null}
+          currentUserRoles={token.internalRoles ?? []}
         />
       </PageShell>
     </AdminShell>

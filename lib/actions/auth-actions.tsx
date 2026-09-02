@@ -34,7 +34,7 @@ import {
   clearPendingVerification,
   updateAuthToken,
 } from "@/lib/auth-utils";
-import { isStaffToken, extractReferralAgent, extractInternalRole } from "@/lib/jwt-utils";
+import { isStaffToken, extractReferralAgent, extractInternalRoles } from "@/lib/jwt-utils";
 import {
   establishCustomerSession,
   fetchCallerIdentity,
@@ -273,17 +273,17 @@ async function establishSessionFromLogin(
   // error. Fail here with something true instead.
   if (!loginData.accountId) {
     await deleteAuthCookie();
-    const internalRole = extractInternalRole(loginData.accessToken);
+    const internalRoles = extractInternalRoles(loginData.accessToken);
     console.error(
-      "[LOGIN] No accountId on the login response; internalRole:",
-      internalRole ?? "none",
+      "[LOGIN] No accountId on the login response; internalRoles:",
+      internalRoles.length ? internalRoles.join(",") : "none",
     );
     return parseStringify({
       responseType: "error",
-      message: internalRole
+      message: internalRoles.length
         ? "This login is a Settlo internal account with no business attached. Use the staff portal, or ask an administrator to add you as staff on a business."
         : "We couldn't load your account. Please try again.",
-      error: new Error(internalRole ? "INTERNAL_NO_TENANT" : "MISSING_ACCOUNT_ID"),
+      error: new Error(internalRoles.length ? "INTERNAL_NO_TENANT" : "MISSING_ACCOUNT_ID"),
     });
   }
 
@@ -805,7 +805,7 @@ export const loginAsStaff = async (
     const loginData: LoginResponse = await response.json();
 
     // Reject customer tokens — this portal is staff-only. The JWT subject_type
-    // claim is the canonical signal; internalRole presence is a belt-and-braces
+    // claim is the canonical signal; internalRoles presence is a belt-and-braces
     // fallback for tokens issued before subject_type rolled out.
     if (!isStaffToken(loginData.accessToken)) {
       return parseStringify({

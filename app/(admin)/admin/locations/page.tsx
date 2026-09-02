@@ -75,12 +75,11 @@ export default async function AdminLocationsPage({
 
   // Sales/support staff see only locations under accounts assigned to them.
   const me = await getMyInternalStaffProfile();
-  const scope: StaffScope | undefined =
-    me?.assignableAs === "SALES"
-      ? { assignedSalesStaffId: me.id }
-      : me?.assignableAs === "SUPPORT"
-        ? { assignedSupportStaffId: me.id }
-        : undefined;
+  const scope: StaffScope | undefined = me?.assignableAsSales
+    ? { assignedSalesStaffId: me.id }
+    : me?.assignableAsSupport
+      ? { assignedSupportStaffId: me.id }
+      : undefined;
 
   let pageData: PlatformLocationsPage | null = null;
   let counts: PlatformLocationStatusCounts = {

@@ -66,7 +66,7 @@ export default async function LocationDetailPage({
     redirect("/login");
   }
 
-  const role = token.internalRole;
+  const roles = token.internalRoles ?? [];
   const canRead = hasInternalPermission(token, PERM.ACCOUNTS_READ_ALL, PERM.ACCOUNTS_READ_ASSIGNED);
   if (!canRead) {
     return (
@@ -85,7 +85,7 @@ export default async function LocationDetailPage({
   const canEdit = hasInternalPermission(token, PERM.ACCOUNTS_MANAGE);
   // SYSTEM_ADMIN maps to billing's ROLE_SYSTEM_ADMIN (system_admin claim) — the only
   // caller allowed to override-extend a paid/used entity's trial.
-  const isSuperAdmin = role === "SYSTEM_ADMIN";
+  const isSuperAdmin = roles.includes("SYSTEM_ADMIN");
   const { id } = await params;
 
   let location: Awaited<ReturnType<typeof getAdminLocationDetail>>;

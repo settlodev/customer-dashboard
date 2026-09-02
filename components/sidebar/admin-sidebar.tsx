@@ -313,8 +313,8 @@ function AdminSidebarContent({ token, isMobile, onClose }: AdminSidebarProps) {
   const groups = visibleGroups(token);
   const [isLoggingOut, startLogout] = useTransition();
 
-  const roleLabel = token?.internalRole
-    ? token.internalRole.replace(/_/g, " ").toLowerCase()
+  const roleLabel = token?.internalRoles?.length
+    ? token.internalRoles.map((r) => r.replace(/_/g, " ").toLowerCase()).join(", ")
     : "";
 
   const handleLogout = () => {

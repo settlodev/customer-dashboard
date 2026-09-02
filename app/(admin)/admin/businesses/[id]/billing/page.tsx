@@ -64,13 +64,13 @@ export default async function AdminBusinessBillingPage({
     redirect("/login");
   }
 
-  const role = token.internalRole;
+  const roles = token.internalRoles ?? [];
   const canBilling = hasInternalPermission(
     token,
     PERM.SUPPORT_TICKETS_MANAGE,
     PERM.BILLING_INVOICES_CREATE,
   );
-  const canGrantFree = role === "SYSTEM_ADMIN";
+  const canGrantFree = roles.includes("SYSTEM_ADMIN");
 
   if (!canBilling) {
     return (

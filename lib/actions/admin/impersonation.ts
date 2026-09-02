@@ -71,8 +71,8 @@ export async function impersonateAccount(
     });
   }
 
-  const role = staff.internalRole;
-  if (!role || !IMPERSONATE_ROLES.includes(role)) {
+  const roles = staff.internalRoles ?? [];
+  if (!roles.some((r) => IMPERSONATE_ROLES.includes(r))) {
     return parseStringify({
       responseType: "error",
       message: "Your role isn't permitted to log in as customers.",
@@ -177,8 +177,8 @@ export async function impersonateStaffMember(params: {
     });
   }
 
-  const role = staff.internalRole;
-  if (!role || !IMPERSONATE_STAFF_ROLES.includes(role)) {
+  const roles = staff.internalRoles ?? [];
+  if (!roles.some((r) => IMPERSONATE_STAFF_ROLES.includes(r))) {
     return parseStringify({
       responseType: "error",
       message: "Your role isn't permitted to log in as staff members.",
