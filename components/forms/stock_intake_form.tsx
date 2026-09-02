@@ -15,7 +15,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, toDateOnlyIso } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -547,7 +547,7 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                                 mode="single"
                                 selected={selected}
                                 onSelect={(d) => {
-                                  field.onChange(d ? d.toISOString() : "");
+                                  field.onChange(d ? toDateOnlyIso(d) : "");
                                   const received = form.getValues("receivedDate");
                                   if (d && received && new Date(received) < d) {
                                     form.setValue("receivedDate", "", { shouldDirty: true });
@@ -593,7 +593,7 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                               <Calendar
                                 mode="single"
                                 selected={selected}
-                                onSelect={(d) => field.onChange(d ? d.toISOString() : "")}
+                                onSelect={(d) => field.onChange(d ? toDateOnlyIso(d) : "")}
                                 disabled={(date) => {
                                   if (date > today) return true;
                                   if (orderedDateAsDate && date < orderedDateAsDate) return true;
@@ -1089,9 +1089,7 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                                       mode="single"
                                       selected={selected}
                                       onSelect={(d) =>
-                                        f.onChange(
-                                          d ? d.toISOString().split("T")[0] : "",
-                                        )
+                                        f.onChange(d ? format(d, "yyyy-MM-dd") : "")
                                       }
                                       initialFocus
                                     />

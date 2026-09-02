@@ -19,7 +19,7 @@ import {
 import { NumericFormat } from "react-number-format";
 import { format } from "date-fns";
 
-import { cn } from "@/lib/utils";
+import { cn, toDateOnlyIso } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -391,7 +391,7 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                               mode="single"
                               selected={selected}
                               onSelect={(d) => {
-                                field.onChange(d ? d.toISOString() : undefined);
+                                field.onChange(d ? toDateOnlyIso(d) : undefined);
                                 const to = form.getValues(
                                   "attachments.0.effectiveTo" as never,
                                 );
@@ -451,7 +451,7 @@ export default function BomRuleForm({ rule, locationType }: BomRuleFormProps) {
                             <Calendar
                               mode="single"
                               selected={selected}
-                              onSelect={(d) => field.onChange(d ? d.toISOString() : undefined)}
+                              onSelect={(d) => field.onChange(d ? toDateOnlyIso(d) : undefined)}
                               disabled={(date) => (fromDate ? date < fromDate : false)}
                               initialFocus
                             />

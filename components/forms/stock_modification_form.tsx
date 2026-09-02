@@ -16,7 +16,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, toDateOnlyIso } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -437,7 +437,7 @@ export default function StockModificationForm() {
                             <Calendar
                               mode="single"
                               selected={selected}
-                              onSelect={(d) => field.onChange(d ? d.toISOString() : "")}
+                              onSelect={(d) => field.onChange(d ? toDateOnlyIso(d) : "")}
                               disabled={(date) => date > today}
                               initialFocus
                             />

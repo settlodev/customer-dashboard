@@ -552,9 +552,7 @@ export default function CustomerForm({ item, groups }: CustomerFormProps) {
                                       // strip the time so the value matches
                                       // the backend's @Past LocalDate field.
                                       field.onChange(
-                                        d
-                                          ? d.toISOString().split("T")[0]
-                                          : undefined,
+                                        d ? format(d, "yyyy-MM-dd") : undefined,
                                       )
                                     }
                                     // Backend has @Past — disallow today and
