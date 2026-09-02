@@ -43,6 +43,8 @@ import {
   RefundRequestDto,
   RefundResponse,
   ReconcileMigratedPaymentsResult,
+  RefreshRollupsResult,
+  RefreshSubscriptionsResult,
   RepublishSubscriptionsResult,
   RevokeDiscountRequest,
   SetPackageFeatureRequest,
@@ -1857,6 +1859,58 @@ export async function republishSubscriptions(
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
+}
+
+/**
+ * One-click repair for a subscription whose downstream projection has gone
+ * stale: re-derive the parent status/paid_through from its items, THEN re-emit
+ * SUBSCRIPTION_UPDATED so Accounts (per-location entitlement rows) and Auth
+ * (login-time status cache) rehydrate.
+ *
+ * The order is the whole point. Republishing alone re-emits whatever the parent
+ * row currently says — after the 2026-09-01 cascade that was SUSPENDED on a
+ * business with a location paid through 2027 — and Auth caches that top-level
+ * status for 24h and refuses the next login on it. So a rollup failure stops
+ * here; nothing is republished on top of a parent we could not re-derive.
+ *
+ * Both service endpoints are idempotent, so this is safe to run repeatedly.
+ */
+export async function refreshSubscriptions(
+  businessId?: string,
+): Promise<FormResponse<RefreshSubscriptionsResult>> {
+  let rollups: RefreshRollupsResult;
+  try {
+    const path = businessId
+      ? `/api/v1/admin/subscriptions/refresh-rollups?businessId=${businessId}`
+      : `/api/v1/admin/subscriptions/refresh-rollups`;
+    rollups = await staffBilling().post<
+      RefreshRollupsResult,
+      Record<string, never>
+    >(path, {});
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to refresh subscription rollups",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+
+  const rollupSummary = `Rollups ${rollups.changed}/${rollups.considered} changed${rollups.failed ? ` · ${rollups.failed} failed` : ""}`;
+
+  const republish = await republishSubscriptions(businessId);
+  if (republish.responseType !== "success" || !republish.data) {
+    return parseStringify({
+      responseType: "error",
+      message: `${rollupSummary}, but republish failed: ${republish.message}`,
+      error: republish.error ?? new Error(republish.message),
+    });
+  }
+
+  return parseStringify({
+    responseType: "success",
+    message: `${rollupSummary} · ${republish.message}`,
+    data: { rollups, republish: republish.data },
+  });
 }
 
 /**

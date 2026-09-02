@@ -32,8 +32,8 @@ import { buildInvoiceColumns } from "@/components/tables/admin-invoices/column";
 import { UpgradePlanDialog } from "@/components/admin/billing/upgrade-plan-dialog";
 import {
   reconcileMigratedPayments,
+  refreshSubscriptions,
   repairSubscription,
-  republishSubscriptions,
   revokeDiscount,
 } from "@/lib/actions/admin/billing";
 import {
@@ -173,25 +173,25 @@ export function BillingView({
   // responses that don't carry manageableItems yet.
   const manageableItems = subscription?.manageableItems ?? subscription?.items ?? [];
 
-  const handleRepublish = useCallback(() => {
+  const handleRefreshSubscriptions = useCallback(() => {
     if (
       !confirm(
-        "Republish SUBSCRIPTION_UPDATED events for this business? Use after a downstream consumer (entitlements, sidebar) has drifted out of sync.",
+        "Refresh this business's subscriptions? Re-derives the subscription status from its locations, then republishes SUBSCRIPTION_UPDATED so entitlements and login status catch up. Use when a location reads Suspended/Expired that billing says is paid.",
       )
     ) {
       return;
     }
     startTransition(async () => {
-      const result = await republishSubscriptions(businessId);
+      const result = await refreshSubscriptions(businessId);
       if (result.responseType === "error") {
         toast({
-          title: "Republish failed",
+          title: "Refresh failed",
           description: result.message,
           variant: "destructive",
         });
         return;
       }
-      toast({ title: result.message });
+      toast({ title: "Subscriptions refreshed", description: result.message });
       router.refresh();
     });
   }, [businessId, router, toast]);
@@ -413,17 +413,17 @@ export function BillingView({
           <Button
             size="sm"
             variant="outline"
-            onClick={handleRepublish}
+            onClick={handleRefreshSubscriptions}
             disabled={isPending || !subscription}
             className="text-muted-foreground hover:text-ink"
-            title="Republish SUBSCRIPTION_UPDATED events"
+            title="Re-derive the subscription status from its locations, then republish SUBSCRIPTION_UPDATED"
           >
             {isPending ? (
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="mr-1.5 h-4 w-4" />
             )}
-            Republish events
+            Refresh subscriptions
           </Button>
         )}
       </div>

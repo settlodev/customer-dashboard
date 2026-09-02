@@ -514,6 +514,22 @@ export interface RepublishSubscriptionsResult {
   businessId?: string;
 }
 
+// ── Ops: subscription rollup refresh ────────────────────────────────
+
+/** `POST /api/v1/admin/subscriptions/refresh-rollups` — parent status/paid_through re-derived from items. */
+export interface RefreshRollupsResult {
+  considered: number;
+  changed: number;
+  failed: number;
+  businessId?: string;
+}
+
+/** The one-click "Refresh subscriptions" repair: rollups first, then republish. */
+export interface RefreshSubscriptionsResult {
+  rollups: RefreshRollupsResult;
+  republish: RepublishSubscriptionsResult;
+}
+
 // ── Ops: reconcile migrated payments ────────────────────────────────
 
 /**
