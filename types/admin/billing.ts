@@ -228,6 +228,8 @@ export interface ManualPaymentResponse {
   id: string;
   invoiceId: string;
   invoiceNumber: string | null;
+  /** Lets the queue flag a pending payment whose invoice has since gone overdue. */
+  invoiceDueDate: string | null;
   subscriptionId: string | null;
   /** Owning business of the subscription. Null when it can't be resolved. */
   businessId: string | null;

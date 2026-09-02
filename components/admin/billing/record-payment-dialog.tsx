@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, TriangleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -67,6 +67,8 @@ export function RecordPaymentDialog({
   // paidAmount/unpaidAmount existed on the response.
   const outstanding = invoice.unpaidAmount ?? invoice.totalAmount;
   const isTopUp = invoice.status === "PARTIALLY_PAID";
+  const isOverdue =
+    !!invoice.dueDate && new Date(invoice.dueDate) < new Date();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">(
     "MOBILE_MONEY",
@@ -192,6 +194,18 @@ export function RecordPaymentDialog({
             (receipt or screenshot) is required either way.
           </DialogDescription>
         </DialogHeader>
+
+        {isOverdue && (
+          <div className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+            <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              This invoice was due{" "}
+              {new Date(invoice.dueDate as string).toLocaleDateString()} and
+              has passed its due date. Only a system admin can record a
+              payment against it now.
+            </span>
+          </div>
+        )}
 
         {error && <FormError message={error} />}
 
