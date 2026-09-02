@@ -2,7 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Banknote, ExternalLink } from "lucide-react";
+import { Banknote, ExternalLink, TriangleAlert } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { ManualPaymentRowActions } from "@/components/tables/admin-manual-payments/cell-action";
@@ -66,14 +66,27 @@ export function buildManualPaymentColumns(
       header: "Invoice",
       cell: ({ row }) => {
         const p = row.original;
+        const isOverdue =
+          p.status === "PENDING" &&
+          !!p.invoiceDueDate &&
+          new Date(p.invoiceDueDate) < new Date();
         return (
           <div className="flex min-w-0 items-center gap-3">
             <div className="grid h-8 w-8 place-items-center rounded-lg bg-amber-50 dark:bg-amber-950/30">
               <Banknote className="h-4 w-4 text-amber-500" />
             </div>
             <div className="min-w-0">
-              <p className="truncate font-medium text-gray-900 dark:text-gray-100">
+              <p className="flex items-center gap-1.5 truncate font-medium text-gray-900 dark:text-gray-100">
                 {p.invoiceNumber ?? "—"}
+                {isOverdue && (
+                  <span
+                    title={`Past due since ${formatDateTime(p.invoiceDueDate)} — only a system admin can approve this.`}
+                    className="inline-flex items-center gap-0.5 rounded-[3px] border border-rose-200 bg-rose-50 px-1 py-0 text-[10px] font-medium text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"
+                  >
+                    <TriangleAlert className="h-2.5 w-2.5" />
+                    Overdue
+                  </span>
+                )}
               </p>
               {p.businessId ? (
                 <Link
