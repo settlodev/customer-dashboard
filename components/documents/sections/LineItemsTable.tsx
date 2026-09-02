@@ -36,66 +36,73 @@ export function LineItemsTable({
   // hidden for them without any extra wiring.
   const showTax = !hideAmounts && items.some((item) => item.taxAmount != null);
   return (
-    <section className="px-10">
-      <table className="w-full border-collapse text-xs">
-        <thead>
-          <tr className={`${headerCls} text-white`} style={headerStyle}>
-            <th className="px-4 py-3 text-left font-medium">Items</th>
-            <th className="w-24 px-4 py-3 text-right font-medium">Quantity</th>
-            {!hideAmounts && (
-              <>
-                <th className="w-28 px-4 py-3 text-right font-medium">Price</th>
-                <th className="w-28 px-4 py-3 text-right font-medium">Amount</th>
-                {showTax && (
-                  <th className="w-24 px-4 py-3 text-right font-medium">Tax</th>
-                )}
-              </>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item, idx) => {
-            const amount =
-              item.amount ?? computeLineAmount(item.quantity, item.unitPrice);
-            return (
-              <tr key={idx} className="border-b border-slate-200 align-top">
-                <td className="px-4 py-3.5">
-                  <div className="font-medium text-slate-900">{item.name}</div>
-                  {item.description && (
-                    <div className="mt-0.5 whitespace-pre-line text-slate-500">
-                      {item.description}
-                    </div>
+    <section className="px-4 sm:px-10">
+      {/* On narrow viewports (this document is viewed directly on phones via
+          share links, not just printed) the fixed-width Qty/Price/Amount/Tax
+          columns don't have room to sit next to a wrapping item name — let
+          the table scroll horizontally instead of squeezing every column
+          into an unreadable sliver. */}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[420px] border-collapse text-xs">
+          <thead>
+            <tr className={`${headerCls} text-white`} style={headerStyle}>
+              <th className="px-4 py-3 text-left font-medium">Items</th>
+              <th className="w-24 px-4 py-3 text-right font-medium">Quantity</th>
+              {!hideAmounts && (
+                <>
+                  <th className="w-28 px-4 py-3 text-right font-medium">Price</th>
+                  <th className="w-28 px-4 py-3 text-right font-medium">Amount</th>
+                  {showTax && (
+                    <th className="w-24 px-4 py-3 text-right font-medium">Tax</th>
                   )}
-                </td>
-                <td className="px-4 py-3.5 text-right text-slate-700">
-                  {item.quantity}
-                  {item.unitOfMeasure ? ` ${item.unitOfMeasure}` : ""}
-                </td>
-                {!hideAmounts && (
-                  <>
-                    <td className="px-4 py-3.5 text-right text-slate-700">
-                      {formatCurrency(item.unitPrice, currency)}
-                    </td>
-                    <td className="px-4 py-3.5 text-right text-slate-900">
-                      {formatCurrency(amount, currency)}
-                    </td>
-                    {showTax && (
-                      <td className="px-4 py-3.5 text-right text-slate-700">
-                        {formatCurrency(item.taxAmount ?? 0, currency)}
-                        {item.taxRatePercent != null && (
-                          <div className="mt-0.5 text-[10px] text-slate-400">
-                            {item.taxRatePercent}%
-                          </div>
-                        )}
-                      </td>
+                </>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item, idx) => {
+              const amount =
+                item.amount ?? computeLineAmount(item.quantity, item.unitPrice);
+              return (
+                <tr key={idx} className="border-b border-slate-200 align-top">
+                  <td className="px-4 py-3.5">
+                    <div className="font-medium text-slate-900">{item.name}</div>
+                    {item.description && (
+                      <div className="mt-0.5 whitespace-pre-line text-slate-500">
+                        {item.description}
+                      </div>
                     )}
-                  </>
-                )}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  </td>
+                  <td className="px-4 py-3.5 text-right text-slate-700">
+                    {item.quantity}
+                    {item.unitOfMeasure ? ` ${item.unitOfMeasure}` : ""}
+                  </td>
+                  {!hideAmounts && (
+                    <>
+                      <td className="px-4 py-3.5 text-right text-slate-700">
+                        {formatCurrency(item.unitPrice, currency)}
+                      </td>
+                      <td className="px-4 py-3.5 text-right text-slate-900">
+                        {formatCurrency(amount, currency)}
+                      </td>
+                      {showTax && (
+                        <td className="px-4 py-3.5 text-right text-slate-700">
+                          {formatCurrency(item.taxAmount ?? 0, currency)}
+                          {item.taxRatePercent != null && (
+                            <div className="mt-0.5 text-[10px] text-slate-400">
+                              {item.taxRatePercent}%
+                            </div>
+                          )}
+                        </td>
+                      )}
+                    </>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

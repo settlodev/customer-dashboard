@@ -231,7 +231,7 @@ export default function RequisitionForm() {
                               mode="single"
                               selected={selected}
                               onSelect={(d) =>
-                                field.onChange(d ? d.toISOString().split("T")[0] : "")
+                                field.onChange(d ? format(d, "yyyy-MM-dd") : "")
                               }
                               disabled={(date) => date < today}
                               initialFocus

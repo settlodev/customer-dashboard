@@ -183,6 +183,7 @@ export default function TeamPage() {
                 pageNo={0}
                 total={members.length}
                 pageCount={1}
+                disableArchive
               />
             </CardContent>
           </Card>
