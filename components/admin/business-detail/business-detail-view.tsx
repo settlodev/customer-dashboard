@@ -87,7 +87,7 @@ interface BusinessDetailViewProps {
   rangeLabel: string;
   canBilling: boolean;
   currentUserId: string | null;
-  currentUserRole: InternalRole | null;
+  currentUserRoles: InternalRole[];
 }
 
 const AV_GRADIENT = "linear-gradient(135deg,#F4A36C,#C25E26)";
@@ -136,11 +136,12 @@ export function BusinessDetailView({
   rangeLabel,
   canBilling,
   currentUserId,
-  currentUserRole,
+  currentUserRoles,
 }: BusinessDetailViewProps) {
   const currency = business.baseCurrency || "TZS";
   const canEdit =
-    currentUserRole === "SYSTEM_ADMIN" || currentUserRole === "SUPER_ADMIN";
+    currentUserRoles.includes("SYSTEM_ADMIN") ||
+    currentUserRoles.includes("SUPER_ADMIN");
   const industry = locations.find((l) => l.businessTypeName)?.businessTypeName ?? null;
   const plan = lifecycle?.current_package_name ?? null;
   const subStatus = subscription?.status ?? null;
@@ -762,7 +763,7 @@ export function BusinessDetailView({
         initialPage={notesPage}
         error={null}
         currentUserId={currentUserId}
-        currentUserRole={currentUserRole}
+        currentUserRoles={currentUserRoles}
       />
     </div>
   );
