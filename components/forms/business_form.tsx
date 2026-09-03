@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useCallback, useState, useTransition } from "react";
+import React, { useCallback, useTransition } from "react";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 import {
@@ -11,12 +11,12 @@ import {
   Hash,
   Home,
   ImageIcon,
-  Loader2Icon,
   Mail,
   Map,
   MapPin,
   Phone,
   ShieldCheck,
+  ShieldOff,
 } from "lucide-react";
 
 import {
@@ -36,13 +36,18 @@ import { ImageDropzone } from "@/components/ui/image-dropzone";
 import { SectionCard } from "@/components/settings/shared/section-card";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogIcon,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { SettingsSaveBar } from "@/components/settings/shared/settings-save-bar";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Business } from "@/types/business/type";
@@ -62,7 +67,6 @@ const BusinessForm = ({
   submitButtonText?: string;
 }) => {
   const [isPending, startTransition] = useTransition();
-  const [showStatusDialog, setShowStatusDialog] = useState(false);
 
   const form = useForm<BusinessFormValues>({
     resolver: zodResolver(BusinessSchema),
@@ -82,6 +86,8 @@ const BusinessForm = ({
       logoUrl: item?.logoUrl ?? "",
     },
   });
+
+  const dirtyCount = Object.keys(form.formState.dirtyFields).length;
 
   const onInvalid = useCallback((errors: FieldErrors) => {
     console.log("Errors during form submission:", errors);
@@ -415,100 +421,96 @@ const BusinessForm = ({
             control={form.control}
             name="active"
             render={({ field }) => (
-              <>
-                <SectionCard
-                  icon={<ShieldCheck className="h-4 w-4" />}
-                  title="Business status"
-                  description="Disabling stops every location under this business from trading."
-                  tone={field.value ? "default" : "danger"}
-                >
-                  <FormItem className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-2.5">
+              <SectionCard
+                icon={
+                  field.value ? (
+                    <ShieldCheck className="h-4 w-4" />
+                  ) : (
+                    <ShieldOff className="h-4 w-4" />
+                  )
+                }
+                title="Business status"
+                description="Disabling stops every location under this business from trading."
+                tone={field.value ? "default" : "danger"}
+              >
+                <FormItem className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className={cn(
+                        "h-2 w-2 shrink-0 rounded-full",
+                        field.value ? "bg-pos" : "bg-neg",
+                      )}
+                    />
+                    <p className="text-sm text-ink-2">
+                      This business is currently{" "}
                       <span
                         className={cn(
-                          "h-2 w-2 shrink-0 rounded-full",
-                          field.value ? "bg-pos" : "bg-neg",
+                          "font-semibold",
+                          field.value ? "text-pos" : "text-neg",
                         )}
-                      />
-                      <p className="text-sm text-ink-2">
-                        This business is currently{" "}
-                        <span
-                          className={cn(
-                            "font-semibold",
-                            field.value ? "text-pos" : "text-neg",
-                          )}
-                        >
-                          {field.value ? "enabled" : "disabled"}
-                        </span>
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant={field.value ? "destructive" : "default"}
-                      size="sm"
-                      disabled={isPending}
-                      onClick={() => setShowStatusDialog(true)}
-                      className="w-full sm:w-auto"
-                    >
-                      {field.value ? "Disable business" : "Enable business"}
-                    </Button>
-                    <FormMessage />
-                  </FormItem>
-                </SectionCard>
-
-                <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>
-                        {field.value ? "Disable" : "Enable"} business
-                      </DialogTitle>
-                      <DialogDescription>
-                        {field.value
-                          ? "Are you sure you want to disable this business? This will make it inactive and may affect all associated locations and services."
-                          : "Are you sure you want to enable this business? This will make it active again."}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setShowStatusDialog(false)}
                       >
-                        Cancel
-                      </Button>
+                        {field.value ? "enabled" : "disabled"}
+                      </span>
+                      {form.formState.dirtyFields.active && (
+                        <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.06em] text-warn">
+                          unsaved
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
                       <Button
                         type="button"
                         variant={field.value ? "destructive" : "default"}
-                        onClick={() => {
-                          field.onChange(!field.value);
-                          setShowStatusDialog(false);
-                        }}
+                        size="sm"
+                        disabled={isPending}
+                        className="w-full sm:w-auto"
                       >
-                        {field.value ? "Disable" : "Enable"}
+                        {field.value ? "Disable business" : "Enable business"}
                       </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent tone={field.value ? "danger" : "success"}>
+                      <AlertDialogIcon>
+                        {field.value ? (
+                          <ShieldOff className="h-5 w-5" />
+                        ) : (
+                          <ShieldCheck className="h-5 w-5" />
+                        )}
+                      </AlertDialogIcon>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          {field.value ? "Disable this business?" : "Enable this business?"}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {field.value
+                            ? "Every location under this business stops trading until it is enabled again. The change applies when you save."
+                            : "Locations under this business can trade again. The change applies when you save."}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => field.onChange(!field.value)}>
+                          {field.value ? "Disable" : "Enable"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <FormMessage />
+                </FormItem>
+              </SectionCard>
             )}
           />
         )}
 
-        {/* Sticky save bar */}
-        <div className="sticky bottom-0 z-10 -mx-4 bg-gradient-to-t from-background via-background/95 to-background/0 px-4 pb-2 pt-4 md:mx-0 md:px-0">
-          <div className="flex items-center justify-end gap-3">
-            {isPending ? (
-              <Button disabled className="w-full md:w-auto">
-                <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                {item ? "Updating…" : "Processing…"}
-              </Button>
-            ) : (
-              <Button type="submit" className="w-full md:w-auto">
-                {item ? "Update business" : submitButtonText}
-              </Button>
-            )}
-          </div>
-        </div>
+        <SettingsSaveBar
+          submit
+          dirtyCount={dirtyCount}
+          isPending={isPending}
+          onDiscard={() => form.reset()}
+          saveLabel={item ? "Update business" : submitButtonText}
+          pendingLabel={item ? "Updating…" : "Processing…"}
+        />
       </form>
     </Form>
   );

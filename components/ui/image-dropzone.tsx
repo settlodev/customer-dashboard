@@ -9,6 +9,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useUpload } from "@/lib/uploads/use-upload";
@@ -248,26 +249,29 @@ export const ImageDropzone = React.forwardRef<HTMLDivElement, ImageDropzoneProps
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={openPicker}
                   disabled={busy}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-2 bg-card px-2.5 text-[12px] font-medium text-ink-2 transition hover:border-ink-3 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
                   aria-label="Replace image"
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
                   <span>Replace</span>
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={remove}
                   disabled={busy}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-2 bg-card px-2.5 text-[12px] font-medium text-ink-2 transition hover:border-neg/50 hover:text-neg disabled:cursor-not-allowed disabled:opacity-60"
                   aria-label="Remove image"
+                  className="text-neg hover:bg-neg-tint hover:text-neg"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   <span>Remove</span>
-                </button>
+                </Button>
               </div>
             </div>
           </>

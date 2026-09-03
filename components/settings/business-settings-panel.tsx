@@ -13,7 +13,6 @@ import {
   Instagram,
   Landmark,
   Linkedin,
-  Loader2Icon,
   Mail,
   MessageCircle,
   Music2,
@@ -25,7 +24,6 @@ import {
   Youtube,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Loading from "@/components/ui/loading";
 import {
@@ -39,6 +37,7 @@ import {
 } from "@/components/ui/field";
 import { SectionCard } from "@/components/settings/shared/section-card";
 import { PanelHeader } from "@/components/settings/shared/panel-header";
+import { SettingsSaveBar } from "@/components/settings/shared/settings-save-bar";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -586,39 +585,12 @@ const BusinessSettingsPanel = ({
         </div>
       </SectionCard>
 
-      {/* Sticky save bar */}
-      <div className="sticky bottom-0 z-10 -mx-4 bg-gradient-to-t from-background via-background/95 to-background/0 px-4 pb-2 pt-4 md:mx-0 md:px-0">
-        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-          <span
-            className={cn(
-              "mr-auto inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium sm:mr-0",
-              dirtyCount === 0
-                ? "border-line bg-canvas text-muted-foreground"
-                : "border-warn/40 bg-warn-tint text-warn",
-            )}
-          >
-            {dirtyCount > 0 && <span className="h-1.5 w-1.5 rounded-full bg-warn" />}
-            {dirtyCount === 0
-              ? "No unsaved changes"
-              : `${dirtyCount} unsaved change${dirtyCount === 1 ? "" : "s"}`}
-          </span>
-          {dirtyCount > 0 && !isPending && (
-            <Button variant="ghost" size="sm" onClick={() => setDirty({})}>
-              Discard
-            </Button>
-          )}
-          {isPending ? (
-            <Button disabled>
-              <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-              Saving…
-            </Button>
-          ) : (
-            <Button onClick={handleSave} disabled={dirtyCount === 0}>
-              Save changes
-            </Button>
-          )}
-        </div>
-      </div>
+      <SettingsSaveBar
+        dirtyCount={dirtyCount}
+        isPending={isPending}
+        onSave={handleSave}
+        onDiscard={() => setDirty({})}
+      />
     </div>
   );
 };

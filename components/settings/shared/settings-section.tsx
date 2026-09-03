@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FieldHint, standaloneLabelClass } from "@/components/ui/field";
 
@@ -20,6 +20,8 @@ interface SettingsSectionProps {
   aside?: ReactNode;
   children: ReactNode;
   onSave?: () => void;
+  /** Re-seed the section from the persisted record; shows a ghost Discard while dirty. */
+  onDiscard?: () => void;
   isPending?: boolean;
   isDirty?: boolean;
   footer?: ReactNode;
@@ -43,6 +45,7 @@ export function SettingsSection({
   aside,
   children,
   onSave,
+  onDiscard,
   isPending = false,
   isDirty = false,
   footer,
@@ -86,24 +89,46 @@ export function SettingsSection({
         <div className="space-y-3">{children}</div>
 
         {(footer || onSave) && (
-          <div className="flex items-center justify-between gap-3 border-t pt-3">
-            <div>{footer}</div>
+          <div className="flex flex-wrap items-center gap-2.5 border-t border-line pt-3">
+            {footer && <div className="min-w-0">{footer}</div>}
             {onSave && (
-              <Button
-                type="button"
-                size="sm"
-                onClick={onSave}
-                disabled={isPending || !isDirty}
-              >
-                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save changes
-              </Button>
+              <div className="ml-auto flex items-center gap-2">
+                {onDiscard && isDirty && !isPending && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onDiscard()}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Discard
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={onSave}
+                  disabled={isPending || !isDirty}
+                >
+                  {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {isPending ? "Saving…" : "Save changes"}
+                </Button>
+              </div>
             )}
           </div>
         )}
       </CardContent>
     </Card>
   );
+}
+
+/**
+ * "" → null, otherwise a finite number — for optional numeric settings bound
+ * to `<input type="number">`. Non-numeric junk collapses to null too.
+ */
+export function parseOptionalNumber(raw: string): number | null {
+  if (raw.trim() === "") return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
 }
 
 /** Small labelled wrapper for an input inside a SettingsSection. */
