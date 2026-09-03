@@ -549,7 +549,7 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                                 onSelect={(d) => {
                                   field.onChange(d ? toDateOnlyIso(d) : "");
                                   const received = form.getValues("receivedDate");
-                                  if (d && received && new Date(received) < d) {
+                                  if (d && received && new Date(received) > d) {
                                     form.setValue("receivedDate", "", { shouldDirty: true });
                                   }
                                 }}
@@ -594,11 +594,9 @@ export default function StockIntakeForm({ item }: { item?: StockIntakeRecord }) 
                                 mode="single"
                                 selected={selected}
                                 onSelect={(d) => field.onChange(d ? toDateOnlyIso(d) : "")}
-                                disabled={(date) => {
-                                  if (date > today) return true;
-                                  if (orderedDateAsDate && date < orderedDateAsDate) return true;
-                                  return false;
-                                }}
+                                disabled={(date) =>
+                                  orderedDateAsDate ? date > orderedDateAsDate : date > today
+                                }
                                 initialFocus
                               />
                             </PopoverContent>
