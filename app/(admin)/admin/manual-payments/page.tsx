@@ -15,6 +15,7 @@ import {
   listInternalUsers,
 } from "@/lib/actions/admin/internal-users";
 import { buildActorNameMap } from "@/lib/admin/actor-names";
+import { endOfBusinessDayIso, startOfBusinessDayIso } from "@/lib/format-datetime";
 import type { ManualPaymentPage, ManualPaymentStatus } from "@/types/admin/billing";
 
 export const metadata = {
@@ -24,9 +25,16 @@ export const metadata = {
 interface ManualPaymentsPageProps {
   searchParams: Promise<{
     status?: string;
+    recordedFrom?: string;
+    recordedTo?: string;
     page?: string;
     limit?: string;
   }>;
+}
+
+/** `YYYY-MM-DD` sanity check — anything else is dropped rather than sent upstream. */
+function parseDateOnly(value: string | undefined): string | undefined {
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
 }
 
 function parseStatus(value: string | undefined): ManualPaymentStatus | "ALL" {
@@ -60,6 +68,10 @@ export default async function AdminManualPaymentsPage({
 
   const params = await searchParams;
   const status = parseStatus(params.status);
+  const recordedFromDay = parseDateOnly(params.recordedFrom);
+  const recordedToDay = parseDateOnly(params.recordedTo);
+  const recordedFrom = recordedFromDay ? startOfBusinessDayIso(recordedFromDay) : undefined;
+  const recordedTo = recordedToDay ? endOfBusinessDayIso(recordedToDay) : undefined;
   // The shared DataTable owns pagination via a 1-based `?page` + `?limit`;
   // convert to the backend's 0-based index.
   const pageOneIndexed = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
@@ -83,11 +95,11 @@ export default async function AdminManualPaymentsPage({
     const listStatus = status === "ALL" ? undefined : status;
     const [pageData, pendingPage, approvedPage, cancelledPage, allPage, internalUsers, staffProfiles] =
       await Promise.all([
-        listManualPayments({ status: listStatus, page: backendPage, size }),
-        listManualPayments({ status: "PENDING", size: 1 }),
-        listManualPayments({ status: "APPROVED", size: 1 }),
-        listManualPayments({ status: "CANCELLED", size: 1 }),
-        listManualPayments({ size: 1 }),
+        listManualPayments({ status: listStatus, recordedFrom, recordedTo, page: backendPage, size }),
+        listManualPayments({ status: "PENDING", recordedFrom, recordedTo, size: 1 }),
+        listManualPayments({ status: "APPROVED", recordedFrom, recordedTo, size: 1 }),
+        listManualPayments({ status: "CANCELLED", recordedFrom, recordedTo, size: 1 }),
+        listManualPayments({ recordedFrom, recordedTo, size: 1 }),
         listInternalUsers().catch(() => []),
         listInternalStaffProfiles().catch(() => []),
       ]);
@@ -126,6 +138,8 @@ export default async function AdminManualPaymentsPage({
               status={status}
               counts={counts}
               actorNames={actorNames}
+              recordedFrom={recordedFromDay}
+              recordedTo={recordedToDay}
             />
           )}
         </PageBody>
