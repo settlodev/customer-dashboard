@@ -32,6 +32,7 @@ import {
   InvoiceResponse,
   ManualPaymentPage,
   ManualPaymentResponse,
+  ManualPaymentsSummary,
   PackageBreakdownResponse,
   PackageFeatureMappingResponse,
   PackageHistoryEntry,
@@ -480,19 +481,45 @@ export async function rejectRefund(
 /**
  * Admin manual-payment queue. Optional status filter is one of PENDING,
  * APPROVED, CANCELLED — any other value (or omitted) returns every manual
- * payment regardless of status.
+ * payment regardless of status. recordedFrom/recordedTo are inclusive
+ * OffsetDateTime bounds (ISO-8601 with an offset, e.g.
+ * "2026-08-01T00:00:00+03:00") on when the payment was recorded.
  */
 export async function listManualPayments(params: {
   status?: "PENDING" | "APPROVED" | "CANCELLED";
+  recordedFrom?: string;
+  recordedTo?: string;
   page?: number;
   size?: number;
 } = {}): Promise<ManualPaymentPage> {
   const qs = new URLSearchParams();
   if (params.status) qs.set("status", params.status);
+  if (params.recordedFrom) qs.set("recordedFrom", params.recordedFrom);
+  if (params.recordedTo) qs.set("recordedTo", params.recordedTo);
   qs.set("page", String(Math.max(0, params.page ?? 0)));
   qs.set("size", String(params.size ?? 20));
   const data = await staffBilling().get<ManualPaymentPage>(
     `/api/v1/support/billing/manual-payments?${qs.toString()}`,
+  );
+  return parseStringify(data);
+}
+
+/**
+ * Total amount and distinct invoice count for the same status/recordedAt filter as
+ * {@link listManualPayments} — backs the queue's summary banner without paging through
+ * every row client-side to add it up.
+ */
+export async function summarizeManualPayments(params: {
+  status?: "PENDING" | "APPROVED" | "CANCELLED";
+  recordedFrom?: string;
+  recordedTo?: string;
+} = {}): Promise<ManualPaymentsSummary> {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set("status", params.status);
+  if (params.recordedFrom) qs.set("recordedFrom", params.recordedFrom);
+  if (params.recordedTo) qs.set("recordedTo", params.recordedTo);
+  const data = await staffBilling().get<ManualPaymentsSummary>(
+    `/api/v1/support/billing/manual-payments/summary?${qs.toString()}`,
   );
   return parseStringify(data);
 }

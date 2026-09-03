@@ -9,24 +9,36 @@ import {
 import { ManualPaymentsQueueView } from "@/components/admin/billing/manual-payments-queue-view";
 import { getStaffAuthToken } from "@/lib/auth-utils";
 import { hasInternalPermission, PERM } from "@/lib/admin/permissions";
-import { listManualPayments } from "@/lib/actions/admin/billing";
+import { listManualPayments, summarizeManualPayments } from "@/lib/actions/admin/billing";
 import {
   listInternalStaffProfiles,
   listInternalUsers,
 } from "@/lib/actions/admin/internal-users";
 import { buildActorNameMap } from "@/lib/admin/actor-names";
-import type { ManualPaymentPage, ManualPaymentStatus } from "@/types/admin/billing";
+import { endOfBusinessDayIso, startOfBusinessDayIso } from "@/lib/format-datetime";
+import type {
+  ManualPaymentPage,
+  ManualPaymentsSummary,
+  ManualPaymentStatus,
+} from "@/types/admin/billing";
 
 export const metadata = {
-  title: "Pending Payments",
+  title: "Manual Payments",
 };
 
 interface ManualPaymentsPageProps {
   searchParams: Promise<{
     status?: string;
+    recordedFrom?: string;
+    recordedTo?: string;
     page?: string;
     limit?: string;
   }>;
+}
+
+/** `YYYY-MM-DD` sanity check — anything else is dropped rather than sent upstream. */
+function parseDateOnly(value: string | undefined): string | undefined {
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
 }
 
 function parseStatus(value: string | undefined): ManualPaymentStatus | "ALL" {
@@ -50,7 +62,7 @@ export default async function AdminManualPaymentsPage({
       <AdminShell token={token}>
         <PageShell>
           <PageHeader
-            title="Pending Payments"
+            title="Manual Payments"
             subtitle="Restricted to billing approvers (System Admin, Super Admin, Finance)."
           />
         </PageShell>
@@ -60,6 +72,10 @@ export default async function AdminManualPaymentsPage({
 
   const params = await searchParams;
   const status = parseStatus(params.status);
+  const recordedFromDay = parseDateOnly(params.recordedFrom);
+  const recordedToDay = parseDateOnly(params.recordedTo);
+  const recordedFrom = recordedFromDay ? startOfBusinessDayIso(recordedFromDay) : undefined;
+  const recordedTo = recordedToDay ? endOfBusinessDayIso(recordedToDay) : undefined;
   // The shared DataTable owns pagination via a 1-based `?page` + `?limit`;
   // convert to the backend's 0-based index.
   const pageOneIndexed = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
@@ -72,22 +88,25 @@ export default async function AdminManualPaymentsPage({
   let cancelledCount = 0;
   let allCount = 0;
   let actorNames: Record<string, string> = {};
+  let summary: ManualPaymentsSummary = { totalAmount: 0, totalInvoices: 0 };
   let loadError: string | null = null;
   try {
-    // Run the visible-page query and all three status counts in parallel.
-    // Counts query only the first page (size=1) and read totalElements —
+    // Run the visible-page query, all three status counts, and the summary banner in
+    // parallel. Counts query only the first page (size=1) and read totalElements —
     // cheap and means the tab badges are always accurate without a
-    // dedicated counts endpoint on the backend. Staff directories resolve
+    // dedicated counts endpoint on the backend. The summary reflects the active tab
+    // (or "ALL") and date range, same as the visible page. Staff directories resolve
     // `recordedBy` (an Auth user id) to a human name for the "Requested by"
     // column — failures there shouldn't block the queue, so they're best-effort.
     const listStatus = status === "ALL" ? undefined : status;
-    const [pageData, pendingPage, approvedPage, cancelledPage, allPage, internalUsers, staffProfiles] =
+    const [pageData, pendingPage, approvedPage, cancelledPage, allPage, summaryData, internalUsers, staffProfiles] =
       await Promise.all([
-        listManualPayments({ status: listStatus, page: backendPage, size }),
-        listManualPayments({ status: "PENDING", size: 1 }),
-        listManualPayments({ status: "APPROVED", size: 1 }),
-        listManualPayments({ status: "CANCELLED", size: 1 }),
-        listManualPayments({ size: 1 }),
+        listManualPayments({ status: listStatus, recordedFrom, recordedTo, page: backendPage, size }),
+        listManualPayments({ status: "PENDING", recordedFrom, recordedTo, size: 1 }),
+        listManualPayments({ status: "APPROVED", recordedFrom, recordedTo, size: 1 }),
+        listManualPayments({ status: "CANCELLED", recordedFrom, recordedTo, size: 1 }),
+        listManualPayments({ recordedFrom, recordedTo, size: 1 }),
+        summarizeManualPayments({ status: listStatus, recordedFrom, recordedTo }),
         listInternalUsers().catch(() => []),
         listInternalStaffProfiles().catch(() => []),
       ]);
@@ -96,6 +115,7 @@ export default async function AdminManualPaymentsPage({
     approvedCount = approvedPage.totalElements;
     cancelledCount = cancelledPage.totalElements;
     allCount = allPage.totalElements;
+    summary = summaryData;
     actorNames = buildActorNameMap(internalUsers, staffProfiles);
   } catch (err: any) {
     loadError = err?.message ?? "Failed to load manual payments.";
@@ -112,7 +132,7 @@ export default async function AdminManualPaymentsPage({
     <AdminShell token={token}>
       <PageShell>
         <PageHeader
-          title="Pending Payments"
+          title="Manual Payments"
           subtitle="Review manual payments recorded without approval authority across all businesses. Approving marks the invoice paid and activates the subscription."
         />
         <PageBody>
@@ -125,7 +145,10 @@ export default async function AdminManualPaymentsPage({
               page={queue!}
               status={status}
               counts={counts}
+              summary={summary}
               actorNames={actorNames}
+              recordedFrom={recordedFromDay}
+              recordedTo={recordedToDay}
             />
           )}
         </PageBody>
