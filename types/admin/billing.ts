@@ -170,6 +170,10 @@ export interface InvoiceResponse {
   subscriptionId: string | null;
   userId: string | null;
   locationId: string | null;
+  /** Bill-to contact captured on the invoice — may differ from the business's current
+   *  primary contact if it changed since this invoice was generated. */
+  customerName: string | null;
+  customerEmail: string | null;
   status: InvoiceStatus;
   invoiceDate: string;
   dueDate: string | null;

@@ -48,6 +48,7 @@ import {
 
 interface BillingViewProps {
   businessId: string;
+  businessName: string;
   subscription: SubscriptionResponse | null;
   invoicePage: InvoicePage | null;
   activeDiscounts: SubscriptionDiscountResponse[];
@@ -139,6 +140,7 @@ function itemEndDate(item: SubscriptionItemResponse): string {
 
 export function BillingView({
   businessId,
+  businessName,
   subscription,
   invoicePage,
   activeDiscounts,
@@ -709,6 +711,7 @@ export function BillingView({
       {invoiceTarget && (
         <InvoiceActionsDialog
           businessId={businessId}
+          businessName={businessName}
           invoice={invoiceTarget}
           entityNames={entityNames}
           actorNames={actorNames}
