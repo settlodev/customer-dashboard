@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getDaySessionSummary } from "@/lib/actions/day-session-summary-actions";
 
+// Headroom above the ApiClient's 30s per-request deadline so a slow
+// upstream aborts in axios (graceful JSON error) instead of being cut
+// off by Vercel's 15s default and surfacing as a bare 504.
+export const maxDuration = 60;
+
 /**
  * Read-only widget endpoint that returns the current day-session
  * summary (Accounts lifecycle + Reports aggregates) for the given

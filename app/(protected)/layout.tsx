@@ -47,6 +47,15 @@ import type { ExtendedUser } from "@/types/types";
 // dynamic rendering anyway.
 export const dynamic = "force-dynamic";
 
+// Vercel's per-project default is 15s, which sits BELOW the ApiClient's own
+// 30s per-request deadline (SETTLO_API_TIMEOUT_MS in lib/settlo-api-client.ts).
+// That inversion meant the platform killed the function first: a slow upstream
+// produced a raw 504 instead of axios aborting and the page rendering its
+// DataLoadError state. Raising the ceiling above the API timeout puts the
+// graceful path back in front. It is headroom, not a target — the render
+// should still finish in ~2s.
+export const maxDuration = 60;
+
 export default async function RootLayout({
   children,
 }: {
