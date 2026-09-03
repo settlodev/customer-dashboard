@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getCurrentLocation } from "./business/get-current-business";
+import { getCurrentDestination } from "./context";
 import { inventoryUrl } from "@/lib/actions/inventory-client";
 import ApiClient from "@/lib/settlo-api-client";
 
@@ -23,8 +23,8 @@ export async function archiveEntity({
   entityType,
   locationId,
 }: ArchiveEntityProps): Promise<{ success: boolean; message: string }> {
-  console.log("Archive entity type", entityType);
-  console.log("Archiving ids are", ids);
+  // console.log("Archive entity type", entityType);
+  // console.log("Archiving ids are", ids);
   try {
     if (!ids || ids.length === 0) {
       return { success: false, message: "No items selected for archiving" };
@@ -32,10 +32,10 @@ export async function archiveEntity({
 
     const apiClient = new ApiClient();
 
-    const location = locationId
+    const destination = locationId
       ? { id: locationId }
-      : await getCurrentLocation();
-    const actualLocationId = locationId || location?.id;
+      : await getCurrentDestination();
+    const actualLocationId = locationId || destination?.id;
 
     if (!actualLocationId) {
       return {
@@ -51,6 +51,7 @@ export async function archiveEntity({
             inventoryUrl(`/api/v1/products/archive-multiple`),
             {
               ids,
+              locationId: actualLocationId,
             },
           );
 
@@ -58,6 +59,7 @@ export async function archiveEntity({
         case "stock":
           await apiClient.put(inventoryUrl(`/api/v1/stocks/archive-multiple`), {
             ids,
+            locationId: actualLocationId,
           });
           break;
         case "staff":

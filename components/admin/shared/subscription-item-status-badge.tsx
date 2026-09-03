@@ -20,6 +20,7 @@ const ITEM_STATUS_META: Record<
   EXPIRED: { label: "Expired", tone: "neg" },
   SUSPENDED: { label: "Suspended", tone: "neg" },
   CANCELLED: { label: "Cancelled", tone: "muted" },
+  VOIDED: { label: "Voided", tone: "muted" },
   REMOVED: { label: "Removed", tone: "muted" },
 };
 

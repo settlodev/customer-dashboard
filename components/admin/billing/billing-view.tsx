@@ -28,6 +28,8 @@ import { GenerateInvoiceDialog } from "@/components/admin/billing/generate-invoi
 import { GenerateItemInvoiceDialog } from "@/components/admin/billing/generate-item-invoice-dialog";
 import { GrantFreeSubscriptionDialog } from "@/components/admin/billing/grant-free-subscription-dialog";
 import { InvoiceActionsDialog } from "@/components/admin/billing/invoice-actions-dialog";
+import { ReprovisionItemDialog } from "@/components/admin/billing/reprovision-item-dialog";
+import { SubscriptionItemStatusBadge } from "@/components/admin/shared/subscription-item-status-badge";
 import { buildInvoiceColumns } from "@/components/tables/admin-invoices/column";
 import { UpgradePlanDialog } from "@/components/admin/billing/upgrade-plan-dialog";
 import {
@@ -48,6 +50,7 @@ import {
 
 interface BillingViewProps {
   businessId: string;
+  businessName: string;
   subscription: SubscriptionResponse | null;
   invoicePage: InvoicePage | null;
   activeDiscounts: SubscriptionDiscountResponse[];
@@ -139,6 +142,7 @@ function itemEndDate(item: SubscriptionItemResponse): string {
 
 export function BillingView({
   businessId,
+  businessName,
   subscription,
   invoicePage,
   activeDiscounts,
@@ -162,6 +166,7 @@ export function BillingView({
   const [invoiceTarget, setInvoiceTarget] = useState<InvoiceResponse | null>(
     null,
   );
+  const [reprovisionTarget, setReprovisionTarget] = useState<SubscriptionItemResponse | null>(null);
 
   const invoiceColumns = useMemo(
     () => buildInvoiceColumns({ onView: setInvoiceTarget }),
@@ -172,6 +177,9 @@ export function BillingView({
   // subscription has lapsed). Entitlement/MRR still read `items`. Falls back on pre-deploy
   // responses that don't carry manageableItems yet.
   const manageableItems = subscription?.manageableItems ?? subscription?.items ?? [];
+  // CANCELLED/VOIDED — invisible to manageableItems, so this is the only place an admin can
+  // see an entity has no billable path back to ACTIVE and reprovision it.
+  const terminalItems = subscription?.terminalItems ?? [];
 
   const handleRepublish = useCallback(() => {
     if (
@@ -565,6 +573,46 @@ export function BillingView({
             </ul>
           </div>
         )}
+
+        {canOverrideBilling && subscription && terminalItems.length > 0 && (
+          <div className="mt-5 border-t border-line pt-4">
+            <h4 className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+              Needs reprovisioning
+            </h4>
+            <p className="mb-2 text-[12px] text-muted-foreground">
+              Cancelled or voided — no billable path back to ACTIVE. Reprovisioning creates a
+              fresh item for the same entity; the item below is left untouched.
+            </p>
+            <ul className="space-y-1.5">
+              {terminalItems.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 rounded-md border border-line/60 bg-canvas/40 px-3 py-2 text-[13px]"
+                >
+                  <div className="min-w-0 flex items-center gap-2">
+                    <SubscriptionItemStatusBadge status={item.status} small />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-ink">
+                        {entityNames[item.entityId] ?? `${item.entityType} · ${item.entityId}`}
+                      </p>
+                      <p className="font-mono text-[11px] text-muted-foreground">
+                        {item.entityType} · was {item.packageInfo?.name ?? "no package"}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setReprovisionTarget(item)}
+                  >
+                    Reprovision
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* Active discounts */}
@@ -709,6 +757,7 @@ export function BillingView({
       {invoiceTarget && (
         <InvoiceActionsDialog
           businessId={businessId}
+          businessName={businessName}
           invoice={invoiceTarget}
           entityNames={entityNames}
           actorNames={actorNames}
@@ -720,6 +769,15 @@ export function BillingView({
           onChanged={refresh}
         />
       )}
+      <ReprovisionItemDialog
+        businessId={businessId}
+        item={reprovisionTarget}
+        entityNames={entityNames}
+        onOpenChange={(open) => {
+          if (!open) setReprovisionTarget(null);
+        }}
+        onReprovisioned={refresh}
+      />
     </div>
   );
 }

@@ -225,6 +225,7 @@ export default async function AdminBusinessBillingPage({
           ) : (
             <BillingView
               businessId={business.id}
+              businessName={business.name}
               subscription={subscription}
               invoicePage={invoices}
               activeDiscounts={activeDiscounts}
