@@ -6,10 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { FieldHint, standaloneLabelClass } from "@/components/ui/field";
 
 interface SettingsSectionProps {
   title?: string;
   description?: string;
+  /** Rendered in a 34px icon box beside the title (lucide icon, h-4 w-4). */
+  icon?: ReactNode;
+  /** `danger` frames destructive sections in the negative tint. */
+  tone?: "default" | "danger";
+  /** Right-aligned header slot — a badge, count, or per-section action. */
+  aside?: ReactNode;
   children: ReactNode;
   onSave?: () => void;
   isPending?: boolean;
@@ -30,6 +38,9 @@ interface SettingsSectionProps {
 export function SettingsSection({
   title,
   description,
+  icon,
+  tone = "default",
+  aside,
   children,
   onSave,
   isPending = false,
@@ -37,18 +48,38 @@ export function SettingsSection({
   footer,
 }: SettingsSectionProps) {
   return (
-    <Card className="rounded-xl shadow-sm">
+    <Card
+      className={cn(
+        "rounded-xl shadow-sm",
+        tone === "danger" && "border-neg/40",
+      )}
+    >
       <CardContent className="pt-5 pb-4 space-y-4">
-        {(title || description) && (
-          <div>
-            {title && (
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                {title}
-              </h3>
+        {(title || description || aside) && (
+          <div className="flex items-start gap-3">
+            {icon && (
+              <span
+                className={cn(
+                  "grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-line bg-canvas text-ink-2",
+                  tone === "danger" && "border-neg/30 bg-neg-tint text-neg",
+                )}
+              >
+                {icon}
+              </span>
             )}
-            {description && (
-              <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-            )}
+            <div className="min-w-0 flex-1">
+              {title && (
+                <h3 className="text-base font-semibold tracking-[-0.01em] text-ink">
+                  {title}
+                </h3>
+              )}
+              {description && (
+                <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+                  {description}
+                </p>
+              )}
+            </div>
+            {aside && <div className="shrink-0">{aside}</div>}
           </div>
         )}
 
@@ -86,12 +117,10 @@ export function SettingsField({
   children: ReactNode;
 }) {
   return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-        {label}
-      </label>
+    <div className="min-w-0 space-y-[7px]">
+      <label className={standaloneLabelClass}>{label}</label>
       {children}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {hint && <FieldHint>{hint}</FieldHint>}
     </div>
   );
 }

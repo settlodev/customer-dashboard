@@ -1,29 +1,52 @@
 "use client";
 
 import React, { useMemo, useState, useTransition } from "react";
-
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import Loading from "@/components/ui/loading";
-import { Loader2Icon } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+  BadgeCheck,
+  Bell,
+  Building,
+  CalendarDays,
+  ClipboardCheck,
+  Facebook,
+  FileBadge,
+  Hash,
+  Instagram,
+  Landmark,
+  Linkedin,
+  Loader2Icon,
+  Mail,
+  MessageCircle,
+  Music2,
+  Percent,
+  Phone,
+  ScrollText,
+  Share2,
+  Twitter,
+  Youtube,
+} from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import Loading from "@/components/ui/loading";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  SegmentedRadio,
+  StandaloneField as Field,
+  ToggleRow,
+  standaloneLabelClass,
+} from "@/components/ui/field";
+import { SectionCard } from "@/components/settings/shared/section-card";
+import { PanelHeader } from "@/components/settings/shared/panel-header";
+import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import {
   updateBusinessSettings,
   type UpdateBusinessSettingsRequest,
 } from "@/lib/actions/business-settings-actions";
-import type { Business } from "@/types/business/type";
 import type {
+  Business,
   BusinessSettings,
   VatRegistrationMode,
 } from "@/types/business/type";
@@ -34,168 +57,63 @@ import { invalidateVatRegistrationStatusCache } from "@/hooks/use-vat-registrati
 // two are an explicit merchant override in either direction. Mirrors the
 // Accounts Service's `VatRegistrationMode` enum (see types/business/type.ts).
 const VAT_REGISTRATION_MODE_OPTIONS: { value: VatRegistrationMode; label: string }[] = [
-  { value: "AUTO", label: "Automatic (based on VAT number)" },
+  { value: "AUTO", label: "Automatic" },
   { value: "REGISTERED", label: "VAT registered" },
-  { value: "NOT_REGISTERED", label: "Not VAT registered" },
+  { value: "NOT_REGISTERED", label: "Not registered" },
 ];
 
+const CURRENT_YEAR = new Date().getFullYear();
+
 // ──────────────────────────────────────────────────────────────────────
-// Layout primitives — match SettingsSection / SettingsSwitchRow density
+// Field primitives (no react-hook-form here — plain controlled inputs)
 // ──────────────────────────────────────────────────────────────────────
 
-const SectionCard = ({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) => (
-  <Card className="rounded-xl shadow-sm">
-    <CardContent className="pt-5 pb-5 space-y-4">
-      <div>
-        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-          {title}
-        </h3>
-        {description && (
-          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-        )}
-      </div>
-      {children}
-    </CardContent>
-  </Card>
-);
-
-const SwitchRow = ({
-  label,
-  description,
-  checked,
-  onCheckedChange,
-  disabled,
-}: {
-  label: string;
-  description?: string;
-  checked: boolean;
-  onCheckedChange: (v: boolean) => void;
-  disabled: boolean;
-}) => (
-  <div className="flex items-start justify-between gap-4 py-2 border-b last:border-b-0">
-    <div className="min-w-0 flex-1">
-      <p className="text-sm font-medium leading-tight">{label}</p>
-      {description && (
-        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-      )}
-    </div>
-    <Switch
-      checked={checked}
-      onCheckedChange={onCheckedChange}
-      disabled={disabled}
-    />
-  </div>
-);
-
-const TextField = ({
+function TextField({
   label,
   value,
   onChange,
+  icon,
   placeholder,
   disabled,
   type = "text",
+  inputMode,
+  autoComplete,
   hint,
-  min,
-  max,
+  mono,
+  className,
 }: {
   label: string;
   value: string;
   onChange: (val: string) => void;
+  icon?: React.ReactNode;
   placeholder?: string;
   disabled: boolean;
   type?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  autoComplete?: string;
   hint?: string;
-  min?: number;
-  max?: number;
-}) => (
-  <div className="space-y-1">
-    <label className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</label>
-    <Input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      disabled={disabled}
-      min={min}
-      max={max}
-    />
-    {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
-  </div>
-);
-
-const SelectField = <T extends string>({
-  label,
-  value,
-  onChange,
-  options,
-  disabled,
-  placeholder,
-  hint,
-}: {
-  label: string;
-  value: T;
-  onChange: (val: T) => void;
-  options: { value: T; label: string }[];
-  disabled: boolean;
-  placeholder?: string;
-  hint?: string;
-}) => (
-  <div className="space-y-1">
-    <label className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</label>
-    <Select value={value} onValueChange={(v) => onChange(v as T)} disabled={disabled}>
-      <SelectTrigger>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((opt) => (
-          <SelectItem key={opt.value} value={opt.value}>
-            {opt.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-    {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
-  </div>
-);
-
-const TextAreaField = ({
-  label,
-  value,
-  onChange,
-  placeholder,
-  disabled,
-  hint,
-  rows = 4,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  disabled: boolean;
-  hint?: string;
-  rows?: number;
-}) => (
-  <div className="space-y-1">
-    <label className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</label>
-    <Textarea
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      disabled={disabled}
-      rows={rows}
-      className="resize-y"
-    />
-    {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
-  </div>
-);
+  mono?: boolean;
+  className?: string;
+}) {
+  return (
+    <Field label={label} hint={hint} className={className}>
+      {(id) => (
+        <ControlInput
+          id={id}
+          type={type}
+          inputMode={inputMode}
+          autoComplete={autoComplete}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          disabled={disabled}
+          prefix={icon}
+          mono={mono}
+        />
+      )}
+    </Field>
+  );
+}
 
 // ──────────────────────────────────────────────────────────────────────
 // Main panel
@@ -228,6 +146,12 @@ const BusinessSettingsPanel = ({
     setDirty((prev) => ({ ...prev, [key]: value }));
   }
 
+  // Text fields send the raw string: the endpoint has PATCH semantics where
+  // null means "unchanged", so an emptied input has to travel as "" (which
+  // the service stores as null). Coercing "" → null here would silently
+  // fail to clear an already-set value.
+  const setText = (key: TextKey) => (v: string) => setField(key, v);
+
   const dirtyCount = useMemo(() => Object.keys(dirty).length, [dirty]);
 
   const handleSave = () => {
@@ -255,16 +179,12 @@ const BusinessSettingsPanel = ({
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            Business Settings
-          </h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Loading business settings…
-          </p>
-        </div>
+        <PanelHeader
+          title="Business Settings"
+          description="Loading business settings…"
+        />
         <Card className="rounded-xl border shadow-sm">
-          <CardContent className="p-6 flex items-center justify-center">
+          <CardContent className="flex items-center justify-center p-6">
             <Loading />
           </CardContent>
         </Card>
@@ -275,14 +195,10 @@ const BusinessSettingsPanel = ({
   if (!displayed) {
     return (
       <div className="space-y-6">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            Business Settings
-          </h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            No settings found for this business.
-          </p>
-        </div>
+        <PanelHeader
+          title="Business Settings"
+          description="No settings found for this business."
+        />
       </div>
     );
   }
@@ -292,92 +208,103 @@ const BusinessSettingsPanel = ({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-          Business Settings
-        </h2>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Parent-company defaults shared across every location for{" "}
-          <span className="font-medium text-foreground">
-            {business?.name ?? "this business"}
-          </span>
-          .
-        </p>
-      </div>
+      <PanelHeader
+        title="Business Settings"
+        description={
+          <>
+            Parent-company defaults shared across every location for{" "}
+            <span className="font-medium text-foreground">
+              {business?.name ?? "this business"}
+            </span>
+            .
+          </>
+        }
+      />
 
-      {/* 1 — Legal, fiscal & EFD */}
+      {/* 1 — Legal, fiscal & tax identifiers */}
       <SectionCard
+        icon={<Landmark className="h-4 w-4" />}
         title="Legal & tax registration"
         description="Registration numbers and tax identifiers for the legal entity. Fiscal-device (VFD/EFD) registration lives under VFD / EFD registration."
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-4">
           <TextField
             label="Business license number"
             value={s.businessLicenseNumber ?? ""}
-            onChange={(v) => setField("businessLicenseNumber", v || null)}
+            onChange={setText("businessLicenseNumber")}
+            icon={<FileBadge className="h-3.5 w-3.5" />}
             placeholder="License number"
+            mono
             disabled={d}
           />
           <TextField
             label="Company registration number"
             value={s.companyRegistrationNumber ?? ""}
-            onChange={(v) => setField("companyRegistrationNumber", v || null)}
+            onChange={setText("companyRegistrationNumber")}
+            icon={<Building className="h-3.5 w-3.5" />}
             placeholder="Registration number"
+            mono
             disabled={d}
           />
           <TextField
             label="Tax identification number (TIN)"
             value={s.taxIdentificationNumber ?? ""}
-            onChange={(v) => setField("taxIdentificationNumber", v || null)}
+            onChange={setText("taxIdentificationNumber")}
+            icon={<Hash className="h-3.5 w-3.5" />}
             placeholder="e.g. 123-456-789"
+            mono
             disabled={d}
           />
-          <TextField
-            label="Established year"
-            value={s.establishedYear != null ? String(s.establishedYear) : ""}
-            onChange={(v) => {
-              const trimmed = v.trim();
-              if (trimmed === "") {
-                setField("establishedYear", null);
-                return;
-              }
-              const parsed = Number.parseInt(trimmed, 10);
-              if (Number.isFinite(parsed)) setField("establishedYear", parsed);
-            }}
-            placeholder="e.g. 2020"
-            type="number"
-            min={1800}
-            max={new Date().getFullYear()}
-            disabled={d}
-          />
-        </div>
+          <Field label="Established year">
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="numeric"
+                mono
+                min={1800}
+                max={CURRENT_YEAR}
+                prefix={<CalendarDays className="h-3.5 w-3.5" />}
+                value={s.establishedYear != null ? String(s.establishedYear) : ""}
+                onChange={(e) => {
+                  const trimmed = e.target.value.trim();
+                  if (trimmed === "") {
+                    setField("establishedYear", null);
+                    return;
+                  }
+                  const parsed = Number.parseInt(trimmed, 10);
+                  if (Number.isFinite(parsed)) setField("establishedYear", parsed);
+                }}
+                placeholder={`e.g. ${CURRENT_YEAR - 5}`}
+                disabled={d}
+              />
+            )}
+          </Field>
 
-        {/* Tax registration identifiers — always visible. VAT registration
-            governs purchase-tax reclaim, which has nothing to do with
-            fiscal-device registration; these were once gated behind the
-            Virtual EFD toggle, which made purchase tax permanently
-            unreachable for any merchant who never turned EFD on. Grouped
-            here with taxIdentificationNumber (in the grid above) so the tax
-            identifiers — TIN, VRN, UIN — read as one set. */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Tax registration identifiers — always visible. VAT registration
+              governs purchase-tax reclaim, which has nothing to do with
+              fiscal-device registration; these were once gated behind the
+              Virtual EFD toggle, which made purchase tax permanently
+              unreachable for any merchant who never turned EFD on. */}
           <TextField
             label="VAT registration number (VRN)"
             value={s.vatRegistrationNumber ?? ""}
-            // Send the raw string, not `v || null` — the server skips
-            // `null` fields on this PATCH-style update, so a coerced null
-            // would silently fail to clear an already-set VRN. An empty
-            // string is what actually clears it.
-            onChange={(v) => setField("vatRegistrationNumber", v)}
+            onChange={setText("vatRegistrationNumber")}
+            icon={<Percent className="h-3.5 w-3.5" />}
             placeholder="VRN"
+            mono
             disabled={d}
+            className="lg:col-span-2"
           />
           <TextField
             label="Unique identification number (UIN)"
             value={s.uniqueIdentificationNumber ?? ""}
-            // Same reasoning as vatRegistrationNumber above.
-            onChange={(v) => setField("uniqueIdentificationNumber", v)}
+            onChange={setText("uniqueIdentificationNumber")}
+            icon={<BadgeCheck className="h-3.5 w-3.5" />}
             placeholder="UIN"
+            mono
             disabled={d}
+            className="lg:col-span-2"
           />
         </div>
 
@@ -385,20 +312,38 @@ const BusinessSettingsPanel = ({
             reclaimable (recorded separately) or costed (folded into stock
             cost). AUTO derives from the VRN above; the other two options
             let a merchant override that inference explicitly. */}
-        <div className="max-w-sm space-y-1.5">
-          <SelectField
-            label="VAT registration status"
+        <div className="space-y-[7px]">
+          <span className={standaloneLabelClass}>VAT registration status</span>
+          <SegmentedRadio
             value={s.vatRegistrationMode ?? "AUTO"}
-            onChange={(v) => setField("vatRegistrationMode", v)}
+            onChange={(v) => setField("vatRegistrationMode", v as VatRegistrationMode)}
             options={VAT_REGISTRATION_MODE_OPTIONS}
             disabled={d}
-            placeholder="Automatic"
           />
-          <p className="text-sm text-muted-foreground">
-            {s.effectivelyVatRegistered
-              ? "Tax on purchases is recorded separately and can be reclaimed."
-              : "Tax on purchases is included in the cost of your stock."}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <FieldHint>
+              Automatic follows the VRN above — set a VRN and you count as
+              registered.
+            </FieldHint>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                s.effectivelyVatRegistered
+                  ? "border-pos/30 bg-pos-tint text-pos"
+                  : "border-line bg-canvas text-ink-2",
+              )}
+            >
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  s.effectivelyVatRegistered ? "bg-pos" : "bg-muted-2",
+                )}
+              />
+              {s.effectivelyVatRegistered
+                ? "Purchase tax is recorded separately and reclaimable"
+                : "Purchase tax is included in stock cost"}
+            </span>
+          </div>
         </div>
 
         {/* Virtual EFD lives on Settings → VFD / EFD registration, next to
@@ -409,104 +354,135 @@ const BusinessSettingsPanel = ({
 
       {/* 2 — Social media */}
       <SectionCard
+        icon={<Share2 className="h-4 w-4" />}
         title="Social media"
         description="Parent-company social profiles and contact channels."
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-4">
           <TextField
             label="Facebook"
             value={s.facebookUrl ?? ""}
-            onChange={(v) => setField("facebookUrl", v || null)}
+            onChange={setText("facebookUrl")}
+            icon={<Facebook className="h-3.5 w-3.5" />}
             placeholder="https://facebook.com/…"
+            type="url"
+            inputMode="url"
             disabled={d}
           />
           <TextField
             label="Instagram"
             value={s.instagramUrl ?? ""}
-            onChange={(v) => setField("instagramUrl", v || null)}
+            onChange={setText("instagramUrl")}
+            icon={<Instagram className="h-3.5 w-3.5" />}
             placeholder="https://instagram.com/…"
+            type="url"
+            inputMode="url"
             disabled={d}
           />
           <TextField
             label="X / Twitter"
             value={s.twitterUrl ?? ""}
-            onChange={(v) => setField("twitterUrl", v || null)}
+            onChange={setText("twitterUrl")}
+            icon={<Twitter className="h-3.5 w-3.5" />}
             placeholder="https://x.com/…"
+            type="url"
+            inputMode="url"
             disabled={d}
           />
           <TextField
             label="TikTok"
             value={s.tiktokUrl ?? ""}
-            onChange={(v) => setField("tiktokUrl", v || null)}
+            onChange={setText("tiktokUrl")}
+            icon={<Music2 className="h-3.5 w-3.5" />}
             placeholder="https://tiktok.com/@…"
+            type="url"
+            inputMode="url"
             disabled={d}
           />
           <TextField
             label="LinkedIn"
             value={s.linkedinUrl ?? ""}
-            onChange={(v) => setField("linkedinUrl", v || null)}
+            onChange={setText("linkedinUrl")}
+            icon={<Linkedin className="h-3.5 w-3.5" />}
             placeholder="https://linkedin.com/company/…"
+            type="url"
+            inputMode="url"
             disabled={d}
           />
           <TextField
             label="YouTube"
             value={s.youtubeUrl ?? ""}
-            onChange={(v) => setField("youtubeUrl", v || null)}
+            onChange={setText("youtubeUrl")}
+            icon={<Youtube className="h-3.5 w-3.5" />}
             placeholder="https://youtube.com/@…"
+            type="url"
+            inputMode="url"
             disabled={d}
           />
           <TextField
             label="WhatsApp number"
             value={s.whatsappNumber ?? ""}
-            onChange={(v) => setField("whatsappNumber", v || null)}
-            placeholder="+255712345678"
+            onChange={setText("whatsappNumber")}
+            icon={<MessageCircle className="h-3.5 w-3.5" />}
+            placeholder="+255 712 345 678"
+            type="tel"
+            inputMode="tel"
             disabled={d}
+            className="sm:col-span-2"
           />
         </div>
       </SectionCard>
 
       {/* 3 — Reporting & notifications */}
       <SectionCard
+        icon={<Bell className="h-4 w-4" />}
         title="Consolidated reporting"
-        description="Parent-level notifications aggregated across all locations."
+        description="Parent-level sales summaries aggregated across all locations."
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
           <TextField
             label="Notification email"
             value={s.notificationEmail ?? ""}
-            onChange={(v) => setField("notificationEmail", v || null)}
+            onChange={setText("notificationEmail")}
+            icon={<Mail className="h-3.5 w-3.5" />}
             placeholder="reports@business.com"
             type="email"
+            inputMode="email"
+            autoComplete="email"
             disabled={d}
           />
           <TextField
             label="Notification phone"
             value={s.notificationPhone ?? ""}
-            onChange={(v) => setField("notificationPhone", v || null)}
-            placeholder="+255712345678"
+            onChange={setText("notificationPhone")}
+            icon={<Phone className="h-3.5 w-3.5" />}
+            placeholder="+255 712 345 678"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
             disabled={d}
           />
         </div>
-        <div className="space-y-0.5 pt-1">
-          <SwitchRow
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <ToggleRow
             label="Daily report"
-            description="Send a consolidated daily sales report"
+            hint="Consolidated sales summary every morning"
             checked={Boolean(s.sendConsolidatedDailyReport)}
-            onCheckedChange={(v) => setField("sendConsolidatedDailyReport", v)}
+            onChange={(v) => setField("sendConsolidatedDailyReport", v)}
             disabled={d}
           />
-          <SwitchRow
+          <ToggleRow
             label="Weekly report"
-            description="Send a consolidated weekly sales report"
+            hint="Week in review, sent on Mondays"
             checked={Boolean(s.sendConsolidatedWeeklyReport)}
-            onCheckedChange={(v) => setField("sendConsolidatedWeeklyReport", v)}
+            onChange={(v) => setField("sendConsolidatedWeeklyReport", v)}
             disabled={d}
           />
-          <SwitchRow
+          <ToggleRow
             label="Monthly report"
-            description="Send a consolidated monthly sales report"
+            hint="Month-end summary across locations"
             checked={Boolean(s.sendConsolidatedMonthlyReport)}
-            onCheckedChange={(v) => setField("sendConsolidatedMonthlyReport", v)}
+            onChange={(v) => setField("sendConsolidatedMonthlyReport", v)}
             disabled={d}
           />
         </div>
@@ -514,51 +490,51 @@ const BusinessSettingsPanel = ({
 
       {/* 4 — Procurement & defaults */}
       <SectionCard
+        icon={<ClipboardCheck className="h-4 w-4" />}
         title="Procurement & defaults"
         description="Approval workflows, transfer rules and seed values for new locations."
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              Default currency
-            </label>
-            <CurrencySelector
-              value={s.defaultCurrency ?? undefined}
-              onChange={(val) => setField("defaultCurrency", val)}
-              isDisabled={d}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Seeded into every new location as its base currency.
-            </p>
-          </div>
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          <Field
+            label="Default currency"
+            hint="Seeded into every new location as its base currency."
+          >
+            {() => (
+              <CurrencySelector
+                value={s.defaultCurrency ?? undefined}
+                onChange={(val) => setField("defaultCurrency", val)}
+                isDisabled={d}
+              />
+            )}
+          </Field>
         </div>
-        <div className="space-y-0.5 pt-1">
-          <SwitchRow
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <ToggleRow
             label="Require purchase requisition approval"
-            description="Manager must approve purchase requisitions before they proceed"
+            hint="A manager must approve requisitions before they proceed"
             checked={Boolean(s.requirePurchaseRequisitionApproval)}
-            onCheckedChange={(v) => setField("requirePurchaseRequisitionApproval", v)}
+            onChange={(v) => setField("requirePurchaseRequisitionApproval", v)}
             disabled={d}
           />
-          <SwitchRow
+          <ToggleRow
             label="Supplier performance tracking"
-            description="Track and rate supplier performance over time"
+            hint="Track and rate supplier performance over time"
             checked={Boolean(s.supplierPerformanceTrackingEnabled)}
-            onCheckedChange={(v) => setField("supplierPerformanceTrackingEnabled", v)}
+            onChange={(v) => setField("supplierPerformanceTrackingEnabled", v)}
             disabled={d}
           />
-          <SwitchRow
+          <ToggleRow
             label="Landed cost tracking"
-            description="Capture freight, duty, and other costs to compute landed cost"
+            hint="Capture freight, duty and other costs into landed cost"
             checked={Boolean(s.landedCostTrackingEnabled)}
-            onCheckedChange={(v) => setField("landedCostTrackingEnabled", v)}
+            onChange={(v) => setField("landedCostTrackingEnabled", v)}
             disabled={d}
           />
-          <SwitchRow
+          <ToggleRow
             label="Location-to-location transfers"
-            description="Allow stock transfers between locations of this business"
+            hint="Allow stock transfers between locations of this business"
             checked={Boolean(s.locationToLocationTransferEnabled)}
-            onCheckedChange={(v) => setField("locationToLocationTransferEnabled", v)}
+            onChange={(v) => setField("locationToLocationTransferEnabled", v)}
             disabled={d}
           />
         </div>
@@ -566,48 +542,74 @@ const BusinessSettingsPanel = ({
 
       {/* 5 — Legal documents */}
       <SectionCard
+        icon={<ScrollText className="h-4 w-4" />}
         title="Legal documents"
-        description="Customer-facing legal text shown on receipts, menus, and the website."
+        description="Customer-facing legal text shown on receipts, menus and the website."
       >
-        <div className="space-y-4">
-          <TextAreaField
-            label="Terms & conditions"
-            value={s.termsAndConditions ?? ""}
-            onChange={(v) => setField("termsAndConditions", v || null)}
-            placeholder="Terms & conditions text…"
-            disabled={d}
-            rows={5}
-          />
-          <TextAreaField
-            label="Privacy policy"
-            value={s.privacyPolicy ?? ""}
-            onChange={(v) => setField("privacyPolicy", v || null)}
-            placeholder="Privacy policy text…"
-            disabled={d}
-            rows={5}
-          />
-          <TextAreaField
-            label="Return policy"
-            value={s.returnPolicy ?? ""}
-            onChange={(v) => setField("returnPolicy", v || null)}
-            placeholder="Return policy text…"
-            disabled={d}
-            rows={5}
-          />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <Field label="Terms & conditions" optional>
+            {(id) => (
+              <ControlTextarea
+                id={id}
+                value={s.termsAndConditions ?? ""}
+                onChange={(e) => setField("termsAndConditions", e.target.value)}
+                placeholder="Terms & conditions text…"
+                disabled={d}
+                rows={6}
+              />
+            )}
+          </Field>
+          <Field label="Privacy policy" optional>
+            {(id) => (
+              <ControlTextarea
+                id={id}
+                value={s.privacyPolicy ?? ""}
+                onChange={(e) => setField("privacyPolicy", e.target.value)}
+                placeholder="Privacy policy text…"
+                disabled={d}
+                rows={6}
+              />
+            )}
+          </Field>
+          <Field label="Return policy" optional>
+            {(id) => (
+              <ControlTextarea
+                id={id}
+                value={s.returnPolicy ?? ""}
+                onChange={(e) => setField("returnPolicy", e.target.value)}
+                placeholder="Return policy text…"
+                disabled={d}
+                rows={6}
+              />
+            )}
+          </Field>
         </div>
       </SectionCard>
 
       {/* Sticky save bar */}
-      <div className="sticky bottom-0 z-10 bg-gradient-to-t from-background via-background/95 to-background/0 pt-4 pb-2 -mx-4 px-4 md:-mx-0 md:px-0">
-        <div className="flex items-center justify-end gap-3">
-          <span className="text-xs text-muted-foreground">
+      <div className="sticky bottom-0 z-10 -mx-4 bg-gradient-to-t from-background via-background/95 to-background/0 px-4 pb-2 pt-4 md:mx-0 md:px-0">
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+          <span
+            className={cn(
+              "mr-auto inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium sm:mr-0",
+              dirtyCount === 0
+                ? "border-line bg-canvas text-muted-foreground"
+                : "border-warn/40 bg-warn-tint text-warn",
+            )}
+          >
+            {dirtyCount > 0 && <span className="h-1.5 w-1.5 rounded-full bg-warn" />}
             {dirtyCount === 0
               ? "No unsaved changes"
               : `${dirtyCount} unsaved change${dirtyCount === 1 ? "" : "s"}`}
           </span>
+          {dirtyCount > 0 && !isPending && (
+            <Button variant="ghost" size="sm" onClick={() => setDirty({})}>
+              Discard
+            </Button>
+          )}
           {isPending ? (
             <Button disabled>
-              <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+              <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
               Saving…
             </Button>
           ) : (
@@ -620,5 +622,14 @@ const BusinessSettingsPanel = ({
     </div>
   );
 };
+
+/** Text-valued settings keys — the ones `setText` may write. */
+type TextKey = {
+  [K in keyof UpdateBusinessSettingsRequest]-?: NonNullable<
+    UpdateBusinessSettingsRequest[K]
+  > extends string
+    ? K
+    : never;
+}[keyof UpdateBusinessSettingsRequest];
 
 export default BusinessSettingsPanel;

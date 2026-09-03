@@ -12,7 +12,7 @@ export function PanelHeader({
   meta,
 }: {
   title: string;
-  description?: string;
+  description?: ReactNode;
   meta?: ReactNode;
 }) {
   return (

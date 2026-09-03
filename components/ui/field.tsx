@@ -2,6 +2,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { FormLabel } from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
 
 /**
  * Reusable form-control primitives — the shared "input field" look used across
@@ -302,5 +303,99 @@ export function SegmentedBoolean({
       className={className}
       stretch={stretch}
     />
+  );
+}
+
+// ── Standalone field (label + control + hint, no react-hook-form) ───
+
+/**
+ * Label + control + hint for controlled inputs that live outside a
+ * `FormField` (settings panels). `children` is a render-prop receiving the
+ * generated id so the label's `htmlFor` lands on the control.
+ */
+export function StandaloneField({
+  label,
+  hint,
+  optional,
+  required,
+  className,
+  children,
+}: {
+  label: string;
+  hint?: React.ReactNode;
+  optional?: boolean;
+  required?: boolean;
+  className?: string;
+  children: (id: string) => React.ReactNode;
+}) {
+  const id = React.useId();
+  return (
+    <div className={cn("min-w-0 space-y-[7px]", className)}>
+      <label htmlFor={id} className={standaloneLabelClass}>
+        {label}
+        {required && <span className="text-primary">*</span>}
+        {optional && (
+          <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
+            Optional
+          </span>
+        )}
+      </label>
+      {children(id)}
+      {hint && <FieldHint>{hint}</FieldHint>}
+    </div>
+  );
+}
+
+// ── Toggle row ──────────────────────────────────────────────────────
+
+/**
+ * Boxed switch row — the product form's `toggleRow` look (label + hint on the
+ * left, switch on the right, hairline border on a surface tint). Use it for
+ * boolean settings that sit in a grid of peers; for a bare inline switch use
+ * `SettingsSwitchRow` instead.
+ */
+export function ToggleRow({
+  label,
+  hint,
+  checked,
+  onChange,
+  disabled,
+  className,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const id = React.useId();
+  return (
+    <div
+      className={cn(
+        "flex items-start justify-between gap-4 rounded-lg border border-line bg-surface px-4 py-3.5 transition-colors",
+        checked && "border-primary/40 bg-primary/[0.04]",
+        disabled && "opacity-60",
+        className,
+      )}
+    >
+      <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer">
+        <span className="block text-[13px] font-medium leading-tight text-ink">
+          {label}
+        </span>
+        {hint && (
+          <span className="mt-0.5 block text-[12px] leading-snug text-muted-foreground">
+            {hint}
+          </span>
+        )}
+      </label>
+      <Switch
+        id={id}
+        checked={checked}
+        onCheckedChange={onChange}
+        disabled={disabled}
+        className="mt-0.5 shrink-0"
+      />
+    </div>
   );
 }

@@ -4,23 +4,37 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useCallback, useState, useTransition } from "react";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
+import {
+  Building2,
+  Compass,
+  Globe,
+  Hash,
+  Home,
+  ImageIcon,
+  Loader2Icon,
+  Mail,
+  Map,
+  MapPin,
+  Phone,
+  ShieldCheck,
+} from "lucide-react";
 
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "../ui/button";
-import { Loader2Icon, X } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
-import { Card, CardContent } from "../ui/card";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+} from "@/components/ui/field";
+import { ImageDropzone } from "@/components/ui/image-dropzone";
+import { SectionCard } from "@/components/settings/shared/section-card";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +43,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { Business } from "@/types/business/type";
 import { BusinessSchema } from "@/types/business/schema";
 import { updateBusiness } from "@/lib/actions/business-actions";
@@ -47,7 +63,6 @@ const BusinessForm = ({
 }) => {
   const [isPending, startTransition] = useTransition();
   const [showStatusDialog, setShowStatusDialog] = useState(false);
-  const [logoImage, setLogoImage] = useState(item?.logoUrl || "");
 
   const form = useForm<BusinessFormValues>({
     resolver: zodResolver(BusinessSchema),
@@ -81,12 +96,20 @@ const BusinessForm = ({
   }, []);
 
   const submitData = (values: BusinessFormValues) => {
-    values.logoUrl = logoImage || null;
+    const logoUrl = values.logoUrl?.trim() ?? "";
+    // The update endpoint has PATCH semantics: null = "leave the logo alone",
+    // so a removed logo has to travel as an empty string, which the backend
+    // stores as null. On create there is nothing to clear, so send null.
+    const payload: BusinessFormValues = {
+      ...values,
+      logoUrl: logoUrl ? logoUrl : item ? "" : null,
+    };
 
     startTransition(() => {
       if (item) {
-        updateBusiness(item.id, values).then((data) => {
+        updateBusiness(item.id, payload).then((data) => {
           if (data?.responseType === "success") {
+            form.reset(values);
             toast({ title: "Business updated", description: data.message });
           } else if (data?.responseType === "error") {
             toast({
@@ -97,7 +120,7 @@ const BusinessForm = ({
           }
         });
       } else {
-        onSubmit(values);
+        onSubmit(payload);
       }
     });
   };
@@ -110,153 +133,165 @@ const BusinessForm = ({
       >
         {/* 1 — Business profile */}
         <SectionCard
+          icon={<Building2 className="h-4 w-4" />}
           title="Business profile"
           description="Identity, contact details and logo for the parent business."
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem className="space-y-1 sm:col-span-2 lg:col-span-2">
-                  <FieldLabel>Business name</FieldLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      disabled={isPending}
-                      placeholder="Enter business name"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="phoneNumber"
-              render={({ field }) => (
-                <FormItem className="space-y-1">
-                  <FieldLabel>Phone number</FieldLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      disabled={isPending}
-                      value={field.value || ""}
-                      placeholder="+255712345678"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem className="space-y-1">
-                  <FieldLabel>Email</FieldLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type="email"
-                      disabled={isPending}
-                      value={field.value || ""}
-                      placeholder="info@business.com"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="website"
-              render={({ field }) => (
-                <FormItem className="space-y-1 sm:col-span-2 lg:col-span-2">
-                  <FieldLabel>Website</FieldLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      disabled={isPending}
-                      value={field.value || ""}
-                      placeholder="https://yourbusiness.com"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormItem className="space-y-1 sm:col-span-2 lg:col-span-2">
-              <FieldLabel>Logo</FieldLabel>
-              <FormControl>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  disabled={isPending}
-                  className="cursor-pointer file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const { uploadImage } = await import("@/lib/utils");
-                    uploadImage(file, "business/logos", (res) => {
-                      if (res.success) setLogoImage(res.data);
-                    });
-                  }}
-                />
-              </FormControl>
-              {logoImage && (
-                <div className="flex items-center gap-1.5">
-                  <p className="flex-1 truncate text-[11px] text-muted-foreground">
-                    {logoImage}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setLogoImage("")}
-                    disabled={isPending}
-                    aria-label="Remove logo"
-                    className="flex-shrink-0 text-muted-foreground hover:text-destructive"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              )}
-            </FormItem>
-          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:col-span-2">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem className="min-w-0 space-y-[7px] sm:col-span-2">
+                    <FieldLabel required>Business name</FieldLabel>
+                    <FormControl>
+                      <ControlInput
+                        {...field}
+                        prefix={<Building2 className="h-3.5 w-3.5" />}
+                        disabled={isPending}
+                        placeholder="e.g. Kariakoo Traders"
+                        autoComplete="organization"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phoneNumber"
+                render={({ field }) => (
+                  <FormItem className="min-w-0 space-y-[7px]">
+                    <FieldLabel required>Phone number</FieldLabel>
+                    <FormControl>
+                      <ControlInput
+                        {...field}
+                        value={field.value ?? ""}
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        prefix={<Phone className="h-3.5 w-3.5" />}
+                        disabled={isPending}
+                        placeholder="+255 712 345 678"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem className="min-w-0 space-y-[7px]">
+                    <FieldLabel required>Email</FieldLabel>
+                    <FormControl>
+                      <ControlInput
+                        {...field}
+                        value={field.value ?? ""}
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        prefix={<Mail className="h-3.5 w-3.5" />}
+                        disabled={isPending}
+                        placeholder="info@business.com"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="website"
+                render={({ field }) => (
+                  <FormItem className="min-w-0 space-y-[7px] sm:col-span-2">
+                    <FieldLabel optional>Website</FieldLabel>
+                    <FormControl>
+                      <ControlInput
+                        {...field}
+                        value={field.value ?? ""}
+                        type="url"
+                        inputMode="url"
+                        autoComplete="url"
+                        prefix={<Globe className="h-3.5 w-3.5" />}
+                        disabled={isPending}
+                        placeholder="https://yourbusiness.com"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem className="min-w-0 space-y-[7px] sm:col-span-2">
+                    <FieldLabel optional>Description</FieldLabel>
+                    <FormControl>
+                      <ControlTextarea
+                        {...field}
+                        value={field.value ?? ""}
+                        disabled={isPending}
+                        placeholder="What does this business do?"
+                        rows={3}
+                        maxLength={2000}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem className="space-y-1">
-                <FieldLabel>Description</FieldLabel>
-                <FormControl>
-                  <Textarea
-                    {...field}
-                    disabled={isPending}
-                    value={field.value || ""}
-                    placeholder="Describe your business"
-                    rows={3}
-                    className="resize-y"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="logoUrl"
+              render={({ field }) => (
+                <FormItem className="flex min-w-0 flex-col space-y-[7px] lg:col-span-1">
+                  <FieldLabel optional>
+                    <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                    Logo
+                  </FieldLabel>
+                  <FormControl>
+                    <ImageDropzone
+                      className="flex-1"
+                      purpose="BUSINESS_LOGO"
+                      value={field.value ?? ""}
+                      onChange={(url) => field.onChange(url ?? "")}
+                      onBlur={field.onBlur}
+                      disabled={isPending}
+                      maxSizeMb={5}
+                      alt="Business logo"
+                      ctaLabel="Upload logo"
+                    />
+                  </FormControl>
+                  <FieldHint>
+                    Appears on receipts, invoices and the POS. A square PNG on a
+                    transparent background works best.
+                  </FieldHint>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </SectionCard>
 
         {/* 2 — Headquarters address */}
         <SectionCard
+          icon={<MapPin className="h-4 w-4" />}
           title="Headquarters address"
           description="Where this business is registered."
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
             <FormField
               control={form.control}
               name="countryId"
               render={({ field }) => (
-                <FormItem className="space-y-1">
-                  <FieldLabel>Country</FieldLabel>
+                <FormItem className="min-w-0 space-y-[7px]">
+                  <FieldLabel required>Country</FieldLabel>
                   <FormControl>
                     <CountrySelector
                       {...field}
@@ -274,14 +309,16 @@ const BusinessForm = ({
               control={form.control}
               name="region"
               render={({ field }) => (
-                <FormItem className="space-y-1">
+                <FormItem className="min-w-0 space-y-[7px]">
                   <FieldLabel>Region</FieldLabel>
                   <FormControl>
-                    <Input
+                    <ControlInput
                       {...field}
-                      disabled={isPending}
                       value={field.value ?? ""}
+                      prefix={<MapPin className="h-3.5 w-3.5" />}
+                      disabled={isPending}
                       placeholder="e.g. Dar es Salaam"
+                      autoComplete="address-level1"
                     />
                   </FormControl>
                   <FormMessage />
@@ -292,14 +329,16 @@ const BusinessForm = ({
               control={form.control}
               name="district"
               render={({ field }) => (
-                <FormItem className="space-y-1">
+                <FormItem className="min-w-0 space-y-[7px]">
                   <FieldLabel>District</FieldLabel>
                   <FormControl>
-                    <Input
+                    <ControlInput
                       {...field}
-                      disabled={isPending}
                       value={field.value ?? ""}
-                      placeholder="District"
+                      prefix={<Map className="h-3.5 w-3.5" />}
+                      disabled={isPending}
+                      placeholder="e.g. Ilala"
+                      autoComplete="address-level2"
                     />
                   </FormControl>
                   <FormMessage />
@@ -310,14 +349,16 @@ const BusinessForm = ({
               control={form.control}
               name="ward"
               render={({ field }) => (
-                <FormItem className="space-y-1">
+                <FormItem className="min-w-0 space-y-[7px]">
                   <FieldLabel>Ward</FieldLabel>
                   <FormControl>
-                    <Input
+                    <ControlInput
                       {...field}
-                      disabled={isPending}
                       value={field.value ?? ""}
-                      placeholder="Ward"
+                      prefix={<Compass className="h-3.5 w-3.5" />}
+                      disabled={isPending}
+                      placeholder="e.g. Kariakoo"
+                      autoComplete="address-level3"
                     />
                   </FormControl>
                   <FormMessage />
@@ -328,14 +369,16 @@ const BusinessForm = ({
               control={form.control}
               name="address"
               render={({ field }) => (
-                <FormItem className="space-y-1">
+                <FormItem className="min-w-0 space-y-[7px]">
                   <FieldLabel>Street address</FieldLabel>
                   <FormControl>
-                    <Input
+                    <ControlInput
                       {...field}
-                      disabled={isPending}
                       value={field.value ?? ""}
-                      placeholder="Street address"
+                      prefix={<Home className="h-3.5 w-3.5" />}
+                      disabled={isPending}
+                      placeholder="Street, building, floor"
+                      autoComplete="street-address"
                     />
                   </FormControl>
                   <FormMessage />
@@ -346,14 +389,17 @@ const BusinessForm = ({
               control={form.control}
               name="postalCode"
               render={({ field }) => (
-                <FormItem className="space-y-1">
+                <FormItem className="min-w-0 space-y-[7px]">
                   <FieldLabel>Postal code</FieldLabel>
                   <FormControl>
-                    <Input
+                    <ControlInput
                       {...field}
-                      disabled={isPending}
                       value={field.value ?? ""}
-                      placeholder="Postal code"
+                      mono
+                      prefix={<Hash className="h-3.5 w-3.5" />}
+                      disabled={isPending}
+                      placeholder="e.g. 11101"
+                      autoComplete="postal-code"
                     />
                   </FormControl>
                   <FormMessage />
@@ -365,89 +411,95 @@ const BusinessForm = ({
 
         {/* Status toggle (only when editing) */}
         {item && (
-          <Card className="rounded-xl border border-red-200 dark:border-red-900/40 shadow-sm">
-            <CardContent className="pt-5 pb-5">
-              <FormField
-                control={form.control}
-                name="active"
-                render={({ field }) => (
-                  <>
-                    <FormItem className="flex flex-row items-center justify-between gap-4 space-y-0">
-                      <div className="min-w-0 flex-1">
-                        <FormLabel className="text-sm font-medium">
-                          Business status
-                        </FormLabel>
-                        <FormDescription className="text-xs mt-0.5">
-                          This business is currently{" "}
-                          <span
-                            className={
-                              field.value
-                                ? "text-green-600 font-medium"
-                                : "text-red-600 font-medium"
-                            }
-                          >
-                            {field.value ? "enabled" : "disabled"}
-                          </span>
-                        </FormDescription>
-                      </div>
+          <FormField
+            control={form.control}
+            name="active"
+            render={({ field }) => (
+              <>
+                <SectionCard
+                  icon={<ShieldCheck className="h-4 w-4" />}
+                  title="Business status"
+                  description="Disabling stops every location under this business from trading."
+                  tone={field.value ? "default" : "danger"}
+                >
+                  <FormItem className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={cn(
+                          "h-2 w-2 shrink-0 rounded-full",
+                          field.value ? "bg-pos" : "bg-neg",
+                        )}
+                      />
+                      <p className="text-sm text-ink-2">
+                        This business is currently{" "}
+                        <span
+                          className={cn(
+                            "font-semibold",
+                            field.value ? "text-pos" : "text-neg",
+                          )}
+                        >
+                          {field.value ? "enabled" : "disabled"}
+                        </span>
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant={field.value ? "destructive" : "default"}
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => setShowStatusDialog(true)}
+                      className="w-full sm:w-auto"
+                    >
+                      {field.value ? "Disable business" : "Enable business"}
+                    </Button>
+                    <FormMessage />
+                  </FormItem>
+                </SectionCard>
+
+                <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>
+                        {field.value ? "Disable" : "Enable"} business
+                      </DialogTitle>
+                      <DialogDescription>
+                        {field.value
+                          ? "Are you sure you want to disable this business? This will make it inactive and may affect all associated locations and services."
+                          : "Are you sure you want to enable this business? This will make it active again."}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowStatusDialog(false)}
+                      >
+                        Cancel
+                      </Button>
                       <Button
                         type="button"
                         variant={field.value ? "destructive" : "default"}
-                        size="sm"
-                        disabled={isPending}
-                        onClick={() => setShowStatusDialog(true)}
+                        onClick={() => {
+                          field.onChange(!field.value);
+                          setShowStatusDialog(false);
+                        }}
                       >
                         {field.value ? "Disable" : "Enable"}
                       </Button>
-                      <FormMessage />
-                    </FormItem>
-
-                    <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>
-                            {field.value ? "Disable" : "Enable"} business
-                          </DialogTitle>
-                          <DialogDescription>
-                            {field.value
-                              ? "Are you sure you want to disable this business? This will make it inactive and may affect all associated locations and services."
-                              : "Are you sure you want to enable this business? This will make it active again."}
-                          </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setShowStatusDialog(false)}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={field.value ? "destructive" : "default"}
-                            onClick={() => {
-                              field.onChange(!field.value);
-                              setShowStatusDialog(false);
-                            }}
-                          >
-                            {field.value ? "Disable" : "Enable"}
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </>
-                )}
-              />
-            </CardContent>
-          </Card>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
+          />
         )}
 
         {/* Sticky save bar */}
-        <div className="sticky bottom-0 z-10 bg-gradient-to-t from-background via-background/95 to-background/0 pt-4 pb-2 -mx-4 px-4 md:-mx-0 md:px-0">
+        <div className="sticky bottom-0 z-10 -mx-4 bg-gradient-to-t from-background via-background/95 to-background/0 px-4 pb-2 pt-4 md:mx-0 md:px-0">
           <div className="flex items-center justify-end gap-3">
             {isPending ? (
               <Button disabled className="w-full md:w-auto">
-                <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
                 {item ? "Updating…" : "Processing…"}
               </Button>
             ) : (
@@ -461,43 +513,5 @@ const BusinessForm = ({
     </Form>
   );
 };
-
-// ──────────────────────────────────────────────────────────────────────
-// Layout primitives — match SettingsSection density
-// ──────────────────────────────────────────────────────────────────────
-
-function SectionCard({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Card className="rounded-xl shadow-sm">
-      <CardContent className="pt-5 pb-5 space-y-4">
-        <div>
-          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-            {title}
-          </h3>
-          {description && (
-            <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-          )}
-        </div>
-        {children}
-      </CardContent>
-    </Card>
-  );
-}
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <FormLabel className="text-xs font-medium text-gray-700 dark:text-gray-300">
-      {children}
-    </FormLabel>
-  );
-}
 
 export default BusinessForm;
