@@ -48,6 +48,7 @@ export function AbandonedDataTable({
       searchPlaceholder="Search name, order #, table, staff…"
       total={total}
       rowClickBasePath="/orders"
+      disableArchive
     />
   );
 }

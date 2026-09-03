@@ -137,6 +137,7 @@ export default async function Page({ searchParams }: Params) {
                 searchKey="name"
                 total={total}
                 rowClickBasePath="/categories"
+                disableArchive
               />
             </CardContent>
           </Card>

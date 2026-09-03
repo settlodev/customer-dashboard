@@ -15,7 +15,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, toDateOnlyIso, toEndOfDayIso } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -258,12 +258,12 @@ export default function RfqForm() {
                                   field.onChange("");
                                   return;
                                 }
-                                const endOfDay = new Date(d);
-                                endOfDay.setHours(23, 59, 59, 999);
-                                field.onChange(endOfDay.toISOString());
+                                const endOfDayIso = toEndOfDayIso(d);
+                                field.onChange(endOfDayIso);
                                 const required = form.getValues("requiredByDate");
                                 if (required) {
                                   const reqDate = new Date(required);
+                                  const endOfDay = new Date(endOfDayIso);
                                   if (reqDate < endOfDay) {
                                     form.setValue("requiredByDate", "", {
                                       shouldDirty: true,
@@ -312,7 +312,7 @@ export default function RfqForm() {
                             <Calendar
                               mode="single"
                               selected={selected}
-                              onSelect={(d) => field.onChange(d ? d.toISOString() : "")}
+                              onSelect={(d) => field.onChange(d ? toDateOnlyIso(d) : "")}
                               disabled={(date) => {
                                 if (date < today) return true;
                                 if (
