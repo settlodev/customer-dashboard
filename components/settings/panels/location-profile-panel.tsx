@@ -1,15 +1,29 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Check, Copy, Loader2 } from "lucide-react";
 import {
-  SettingsSection,
-  SettingsSwitchRow,
-} from "../shared/settings-section";
+  Check,
+  Coins,
+  Compass,
+  Copy,
+  Hash,
+  Home,
+  Languages,
+  Mail,
+  Map,
+  MapPin,
+  Navigation,
+  Phone,
+  Store,
+} from "lucide-react";
+
+import { useToast } from "@/hooks/use-toast";
+import {
+  ControlInput,
+  ControlTextarea,
+  StandaloneField as Field,
+} from "@/components/ui/field";
+import { SettingsSection } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
 import { DangerZonePanel } from "./danger-zone-panel";
@@ -22,6 +36,7 @@ import {
 import BusinessTypeSelector from "@/components/widgets/business-type-selector";
 import CountrySelector from "@/components/widgets/country-selector";
 import CurrencySelector from "@/components/widgets/currency-selector";
+import TimezoneSelector from "@/components/widgets/timezone-selector";
 
 const PROFILE_KEYS = [
   "currency",
@@ -39,6 +54,15 @@ interface Props {
   onLocationSaved: (next: Location) => void;
 }
 
+const ICON = "h-3.5 w-3.5";
+
+/** "" → null, otherwise a finite number — for the optional numeric guard-rails. */
+function numberOrNull(raw: string): number | null {
+  if (raw.trim() === "") return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function LocationProfilePanel({
   settings,
   onSaved,
@@ -46,6 +70,8 @@ export function LocationProfilePanel({
   onLocationSaved,
 }: Props) {
   const panel = useSettingsPanel(PROFILE_KEYS, settings, onSaved);
+  const d = panel.isPending;
+  const currencyCode = panel.values.currency ?? settings.currency ?? "";
 
   return (
     <div className="space-y-6">
@@ -62,86 +88,108 @@ export function LocationProfilePanel({
       )}
 
       <SettingsSection
+        icon={<Coins className="h-4 w-4" />}
         title="Currency, locale & guard-rails"
         description="Base currency and limits that apply across POS, receipts, and reports."
         onSave={panel.save}
         isPending={panel.isPending}
         isDirty={panel.isDirty}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <LabeledField label="Currency">
-            <CurrencySelector
-              value={panel.values.currency ?? undefined}
-              onChange={(val) => panel.setField("currency", val)}
-              isDisabled={panel.isPending}
-            />
-          </LabeledField>
-          <LabeledField label="Default language" hint="ISO code (e.g. en, sw).">
-            <Input
-              maxLength={10}
-              value={panel.values.defaultLanguage ?? ""}
-              onChange={(e) => panel.setField("defaultLanguage", e.target.value)}
-              disabled={panel.isPending}
-            />
-          </LabeledField>
-          <LabeledField label="Default timezone" hint="IANA TZ (e.g. Africa/Dar_es_Salaam).">
-            <Input
-              maxLength={64}
-              value={panel.values.defaultTimezone ?? ""}
-              onChange={(e) => panel.setField("defaultTimezone", e.target.value)}
-              disabled={panel.isPending}
-            />
-          </LabeledField>
-          <LabeledField label="Minimum order amount">
-            <Input
-              type="number"
-              min={0}
-              value={panel.values.minimumOrderAmount ?? ""}
-              onChange={(e) =>
-                panel.setField(
-                  "minimumOrderAmount",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
-              disabled={panel.isPending}
-            />
-          </LabeledField>
-          <LabeledField
-            label="Max discount (%)"
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="Currency">
+            {() => (
+              <CurrencySelector
+                value={panel.values.currency ?? undefined}
+                onChange={(val) => panel.setField("currency", val)}
+                isDisabled={d}
+              />
+            )}
+          </Field>
+          <Field label="Default language" hint="ISO code, e.g. en or sw.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                mono
+                maxLength={10}
+                prefix={<Languages className={ICON} />}
+                value={panel.values.defaultLanguage ?? ""}
+                onChange={(e) => panel.setField("defaultLanguage", e.target.value)}
+                placeholder="en"
+                disabled={d}
+              />
+            )}
+          </Field>
+          <Field label="Default timezone" hint="Drives business-day rollover and report timestamps.">
+            {() => (
+              <TimezoneSelector
+                value={panel.values.defaultTimezone ?? ""}
+                onChange={(v) => panel.setField("defaultTimezone", v)}
+                isDisabled={d}
+              />
+            )}
+          </Field>
+          <Field label="Minimum order amount" hint="Orders below this can't be placed.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="decimal"
+                mono
+                min={0}
+                suffix={currencyCode || undefined}
+                value={panel.values.minimumOrderAmount ?? ""}
+                onChange={(e) =>
+                  panel.setField("minimumOrderAmount", numberOrNull(e.target.value))
+                }
+                placeholder="0"
+                disabled={d}
+              />
+            )}
+          </Field>
+          <Field
+            label="Max discount"
             hint="Hard ceiling — any attempt above this is blocked."
           >
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={panel.values.maxDiscountPercentage ?? ""}
-              onChange={(e) =>
-                panel.setField(
-                  "maxDiscountPercentage",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
-              disabled={panel.isPending}
-            />
-          </LabeledField>
-          <LabeledField
-            label="Discount approval (%)"
-            hint="Above this %, the discount needs manager approval."
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="decimal"
+                mono
+                min={0}
+                max={100}
+                suffix="%"
+                value={panel.values.maxDiscountPercentage ?? ""}
+                onChange={(e) =>
+                  panel.setField("maxDiscountPercentage", numberOrNull(e.target.value))
+                }
+                placeholder="100"
+                disabled={d}
+              />
+            )}
+          </Field>
+          <Field
+            label="Discount approval threshold"
+            hint="Above this, the discount needs manager approval."
           >
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={panel.values.discountApprovalThreshold ?? ""}
-              onChange={(e) =>
-                panel.setField(
-                  "discountApprovalThreshold",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
-              disabled={panel.isPending}
-            />
-          </LabeledField>
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="decimal"
+                mono
+                min={0}
+                max={100}
+                suffix="%"
+                value={panel.values.discountApprovalThreshold ?? ""}
+                onChange={(e) =>
+                  panel.setField("discountApprovalThreshold", numberOrNull(e.target.value))
+                }
+                placeholder="0"
+                disabled={d}
+              />
+            )}
+          </Field>
         </div>
       </SettingsSection>
 
@@ -190,39 +238,42 @@ function toForm(l: Location): LocationFormState {
   };
 }
 
+/**
+ * Free-text fields the user may clear. The endpoint has PATCH semantics
+ * (null = unchanged), so a cleared value has to travel as "" — which the
+ * service stores as null. Identifiers and the name are required, so a
+ * blank there is simply not sent.
+ */
+const CLEARABLE_KEYS = [
+  "description",
+  "phoneNumber",
+  "email",
+  "region",
+  "district",
+  "ward",
+  "address",
+  "postalCode",
+] as const;
+
+const REQUIRED_KEYS = ["name", "countryId", "businessTypeId", "timezone"] as const;
+
 function diffToPatch(
   baseline: LocationFormState,
   current: LocationFormState,
 ): UpdateLocationBasicsRequest {
   const patch: UpdateLocationBasicsRequest = {};
-  const stringKeys: (keyof Omit<LocationFormState, "latitude" | "longitude">)[] =
-    [
-      "name",
-      "description",
-      "phoneNumber",
-      "email",
-      "countryId",
-      "businessTypeId",
-      "region",
-      "district",
-      "ward",
-      "address",
-      "postalCode",
-      "timezone",
-    ];
-  for (const k of stringKeys) {
-    if (current[k] !== baseline[k]) {
-      const trimmed = current[k].trim();
-      (patch as Record<string, unknown>)[k] = trimmed === "" ? null : trimmed;
-    }
+  for (const k of CLEARABLE_KEYS) {
+    if (current[k] !== baseline[k]) patch[k] = current[k].trim();
+  }
+  for (const k of REQUIRED_KEYS) {
+    const trimmed = current[k].trim();
+    if (current[k] !== baseline[k] && trimmed !== "") patch[k] = trimmed;
   }
   if (current.latitude !== baseline.latitude) {
-    const parsed = current.latitude.trim() === "" ? null : Number(current.latitude);
-    patch.latitude = parsed === null || Number.isFinite(parsed) ? parsed : null;
+    patch.latitude = numberOrNull(current.latitude);
   }
   if (current.longitude !== baseline.longitude) {
-    const parsed = current.longitude.trim() === "" ? null : Number(current.longitude);
-    patch.longitude = parsed === null || Number.isFinite(parsed) ? parsed : null;
+    patch.longitude = numberOrNull(current.longitude);
   }
   return patch;
 }
@@ -282,6 +333,8 @@ function LocationDetailsCard({
     });
   };
 
+  const d = isPending;
+
   return (
     <div className="space-y-6">
       <PanelHeader
@@ -289,18 +342,19 @@ function LocationDetailsCard({
         description="Name, contact info and address for this location."
         meta={
           location.identifier && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-muted-foreground">Location code:</span>
-              <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-mono">
+              <code className="rounded-md border border-line bg-canvas px-2 py-0.5 font-mono text-xs text-ink">
                 {location.identifier}
               </code>
               <button
+                type="button"
                 onClick={handleCopy}
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground transition-colors hover:text-primary"
                 aria-label="Copy location code"
               >
                 {copied ? (
-                  <Check className="h-3.5 w-3.5 text-green-500" />
+                  <Check className="h-3.5 w-3.5 text-pos" />
                 ) : (
                   <Copy className="h-3.5 w-3.5" />
                 )}
@@ -310,163 +364,218 @@ function LocationDetailsCard({
         }
       />
 
-      <SettingsSection onSave={save} isDirty={isDirty} isPending={isPending}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <LabeledField label="Location name" hint="Max 255 characters.">
-            <Input
-              maxLength={255}
-              value={form.name}
-              onChange={(e) => setField("name", e.target.value)}
-              disabled={isPending}
-              placeholder="e.g. Pizza Inn Masaki"
-            />
-          </LabeledField>
-          <LabeledField label="Phone number" hint="Max 20 characters.">
-            <Input
-              maxLength={20}
-              value={form.phoneNumber}
-              onChange={(e) => setField("phoneNumber", e.target.value)}
-              disabled={isPending}
-              placeholder="+255712345678"
-            />
-          </LabeledField>
-          <LabeledField label="Email">
-            <Input
-              type="email"
-              value={form.email}
-              onChange={(e) => setField("email", e.target.value)}
-              disabled={isPending}
-              placeholder="branch@business.com"
-            />
-          </LabeledField>
-          <LabeledField label="Timezone" hint="IANA TZ (e.g. Africa/Dar_es_Salaam).">
-            <Input
-              value={form.timezone}
-              onChange={(e) => setField("timezone", e.target.value)}
-              disabled={isPending}
-              placeholder="Africa/Dar_es_Salaam"
-            />
-          </LabeledField>
+      <SettingsSection
+        icon={<Store className="h-4 w-4" />}
+        title="Location profile"
+        description="How this branch is named and reached."
+        onSave={save}
+        isDirty={isDirty}
+        isPending={isPending}
+      >
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Location name" required className="sm:col-span-2">
+            {(id) => (
+              <ControlInput
+                id={id}
+                maxLength={255}
+                prefix={<Store className={ICON} />}
+                value={form.name}
+                onChange={(e) => setField("name", e.target.value)}
+                disabled={d}
+                placeholder="e.g. Pizza Inn Masaki"
+                autoComplete="organization"
+              />
+            )}
+          </Field>
+          <Field label="Phone number">
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                maxLength={20}
+                prefix={<Phone className={ICON} />}
+                value={form.phoneNumber}
+                onChange={(e) => setField("phoneNumber", e.target.value)}
+                disabled={d}
+                placeholder="+255 712 345 678"
+              />
+            )}
+          </Field>
+          <Field label="Email">
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                prefix={<Mail className={ICON} />}
+                value={form.email}
+                onChange={(e) => setField("email", e.target.value)}
+                disabled={d}
+                placeholder="branch@business.com"
+              />
+            )}
+          </Field>
+
+          <Field label="Business type" required>
+            {() => (
+              <BusinessTypeSelector
+                value={form.businessTypeId}
+                onChange={(v: string) => setField("businessTypeId", v)}
+                onBlur={() => {}}
+                isDisabled={d}
+                label="Select business type"
+                placeholder="Select business type"
+              />
+            )}
+          </Field>
+          <Field label="Country" required>
+            {() => (
+              <CountrySelector
+                value={form.countryId}
+                onChange={(v: string) => setField("countryId", v)}
+                isDisabled={d}
+                label="Select country"
+                placeholder="Select country"
+              />
+            )}
+          </Field>
+          <Field label="Timezone" className="sm:col-span-2">
+            {() => (
+              <TimezoneSelector
+                value={form.timezone}
+                onChange={(v) => setField("timezone", v)}
+                isDisabled={d}
+              />
+            )}
+          </Field>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <LabeledField label="Country">
-            <CountrySelector
-              value={form.countryId}
-              onChange={(v: string) => setField("countryId", v)}
-              isDisabled={isPending}
-              label="Select country"
-              placeholder="Select country"
-            />
-          </LabeledField>
-          <LabeledField label="Business type">
-            <BusinessTypeSelector
-              value={form.businessTypeId}
-              onChange={(v: string) => setField("businessTypeId", v)}
-              onBlur={() => {}}
-              isDisabled={isPending}
-              label="Select business type"
-              placeholder="Select business type"
-            />
-          </LabeledField>
-          <LabeledField label="Region">
-            <Input
-              value={form.region}
-              onChange={(e) => setField("region", e.target.value)}
-              disabled={isPending}
-              placeholder="e.g. Dar es Salaam"
-            />
-          </LabeledField>
-          <LabeledField label="District">
-            <Input
-              value={form.district}
-              onChange={(e) => setField("district", e.target.value)}
-              disabled={isPending}
-              placeholder="District"
-            />
-          </LabeledField>
-          <LabeledField label="Ward">
-            <Input
-              value={form.ward}
-              onChange={(e) => setField("ward", e.target.value)}
-              disabled={isPending}
-              placeholder="Ward"
-            />
-          </LabeledField>
-          <LabeledField label="Street address">
-            <Input
-              value={form.address}
-              onChange={(e) => setField("address", e.target.value)}
-              disabled={isPending}
-              placeholder="Street address"
-            />
-          </LabeledField>
-          <LabeledField label="Postal code" hint="Max 10 characters.">
-            <Input
-              maxLength={10}
-              value={form.postalCode}
-              onChange={(e) => setField("postalCode", e.target.value)}
-              disabled={isPending}
-              placeholder="Postal code"
-            />
-          </LabeledField>
-          <LabeledField label="Latitude">
-            <Input
-              type="number"
-              inputMode="decimal"
-              value={form.latitude}
-              onChange={(e) => setField("latitude", e.target.value)}
-              disabled={isPending}
-              placeholder="-6.776"
-            />
-          </LabeledField>
-          <LabeledField label="Longitude">
-            <Input
-              type="number"
-              inputMode="decimal"
-              value={form.longitude}
-              onChange={(e) => setField("longitude", e.target.value)}
-              disabled={isPending}
-              placeholder="39.278"
-            />
-          </LabeledField>
+        <div className="space-y-3.5 border-t border-dashed border-line pt-4">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-3">
+              Address
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Region">
+              {(id) => (
+                <ControlInput
+                  id={id}
+                  prefix={<MapPin className={ICON} />}
+                  value={form.region}
+                  onChange={(e) => setField("region", e.target.value)}
+                  disabled={d}
+                  placeholder="e.g. Dar es Salaam"
+                  autoComplete="address-level1"
+                />
+              )}
+            </Field>
+            <Field label="District">
+              {(id) => (
+                <ControlInput
+                  id={id}
+                  prefix={<Map className={ICON} />}
+                  value={form.district}
+                  onChange={(e) => setField("district", e.target.value)}
+                  disabled={d}
+                  placeholder="e.g. Kinondoni"
+                  autoComplete="address-level2"
+                />
+              )}
+            </Field>
+            <Field label="Ward">
+              {(id) => (
+                <ControlInput
+                  id={id}
+                  prefix={<Compass className={ICON} />}
+                  value={form.ward}
+                  onChange={(e) => setField("ward", e.target.value)}
+                  disabled={d}
+                  placeholder="e.g. Masaki"
+                  autoComplete="address-level3"
+                />
+              )}
+            </Field>
+            <Field label="Postal code">
+              {(id) => (
+                <ControlInput
+                  id={id}
+                  mono
+                  maxLength={10}
+                  prefix={<Hash className={ICON} />}
+                  value={form.postalCode}
+                  onChange={(e) => setField("postalCode", e.target.value)}
+                  disabled={d}
+                  placeholder="e.g. 14111"
+                  autoComplete="postal-code"
+                />
+              )}
+            </Field>
+            <Field label="Street address" className="sm:col-span-2">
+              {(id) => (
+                <ControlInput
+                  id={id}
+                  prefix={<Home className={ICON} />}
+                  value={form.address}
+                  onChange={(e) => setField("address", e.target.value)}
+                  disabled={d}
+                  placeholder="Street, building, floor"
+                  autoComplete="street-address"
+                />
+              )}
+            </Field>
+            <Field label="Latitude" hint="Decimal degrees, e.g. -6.776">
+              {(id) => (
+                <ControlInput
+                  id={id}
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  mono
+                  prefix={<Navigation className={ICON} />}
+                  value={form.latitude}
+                  onChange={(e) => setField("latitude", e.target.value)}
+                  disabled={d}
+                  placeholder="-6.776"
+                />
+              )}
+            </Field>
+            <Field label="Longitude" hint="Decimal degrees, e.g. 39.278">
+              {(id) => (
+                <ControlInput
+                  id={id}
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  mono
+                  prefix={<Navigation className={ICON} />}
+                  value={form.longitude}
+                  onChange={(e) => setField("longitude", e.target.value)}
+                  disabled={d}
+                  placeholder="39.278"
+                />
+              )}
+            </Field>
+          </div>
         </div>
 
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Description</label>
-          <Textarea
-            value={form.description}
-            onChange={(e) => setField("description", e.target.value)}
-            disabled={isPending}
-            placeholder="A short description of this location"
-            rows={3}
-            className="resize-y"
-          />
-        </div>
+        <Field label="Description" optional>
+          {(id) => (
+            <ControlTextarea
+              id={id}
+              value={form.description}
+              onChange={(e) => setField("description", e.target.value)}
+              disabled={d}
+              placeholder="A short description of this location"
+              rows={3}
+            />
+          )}
+        </Field>
       </SettingsSection>
     </div>
   );
 }
-
-function LabeledField({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</label>
-      {children}
-      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
-    </div>
-  );
-}
-
-// Ensure tree-shaken helper stays imported for future panels
-void SettingsSwitchRow;
-void Button;
-void Loader2;
