@@ -38,7 +38,7 @@ interface BusinessNotesPanelProps {
   initialPage: BusinessNotePage | null;
   error: string | null;
   currentUserId: string | null;
-  currentUserRole: InternalRole | null;
+  currentUserRoles: InternalRole[];
 }
 
 const MAX_LENGTH = 4000;
@@ -431,11 +431,11 @@ export function BusinessNotesPanel({
   initialPage,
   error,
   currentUserId,
-  currentUserRole,
+  currentUserRoles,
 }: BusinessNotesPanelProps) {
   const router = useRouter();
-  const canPin = currentUserRole ? PIN_ROLES.includes(currentUserRole) : false;
-  const canModerate = currentUserRole === "SYSTEM_ADMIN";
+  const canPin = currentUserRoles.some((r) => PIN_ROLES.includes(r));
+  const canModerate = currentUserRoles.includes("SYSTEM_ADMIN");
 
   const notes = useMemo(() => initialPage?.content ?? [], [initialPage]);
 

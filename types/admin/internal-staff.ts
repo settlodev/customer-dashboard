@@ -1,3 +1,5 @@
+import { RoleSummary } from "@/types/admin/internal-user";
+
 export interface InternalStaffSummary {
   id: string;
   authUserId: string;
@@ -5,9 +7,12 @@ export interface InternalStaffSummary {
   firstName: string;
   lastName: string;
   email: string;
-  internalRole: string;
-  /** SALES | SUPPORT | null — assignment capability mirrored from the role. */
-  assignableAs: string | null;
+  /** Every role (system or custom) this staff member currently holds. */
+  roles: RoleSummary[];
+  /** Whether ANY held role grants SALES assignment capability. */
+  assignableAsSales: boolean;
+  /** Whether ANY held role grants SUPPORT assignment capability. */
+  assignableAsSupport: boolean;
   referralCode: string | null;
   active: boolean;
   phoneNumber: string | null;
