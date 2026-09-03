@@ -18,7 +18,7 @@ import { buildActorNameMap } from "@/lib/admin/actor-names";
 import type { ManualPaymentPage, ManualPaymentStatus } from "@/types/admin/billing";
 
 export const metadata = {
-  title: "Pending Payments",
+  title: "Manual Payments",
 };
 
 interface ManualPaymentsPageProps {
@@ -50,7 +50,7 @@ export default async function AdminManualPaymentsPage({
       <AdminShell token={token}>
         <PageShell>
           <PageHeader
-            title="Pending Payments"
+            title="Manual Payments"
             subtitle="Restricted to billing approvers (System Admin, Super Admin, Finance)."
           />
         </PageShell>
@@ -112,7 +112,7 @@ export default async function AdminManualPaymentsPage({
     <AdminShell token={token}>
       <PageShell>
         <PageHeader
-          title="Pending Payments"
+          title="Manual Payments"
           subtitle="Review manual payments recorded without approval authority across all businesses. Approving marks the invoice paid and activates the subscription."
         />
         <PageBody>
