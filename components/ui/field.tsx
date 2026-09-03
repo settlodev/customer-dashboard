@@ -306,6 +306,79 @@ export function SegmentedBoolean({
   );
 }
 
+// ── Radio cards ─────────────────────────────────────────────────────
+
+/**
+ * Mutually exclusive options as a grid of cards (title + description + radio
+ * dot). Use where each option deserves a sentence — modes, layouts, density —
+ * instead of a bare `<Select>`. Override the column count via `className`.
+ */
+export function RadioCards<T extends string>({
+  value,
+  onChange,
+  options,
+  disabled,
+  className,
+}: {
+  value: T;
+  onChange: (value: T) => void;
+  options: readonly {
+    value: T;
+    label: string;
+    description?: string;
+    icon?: React.ReactNode;
+  }[];
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      className={cn("grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3", className)}
+    >
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button
+            type="button"
+            role="radio"
+            aria-checked={on}
+            key={o.value}
+            disabled={disabled}
+            onClick={() => !disabled && onChange(o.value)}
+            className={cn(
+              "flex items-start gap-3 rounded-[10px] border p-3.5 text-left transition outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-60",
+              on
+                ? "border-primary bg-primary/[0.06]"
+                : "border-line-2 bg-card hover:border-muted-2",
+            )}
+          >
+            <span
+              className={cn(
+                "mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border-[1.6px]",
+                on ? "border-primary" : "border-muted-2",
+              )}
+            >
+              {on && <span className="h-2 w-2 rounded-full bg-primary" />}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-1.5 text-[13px] font-medium leading-tight text-ink">
+                {o.icon && <span className="text-muted-foreground">{o.icon}</span>}
+                {o.label}
+              </span>
+              {o.description && (
+                <span className="mt-1 block text-[12px] leading-snug text-muted-foreground">
+                  {o.description}
+                </span>
+              )}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Standalone field (label + control + hint, no react-hook-form) ───
 
 /**

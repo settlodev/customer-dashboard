@@ -2,10 +2,8 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
-  Check,
   Coins,
   Compass,
-  Copy,
   Hash,
   Home,
   Languages,
@@ -23,9 +21,10 @@ import {
   ControlTextarea,
   StandaloneField as Field,
 } from "@/components/ui/field";
-import { SettingsSection } from "../shared/settings-section";
+import { SettingsSection, parseOptionalNumber } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
+import { IdentifierChip } from "../shared/identifier-chip";
 import { DangerZonePanel } from "./danger-zone-panel";
 import type { LocationSettings } from "@/types/location-settings/type";
 import type { Location } from "@/types/location/type";
@@ -56,12 +55,6 @@ interface Props {
 
 const ICON = "h-3.5 w-3.5";
 
-/** "" → null, otherwise a finite number — for the optional numeric guard-rails. */
-function numberOrNull(raw: string): number | null {
-  if (raw.trim() === "") return null;
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : null;
-}
 
 export function LocationProfilePanel({
   settings,
@@ -92,6 +85,7 @@ export function LocationProfilePanel({
         title="Currency, locale & guard-rails"
         description="Base currency and limits that apply across POS, receipts, and reports."
         onSave={panel.save}
+        onDiscard={() => panel.reset()}
         isPending={panel.isPending}
         isDirty={panel.isDirty}
       >
@@ -139,7 +133,7 @@ export function LocationProfilePanel({
                 suffix={currencyCode || undefined}
                 value={panel.values.minimumOrderAmount ?? ""}
                 onChange={(e) =>
-                  panel.setField("minimumOrderAmount", numberOrNull(e.target.value))
+                  panel.setField("minimumOrderAmount", parseOptionalNumber(e.target.value))
                 }
                 placeholder="0"
                 disabled={d}
@@ -161,7 +155,7 @@ export function LocationProfilePanel({
                 suffix="%"
                 value={panel.values.maxDiscountPercentage ?? ""}
                 onChange={(e) =>
-                  panel.setField("maxDiscountPercentage", numberOrNull(e.target.value))
+                  panel.setField("maxDiscountPercentage", parseOptionalNumber(e.target.value))
                 }
                 placeholder="100"
                 disabled={d}
@@ -183,7 +177,7 @@ export function LocationProfilePanel({
                 suffix="%"
                 value={panel.values.discountApprovalThreshold ?? ""}
                 onChange={(e) =>
-                  panel.setField("discountApprovalThreshold", numberOrNull(e.target.value))
+                  panel.setField("discountApprovalThreshold", parseOptionalNumber(e.target.value))
                 }
                 placeholder="0"
                 disabled={d}
@@ -270,10 +264,10 @@ function diffToPatch(
     if (current[k] !== baseline[k] && trimmed !== "") patch[k] = trimmed;
   }
   if (current.latitude !== baseline.latitude) {
-    patch.latitude = numberOrNull(current.latitude);
+    patch.latitude = parseOptionalNumber(current.latitude);
   }
   if (current.longitude !== baseline.longitude) {
-    patch.longitude = numberOrNull(current.longitude);
+    patch.longitude = parseOptionalNumber(current.longitude);
   }
   return patch;
 }
@@ -287,7 +281,6 @@ function LocationDetailsCard({
 }) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const [copied, setCopied] = useState(false);
 
   const initial = useMemo(() => toForm(location), [location]);
   const [form, setForm] = useState<LocationFormState>(initial);
@@ -306,13 +299,6 @@ function LocationDetailsCard({
     key: K,
     value: LocationFormState[K],
   ) => setForm((prev) => ({ ...prev, [key]: value }));
-
-  const handleCopy = () => {
-    if (!location.identifier) return;
-    navigator.clipboard.writeText(location.identifier);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const save = () => {
     if (!isDirty) return;
@@ -341,26 +327,13 @@ function LocationDetailsCard({
         title="Location"
         description="Name, contact info and address for this location."
         meta={
-          location.identifier && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted-foreground">Location code:</span>
-              <code className="rounded-md border border-line bg-canvas px-2 py-0.5 font-mono text-xs text-ink">
-                {location.identifier}
-              </code>
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="text-muted-foreground transition-colors hover:text-primary"
-                aria-label="Copy location code"
-              >
-                {copied ? (
-                  <Check className="h-3.5 w-3.5 text-pos" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
-              </button>
-            </div>
-          )
+          location.identifier ? (
+            <IdentifierChip
+              label="Location code:"
+              value={location.identifier}
+              copyLabel="Copy location code"
+            />
+          ) : undefined
         }
       />
 
@@ -369,6 +342,7 @@ function LocationDetailsCard({
         title="Location profile"
         description="How this branch is named and reached."
         onSave={save}
+        onDiscard={() => setForm(baseline)}
         isDirty={isDirty}
         isPending={isPending}
       >

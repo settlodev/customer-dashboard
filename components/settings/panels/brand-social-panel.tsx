@@ -124,6 +124,7 @@ export function BrandSocialPanel({
         title="Brand identity"
         description="Colours, type, and imagery used on receipts, the digital menu, and other branded surfaces."
         onSave={p.save}
+        onDiscard={() => p.reset()}
         isPending={p.isPending}
         isDirty={p.isDirty}
       >
@@ -214,6 +215,7 @@ export function BrandSocialPanel({
         title="Social media"
         description="Links and contact details for this location."
         onSave={p.save}
+        onDiscard={() => p.reset()}
         isPending={p.isPending}
         isDirty={p.isDirty}
       >
@@ -332,6 +334,7 @@ export function BrandSocialPanel({
         title="SEO"
         description="Page title and description used by search engines and social previews."
         onSave={p.save}
+        onDiscard={() => p.reset()}
         isPending={p.isPending}
         isDirty={p.isDirty}
       >
