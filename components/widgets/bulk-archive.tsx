@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { archiveEntity } from "@/lib/actions/archive-service";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { getCurrentDestination } from "@/lib/actions/context";
 
 interface BulkArchiveProps {
   selectedIds: string[];
@@ -62,13 +62,13 @@ export function BulkArchive({
     try {
       setArchiveInProgress(true);
 
-      const locationId = await getCurrentLocation();
+      const destination = await getCurrentDestination();
 
       // Call the archive service
       const result = await archiveEntity({
         ids: selectedIds,
         entityType: entityType,
-        locationId: locationId?.id,
+        locationId: destination?.id,
       });
 
       console.log("The result for archiving product", result);
