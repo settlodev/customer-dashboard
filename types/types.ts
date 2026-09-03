@@ -109,7 +109,8 @@ export declare interface AuthToken {
     verificationResendToken?: string;
     subscriptionStatus?: SubscriptionStatus;
     businessId?: string | null;
-    internalRole?: InternalRole | null;
+    /** Every internal role this staff member holds (empty/undefined for regular customer users). */
+    internalRoles?: InternalRole[];
     internalPermissions?: string[];
     subjectType?: SubjectType;
     /** True when this session belongs to an external referral agent (not internal staff). */

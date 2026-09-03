@@ -1,5 +1,3 @@
-import { InternalRole } from "@/types/types";
-
 export type InternalUserStatus =
   | "ACTIVE"
   | "INACTIVE"
@@ -7,15 +5,17 @@ export type InternalUserStatus =
   | "PENDING_VERIFICATION"
   | "LOCKED";
 
+/** A held role's code and display name. */
+export interface RoleSummary {
+  code: string;
+  name: string;
+}
+
 export interface InternalUserResponse {
   id: string;
   email: string;
-  /** Legacy enum — null for holders of a custom (dynamic) role. */
-  internalRole: InternalRole | null;
-  /** Canonical role code (system or custom) — present for every internal user. */
-  roleCode: string | null;
-  /** Human-readable role name from the role manager. */
-  roleName: string | null;
+  /** Every role (system or custom) this staff member currently holds. */
+  roles: RoleSummary[];
   status: InternalUserStatus;
   createdAt: string;
   lastLoginAt: string | null;
@@ -32,13 +32,13 @@ export interface CreateInternalUserRequest {
   lastName: string;
   email: string;
   password: string;
-  /** Role CODE — system or custom/dynamic. */
-  role: string;
+  /** Role CODEs — one or more, system or custom/dynamic. */
+  roles: string[];
 }
 
-export interface UpdateInternalRoleRequest {
-  /** Role CODE — system or custom/dynamic. */
-  role: string;
+export interface UpdateInternalRolesRequest {
+  /** Role CODEs — fully replaces the user's current role set. */
+  roles: string[];
 }
 
 export interface RolePermissionsResponse {

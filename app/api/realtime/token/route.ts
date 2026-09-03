@@ -3,6 +3,11 @@ import { getAuthToken, updateAuthToken } from "@/lib/auth-utils";
 import { isAccessTokenExpired, isAccessTokenExpiringSoon } from "@/lib/jwt-utils";
 import { refreshUserAccessToken } from "@/lib/realtime/refresh-token";
 
+// Headroom above the ApiClient's 30s per-request deadline so a slow
+// upstream aborts in axios (graceful JSON error) instead of being cut
+// off by Vercel's 15s default and surfacing as a bare 504.
+export const maxDuration = 60;
+
 /**
  * Hands an access token to client JavaScript so the WebSocket Gateway
  * client can put it in the CONNECT frame's `payload.token`. The token

@@ -1,5 +1,6 @@
 {
   "installCommand": "npm ci",
+  "regions": ["fra1"],
   "git": {
     "deploymentEnabled": {
       "alpha": true,

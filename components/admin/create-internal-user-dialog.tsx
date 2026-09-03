@@ -24,13 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { FormError } from "@/components/widgets/form-error";
 import { useToast } from "@/hooks/use-toast";
 
@@ -63,7 +57,7 @@ export function CreateInternalUserDialog({
       lastName: "",
       email: "",
       password: "",
-      role: "",
+      roles: [],
     },
   });
 
@@ -222,38 +216,29 @@ export function CreateInternalUserDialog({
 
             <FormField
               control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={isPending}
-                  >
+              name="roles"
+              render={({ field }) => {
+                const selected = field.value ?? [];
+                return (
+                  <FormItem>
+                    <FormLabel>Roles</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a role" />
-                      </SelectTrigger>
+                      <MultiSelect
+                        key={selected.join(",")}
+                        options={roles.map((r) => ({
+                          label: r.name,
+                          value: r.role,
+                        }))}
+                        onValueChange={field.onChange}
+                        defaultValue={selected}
+                        placeholder="Choose one or more roles"
+                        disabled={isPending}
+                      />
                     </FormControl>
-                    <SelectContent>
-                      {roles.map((r) => (
-                        <SelectItem key={r.role} value={r.role}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{r.name}</span>
-                            {r.description && (
-                              <span className="text-xs text-muted-foreground">
-                                {r.description}
-                              </span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <DialogFooter className="gap-2">

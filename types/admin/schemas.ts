@@ -12,11 +12,11 @@ export const CreateInternalUserSchema = z.object({
     .string()
     .min(12, "Password must be at least 12 characters")
     .max(100, "Password is too long"),
-  role: z.string().min(1, "Select a role").max(100),
+  roles: z.array(z.string()).min(1, "Select at least one role"),
 });
 
-export const UpdateInternalRoleSchema = z.object({
-  role: z.string().min(1, "Select a role").max(100),
+export const UpdateInternalRolesSchema = z.object({
+  roles: z.array(z.string()).min(1, "Select at least one role"),
 });
 
 // ── Internal roles (RBAC role manager) ──────────────────────────────

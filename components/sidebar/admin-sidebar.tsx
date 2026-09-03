@@ -113,7 +113,7 @@ const NAV_GROUPS: NavGroup[] = [
         permissions: [PERM.SUPPORT_TICKETS_MANAGE],
       },
       {
-        title: "Pending Payments",
+        title: "Manual Payments",
         href: "/manual-payments",
         icon: Banknote,
         permissions: [PERM.BILLING_INVOICES_APPROVE],
@@ -313,8 +313,8 @@ function AdminSidebarContent({ token, isMobile, onClose }: AdminSidebarProps) {
   const groups = visibleGroups(token);
   const [isLoggingOut, startLogout] = useTransition();
 
-  const roleLabel = token?.internalRole
-    ? token.internalRole.replace(/_/g, " ").toLowerCase()
+  const roleLabel = token?.internalRoles?.length
+    ? token.internalRoles.map((r) => r.replace(/_/g, " ").toLowerCase()).join(", ")
     : "";
 
   const handleLogout = () => {
