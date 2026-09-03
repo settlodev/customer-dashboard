@@ -26,6 +26,7 @@ import {
   FeatureResponse,
   GenerateInvoiceRequest,
   GenerateItemInvoiceRequest,
+  ReprovisionItemRequest,
   GrantFreeSubscriptionRequest,
   InvoicePage,
   InvoicePaymentHistory,
@@ -219,6 +220,37 @@ export async function generateItemInvoice(
     return parseStringify({
       responseType: "error",
       message: error?.message || "Failed to generate invoice",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+/**
+ * Give a CANCELLED/VOIDED item's entity a fresh, billable item — the terminal item itself is
+ * left untouched. System admin only (backend 403s otherwise). `packageId` null keeps the
+ * terminal item's last package (must still be active, or the call 422s).
+ */
+export async function reprovisionSubscriptionItem(
+  businessId: string,
+  itemId: string,
+  packageId: string | null,
+): Promise<FormResponse<SubscriptionResponse>> {
+  try {
+    const body: ReprovisionItemRequest = { packageId };
+    const result = await staffBilling().post<SubscriptionResponse, ReprovisionItemRequest>(
+      `/api/v1/support/billing/${businessId}/items/${itemId}/reprovision`,
+      body,
+    );
+    revalidateBusiness(businessId);
+    return parseStringify({
+      responseType: "success",
+      message: "Entity reprovisioned",
+      data: result,
+    });
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message || "Failed to reprovision item",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }

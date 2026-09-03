@@ -67,6 +67,8 @@ export type SubscriptionItemStatus =
   | "EXPIRED"
   | "SUSPENDED"
   | "CANCELLED"
+  /** Invoice for this entity was voided as a mistake — access revoked, not user-revivable. */
+  | "VOIDED"
   | "REMOVED";
 
 /**
@@ -144,6 +146,13 @@ export interface SubscriptionResponse {
    * responses that predate the field.
    */
   manageableItems?: SubscriptionItemResponse[];
+  /**
+   * CANCELLED / VOIDED items — invisible to every other management surface (change plan, add
+   * addon, generate item invoice), since `manageableItems` excludes them. This is what lets
+   * staff see an entity has no billable path back to ACTIVE and reprovision it. Optional for
+   * responses that predate the field.
+   */
+  terminalItems?: SubscriptionItemResponse[];
   activeDiscounts: SubscriptionDiscountResponse[];
 }
 
@@ -170,6 +179,10 @@ export interface InvoiceResponse {
   subscriptionId: string | null;
   userId: string | null;
   locationId: string | null;
+  /** Bill-to contact captured on the invoice — may differ from the business's current
+   *  primary contact if it changed since this invoice was generated. */
+  customerName: string | null;
+  customerEmail: string | null;
   status: InvoiceStatus;
   invoiceDate: string;
   dueDate: string | null;
@@ -213,6 +226,11 @@ export interface GenerateItemInvoiceRequest {
    * override, not a side effect).
    */
   override?: boolean;
+}
+
+export interface ReprovisionItemRequest {
+  /** Null keeps the terminal item's last package (must still be active, or the call 422s). */
+  packageId: string | null;
 }
 
 // ── Manual payment ──────────────────────────────────────────────────
