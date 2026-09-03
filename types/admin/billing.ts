@@ -248,6 +248,13 @@ export interface ManualPaymentResponse {
 
 export type ManualPaymentPage = ApiResponse<ManualPaymentResponse>;
 
+/** Backs the manual-payments queue's summary banner — same status/date filter as the list. */
+export interface ManualPaymentsSummary {
+  totalAmount: number;
+  /** Distinct invoices, not manual-payment records — a partial payment plus its top-up counts once. */
+  totalInvoices: number;
+}
+
 /**
  * How an invoice was actually paid — Selcom gateway attempts plus every manual
  * payment recorded against it. The two are independent: a prospect invoice

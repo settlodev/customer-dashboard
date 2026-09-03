@@ -32,6 +32,7 @@ import {
   InvoiceResponse,
   ManualPaymentPage,
   ManualPaymentResponse,
+  ManualPaymentsSummary,
   PackageBreakdownResponse,
   PackageFeatureMappingResponse,
   PackageHistoryEntry,
@@ -497,6 +498,26 @@ export async function listManualPayments(params: {
   qs.set("size", String(params.size ?? 20));
   const data = await staffBilling().get<ManualPaymentPage>(
     `/api/v1/support/billing/manual-payments?${qs.toString()}`,
+  );
+  return parseStringify(data);
+}
+
+/**
+ * Total amount and distinct invoice count for the same status/recordedAt filter as
+ * {@link listManualPayments} — backs the queue's summary banner without paging through
+ * every row client-side to add it up.
+ */
+export async function summarizeManualPayments(params: {
+  status?: "PENDING" | "APPROVED" | "CANCELLED";
+  recordedFrom?: string;
+  recordedTo?: string;
+} = {}): Promise<ManualPaymentsSummary> {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set("status", params.status);
+  if (params.recordedFrom) qs.set("recordedFrom", params.recordedFrom);
+  if (params.recordedTo) qs.set("recordedTo", params.recordedTo);
+  const data = await staffBilling().get<ManualPaymentsSummary>(
+    `/api/v1/support/billing/manual-payments/summary?${qs.toString()}`,
   );
   return parseStringify(data);
 }

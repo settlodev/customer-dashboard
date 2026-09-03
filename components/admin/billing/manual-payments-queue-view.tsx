@@ -15,13 +15,20 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { formatMoney } from "@/lib/helpers";
 import { cn } from "@/lib/utils";
-import { ManualPaymentPage, ManualPaymentStatus } from "@/types/admin/billing";
+import {
+  ManualPaymentPage,
+  ManualPaymentsSummary,
+  ManualPaymentStatus,
+} from "@/types/admin/billing";
 
 interface ManualPaymentsQueueViewProps {
   page: ManualPaymentPage;
   status: ManualPaymentStatus | "ALL";
   counts: Record<ManualPaymentStatus | "ALL", number>;
+  /** Total amount + distinct invoice count for the current status/date filter. */
+  summary: ManualPaymentsSummary;
   actorNames: Record<string, string>;
   /** Current `?recordedFrom`/`?recordedTo` filter, as `YYYY-MM-DD` (business-timezone calendar days). */
   recordedFrom?: string;
@@ -40,10 +47,18 @@ const TABS: { key: ManualPaymentStatus | "ALL"; label: string }[] = [
   { key: "ALL", label: "All" },
 ];
 
+const SECTION_LABEL: Record<ManualPaymentStatus | "ALL", string> = {
+  PENDING: "Pending manual payments",
+  APPROVED: "Approved manual payments",
+  CANCELLED: "Cancelled manual payments",
+  ALL: "All manual payments",
+};
+
 export function ManualPaymentsQueueView({
   page,
   status,
   counts,
+  summary,
   actorNames,
   recordedFrom,
   recordedTo,
@@ -108,6 +123,34 @@ export function ManualPaymentsQueueView({
 
   return (
     <div className="space-y-4">
+      {/* Summary banner — retitles and re-totals per active status tab + date filter */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-line bg-card px-4 py-3">
+        <div>
+          <p className="text-[13px] font-medium text-ink">{SECTION_LABEL[status]}</p>
+          <p className="font-mono text-[11px] text-muted-foreground">
+            {recordedFrom ? dateRangeLabel : "All time"}
+          </p>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="text-right">
+            <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+              Total amount
+            </p>
+            <p className="text-[15px] font-semibold text-ink">
+              {formatMoney(summary.totalAmount, "TZS")}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+              Invoices
+            </p>
+            <p className="text-[15px] font-semibold text-ink">
+              {summary.totalInvoices.toLocaleString()}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         {/* Status tabs */}
         <div
