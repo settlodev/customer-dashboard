@@ -10,7 +10,7 @@ import {
   CreateInternalUserRequest,
   InternalUserResponse,
   RolePermissionsResponse,
-  UpdateInternalRoleRequest,
+  UpdateInternalRolesRequest,
 } from "@/types/admin/internal-user";
 import {
   InternalStaffSummary,
@@ -18,7 +18,7 @@ import {
 } from "@/types/admin/internal-staff";
 import {
   CreateInternalUserSchema,
-  UpdateInternalRoleSchema,
+  UpdateInternalRolesSchema,
   UpdateInternalStaffSchema,
 } from "@/types/admin/schemas";
 
@@ -91,36 +91,36 @@ export async function createInternalUser(
   }
 }
 
-export async function updateInternalUserRole(
+export async function updateInternalUserRoles(
   userId: string,
-  payload: z.infer<typeof UpdateInternalRoleSchema>,
+  payload: z.infer<typeof UpdateInternalRolesSchema>,
 ): Promise<FormResponse<InternalUserResponse>> {
-  const validated = UpdateInternalRoleSchema.safeParse(payload);
+  const validated = UpdateInternalRolesSchema.safeParse(payload);
   if (!validated.success) {
     return parseStringify({
       responseType: "error",
-      message: "Select a role to assign",
+      message: "Select at least one role to assign",
       error: new Error(validated.error.message),
     });
   }
 
   try {
-    const body: UpdateInternalRoleRequest = validated.data;
+    const body: UpdateInternalRolesRequest = validated.data;
     const updated = await staffClient().patch<
       InternalUserResponse,
-      UpdateInternalRoleRequest
-    >(`${INTERNAL_USERS_PATH}/${userId}/role`, body);
+      UpdateInternalRolesRequest
+    >(`${INTERNAL_USERS_PATH}/${userId}/roles`, body);
 
     revalidatePath("/admin/users");
     return parseStringify({
       responseType: "success",
-      message: "Role updated",
+      message: "Roles updated",
       data: updated,
     });
   } catch (error: any) {
     return parseStringify({
       responseType: "error",
-      message: error?.message || "Failed to update role",
+      message: error?.message || "Failed to update roles",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }

@@ -34,6 +34,7 @@ import {
   unassignSupportStaff,
 } from "@/lib/actions/admin/accounts";
 import { AssignedStaffInfo, StaffAssigneeType } from "@/types/admin/account";
+import { InternalStaffSummary } from "@/types/admin/internal-staff";
 
 interface AssignStaffDialogProps {
   accountId: string;
@@ -91,6 +92,10 @@ export function AssignStaffDialog({
   // SALES for the sales picker, SUPPORT for support (also enforced server-side).
   // Sales additionally allows external agents (influencers); support is internal-only.
   const eligibleCapability = isSales ? "SALES" : "SUPPORT";
+  // A staffer can hold multiple roles at once; use the aggregate booleans
+  // (true if ANY held role grants the capability) rather than a single role.
+  const isEligible = (s: InternalStaffSummary) =>
+    isSales ? s.assignableAsSales : s.assignableAsSupport;
 
   useEffect(() => {
     if (!open) {
@@ -112,14 +117,14 @@ export function AssignStaffDialog({
         const internalOptions: AssignOption[] = internal
           // Server scopes by capability; filter again so a not-yet-deployed
           // backend (ignoring the param) can't surface the wrong staff.
-          .filter((s) => s.assignableAs === eligibleCapability)
+          .filter(isEligible)
           .map((s) => ({
             value: optionValue("INTERNAL_STAFF", s.id),
             id: s.id,
             type: "INTERNAL_STAFF" as const,
             fullName: s.fullName,
             email: s.email,
-            role: s.internalRole,
+            role: s.roles.map((r) => r.name).join(", ") || "—",
           }));
         const externalOptions: AssignOption[] = external.map((a) => ({
           value: optionValue("EXTERNAL_AGENT", a.id),
@@ -127,7 +132,7 @@ export function AssignStaffDialog({
           type: "EXTERNAL_AGENT" as const,
           fullName: a.fullName,
           email: a.email,
-          role: a.role || "EXTERNAL_AGENT",
+          role: roleLabel(a.role || "EXTERNAL_AGENT"),
         }));
         setOptions([...internalOptions, ...externalOptions]);
         setSelectedValue(currentValue);
@@ -203,7 +208,7 @@ export function AssignStaffDialog({
       <div className="flex flex-col">
         <span className="font-medium">{o.fullName}</span>
         <span className="text-xs text-muted-foreground">
-          {roleLabel(o.role)} · {o.email}
+          {o.role} · {o.email}
         </span>
       </div>
     </SelectItem>

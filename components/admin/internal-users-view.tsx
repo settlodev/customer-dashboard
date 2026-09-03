@@ -159,7 +159,10 @@ export function InternalUsersView({
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return users.filter((u) => {
-      if (roleFilter !== ROLE_FILTER_ALL && (u.roleCode ?? "") !== roleFilter) {
+      if (
+        roleFilter !== ROLE_FILTER_ALL &&
+        !u.roles.some((r) => r.code === roleFilter)
+      ) {
         return false;
       }
       if (statusFilter !== STATUS_FILTER_ALL && u.status !== statusFilter) {
@@ -301,7 +304,21 @@ export function InternalUsersView({
                       {user.email}
                     </TableCell>
                     <TableCell>
-                      {user.roleName ?? roleLabel(user.roleCode ?? "—")}
+                      {user.roles.length === 0 ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {user.roles.map((r) => (
+                            <Badge
+                              key={r.code}
+                              variant="outline"
+                              className="font-normal"
+                            >
+                              {r.name || roleLabel(r.code)}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -343,7 +360,7 @@ export function InternalUsersView({
                               onSelect={() => setEditTarget(user)}
                               disabled={isSelf}
                             >
-                              Change role
+                              Manage roles
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
