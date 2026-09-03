@@ -113,7 +113,7 @@ const NAV_GROUPS: NavGroup[] = [
         permissions: [PERM.SUPPORT_TICKETS_MANAGE],
       },
       {
-        title: "Pending Payments",
+        title: "Payments",
         href: "/manual-payments",
         icon: Banknote,
         permissions: [PERM.BILLING_INVOICES_APPROVE],
