@@ -1,18 +1,43 @@
 "use client";
 
-import { useCallback, useMemo, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { format } from "date-fns";
+import { CalendarIcon, X } from "lucide-react";
+import type { DateRange } from "react-day-picker";
 
 import { DataTable } from "@/components/tables/data-table";
 import { buildManualPaymentColumns } from "@/components/tables/admin-manual-payments/column";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { formatMoney } from "@/lib/helpers";
 import { cn } from "@/lib/utils";
-import { ManualPaymentPage, ManualPaymentStatus } from "@/types/admin/billing";
+import {
+  ManualPaymentPage,
+  ManualPaymentsSummary,
+  ManualPaymentStatus,
+} from "@/types/admin/billing";
 
 interface ManualPaymentsQueueViewProps {
   page: ManualPaymentPage;
   status: ManualPaymentStatus | "ALL";
   counts: Record<ManualPaymentStatus | "ALL", number>;
+  /** Total amount + distinct invoice count for the current status/date filter. */
+  summary: ManualPaymentsSummary;
   actorNames: Record<string, string>;
+  /** Current `?recordedFrom`/`?recordedTo` filter, as `YYYY-MM-DD` (business-timezone calendar days). */
+  recordedFrom?: string;
+  recordedTo?: string;
+}
+
+function parseDayLocal(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 const TABS: { key: ManualPaymentStatus | "ALL"; label: string }[] = [
@@ -22,16 +47,32 @@ const TABS: { key: ManualPaymentStatus | "ALL"; label: string }[] = [
   { key: "ALL", label: "All" },
 ];
 
+const SECTION_LABEL: Record<ManualPaymentStatus | "ALL", string> = {
+  PENDING: "Pending manual payments",
+  APPROVED: "Approved manual payments",
+  CANCELLED: "Cancelled manual payments",
+  ALL: "All manual payments",
+};
+
 export function ManualPaymentsQueueView({
   page,
   status,
   counts,
+  summary,
   actorNames,
+  recordedFrom,
+  recordedTo,
 }: ManualPaymentsQueueViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
+  const [dateOpen, setDateOpen] = useState(false);
+  const [pendingRange, setPendingRange] = useState<DateRange | undefined>(
+    recordedFrom
+      ? { from: parseDayLocal(recordedFrom), to: recordedTo ? parseDayLocal(recordedTo) : undefined }
+      : undefined,
+  );
 
   const columns = useMemo(
     () => buildManualPaymentColumns(actorNames),
@@ -57,49 +98,152 @@ export function ManualPaymentsQueueView({
     updateParams({ status: next === "ALL" ? null : next, page: null });
   };
 
+  const applyDateRange = () => {
+    if (!pendingRange?.from) return;
+    const from = format(pendingRange.from, "yyyy-MM-dd");
+    const to = format(pendingRange.to ?? pendingRange.from, "yyyy-MM-dd");
+    updateParams({ recordedFrom: from, recordedTo: to, page: null });
+    setDateOpen(false);
+  };
+
+  const clearDateRange = () => {
+    setPendingRange(undefined);
+    updateParams({ recordedFrom: null, recordedTo: null, page: null });
+    setDateOpen(false);
+  };
+
+  const dateRangeLabel =
+    recordedFrom && recordedTo
+      ? recordedFrom === recordedTo
+        ? format(parseDayLocal(recordedFrom), "MMM d, yyyy")
+        : `${format(parseDayLocal(recordedFrom), "MMM d, yyyy")} – ${format(parseDayLocal(recordedTo), "MMM d, yyyy")}`
+      : "Recorded date";
+
   const { content, totalElements, totalPages, number, size } = page;
 
   return (
     <div className="space-y-4">
-      {/* Status tabs */}
-      <div
-        role="tablist"
-        aria-label="Manual payment status"
-        className="inline-flex w-fit max-w-full items-center gap-0.5 overflow-x-auto rounded-md border border-line bg-card p-[3px]"
-      >
-        {TABS.map((tab) => {
-          const active = status === tab.key;
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => handleStatusChange(tab.key)}
-              className={cn(
-                "inline-flex items-center gap-1.5 whitespace-nowrap rounded-[5px] px-3 py-1.5 text-[12.5px] font-medium transition-colors",
-                active ? "bg-canvas text-ink" : "text-ink-3 hover:text-ink",
-              )}
-            >
-              {tab.label}
-              <span
+      {/* Summary banner — retitles and re-totals per active status tab + date filter */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-line bg-card px-4 py-3">
+        <div>
+          <p className="text-[13px] font-medium text-ink">{SECTION_LABEL[status]}</p>
+          <p className="font-mono text-[11px] text-muted-foreground">
+            {recordedFrom ? dateRangeLabel : "All time"}
+          </p>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="text-right">
+            <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+              Total amount
+            </p>
+            <p className="text-[15px] font-semibold text-ink">
+              {formatMoney(summary.totalAmount, "TZS")}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+              Invoices
+            </p>
+            <p className="text-[15px] font-semibold text-ink">
+              {summary.totalInvoices.toLocaleString()}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Status tabs */}
+        <div
+          role="tablist"
+          aria-label="Manual payment status"
+          className="inline-flex w-fit max-w-full items-center gap-0.5 overflow-x-auto rounded-md border border-line bg-card p-[3px]"
+        >
+          {TABS.map((tab) => {
+            const active = status === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => handleStatusChange(tab.key)}
                 className={cn(
-                  "rounded-[3px] px-1.5 font-mono text-[10.5px] tracking-[0.02em]",
-                  active
-                    ? "border border-line bg-card text-ink-3"
-                    : "bg-canvas text-muted-foreground",
+                  "inline-flex items-center gap-1.5 whitespace-nowrap rounded-[5px] px-3 py-1.5 text-[12.5px] font-medium transition-colors",
+                  active ? "bg-canvas text-ink" : "text-ink-3 hover:text-ink",
                 )}
               >
-                {counts[tab.key].toLocaleString()}
-              </span>
-            </button>
-          );
-        })}
-        <span className="ml-3 self-center font-mono text-[12px] text-muted-foreground">
-          {totalElements === 0
-            ? "No manual payments"
-            : `Page ${number + 1} of ${Math.max(1, totalPages)} · ${totalElements.toLocaleString()} total`}
-        </span>
+                {tab.label}
+                <span
+                  className={cn(
+                    "rounded-[3px] px-1.5 font-mono text-[10.5px] tracking-[0.02em]",
+                    active
+                      ? "border border-line bg-card text-ink-3"
+                      : "bg-canvas text-muted-foreground",
+                  )}
+                >
+                  {counts[tab.key].toLocaleString()}
+                </span>
+              </button>
+            );
+          })}
+          <span className="ml-3 self-center font-mono text-[12px] text-muted-foreground">
+            {totalElements === 0
+              ? "No manual payments"
+              : `Page ${number + 1} of ${Math.max(1, totalPages)} · ${totalElements.toLocaleString()} total`}
+          </span>
+        </div>
+
+        <Popover open={dateOpen} onOpenChange={setDateOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                "h-9 justify-start gap-2 text-left text-[12.5px] font-normal",
+                !recordedFrom && "text-muted-foreground",
+              )}
+            >
+              <CalendarIcon className="h-3.5 w-3.5" />
+              {dateRangeLabel}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="range"
+              defaultMonth={pendingRange?.from}
+              selected={pendingRange}
+              onSelect={setPendingRange}
+              numberOfMonths={2}
+              disabled={{ after: new Date() }}
+              toDate={new Date()}
+              initialFocus
+            />
+            <div className="flex items-center justify-end gap-2 p-3 pt-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearDateRange}
+                disabled={!recordedFrom && !pendingRange?.from}
+              >
+                Clear
+              </Button>
+              <Button size="sm" onClick={applyDateRange} disabled={!pendingRange?.from}>
+                Apply
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {recordedFrom && (
+          <button
+            type="button"
+            onClick={clearDateRange}
+            className="inline-flex items-center gap-1 rounded-[5px] px-2 py-1.5 text-[12px] text-muted-foreground hover:text-ink"
+            aria-label="Clear recorded date filter"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
       </div>
 
       <DataTable

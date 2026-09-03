@@ -68,3 +68,15 @@ export const formatDateTime = (
   if (!d) return null;
   return `${DATE_FMT.format(d)}, ${(opts?.seconds ? TIME_SECONDS_FMT : TIME_FMT).format(d)}`;
 };
+
+/**
+ * Start/end of a `YYYY-MM-DD` calendar day in the business timezone, as an
+ * OffsetDateTime-compatible ISO string (e.g. "2026-08-29T00:00:00+03:00").
+ * Hardcoding the +03:00 offset is safe because BUSINESS_TIMEZONE is fixed
+ * UTC+3 with no DST — see the note above.
+ */
+export const startOfBusinessDayIso = (dateOnly: string): string =>
+  `${dateOnly}T00:00:00+03:00`;
+
+export const endOfBusinessDayIso = (dateOnly: string): string =>
+  `${dateOnly}T23:59:59+03:00`;
