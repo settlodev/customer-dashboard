@@ -25,6 +25,11 @@ import { AuthToken, InternalRole, SubjectType } from "./types/types";
 const COOKIE_CHUNK_SIZE = 3000;
 const MAX_CHUNKS = 10;
 
+// Deadline for the edge token-refresh round-trip (see refreshTokenAtEdge).
+// Must stay comfortably under Vercel's 25s initial-response limit — the
+// middleware blocks the request while this is in flight.
+const REFRESH_TIMEOUT_MS = 5000;
+
 // Per-request auth-state logging leaks request flow / cookie presence and runs
 // on every request — keep it out of production. Mirrors devLog in auth-utils.ts
 // and auth-actions.tsx.
@@ -132,10 +137,20 @@ async function refreshTokenAtEdge(refreshToken: string): Promise<{
     const clientId = process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID;
     if (clientId) headers["X-Client-Id"] = clientId;
 
+    // HARD timeout. This runs in the edge middleware, which sits in front of
+    // EVERY request the matcher catches, and Vercel kills a function that has
+    // not produced an initial response within 25s. A bare fetch here has no
+    // deadline of its own, so a slow or hanging Auth service stalls the
+    // middleware and takes the whole site down with it ("Your function was
+    // stopped as it did not return an initial response within 25s"). Bounded
+    // well below that ceiling, a slow refresh degrades to "no refresh this
+    // request" — the caller keeps the still-valid token (refresh fires 60s
+    // before expiry) and the ApiClient retries reactively on a later 401.
     const res = await fetch(`${authServiceUrl}/auth/token-refresh`, {
       method: "POST",
       headers,
       body: JSON.stringify({ refreshToken }),
+      signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
     });
 
     if (!res.ok) return null;
