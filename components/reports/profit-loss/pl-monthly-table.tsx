@@ -13,7 +13,10 @@ import type {
 const cell = (n: number) => (n === 0 ? "–" : fmtSigned(n));
 
 // The first column sticks while the months scroll. It needs an opaque
-// background or the scrolling numbers show through it.
+// background or the scrolling numbers show through it. twMerge collapses
+// bg-white with any other bg-* utility in the same cn() call, so a tinted
+// sticky cell must pass its own opaque bg-* (never a translucent one, e.g.
+// bg-gray-50/60) rather than relying on this bg-white surviving the merge.
 const stickyCell = "sticky left-0 z-10 bg-white";
 const numCell = "px-3 py-2 text-right font-mono tabular-nums whitespace-nowrap";
 
@@ -79,7 +82,7 @@ function SectionRows({
       <tr>
         <td
           colSpan={columns}
-          className={cn(stickyCell, "bg-gray-50/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500")}
+          className={cn(stickyCell, "bg-gray-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500")}
         >
           {title}
         </td>
@@ -113,7 +116,7 @@ function SectionRows({
         ))
       )}
       <tr className="border-t bg-gray-50/60 font-medium">
-        <td className={cn(stickyCell, "bg-gray-50/60 px-4 py-2.5")}>Total {title.toLowerCase()}</td>
+        <td className={cn(stickyCell, "bg-gray-50 px-4 py-2.5")}>Total {title.toLowerCase()}</td>
         <AmountCells values={group.totals} total={group.total} />
       </tr>
     </>
@@ -124,7 +127,8 @@ function MilestoneRow({ label, figure }: { label: string; figure: PlPeriodFigure
   const tone = (n: number) => (n < 0 ? "text-neg" : "text-pos");
   return (
     <tr className="border-y bg-gray-100/70">
-      <td className={cn(stickyCell, "bg-gray-100/70 px-4 py-3 text-sm font-semibold")}>{label}</td>
+      <td className={cn(stickyCell, "bg-gray-100 px-4 py-3 text-sm font-semibold")}>{label}</td>
+      {/* A zero milestone is a real computed figure, not a missing one — shown as 0.00, never dashed. */}
       {figure.byPeriod.map((v, i) => (
         <td key={i} className={cn(numCell, "py-3 font-semibold", tone(v))}>
           {fmtSigned(v)}

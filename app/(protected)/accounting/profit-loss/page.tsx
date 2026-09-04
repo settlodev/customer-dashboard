@@ -75,6 +75,18 @@ export default async function ProfitLossPage({
         : null
     : null;
 
+  // In monthly view the served periods are truncated to whole months and
+  // clamped to MAX_MONTHLY_SPAN, so the subtitle must describe what actually
+  // rendered rather than the raw requested from/to.
+  const rangeLabel =
+    view === "monthly" && monthly
+      ? formatPlRangeLabel(
+          monthly.periods[0].startDate,
+          monthly.periods[monthly.periods.length - 1].endDate,
+          now,
+        )
+      : formatPlRangeLabel(from, to, now);
+
   return (
     <PageShell>
       <PageBreadcrumbs
@@ -85,7 +97,7 @@ export default async function ProfitLossPage({
       />
       <PageHeader
         title="Profit & loss"
-        subtitle={`${formatPlRangeLabel(from, to, now)}. Revenue minus expenses from posted journals.`}
+        subtitle={`${rangeLabel}. Revenue minus expenses from posted journals.`}
         actions={<PlPeriodControl view={view} from={from} to={to} />}
       />
       <PageBody>
